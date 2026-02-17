@@ -2,107 +2,139 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, putRequest } from "../../../service/apiService";
+import {XRAY_MODALITY} from "../../../config/apiConfig";
 
 const XRAYInvestigation = () => {
   const [xrayData, setXrayData] = useState([]);
   const [searchName, setSearchName] = useState("");
   const [searchContact, setSearchContact] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [actionLoading, setActionLoading] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     id: null,
-    newStatus: "",
+    action: "", // "complete" or "cancel"
+    patientName: "",
     investigationName: ""
   });
 
   const [popupMessage, setPopupMessage] = useState(null);
+  // Arrow function to format date as dd/MM/YYYY
+const formatDate = (dateString) => {
+    const date = new Date(dateString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+};
 
-  /* ---------------- SAMPLE DATA ---------------- */
-  useEffect(() => {
-    setTimeout(() => {
-      setXrayData([
-        {
-          id: 1,
-          accessionNo: "Acc-260112-001",
-          uhid: "U12345",
-          patientName: "John Doe",
-          age: "35",
-          gender: "Male",
-          modality: "X-Ray",
-          investigationName: "Chest X-Ray",
-          orderDate: "2026-01-10",
-          orderTime: "10:30",
-          department: "Radiology",
-          contactNo: "+91-9876543210",
-          status: "y"
-        },
-        {
-          id: 2,
-          accessionNo: "Acc-260112-002",
-          uhid: "U67890",
-          patientName: "Jane Smith",
-          age: "28",
-          gender: "Female",
-          modality: "CT",
-          investigationName: "CT Brain",
-          orderDate: "2026-01-12",
-          orderTime: "11:00",
-          department: "Radiology",
-          contactNo: "+91-9876543211",
-          status: "n"
-        },
-        {
-          id: 3,
-          accessionNo: "Acc-260112-003",
-          uhid: "U13579",
-          patientName: "Robert Johnson",
-          age: "45",
-          gender: "Male",
-          modality: "MRI",
-          investigationName: "MRI Spine",
-          orderDate: "2026-01-13",
-          orderTime: "14:15",
-          department: "Radiology",
-          contactNo: "+91-9876543212",
-          status: "y"
-        }
-      ]);
+// Arrow function to extract and format time as HH:mm
+const formatTime = (dateTimeString) => {
+    const date = new Date(dateTimeString);
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    
+    return `${hours}:${minutes}`;
+};
+   // Output: "12:13"
+
+  // Fetch pending radiology investigations with server-side pagination
+  const fetchPendingInvestigations = async (page = 0) => {
+    try {
+      setLoading(true);
+      
+      const params = new URLSearchParams({
+        modality: XRAY_MODALITY,
+        page: page,
+        size: DEFAULT_ITEMS_PER_PAGE
+      });
+      
+      if (searchName?.trim()) params.append('patientName', searchName.trim());
+      if (searchContact?.trim()) params.append('phoneNumber', searchContact.trim());
+      
+      const response = await getRequest(`/radiology/pendingInvestigationForRadiology?${params.toString()}`);
+      
+      if (response?.response) {
+        // Map API response to match your table structure (without status)
+        const mappedData = response.response.content.map(item => ({
+          id: item.radOrderDtId,
+          accessionNo: item.accessionNo,
+          uhid: item.uhidNo,
+          patientName: item.patientName,
+          age: item.age,
+          gender: item.gender,
+          modality: item.modality,
+          investigationName: item.investigationName,
+          orderDate: formatDate(item.orderTime),
+          orderTime: formatTimeForDisplay(item.orderTime),
+          department: item.department,
+          contactNo: item.phoneNumber
+        }));
+        
+        setXrayData(mappedData);
+        setTotalPages(response.response.totalPages);
+        setTotalElements(response.response.totalElements);
+      } else {
+        setXrayData([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      }
+    } catch (error) {
+      console.error("Error fetching pending investigations:", error);
+      showPopup("Failed to fetch pending investigations", "error");
+      setXrayData([]);
+      setTotalPages(0);
+      setTotalElements(0);
+    } finally {
       setLoading(false);
-    }, 600);
+    }
+  };
+
+  // Format time from ISO string to display format
+  const formatTimeForDisplay = (dateTimeStr) => {
+    if (!dateTimeStr) return "-";
+    try {
+      const date = new Date(dateTimeStr);
+      return date.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        hour12: false 
+      });
+    } catch (error) {
+      return "-";
+    }
+  };
+
+  // Initial load
+  useEffect(() => {
+    fetchPendingInvestigations(0);
   }, []);
 
-  /* ---------------- SEARCH ---------------- */
-  const filteredData = xrayData.filter(item => {
-    const nameMatch = searchName === "" || 
-      item.patientName.toLowerCase().includes(searchName.toLowerCase());
-    
-    const contactMatch = searchContact === "" || 
-      item.contactNo.includes(searchContact);
-    
-    return nameMatch && contactMatch;
-  });
+  // Handle search
+  const handleSearch = () => {
+    setCurrentPage(0);
+    fetchPendingInvestigations(0);
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchName, searchContact]);
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
-
-  /* ---------------- RESET SEARCH ---------------- */
+  // Handle reset
   const handleReset = () => {
     setSearchName("");
     setSearchContact("");
-    setCurrentPage(1);
+    setCurrentPage(0);
+    fetchPendingInvestigations(0);
   };
 
-  /* ---------------- HANDLE SEARCH ---------------- */
-  const handleSearch = () => {
-    // Reset to page 1 to show search results from first page
-    setCurrentPage(1);
+  // Handle pagination page change
+  const handlePageChange = (page) => {
+    const newPage = page - 1;
+    setCurrentPage(newPage);
+    fetchPendingInvestigations(newPage);
   };
 
   /* ---------------- POPUP ---------------- */
@@ -110,38 +142,70 @@ const XRAYInvestigation = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  /* ---------------- STATUS CHANGE ---------------- */
-  const handleSwitchChange = (id, newStatus, investigationName) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, investigationName });
+  /* ---------------- COMPLETE INVESTIGATION ---------------- */
+  const handleCompleteClick = (row) => {
+    setConfirmDialog({
+      isOpen: true,
+      id: row.id,
+      action: "complete",
+      patientName: row.patientName,
+      investigationName: row.investigationName
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setXrayData(prev =>
-        prev.map(item =>
-          item.id === confirmDialog.id
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
-        )
-      );
-      showPopup(
-        `XRAY Investigation ${confirmDialog.newStatus === "y" ? "Activated" : "Deactivated"
-        } Successfully`
-      );
+  /* ---------------- CANCEL INVESTIGATION ---------------- */
+  const handleCancelClick = (row) => {
+    setConfirmDialog({
+      isOpen: true,
+      id: row.id,
+      action: "cancel",
+      patientName: row.patientName,
+      investigationName: row.investigationName
+    });
+  };
+
+  /* ---------------- CONFIRM ACTION ---------------- */
+  const handleConfirmAction = async (confirmed) => {
+    if (confirmed && confirmDialog.id) {
+      try {
+        setActionLoading(true);
+        
+        // Determine status based on action
+        const status = confirmDialog.action === "complete" ? "y" : "c";
+        
+        // Call API to update status
+        const response = await putRequest(
+          `/radiology/cancelOrCompleteInvestigationRadiology?id=${confirmDialog.id}&status=${status}`
+        );
+        
+        if (response?.status === 200) {
+          // Show success message
+          showPopup(
+            `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Cancelled"} Successfully`,
+            "success"
+          );
+          
+          // Refresh the list to reflect the change
+          fetchPendingInvestigations(currentPage);
+        } else {
+          showPopup(`Failed to ${confirmDialog.action} investigation`, "error");
+        }
+      } catch (error) {
+        console.error(`Error ${confirmDialog.action}ing investigation:`, error);
+        showPopup(`Failed to ${confirmDialog.action} investigation`, "error");
+      } finally {
+        setActionLoading(false);
+      }
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", investigationName: "" });
-  };
-
-  /* ---------------- ACTION HANDLERS ---------------- */
-  const handleCompleted = (row) => {
-    showPopup(`Marked as Completed for ${row.patientName} (${row.accessionNo})`, "success");
-    // Add your completed logic here
-    // You can update the status or add a completed flag
-  };
-
-  const handleCancel = (row) => {
-    showPopup(`Cancelling investigation for ${row.patientName} (${row.accessionNo})`, "warning");
-    // Add your cancel logic here
+    
+    // Close dialog
+    setConfirmDialog({
+      isOpen: false,
+      id: null,
+      action: "",
+      patientName: "",
+      investigationName: ""
+    });
   };
 
   /* ---------------- UI ---------------- */
@@ -157,7 +221,7 @@ const XRAYInvestigation = () => {
             <LoadingScreen />
           ) : (
             <>
-              {/* Search Fields with design like the reference image */}
+              {/* Search Fields */}
               <div className="mb-3">
                 <div className="row align-items-end">
                   {/* Patient Name Search Field */}
@@ -206,14 +270,21 @@ const XRAYInvestigation = () => {
                         <button
                           className="btn btn-primary me-2"
                           onClick={handleSearch}
+                          disabled={loading || actionLoading}
                           title="Search records"
                         >
-                          <i></i> Search
+                          {loading ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-2" />
+                              Searching...
+                            </>
+                          ) : "Search"}
                         </button>
                         
                         <button
                           className="btn btn-secondary"
                           onClick={handleReset}
+                          disabled={loading || actionLoading}
                           title="Reset all search filters"
                         >
                           <i className="fas fa-redo-alt me-1"></i> Reset
@@ -227,7 +298,7 @@ const XRAYInvestigation = () => {
                 <div className="row mt-3">
                   <div className="col-md-12 text-end">
                     <span className="text-muted">
-                      Showing {currentItems.length} of {filteredData.length} records
+                      Showing {xrayData.length} of {totalElements} records
                     </span>
                   </div>
                 </div>
@@ -245,17 +316,15 @@ const XRAYInvestigation = () => {
                       <th>Contact No</th>
                       <th>Modality</th>
                       <th>Investigation</th>
-                      <th>Order Date</th>
-                      <th>Order Time</th>
+                      <th>Order Date/Time</th>
                       <th>Department</th>
-                      <th>Status</th>
                       <th>Action</th>
                     </tr>
                   </thead>
 
                   <tbody>
-                    {currentItems.length > 0 ? (
-                      currentItems.map(item => (
+                    {xrayData.length > 0 ? (
+                      xrayData.map(item => (
                         <tr key={item.id}>
                           <td>{item.accessionNo}</td>
                           <td>{item.uhid}</td>
@@ -265,63 +334,49 @@ const XRAYInvestigation = () => {
                           <td>{item.contactNo}</td>
                           <td>{item.modality}</td>
                           <td>{item.investigationName}</td>
-                          <td>{item.orderDate}</td>
-                          <td>{item.orderTime}</td>
+                          <td>{item.orderDate} {item.orderTime}</td>
                           <td>{item.department}</td>
 
-                          {/* STATUS */}
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={item.status === "y"}
-                                onChange={() =>
-                                  handleSwitchChange(
-                                    item.id,
-                                    item.status === "y" ? "n" : "y",
-                                    item.investigationName
-                                  )
-                                }
-                              />
-                              <span className="ms-2">
-                                {item.status === "y" ? "Active" : "Inactive"}
-                              </span>
-                            </div>
-                          </td>
-
-                          {/* ACTIONS - Only Completed and Cancel buttons */}
+                          {/* ACTIONS */}
                           <td>
                             <div className="btn-group" role="group">
                               <button
                                 className="btn btn-sm btn-success me-1"
-                                onClick={() => handleCompleted(item)}
+                                onClick={() => handleCompleteClick(item)}
+                                disabled={loading || actionLoading}
                                 title="Mark as Completed"
                               >
-                                <i> Complete</i>
+                                {actionLoading && confirmDialog.id === item.id ? (
+                                  <span className="spinner-border spinner-border-sm me-1" />
+                                ) : null}
+                                Complete
                               </button>
 
                               <button
                                 className="btn btn-sm btn-danger"
-                                onClick={() => handleCancel(item)}
+                                onClick={() => handleCancelClick(item)}
+                                disabled={loading || actionLoading}
                                 title="Cancel Investigation"
                               >
-                                <i>Cancel</i>
+                                {actionLoading && confirmDialog.id === item.id ? (
+                                  <span className="spinner-border spinner-border-sm me-1" />
+                                ) : null}
+                                Cancel
                               </button>
                             </div>
-
                           </td>
                         </tr>
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="13" className="text-center text-muted py-4">
+                        <td colSpan="12" className="text-center text-muted py-4">
                           <i className="fas fa-search fa-2x mb-3"></i>
                           <p>No records found matching your search</p>
                           {(searchName || searchContact) && (
                             <button
                               className="btn btn-sm btn-outline-secondary mt-2"
                               onClick={handleReset}
+                              disabled={loading || actionLoading}
                             >
                               Reset Search
                             </button>
@@ -333,50 +388,68 @@ const XRAYInvestigation = () => {
                 </table>
               </div>
 
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+              {/* Pagination */}
+              {xrayData.length > 0 && totalPages > 0 && (
+                <Pagination
+                  totalItems={totalElements}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage + 1}
+                  onPageChange={handlePageChange}
+                  totalPages={totalPages}
+                />
+              )}
             </>
           )}
 
           {popupMessage && <Popup {...popupMessage} />}
 
+          {/* Confirmation Dialog */}
           {confirmDialog.isOpen && (
             <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
               <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                   <div className="modal-header">
-                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <h5 className="modal-title">
+                      Confirm {confirmDialog.action === "complete" ? "Complete" : "Cancel"}
+                    </h5>
                     <button
                       type="button"
                       className="btn-close"
-                      onClick={() => handleConfirm(false)}
+                      onClick={() => handleConfirmAction(false)}
+                      disabled={actionLoading}
                     ></button>
                   </div>
                   <div className="modal-body">
                     <p>
-                      Are you sure you want to{" "}
-                      <strong>
-                        {confirmDialog.newStatus === "y" ? "Activate" : "Deactivate"}
-                      </strong>{" "}
-                      <strong>"{confirmDialog.investigationName}"</strong>?
+                      Are you sure you want to 
+                      
+                        {confirmDialog.action === "complete" ? "Complete" : "Cancel"} 
+                      
+                      this  investigation ?
+                      
                     </p>
                   </div>
                   <div className="modal-footer">
                     <button
                       className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
+                      onClick={() => handleConfirmAction(false)}
+                      disabled={actionLoading}
                     >
                       No
                     </button>
                     <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
+                      className={`btn ${confirmDialog.action === "complete" ? "btn-success" : "btn-danger"}`}
+                      onClick={() => handleConfirmAction(true)}
+                      disabled={actionLoading}
                     >
-                      Yes
+                      {actionLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          {confirmDialog.action === "complete" ? "Completing..." : "Cancelling..."}
+                        </>
+                      ) : (
+                        `Yes, ${confirmDialog.action === "complete" ? "Complete" : "Cancel"}`
+                      )}
                     </button>
                   </div>
                 </div>
