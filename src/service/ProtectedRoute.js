@@ -200,6 +200,7 @@ const validRoutes = [
   "/CTInvestigation",
   "/PETInvestigation",
   "/PendingBloodCollection",
+  "/PendingForMandatoryTestingList",
   
 ];
 
