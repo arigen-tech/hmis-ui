@@ -271,6 +271,9 @@ export const OB_MAS_IMMUNISED_STATUS = `${MASTERS}/obMasImmunisedStatus`;export 
 export const MAS_ENT_WEBER = `${MASTERS}/entMasWeber`;
 export const XRAY_MODALITY = 40;
 export const USG_MODALITY = 41;
+export const MRI_MODALITY = 43;
+export const CT_MODALITY = 42;
+export const PET_MODALITY = 48;
 
 // Constants for date validation for Lab report
   export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
