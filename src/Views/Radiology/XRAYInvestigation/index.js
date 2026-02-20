@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest } from "../../../service/apiService";
-import {XRAY_MODALITY} from "../../../config/apiConfig";
+import { XRAY_MODALITY } from "../../../config/apiConfig";
 
 const XRAYInvestigation = () => {
   const [xrayData, setXrayData] = useState([]);
@@ -25,41 +25,41 @@ const XRAYInvestigation = () => {
 
   const [popupMessage, setPopupMessage] = useState(null);
   // Arrow function to format date as dd/MM/YYYY
-const formatDate = (dateString) => {
+  const formatDate = (dateString) => {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
     const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
     const year = date.getFullYear();
-    
-    return `${day}/${month}/${year}`;
-};
 
-// Arrow function to extract and format time as HH:mm
-const formatTime = (dateTimeString) => {
+    return `${day}/${month}/${year}`;
+  };
+
+  // Arrow function to extract and format time as HH:mm
+  const formatTime = (dateTimeString) => {
     const date = new Date(dateTimeString);
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-    
+
     return `${hours}:${minutes}`;
-};
-   // Output: "12:13"
+  };
+  // Output: "12:13"
 
   // Fetch pending radiology investigations with server-side pagination
   const fetchPendingInvestigations = async (page = 0) => {
     try {
       setLoading(true);
-      
+
       const params = new URLSearchParams({
         modality: XRAY_MODALITY,
         page: page,
         size: DEFAULT_ITEMS_PER_PAGE
       });
-      
+
       if (searchName?.trim()) params.append('patientName', searchName.trim());
       if (searchContact?.trim()) params.append('phoneNumber', searchContact.trim());
-      
+
       const response = await getRequest(`/radiology/pendingInvestigationForRadiology?${params.toString()}`);
-      
+
       if (response?.response) {
         // Map API response to match your table structure (without status)
         const mappedData = response.response.content.map(item => ({
@@ -76,7 +76,7 @@ const formatTime = (dateTimeString) => {
           department: item.department,
           contactNo: item.phoneNumber
         }));
-        
+
         setXrayData(mappedData);
         setTotalPages(response.response.totalPages);
         setTotalElements(response.response.totalElements);
@@ -101,10 +101,10 @@ const formatTime = (dateTimeString) => {
     if (!dateTimeStr) return "-";
     try {
       const date = new Date(dateTimeStr);
-      return date.toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
+      return date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: false 
+        hour12: false
       });
     } catch (error) {
       return "-";
@@ -169,22 +169,22 @@ const formatTime = (dateTimeString) => {
     if (confirmed && confirmDialog.id) {
       try {
         setActionLoading(true);
-        
+
         // Determine status based on action
         const status = confirmDialog.action === "complete" ? "y" : "c";
-        
+
         // Call API to update status
         const response = await putRequest(
           `/radiology/cancelOrCompleteInvestigationRadiology?id=${confirmDialog.id}&status=${status}`
         );
-        
+
         if (response?.status === 200) {
           // Show success message
           showPopup(
             `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Cancelled"} Successfully`,
             "success"
           );
-          
+
           // Refresh the list to reflect the change
           fetchPendingInvestigations(currentPage);
         } else {
@@ -197,7 +197,7 @@ const formatTime = (dateTimeString) => {
         setActionLoading(false);
       }
     }
-    
+
     // Close dialog
     setConfirmDialog({
       isOpen: false,
@@ -241,7 +241,7 @@ const formatTime = (dateTimeString) => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Contact Number Search Field */}
                   <div className="col-md-4">
                     <div className="form-group mb-0">
@@ -259,7 +259,7 @@ const formatTime = (dateTimeString) => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Search and Reset Buttons */}
                   <div className="col-md-4">
                     <div className="form-group mb-0">
@@ -280,7 +280,7 @@ const formatTime = (dateTimeString) => {
                             </>
                           ) : "Search"}
                         </button>
-                        
+
                         <button
                           className="btn btn-secondary"
                           onClick={handleReset}
@@ -293,7 +293,7 @@ const formatTime = (dateTimeString) => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Record count row */}
                 <div className="row mt-3">
                   <div className="col-md-12 text-end">
@@ -313,11 +313,11 @@ const formatTime = (dateTimeString) => {
                       <th>Patient Name</th>
                       <th>Age</th>
                       <th>Gender</th>
-                      <th>Contact No</th>
+                      <th>Mobile No</th>
                       <th>Modality</th>
                       <th>Investigation</th>
                       <th>Order Date/Time</th>
-                      <th>Department</th>
+                      {/* <th>Department</th> */}
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -335,7 +335,7 @@ const formatTime = (dateTimeString) => {
                           <td>{item.modality}</td>
                           <td>{item.investigationName}</td>
                           <td>{item.orderDate} {item.orderTime}</td>
-                          <td>{item.department}</td>
+                          {/* <td>{item.department}</td> */}
 
                           {/* ACTIONS */}
                           <td>
@@ -421,12 +421,9 @@ const formatTime = (dateTimeString) => {
                   </div>
                   <div className="modal-body">
                     <p>
-                      Are you sure you want to 
-                      
-                        {confirmDialog.action === "complete" ? "Complete" : "Cancel"} 
-                      
-                      this  investigation ?
-                      
+                      Are you sure you want to{" "}
+                      {confirmDialog.action === "complete" ? "Complete" : "Cancel"}{" "}
+                      this Request?
                     </p>
                   </div>
                   <div className="modal-footer">
@@ -448,7 +445,7 @@ const formatTime = (dateTimeString) => {
                           {confirmDialog.action === "complete" ? "Completing..." : "Cancelling..."}
                         </>
                       ) : (
-                        `Yes, ${confirmDialog.action === "complete" ? "Complete" : "Cancel"}`
+                        `Yes`
                       )}
                     </button>
                   </div>

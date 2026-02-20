@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest } from "../../../service/apiService";
-import {MRI_MODALITY} from "../../../config/apiConfig";
+import { MRI_MODALITY } from "../../../config/apiConfig";
 
 const MRIInvestigation = () => {
   const [mriData, setMriData] = useState([]);
@@ -39,10 +39,10 @@ const MRIInvestigation = () => {
     if (!dateTimeStr) return "-";
     try {
       const date = new Date(dateTimeStr);
-      return date.toLocaleTimeString('en-IN', { 
-        hour: '2-digit', 
+      return date.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
         minute: '2-digit',
-        hour12: false 
+        hour12: false
       });
     } catch (error) {
       return "-";
@@ -53,18 +53,18 @@ const MRIInvestigation = () => {
   const fetchPendingInvestigations = async (page = 0) => {
     try {
       setLoading(true);
-      
+
       const params = new URLSearchParams({
         modality: MRI_MODALITY,
         page: page,
         size: DEFAULT_ITEMS_PER_PAGE
       });
-      
+
       if (searchName?.trim()) params.append('patientName', searchName.trim());
       if (searchContact?.trim()) params.append('phoneNumber', searchContact.trim());
-      
+
       const response = await getRequest(`/radiology/pendingInvestigationForRadiology?${params.toString()}`);
-      
+
       if (response?.response) {
         // Map API response to match your table structure
         const mappedData = response.response.content.map(item => ({
@@ -82,7 +82,7 @@ const MRIInvestigation = () => {
           contactNo: item.phoneNumber,
           status: "n" // Default status since API doesn't provide it
         }));
-        
+
         setMriData(mappedData);
         setTotalPages(response.response.totalPages);
         setTotalElements(response.response.totalElements);
@@ -160,22 +160,22 @@ const MRIInvestigation = () => {
     if (confirmed && confirmDialog.id) {
       try {
         setActionLoading(true);
-        
+
         // Determine status based on action
         const status = confirmDialog.action === "complete" ? "y" : "c";
-        
+
         // Call API to update status
         const response = await putRequest(
           `/radiology/cancelOrCompleteInvestigationRadiology?id=${confirmDialog.id}&status=${status}`
         );
-        
+
         if (response?.status === 200) {
           // Show success message
           showPopup(
             `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Cancelled"} Successfully`,
             "success"
           );
-          
+
           // Refresh the list to reflect the change
           fetchPendingInvestigations(currentPage);
         } else {
@@ -188,7 +188,7 @@ const MRIInvestigation = () => {
         setActionLoading(false);
       }
     }
-    
+
     // Close dialog
     setConfirmDialog({
       isOpen: false,
@@ -232,7 +232,7 @@ const MRIInvestigation = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Contact Number Search Field */}
                   <div className="col-md-4">
                     <div className="form-group mb-0">
@@ -250,7 +250,7 @@ const MRIInvestigation = () => {
                       </div>
                     </div>
                   </div>
-                  
+
                   {/* Search and Reset Buttons */}
                   <div className="col-md-4">
                     <div className="form-group mb-0">
@@ -271,7 +271,7 @@ const MRIInvestigation = () => {
                             </>
                           ) : "Search"}
                         </button>
-                        
+
                         <button
                           className="btn btn-secondary"
                           onClick={handleReset}
@@ -284,7 +284,7 @@ const MRIInvestigation = () => {
                     </div>
                   </div>
                 </div>
-                
+
                 {/* Record count row */}
                 <div className="row mt-3">
                   <div className="col-md-12 text-end">
@@ -308,7 +308,7 @@ const MRIInvestigation = () => {
                       <th>Modality</th>
                       <th>Investigation</th>
                       <th>Order Date/Time</th>
-                      <th>Department</th>
+                      {/* <th>Department</th> */}
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -326,7 +326,7 @@ const MRIInvestigation = () => {
                           <td>{item.modality}</td>
                           <td>{item.investigationName}</td>
                           <td>{item.orderDate} {item.orderTime}</td>
-                          <td>{item.department}</td>
+                          {/* <td>{item.department}</td> */}
 
                           {/* ACTIONS */}
                           <td>
@@ -412,8 +412,9 @@ const MRIInvestigation = () => {
                   </div>
                   <div className="modal-body">
                     <p>
-                      Are you sure you want to {confirmDialog.action === "complete" ? "Complete" : "Cancel"} 
-                      this investigation for <strong>{confirmDialog.patientName}</strong>?
+                      Are you sure you want to{" "}
+                      {confirmDialog.action === "complete" ? "Complete" : "Cancel"}{" "}
+                      this Request?
                     </p>
                   </div>
                   <div className="modal-footer">
@@ -435,7 +436,7 @@ const MRIInvestigation = () => {
                           {confirmDialog.action === "complete" ? "Completing..." : "Cancelling..."}
                         </>
                       ) : (
-                        `Yes, ${confirmDialog.action === "complete" ? "Complete" : "Cancel"}`
+                        `Yes`
                       )}
                     </button>
                   </div>
