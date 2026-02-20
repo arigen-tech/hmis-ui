@@ -11,6 +11,7 @@ const XRAYInvestigation = () => {
   const [searchContact, setSearchContact] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false); // New state for search button loading
   const [actionLoading, setActionLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
@@ -45,9 +46,13 @@ const XRAYInvestigation = () => {
   // Output: "12:13"
 
   // Fetch pending radiology investigations with server-side pagination
-  const fetchPendingInvestigations = async (page = 0) => {
+  const fetchPendingInvestigations = async (page = 0, isSearch = false) => {
     try {
-      setLoading(true);
+      if (isSearch) {
+        setSearchLoading(true); // Only set search loading for search button
+      } else {
+        setLoading(true); // Set full loading for initial load and pagination
+      }
 
       const params = new URLSearchParams({
         modality: XRAY_MODALITY,
@@ -93,6 +98,7 @@ const XRAYInvestigation = () => {
       setTotalElements(0);
     } finally {
       setLoading(false);
+      setSearchLoading(false); // Always clear search loading
     }
   };
 
@@ -119,14 +125,17 @@ const XRAYInvestigation = () => {
   // Handle search
   const handleSearch = () => {
     setCurrentPage(0);
-    fetchPendingInvestigations(0);
+    fetchPendingInvestigations(0, true); // Pass true to indicate search action
   };
 
   // Handle reset
   const handleReset = () => {
+    // Clear search fields
     setSearchName("");
     setSearchContact("");
+    // Reset to page 0
     setCurrentPage(0);
+    // Fetch with cleared search parameters (will fetch page 0 with no search filters)
     fetchPendingInvestigations(0);
   };
 
@@ -217,6 +226,7 @@ const XRAYInvestigation = () => {
         </div>
 
         <div className="card-body">
+          {/* Show full page loading only on initial load */}
           {loading ? (
             <LoadingScreen />
           ) : (
@@ -270,10 +280,10 @@ const XRAYInvestigation = () => {
                         <button
                           className="btn btn-primary me-2"
                           onClick={handleSearch}
-                          disabled={loading || actionLoading}
+                          disabled={loading || searchLoading || actionLoading}
                           title="Search records"
                         >
-                          {loading ? (
+                          {searchLoading ? (
                             <>
                               <span className="spinner-border spinner-border-sm me-2" />
                               Searching...
@@ -284,7 +294,7 @@ const XRAYInvestigation = () => {
                         <button
                           className="btn btn-secondary"
                           onClick={handleReset}
-                          disabled={loading || actionLoading}
+                          disabled={loading || searchLoading || actionLoading}
                           title="Reset all search filters"
                         >
                           <i className="fas fa-redo-alt me-1"></i> Reset
@@ -343,7 +353,7 @@ const XRAYInvestigation = () => {
                               <button
                                 className="btn btn-sm btn-success me-1"
                                 onClick={() => handleCompleteClick(item)}
-                                disabled={loading || actionLoading}
+                                disabled={loading || searchLoading || actionLoading}
                                 title="Mark as Completed"
                               >
                                 {actionLoading && confirmDialog.id === item.id ? (
@@ -355,7 +365,7 @@ const XRAYInvestigation = () => {
                               <button
                                 className="btn btn-sm btn-danger"
                                 onClick={() => handleCancelClick(item)}
-                                disabled={loading || actionLoading}
+                                disabled={loading || searchLoading || actionLoading}
                                 title="Cancel Investigation"
                               >
                                 {actionLoading && confirmDialog.id === item.id ? (
@@ -376,7 +386,7 @@ const XRAYInvestigation = () => {
                             <button
                               className="btn btn-sm btn-outline-secondary mt-2"
                               onClick={handleReset}
-                              disabled={loading || actionLoading}
+                              disabled={loading || searchLoading || actionLoading}
                             >
                               Reset Search
                             </button>
