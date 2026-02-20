@@ -11,10 +11,11 @@ const XRAYInvestigation = () => {
   const [searchContact, setSearchContact] = useState("");
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
-  const [searchLoading, setSearchLoading] = useState(false); // New state for search button loading
+  const [searchLoading, setSearchLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
@@ -25,13 +26,13 @@ const XRAYInvestigation = () => {
   });
 
   const [popupMessage, setPopupMessage] = useState(null);
+
   // Arrow function to format date as dd/MM/YYYY
   const formatDate = (dateString) => {
     const date = new Date(dateString);
     const day = String(date.getDate()).padStart(2, '0');
-    const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+    const month = String(date.getMonth() + 1).padStart(2, '0');
     const year = date.getFullYear();
-
     return `${day}/${month}/${year}`;
   };
 
@@ -40,18 +41,18 @@ const XRAYInvestigation = () => {
     const date = new Date(dateTimeString);
     const hours = String(date.getHours()).padStart(2, '0');
     const minutes = String(date.getMinutes()).padStart(2, '0');
-
     return `${hours}:${minutes}`;
   };
-  // Output: "12:13"
 
   // Fetch pending radiology investigations with server-side pagination
-  const fetchPendingInvestigations = async (page = 0, isSearch = false) => {
+  const fetchPendingInvestigations = async (page = 0, name = "", contact = "", isSearch = false) => {
     try {
       if (isSearch) {
-        setSearchLoading(true); // Only set search loading for search button
+        setSearchLoading(true);
+      } else if (!isSearch && page === 0 && !loading) {
+        // For reset/show all, don't show any loading
       } else {
-        setLoading(true); // Set full loading for initial load and pagination
+        setLoading(true);
       }
 
       const params = new URLSearchParams({
@@ -60,13 +61,12 @@ const XRAYInvestigation = () => {
         size: DEFAULT_ITEMS_PER_PAGE
       });
 
-      if (searchName?.trim()) params.append('patientName', searchName.trim());
-      if (searchContact?.trim()) params.append('phoneNumber', searchContact.trim());
+      if (name?.trim()) params.append('patientName', name.trim());
+      if (contact?.trim()) params.append('phoneNumber', contact.trim());
 
       const response = await getRequest(`/radiology/pendingInvestigationForRadiology?${params.toString()}`);
 
       if (response?.response) {
-        // Map API response to match your table structure (without status)
         const mappedData = response.response.content.map(item => ({
           id: item.radOrderDtId,
           accessionNo: item.accessionNo,
@@ -98,7 +98,7 @@ const XRAYInvestigation = () => {
       setTotalElements(0);
     } finally {
       setLoading(false);
-      setSearchLoading(false); // Always clear search loading
+      setSearchLoading(false);
     }
   };
 
@@ -119,31 +119,38 @@ const XRAYInvestigation = () => {
 
   // Initial load
   useEffect(() => {
-    fetchPendingInvestigations(0);
+    fetchPendingInvestigations(0, "", "", false);
   }, []);
 
   // Handle search
   const handleSearch = () => {
     setCurrentPage(0);
-    fetchPendingInvestigations(0, true); // Pass true to indicate search action
+    setIsSearchMode(true);
+    fetchPendingInvestigations(0, searchName, searchContact, true);
   };
 
-  // Handle reset
+  // Handle reset/show all - similar to TrackIndent's handleShowAll
   const handleReset = () => {
     // Clear search fields
     setSearchName("");
     setSearchContact("");
     // Reset to page 0
     setCurrentPage(0);
-    // Fetch with cleared search parameters (will fetch page 0 with no search filters)
-    fetchPendingInvestigations(0);
+    setIsSearchMode(false);
+    // Fetch without any search filters and without showing loading screen
+    fetchPendingInvestigations(0, "", "", false);
   };
 
   // Handle pagination page change
   const handlePageChange = (page) => {
     const newPage = page - 1;
     setCurrentPage(newPage);
-    fetchPendingInvestigations(newPage);
+    
+    if (isSearchMode) {
+      fetchPendingInvestigations(newPage, searchName, searchContact, true);
+    } else {
+      fetchPendingInvestigations(newPage, "", "", false);
+    }
   };
 
   /* ---------------- POPUP ---------------- */
@@ -179,23 +186,24 @@ const XRAYInvestigation = () => {
       try {
         setActionLoading(true);
 
-        // Determine status based on action
         const status = confirmDialog.action === "complete" ? "y" : "c";
 
-        // Call API to update status
         const response = await putRequest(
           `/radiology/cancelOrCompleteInvestigationRadiology?id=${confirmDialog.id}&status=${status}`
         );
 
         if (response?.status === 200) {
-          // Show success message
           showPopup(
             `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Cancelled"} Successfully`,
             "success"
           );
 
           // Refresh the list to reflect the change
-          fetchPendingInvestigations(currentPage);
+          if (isSearchMode) {
+            fetchPendingInvestigations(currentPage, searchName, searchContact, true);
+          } else {
+            fetchPendingInvestigations(currentPage, "", "", false);
+          }
         } else {
           showPopup(`Failed to ${confirmDialog.action} investigation`, "error");
         }
@@ -207,7 +215,6 @@ const XRAYInvestigation = () => {
       }
     }
 
-    // Close dialog
     setConfirmDialog({
       isOpen: false,
       id: null,
@@ -327,7 +334,6 @@ const XRAYInvestigation = () => {
                       <th>Modality</th>
                       <th>Investigation</th>
                       <th>Order Date/Time</th>
-                      {/* <th>Department</th> */}
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -345,9 +351,6 @@ const XRAYInvestigation = () => {
                           <td>{item.modality}</td>
                           <td>{item.investigationName}</td>
                           <td>{item.orderDate} {item.orderTime}</td>
-                          {/* <td>{item.department}</td> */}
-
-                          {/* ACTIONS */}
                           <td>
                             <div className="btn-group" role="group">
                               <button
@@ -379,9 +382,9 @@ const XRAYInvestigation = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="12" className="text-center text-muted py-4">
+                        <td colSpan="10" className="text-center text-muted py-4">
                           <i className="fas fa-search fa-2x mb-3"></i>
-                          <p>No records found matching your search</p>
+                          <p>No records found</p>
                           {(searchName || searchContact) && (
                             <button
                               className="btn btn-sm btn-outline-secondary mt-2"
@@ -455,7 +458,7 @@ const XRAYInvestigation = () => {
                           {confirmDialog.action === "complete" ? "Completing..." : "Cancelling..."}
                         </>
                       ) : (
-                        `Yes`
+                        "Yes"
                       )}
                     </button>
                   </div>
