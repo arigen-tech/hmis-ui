@@ -3258,7 +3258,7 @@ const UpdatePatientRegistration = () => {
 
   return (
     <div className="body d-flex py-3">
-      <div className="container-xxl">
+      <div className="container-fluid">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
             <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
