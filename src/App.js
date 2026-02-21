@@ -182,6 +182,7 @@ import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
 import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
 import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
+import BloodDonationType from './Views/Masters/BloodDonationType';
 import CrossMatchType from './Views/Masters/CrossMatchType';
 import XRAYInvestigation from './Views/Radiology/XRAYInvestigation';
 import WardManagement from './Views/IPD/WardManagement';
@@ -195,8 +196,9 @@ import MRIInvestigation from './Views/Radiology/MRIInvestigation';
 import CTInvestigation from './Views/Radiology/CTInvestigation';
 import PETInvestigation from './Views/Radiology/PETInvestigation';
 import PendingBloodCollection from './Views/BloodBank/PendingForBloodCollection';
-import PendingForMandatoryTestingList from './Views/BloodBank/PendingForMandatoryTestingList';import PendingComponentGeneration from './Views/BloodBank/PendingComponentGeneration';
-import BloodUnitStatus from './Views/Masters/BloodUnitStatus';
+import PendingForMandatoryTestingList from './Views/BloodBank/PendingForMandatoryTestingList';
+import PendingComponentGeneration from './Views/BloodBank/PendingComponentGeneration';
+import BloodUnitStatus from './Views/Masters/BloodUnitStatus';import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -414,6 +416,7 @@ function App() {
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
+                <Route path="/BloodDonationType" element={<BloodDonationType />}/>
                 <Route path="/WardManagement" element={<WardManagement/>} />
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
@@ -428,6 +431,7 @@ function App() {
                 <Route path="/PendingForMandatoryTestingList" element={<PendingForMandatoryTestingList/>}/>
                 <Route path="/PendingComponentGeneration" element={<PendingComponentGeneration/>} />
                 <Route path="/BloodUnitStatus" element={<BloodUnitStatus />} />
+                <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>}/>
               </Route>
             </Route>
 

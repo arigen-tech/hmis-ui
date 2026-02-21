@@ -191,6 +191,7 @@ const validRoutes = [
   "/BloodDonationHDR",
   "/BloodInventoryStatus",
   "/BloodTestMaster",
+  "/BloodDonationType",
   "/CrossMatchType",
   "/DonorRegistration",
   "/XRAYInvestigation",
@@ -202,6 +203,7 @@ const validRoutes = [
   "/PendingBloodCollection",
   "/PendingForMandatoryTestingList",
   "/PendingComponentGeneration",
+  "/RadiologyPACSStudyList",
   "/BloodUnitStatus",
 ];
 
