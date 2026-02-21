@@ -17,6 +17,8 @@ import {
   MAS_DESIGNATION,
   MAS_SPECIALITY_CENTER,
   MAS_LANGUAGES,
+  CREATE_EMPLOYEE,
+  CREATE_APPROVE_EMPLOYEE,
 } from "../../../../config/apiConfig";
 import { getRequest } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
@@ -1587,7 +1589,7 @@ const EmployeeRegistration = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_HOST}/${EMPLOYEE_REGISTRATION}/create`,
+        `${API_HOST}${CREATE_EMPLOYEE}`,
         {
           method: "POST",
           headers: {
@@ -1661,7 +1663,7 @@ const EmployeeRegistration = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_HOST}/${EMPLOYEE_REGISTRATION}/create-and-approve`,
+        `${API_HOST}${CREATE_APPROVE_EMPLOYEE}`,
         {
           method: "POST",
           headers: {

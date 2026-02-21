@@ -21,6 +21,7 @@ import {
   PATIENT_FOLLOW_UP_DETAILS,
   PATIENT_IMAGE_UPLOAD,
   PATIENT_SEARCH,
+  SEARCH_PATIENT,
   STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD,IMAGE_TITLE,IMAGE_TEXT,IMAGE_UPLOAD_SUCC_MSG,IMAGE_UPLOAD_FAIL_MSG,
@@ -90,18 +91,41 @@ const UpdatePatientRegistration = () => {
     }
   }
 
-  useEffect(() => {
-    fetchGenderData();
-    fetchAllStateData();
-    fetchRelationData();
-    fetchCountryData();
-    fetchAllNokDistrict();
-    fetchNokAllStates();
-    fetchDepartment();
-    fetchSesion();
-    fetchAllDistrictData();
-    fetchHospitalDetails();
-  }, []);
+  // useEffect(() => {
+  //   fetchGenderData();
+  //   fetchAllStateData();
+  //   fetchRelationData();
+  //   fetchCountryData();
+  //   fetchAllNokDistrict();
+  //   fetchNokAllStates();
+  //   fetchDepartment();
+  //   fetchSesion();
+  //   fetchAllDistrictData();
+  //   fetchHospitalDetails();
+  // }, []);
+
+  const loadMasterData = async () => {
+  setLoading(true);
+  try {
+    await Promise.all([
+      fetchGenderData(),
+      fetchAllStateData(),
+      fetchRelationData(),
+      fetchCountryData(),
+      // fetchAllNokDistrict(),
+      fetchNokAllStates(),
+      fetchDepartment(),
+      fetchSesion(),
+      fetchAllDistrictData(),
+      fetchHospitalDetails(),
+    ]);
+  } catch (err) {
+    console.error("Error loading master data", err);
+  } finally {
+    setLoading(false);
+  }
+};
+  const [masterLoaded, setMasterLoaded] = useState(false);  
   const [availableTokens, setAvailableTokens] = useState([]);
   const [selectedDate, setSelectedDate] = useState(
     new Date().toISOString().split("T")[0],
@@ -498,10 +522,6 @@ const UpdatePatientRegistration = () => {
       const searchPayload = {
         mobileNo: formData.mobileNo || null,
         patientName: formData.patientName || null,
-        uhidNo: formData.uhidNo || null,
-        appointmentDate: formData.appointmentDate
-          ? new Date(formData.appointmentDate).toISOString().split("T")[0]
-          : null,
       };
 
       Object.keys(searchPayload).forEach((key) => {
@@ -510,7 +530,7 @@ const UpdatePatientRegistration = () => {
         }
       });
 
-      const response = await postRequest(`${PATIENT_SEARCH}`, searchPayload);
+      const response = await postRequest(`${SEARCH_PATIENT}`, searchPayload);
 
       if (Array.isArray(response.response)) {
         setPatients(response.response);
@@ -666,6 +686,9 @@ const UpdatePatientRegistration = () => {
   };
 
   const handleEdit = async (patient) => {
+
+    await loadMasterData();
+
     try {
       const patientId = patient.id;
       const response = await getRequest(
@@ -969,21 +992,21 @@ const UpdatePatientRegistration = () => {
     }
   }
 
-  async function fetchAllNokDistrict(value) {
-    try {
-      const data = await getRequest(`${ALL_DISTRICT}/1`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setNokDistrictData(data.response);
-      } else {
-        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
-        setNokDistrictData([]);
-      }
-    } catch (error) {
-      console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // async function fetchAllNokDistrict(value) {
+  //   try {
+  //     const data = await getRequest(`${ALL_DISTRICT}/1`);
+  //     if (data.status === 200 && Array.isArray(data.response)) {
+  //       setNokDistrictData(data.response);
+  //     } else {
+  //       console.error(UNEXPECTED_API_RESPONSE_ERR, data);
+  //       setNokDistrictData([]);
+  //     }
+  //   } catch (error) {
+  //     console.error(FETCH_DATA_ERROR, error);
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // }
 
   async function fetchDepartment() {
     try {
@@ -1588,9 +1611,7 @@ const UpdatePatientRegistration = () => {
 
   // Pagination calculations
   const filteredPatients = patients.filter((patient) => {
-    const fullName = `${patient.patientFn || ""} ${patient.patientMn || ""} ${
-      patient.patientLn || ""
-    }`.toLowerCase();
+    const fullName = `${patient.fullName}`.toLowerCase();
     const mobile = patient.patientMobileNumber || "";
 
     return (
@@ -3360,15 +3381,13 @@ const UpdatePatientRegistration = () => {
                             {currentItems.map((patient, index) => (
                               <tr key={index} className="table-row-hover">
                                 <td>
-                                  {`${patient.patientFn || ""} ${
-                                    patient.patientMn || ""
-                                  } ${patient.patientLn || ""}`.trim()}
+                                  {`${patient.fullName || ""}`.trim()}
                                 </td>
                                 <td>{patient.patientMobileNumber || ""}</td>
                                 <td>{patient.uhidNo || ""}</td>
                                 <td>{patient.patientAge || ""}</td>
                                 <td>
-                                  {patient.patientGender?.genderName || ""}
+                                  {patient.gender|| ""}
                                 </td>
                                 <td>{patient.patientEmailId || ""}</td>
                                 <td>

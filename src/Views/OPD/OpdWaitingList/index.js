@@ -9,7 +9,6 @@ const OpdWaitingList = () => {
   const [visits, setVisits] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [popupMessage, setPopupMessage] = useState(null)
   const itemsPerPage = 5
 

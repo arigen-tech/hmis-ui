@@ -14,6 +14,7 @@ import {
   CANCEL_APPOINTMENT,
   GET_DOCTOR_SESSION,
   RESCHEDULE_APPOINTMENT,
+  FILTER_OPD_DEPT,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -221,7 +222,7 @@ const BookingAppointmentHistory = () => {
     try {
       const hospitalId = sessionStorage.getItem('hospitalId');
       const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}`,
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${FILTER_OPD_DEPT}&includeAllHistory`,
       );
 
       if (res.status === 200) {

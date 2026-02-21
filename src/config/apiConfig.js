@@ -1,6 +1,6 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+//  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-//  export const API_HOST = 'http://localhost:8080';
+ export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
@@ -111,7 +111,6 @@ export const SESSION = `/opd-session`;
 export const APPOINTMENT = `/app`;
 export const LOGIN = `/authController/login`;
 export const ALL_GENDER = `${MASTERS}/gender/getAll`;
-export const PATIENT_IMAGE_UPLOAD = `/patient/image`;
 export const ALL_RELATION = `${MASTERS}/relation/getAll`;
 export const DISTRICT_BY_STATE = `${MASTERS}/district/getByState/`;
 export const ALL_COUNTRY = `${MASTERS}/country/getAll`;
@@ -151,21 +150,13 @@ export const ROLE_TEMPLATE = `/role-template`;
 export const IDENTITY_TYPE = `/identification-types`;
 export const DOCTOR_ROSTER = `/doctor`;
 export const GET_DOCTOR_SESSION = `/doctor/rosterfind?`;
-export const EMPLOYEE_REGISTRATION = `api/employee`;
-export const PATIENT_REGISTRATION=`/patient/register`;
-export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
-export const SET_VITALS=`/patient/saveVitalDetails`;
-export const GET_WAITING_LIST=`/patient/getWaitingList`;
+
 export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
 export const GET_APPOINTMENT_HISTORY = `/mobileController/getAppointmentHistoryList`;
-export const CANCEL_APPOINTMENT = `/patient/cancel_appointment`;
-export const RESCHEDULE_APPOINTMENT = `/patient/reschedule_Appointment`;
 export const POLICY_API = `${MASTERS}/billingPolicy`
 
 
 
-export const PATIENT_FOLLOW_UP = `/patient/update`;
-export const PATIENT_SEARCH = `/patient/search`;
 export const GET_SESSION = `${MASTERS}/opd-session/getAll/`;
 export const ALL_FREQUENCY = `/MasFrequencyController/getByAll`;
 export const FREQUENCY = `/MasFrequencyController`;
@@ -191,7 +182,6 @@ export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
 export const LAB = `/lab`;
 export const OPD_TEMPLATE = `/opdTemplate`
 export const Store_Internal_Indent = `/storeInternalIndent`
-export const PATIENT_FOLLOW_UP_DETAILS = "/patient/getFullDetails";
 
 
 export const RADIOLOGY = `/radiology`;
@@ -284,5 +274,31 @@ export const PET_MODALITY = 48;
   //Blood bank
   export const DONOR_REGISTER = `/bloodBank/registerDonor`
 
+  //Employee
+  export const CREATE_EMPLOYEE = `/employee/createEmployee`;
+  export const UPDATE_EMPLOYEE = `/employee/updateEmployee`;
+  export const CREATE_APPROVE_EMPLOYEE = `/employee/createAndApproveEmployee`;
+  export const GET_ALL_EMPLOYEES = `/employee/getAllEmployees`;
+  export const GET_EMPLOYEE_BY_ID = `/employee/getEmployeeById`;
+  export const GET_EMPLOYEE_PROFILE = `/employee/getEmployeeProfileImage`;
+  export const VIEW_EMPLOYEE_DOCUMENT = `/employee/viewEmployeeDocument`;
+  export const GET_EMPLOYEE_BY_STATUS = `/employee/getEmployeesByStatus`;
+  export const APPROVE_EMPLOYEE = `/employee/approveEmployee`;
 
+
+
+//patient Registration 
+export const PATIENT_IMAGE_UPLOAD = `/registration/uploadPatientImage`;
+export const PATIENT_REGISTRATION=`/registration/createPatient`;
+export const PATIENT_FOLLOW_UP = `/registration/updatePatient`;
+export const SEARCH_PATIENT = `/registration/searchPatient`;
+export const CHECH_DUPLICATE_PATIENT = `/registration/checkDuplicatePatient`
+export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
+export const RESCHEDULE_APPOINTMENT = `/registration/rescheduleAppointment`;
+export const PATIENT_FOLLOW_UP_DETAILS = "/registration/getPatientDetails";
+export const GET_CANCELLED_APPOINTMENTS ="/registration/getCancelledAppointments";
+export const UPDATE_PATIENT_STATUS = `/registration/updatepaymentstatus`;
+export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
+export const SET_VITALS=`/patient/saveVitalDetails`;
+export const GET_WAITING_LIST=`/patient/getWaitingList`;
 
