@@ -15,7 +15,8 @@ import {
   INVESTIGATION_PACKAGE_Mapping,
   MAS_SERVICE_CATEGORY,
   MAS_PACKAGE_INVESTIGATION,
-  REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION
+  REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION,
+  CHECH_DUPLICATE_PATIENT
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import {
@@ -865,7 +866,7 @@ const  PatientRegistrationRadiologyBooking = () => {
       relation,
     }).toString()
 
-    const result = await getRequest(`/patient/check-duplicate?${params}`)
+    const result = await getRequest(`${CHECH_DUPLICATE_PATIENT}?${params}`)
     return result === true
   }
 

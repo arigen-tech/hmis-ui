@@ -11,6 +11,7 @@ import {
   ALL_GENDER,
   ALL_RELATION,
   API_HOST,
+  CHECH_DUPLICATE_PATIENT,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
   GET_AVAILABILITY_TOKENS,
@@ -843,7 +844,7 @@ const PatientRegistration = () => {
       relation,
     }).toString();
 
-    const result = await getRequest(`/patient/check-duplicate?${params}`);
+    const result = await getRequest(`${CHECH_DUPLICATE_PATIENT}?${params}`);
     return result === true;
   }
 

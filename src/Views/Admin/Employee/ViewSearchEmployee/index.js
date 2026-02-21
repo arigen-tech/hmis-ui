@@ -12,10 +12,14 @@ import {
   API_HOST,
   MAS_EMPLOYMENT_TYPE,
   MAS_USER_TYPE,
-  EMPLOYEE_REGISTRATION,
   MAS_DESIGNATION,
   MAS_SPECIALITY_CENTER,
   MAS_LANGUAGES,
+  GET_ALL_EMPLOYEES,
+  UPDATE_EMPLOYEE,
+  GET_EMPLOYEE_PROFILE,
+  GET_EMPLOYEE_BY_ID,
+  VIEW_EMPLOYEE_DOCUMENT,
 } from "../../../../config/apiConfig";
 import {
   getRequest,
@@ -603,7 +607,7 @@ const ViewSearchEmployee = () => {
   const fetchEmployeesData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`/${EMPLOYEE_REGISTRATION}/getAllEmployee`);
+      const data = await getRequest(`${GET_ALL_EMPLOYEES}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setEmployees(data.response);
         setFilteredEmployees(data.response);
@@ -760,7 +764,7 @@ const ViewSearchEmployee = () => {
   const fetchImageSrc = async (empId) => {
     try {
       const imageBlob = await getImageRequest(
-        `/api/employee/getProfileImageSrcInEmployee/${empId}`,
+        `${GET_EMPLOYEE_PROFILE}${empId}`,
         {},
         "blob",
       );
@@ -1378,9 +1382,7 @@ const ViewSearchEmployee = () => {
   const fetchEmployeeById = async (employeeId) => {
     setLoading(true);
     try {
-      const data = await getRequest(
-        `/${EMPLOYEE_REGISTRATION}/employee/${employeeId}`,
-      );
+      const data = await getRequest(`${GET_EMPLOYEE_BY_ID}${employeeId}`);
       if (data.status === 200 && data.response) {
         return data.response;
       }
@@ -1616,12 +1618,10 @@ const ViewSearchEmployee = () => {
     if (!filePath) return null;
 
     try {
-      // Extract filename from path
       const filename = filePath.split("/").pop();
 
-      // Use your existing viewDocument endpoint
       const response = await fetch(
-        `${API_HOST}/api/employee/viewDocument?filePath=${encodeURIComponent(filePath)}`,
+        `${API_HOST}${VIEW_EMPLOYEE_DOCUMENT}?filePath=${encodeURIComponent(filePath)}`,
         {
           method: "GET",
           headers: {
@@ -1637,7 +1637,6 @@ const ViewSearchEmployee = () => {
 
       const blob = await response.blob();
 
-      // Create a File object from the blob
       return new File([blob], filename, { type: blob.type });
     } catch (error) {
       console.error(`Error fetching file ${filePath}:`, error);
@@ -1988,7 +1987,7 @@ const ViewSearchEmployee = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_HOST}/${EMPLOYEE_REGISTRATION}/employee/${empUpdateId}`,
+        `${API_HOST}/${UPDATE_EMPLOYEE}${empUpdateId}`,
         {
           method: "PUT",
           headers: {

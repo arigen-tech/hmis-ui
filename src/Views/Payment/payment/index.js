@@ -3,6 +3,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import Popup from "../../../Components/popup";
 import { postRequest } from "../../../service/apiService";
+import { UPDATE_PATIENT_STATUS } from "../../../config/apiConfig";
 
 const PaymentPage = () => {
   const location = useLocation();
@@ -178,7 +179,7 @@ const PaymentPage = () => {
       // Always call LAB API (Consultation also handled same way)
       if (finalData.billingType === "Consultation Services") {
          response = await postRequest(
-          "/patient/updatepaymentstatus",
+          `${UPDATE_PATIENT_STATUS}`,
           finalData
         );
       } else {

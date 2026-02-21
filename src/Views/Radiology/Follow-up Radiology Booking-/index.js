@@ -17,6 +17,7 @@ import {
   INVESTIGATION_PACKAGE_Mapping,
   MAS_SERVICE_CATEGORY,
   MAS_PACKAGE_INVESTIGATION,
+  SEARCH_PATIENT,
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import {
@@ -843,7 +844,7 @@ const RadiologyBookingRegisteredPatient  = () => {
 
       console.log("Search request:", requestBody);
 
-      const data = await postRequest(PATIENT_SEARCH, requestBody);
+      const data = await postRequest(SEARCH_PATIENT, requestBody);
 
       if (Array.isArray(data.response)) {
         setPatients(data.response);

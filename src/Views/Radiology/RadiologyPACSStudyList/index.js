@@ -236,7 +236,10 @@ const RadiologyPACSStudyList = () => {
                               className="btn btn-sm btn-success"
                               onClick={() => handleReport(item)}
                             >
-                              View
+                               <i className={
+                                   "fa fa-eye"
+                              }
+                            ></i>
                             </button>
                           </td>
                         </tr>
