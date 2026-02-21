@@ -205,6 +205,8 @@ const validRoutes = [
   "/PendingComponentGeneration",
   "/RadiologyPACSStudyList",
   "/BloodUnitStatus",
+
+  
 ];
 
 const NotAuthorized = () => {

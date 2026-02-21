@@ -431,7 +431,7 @@ function App() {
                 <Route path="/PendingBloodCollection" element={<PendingBloodCollection/>} />
                 <Route path="/PendingForMandatoryTestingList" element={<PendingForMandatoryTestingList/>}/>
                 <Route path="/PendingComponentGeneration" element={<PendingComponentGeneration/>} />
-                <Route path="/BloodUnitStatus" element={<BloodUnitStatus />} />
+                <Route path="/BloodUnitStatus" element={<BloodUnitStatus />}/>
                 <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>} />
               </Route>
             </Route>

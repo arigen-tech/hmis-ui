@@ -20,9 +20,11 @@ const BloodTestMaster = () => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
 
-  const [formData, setFormData] = useState({
-    testName: ""
-  });
+ const [formData, setFormData] = useState({
+  testName: "",
+  testCode: "",
+  mandatory: ""
+});
 
   const [loading, setLoading] = useState(true);
   const MAX_LENGTH = 50;
@@ -32,12 +34,12 @@ const BloodTestMaster = () => {
     setLoading(true);
     setTimeout(() => {
       setBloodTestData([
-        { id: 1, testName: "Complete Blood Count (CBC)", status: "y", lastUpdated: "10/01/2026" },
-        { id: 2, testName: "Blood Sugar (Fasting)", status: "y", lastUpdated: "12/01/2026" },
-        { id: 3, testName: "Blood Sugar (PP)", status: "y", lastUpdated: "14/01/2026" },
-        { id: 4, testName: "Lipid Profile", status: "n", lastUpdated: "16/01/2026" },
-        { id: 5, testName: "Hemoglobin (Hb)", status: "n", lastUpdated: "18/01/2026" }
-      ]);
+    { id: 1,testCode: "BT-CBC-001", testName: "Complete Blood Count (CBC)", status: "y", mandatory: true, lastUpdated: "10/01/2026" },
+    { id: 2, testCode: "BT-FBS-002", testName: "Blood Sugar (Fasting)", status: "y", mandatory: true, lastUpdated: "12/01/2026" },
+    { id: 3, testCode: "BT-PPBS-003", testName: "Blood Sugar (PP)", status: "y", mandatory: false, lastUpdated: "14/01/2026" },
+    { id: 4, testCode: "BT-LIPID-004",testName: "Lipid Profile", status: "n", mandatory: false, lastUpdated: "16/01/2026" },
+    { id: 5, testCode: "BT-HB-005", testName: "Hemoglobin (Hb)", status: "n", mandatory: true, lastUpdated: "18/01/2026" }
+  ]);
       setLoading(false);
     }, 600);
   }, []);
@@ -67,38 +69,52 @@ const BloodTestMaster = () => {
     setShowForm(true);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+ const handleSave = (e) => {
+  e.preventDefault();
 
-    if (editingRecord) {
-      setBloodTestData(prev =>
-        prev.map(item =>
-          item.id === editingRecord.id
-            ? { ...item, testName: formData.testName }
-            : item
-        )
-      );
-      showPopup("Blood Test updated successfully");
-    } else {
-      setBloodTestData(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          testName: formData.testName,
-          status: "y",
-          lastUpdated: new Date().toLocaleDateString("en-GB")
-        }
-      ]);
-      showPopup("Blood Test added successfully");
-    }
+  // safety check
+  if (!formData.testName || !formData.testCode) return;
 
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({ testName: "" });
-    setIsFormValid(false);
+  if (editingRecord) {
+    setBloodTestData(prev =>
+      prev.map(item =>
+        item.id === editingRecord.id
+          ? {
+              ...item,
+              testName: formData.testName,
+              testCode: formData.testCode,
+              mandatory: formData.mandatory,
+              lastUpdated: new Date().toLocaleDateString("en-GB")
+            }
+          : item
+      )
+    );
+    showPopup("Blood Test updated successfully");
+  } else {
+    setBloodTestData(prev => [
+      ...prev,
+      {
+        id: Date.now(),
+        testName: formData.testName,
+        testCode: formData.testCode,
+        mandatory: formData.mandatory,
+        status: "y",
+        lastUpdated: new Date().toLocaleDateString("en-GB")
+      }
+    ]);
+    showPopup("Blood Test added successfully");
   };
 
+  setShowForm(false);
+  setEditingRecord(null);
+  setFormData({
+    testName: "",
+    testCode: "",
+    mandatory: false
+ });
+ setIsFormValid(false);
+}; 
+ 
   const handleSwitchChange = (id, newStatus, testName) => {
     setConfirmDialog({ isOpen: true, id, newStatus, testName });
   };
@@ -119,10 +135,6 @@ const BloodTestMaster = () => {
     setConfirmDialog({ isOpen: false, id: null, newStatus: "", testName: "" });
   };
 
-  const handleInputChange = (e) => {
-    setFormData({ testName: e.target.value });
-    setIsFormValid(e.target.value.trim() !== "");
-  };
 
   const handleBack = () => {
     setShowForm(false);
@@ -131,6 +143,23 @@ const BloodTestMaster = () => {
     setIsFormValid(false);
   };
 
+const handleInputChange = (e) => {
+  const { name, value, type, checked } = e.target;
+
+  setFormData(prev => {
+    const updated = {
+      ...prev,
+      [name]: type === "checkbox" ? checked : value
+    };
+
+    setIsFormValid(
+      updated.testName.trim() !== "" &&
+      updated.testCode.trim() !== ""
+    );
+
+    return updated; 
+  });
+};
   /* ---------------- UI ---------------- */
   return (
     <div className="content-wrapper">
@@ -175,7 +204,9 @@ const BloodTestMaster = () => {
               <table className="table table-bordered table-hover">
                 <thead>
                   <tr>
+                    <th>Blood Test Code</th>
                     <th>Blood Test Name</th>
+                    <th>Mandatory</th>
                     <th>Last Updated</th>
                     <th>Status</th>
                     <th>Edit</th>
@@ -184,7 +215,9 @@ const BloodTestMaster = () => {
                 <tbody>
                   {currentItems.map(item => (
                     <tr key={item.id}>
+                      <td>{item.testCode}</td>
                       <td>{item.testName}</td>
+                     <td>{item.mandatory ? "Yes" : "No"}</td>
                       <td>{item.lastUpdated}</td>
                       <td>
                         <div className="form-check form-switch">
@@ -228,17 +261,57 @@ const BloodTestMaster = () => {
             </>
           ) : (
             <form onSubmit={handleSave}>
-              <div className="form-group col-md-6">
-                <label>Blood Test Name <span className="text-danger">*</span></label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={formData.testName}
-                  maxLength={MAX_LENGTH}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
+              <div className="row">
+  {/* Blood Test Name */}
+  <div className="form-group col-md-4">
+    <label>
+      Blood Test Name <span className="text-danger">*</span>
+    </label>
+    <input
+      type="text"
+      name="testName"
+      className="form-control"
+      value={formData.testName}
+      maxLength={MAX_LENGTH}
+      onChange={handleInputChange}
+     placeholder="Blood Test Name"
+      required
+    />
+  </div>
+
+  {/* Test Code */}
+  <div className="form-group col-md-4">
+    <label>
+      Test Code <span className="text-danger">*</span>
+    </label>
+    <input
+      type="text"
+      name="testCode"
+      className="form-control"
+      value={formData.testCode}
+      maxLength={20}
+      onChange={handleInputChange}
+      placeholder="BT-CBC-001"
+      required
+    />
+  </div>
+
+  {/* Mandatory Checkbox */}
+  <div className="form-group col-md-4">
+     <label>
+      Mandatory <span className="text-danger">*</span>
+    </label>
+      <input
+        type="text"
+        name="mandatory"
+        className="form-control"
+        checked={formData.mandatory}
+        onChange={handleInputChange}
+        placeholder="Mandatory"
+      />
+      
+  </div>
+</div>
 
               <div className="mt-3 text-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>
