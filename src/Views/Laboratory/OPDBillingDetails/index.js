@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { MAS_SERVICE_CATEGORY, POLICY_API } from "../../../config/apiConfig";
+import { MAS_SERVICE_CATEGORY, POLICY_API, UPDATE_PATIENT_STATUS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
   APPOINTMENT_NOT_FOUND_ERR_MSG,
@@ -484,7 +484,7 @@ const OPDBillingDetails = () => {
       };
 
       const response = await postRequest(
-        "/patient/updatepaymentstatus",
+        `${UPDATE_PATIENT_STATUS}`,
         paymentRequest,
       );
 

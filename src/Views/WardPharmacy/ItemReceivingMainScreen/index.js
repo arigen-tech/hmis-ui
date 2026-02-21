@@ -7,6 +7,9 @@ import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import {ERROR_DEPARTMENT_ID_NOT_FOUND,ERROR_FETCH_INDENTS,CONFIRM_SAVE_INDENT_RECEIVING,SUCCESS_RECEIVING_SAVED_PRINT,
+ERROR_SAVE_RECEIVING_FAILED,ERROR_SAVING_RECEIVING,} from  "../../../config/constants";
+
 
 const ItemReceivingMainScreen = () => {
   const [indentData, setIndentData] = useState([])
@@ -60,7 +63,7 @@ const ItemReceivingMainScreen = () => {
       const fromDeptId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
       if (!fromDeptId) {
-        showPopup("Department ID not found. Please login again.", "error");
+        showPopup(ERROR_DEPARTMENT_ID_NOT_FOUND, "error");
         return;
       }
 
@@ -94,7 +97,7 @@ const ItemReceivingMainScreen = () => {
 
     } catch (err) {
       console.error("Error fetching receiving indents:", err);
-      showPopup("Error fetching indents. Please try again.", "error");
+      showPopup(ERROR_FETCH_INDENTS, "error");
       setIndentData([]);
       setFilteredIndentData([]);
     } finally {
@@ -305,7 +308,7 @@ const ItemReceivingMainScreen = () => {
 
     // Show confirmation popup
     showConfirmationPopup(
-      `Are you sure you want to save the receiving for this indent?`,
+      CONFIRM_SAVE_INDENT_RECEIVING,
       "info",
       () => {
         // On confirm, proceed with save
@@ -362,11 +365,11 @@ const ItemReceivingMainScreen = () => {
         const indentMId = selectedRecord?.indentMId;
         // Show success confirmation popup with navigation
         showConfirmationPopup(
-          "Receiving saved successfully! Do ypu want to print report ?",
+          SUCCESS_RECEIVING_SAVED_PRINT,
           "success",
           () => {
             // Navigate to report page
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReceiving?indentMId=${indentMId}`,
                 title: 'Item Receiving Report',
@@ -390,7 +393,7 @@ const ItemReceivingMainScreen = () => {
       } else {
         // Show error confirmation popup
         showConfirmationPopup(
-          response?.message || "Failed to save receiving",
+          response?.message || ERROR_SAVE_RECEIVING_FAILED,
           "error",
           () => {}, // Empty function for OK button
           null, // No cancel function
@@ -405,7 +408,7 @@ const ItemReceivingMainScreen = () => {
       
       // Show error confirmation popup
       showConfirmationPopup(
-        "Error saving receiving. Please try again.",
+        ERROR_SAVING_RECEIVING,
         "error",
         () => {}, // Empty function for OK button
         null, // No cancel function

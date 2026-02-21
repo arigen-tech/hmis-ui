@@ -437,35 +437,35 @@ const WardManagement = () => {
               {/* Summary Stats at Top */}
               <div className="row ">
                 <div className="col-12">
-                  <div className=" alert-primary p-1 rounded">
+                  <div className="alert-primary p-1 rounded">
                     <div className="d-flex justify-content-around flex-wrap">
                       <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.vacantBeds}</div>
+                        <div className="fw-bold fs-4" style={{ color: "#2e7d32" }}>{stats.vacantBeds}</div>
                         <div className="small">Vacant Beds</div>
                       </div>
                       <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.reportedToWard}</div>
+                        <div className="fw-bold fs-4" style={{ color: "#c62828" }}>{stats.notReported}</div>
+                        <div className="small">Not Reported</div>
+                      </div>
+                      <div className="text-center px-3 py-1">
+                        <div className="fw-bold fs-4" style={{ color: "#1565c0" }}>{stats.reportedToWard}</div>
                         <div className="small">Reported to Ward</div>
                       </div>
                       <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.transferPending}</div>
+                        <div className="fw-bold fs-4" style={{ color: "#ef6c00" }}>{stats.transferPending}</div>
                         <div className="small">Transfer Pending</div>
                       </div>
                       <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.inOperationTheater}</div>
+                        <div className="fw-bold fs-4" style={{ color: "#0277bd" }}>{stats.inOperationTheater}</div>
                         <div className="small">In Operation Theater</div>
                       </div>
                       <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.inLaborRoom}</div>
+                        <div className="fw-bold fs-4" style={{ color: "#ad1457" }}>{stats.inLaborRoom}</div>
                         <div className="small">In Labor Room</div>
                       </div>
                       <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.readyForDischarge}</div>
+                        <div className="fw-bold fs-4" style={{ color: "#f9a825" }}>{stats.readyForDischarge}</div>
                         <div className="small">Ready for Discharge</div>
-                      </div>
-                      <div className="text-center px-3 py-1">
-                        <div className="fw-bold fs-4">{stats.notReported}</div>
-                        <div className="small">Not Reported</div>
                       </div>
                       <div className="text-center px-3 py-1">
                         <div className="fw-bold fs-4">{stats.totalBeds}</div>

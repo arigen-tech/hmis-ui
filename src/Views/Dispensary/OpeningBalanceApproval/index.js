@@ -6,7 +6,10 @@ import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS
 import { getRequest, putRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
-import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../config/constants';
+import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG,
+  WARNING_SELECT_ACTION,WARNING_REMARKS_MANDATORY,CONFIRM_OPENING_BALANCE_ACTION, CONFIRM_OPENING_BALANCE_RESULT,ERROR_PROCESS_REQUEST_FAILED,
+
+ } from '../../../config/constants';
 
 
 
@@ -140,12 +143,12 @@ const OpeningBalanceApproval = () => {
   // Helper function to handle the actual submit logic
   const handleSubmitLogic = async () => {
     if (!action) {
-      showPopup("Please select an action (Approve or Reject)", "warning");
+      showPopup(WARNING_SELECT_ACTION, "warning");
       return { success: false, message: "Please select an action" };
     }
 
     if (!remark.trim()) {
-      showPopup("Remarks are mandatory", "warning");
+      showPopup(WARNING_REMARKS_MANDATORY, "warning");
       return { success: false, message: "Remarks are mandatory" };
     }
 
@@ -171,7 +174,7 @@ const OpeningBalanceApproval = () => {
     
     // Show confirmation popup
     showConfirmationPopup(
-      `Are you sure you want to ${actionText} this opening balance?`,
+      CONFIRM_OPENING_BALANCE_ACTION(actionText),
       "info",
       async () => {
         // On confirm, proceed with submit
@@ -182,12 +185,12 @@ const OpeningBalanceApproval = () => {
           
           // Show success confirmation popup with navigation
           showConfirmationPopup(
-            action === "a" ? "Opening Balance approved successfully! Do you want to print report ?" : "Opening Balance rejected successfully! Do you want to print report ?",
+            CONFIRM_OPENING_BALANCE_RESULT(action),
             "success",
             () => {
               // Navigate to report page
               if (balanceMId) {
-                navigate('/ViewDownLoadIndent', {
+                navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
                     title: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
@@ -218,7 +221,7 @@ const OpeningBalanceApproval = () => {
         } else {
           // Show error confirmation popup
           showConfirmationPopup(
-            result?.message || "Failed to process the request. Please try again.",
+            result?.message || ERROR_PROCESS_REQUEST_FAILED,
             "error",
             () => {}, // Empty function for OK button
             null, // No cancel function

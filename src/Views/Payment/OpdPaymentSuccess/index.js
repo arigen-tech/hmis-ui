@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { ALL_REPORTS } from "../../../config/apiConfig";
+import { useEffect } from "react";
 
 const OpdPaymentSuccess = () => {
   const location = useLocation();
@@ -10,8 +11,8 @@ const OpdPaymentSuccess = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
     generating: null, // format: "token-{visitId}" or "bill-{visitId}"
-    printing: null,   // format: "token-{visitId}" or "bill-{visitId}"
-    allBills: false   // for download all bills
+    printing: null, // format: "token-{visitId}" or "bill-{visitId}"
+    allBills: false, // for download all bills
   });
 
   const { amount = 0, paymentResponse } = location.state || {};
@@ -19,11 +20,23 @@ const OpdPaymentSuccess = () => {
 
   // Helper to set loading state
   const setLoading = (type, value) => {
-    setLoadingStates(prev => ({
+    setLoadingStates((prev) => ({
       ...prev,
-      [type]: value
+      [type]: value,
     }));
   };
+
+  useEffect(() => {
+    const handleBack = () => {
+      navigate("/PendingForBilling", { replace: true });
+    };
+
+    window.addEventListener("popstate", handleBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, [navigate]);
 
   // Generic function to generate report
   const generateReport = async (visitId, receiptType = "bill", flag = "d") => {
@@ -111,7 +124,7 @@ const OpdPaymentSuccess = () => {
   // Download all billing receipts
   const downloadAllBillingReceipts = async () => {
     setLoading("allBills", true);
-    
+
     try {
       for (const bp of billPayments) {
         const url = `${ALL_REPORTS}/opdReport?visit=${bp.visitId}&flag=d`;
@@ -143,7 +156,7 @@ const OpdPaymentSuccess = () => {
   // Print all billing receipts
   const printAllBillingReceipts = async () => {
     setLoading("printing", "all-bills");
-    
+
     try {
       for (const bp of billPayments) {
         const url = `${ALL_REPORTS}/opdReport?visit=${bp.visitId}&flag=p`;
@@ -165,10 +178,10 @@ const OpdPaymentSuccess = () => {
   };
 
   // Check if a specific button is loading
-  const isGenerating = (visitId, type) => 
+  const isGenerating = (visitId, type) =>
     loadingStates.generating === `${type}-${visitId}`;
-  
-  const isPrinting = (visitId, type) => 
+
+  const isPrinting = (visitId, type) =>
     loadingStates.printing === `${type}-${visitId}`;
 
   return (
@@ -192,7 +205,9 @@ const OpdPaymentSuccess = () => {
                       style={{ fontSize: "3.5rem" }}
                     ></i>
                   </div>
-                  <h4 className="mt-3 fw-bold text-success">Payment Successful!</h4>
+                  <h4 className="mt-3 fw-bold text-success">
+                    Payment Successful!
+                  </h4>
                   <p className="text-muted mb-0">
                     Your payment has been processed successfully
                   </p>
@@ -200,7 +215,9 @@ const OpdPaymentSuccess = () => {
 
                 <div className="border border-success border-2 rounded-3 p-3 mb-4 text-center">
                   <p className="text-muted mb-1 small">Total Amount Paid</p>
-                  <h2 className="text-success fw-bold mb-0">₹{amount.toFixed(2)}</h2>
+                  <h2 className="text-success fw-bold mb-0">
+                    ₹{amount.toFixed(2)}
+                  </h2>
                 </div>
 
                 <div className="mb-4">
@@ -210,7 +227,10 @@ const OpdPaymentSuccess = () => {
                   </div>
 
                   {billPayments.map((bp, index) => (
-                    <div key={index} className="card border border-primary mb-3 shadow-sm">
+                    <div
+                      key={index}
+                      className="card border border-primary mb-3 shadow-sm"
+                    >
                       <div className="card-body">
                         <div className="d-flex justify-content-between align-items-start mb-3">
                           <div>
@@ -227,7 +247,9 @@ const OpdPaymentSuccess = () => {
                             <div className="d-flex align-items-start">
                               <i className="fa fa-hashtag text-muted me-2 mt-1"></i>
                               <div>
-                                <small className="text-muted d-block">Token No</small>
+                                <small className="text-muted d-block">
+                                  Token No
+                                </small>
                                 <strong>{bp.tokenNo}</strong>
                               </div>
                             </div>
@@ -237,7 +259,9 @@ const OpdPaymentSuccess = () => {
                             <div className="d-flex align-items-start">
                               <i className="fa fa-user-md text-muted me-2 mt-1"></i>
                               <div>
-                                <small className="text-muted d-block">Doctor Name</small>
+                                <small className="text-muted d-block">
+                                  Doctor Name
+                                </small>
                                 <strong>{bp.doctorName}</strong>
                               </div>
                             </div>
@@ -247,7 +271,9 @@ const OpdPaymentSuccess = () => {
                             <div className="d-flex align-items-start">
                               <i className="fa fa-user text-muted me-2 mt-1"></i>
                               <div>
-                                <small className="text-muted d-block">Patient Name</small>
+                                <small className="text-muted d-block">
+                                  Patient Name
+                                </small>
                                 <strong>{bp.patientName}</strong>
                               </div>
                             </div>
@@ -257,8 +283,12 @@ const OpdPaymentSuccess = () => {
                             <div className="d-flex align-items-start">
                               <i className="fa fa-rupee-sign text-muted me-2 mt-1"></i>
                               <div>
-                                <small className="text-muted d-block">Amount Paid</small>
-                                <strong className="text-success">₹{bp.netAmount.toFixed(2)}</strong>
+                                <small className="text-muted d-block">
+                                  Amount Paid
+                                </small>
+                                <strong className="text-success">
+                                  ₹{bp.netAmount.toFixed(2)}
+                                </strong>
                               </div>
                             </div>
                           </div>
@@ -271,29 +301,44 @@ const OpdPaymentSuccess = () => {
                           <div className="d-flex flex-column align-items-center gap-2">
                             <button
                               className="btn btn-primary d-flex align-items-center gap-2"
-                              onClick={() => handleViewDownloadToken(bp.visitId)}
-                              disabled={loadingStates.generating || loadingStates.printing}
+                              onClick={() =>
+                                handleViewDownloadToken(bp.visitId)
+                              }
+                              disabled={
+                                loadingStates.generating ||
+                                loadingStates.printing
+                              }
                             >
                               {isGenerating(bp.visitId, "token") ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm" role="status"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                  ></span>
                                   Generating...
                                 </>
                               ) : (
                                 <>
-                                  <i className="fa fa-eye"></i> View/Download Token
+                                  <i className="fa fa-eye"></i> View/Download
+                                  Token
                                 </>
                               )}
                             </button>
-                            
+
                             <button
                               className="btn btn-warning d-flex align-items-center gap-2"
                               onClick={() => handlePrintToken(bp.visitId)}
-                              disabled={loadingStates.generating || loadingStates.printing}
+                              disabled={
+                                loadingStates.generating ||
+                                loadingStates.printing
+                              }
                             >
                               {isPrinting(bp.visitId, "token") ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm" role="status"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                  ></span>
                                   Printing...
                                 </>
                               ) : (
@@ -309,28 +354,41 @@ const OpdPaymentSuccess = () => {
                             <button
                               className="btn btn-success d-flex align-items-center gap-2"
                               onClick={() => handleViewDownloadBill(bp.visitId)}
-                              disabled={loadingStates.generating || loadingStates.printing}
+                              disabled={
+                                loadingStates.generating ||
+                                loadingStates.printing
+                              }
                             >
                               {isGenerating(bp.visitId, "bill") ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm" role="status"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                  ></span>
                                   Generating...
                                 </>
                               ) : (
                                 <>
-                                  <i className="fa fa-eye"></i> View/Download Bill
+                                  <i className="fa fa-eye"></i> View/Download
+                                  Bill
                                 </>
                               )}
                             </button>
-                            
+
                             <button
                               className="btn btn-warning d-flex align-items-center gap-2"
                               onClick={() => handlePrintBill(bp.visitId)}
-                              disabled={loadingStates.generating || loadingStates.printing}
+                              disabled={
+                                loadingStates.generating ||
+                                loadingStates.printing
+                              }
                             >
                               {isPrinting(bp.visitId, "bill") ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm" role="status"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm"
+                                    role="status"
+                                  ></span>
                                   Printing...
                                 </>
                               ) : (
@@ -351,11 +409,18 @@ const OpdPaymentSuccess = () => {
                   <button
                     className="btn btn-primary d-flex align-items-center gap-2"
                     onClick={downloadAllBillingReceipts}
-                    disabled={loadingStates.allBills || loadingStates.generating || loadingStates.printing}
+                    disabled={
+                      loadingStates.allBills ||
+                      loadingStates.generating ||
+                      loadingStates.printing
+                    }
                   >
                     {loadingStates.allBills ? (
                       <>
-                        <span className="spinner-border spinner-border-sm" role="status"></span>
+                        <span
+                          className="spinner-border spinner-border-sm"
+                          role="status"
+                        ></span>
                         Generating...
                       </>
                     ) : (
@@ -369,11 +434,18 @@ const OpdPaymentSuccess = () => {
                   <button
                     className="btn btn-warning d-flex align-items-center gap-2"
                     onClick={printAllBillingReceipts}
-                    disabled={loadingStates.printing === "all-bills" || loadingStates.generating || loadingStates.printing}
+                    disabled={
+                      loadingStates.printing === "all-bills" ||
+                      loadingStates.generating ||
+                      loadingStates.printing
+                    }
                   >
                     {loadingStates.printing === "all-bills" ? (
                       <>
-                        <span className="spinner-border spinner-border-sm" role="status"></span>
+                        <span
+                          className="spinner-border spinner-border-sm"
+                          role="status"
+                        ></span>
                         Printing...
                       </>
                     ) : (

@@ -1,51 +1,58 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_OB_PVMEMBRANE } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_MEMBRANE,DUPLICATE_MEMBRANE,UPDATE_MEMBRANE,ADD_MEMBRANE,FAIL_MEMBRANE,UPDATE_FAIL_MEMBRANE} from "../../../config/constants";
-
+import {
+  FETCH_MEMBRANE,
+  DUPLICATE_MEMBRANE,
+  UPDATE_MEMBRANE,
+  ADD_MEMBRANE,
+  FAIL_MEMBRANE,
+  UPDATE_FAIL_MEMBRANE,
+} from "../../../config/constants";
 
 
 const MembraneStatusMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-  const [formData, setFormData] = useState({ membrane_status: "" });
+  const [formData, setFormData] = useState({ membraneStatus: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     record: null,
     newStatus: "",
   });
 
+  const MAX_LENGTH = 8;
 
 
-  // Format date
+  /* ---------- Format Date ---------- */
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "N/A";
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${String(date.getDate()).padStart(2, "0")}/${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}/${date.getFullYear()}`;
   };
 
 
-
-  // Fetch data
+  
+  /* ---------- Fetch Data ---------- */
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_OB_PVMEMBRANE}/getAll/${flag}`);
+      const { response } = await getRequest(
+        `${MAS_OB_PVMEMBRANE}/getAll/${flag}`
+      );
       setData(response || []);
     } catch {
       showPopup(FETCH_MEMBRANE, "error");
@@ -55,16 +62,15 @@ const MembraneStatusMaster = () => {
     }
   };
 
-
   useEffect(() => {
     fetchData();
   }, []);
 
-
-
   /* ---------- Filter + Pagination ---------- */
   const filteredData = data.filter((rec) =>
-    (rec?.septumStatus ?? "").toLowerCase().includes(searchQuery.toLowerCase())
+    (rec?.membraneStatus ?? "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
   );
 
   const currentItems = filteredData.slice(
@@ -72,22 +78,21 @@ const MembraneStatusMaster = () => {
     currentPage * DEFAULT_ITEMS_PER_PAGE
   );
 
-  /* ================= HANDLERS ================= */
+  /* ---------- Handlers ---------- */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-
-   const handleInputChange = (e) => {
+  const handleInputChange = (e) => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(updated.septumStatus.trim() !== "");
+    setIsFormValid(updated.membraneStatus.trim() !== "");
   };
 
-    const resetForm = () => {
-    setFormData({ septumStatus: "" });
+  const resetForm = () => {
+    setFormData({ membraneStatus: "" });
     setIsFormValid(false);
     setEditingRecord(null);
   };
@@ -97,52 +102,50 @@ const MembraneStatusMaster = () => {
     setShowForm(false);
   };
 
-
   const handleSave = async (e) => {
-      e.preventDefault();
-      if (!isFormValid) return;
-  
-      const newValue = formData.septumStatus.trim().toLowerCase();
-      const duplicate = data.find(
-        (rec) =>
-          rec.septumStatus?.trim().toLowerCase() === newValue &&
-          (!editingRecord || rec.id !== editingRecord.id)
-      );
-  
-      if (duplicate) {
-        showPopup(DUPLICATE_MEMBRANE, "error");
-        return;
-      }
-  
-      try {
-        if (editingRecord) {
-          await putRequest(`${MAS_OB_PVMEMBRANE}/update/${editingRecord.id}`, {
-            septumStatus: formData.septumStatus.trim(),
-          });
-          showPopup(UPDATE_MEMBRANE, "success");
-        } else {
-          await postRequest(`${MAS_OB_PVMEMBRANE}/create`, {
-            septumStatus: formData.septumStatus.trim(),
-          });
-          showPopup(ADD_MEMBRANE, "success");
-        }
-        fetchData();
-        handleCancel();
-      } catch {
-        showPopup(FAIL_MEMBRANE, "error");
-      }
-    };
-  
-    
+    e.preventDefault();
+    if (!isFormValid) return;
 
- const handleEdit = (rec) => {
+    const newValue = formData.membraneStatus.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.membraneStatus?.trim().toLowerCase() === newValue &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_MEMBRANE, "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_OB_PVMEMBRANE}/update/${editingRecord.id}`,
+          { membraneStatus: formData.membraneStatus.trim() }
+        );
+        showPopup(UPDATE_MEMBRANE, "success");
+      } else {
+        await postRequest(`${MAS_OB_PVMEMBRANE}/create`, {
+          membraneStatus: formData.membraneStatus.trim(),
+        });
+        showPopup(ADD_MEMBRANE, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_MEMBRANE, "error");
+    }
+  };
+
+  const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData({ septumStatus: rec.septumStatus || "" });
+    setFormData({ membraneStatus: rec.membraneStatus || "" });
     setIsFormValid(true);
     setShowForm(true);
   };
 
-    const handleSwitchChange = (rec) => {
+  const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
@@ -150,42 +153,36 @@ const MembraneStatusMaster = () => {
     });
   };
 
-  
-    const handleConfirm = async (confirmed) => {
-      if (!confirmed) {
-        setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-        return;
-      }
-      if (!confirmDialog.record) return;
-  
-      try {
-        setLoading(true);
-        await putRequest(
-          `${MAS_OB_PVMEMBRANE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
-        );
-        showPopup(UPDATE_MEMBRANE, "success");
-        fetchData();
-      } catch {
-        showPopup(UPDATE_FAIL_MEMBRANE, "error");
-      } finally {
-        setLoading(false);
-        setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      }
-    };
-  
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed || !confirmDialog.record) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_OB_PVMEMBRANE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
+      );
+      showPopup(UPDATE_MEMBRANE, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_MEMBRANE, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
 
   /* ---------- Popup ---------- */
   const showPopup = (message, type) =>
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
     fetchData();
   };
-
-
 
   return (
     <div className="content-wrapper">
@@ -197,7 +194,8 @@ const MembraneStatusMaster = () => {
             {!showForm && (
               <input
                 type="text"
-                className="form-control w-50 me-2"
+                style={{ width: "220px" }}
+                className="form-control me-1"
                 placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -206,7 +204,10 @@ const MembraneStatusMaster = () => {
 
             {!showForm ? (
               <>
-                <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => setShowForm(true)}
+                >
                   Add
                 </button>
                 <button className="btn btn-success" onClick={handleRefresh}>
@@ -214,7 +215,7 @@ const MembraneStatusMaster = () => {
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={resetForm}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -222,6 +223,8 @@ const MembraneStatusMaster = () => {
         </div>
 
         <div className="card-body">
+          {loading && <LoadingScreen />}
+
           {!showForm ? (
             <>
               <div className="table-responsive">
@@ -234,10 +237,10 @@ const MembraneStatusMaster = () => {
                       <th>Edit</th>
                     </tr>
                   </thead>
-                   <tbody>
+                  <tbody>
                     {currentItems.map((rec) => (
                       <tr key={rec.id}>
-                        <td>{rec.septumStatus}</td>
+                        <td>{rec.membraneStatus}</td>
                         <td>{formatDate(rec.lastUpdateDate)}</td>
                         <td>
                           <div className="form-check form-switch">
@@ -248,7 +251,9 @@ const MembraneStatusMaster = () => {
                               onChange={() => handleSwitchChange(rec)}
                             />
                             <label className="form-check-label ms-2">
-                              {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                              {rec.status?.toLowerCase() === "y"
+                                ? "Active"
+                                : "Inactive"}
                             </label>
                           </div>
                         </td>
@@ -273,29 +278,34 @@ const MembraneStatusMaster = () => {
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
               />
-
             </>
-
           ) : (
             <form className="row" onSubmit={handleSave}>
-              <div className="form-group col-md-6">
-                <label>
-                  Membrane Status <span className="text-danger">*</span>
-                </label>
+              <div className="form-group col-md-5">
+                <label>Membrane Status <span className="text-danger">*</span></label>
                 <input
                   type="text"
-                  id="membrane_status"
+                  id="membraneStatus"
                   className="form-control mt-1"
-                  value={formData.membrane_status}
+                  value={formData.membraneStatus}
                   onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
                 />
               </div>
 
               <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
                   Save
                 </button>
-                <button className="btn btn-danger" type="button" onClick={resetForm}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -318,9 +328,11 @@ const MembraneStatusMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus === "y"
+                      ? "activate"
+                      : "deactivate"}{" "}
                     <strong>
-                      {data.find((rec) => rec.id === confirmDialog.recordId)?.membrane_status}
+                      {confirmDialog.record?.membraneStatus}
                     </strong>
                     ?
                   </div>

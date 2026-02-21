@@ -5,6 +5,9 @@ import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
+import {WARNING_DUPLICATE_BATCH_ENTRY,WARNING_CORRECT_ERRORS,CONFIRM_SAVE_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SAVED_PRINT,
+  CONFIRM_SUBMIT_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SUBMITTED_PRINT,ERROR_SUBMIT_DATA_FAILED,ERROR_SAVE_DATA_FAILED
+}  from "../../../config/constants"
 
 const OpeningBalanceEntry = () => {
 
@@ -287,7 +290,7 @@ const OpeningBalanceEntry = () => {
 
     // Duplicate check
     if (hasDuplicateDrugEntries(drugEntries)) {
-      showPopup("Duplicate entry found for Batch No/Serial No, DOM, and DOE.", "warning");
+      showPopup(WARNING_DUPLICATE_BATCH_ENTRY, "warning");
       return null;
     }
 
@@ -308,7 +311,7 @@ const OpeningBalanceEntry = () => {
         }
       }
 
-      showPopup(firstErrorMsg || "Please correct the errors and try again.", "warning");
+      showPopup(firstErrorMsg || WARNING_CORRECT_ERRORS, "warning");
       return null;
     }
 
@@ -359,7 +362,7 @@ const OpeningBalanceEntry = () => {
   const handleSave = async () => {
     // Show confirmation popup
     showConfirmationPopup(
-      "Are you sure you want to save the opening balance?",
+      CONFIRM_SAVE_OPENING_BALANCE,
       "info",
       async () => {
         // On confirm, proceed with save
@@ -370,12 +373,12 @@ const OpeningBalanceEntry = () => {
           
           // Show success confirmation popup with navigation
           showConfirmationPopup(
-            "Opening Balance saved successfully! Do you want to print report ? ",
+            SUCCESS_OPENING_BALANCE_SAVED_PRINT,
             "success",
             () => {
               // Navigate to report page
               if (balanceId) {
-                navigate('/ViewDownLoadIndent', {
+                navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
                     title: 'Opening Balance Save Report',
@@ -396,7 +399,7 @@ const OpeningBalanceEntry = () => {
         } else {
           // Show error confirmation popup
           showConfirmationPopup(
-            result?.message || "Failed to save data. Please try again.",
+            result?.message || ERROR_SAVE_DATA_FAILED,
             "error",
             () => {},
             null,
@@ -418,7 +421,7 @@ const OpeningBalanceEntry = () => {
   const handleSubmit = async () => {
     // Show confirmation popup
     showConfirmationPopup(
-      "Are you sure you want to submit the opening balance?",
+      CONFIRM_SUBMIT_OPENING_BALANCE,
       "info",
       async () => {
         // On confirm, proceed with submit
@@ -429,11 +432,11 @@ const OpeningBalanceEntry = () => {
           
           // Show success confirmation popup with navigation
           showConfirmationPopup(
-            "Opening Balance submitted successfully! Do you want to print report ?",
+            SUCCESS_OPENING_BALANCE_SUBMITTED_PRINT,
             "success",
             () => {
               // Navigate to report page
-              navigate('/ViewDownLoadIndent', {
+              navigate('/ViewDownloadReport', {
                 state: {
                   reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
                   title: 'Opening Balance Submit Report',
@@ -453,7 +456,7 @@ const OpeningBalanceEntry = () => {
         } else {
           // Show error confirmation popup
           showConfirmationPopup(
-            result?.message || "Failed to submit data. Please try again.",
+            result?.message || ERROR_SUBMIT_DATA_FAILED,
             "error",
             () => {},
             null,

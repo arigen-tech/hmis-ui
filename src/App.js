@@ -116,7 +116,7 @@ import IntakeTypeMaster from './Views/Masters/IntakeTypeMaster';
 import InpatientMaster from './Views/Masters/InpatientMaster';
 import SpecialityMaster from './Views/Masters/SpecialityMaster';
 import ViewDownwload from './Views/Laboratory/ViewDownload';
-import ViewDownloadIndent from './Views/WardPharmacy/ViewDownLoadIndent';
+import ViewDownloadReport from './Views/WardPharmacy/ViewDownLoadReport';
 import ItemIssueRegister from './Views/WardPharmacy/IndentIssueReport';
 import BillingPolicyMaster from './Views/Masters/BillingPolicyMaster';
 import DesignationMaster from './Views/Masters/DesignationMaster';
@@ -182,6 +182,7 @@ import CommonStatusMaster from './Views/Masters/CommonStatusMaster';
 import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
 import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
+import BloodDonationType from './Views/Masters/BloodDonationType';
 import CrossMatchType from './Views/Masters/CrossMatchType';
 import XRAYInvestigation from './Views/Radiology/XRAYInvestigation';
 import WardManagement from './Views/IPD/WardManagement';
@@ -194,6 +195,13 @@ import USGInvestigation from './Views/Radiology/USGInvestigation';
 import MRIInvestigation from './Views/Radiology/MRIInvestigation';
 import CTInvestigation from './Views/Radiology/CTInvestigation';
 import PETInvestigation from './Views/Radiology/PETInvestigation';
+import PendingBloodCollection from './Views/BloodBank/PendingForBloodCollection';
+import PendingForMandatoryTestingList from './Views/BloodBank/PendingForMandatoryTestingList';
+import PendingComponentGeneration from './Views/BloodBank/PendingComponentGeneration';
+import BloodUnitStatus from './Views/Masters/BloodUnitStatus';
+import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';import RadiologyTemplateMaster from './Views/Radiology/RadiologyTemplateMaster';
+import PendignListRadiologyReport from './Views/Radiology/PendingListRadiologyReport';
+import DetailedRadiologyReportPage from './Views/Radiology/DetailedReportPage';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -227,7 +235,7 @@ function App() {
             <Route path="lab-payment-success" element={<LabPaymentSuccess />} />
             <Route path="opd-payment-success" element={<OpdPaymentSuccess />} />
             <Route path="ViewDownwload" element={<ViewDownwload />} />
-            <Route path="ViewDownloadIndent" element={<ViewDownloadIndent />} />
+            <Route path="ViewDownloadReport" element={<ViewDownloadReport />} />
 
 
 
@@ -412,6 +420,7 @@ function App() {
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
                 <Route path="/BloodDonationStatusMaster" element={<BloodDonationStatusMaster />} />
+                <Route path="/BloodDonationType" element={<BloodDonationType />}/>
                 <Route path="/WardManagement" element={<WardManagement/>} />
                 <Route path="/PatientRegistrationRadiologyBooking" element={<PatientRegistrationRadiologyBooking/>} />
                 <Route path="/RadiologyBookingRegisteredPatient" element={<RadiologyBookingRegisteredPatient/>} />
@@ -422,6 +431,14 @@ function App() {
                 <Route path="/MRIInvestigation" element={<MRIInvestigation/>} />
                 <Route path="/CTInvestigation" element={<CTInvestigation/>} />
                 <Route path="/PETInvestigation" element={<PETInvestigation/>} />
+                <Route path="/PendingBloodCollection" element={<PendingBloodCollection/>} />
+                <Route path="/PendingForMandatoryTestingList" element={<PendingForMandatoryTestingList/>}/>
+                <Route path="/PendingComponentGeneration" element={<PendingComponentGeneration/>} />
+                <Route path="/BloodUnitStatus" element={<BloodUnitStatus />}/>
+                <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>} />
+                <Route path="/RadiologyTemplateMaster" element={<RadiologyTemplateMaster/>} />
+                <Route path="/PendingListRadiologyReport" element={<PendignListRadiologyReport/>} />
+                <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
               </Route>
             </Route>
 

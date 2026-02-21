@@ -64,7 +64,6 @@ const NonDrugMaster = () => {
 
     useEffect(() => {
         if (formData.section) {
-            // Fetch categories and classes based on selected section
             fetchCategoriesBySection(formData.section);
             fetchClassesBySection(formData.section);
         } else {

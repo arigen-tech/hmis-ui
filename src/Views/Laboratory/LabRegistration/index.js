@@ -14,7 +14,9 @@ import {
   MAS_INVESTIGATION,
   INVESTIGATION_PACKAGE_Mapping,
   MAS_SERVICE_CATEGORY,
-  MAS_PACKAGE_INVESTIGATION
+  MAS_PACKAGE_INVESTIGATION,
+  CHECH_DUPLICATE_PATIENT,
+  PATIENT_REGISTRATION
 } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import {
@@ -864,7 +866,7 @@ const LabRegistration = () => {
       relation,
     }).toString()
 
-    const result = await getRequest(`/patient/check-duplicate?${params}`)
+    const result = await getRequest(`${CHECH_DUPLICATE_PATIENT}?${params}`)
     return result === true
   }
 
@@ -1012,7 +1014,7 @@ const LabRegistration = () => {
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
         }
 
-        const patientResult = await postRequest("/patient/register", { patient: patientRequest })
+        const patientResult = await postRequest(`${PATIENT_REGISTRATION}`, { patient: patientRequest })
         const patientId = patientResult?.response?.patient?.id
         if (!patientId) throw new Error(patientResult.message || "Patient registration failed")
 

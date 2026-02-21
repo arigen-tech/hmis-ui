@@ -11,6 +11,7 @@ import {
   ALL_GENDER,
   ALL_RELATION,
   API_HOST,
+  CHECH_DUPLICATE_PATIENT,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
   GET_AVAILABILITY_TOKENS,
@@ -45,6 +46,9 @@ const PatientRegistration = () => {
     fetchHospitalDetails();
     fetchGstConfiguration();
   }, []);
+
+  // Add state for registration mode
+  const [registrationMode, setRegistrationMode] = useState("registerOnly"); // "registerOnly" or "withAppointment"
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);
@@ -171,29 +175,63 @@ const PatientRegistration = () => {
         return false;
       }
     }
-    const hasValidAppointment = appointments.some(
-      (a) => a.speciality && a.selDoctorId && a.selSession,
-    );
 
-    if (!hasValidAppointment) {
-      return false;
-    }
-
-    const appointmentsWithDetails = appointments.filter(
-      (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
-    );
-
-    if (appointmentsWithDetails.length > 0) {
-      const allHaveTimeSlots = appointmentsWithDetails.every(
-        (appt) => appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== "",
+    // Only validate appointments if in "withAppointment" mode
+    if (registrationMode === "withAppointment") {
+      const hasValidAppointment = appointments.some(
+        (a) => a.speciality && a.selDoctorId && a.selSession,
       );
 
-      if (!allHaveTimeSlots) {
-        // Don't show alert here, just return false
+      if (!hasValidAppointment) {
         return false;
       }
+
+      const appointmentsWithDetails = appointments.filter(
+        (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
+      );
+
+      if (appointmentsWithDetails.length > 0) {
+        const allHaveTimeSlots = appointmentsWithDetails.every(
+          (appt) => appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== "",
+        );
+
+        if (!allHaveTimeSlots) {
+          return false;
+        }
+      }
     }
+    
     return true;
+  };
+
+  // Handle registration mode change
+  const handleRegistrationModeChange = (mode) => {
+    setRegistrationMode(mode);
+    
+    // If switching to "registerOnly", clear any appointment data if needed
+    if (mode === "registerOnly") {
+      // Optional: Reset appointments to empty state
+      setAppointments([
+        {
+          id: 0,
+          speciality: "",
+          selDoctorId: "",
+          selSession: "",
+          selDate: null,
+          departmentName: "",
+          doctorName: "",
+          sessionName: "",
+          discount: 0,
+          netAmount: "0.00",
+          gst: "0.00",
+          totalAmount: "0.00",
+          tokenNo: null,
+          tokenStartTime: "",
+          tokenEndTime: "",
+          selectedTimeSlot: "",
+        },
+      ]);
+    }
   };
 
   const createInstant = (dateStr, timeStr) => {
@@ -538,22 +576,26 @@ const PatientRegistration = () => {
   };
 
   useEffect(() => {
-    appointments.forEach((appointment, index) => {
-      if (
-        appointment.speciality &&
-        appointment.selDoctorId &&
-        appointment.selSession &&
-        appointment.selDate &&
-        !appointment.selectedTimeSlot
-      ) {
-        const timer = setTimeout(() => {
-          fetchTokenAvailability(index);
-        }, 500);
+    // Only fetch token availability in "withAppointment" mode
+    if (registrationMode === "withAppointment") {
+      appointments.forEach((appointment, index) => {
+        if (
+          appointment.speciality &&
+          appointment.selDoctorId &&
+          appointment.selSession &&
+          appointment.selDate &&
+          !appointment.selectedTimeSlot
+        ) {
+          const timer = setTimeout(() => {
+            fetchTokenAvailability(index);
+          }, 500);
 
-        return () => clearTimeout(timer);
-      }
-    });
+          return () => clearTimeout(timer);
+        }
+      });
+    }
   }, [
+    registrationMode,
     appointments
       .map(
         (app) =>
@@ -802,7 +844,7 @@ const PatientRegistration = () => {
       relation,
     }).toString();
 
-    const result = await getRequest(`/patient/check-duplicate?${params}`);
+    const result = await getRequest(`${CHECH_DUPLICATE_PATIENT}?${params}`);
     return result === true;
   }
 
@@ -983,23 +1025,25 @@ const PatientRegistration = () => {
 
   function sendRegistrationRequest() {
     if (!isFormValid()) {
-      // Check specifically for time slots
-      const appointmentsWithDetails = appointments.filter(
-        (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
-      );
+      // Check specifically for time slots only in "withAppointment" mode
+      if (registrationMode === "withAppointment") {
+        const appointmentsWithDetails = appointments.filter(
+          (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
+        );
 
-      const missingTimeSlots = appointmentsWithDetails.filter(
-        (appt) => !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === "",
-      );
+        const missingTimeSlots = appointmentsWithDetails.filter(
+          (appt) => !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === "",
+        );
 
-      if (missingTimeSlots.length > 0) {
-        Swal.fire({
-          icon: "warning",
-          title: MISSING_TIME_SLOTS_TITLE,
-          text: SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,
-          timer: 3000,
-        });
-        return;
+        if (missingTimeSlots.length > 0) {
+          Swal.fire({
+            icon: "warning",
+            title: MISSING_TIME_SLOTS_TITLE,
+            text: SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,
+            timer: 3000,
+          });
+          return;
+        }
       }
 
       Swal.fire({
@@ -1131,69 +1175,77 @@ const PatientRegistration = () => {
       return `${day}/${month}/${year}`;
     }
   };
-  const visitList = appointments
-    .filter(
-      (appt) =>
-        appt.speciality &&
-        appt.selDoctorId &&
-        appt.selSession &&
-        appt.tokenStartTime,
-    )
-    .map((appt) => {
-      const dateStr = appt.selDate;
-      const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  
+  // Only create visitList for appointments with valid data
+  const visitList = registrationMode === "withAppointment" 
+    ? appointments
+        .filter(
+          (appt) =>
+            appt.speciality &&
+            appt.selDoctorId &&
+            appt.selSession &&
+            appt.tokenStartTime,
+        )
+        .map((appt) => {
+          const dateStr = appt.selDate;
+          const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
 
-      const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
-      const startTime = createInstant(dateOnly, appt.tokenStartTime);
-      const endTime = createInstant(dateOnly, appt.tokenEndTime);
+          const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
+          const startTime = createInstant(dateOnly, appt.tokenStartTime);
+          const endTime = createInstant(dateOnly, appt.tokenEndTime);
 
-      return {
-        id: 0,
-        tokenNo: appt.tokenNo || 0,
-        tokenStartTime: startTime,
-        tokenEndTime: endTime,
-        visitStatus: "NEW",
-        visitDate: visitDateTime,
-        departmentId: Number(appt.speciality),
-        doctorId: Number(appt.selDoctorId),
-        doctorName: appt.doctorName || "",
-        sessionId: Number(appt.selSession),
-        hospitalId: Number(sessionStorage.getItem("hospitalId")),
-        priority: 0,
-        billingStatus: "Pending",
-        patientId: 0,
-        iniDoctorId: 0,
-        billingPolicyId: "",
-      };
-    });
+          return {
+            id: 0,
+            tokenNo: appt.tokenNo || 0,
+            tokenStartTime: startTime,
+            tokenEndTime: endTime,
+            visitStatus: "NEW",
+            visitDate: visitDateTime,
+            departmentId: Number(appt.speciality),
+            doctorId: Number(appt.selDoctorId),
+            doctorName: appt.doctorName || "",
+            sessionId: Number(appt.selSession),
+            hospitalId: Number(sessionStorage.getItem("hospitalId")),
+            priority: 0,
+            billingStatus: "Pending",
+            patientId: 0,
+            iniDoctorId: 0,
+            billingPolicyId: "",
+          };
+        })
+    : [];
 
   useEffect(() => {
-    const hasInvalidAppointment = appointments.some(
-      (appt) =>
-        appt.selectedTimeSlot &&
-        (!appt.selDoctorId || !appt.selSession || !appt.selDate),
-    );
-
-    if (hasInvalidAppointment) {
-      setAppointments((prev) =>
-        prev.map((appt) => {
-          if (
-            appt.selectedTimeSlot &&
-            (!appt.selDoctorId || !appt.selSession || !appt.selDate)
-          ) {
-            return {
-              ...appt,
-              tokenNo: null,
-              tokenStartTime: "",
-              tokenEndTime: "",
-              selectedTimeSlot: "",
-            };
-          }
-          return appt;
-        }),
+    // Only run this effect in "withAppointment" mode
+    if (registrationMode === "withAppointment") {
+      const hasInvalidAppointment = appointments.some(
+        (appt) =>
+          appt.selectedTimeSlot &&
+          (!appt.selDoctorId || !appt.selSession || !appt.selDate),
       );
+
+      if (hasInvalidAppointment) {
+        setAppointments((prev) =>
+          prev.map((appt) => {
+            if (
+              appt.selectedTimeSlot &&
+              (!appt.selDoctorId || !appt.selSession || !appt.selDate)
+            ) {
+              return {
+                ...appt,
+                tokenNo: null,
+                tokenStartTime: "",
+                tokenEndTime: "",
+                selectedTimeSlot: "",
+              };
+            }
+            return appt;
+          }),
+        );
+      }
     }
   }, [
+    registrationMode,
     appointments
       .map(
         (a) =>
@@ -1306,12 +1358,18 @@ const PatientRegistration = () => {
 
         visits: visitList,
       };
-      // Filter out invalid visits (doctor/session empty)
-      requestData.visits = visitList.filter(
-        (v) => !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId),
-      );
+      
+      // Filter out invalid visits (doctor/session empty) only if in "withAppointment" mode
+      if (registrationMode === "withAppointment") {
+        requestData.visits = visitList.filter(
+          (v) => !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId),
+        );
 
-      if (requestData.visits.length === 0) {
+        if (requestData.visits.length === 0) {
+          requestData.visits = null;
+        }
+      } else {
+        // For register only mode, visits should be null
         requestData.visits = null;
       }
 
@@ -1694,6 +1752,54 @@ const PatientRegistration = () => {
           </div>
         </div>
 
+        {/* Registration Mode Selection */}
+<div className="row mb-3">
+  <div className="col-sm-12">
+    <div className="card shadow mb-3">
+      <div className="card-header py-3 border-bottom-1">
+        <h6 className="mb-0 fw-bold">Registration Mode</h6>
+      </div>
+      <div className="card-body">
+        <form>
+          <div className="row g-3">
+            <div className="col-12">
+              <div className="d-flex gap-4">
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="radio"
+                    name="registrationMode"
+                    id="registerOnly"
+                    value="registerOnly"
+                    checked={registrationMode === "registerOnly"}
+                    onChange={() => handleRegistrationModeChange("registerOnly")}
+                  />
+                  <label className="form-check-label" htmlFor="registerOnly">
+                    Register Only
+                  </label>
+                </div>
+                <div className="form-check">
+                  <input
+                    className="form-check-input"
+                    type="radio"
+                    name="registrationMode"
+                    id="withAppointment"
+                    value="withAppointment"
+                    checked={registrationMode === "withAppointment"}
+                    onChange={() => handleRegistrationModeChange("withAppointment")}
+                  />
+                  <label className="form-check-label" htmlFor="withAppointment">
+                    Register with Appointment
+                  </label>
+                </div>
+              </div>
+            </div>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
         {/* Patient Personal Details */}
         <div className="row mb-3">
           <div className="col-sm-12">
@@ -2523,173 +2629,150 @@ const PatientRegistration = () => {
           </>
         )}
 
-        {/* Appointment Details Section */}
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
-                <h6 className="mb-0 fw-bold">Appointment Details</h6>
-                <div className="d-flex gap-2">
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-secondary text-white  "
-                    onClick={addAppointmentRow}
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-              <div className="card-body">
-                <form>
-                  {appointments.map((appointment, index) => {
-                    const doctorOptions = doctorDataMap[appointment.id] || [];
-                    return (
-                      <div
-                        className="row g-3 mb-3"
-                        key={`appointment-${appointment.id}`}
-                      >
-                        <div className="col-12 d-flex align-items-center justify-content-between">
-                          <h6 className="fw-bold text-muted mb-0">
-                            Appointment {index + 1}
-                          </h6>
-                          {appointments.length > 1 && (
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-outline-danger"
-                              onClick={() =>
-                                removeAppointmentRow(appointment.id)
-                              }
-                            >
-                              - Remove
-                            </button>
-                          )}
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Speciality</label>
-                          <select
-                            className="form-select"
-                            value={appointment.speciality}
-                            onChange={(e) =>
-                              handleSpecialityChange(
-                                appointment.id,
-                                e.target.value,
-                              )
-                            }
-                          >
-                            <option value="">Select Speciality</option>
-                            {departmentData.map((department) => (
-                              <option key={department.id} value={department.id}>
-                                {department.departmentName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Doctor Name</label>
-                          <select
-                            className="form-select"
-                            value={appointment.selDoctorId}
-                            onChange={(e) =>
-                              handleDoctorChange(
-                                appointment.id,
-                                e.target.value,
-                                appointment.speciality,
-                              )
-                            }
-                          >
-                            <option value="">Select Doctor</option>
-                            {doctorOptions.map((doctor) => (
-                              <option key={doctor.id} value={doctor.userId}>
-                                {`${doctor.firstName} ${
-                                  doctor.middleName ? doctor.middleName : ""
-                                } ${doctor.lastName ? doctor.lastName : ""}`}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Session</label>
-                          <select
-                            className="form-select"
-                            value={appointment.selSession}
-                            disabled={!appointment.selDoctorId}
-                            onChange={(e) =>
-                              handleSessionChange(
-                                appointment.id,
-                                e.target.value,
-                                appointment.speciality,
-                                appointment.selDoctorId,
-                              )
-                            }
-                          >
-                            <option value="">Select Session</option>
-                            {session.map((ses) => (
-                              <option key={ses.id} value={ses.id}>
-                                {ses.sessionName}
-                              </option>
-                            ))}
-                          </select>
-                        </div>
-                        <div className="col-md-4">
-                          <DatePicker
-                            key={dateResetKey + "-" + index}
-                            value={appointment.selDate || null}
-                            onChange={(date) => onDateChange(index, date)}
-                            placeholder="Select Date"
-                            className="form-control"
-                          />
-                        </div>
-                        <div className="col-md-4">
-                          <label className="form-label">Time Slot</label>
-                          <div className="d-flex align-items-center">
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.selectedTimeSlot || ""}
-                              readOnly
-                              style={{
-                                backgroundColor: appointment.selectedTimeSlot
-                                  ? "#f0fff0"
-                                  : "#f8f9fa",
-                                cursor: "pointer",
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </form>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* NEW: Token Availability Section
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-body">
-                <div className="row g-3 align-items-center">
-                  <div className="col-md-6">
-                    <div className="d-flex align-items-center">
-                      <DatePicker />
-                    </div>
-                  </div>
-                  <div className="col-md-6 text-end">
+        {/* Appointment Details Section - Hidden when register only */}
+        {registrationMode === "withAppointment" && (
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow mb-3">
+                <div className="card-header py-3   border-bottom-1 d-flex align-items-center justify-content-between">
+                  <h6 className="mb-0 fw-bold">Appointment Details</h6>
+                  <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-primary px-4"
-                      onClick={showTokenPopup}
+                      className="btn btn-sm btn-outline-secondary text-white  "
+                      onClick={addAppointmentRow}
                     >
-                      Show Token
+                      + Add
                     </button>
                   </div>
                 </div>
+                <div className="card-body">
+                  <form>
+                    {appointments.map((appointment, index) => {
+                      const doctorOptions = doctorDataMap[appointment.id] || [];
+                      return (
+                        <div
+                          className="row g-3 mb-3"
+                          key={`appointment-${appointment.id}`}
+                        >
+                          <div className="col-12 d-flex align-items-center justify-content-between">
+                            <h6 className="fw-bold text-muted mb-0">
+                              Appointment {index + 1}
+                            </h6>
+                            {appointments.length > 1 && (
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-outline-danger"
+                                onClick={() =>
+                                  removeAppointmentRow(appointment.id)
+                                }
+                              >
+                                - Remove
+                              </button>
+                            )}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Speciality</label>
+                            <select
+                              className="form-select"
+                              value={appointment.speciality}
+                              onChange={(e) =>
+                                handleSpecialityChange(
+                                  appointment.id,
+                                  e.target.value,
+                                )
+                              }
+                            >
+                              <option value="">Select Speciality</option>
+                              {departmentData.map((department) => (
+                                <option key={department.id} value={department.id}>
+                                  {department.departmentName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Doctor Name</label>
+                            <select
+                              className="form-select"
+                              value={appointment.selDoctorId}
+                              onChange={(e) =>
+                                handleDoctorChange(
+                                  appointment.id,
+                                  e.target.value,
+                                  appointment.speciality,
+                                )
+                              }
+                            >
+                              <option value="">Select Doctor</option>
+                              {doctorOptions.map((doctor) => (
+                                <option key={doctor.id} value={doctor.userId}>
+                                  {`${doctor.firstName} ${
+                                    doctor.middleName ? doctor.middleName : ""
+                                  } ${doctor.lastName ? doctor.lastName : ""}`}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Session</label>
+                            <select
+                              className="form-select"
+                              value={appointment.selSession}
+                              disabled={!appointment.selDoctorId}
+                              onChange={(e) =>
+                                handleSessionChange(
+                                  appointment.id,
+                                  e.target.value,
+                                  appointment.speciality,
+                                  appointment.selDoctorId,
+                                )
+                              }
+                            >
+                              <option value="">Select Session</option>
+                              {session.map((ses) => (
+                                <option key={ses.id} value={ses.id}>
+                                  {ses.sessionName}
+                                </option>
+                              ))}
+                            </select>
+                          </div>
+                          <div className="col-md-4">
+                            <DatePicker
+                              key={dateResetKey + "-" + index}
+                              value={appointment.selDate || null}
+                              onChange={(date) => onDateChange(index, date)}
+                              placeholder="Select Date"
+                              className="form-control"
+                            />
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label">Time Slot</label>
+                            <div className="d-flex align-items-center">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.selectedTimeSlot || ""}
+                                readOnly
+                                style={{
+                                  backgroundColor: appointment.selectedTimeSlot
+                                    ? "#f0fff0"
+                                    : "#f8f9fa",
+                                  cursor: "pointer",
+                                }}
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </form>
+                </div>
               </div>
             </div>
           </div>
-        </div> */}
+        )}
+
         {/* Submit and Reset Buttons */}
         <div className="row mb-3">
           <div className="col-sm-12">

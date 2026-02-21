@@ -7,6 +7,9 @@ import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import {ERROR_FETCH_PENDING_INDENTS,WARNING_SELECT_ACTION,WARNING_REMARKS_MANDATORY,SUCCESS_INDENT_REJECTED_PRINT,
+SUCCESS_INDENT_APPROVED_PRINT,ERROR_PROCESS_INDENT,} from  "../../../config/constants";
+
 
 const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -88,7 +91,7 @@ const PendingIndentApproval = () => {
 
     } catch (err) {
       console.error("Error fetching pending indents:", err)
-      showPopup("Error fetching pending indents. Please try again.", "error")
+      showPopup(ERROR_FETCH_PENDING_INDENTS, "error")
       setIndentData([])
       setFilteredIndentData([])
     } finally {
@@ -264,13 +267,13 @@ const PendingIndentApproval = () => {
   const handleSubmit = async () => {
     // Validate action selection
     if (!action) {
-      showPopup("Please select an action (Approved or Rejected)", "error")
+      showPopup(WARNING_SELECT_ACTION, "error")
       return
     }
 
     // Validate remarks
     if (!remarks.trim()) {
-      showPopup("Remarks are mandatory", "error")
+      showPopup(WARNING_REMARKS_MANDATORY, "error")
       return
     }
 
@@ -315,11 +318,11 @@ const PendingIndentApproval = () => {
       // Show confirmation popup based on action
       if (action === "approved") {
         showConfirmationPopup(
-          `Indent approved successfully! Do you want to print report ?`,
+          SUCCESS_INDENT_APPROVED_PRINT,
           "success",
           () => {
             // Navigate to report page for approved indent
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
                 title: 'Indent Approval Report',
@@ -340,11 +343,11 @@ const PendingIndentApproval = () => {
         );
       } else if (action === "rejected") {
         showConfirmationPopup(
-          `Indent rejected successfully! Do you want to print report ?`,
+          SUCCESS_INDENT_REJECTED_PRINT,
           "success",
           () => {
             // Navigate to report page for rejected indent
-            navigate('/ViewDownLoadIndent', {
+            navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
                 title: 'Indent Rejection Report',
@@ -370,8 +373,8 @@ const PendingIndentApproval = () => {
       
       // Show error popup
       showConfirmationPopup(
-        `Error processing indent. Please try again.`,
-        "error",
+        ERROR_PROCESS_INDENT,
+        "error",      
         () => {},
         null,
         "OK",
