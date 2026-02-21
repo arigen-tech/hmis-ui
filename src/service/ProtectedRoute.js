@@ -207,6 +207,10 @@ const validRoutes = [
   "/BloodUnitStatus",
 
   
+  "/RadiologyTemplateMaster",
+  "/PendingListRadiologyReport",
+  "/DetailedRadiologyReportPage",
+  
 ];
 
 const NotAuthorized = () => {
