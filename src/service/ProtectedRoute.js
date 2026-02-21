@@ -202,7 +202,7 @@ const validRoutes = [
   "/PendingBloodCollection",
   "/PendingForMandatoryTestingList",
   "/PendingComponentGeneration",
-  
+  "/BloodUnitStatus",
 ];
 
 const NotAuthorized = () => {
