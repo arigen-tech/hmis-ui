@@ -198,7 +198,8 @@ import PETInvestigation from './Views/Radiology/PETInvestigation';
 import PendingBloodCollection from './Views/BloodBank/PendingForBloodCollection';
 import PendingForMandatoryTestingList from './Views/BloodBank/PendingForMandatoryTestingList';
 import PendingComponentGeneration from './Views/BloodBank/PendingComponentGeneration';
-import BloodUnitStatus from './Views/Masters/BloodUnitStatus';import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';
+import BloodUnitStatus from './Views/Masters/BloodUnitStatus';
+import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
@@ -431,7 +432,7 @@ function App() {
                 <Route path="/PendingForMandatoryTestingList" element={<PendingForMandatoryTestingList/>}/>
                 <Route path="/PendingComponentGeneration" element={<PendingComponentGeneration/>} />
                 <Route path="/BloodUnitStatus" element={<BloodUnitStatus />} />
-                <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>}/>
+                <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>} />
               </Route>
             </Route>
 
