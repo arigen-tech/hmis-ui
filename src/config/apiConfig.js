@@ -1,4 +1,4 @@
- //export const API_HOST = 'http://103.133.215.182:8081/hims';
+ export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
@@ -236,7 +236,8 @@ export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 export const MAS_TONSIL_GRADE = `${MASTERS}/entMasTonsilGrade`;
 export const MAS_OB_TRIMESTER = `${MASTERS}/obMasTrimester`;
 export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
-
+export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
+export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
 export const BILLING = `${LAB}/billingStatus`;
 export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
 export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;

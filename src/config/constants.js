@@ -872,6 +872,23 @@ export const FAIL_EARWEB = "Save failed";
 export const UPDATE_FAIL_EARWEB = "Status update failed";
 
 
+
+//BloodDonationType
+export const   FETCH_BLOOD_DONATION =  "Fail to fetch records";
+export const DUPLICATE_BLOOD_DONATION = "BloodDonation Value already exists";
+export const UPDATE_BLOOD_DONATION =  "Record updated successfully";
+export const ADD_BLOOD_DONATION = "Record added successfully";;
+export const FAIL_BLOOD_DONATION = "Save failed";
+export const UPDATE_FAIL_BLOOD_DONATION = "Status update failed";
+
+
+
+
+
+
+
+
+
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
 export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";

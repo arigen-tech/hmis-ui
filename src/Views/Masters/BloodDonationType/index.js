@@ -1,127 +1,190 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { MAS_BLOOD_DONATION_TYPE } from "../../../config/apiConfig";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import {
+  FETCH_BLOOD_DONATION,
+  DUPLICATE_BLOOD_DONATION,
+  UPDATE_BLOOD_DONATION,
+  ADD_BLOOD_DONATION,
+  FAIL_BLOOD_DONATION,
+  UPDATE_FAIL_BLOOD_DONATION,
+} from "../../../config/constants";
+
 
 const BloodDonationType = () => {
-  const [bloodDonationData, setBloodDonationData] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    donationType: ""
-  });
-
-  const [popupMessage, setPopupMessage] = useState(null);
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+  const [formData, setFormData] = useState({
+    donationTypeCode: "",
+    donationTypeName: "",
+    description: "",
+  });
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
-  const [formData, setFormData] = useState({
-    donationCode: "",
-    donationType: "",
-    description: ""
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
   });
 
-  const [loading, setLoading] = useState(true);
 
-  /* ---------------- MOCK DATA ---------------- */
-  useEffect(() => {
+  const MAX_LENGTH = 10
+
+  /* ---------------- FORMAT DATE ---------------- */
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  /* ---------------- FETCH ---------------- */
+  const fetchData = async (flag = 0) => {
     setLoading(true);
-    setTimeout(() => {
-      setBloodDonationData([
-        { id: 1, donationCode: "WB", donationType: "Whole Blood", description: "Standard whole blood donation", status: "y", lastUpdated: "10/01/2026" },
-        { id: 2, donationCode: "PL", donationType: "Plasma Donation", description: "Plasma component donation", status: "y", lastUpdated: "12/01/2026" },
-        { id: 3, donationCode: "PT", donationType: "Platelet Donation", description: "Platelets collected via apheresis", status: "n", lastUpdated: "14/01/2026" },
-        { id: 4, donationCode: "DRC", donationType: "Double Red Cell", description: "Two units of red blood cells donation", status: "y", lastUpdated: "16/01/2026" },
-        { id: 5, donationCode: "AD", donationType: "Autologous Donation", description: "Self-donation for future personal use", status: "n", lastUpdated: "18/01/2026" }
-      ]);
+    try {
+      const { response } = await getRequest(`${MAS_BLOOD_DONATION_TYPE}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_BLOOD_DONATION, "error");
+      setData([]);
+    } finally {
       setLoading(false);
-    }, 600);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
   /* ---------------- SEARCH ---------------- */
-  const filteredData = bloodDonationData.filter(item =>
-    item.donationType.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredData = data.filter((rec) =>
+    (rec?.donationTypeName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  useEffect(() => setCurrentPage(1), [searchQuery]);
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
 
   /* ---------------- HANDLERS ---------------- */
-  const showPopup = (message, type = "success") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
-
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({
-      donationCode: record.donationCode,
-      donationType: record.donationType,
-      description: record.description
-    });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      setBloodDonationData(prev =>
-        prev.map(item =>
-          item.id === editingRecord.id ? { ...item, ...formData } : item
-        )
-      );
-      showPopup("Blood Donation Type updated successfully");
-    } else {
-      setBloodDonationData(prev => [
-        ...prev,
-        { id: Date.now(), ...formData, status: "y", lastUpdated: new Date().toLocaleDateString("en-GB") }
-      ]);
-      showPopup("Blood Donation Type added successfully");
-    }
-
-    handleBack();
-  };
-
-  const handleSwitchChange = (id, newStatus, donationType) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, donationType });
-  };
-
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setBloodDonationData(prev =>
-        prev.map(item =>
-          item.id === confirmDialog.id ? { ...item, status: confirmDialog.newStatus } : item
-        )
-      );
-      showPopup(
-        `Blood Donation Type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"}`
-      );
-    }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", donationType: "" });
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const updatedForm = { ...formData, [name]: value };
-    setFormData(updatedForm);
-    setIsFormValid(updatedForm.donationCode.trim() !== "" && updatedForm.donationType.trim() !== "");
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(
+      updated.donationTypeCode.trim() !== "" && updated.donationTypeName.trim() !== ""
+    );
   };
 
-  const handleBack = () => {
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({ donationCode: "", donationType: "", description: "" });
+  const resetForm = () => {
+    setFormData({ donationTypeCode: "", donationTypeName: "", description: "" });
     setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  /* ---------------- SAVE / ADD / EDIT ---------------- */
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    // Duplicate check (case-insensitive)
+    const normalized = formData.donationTypeName.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        rec.donationTypeName?.trim().toLowerCase() === normalized &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_BLOOD_DONATION, "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_BLOOD_DONATION_TYPE}/update/${editingRecord.donationTypeId}`,
+          { ...editingRecord, ...formData }
+        );
+        showPopup(UPDATE_BLOOD_DONATION, "success");
+      } else {
+        await postRequest(`${MAS_BLOOD_DONATION_TYPE}/create`, {
+          ...formData,
+        });
+        showPopup(ADD_BLOOD_DONATION, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_BLOOD_DONATION, "error");
+    }
+  };
+
+  /* ---------------- EDIT ---------------- */
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      donationTypeCode: rec.donationTypeCode,
+      donationTypeName: rec.donationTypeName,
+      description: rec.description,
+    });
+    setShowForm(true);
+    setIsFormValid(true);
+  };
+
+  /* ---------------- STATUS CHANGE ---------------- */
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_BLOOD_DONATION_TYPE}/status/${confirmDialog.record.donationTypeId}?status=${confirmDialog.newStatus}`
+      );
+      showPopup(UPDATE_BLOOD_DONATION, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_BLOOD_DONATION, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
   /* ---------------- UI ---------------- */
@@ -129,39 +192,42 @@ const BloodDonationType = () => {
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4 className="card-title">Blood Donation Type Master</h4>
+          <h4>Blood Donation Type Master</h4>
 
-          <div className="d-flex align-items-center gap-2">
+          <div className="d-flex">
             {!showForm && (
-              <form className="searchform" role="search">
-                <div className="input-group">
-                  <input
-                    type="search"
-                    className="form-control"
-                    placeholder="Search Blood Donation Type"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: "220px" }}
-                  />
-                  <span className="input-group-text">
-                    <i className="fa fa-search"></i>
-                  </span>
-                </div>
-              </form>
+              <input
+                style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search Blood Donation Type"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
             )}
-
             {!showForm ? (
               <>
-                <button className="btn btn-success" onClick={() => setShowForm(true)}>
-                  <i className="mdi mdi-plus"></i> Add
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
+                  Add
                 </button>
-                <button className="btn btn-success" onClick={() => setSearchQuery("")}>
-                  <i className="mdi mdi-refresh"></i> Show All
+                <button
+                  className="btn btn-success"
+                  onClick={() => {
+                    setSearchQuery("");
+                    fetchData();
+                  }}
+                >
+                  Show All
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={handleBack}>
-                <i className="mdi mdi-arrow-left"></i> Back
+              <button className="btn btn-secondary" onClick={handleCancel}>
+                Back
               </button>
             )}
           </div>
@@ -173,63 +239,47 @@ const BloodDonationType = () => {
           ) : !showForm ? (
             <>
               <table className="table table-bordered table-hover">
-                <thead>
+                <thead className="table-light">
                   <tr>
-                    <th>Blood Donation Code</th>
-                    <th>Blood Donation Type</th>
+                    <th>Donation Code</th>
+                    <th>Donation Type</th>
                     <th>Description</th>
-                    <th>Last Updated</th>
+                    <th>Last Update</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.length ? (
-                    currentItems.map(item => (
-                      <tr key={item.id}>
-                        <td>{item.donationCode}</td>
-                        <td>{item.donationType}</td>
-                        <td>{item.description}</td>
-                        <td>{item.lastUpdated}</td>
-                        <td>
-                          <div className="form-check form-switch">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              role="switch"
-                              id={`switch-${item.id}`}
-                              checked={item.status === "y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  item.id,
-                                  item.status === "y" ? "n" : "y",
-                                  item.donationType
-                                )
-                              }
-                            />
-                            <label className="form-check-label ms-2" htmlFor={`switch-${item.id}`}>
-                              {item.status === "y" ? "Active" : "Inactive"}
-                            </label>
-                          </div>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={() => handleEdit(item)}
-                            disabled={item.status !== "y"}
-                          >
-                            <i className="fa fa-pencil"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="text-center">
-                        No data found
+                  {currentItems.map((rec) => (
+                    <tr key={rec.id}>
+                      <td>{rec.donationTypeCode}</td>
+                      <td>{rec.donationTypeName}</td>
+                      <td>{rec.description}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleEdit(rec)}
+                          disabled={rec.status?.toLowerCase() !== "y"}
+                        >
+                          <i className="fa fa-pencil"></i>
+                        </button>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
 
@@ -241,52 +291,41 @@ const BloodDonationType = () => {
               />
             </>
           ) : (
-            <form onSubmit={handleSave}>
-              <div className="row">
-                <div className="form-group col-md-4">
-                  <label>Donation Code <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="donationCode"
-                    value={formData.donationCode}
-                    onChange={handleInputChange}
-                    maxLength={10}
-                    required
-                  />
-                </div>
-
-                <div className="form-group col-md-4">
-                  <label>Blood Donation Type <span className="text-danger">*</span></label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="donationType"
-                    value={formData.donationType}
-                    onChange={handleInputChange}
-                    maxLength={50}
-                    required
-                  />
-                </div>
-
-                <div className="form-group col-md-4">
-                  <label>Description</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    maxLength={100}
-                  />
-                </div>
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-4">
+                <label>Donation Code *</label>
+                <input
+                  name="donationTypeCode"
+                  className="form-control"
+                  value={formData.donationTypeCode}
+                  onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
+                />
+              </div>
+              <div className="col-md-4">
+                <label>Donation Type *</label>
+                <input
+                  name="donationTypeName"
+                  className="form-control"
+                  value={formData.donationTypeName}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-4">
+                <label>Description</label>
+                <input
+                  name="description"
+                  className="form-control"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                />
               </div>
 
-              <div className="d-flex justify-content-end mt-3">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+              <div className="col-12 text-end">
+                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                   Save
                 </button>
-                <button className="btn btn-danger" type="button" onClick={handleBack}>
+                <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>
@@ -296,26 +335,19 @@ const BloodDonationType = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block" tabIndex="-1">
+            <div className="modal d-block">
               <div className="modal-dialog">
                 <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">Confirm Status Change</h5>
-                    <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                      <span>&times;</span>
-                    </button>
-                  </div>
                   <div className="modal-body">
-                    <p>
-                      Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                      <strong>{confirmDialog.donationType}</strong>?
-                    </p>
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.donationTypeName}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
                       No
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
                       Yes
                     </button>
                   </div>
