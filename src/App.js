@@ -98,7 +98,7 @@ import IssueReferenceReport from './Views/WardPharmacy/IssueRefReport';
 import PendingIndent from './Views/WardPharmacy/PendingIndent';
 import TrackIndent from './Views/WardPharmacy/TrackIndent';
 import ViewUpdateIndent from './Views/WardPharmacy/View Update Indent';
-
+import BloodComponentMaster from './Views/Masters/BloodComponentMaster';
 import FamilyHistoryMaster from './Views/Masters/FamilyHistoryMaster';
 import PatientAdmission from './Views/Masters/PatientAdmission';
 import ProcedureMaster from './Views/Masters/ProcedureMaster';
@@ -439,6 +439,7 @@ function App() {
                 <Route path="/RadiologyTemplateMaster" element={<RadiologyTemplateMaster/>} />
                 <Route path="/PendingListRadiologyReport" element={<PendignListRadiologyReport/>} />
                 <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
+                <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
               </Route>
             </Route>
 

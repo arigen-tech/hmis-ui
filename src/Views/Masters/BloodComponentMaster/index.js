@@ -3,6 +3,7 @@ import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 
+
 const BloodComponentMaster = () => {
     const [formData, setFormData] = useState({ componentName: "", description: "" });
     const [showForm, setShowForm] = useState(false);
@@ -14,6 +15,8 @@ const BloodComponentMaster = () => {
     const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
 
+
+
     const [componentData, setComponentData] = useState([
         { id: 1, componentName: "Packed Red Blood Cells", description: "Red blood cells separated from plasma", status: "y" },
         { id: 2, componentName: "Fresh Frozen Plasma", description: "Plasma frozen within 8 hours of collection", status: "y" },
@@ -22,6 +25,8 @@ const BloodComponentMaster = () => {
         { id: 5, componentName: "Whole Blood", description: "Unseparated blood collection", status: "y" },
         { id: 6, componentName: "Leukoreduced RBCs", description: "Red blood cells with reduced leukocytes", status: "y" },
     ]);
+
+    
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, componentId: null, newStatus: false });
 
