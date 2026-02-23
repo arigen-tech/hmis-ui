@@ -345,7 +345,7 @@ const DetailedRadiologyReportPage = () => {
                                 borderRadius: "6px",
                                 padding: "8px",
                                 backgroundColor: "#fff",
-                                minHeight:"200px"
+                                minHeight:"350px"
                               }}
                             >
                               <div ref={reportInclusionRef}></div>
@@ -358,7 +358,6 @@ const DetailedRadiologyReportPage = () => {
                                     options: ["left", "center", "right", "justify"],
                                   },
                                   placeholder: "Enter radiology report content...",
-                                  height: 300
                                 }}
                                 onReady={(editor) => {
                                   reportEditorRef.current = editor;
