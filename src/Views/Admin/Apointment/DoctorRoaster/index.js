@@ -156,7 +156,7 @@ const DoctorRoaster = () => {
         queryParams.append("doctorId", doctor);
       }
 
-      const apiUrl = `${DOCTOR_ROSTER}/rosterfindWithDays?${queryParams.toString()}`;
+      const apiUrl = `${DOCTOR_ROSTER}/getDoctorRosterWeekly?${queryParams.toString()}`;
       const existingRosterResponse = await getRequest(apiUrl);
 
       const generatedDates = generateDatesFromSelectedDate();
@@ -297,7 +297,7 @@ const DoctorRoaster = () => {
     setLoading(true);
 
     try {
-      const endpoint = `${DOCTOR_ROSTER}/roster`;
+      const endpoint = `${DOCTOR_ROSTER}/createDoctorRoster`;
       
       const dataToSend = {
         ...rosterDoctorData,

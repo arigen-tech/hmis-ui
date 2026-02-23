@@ -1,4 +1,4 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+ //export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
@@ -108,7 +108,7 @@ export const DEPARTMENT = `/department`;
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
 export const SESSION = `/opd-session`;
-export const APPOINTMENT = `/app`;
+export const APPOINTMENT = `/admin`;
 export const LOGIN = `/authController/login`;
 export const ALL_GENDER = `${MASTERS}/gender/getAll`;
 export const ALL_RELATION = `${MASTERS}/relation/getAll`;
@@ -148,8 +148,8 @@ export const APPLICATION = `/mas-applications`;
 export const ASSIGN_TEMPLATES = `/template-applications`;
 export const ROLE_TEMPLATE = `/role-template`;
 export const IDENTITY_TYPE = `/identification-types`;
-export const DOCTOR_ROSTER = `/doctor`;
-export const GET_DOCTOR_SESSION = `/doctor/rosterfind?`;
+export const DOCTOR_ROSTER = `/admin`;
+export const GET_DOCTOR_SESSION = `/admin/getDoctorRoster?`;
 
 export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
 export const GET_APPOINTMENT_HISTORY = `/mobileController/getAppointmentHistoryList`;

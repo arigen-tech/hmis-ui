@@ -183,7 +183,7 @@ const AppointmentSetup = () => {
     try {
       setLoading(true);
       setModifiedFields({});
-      const url = `${APPOINTMENT}/find?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
+      const url = `${APPOINTMENT}/getAppointmentSetup?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
       const data = await getRequest(url);
       if (data?.status === 200 && data?.response) {
         const { startTime, endTime, timeTaken, days } = data.response;
@@ -429,7 +429,7 @@ const AppointmentSetup = () => {
 
     try {
       setLoading(true);
-      const response = await postRequest(`${APPOINTMENT}/setup`, requestData);
+      const response = await postRequest(`${APPOINTMENT}/createAppointmentSetup`, requestData);
 
       if (response.status === 200) {
         showPopup(
