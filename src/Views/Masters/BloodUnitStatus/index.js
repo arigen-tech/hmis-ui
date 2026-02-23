@@ -1,251 +1,226 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, {
-  DEFAULT_ITEMS_PER_PAGE,
-} from "../../../Components/Pagination";
+import { MAS_BLOOD_UNIT } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import {FETCH_BLOOD_UNIT,DUPLICATE_BLOOD_UNIT,UPDATE_BLOOD_UNIT,ADD_BLOOD_UNIT,FAIL_BLOOD_UNIT,UPDATE_FAIL_BLOOD_UNIT, } from "../../../config/constants";
+
+
 
 const BloodUnitStatus = () => {
-  const [bloodUnitData, setBloodUnitData] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    unitStatus: "",
-  });
-
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [showForm, setShowForm] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
-  const [isFormValid, setIsFormValid] = useState(false);
-
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    unitCode: "",
-    unitStatus: "",
+    statusCode: "",
+    statusName: "",
     description: "",
   });
 
-  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
 
-  const MAX_LENGTH = 50;
+  // Format date utility
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
-  /* ---------------- ORIGINAL DUMMY DATA (5) ---------------- */
-  useEffect(() => {
+  // Fetch data
+  const fetchData = async (flag = 0) => {
     setLoading(true);
-    setTimeout(() => {
-      setBloodUnitData([
-        {
-          id: 1,
-          unitCode: "AVL",
-          unitStatus: "Available",
-          description: "Blood unit is available for issue",
-          status: "y",
-          lastUpdated: "10/01/2026",
-        },
-        {
-          id: 2,
-          unitCode: "RSV",
-          unitStatus: "Reserved",
-          description: "Blood unit is reserved for a patient",
-          status: "y",
-          lastUpdated: "12/01/2026",
-        },
-        {
-          id: 3,
-          unitCode: "ISS",
-          unitStatus: "Issued",
-          description: "Blood unit has been issued to patient",
-          status: "n",
-          lastUpdated: "14/01/2026",
-        },
-        {
-          id: 4,
-          unitCode: "EXP",
-          unitStatus: "Expired",
-          description: "Blood unit has expired and is not usable",
-          status: "y",
-          lastUpdated: "16/01/2026",
-        },
-        {
-          id: 5,
-          unitCode: "DSC",
-          unitStatus: "Discarded",
-          description: "Blood unit discarded due to damage or contamination",
-          status: "n",
-          lastUpdated: "18/01/2026",
-        },
-      ]);
+    try {
+      const { response } = await getRequest(`${MAS_BLOOD_UNIT}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_BLOOD_UNIT, "error");
+      setData([]);
+    } finally {
       setLoading(false);
-    }, 600);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
   }, []);
 
-  /* ---------------- SEARCH ---------------- */
-  const filteredData = bloodUnitData.filter((item) =>
-    item.unitStatus.toLowerCase().includes(searchQuery.toLowerCase()),
+  // Search & Pagination
+  const filteredData = data.filter((rec) =>
+    rec.statusName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  useEffect(() => {
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
     setCurrentPage(1);
-  }, [searchQuery]);
+  };
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
-
-  /* ---------------- HANDLERS ---------------- */
-  const showPopup = (message, type = "success") => {
+  // Popup helper
+  const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({ unitStatus: record.unitStatus });
+  // Form reset
+  const resetForm = () => {
+    setFormData({ statusCode: "", statusName: "", description: "" });
+    setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  // Form input change
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(updated.statusCode.trim() !== "" && updated.statusName.trim() !== "");
+  };
+
+  // Save (Add or Update)
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    const newCode = formData.statusCode.trim().toLowerCase();
+    const newName = formData.statusName.trim().toLowerCase();
+
+    const duplicate = data.find(
+      (rec) =>
+        (rec.statusCode?.trim().toLowerCase() === newCode ||
+          rec.statusName?.trim().toLowerCase() === newName) &&
+        (!editingRecord || rec.statusId !== editingRecord.statusId)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_BLOOD_UNIT, "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_BLOOD_UNIT}/update/${editingRecord.statusId}`,
+          {
+            statusCode: formData.statusCode.trim(),
+            statusName: formData.statusName.trim(),
+            description: formData.description.trim(),
+          }
+        );
+        showPopup(UPDATE_BLOOD_UNIT, "success");
+      } else {
+        await postRequest(`${MAS_BLOOD_UNIT}/create`, {
+          statusCode: formData.statusCode.trim(),
+          statusName: formData.statusName.trim(),
+          description: formData.description.trim(),
+          status: "Y",
+        });
+        showPopup(ADD_BLOOD_UNIT, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_BLOOD_UNIT, "error");
+    }
+  };
+
+  // Edit button handler
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      statusCode: rec.statusCode,
+      statusName: rec.statusName,
+      description: rec.description || "",
+    });
     setIsFormValid(true);
     setShowForm(true);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      // UPDATE RECORD
-      setBloodUnitData((prev) =>
-        prev.map((item) =>
-          item.id === editingRecord.id
-            ? {
-                ...item,
-                unitCode: formData.unitCode,
-                unitStatus: formData.unitStatus,
-                description: formData.description,
-                lastUpdated: new Date().toLocaleDateString("en-GB"),
-              }
-            : item,
-        ),
-      );
-      showPopup("Blood Unit Status updated successfully");
-    } else {
-      // ADD NEW RECORD
-      setBloodUnitData((prev) => [
-        ...prev,
-        {
-          id: Date.now(),
-          unitCode: formData.unitCode,
-          unitStatus: formData.unitStatus,
-          description: formData.description,
-          status: "y",
-          lastUpdated: new Date().toLocaleDateString("en-GB"),
-        },
-      ]);
-      showPopup("Blood Unit Status added successfully");
-    }
-
-    // RESET FORM
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({
-      unitCode: "",
-      unitStatus: "",
-      description: "",
-    });
-    setIsFormValid(false);
-  };
-
-  const handleSwitchChange = (id, newStatus, unitStatus) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, unitStatus });
-  };
-
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setBloodUnitData((prev) =>
-        prev.map((item) =>
-          item.id === confirmDialog.id
-            ? { ...item, status: confirmDialog.newStatus }
-            : item,
-        ),
-      );
-      showPopup(
-        `Blood Unit Status ${
-          confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-        }`,
-      );
-    }
+  // Status toggle confirmation
+  const handleSwitchChange = (rec) => {
     setConfirmDialog({
-      isOpen: false,
-      id: null,
-      newStatus: "",
-      unitStatus: "",
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
 
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-
-    setIsFormValid(
-      (name === "unitCode" ? value : formData.unitCode).trim() !== "" &&
-        (name === "unitStatus" ? value : formData.unitStatus).trim() !== "",
-    );
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_BLOOD_UNIT}/status/${confirmDialog.record.statusId}?status=${confirmDialog.newStatus}`
+      );
+      showPopup(UPDATE_BLOOD_UNIT, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_BLOOD_UNIT, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
   };
 
-  const handleBack = () => {
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({ unitStatus: "" });
-    setIsFormValid(false);
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData();
   };
 
-  /* ---------------- UI ---------------- */
   return (
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4 className="card-title">Blood Unit Status</h4>
-
-          <div className="d-flex align-items-center gap-2">
+          <h4>Blood Unit Status</h4>
+          <div className="d-flex">
             {!showForm && (
-              <form className="searchform">
-                <div className="input-group">
-                  <input
-                    type="search"
-                    className="form-control"
-                    placeholder="Search Blood Unit Status"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    style={{ width: "220px" }}
-                  />
-                  <span className="input-group-text">
-                    <i className="fa fa-search"></i>
-                  </span>
-                </div>
-              </form>
+              <input
+                style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
             )}
-
             {!showForm ? (
               <>
-                <button
-                  className="btn btn-success"
-                  onClick={() => setShowForm(true)}
-                >
-                  <i className="mdi mdi-plus"></i> Add
+                <button className="btn btn-success me-2" onClick={() => { resetForm(); setShowForm(true); }}>
+                  Add
                 </button>
-                <button
-                  className="btn btn-success"
-                  onClick={() => setSearchQuery("")}
-                >
-                  <i className="mdi mdi-refresh"></i> Show All
+                <button className="btn btn-success" onClick={handleRefresh}>
+                  Show All
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={handleBack}>
-                <i className="mdi mdi-arrow-left"></i> Back
+              <button className="btn btn-secondary" onClick={handleCancel}>
+                Back
               </button>
             )}
           </div>
@@ -257,62 +232,47 @@ const BloodUnitStatus = () => {
           ) : !showForm ? (
             <>
               <table className="table table-bordered table-hover">
-                <thead>
+                <thead className="table-light">
                   <tr>
-                    <th>Blood Unit Code</th>
-                    <th>Blood Unit Status</th>
+                    <th>Unit Code</th>
+                    <th>Unit Status</th>
                     <th>Description</th>
-                    <th>Last Updated</th>
+                    <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.length ? (
-                    currentItems.map((item) => (
-                      <tr key={item.id}>
-                        <td>{item.unitCode}</td>
-                        <td>{item.unitStatus}</td>
-                        <td>{item.description}</td>
-                        <td>{item.lastUpdated}</td>
-                        <td>
-                          <div className="form-check form-switch">
-                            <input
-                              className="form-check-input"
-                              type="checkbox"
-                              role="switch"
-                              checked={item.status === "y"}
-                              onChange={() =>
-                                handleSwitchChange(
-                                  item.id,
-                                  item.status === "y" ? "n" : "y",
-                                  item.unitStatus,
-                                )
-                              }
-                            />
-                            <label className="form-check-label ms-2">
-                              {item.status === "y" ? "Active" : "Inactive"}
-                            </label>
-                          </div>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-success"
-                            onClick={() => handleEdit(item)}
-                            disabled={item.status !== "y"}
-                          >
-                            <i className="fa fa-pencil"></i>
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  ) : (
-                    <tr>
-                      <td colSpan="4" className="text-center">
-                        No data found
+                  {currentItems.map((rec) => (
+                    <tr key={rec.statusId}>
+                      <td>{rec.statusCode}</td>
+                      <td>{rec.statusName}</td>
+                      <td>{rec.description}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleEdit(rec)}
+                          disabled={rec.status?.toLowerCase() !== "y"}
+                        >
+                          <i className="fa fa-pencil"></i>
+                        </button>
                       </td>
                     </tr>
-                  )}
+                  ))}
                 </tbody>
               </table>
 
@@ -324,68 +284,40 @@ const BloodUnitStatus = () => {
               />
             </>
           ) : (
-            <form onSubmit={handleSave}>
-              <div className="row">
-                {/* Unit Code */}
-                <div className="form-group col-md-4">
-                  <label>
-                    Unit Code <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="unitCode"
-                    value={formData.unitCode}
-                    onChange={handleInputChange}
-                    maxLength={10}
-                    placeholder="Unit Code"
-                    required
-                  />
-                </div>
-
-                {/* Unit Status */}
-                <div className="form-group col-md-4">
-                  <label>
-                    Blood Unit Status <span className="text-danger">*</span>
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="unitStatus"
-                    value={formData.unitStatus}
-                    onChange={handleInputChange}
-                    maxLength={MAX_LENGTH}
-                    placeholder="Blood Unit Status"
-                    required
-                  />
-                </div>
-
-                {/* Description */}
-                <div className="form-group col-md-4">
-                  <label>Description</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    name="description"
-                    value={formData.description}
-                    onChange={handleInputChange}
-                    placeholder="Description"
-                    maxLength={100}
-                  />
-                </div>
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-3">
+                <label>Unit Code <span className="text-danger">*</span></label>
+                <input
+                  name="statusCode"
+                  className="form-control"
+                  value={formData.statusCode}
+                  onChange={handleInputChange}
+                />
               </div>
-              <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                <button
-                  className="btn btn-primary me-2"
-                  disabled={!isFormValid}
-                >
+              <div className="col-md-3">
+                <label>Unit Status <span className="text-danger">*</span></label>
+                <input
+                  name="statusName"
+                  className="form-control"
+                  value={formData.statusName}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-3">
+                <label>Description</label>
+                <input
+                  name="description"
+                  className="form-control"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="col-12 text-end">
+                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                   Save
                 </button>
-                <button
-                  className="btn btn-danger"
-                  type="button"
-                  onClick={handleBack}
-                >
+                <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
                 </button>
               </div>
@@ -398,27 +330,16 @@ const BloodUnitStatus = () => {
             <div className="modal d-block">
               <div className="modal-dialog">
                 <div className="modal-content">
-                  <div className="modal-header">
-                    <h5>Confirm Status Change</h5>
-                  </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y"
-                      ? "activate"
-                      : "deactivate"}{" "}
-                    <strong>{confirmDialog.unitStatus}</strong>?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.statusName}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
                       No
                     </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
                       Yes
                     </button>
                   </div>

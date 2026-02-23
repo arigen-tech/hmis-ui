@@ -883,6 +883,14 @@ export const UPDATE_FAIL_BLOOD_DONATION = "Status update failed";
 
 
 
+//Bloodunitstaus
+export const FETCH_BLOOD_UNIT = "Failed to fetch Blood Unit records";
+export const DUPLICATE_BLOOD_UNIT = "Duplicate Unit Code or Status found";
+export const UPDATE_BLOOD_UNIT = "Blood Unit updated successfully";
+export const ADD_BLOOD_UNIT  = "Blood Unit added successfully";
+export const FAIL_BLOOD_UNIT = "Failed to save record";
+export const UPDATE_FAIL_BLOOD_UNIT = "Failed to update status";
+
 
 
 
