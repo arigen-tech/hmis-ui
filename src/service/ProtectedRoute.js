@@ -184,7 +184,7 @@ const validRoutes = [
   "/BloodDonationStatusMaster",
   "/BloodCompatibilityMaster",
   "/BloodFailureReasonMaster",
-  "/BloodComponentMaster",
+   "/BloodComponentMaster",
   "/WardManagement",
   "/PatientRegistrationRadiologyBooking",
   "/RadiologyBookingRegisteredPatient",
