@@ -202,9 +202,7 @@ const AppointmentSetup = () => {
                 endTime:
                   dayConfig.endTime !== null ? String(dayConfig.endTime) : "",
                 startTime:
-                  dayConfig.startTime !== null
-                    ? String(dayConfig.startTime)
-                    : "",
+                  dayConfig.startTime !== null ? String(dayConfig.startTime) : "",
                 startToken:
                   dayConfig.startToken !== null
                     ? String(dayConfig.startToken)
@@ -303,9 +301,6 @@ const AppointmentSetup = () => {
       updatedDayConfig.startToken = "0";
       updatedDayConfig.totalInterval = "0";
       updatedDayConfig.totalOnlineToken = "0";
-      updatedDayConfig.startTime = "";
-      updatedDayConfig.endTime = "";
-      updatedDayConfig.opdLocation="";
     }
 
     if (

@@ -13,9 +13,9 @@ import {
   API_HOST,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
-  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
   GET_SESSION,
+  GET_TOKENS,
   HOSPITAL,
   PATIENT_FOLLOW_UP,
   PATIENT_FOLLOW_UP_DETAILS,
@@ -1839,7 +1839,7 @@ const UpdatePatientRegistration = () => {
         sessionId: targetAppointment.selSession,
       }).toString();
 
-      const url = `${GET_AVAILABILITY_TOKENS}/0?${params}`;
+      const url = `${GET_TOKENS}/0?${params}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && Array.isArray(data.response)) {

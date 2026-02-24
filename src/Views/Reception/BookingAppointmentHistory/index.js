@@ -9,12 +9,12 @@ import Popup from "../../../Components/popup";
 import {
   GET_ALL_REASONS,
   GET_APPOINTMENT_HISTORY,
-  GET_AVAILABILITY_TOKENS,
   GET_SESSION,
   CANCEL_APPOINTMENT,
   GET_DOCTOR_SESSION,
   RESCHEDULE_APPOINTMENT,
   FILTER_OPD_DEPT,
+  GET_TOKENS,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -222,7 +222,7 @@ const BookingAppointmentHistory = () => {
     try {
       const hospitalId = sessionStorage.getItem('hospitalId');
       const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${FILTER_OPD_DEPT}&includeAllHistory`,
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${FILTER_OPD_DEPT}&includeAllHistory=false`,
       );
 
       if (res.status === 200) {
@@ -477,7 +477,7 @@ const BookingAppointmentHistory = () => {
         sessionId: newSession,
       });
 
-      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}/0?${params}`);
+      const res = await getRequest(`${GET_TOKENS}/0?${params}`);
 
       if (res.status === 200 && Array.isArray(res.response)) {
         setAvailableTokens(res.response);
@@ -523,7 +523,7 @@ const BookingAppointmentHistory = () => {
         sessionId: sessionId,
       });
 
-      const res = await getRequest(`${GET_AVAILABILITY_TOKENS}/0?${params}`);
+      const res = await getRequest(`${GET_TOKENS}/0?${params}`);
 
       if (res.status === 200 && Array.isArray(res.response)) {
         setAvailableTokens(res.response);

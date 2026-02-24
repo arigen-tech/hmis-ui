@@ -447,7 +447,6 @@ const EmployeeRegistration = () => {
       stateId: "",
       districtId: "",
     }));
-    fetchStateData(countryCode);
   };
 
   const removeLanguageRow = (index) => {
@@ -1857,7 +1856,7 @@ const EmployeeRegistration = () => {
                                   selectedCountry.countryCode,
                                   selectedCountry.id,
                                 );
-                                setCountryIds(selectedCountry.id);
+                                
                                 fetchStateData(selectedCountry.id);
                               }}
                               disabled={loading}

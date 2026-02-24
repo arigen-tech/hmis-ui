@@ -303,4 +303,5 @@ export const UPDATE_PATIENT_STATUS = `/registration/updatepaymentstatus`;
 export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
+export const GET_TOKENS = `/patient/getAppointmentSlots`;
 
