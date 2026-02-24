@@ -12,7 +12,7 @@ const BloodInventoryStatus = () => {
     isOpen: false,
     id: null,
     newStatus: "",
-    inventoryStatus: ""
+    StatusCode: ""
   });
 
   const [popupMessage, setPopupMessage] = useState(null);
@@ -21,7 +21,8 @@ const BloodInventoryStatus = () => {
   const [isFormValid, setIsFormValid] = useState(false);
 
   const [formData, setFormData] = useState({
-    inventoryStatus: ""
+    statusCode: "",   
+    description: ""
   });
 
   const [loading, setLoading] = useState(true);
@@ -32,11 +33,11 @@ const BloodInventoryStatus = () => {
     setLoading(true);
     setTimeout(() => {
       setBloodInventoryData([
-        { id: 1, inventoryStatus: "Available", status: "y", lastUpdated: "10/01/2026" },
-        { id: 2, inventoryStatus: "Reserved", status: "y", lastUpdated: "12/01/2026" },
-        { id: 3, inventoryStatus: "Issued", status: "y", lastUpdated: "14/01/2026" },
-        { id: 4, inventoryStatus: "Expired", status: "n", lastUpdated: "16/01/2026" },
-        { id: 5, inventoryStatus: "Discarded", status: "n", lastUpdated: "18/01/2026" }
+        { id: 1, statusCode: "Available", description: "Blood is available for use", status: "y", lastUpdated: "10/01/2026" },
+        { id: 2, statusCode: "Reserved", description: "Blood is reserved for a specific patient", status: "y", lastUpdated: "12/01/2026" },
+        { id: 3, statusCode: "Issued", description: "Blood has been issued to a patient", status: "y", lastUpdated: "14/01/2026" },
+        { id: 4, statusCode: "Expired", description: "Blood has expired and is no longer usable", status: "n", lastUpdated: "16/01/2026" },
+        { id: 5, statusCode: "Discarded", description: "Blood has been discarded due to contamination or other issues", status: "n", lastUpdated: "18/01/2026" }
       ]);
       setLoading(false);
     }, 600);
@@ -44,7 +45,8 @@ const BloodInventoryStatus = () => {
 
   /* -------- SEARCH -------- */
   const filteredData = bloodInventoryData.filter(item =>
-    item.inventoryStatus.toLowerCase().includes(searchQuery.toLowerCase())
+    item.statusCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    item.description.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
@@ -62,7 +64,7 @@ const BloodInventoryStatus = () => {
 
   const handleEdit = (record) => {
     setEditingRecord(record);
-    setFormData({ inventoryStatus: record.inventoryStatus });
+    setFormData({ statusCode: record.statusCode, description: record.description });
     setIsFormValid(true);
     setShowForm(true);
   };
@@ -75,7 +77,7 @@ const BloodInventoryStatus = () => {
       setBloodInventoryData(prev =>
         prev.map(item =>
           item.id === editingRecord.id
-            ? { ...item, inventoryStatus: formData.inventoryStatus }
+            ? { ...item, statusCode: formData.statusCode, description: formData.description }
             : item
         )
       );
@@ -85,7 +87,8 @@ const BloodInventoryStatus = () => {
         ...prev,
         {
           id: Date.now(),
-          inventoryStatus: formData.inventoryStatus,
+          statusCode: formData.statusCode,
+          description: formData.description,
           status: "y",
           lastUpdated: new Date().toLocaleDateString("en-GB")
         }
@@ -96,8 +99,8 @@ const BloodInventoryStatus = () => {
     handleBack();
   };
 
-  const handleSwitchChange = (id, newStatus, inventoryStatus) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, inventoryStatus });
+  const handleSwitchChange = (id, newStatus, statusCode) => {
+    setConfirmDialog({ isOpen: true, id, newStatus, statusCode });
   };
 
   const handleConfirm = (confirmed) => {
@@ -113,18 +116,20 @@ const BloodInventoryStatus = () => {
         `Blood Inventory Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"}`
       );
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", inventoryStatus: "" });
+    setConfirmDialog({ isOpen: false, id: null, newStatus: "", statusCode: "" });
   };
 
-  const handleInputChange = (e) => {
-    setFormData({ inventoryStatus: e.target.value });
-    setIsFormValid(e.target.value.trim() !== "");
+ const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updatedForm = { ...formData, [name]: value };
+    setFormData(updatedForm);
+    setIsFormValid(updatedForm.statusCode.trim() !== "" && updatedForm.description.trim() !== "");
   };
 
   const handleBack = () => {
     setShowForm(false);
     setEditingRecord(null);
-    setFormData({ inventoryStatus: "" });
+    setFormData({ statusCode: "", description: "", });
     setIsFormValid(false);
   };
 
@@ -166,7 +171,8 @@ const BloodInventoryStatus = () => {
               <table className="table table-bordered table-hover">
                 <thead>
                   <tr>
-                    <th>Inventory Status</th>
+                    <th>Status Code</th>
+                    <th>Description</th>
                     <th>Last Updated</th>
                     <th>Status</th>
                     <th>Edit</th>
@@ -175,7 +181,8 @@ const BloodInventoryStatus = () => {
                 <tbody>
                   {currentItems.map(item => (
                     <tr key={item.id}>
-                      <td>{item.inventoryStatus}</td>
+                      <td>{item.statusCode}</td>
+                      <td>{item.description}</td>
                       <td>{item.lastUpdated}</td>
                       <td>
                         <div className="form-check form-switch">
@@ -187,7 +194,7 @@ const BloodInventoryStatus = () => {
                               handleSwitchChange(
                                 item.id,
                                 item.status === "y" ? "n" : "y",
-                                item.inventoryStatus
+                                item.statusCode
                               )
                             }
                           />
@@ -219,16 +226,32 @@ const BloodInventoryStatus = () => {
             </>
           ) : (
             <form onSubmit={handleSave}>
-              <div className="form-group col-md-6">
-                <label>Inventory Status <span className="text-danger">*</span></label>
-                <input
-                  type="text"
-                  className="form-control"
-                  value={formData.inventoryStatus}
-                  maxLength={MAX_LENGTH}
-                  onChange={handleInputChange}
-                  required
-                />
+              <div className="row">
+              <div className="form-group col-md-4">
+                <label> Status Code <span className="text-danger">*</span></label>
+              <input
+  type="text"
+  name="statusCode"        
+  className="form-control"
+  value={formData.statusCode}
+  maxLength={MAX_LENGTH}
+  onChange={handleInputChange}
+  required
+  placeholder="status code"
+/>
+</div>
+              <div className="form-group col-md-4">
+                <label> Description <span className="text-danger">*</span></label>
+               <input
+  type="text"
+  name="description"      
+  className="form-control"
+  value={formData.description}
+  onChange={handleInputChange}
+  maxLength={100}
+  placeholder="description"
+/>
+              </div>
               </div>
 
               <div className="mt-3 text-end">
@@ -249,7 +272,7 @@ const BloodInventoryStatus = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.inventoryStatus}</strong>?
+                    <strong>{confirmDialog.statusCode}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>

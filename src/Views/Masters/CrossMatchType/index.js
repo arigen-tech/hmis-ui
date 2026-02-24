@@ -21,6 +21,7 @@ const CrossMatchType = () => {
   const [isFormValid, setIsFormValid] = useState(false);
 
   const [formData, setFormData] = useState({
+    code: "",
     crossMatchType: ""
   });
 
@@ -32,11 +33,11 @@ const CrossMatchType = () => {
     setLoading(true);
     setTimeout(() => {
       setCrossMatchData([
-        { id: 1, crossMatchType: "Immediate Spin Crossmatch", status: "y", lastUpdated: "10/01/2026" },
-        { id: 2, crossMatchType: "Electronic Crossmatch", status: "y", lastUpdated: "12/01/2026" },
-        { id: 3, crossMatchType: "Antiglobulin Crossmatch", status: "y", lastUpdated: "14/01/2026" },
-        { id: 4, crossMatchType: "Full Crossmatch", status: "n", lastUpdated: "16/01/2026" },
-        { id: 5, crossMatchType: "Emergency Crossmatch", status: "n", lastUpdated: "18/01/2026" }
+        { id: 1, code: "CMT001", crossMatchType: "Immediate Spin Crossmatch", status: "y", lastUpdated: "10/01/2026" },
+        { id: 2, code: "CMT002", crossMatchType: "Electronic Crossmatch", status: "y", lastUpdated: "12/01/2026" },
+        { id: 3, code: "CMT003", crossMatchType: "Antiglobulin Crossmatch", status: "y", lastUpdated: "14/01/2026" },
+        { id: 4, code: "CMT004", crossMatchType: "Full Crossmatch", status: "n", lastUpdated: "16/01/2026" },
+        { id: 5, code: "CMT005", crossMatchType: "Emergency Crossmatch", status: "n", lastUpdated: "18/01/2026" }
       ]);
       setLoading(false);
     }, 600);
@@ -44,8 +45,9 @@ const CrossMatchType = () => {
 
   /* -------- SEARCH -------- */
   const filteredData = crossMatchData.filter(item =>
-    item.crossMatchType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  item.crossMatchType.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  (item.code && item.code.toLowerCase().includes(searchQuery.toLowerCase()))
+);
 
   useEffect(() => {
     setCurrentPage(1);
@@ -60,12 +62,15 @@ const CrossMatchType = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({ crossMatchType: record.crossMatchType });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
+ const handleEdit = (record) => {
+  setEditingRecord(record);
+  setFormData({
+    code: record.code,
+    crossMatchType: record.crossMatchType
+  });
+  setIsFormValid(true);
+  setShowForm(true);
+};
 
   const handleSave = (e) => {
     e.preventDefault();
@@ -75,7 +80,7 @@ const CrossMatchType = () => {
       setCrossMatchData(prev =>
         prev.map(item =>
           item.id === editingRecord.id
-            ? { ...item, crossMatchType: formData.crossMatchType }
+            ? { ...item, code: formData.code, crossMatchType: formData.crossMatchType }
             : item
         )
       );
@@ -85,6 +90,7 @@ const CrossMatchType = () => {
         ...prev,
         {
           id: Date.now(),
+          code: formData.code,
           crossMatchType: formData.crossMatchType,
           status: "y",
           lastUpdated: new Date().toLocaleDateString("en-GB")
@@ -117,17 +123,27 @@ const CrossMatchType = () => {
   };
 
   const handleInputChange = (e) => {
-    setFormData({ crossMatchType: e.target.value });
-    setIsFormValid(e.target.value.trim() !== "");
+  const { name, value } = e.target;
+  const updatedForm = {
+    ...formData,
+    [name]: value
   };
+  setFormData(updatedForm);
+  setIsFormValid(
+    updatedForm.code.trim() !== "" &&
+    updatedForm.crossMatchType.trim() !== ""
+  );
+};
 
-  const handleBack = () => {
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({ crossMatchType: "" });
-    setIsFormValid(false);
-  };
-
+ const handleBack = () => {
+  setShowForm(false);
+  setEditingRecord(null);
+  setFormData({
+    code: "",
+    crossMatchType: ""
+  });
+  setIsFormValid(false);
+};
   /* -------- UI -------- */
   return (
     <div className="content-wrapper">
@@ -166,6 +182,7 @@ const CrossMatchType = () => {
               <table className="table table-bordered table-hover">
                 <thead>
                   <tr>
+                    <th>Code</th>
                     <th>Cross Match Type</th>
                     <th>Last Updated</th>
                     <th>Status</th>
@@ -175,6 +192,7 @@ const CrossMatchType = () => {
                 <tbody>
                   {currentItems.map(item => (
                     <tr key={item.id}>
+                      <td>{item.code}</td>
                       <td>{item.crossMatchType}</td>
                       <td>{item.lastUpdated}</td>
                       <td>
@@ -219,18 +237,33 @@ const CrossMatchType = () => {
             </>
           ) : (
             <form onSubmit={handleSave}>
+              <div className="row">
+                <div className="form-group col-md-6">
+                  <label> Code </label>
+                  <input
+                    type="text"
+                    name="code"
+                    className="form-control"
+                    value={formData.code}
+                    onChange={handleInputChange}
+                    placeholder="code"
+                    required
+                  />
+                </div>
               <div className="form-group col-md-6">
                 <label>Cross Match Type <span className="text-danger">*</span></label>
                 <input
                   type="text"
+                  name="crossMatchType"
                   className="form-control"
                   value={formData.crossMatchType}
                   maxLength={MAX_LENGTH}
                   onChange={handleInputChange}
+                  placeholder="cross match type"
                   required
                 />
               </div>
-
+</div>
               <div className="mt-3 text-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
                 <button className="btn btn-danger" type="button" onClick={handleBack}>Cancel</button>

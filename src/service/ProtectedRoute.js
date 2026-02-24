@@ -206,7 +206,6 @@ const validRoutes = [
   "/RadiologyPACSStudyList",
   "/BloodUnitStatus",
 
-  
   "/RadiologyTemplateMaster",
   "/PendingListRadiologyReport",
   "/DetailedRadiologyReportPage",
