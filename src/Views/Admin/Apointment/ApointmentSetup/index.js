@@ -183,7 +183,7 @@ const AppointmentSetup = () => {
     try {
       setLoading(true);
       setModifiedFields({});
-      const url = `${APPOINTMENT}/find?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
+      const url = `${APPOINTMENT}/getAppointmentSetup?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
       const data = await getRequest(url);
       if (data?.status === 200 && data?.response) {
         const { startTime, endTime, timeTaken, days } = data.response;
@@ -202,9 +202,7 @@ const AppointmentSetup = () => {
                 endTime:
                   dayConfig.endTime !== null ? String(dayConfig.endTime) : "",
                 startTime:
-                  dayConfig.startTime !== null
-                    ? String(dayConfig.startTime)
-                    : "",
+                  dayConfig.startTime !== null ? String(dayConfig.startTime) : "",
                 startToken:
                   dayConfig.startToken !== null
                     ? String(dayConfig.startToken)
@@ -303,9 +301,6 @@ const AppointmentSetup = () => {
       updatedDayConfig.startToken = "0";
       updatedDayConfig.totalInterval = "0";
       updatedDayConfig.totalOnlineToken = "0";
-      updatedDayConfig.startTime = "";
-      updatedDayConfig.endTime = "";
-      updatedDayConfig.opdLocation="";
     }
 
     if (
@@ -429,7 +424,7 @@ const AppointmentSetup = () => {
 
     try {
       setLoading(true);
-      const response = await postRequest(`${APPOINTMENT}/setup`, requestData);
+      const response = await postRequest(`${APPOINTMENT}/createAppointmentSetup`, requestData);
 
       if (response.status === 200) {
         showPopup(

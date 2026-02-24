@@ -146,6 +146,7 @@ const ViewSearchEmployee = () => {
   const [selectedDesignationId, setSelectedDesignationId] = useState("");
   const profileEditorRef = useRef(null);
   const profileInclusionRef = useRef(null);
+  const [isViewMode, setIsViewMode] = useState(false);
   const [existingFiles, setExistingFiles] = useState({
     profilePic: null,
     idDocument: null,
@@ -1382,7 +1383,7 @@ const ViewSearchEmployee = () => {
   const fetchEmployeeById = async (employeeId) => {
     setLoading(true);
     try {
-      const data = await getRequest(`${GET_EMPLOYEE_BY_ID}${employeeId}`);
+      const data = await getRequest(`${GET_EMPLOYEE_BY_ID}/${employeeId}`);
       if (data.status === 200 && data.response) {
         return data.response;
       }
@@ -1987,7 +1988,7 @@ const ViewSearchEmployee = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `${API_HOST}/${UPDATE_EMPLOYEE}${empUpdateId}`,
+        `${API_HOST}${UPDATE_EMPLOYEE}/${empUpdateId}`,
         {
           method: "PUT",
           headers: {
@@ -2130,7 +2131,14 @@ const ViewSearchEmployee = () => {
                               <button
                                 className="btn btn-sm btn-success"
                                 onClick={() => handleAnotherAction(employee)}
-                                disabled={employee.status !== "S"}
+                                onClick={() => {
+                                  if (employee.status === "S") {
+                                    setIsViewMode(false);
+                                  } else {
+                                    setIsViewMode(true);
+                                  }
+                                  handleAnotherAction(employee);
+                                }}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -2161,10 +2169,11 @@ const ViewSearchEmployee = () => {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              handleSave();
+              if (!isViewMode) handleSave();
             }}
             className="forms row"
           >
+             <fieldset disabled={isViewMode}>
             <div className="g-3 row">
               <div className="col-md-9">
                 <div className="g-3 row">
@@ -3975,6 +3984,7 @@ const ViewSearchEmployee = () => {
                 Cancel
               </button>
             </div>
+            </fieldset>
           </form>
         )}
       </div>

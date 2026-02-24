@@ -872,6 +872,36 @@ export const FAIL_EARWEB = "Save failed";
 export const UPDATE_FAIL_EARWEB = "Status update failed";
 
 
+
+//BloodDonationType
+export const   FETCH_BLOOD_DONATION =  "Fail to fetch records";
+export const DUPLICATE_BLOOD_DONATION = "BloodDonation Value already exists";
+export const UPDATE_BLOOD_DONATION =  "Record updated successfully";
+export const ADD_BLOOD_DONATION = "Record added successfully";;
+export const FAIL_BLOOD_DONATION = "Save failed";
+export const UPDATE_FAIL_BLOOD_DONATION = "Status update failed";
+
+
+
+//Bloodunitstaus
+export const FETCH_BLOOD_UNIT = "Failed to fetch Blood Unit records";
+export const DUPLICATE_BLOOD_UNIT = "Duplicate Unit Code or Status found";
+export const UPDATE_BLOOD_UNIT = "Blood Unit updated successfully";
+export const ADD_BLOOD_UNIT  = "Blood Unit added successfully";
+export const FAIL_BLOOD_UNIT = "Failed to save record";
+export const UPDATE_FAIL_BLOOD_UNIT = "Failed to update status";
+
+
+//CervixConsistencyMaster
+export const FETCH_CERVIX_CONSISTENCY = "Failed to fetch records";
+export const DUPLICATE_CERVIX_CONSISTENCY = "Duplicate Cervix Consistency";
+export const UPDATE_CERVIX_CONSISTENCY = "Record updated successfully";
+export const ADD_CERVIX_CONSISTENCY = "New record added successfully";
+export const FAIL_CERVIX_CONSISTENCY = "Save failed";
+export const UPDATE_FAIL_CERVIX_CONSISTENCY = "Status update failed";
+
+
+
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
 export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";
@@ -999,4 +1029,11 @@ export const SUCCESS_INDENT_SAVED_PRINT ="Indent saved successfully! Do you want
 export const SUCCESS_INDENT_SUBMITTED_PRINT = "Indent submitted successfully! Do you want to print report ?";
 export const ERROR_SAVE_SUBMIT_INDENT = (backendStatus) =>
   `Error ${backendStatus === "S" ? "saving" : "submitting"} indent. Please try again.`;
+
+//Radiology template master
+export const FETCH_RADIOLOGY_TEMPLATE_ERR_MSG = "Failed to fetch radiology template data";
+export const ADD_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template added successfully!";
+export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated successfully!";
+export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
+export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
         

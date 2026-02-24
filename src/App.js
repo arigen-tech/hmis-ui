@@ -98,7 +98,7 @@ import IssueReferenceReport from './Views/WardPharmacy/IssueRefReport';
 import PendingIndent from './Views/WardPharmacy/PendingIndent';
 import TrackIndent from './Views/WardPharmacy/TrackIndent';
 import ViewUpdateIndent from './Views/WardPharmacy/View Update Indent';
-
+import BloodComponentMaster from './Views/Masters/BloodComponentMaster';
 import FamilyHistoryMaster from './Views/Masters/FamilyHistoryMaster';
 import PatientAdmission from './Views/Masters/PatientAdmission';
 import ProcedureMaster from './Views/Masters/ProcedureMaster';
@@ -183,6 +183,7 @@ import BloodDonationHDR from './Views/Masters/BloodDonationHDR';
 import BloodInventoryStatus from './Views/Masters/BloodInventoryStatus';
 import BloodTestMaster from './Views/Masters/BloodTestMaster';
 import BloodDonationType from './Views/Masters/BloodDonationType';
+import BloodCompatibilityMaster from './Views/Masters/BloodCompatibilityMaster';
 import CrossMatchType from './Views/Masters/CrossMatchType';
 import XRAYInvestigation from './Views/Radiology/XRAYInvestigation';
 import WardManagement from './Views/IPD/WardManagement';
@@ -199,7 +200,8 @@ import PendingBloodCollection from './Views/BloodBank/PendingForBloodCollection'
 import PendingForMandatoryTestingList from './Views/BloodBank/PendingForMandatoryTestingList';
 import PendingComponentGeneration from './Views/BloodBank/PendingComponentGeneration';
 import BloodUnitStatus from './Views/Masters/BloodUnitStatus';
-import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';import RadiologyTemplateMaster from './Views/Radiology/RadiologyTemplateMaster';
+import RadiologyPACSStudyList from './Views/Radiology/RadiologyPACSStudyList';
+import RadiologyTemplateMaster from './Views/Radiology/RadiologyTemplateMaster';
 import PendignListRadiologyReport from './Views/Radiology/PendingListRadiologyReport';
 import DetailedRadiologyReportPage from './Views/Radiology/DetailedReportPage';
 
@@ -416,6 +418,7 @@ function App() {
                 <Route path="/BloodDonationHDR" element={<BloodDonationHDR />} />
                 <Route path="/BloodInventoryStatus" element={<BloodInventoryStatus />} />
                 <Route path="/BloodTestMaster" element={<BloodTestMaster />} />
+                <Route path ="/BloodCompatibilityMaster" element={<BloodCompatibilityMaster />} />
                 <Route path="/CrossMatchType" element={<CrossMatchType />} />
                 <Route path="/BagTypeMaster" element={<BagTypeMaster />} />
                 <Route path="/BloodCollectionTypeMaster" element={<BloodCollectionTypeMaster />} />
@@ -439,6 +442,7 @@ function App() {
                 <Route path="/RadiologyTemplateMaster" element={<RadiologyTemplateMaster/>} />
                 <Route path="/PendingListRadiologyReport" element={<PendignListRadiologyReport/>} />
                 <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
+                <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
               </Route>
             </Route>
 

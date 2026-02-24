@@ -108,7 +108,7 @@ export const DEPARTMENT = `/department`;
 export const ALL_DEPARTMENT = `${MASTERS}/department/getAll`;
 export const DOCTOR = `/users`;
 export const SESSION = `/opd-session`;
-export const APPOINTMENT = `/app`;
+export const APPOINTMENT = `/admin`;
 export const LOGIN = `/authController/login`;
 export const ALL_GENDER = `${MASTERS}/gender/getAll`;
 export const ALL_RELATION = `${MASTERS}/relation/getAll`;
@@ -148,8 +148,8 @@ export const APPLICATION = `/mas-applications`;
 export const ASSIGN_TEMPLATES = `/template-applications`;
 export const ROLE_TEMPLATE = `/role-template`;
 export const IDENTITY_TYPE = `/identification-types`;
-export const DOCTOR_ROSTER = `/doctor`;
-export const GET_DOCTOR_SESSION = `/doctor/rosterfind?`;
+export const DOCTOR_ROSTER = `/admin`;
+export const GET_DOCTOR_SESSION = `/admin/getDoctorRoster?`;
 
 export const GET_AVAILABILITY_TOKENS = `/doctor/checkAllAvailableTokens`;
 export const GET_APPOINTMENT_HISTORY = `/mobileController/getAppointmentHistoryList`;
@@ -236,7 +236,9 @@ export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 export const MAS_TONSIL_GRADE = `${MASTERS}/entMasTonsilGrade`;
 export const MAS_OB_TRIMESTER = `${MASTERS}/obMasTrimester`;
 export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
-
+export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
+export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
+export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;
 export const BILLING = `${LAB}/billingStatus`;
 export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
 export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;
@@ -301,4 +303,8 @@ export const UPDATE_PATIENT_STATUS = `/registration/updatepaymentstatus`;
 export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
+export const GET_TOKENS = `/patient/getAppointmentSlots`;
+
+
+export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 

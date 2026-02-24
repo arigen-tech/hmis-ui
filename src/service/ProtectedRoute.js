@@ -184,7 +184,7 @@ const validRoutes = [
   "/BloodDonationStatusMaster",
   "/BloodCompatibilityMaster",
   "/BloodFailureReasonMaster",
-  "/BloodComponentMaster",
+   "/BloodComponentMaster",
   "/WardManagement",
   "/PatientRegistrationRadiologyBooking",
   "/RadiologyBookingRegisteredPatient",
@@ -206,7 +206,6 @@ const validRoutes = [
   "/RadiologyPACSStudyList",
   "/BloodUnitStatus",
 
-  
   "/RadiologyTemplateMaster",
   "/PendingListRadiologyReport",
   "/DetailedRadiologyReportPage",

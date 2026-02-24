@@ -1,9 +1,20 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { RADIOLOGY_TEMPLATE } from "../../../config/apiConfig";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import { 
+  ADD_RADIOLOGY_TEMPLATE_SUCC_MSG, 
+  DUPLICATE_RADIOLOGY_TEMPLATE, 
+  FAIL_TO_SAVE_CHANGES, 
+  FAIL_TO_UPDATE_STS, 
+  FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, 
+  UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG,
+  FETCH_MODALITY_ERR_MSG 
+} from "../../../config/constants";
 
 const RadiologyTemplateMaster = () => {
   const [loading, setLoading] = useState(false);
@@ -13,6 +24,8 @@ const RadiologyTemplateMaster = () => {
   const [editingTemplate, setEditingTemplate] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, templateId: null, newStatus: false });
+  const [modalityDropdown, setModalityDropdown] = useState([]);
+  const [templateData, setTemplateData] = useState([]);
   
   // Refs for CKEditor toolbar and editor instance for Template Description
   const templateEditorRef = useRef(null);
@@ -27,71 +40,91 @@ const RadiologyTemplateMaster = () => {
     status: "y"
   });
 
-  // Mock template data
-  const [templateData, setTemplateData] = useState([
-    {
-      id: 1,
-      code: "XRC001",
-      templateName: "X-Ray Chest Template",
-      modality: "X-Ray",
-      templateDescription: "<p>Standard template for chest X-ray reporting including heart size, lung fields, and bony structures.</p>",
-      status: "y"
-    },
-    {
-      id: 2,
-      code: "MRIB002",
-      templateName: "MRI Brain Template",
-      modality: "MRI",
-      templateDescription: "<p>Comprehensive template for brain MRI including T1, T2, FLAIR sequences and contrast enhancement.</p>",
-      status: "y"
-    },
-    {
-      id: 3,
-      code: "CTA003",
-      templateName: "CT Abdomen Template",
-      modality: "CT",
-      templateDescription: "<p>Template for CT abdomen reporting covering liver, pancreas, kidneys, and other abdominal organs.</p>",
-      status: "n"
-    },
-    {
-      id: 4,
-      code: "USP004",
-      templateName: "Ultrasound Pelvis Template",
-      modality: "Ultrasound",
-      templateDescription: "<p>Standard template for pelvic ultrasound including uterus, ovaries, and bladder assessment.</p>",
-      status: "y"
-    },
-    {
-      id: 5,
-      code: "MAM005",
-      templateName: "Mammography Template",
-      modality: "Mammography",
-      templateDescription: "<p>Template for mammography reporting including breast density, masses, calcifications, and architectural distortion.</p>",
-      status: "y"
-    }
-  ]);
-
-  // Modality options
-  const modalityOptions = [
-    "X-Ray",
-    "MRI",
-    "CT",
-    "Ultrasound",
-    "Mammography",
-    "Fluoroscopy",
-    "Angiography",
-    "Nuclear Medicine",
-    "PET-CT",
-    "DEXA"
-  ];
-
   const TEMPLATE_NAME_MAX_LENGTH = 100;
   const CODE_MAX_LENGTH = 10;
+
+  // Function to format date as dd-MM-YYYY
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+
+    try {
+      const date = new Date(dateString);
+
+      // Check if date is valid
+      if (isNaN(date.getTime())) {
+        return "N/A";
+      }
+
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "N/A";
+    }
+  };
+
+
+  const stripHtmlTags = (html) => {
+  if (!html) return '';
+  const tmp = document.createElement('DIV');
+  tmp.innerHTML = html;
+  return tmp.textContent || tmp.innerText || '';
+};
+
+  // Fetch radiology template data - FIXED: Changed item.templateId to item.pacsTemplateId
+  const fetchRadiologyTemplateData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${RADIOLOGY_TEMPLATE}/getAll/${flag}`);
+      if (response && response.response) {
+        const mappedData = response.response.map(item => ({
+          id: item.pacsTemplateId, // FIXED: Changed from item.templateId to item.pacsTemplateId
+          code: item.templateCode,
+          templateName: item.templateName,
+          modalityId: item.subChargecodeId,        
+          modalityName: item.subChargeCodeName,    
+          templateDescription: item.templateText,
+          status: item.status,
+          lastUpdated: formatDate(item.lastUpdateDate)
+        }));
+        setTemplateData(mappedData);
+      }
+    } catch (err) {
+      console.error("Error fetching radiology template data:", err);
+      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch modality dropdown data
+  const fetchModalityDropdownData = async () => {
+    try {
+      const response = await getRequest(`/general/getModalityDetailsByDepartment?code=RADIMG`);
+      if (response && response.response) {
+        const modalityValue = response.response.map(mod => ({
+          id: mod.id,
+          modality: mod.modalityName
+        }));
+        setModalityDropdown(modalityValue);
+      }
+    } catch (err) {
+      console.error("Error fetching modality dropdown data:", err);
+      showPopup(FETCH_MODALITY_ERR_MSG, "error");
+    }
+  };
+
+  useEffect(() => {
+    fetchRadiologyTemplateData(0);
+    fetchModalityDropdownData();
+  }, []);
 
   // Filter templates based on search query
   const filteredTemplateData = templateData.filter(template =>
     template.templateName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    template.modality.toLowerCase().includes(searchQuery.toLowerCase()) ||
     template.code.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -100,10 +133,14 @@ const RadiologyTemplateMaster = () => {
   const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredTemplateData.slice(indexOfFirstItem, indexOfLastItem);
 
+  // Reset to page 1 when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
   // Handle search change
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
-    setCurrentPage(1);
   };
 
   // Handle input change
@@ -118,46 +155,85 @@ const RadiologyTemplateMaster = () => {
     setFormData((prevData) => ({ ...prevData, templateDescription: data }));
   };
 
-  // Handle edit
+  // Handle edit - Added console log for debugging
   const handleEdit = (template) => {
+    console.log("Editing template:", template); // Debug log
     setEditingTemplate(template);
     setFormData({
       code: template.code,
       templateName: template.templateName,
-      modality: template.modality,
+      modality: template.modalityId ? String(template.modalityId) : "",       
       templateDescription: template.templateDescription,
       status: template.status
     });
     setShowForm(true);
   };
 
-  // Handle save
-  const handleSave = (e) => {
+  // Handle save - FIXED: Updated the request body property names
+  const handleSave = async (e) => {
     e.preventDefault();
     
-    if (editingTemplate) {
-      // Update existing template
-      setTemplateData(templateData.map(template =>
-        template.id === editingTemplate.id 
-          ? { ...template, ...formData }
-          : template
-      ));
-      showPopup("Template updated successfully!", "success");
-    } else {
-      // Add new template
-      const newTemplate = {
-        id: templateData.length + 1,
-        ...formData,
-        status: "y"
-      };
-      setTemplateData([...templateData, newTemplate]);
-      showPopup("Template added successfully!", "success");
-    }
+    try {
+      setLoading(true);
 
-    // Reset form
-    setEditingTemplate(null);
-    setFormData({ code: "", templateName: "", modality: "", templateDescription: "", status: "y" });
-    setShowForm(false);
+      // Check for duplicates
+      const isDuplicate = templateData.some(
+        (template) =>
+          (template.code.toLowerCase() === formData.code.toLowerCase() ||
+           template.templateName.toLowerCase() === formData.templateName.toLowerCase()) &&
+          (!editingTemplate || editingTemplate.id !== template.id)
+      );
+
+      if (isDuplicate) {
+        showPopup(DUPLICATE_RADIOLOGY_TEMPLATE, "error");
+        setLoading(false);
+        return;
+      }
+
+      // Convert modality to number
+      const modalityId = parseInt(formData.modality, 10);
+
+      if (editingTemplate) {
+        console.log("Updating template with ID:", editingTemplate.id); // Debug log
+        
+        // Update existing template - FIXED: Using pacsTemplateId instead of templateId
+        const response = await putRequest(`${RADIOLOGY_TEMPLATE}/update/${editingTemplate.id}`, {
+          pacsTemplateId: editingTemplate.id, // FIXED: Changed from templateId to pacsTemplateId
+          templateCode: formData.code,
+          templateName: formData.templateName,
+          subChargecodeId: modalityId,
+          templateText: formData.templateDescription,
+        });
+
+        if (response && response.status === 200) {
+          fetchRadiologyTemplateData();
+          showPopup(UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG, "success");
+        }
+      } else {
+        // Add new template
+        const response = await postRequest(`${RADIOLOGY_TEMPLATE}/create`, {
+          templateCode: formData.code,
+          templateName: formData.templateName,
+          subChargecodeId: modalityId,
+          templateText: formData.templateDescription,
+        });
+
+        if (response && response.status === 200) {
+          fetchRadiologyTemplateData();
+          showPopup(ADD_RADIOLOGY_TEMPLATE_SUCC_MSG, "success");
+        }
+      }
+
+      // Reset form
+      setEditingTemplate(null);
+      setFormData({ code: "", templateName: "", modality: "", templateDescription: "", status: "y" });
+      setShowForm(false);
+    } catch (err) {
+      console.error("Error saving radiology template data:", err);
+      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Handle cancel
@@ -171,6 +247,8 @@ const RadiologyTemplateMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchRadiologyTemplateData();
+    fetchModalityDropdownData();
   };
 
   // Handle status change
@@ -179,19 +257,38 @@ const RadiologyTemplateMaster = () => {
   };
 
   // Handle confirm status change
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.templateId !== null) {
-      setTemplateData((prevData) =>
-        prevData.map((template) =>
-          template.id === confirmDialog.templateId
-            ? { ...template, status: confirmDialog.newStatus }
-            : template
-        )
-      );
-      showPopup(
-        `Template ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-        "success"
-      );
+      try {
+        setLoading(true);
+
+        const response = await putRequest(
+          `${RADIOLOGY_TEMPLATE}/update-status/${confirmDialog.templateId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response && response.response) {
+          setTemplateData((prevData) =>
+            prevData.map((template) =>
+              template.id === confirmDialog.templateId
+                ? {
+                    ...template,
+                    status: confirmDialog.newStatus,
+                    lastUpdated: formatDate(new Date().toISOString())
+                  }
+                : template
+            )
+          );
+          showPopup(
+            `Template ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success"
+          );
+        }
+      } catch (err) {
+        console.error("Error updating radiology template status:", err);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setLoading(false);
+      }
     }
     setConfirmDialog({ isOpen: false, templateId: null, newStatus: null });
   };
@@ -235,17 +332,26 @@ const RadiologyTemplateMaster = () => {
 
                 <div className="d-flex align-items-center">
                   {!showForm ? (
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={() => {
-                        setEditingTemplate(null);
-                        setFormData({ code: "", templateName: "", modality: "", templateDescription: "", status: "y" });
-                        setShowForm(true);
-                      }}
-                    >
-                      <i className="mdi mdi-plus"></i> Add 
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setEditingTemplate(null);
+                          setFormData({ code: "", templateName: "", modality: "", templateDescription: "", status: "y" });
+                          setShowForm(true);
+                        }}
+                      >
+                        <i className="mdi mdi-plus"></i> Add 
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={handleRefresh}
+                      >
+                        <i className="mdi mdi-refresh"></i> Show All
+                      </button>
+                    </>
                   ) : (
                     <button 
                       type="button" 
@@ -272,7 +378,6 @@ const RadiologyTemplateMaster = () => {
                           <th>Template Name</th>
                           <th>Modality</th>
                           <th>Description</th>
-                          <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
@@ -281,43 +386,15 @@ const RadiologyTemplateMaster = () => {
                           currentItems.map((template) => (
                             <tr key={template.id}>
                               <td>
-                                <span >{template.code}</span>
+                                <span>{template.code}</span>
                               </td>
                               <td>{template.templateName}</td>
-                              <td>
-                                <span >{template.modality}</span>
-                              </td>
-                              <td>
-                                <div 
-                                  dangerouslySetInnerHTML={{ 
-                                    __html: template.templateDescription.length > 50 
-                                      ? template.templateDescription.substring(0, 50) + "..." 
-                                      : template.templateDescription 
-                                  }} 
-                                />
-                              </td>
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={template.status === "y"}
-                                    onChange={() => handleSwitchChange(template.id, template.status === "y" ? "n" : "y")}
-                                    id={`switch-${template.id}`}
-                                  />
-                                  <label
-                                    className="form-check-label px-0"
-                                    htmlFor={`switch-${template.id}`}
-                                  >
-                                    {template.status === "y" ? 'Active' : 'Inactive'}
-                                  </label>
-                                </div>
-                              </td>
+                              <td>{template.modalityName}</td>
+                              <td>{stripHtmlTags(template.templateDescription)}</td>
                               <td>
                                 <button
                                   className="btn btn-sm btn-success"
                                   onClick={() => handleEdit(template)}
-                                  disabled={template.status !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -326,7 +403,7 @@ const RadiologyTemplateMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">No templates found</td>
+                            <td colSpan="5" className="text-center">No templates found</td>
                           </tr>
                         )}
                       </tbody>
@@ -382,9 +459,9 @@ const RadiologyTemplateMaster = () => {
                       required
                     >
                       <option value="">Select Modality</option>
-                      {modalityOptions.map((modality, index) => (
-                        <option key={index} value={modality}>
-                          {modality}
+                      {modalityDropdown.map((modality, index) => (
+                        <option key={index} value={modality.id}>
+                          {modality.modality}
                         </option>
                       ))}
                     </select>
@@ -434,16 +511,17 @@ const RadiologyTemplateMaster = () => {
                     <button 
                       type="submit" 
                       className="btn btn-primary me-2"
-                      disabled={!formData.code || !formData.templateName || !formData.modality || !formData.templateDescription}
+                      disabled={!formData.code || !formData.templateName || !formData.modality || !formData.templateDescription || loading}
                     >
-                      <i className="mdi mdi-content-save"></i> Save
+                      {loading ? "Saving..." : (editingTemplate ? 'Update' : 'Save')}
                     </button>
                     <button 
                       type="button" 
                       className="btn btn-danger" 
                       onClick={handleCancel}
+                      disabled={loading}
                     >
-                      <i className="mdi mdi-cancel"></i> Cancel
+                      Cancel
                     </button>
                   </div>
                 </form>
@@ -461,17 +539,17 @@ const RadiologyTemplateMaster = () => {
               {/* Confirmation Dialog */}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-                  <div className="modal-dialog" role="document">
+                  <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
                         <button 
                           type="button" 
-                          className="close" 
+                          className="btn-close" 
                           onClick={() => handleConfirm(false)}
-                        >
-                          <span>&times;</span>
-                        </button>
+                          aria-label="Close"
+                          disabled={loading}
+                        ></button>
                       </div>
                       <div className="modal-body">
                         <p>
@@ -483,15 +561,17 @@ const RadiologyTemplateMaster = () => {
                           type="button" 
                           className="btn btn-secondary" 
                           onClick={() => handleConfirm(false)}
+                          disabled={loading}
                         >
-                          No
+                          Cancel
                         </button>
                         <button 
                           type="button" 
                           className="btn btn-primary" 
                           onClick={() => handleConfirm(true)}
+                          disabled={loading}
                         >
-                          Yes
+                          {loading ? "Processing..." : "Confirm"}
                         </button>
                       </div>
                     </div>

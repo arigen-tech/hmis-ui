@@ -5,6 +5,7 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 
 const BloodDonationStatusMaster = () => {
     const [formData, setFormData] = useState({
+        statusCode: "",
         statusName: "",
         description: "",
     });
@@ -18,13 +19,13 @@ const BloodDonationStatusMaster = () => {
     const [currentPage, setCurrentPage] = useState(1);
 
     const [donationStatusData, setDonationStatusData] = useState([
-        { id: 1, statusName: "Pending", description: "Donation request pending", status: "y" },
-        { id: 2, statusName: "Scheduled", description: "Donation appointment scheduled", status: "y" },
-        { id: 3, statusName: "In Progress", description: "Donation in progress", status: "y" },
-        { id: 4, statusName: "Completed", description: "Donation successfully completed", status: "y" },
-        { id: 5, statusName: "Cancelled", description: "Donation cancelled", status: "y" },
-        { id: 6, statusName: "Deferred", description: "Donor temporarily deferred", status: "y" },
-        { id: 7, statusName: "Rejected", description: "Donation rejected", status: "y" },
+  { id: 1, statusCode: "P",  statusName: "Pending",     description: "Donation request pending",          status: "y" },
+  { id: 2, statusCode: "S",  statusName: "Scheduled",   description: "Donation appointment scheduled",    status: "y" },
+  { id: 3, statusCode: "IP", statusName: "In Progress", description: "Donation in progress",               status: "y" },
+  { id: 4, statusCode: "C",  statusName: "Completed",   description: "Donation successfully completed",   status: "y" },
+  { id: 5, statusCode: "X",  statusName: "Cancelled",   description: "Donation cancelled",                status: "y" },
+  { id: 6, statusCode: "D",  statusName: "Deferred",    description: "Donor temporarily deferred",         status: "y" },
+  { id: 7, statusCode: "R",  statusName: "Rejected",    description: "Donation rejected",                 status: "y" }
     ]);
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, donationStatusId: null, newStatus: false });
@@ -57,19 +58,20 @@ const BloodDonationStatusMaster = () => {
     const handleSave = (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-
+        const updateStatusCode = e.target.elements.statusCode.value;
         const updatedStatusName = e.target.elements.statusName.value;
         const updatedDescription = e.target.elements.description.value;
 
         if (editingDonationStatus) {
             setDonationStatusData(donationStatusData.map(donationStatus =>
                 donationStatus.id === editingDonationStatus.id
-                    ? { ...donationStatus, statusName: updatedStatusName, description: updatedDescription }
+                    ? { ...donationStatus, statusCode: updateStatusCode, statusName: updatedStatusName, description: updatedDescription }
                     : donationStatus
             ));
         } else {
             const newDonationStatus = {
                 id: donationStatusData.length + 1,
+                statusCode: updateStatusCode,
                 statusName: updatedStatusName,
                 description: updatedDescription,
                 status: "y"
@@ -79,7 +81,7 @@ const BloodDonationStatusMaster = () => {
 
         setEditingDonationStatus(null);
         setShowForm(false);
-        setFormData({ statusName: "", description: "" });
+        setFormData({ statusCode: "", statusName: "", description: "" });
         setIsFormValid(false);
         showPopup("Changes saved successfully!", "success");
     };
@@ -202,6 +204,7 @@ const BloodDonationStatusMaster = () => {
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
+                                                <th>Status Code</th>
                                                 <th>Status Name</th>
                                                 <th>Description</th>
                                                 <th>Status</th>
@@ -211,6 +214,7 @@ const BloodDonationStatusMaster = () => {
                                         <tbody>
                                             {currentItems.map((donationStatus) => (
                                                 <tr key={donationStatus.id}>
+                                                    <td>{donationStatus.statusCode}</td>
                                                     <td>{donationStatus.statusName}</td>
                                                     <td>{donationStatus.description}</td>
                                                     <td>
@@ -256,6 +260,18 @@ const BloodDonationStatusMaster = () => {
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
+                                    <div className="form-group col-md-4">
+                                        <label>Status Code <span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="statusCode"
+                                            placeholder="Enter status code"
+                                            value={formData.statusCode}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
                                     <div className="form-group col-md-4">
                                         <label>Status Name <span className="text-danger">*</span></label>
                                         <input

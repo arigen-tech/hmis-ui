@@ -14,9 +14,9 @@ import {
   CHECH_DUPLICATE_PATIENT,
   DISTRICT_BY_STATE,
   DOCTOR_BY_SPECIALITY,
-  GET_AVAILABILITY_TOKENS,
   GET_DOCTOR_SESSION,
   GET_SESSION,
+  GET_TOKENS,
   HOSPITAL,
   MAS_SERVICE_CATEGORY,
   PATIENT_IMAGE_UPLOAD,
@@ -271,7 +271,7 @@ const PatientRegistration = () => {
         sessionId: targetAppointment.selSession,
       }).toString();
 
-      const url = `${GET_AVAILABILITY_TOKENS}/0?${params}`;
+      const url = `${GET_TOKENS}/0?${params}`;
       const data = await getRequest(url);
 
       if (data.status === 400) {

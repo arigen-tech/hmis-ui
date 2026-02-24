@@ -259,6 +259,7 @@ const Header = () => {
                   <div className="u-info me-2 animate-pulse space-y-1 text-end">
                     <div className="h-4 bg-gray-300 rounded w-24 ml-auto"></div>
                     <div className="h-3 bg-gray-200 rounded w-20 ml-auto"></div>
+                    <div className="h-3 bg-gray-200 rounded w-16 ml-auto"></div>
                   </div>
                 ) : (
                   <div className="u-info me-2 text-end position-relative" ref={dropdownRef}>
@@ -293,6 +294,12 @@ const Header = () => {
                         )}
                       </strong>
                     </small>
+
+                    {/* Department name from sessionStorage */}
+                    <div className=" mt-1">
+                      <i className="icofont-building me-1"></i>
+                      Department: {sessionStorage.getItem("departmentName") || "N/A"}
+                    </div>
 
                     {/* Dropdown List of Roles */}
                     {showDropdown && (
