@@ -1,37 +1,30 @@
-import { useState, useEffect } from "react"
+
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 
 
+
 const BloodComponentMaster = () => {
-    const [formData, setFormData] = useState({ componentName: "", description: "" });
+    const [formData, setFormData] = useState({ componentCode: "", componentName: "", description: "", storageTemp: "", shelfLifeDays: "", lastUpdateDate: "" });
     const [showForm, setShowForm] = useState(false);
     const [isFormValid, setIsFormValid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingComponent, setEditingComponent] = useState(null);
     const [popupMessage, setPopupMessage] = useState(null);
     const [searchQuery, setSearchQuery] = useState("");
-    const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
-
-
+    const [editingComponent, setEditingComponent] = useState(null);
 
     const [componentData, setComponentData] = useState([
-        { id: 1, componentName: "Packed Red Blood Cells", description: "Red blood cells separated from plasma", status: "y" },
-        { id: 2, componentName: "Fresh Frozen Plasma", description: "Plasma frozen within 8 hours of collection", status: "y" },
-        { id: 3, componentName: "Platelets Concentrate", description: "Platelets separated from whole blood", status: "y" },
-        { id: 4, componentName: "Cryoprecipitate", description: "Concentrated clotting factors", status: "y" },
-        { id: 5, componentName: "Whole Blood", description: "Unseparated blood collection", status: "y" },
-        { id: 6, componentName: "Leukoreduced RBCs", description: "Red blood cells with reduced leukocytes", status: "y" },
+        { id: 1, componentCode: "PRBC001", componentName: "Packed Red Blood Cells", description: "Red blood cells separated from plasma", storageTemp: "2-6°C", shelfLifeDays: 42, lastUpdateDate: "2025-12-01", status: "y" },
+        { id: 2, componentCode: "FFP001", componentName: "Fresh Frozen Plasma", description: "Plasma frozen within 8 hours of collection", storageTemp: "-18°C", shelfLifeDays: 365, lastUpdateDate: "2025-11-20", status: "y" },
+        { id: 3, componentCode: "PLT001", componentName: "Platelets Concentrate", description: "Platelets separated from whole blood", storageTemp: "20-24°C", shelfLifeDays: 5, lastUpdateDate: "2025-12-05", status: "y" },
     ]);
-
-    
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, componentId: null, newStatus: false });
 
-
     const filteredComponents = componentData.filter(component =>
+        component.componentCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
         component.componentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
         component.description.toLowerCase().includes(searchQuery.toLowerCase())
     );
@@ -43,7 +36,14 @@ const BloodComponentMaster = () => {
 
     const handleEdit = (component) => {
         setEditingComponent(component);
-        setFormData({ componentName: component.componentName, description: component.description || "" });
+        setFormData({
+            componentCode: component.componentCode,
+            componentName: component.componentName,
+            description: component.description,
+            storageTemp: component.storageTemp,
+            shelfLifeDays: component.shelfLifeDays,
+            lastUpdateDate: component.lastUpdateDate,
+        });
         setShowForm(true);
     };
 
@@ -51,25 +51,20 @@ const BloodComponentMaster = () => {
         setCurrentPage(1);
     }, [searchQuery]);
 
-
     const handleSave = (e) => {
         e.preventDefault();
         if (!isFormValid) return;
 
-        const updatedComponentName = e.target.elements.componentName.value;
-        const updatedDescription = e.target.elements.description.value;
-
         if (editingComponent) {
             setComponentData(componentData.map(component =>
                 component.id === editingComponent.id
-                    ? { ...component, componentName: updatedComponentName, description: updatedDescription }
+                    ? { ...component, ...formData }
                     : component
             ));
         } else {
             const newComponent = {
                 id: componentData.length + 1,
-                componentName: updatedComponentName,
-                description: updatedDescription,
+                ...formData,
                 status: "y"
             };
             setComponentData([...componentData, newComponent]);
@@ -77,7 +72,7 @@ const BloodComponentMaster = () => {
 
         setEditingComponent(null);
         setShowForm(false);
-        setFormData({ componentName: "", description: "" });
+        setFormData({ componentCode: "", componentName: "", description: "", storageTemp: "", shelfLifeDays: "", lastUpdateDate: "" });
         setIsFormValid(false);
         showPopup("Changes saved successfully!", "success");
     };
@@ -86,32 +81,19 @@ const BloodComponentMaster = () => {
         setPopupMessage({
             message,
             type,
-            onClose: () => {
-                setPopupMessage(null);
-            }
+            onClose: () => { setPopupMessage(null); }
         });
     };
 
+    
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         setFormData((prevData) => ({ ...prevData, [id]: value }));
 
-        const isComponentNameValid = id === "componentName" ? value.trim() !== "" : formData.componentName.trim() !== "";
-        const isDescriptionValid = true;
-
-        setIsFormValid(isComponentNameValid && isDescriptionValid);
+        const isCodeValid = id === "componentCode" ? value.trim() !== "" : formData.componentCode.trim() !== "";
+        const isNameValid = id === "componentName" ? value.trim() !== "" : formData.componentName.trim() !== "";
+        setIsFormValid(isCodeValid && isNameValid);
     };
-
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (formData.componentName) {
-            setComponentData([...componentData, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ componentName: "", description: "" })
-            setShowForm(false)
-        } else {
-            alert("Please fill out all required fields.")
-        }
-    }
 
     const handleSwitchChange = (id, newStatus) => {
         setConfirmDialog({ isOpen: true, componentId: id, newStatus });
@@ -128,12 +110,9 @@ const BloodComponentMaster = () => {
         setConfirmDialog({ isOpen: false, componentId: null, newStatus: null });
     };
 
-
-
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredComponents.slice(indexOfFirst, indexOfLast);
-
 
     return (
         <div className="content-wrapper">
@@ -154,54 +133,55 @@ const BloodComponentMaster = () => {
                                                 aria-label="Search"
                                                 value={searchQuery}
                                                 onChange={handleSearch}
-
                                             />
-                                            <span className="input-group-text" id="search-icon">
+                                            <span className="input-group-text">
                                                 <i className="fa fa-search"></i>
                                             </span>
                                         </div>
                                     </form>
-                                ) : (
-                                    <></>
-                                )}
-
+                                ) : null}
 
                                 <div className="d-flex align-items-center">
+
                                     {!showForm ? (
                                         <>
-
                                             <button type="button" className="btn btn-success me-2" onClick={() => {
                                                 setShowForm(true);
-                                                setFormData({ componentName: "", description: "" });
+                                                setFormData({ componentCode: "", componentName: "", description: "", storageTemp: "", shelfLifeDays: "", lastUpdateDate: "" });
                                                 setEditingComponent(null);
                                             }}>
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-plus"></i> Show All
+                                            <button type="button" className="btn btn-success me-2">
+                                                <i className="mdi mdi-format-list-bulleted"></i> Show All
                                             </button>
-
                                         </>
                                     ) : (
                                         <button type="button" className="btn btn-secondary" onClick={() => {
                                             setShowForm(false);
                                             setEditingComponent(null);
-                                            setFormData({ componentName: "", description: "" });
+                                            setFormData({ componentCode: "", componentName: "", description: "", storageTemp: "", shelfLifeDays: "", lastUpdateDate: "" });
                                         }}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     )}
+
                                 </div>
                             </div>
                         </div>
+
                         <div className="card-body">
                             {!showForm ? (
                                 <div className="table-responsive packagelist">
                                     <table className="table table-bordered table-hover align-middle">
                                         <thead className="table-light">
                                             <tr>
+                                                <th>Component Code</th>
                                                 <th>Component Name</th>
                                                 <th>Description</th>
+                                                <th>Storage Temp</th>
+                                                <th>Shelf Life Days</th>
+                                                <th>Last Update Date</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>
@@ -209,8 +189,12 @@ const BloodComponentMaster = () => {
                                         <tbody>
                                             {currentItems.map((component) => (
                                                 <tr key={component.id}>
+                                                    <td>{component.componentCode}</td>
                                                     <td>{component.componentName}</td>
                                                     <td>{component.description}</td>
+                                                    <td>{component.storageTemp}</td>
+                                                    <td>{component.shelfLifeDays}</td>
+                                                    <td>{component.lastUpdateDate}</td>
                                                     <td>
                                                         <div className="form-check form-switch">
                                                             <input
@@ -218,12 +202,8 @@ const BloodComponentMaster = () => {
                                                                 type="checkbox"
                                                                 checked={component.status === "y"}
                                                                 onChange={() => handleSwitchChange(component.id, component.status === "y" ? "n" : "y")}
-                                                                id={`switch-${component.id}`}
                                                             />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${component.id}`}
-                                                            >
+                                                            <label className="form-check-label px-0">
                                                                 {component.status === "y" ? 'Active' : 'Inactive'}
                                                             </label>
                                                         </div>
@@ -250,22 +230,35 @@ const BloodComponentMaster = () => {
                                             onPageChange={setCurrentPage}
                                         />
                                     )}
-
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
+                                    <div className="form-group col-md-4">
+                                        <label>Component Code <span className="text-danger">*</span></label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="componentCode"
+                                            placeholder="Enter component code"
+                                            value={formData.componentCode}
+                                            onChange={handleInputChange}
+                                            required
+                                        />
+                                    </div>
+
                                     <div className="form-group col-md-4">
                                         <label>Component Name <span className="text-danger">*</span></label>
                                         <input
                                             type="text"
                                             className="form-control"
                                             id="componentName"
-                                            placeholder="Enter blood component name"
+                                            placeholder="Enter component name"
                                             value={formData.componentName}
                                             onChange={handleInputChange}
                                             required
                                         />
                                     </div>
+
                                     <div className="form-group col-md-4">
                                         <label>Description</label>
                                         <input
@@ -277,6 +270,32 @@ const BloodComponentMaster = () => {
                                             onChange={handleInputChange}
                                         />
                                     </div>
+
+                                    <div className="form-group col-md-4">
+                                        <label>Storage Temp</label>
+                                        <input
+                                            type="text"
+                                            className="form-control"
+                                            id="storageTemp"
+                                            placeholder="Enter storage temp"
+                                            value={formData.storageTemp}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+
+                                    <div className="form-group col-md-4">
+                                        <label>Shelf Life Days</label>
+                                        <input
+                                            type="number"
+                                            className="form-control"
+                                            id="shelfLifeDays"
+                                            placeholder="Enter shelf life days"
+                                            value={formData.shelfLifeDays}
+                                            onChange={handleInputChange}
+                                        />
+                                    </div>
+
+
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                                             {editingComponent ? 'Update' : 'Save'}
@@ -284,68 +303,18 @@ const BloodComponentMaster = () => {
                                         <button type="button" className="btn btn-danger" onClick={() => {
                                             setShowForm(false);
                                             setEditingComponent(null);
-                                            setFormData({ componentName: "", description: "" });
                                         }}>
                                             Cancel
                                         </button>
                                     </div>
                                 </form>
                             )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Reports</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Generate</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-                            {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{componentData.find(component => component.id === confirmDialog.componentId)?.componentName}</strong>?
-                                                </p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default BloodComponentMaster;
