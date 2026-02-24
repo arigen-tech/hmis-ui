@@ -892,8 +892,13 @@ export const FAIL_BLOOD_UNIT = "Failed to save record";
 export const UPDATE_FAIL_BLOOD_UNIT = "Failed to update status";
 
 
-
-
+//CervixConsistencyMaster
+export const FETCH_CERVIX_CONSISTENCY = "Failed to fetch records";
+export const DUPLICATE_CERVIX_CONSISTENCY = "Duplicate Cervix Consistency";
+export const UPDATE_CERVIX_CONSISTENCY = "Record updated successfully";
+export const ADD_CERVIX_CONSISTENCY = "New record added successfully";
+export const FAIL_CERVIX_CONSISTENCY = "Save failed";
+export const UPDATE_FAIL_CERVIX_CONSISTENCY = "Status update failed";
 
 
 

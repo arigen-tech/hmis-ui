@@ -238,6 +238,7 @@ export const MAS_OB_TRIMESTER = `${MASTERS}/obMasTrimester`;
 export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
 export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
 export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
+export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;
 export const BILLING = `${LAB}/billingStatus`;
 export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
 export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;
