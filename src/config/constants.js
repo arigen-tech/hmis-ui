@@ -1029,4 +1029,11 @@ export const SUCCESS_INDENT_SAVED_PRINT ="Indent saved successfully! Do you want
 export const SUCCESS_INDENT_SUBMITTED_PRINT = "Indent submitted successfully! Do you want to print report ?";
 export const ERROR_SAVE_SUBMIT_INDENT = (backendStatus) =>
   `Error ${backendStatus === "S" ? "saving" : "submitting"} indent. Please try again.`;
+
+//Radiology template master
+export const FETCH_RADIOLOGY_TEMPLATE_ERR_MSG = "Failed to fetch radiology template data";
+export const ADD_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template added successfully!";
+export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated successfully!";
+export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
+export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
         

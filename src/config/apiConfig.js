@@ -1,6 +1,6 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+//  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-//  export const API_HOST = 'http://localhost:8080';
+ export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.8:8080';
 
@@ -304,4 +304,7 @@ export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
 export const GET_TOKENS = `/patient/getAppointmentSlots`;
+
+
+export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 
