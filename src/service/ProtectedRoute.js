@@ -209,6 +209,7 @@ const validRoutes = [
   "/RadiologyTemplateMaster",
   "/PendingListRadiologyReport",
   "/DetailedRadiologyReportPage",
+  "/OPDReports",
   
 ];
 
