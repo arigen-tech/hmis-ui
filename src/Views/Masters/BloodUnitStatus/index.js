@@ -204,7 +204,7 @@ const BloodUnitStatus = () => {
               <input
                 style={{ width: "220px" }}
                 className="form-control me-2"
-                placeholder="Search"
+                placeholder="Search "
                 value={searchQuery}
                 onChange={handleSearchChange}
               />

@@ -1,527 +1,363 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import Pagination, {
-  DEFAULT_ITEMS_PER_PAGE,
-} from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_BLOOD_COLLECTION } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import {
+  FETCH_BLOOD_COLLECTION,
+  ADD_BLOOD_COLLECTION,
+  UPDATE_BLOOD_COLLECTION,
+  DUPLICATE_BLOOD_COLLECTION,
+  FAIL_BLOOD_COLLECTION,
+  UPDATE_FAIL_BLOOD_COLLECTION,
+} from "../../../config/constants";
+
 
 const BloodCollectionTypeMaster = () => {
- const [formData, setFormData] = useState({
-  collectionTypeCode: "",
-  collectionTypeName: "",
-  description: ""
-});
-
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
+
+  const [formData, setFormData] = useState({
+    collectionTypeCode: "",
+    collectionTypeName: "",
+    description: "",
+  });
+  const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editingCollectionType, setEditingCollectionType] = useState(null);
-  const [popupMessage, setPopupMessage] = useState(null);
+
   const [searchQuery, setSearchQuery] = useState("");
-  const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [collectionTypeData, setCollectionTypeData] = useState([
-    {
-      id: 1,
-      collectionTypeCode: "CT-VEN-001",
-      collectionTypeName: "Venipuncture",
-      description: "Blood drawn from vein",
-      status: "y",
-    },
-    {
-      id: 2,
-      collectionTypeCode: "CT-FS-002",
-      collectionTypeName: "Fingerstick",
-      description: "Capillary blood collection",
-      status: "y",
-    },
-    {
-      id: 3,
-      collectionTypeCode: "CT-ART-003",
-      collectionTypeName: "Arterial Puncture",
-      description: "Arterial blood gas collection",
-      status: "y",
-    },
-    {
-      id: 4,
-      collectionTypeCode: "CT-HEEL-004",
-      collectionTypeName: "Heelstick",
-      description: "Infant blood collection",
-      status: "y",
-    },
-    {
-      id: 5,
-      collectionTypeCode: "CT-SAL-005",
-      collectionTypeName: "Saliva Collection",
-      description: "Oral fluid sample",
-      status: "y",
-    },
-    {
-      id: 6,
-      collectionTypeCode: "CT-URI-006",
-      collectionTypeName: "Urine Collection",
-      description: "Urine sample collection",
-      status: "y",
-    },
-  ]);
-
+  const [popupMessage, setPopupMessage] = useState(null);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    collectionTypeId: null,
-    newStatus: false,
+    record: null,
+    newStatus: "",
   });
 
-  const filteredCollectionTypes = collectionTypeData.filter(
-    (collectionType) =>
-      collectionType.collectionTypeName
-        .toLowerCase()
-        .includes(searchQuery.toLowerCase()) ||
-      (collectionType.description &&
-        collectionType.description
-          .toLowerCase()
-          .includes(searchQuery.toLowerCase())),
+
+
+  // Format date utility
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+
+
+
+
+  // Fetch API data
+  const fetchData = async () => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_BLOOD_COLLECTION}/getAll/0`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_BLOOD_COLLECTION, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  // Search filter
+  const filteredData = data.filter(
+    (rec) =>
+      rec.collectionTypeCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.collectionTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  const handleSearch = (e) => {
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
+
+  const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
- const handleEdit = (collectionType) => {
-  setEditingCollectionType(collectionType);
-  setFormData({
-    collectionTypeCode: collectionType.collectionTypeCode,
-    collectionTypeName: collectionType.collectionTypeName,
-    description: collectionType.description || "",
-  });
-  setIsFormValid(true);
-  setShowForm(true);
-};
+  // Popup
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
+  // Form input
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
 
-  const handleSave = (e) => {
-  e.preventDefault();
-  if (!isFormValid) return;
-
-  if (editingCollectionType) {
-    setCollectionTypeData(prev =>
-      prev.map(item =>
-        item.id === editingCollectionType.id
-          ? { ...item, ...formData }
-          : item
-      )
+    setIsFormValid(
+      updated.collectionTypeCode.trim() !== "" &&
+      updated.collectionTypeName.trim() !== ""
     );
-    showPopup("Collection Type updated successfully", "success");
-  } else {
-    setCollectionTypeData(prev => [
-      ...prev,
-      {
-        ...formData,
-        id: Date.now(),
-        status: "y"
-      }
-    ]);
-    showPopup("Collection Type added successfully", "success");
-  }
-
-  setShowForm(false);
-  setEditingCollectionType(null);
-  setFormData({
-    collectionTypeCode: "",
-    collectionTypeName: "",
-    description: ""
-  });
-  setIsFormValid(false);
-};
-
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
-    });
   };
 
- const handleInputChange = (e) => {
-  const { id, value } = e.target;
-
-  const updatedFormData = {
-    ...formData,
-    [id]: value
+  const resetForm = () => {
+    setFormData({ collectionTypeCode: "", collectionTypeName: "", description: "" });
+    setIsFormValid(false);
+    setEditingRecord(null);
   };
 
-  setFormData(updatedFormData);
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
 
-  const isCollectionTypeNameValid =
-    (updatedFormData.collectionTypeName || "").trim() !== "";
-
-  const isCollectionTypeCodeValid =
-    (updatedFormData.collectionTypeCode || "").trim() !== "";
-
-  setIsFormValid(isCollectionTypeNameValid && isCollectionTypeCodeValid);
-};
-    
-  const handleCreateFormSubmit = (e) => {
+  // Save — Add or Update
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (formData.collectionTypeName) {
-      setCollectionTypeData([
-        ...collectionTypeData,
-        { ...formData, id: Date.now(), status: "y" },
-      ]);
-      setFormData({ collectionTypeName: "", description: "" });
-      setShowForm(false);
-    } else {
-      alert("Please fill out all required fields.");
+    if (!isFormValid) return;
+
+    // Duplicate check
+    const newCode = formData.collectionTypeCode.trim().toLowerCase();
+    const newName = formData.collectionTypeName.trim().toLowerCase();
+    const duplicate = data.find(
+      (rec) =>
+        (rec.collectionTypeCode?.trim().toLowerCase() === newCode ||
+          rec.collectionTypeName?.trim().toLowerCase() === newName) &&
+        (!editingRecord ||
+          rec.collectionTypeId !== editingRecord.collectionTypeId)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_BLOOD_COLLECTION, "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_BLOOD_COLLECTION}/update/${editingRecord.collectionTypeId}`,
+          formData
+        );
+        showPopup(UPDATE_BLOOD_COLLECTION, "success");
+      } else {
+        await postRequest(`${MAS_BLOOD_COLLECTION}/create`, {
+          ...formData,
+          status: "Y",
+        });
+        showPopup(ADD_BLOOD_COLLECTION, "success");
+      }
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_BLOOD_COLLECTION, "error");
     }
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, collectionTypeId: id, newStatus });
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      collectionTypeCode: rec.collectionTypeCode,
+      collectionTypeName: rec.collectionTypeName,
+      description: rec.description,
+    });
+    setIsFormValid(true);
+    setShowForm(true);
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.collectionTypeId !== null) {
-      setCollectionTypeData((prevData) =>
-        prevData.map((collectionType) =>
-          collectionType.id === confirmDialog.collectionTypeId
-            ? { ...collectionType, status: confirmDialog.newStatus }
-            : collectionType,
-        ),
-      );
-    }
+  // Status change
+  const handleSwitchChange = (rec) => {
     setConfirmDialog({
-      isOpen: false,
-      collectionTypeId: null,
-      newStatus: null,
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredCollectionTypes.slice(indexOfFirst, indexOfLast);
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_BLOOD_COLLECTION}/status/${confirmDialog.record.collectionTypeId}?status=${confirmDialog.newStatus}`
+      );
+      showPopup(UPDATE_BLOOD_COLLECTION, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_FAIL_BLOOD_COLLECTION, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
 
   return (
     <div className="content-wrapper">
-      <div className="row">
-        <div className="col-12 grid-margin stretch-card">
-          <div className="card form-card">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Blood Collection Type Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form
-                    className="d-inline-block searchform me-4"
-                    role="search"
-                  >
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search Collection Types"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearch}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
-                )}
+      <div className="card form-card">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h4>Blood Collection Type Master</h4>
+          <div className="d-flex">
+            {!showForm && (
+              <input
+                style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search Types"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+            )}
+            {!showForm ? (
+              <>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => { resetForm(); setShowForm(true); }}
+                >
+                  Add
+                </button>
+                <button className="btn btn-success" onClick={fetchData}>
+                  Show All
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-secondary" onClick={handleCancel}>
+                Back
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="card-body">
+          {loading ? (
+            <LoadingScreen />
+          ) : !showForm ? (
+            <>
+              <table className="table table-bordered table-hover">
+                <thead className="table-light">
+                  <tr>
+                    <th>Code</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Last Update Date</th>
+                    <th>Status</th>
+                    <th>Edit</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.collectionTypeId}>
+                      <td>{rec.collectionTypeCode}</td>
+                      <td>{rec.collectionTypeName}</td>
+                      <td>{rec.description}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
 
-                <div className="d-flex align-items-center">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setShowForm(true);
-                          setFormData({
-                            collectionTypeName: "",
-                            description: "",
-                          });
-                          setEditingCollectionType(null);
-                        }}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                      >
-                        <i className="mdi mdi-plus"></i> Show All
-                      </button>
-                    </>
-                  ) : (
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingCollectionType(null);
-                        setFormData({
-                          collectionTypeName: "",
-                          description: "",
-                        });
-                      }}
-                    >
-                      <i className="mdi mdi-arrow-left"></i> Back
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            type="checkbox"
+                            className="form-check-input"
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status?.toLowerCase() === "y"
+                              ? "Active"
+                              : "Inactive"}
+                          </label>
+                        </div>
+                      </td>
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm"
+                          disabled={rec.status?.toLowerCase() !== "y"}
+                          onClick={() => handleEdit(rec)}
+                        >
+                          <i className="fa fa-pencil"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          ) : (
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-4">
+                <label>Collection Type Code *</label>
+                <input
+                  className="form-control"
+                  name="collectionTypeCode"
+                  value={formData.collectionTypeCode}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-4">
+                <label>Collection Type Name *</label>
+                <input
+                  className="form-control"
+                  name="collectionTypeName"
+                  value={formData.collectionTypeName}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-4">
+                <label>Description</label>
+                <input
+                  className="form-control"
+                  name="description"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-12 text-end">
+                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                  Save
+                </button>
+                <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {popupMessage && <Popup {...popupMessage} />}
+
+          {confirmDialog.isOpen && (
+            <div className="modal d-block">
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-body">
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.collectionTypeName}</strong>?
+                  </div>
+                  <div className="modal-footer">
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                      No
                     </button>
-                  )}
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                      Yes
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-            <div className="card-body">
-              {!showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Collection Type Code</th>
-                        <th>Collection Type Name</th>
-                        <th>Description</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((collectionType) => (
-                        <tr key={collectionType.id}>
-                          <td>{collectionType.collectionTypeCode}</td>
-                          <td>{collectionType.collectionTypeName}</td>
-                          <td>{collectionType.description}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={collectionType.status === "y"}
-                                onChange={() =>
-                                  handleSwitchChange(
-                                    collectionType.id,
-                                    collectionType.status === "y" ? "n" : "y",
-                                  )
-                                }
-                                id={`switch-${collectionType.id}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${collectionType.id}`}
-                              >
-                                {collectionType.status === "y"
-                                  ? "Active"
-                                  : "Inactive"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(collectionType)}
-                              disabled={collectionType.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-
-                  {filteredCollectionTypes.length > 0 && (
-                    <Pagination
-                      totalItems={filteredCollectionTypes.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
-                    />
-                  )}
-                </div>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                 <form className="forms row" onSubmit={handleSave}>
-
-  {/* Collection Type Code */}
-  <div className="form-group col-md-4">
-    <label>
-      Collection Type Code <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      id="collectionTypeCode"
-      placeholder="CT-VEN-001"
-      value={formData.collectionTypeCode}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-  {/* Collection Type Name */}
-  <div className="form-group col-md-4">
-    <label>
-      Collection Type Name <span className="text-danger">*</span>
-    </label>
-    <input
-      type="text"
-      className="form-control"
-      id="collectionTypeName"
-      placeholder="Venipuncture"
-      value={formData.collectionTypeName}
-      onChange={handleInputChange}
-      required
-    />
-  </div>
-
-  {/* Description */}
-  <div className="form-group col-md-4">
-    <label>Description</label>
-    <input
-      type="text"
-      className="form-control"
-      id="description"
-      placeholder="Enter description"
-      value={formData.description}
-      onChange={handleInputChange}
-    />
-  </div>
-
-</form>
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button
-                      type="submit"
-                      className="btn btn-primary me-2"
-                      disabled={!isFormValid}
-                    >
-                      {editingCollectionType ? "Update" : "Save"}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingCollectionType(null);
-                        setFormData({
-                          collectionTypeName: "",
-                          description: "",
-                        });
-                      }}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
-              )}
-              {showModal && (
-                <div
-                  className="modal fade show"
-                  style={{ display: "block" }}
-                  tabIndex="-1"
-                  aria-labelledby="staticBackdropLabel"
-                  aria-hidden="true"
-                >
-                  <div className="modal-dialog">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h1
-                          className="modal-title fs-5"
-                          id="staticBackdropLabel"
-                        >
-                          Reports
-                        </h1>
-                        <button
-                          type="button"
-                          className="btn-close"
-                          onClick={() => setShowModal(false)}
-                          aria-label="Close"
-                        ></button>
-                      </div>
-                      <div className="modal-body">...</div>
-                      <div className="modal-footer">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => setShowModal(false)}
-                        >
-                          Close
-                        </button>
-                        <button type="button" className="btn btn-primary">
-                          Generate
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-              {popupMessage && (
-                <Popup
-                  message={popupMessage.message}
-                  type={popupMessage.type}
-                  onClose={popupMessage.onClose}
-                />
-              )}
-              {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button
-                          type="button"
-                          className="close"
-                          onClick={() => handleConfirm(false)}
-                        >
-                          <span>&times;</span>
-                        </button>
-                      </div>
-                      <div className="modal-body">
-                        <p>
-                          Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y"
-                            ? "activate"
-                            : "deactivate"}{" "}
-                          <strong>
-                            {
-                              collectionTypeData.find(
-                                (collectionType) =>
-                                  collectionType.id ===
-                                  confirmDialog.collectionTypeId,
-                              )?.collectionTypeName
-                            }
-                          </strong>
-                          ?
-                        </p>
-                      </div>
-                      <div className="modal-footer">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => handleConfirm(false)}
-                        >
-                          No
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          onClick={() => handleConfirm(true)}
-                        >
-                          Yes
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
+          )}
         </div>
       </div>
     </div>

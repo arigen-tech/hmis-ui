@@ -902,6 +902,35 @@ export const UPDATE_FAIL_CERVIX_CONSISTENCY = "Status update failed";
 
 
 
+
+//BloodComponentMaster
+export const FETCH_BLOOD_COMPONENT = "Failed to fetch records";
+export const DUPLICATE_BLOOD_COMPONENT = "Duplicate Code or Name Found";
+export const UPDATE_BLOOD_COMPONENT = "Component Updated Successfully";
+export const ADD_BLOOD_COMPONENT = "Component Added Successfully";
+export const FAIL_BLOOD_COMPONENT = "Save failed";
+export const UPDATE_FAIL_BLOOD_COMPONENT = "Status update failed";
+
+
+//BloodCollectionTypeMaster
+export const FETCH_BLOOD_COLLECTION = "Failed to fetch records";
+export const ADD_BLOOD_COLLECTION = "Collection Added Successfully";
+export const UPDATE_BLOOD_COLLECTION = "Collection Updated Successfully";
+export const DUPLICATE_BLOOD_COLLECTION = "Duplicate Code or Name Found";
+export const  FAIL_BLOOD_COLLECTION = "Save failed";
+export const UPDATE_FAIL_BLOOD_COLLECTION = "Status update failed";
+
+
+//MenstrualPatternMaster 
+export const FETCH_MENSTRUAL_PATTERN = "Failed to fetch records";
+export const ADD_MENSTRUAL_PATTERN = "New record added successfully";
+export const UPDATE_MENSTRUAL_PATTERN = "Record updated successfully";
+export const DUPLICATE_MENSTRUAL_PATTERN = "Duplicate Code or Name Found";
+export const FAIL_MENSTRUAL_PATTERN = "Save failed";
+export const  UPDATE_FAIL_MENSTRUAL_PATTERN = "Status update failed";
+
+
+
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
 export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";
