@@ -205,6 +205,7 @@ import RadiologyTemplateMaster from './Views/Radiology/RadiologyTemplateMaster';
 import PendignListRadiologyReport from './Views/Radiology/PendingListRadiologyReport';
 import DetailedRadiologyReportPage from './Views/Radiology/DetailedReportPage';
 import OPDReports from './Views/OPD/OpdReports';
+import PendingForRadiologyBilling from './Views/Laboratory/PendingForRadiologyBilling';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -445,6 +446,7 @@ function App() {
                 <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
                 <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
                 <Route path="/OPDReports" element={<OPDReports/>} />
+                <Route path="PendingForRadiologyBilling" element={<PendingForRadiologyBilling/>} />
               </Route>
             </Route>
 

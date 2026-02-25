@@ -210,6 +210,7 @@ const validRoutes = [
   "/PendingListRadiologyReport",
   "/DetailedRadiologyReportPage",
   "/OPDReports",
+  "/PendingForRadiologyBilling",
   
 ];
 

@@ -5,11 +5,14 @@ import { LAB } from "../../../config/apiConfig"
 import { getRequest } from "../../../service/apiService"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
-
 const PendingForBilling = () => {
   const navigate = useNavigate()
   const [patientList, setPatientList] = useState([])
-  const [searchQuery, setSearchQuery] = useState("")
+  const [filteredPatientList, setFilteredPatientList] = useState([])
+  const [searchData, setSearchData] = useState({
+    patientName: "",
+    mobileNo: ""
+  })
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
   const [isLoading, setIsLoading] = useState(true)
@@ -88,6 +91,7 @@ const PendingForBilling = () => {
         })
 
         setPatientList(mappedData)
+        setFilteredPatientList(mappedData)
       }
     } catch (error) {
       console.error("Error fetching pending billing data:", error)
@@ -102,26 +106,35 @@ const PendingForBilling = () => {
   }, [])
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
+    const { id, value } = e.target
+    setSearchData(prev => ({ ...prev, [id]: value }))
     setCurrentPage(1)
   }
 
-  const filteredPatientList = patientList.filter(
-    (item) =>
-      item.patientName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.mobileNo.includes(searchQuery) ||
-      item.consultedDoctor.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item.department.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  const handleSearch = () => {
+    const filtered = patientList.filter((item) => {
+      const patientNameMatch = searchData.patientName === "" || 
+        item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
+      
+      const mobileNoMatch = searchData.mobileNo === "" || 
+        item.mobileNo.includes(searchData.mobileNo)
+      
+      return patientNameMatch && mobileNoMatch
+    })
+    setFilteredPatientList(filtered)
+    setCurrentPage(1)
+  }
 
-  const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast);
+  const handleReset = () => {
+    setSearchData({
+      patientName: "",
+      mobileNo: ""
+    })
+    setFilteredPatientList(patientList)
+    setCurrentPage(1)
+  }
 
- 
-
-  const  handlePendingClick = (patientData) => {
+  const handlePendingClick = (patientData) => {
     const getNavigationRoute = (billingType) => {
       const type = billingType.toLowerCase()
 
@@ -153,12 +166,13 @@ const PendingForBilling = () => {
     })
   }
 
-  
   const handleRefresh = () => {
     fetchPendingBilling()
   }
 
- 
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast);
 
   if (isLoading) {
     return <LoadingScreen />
@@ -171,31 +185,57 @@ const PendingForBilling = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Pending For Billing</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search"
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
-                <button type="button" className="btn btn-success me-2">
-                  <i className="mdi mdi-plus"></i> Generate Report
-                </button>
-                <button type="button" className="btn btn-primary me-2" onClick={handleRefresh} title="Refresh Data">
-                  <i className="mdi mdi-refresh"></i> Refresh
-                </button>
-              </div>
             </div>
+
             <div className="card-body">
+              {/* Search Section */}
+              <div className="mb-4">
+                <div className="card-body">
+                  <div className="row g-4 align-items-end">
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Patient Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="patientName"
+                        placeholder="Enter patient name"
+                        value={searchData.patientName}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-semibold">Mobile No.</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="mobileNo"
+                        placeholder="Enter mobile number"
+                        value={searchData.mobileNo}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <div className="d-flex gap-2">
+                        <button 
+                          type="button" 
+                          className="btn btn-primary flex-fill"
+                          onClick={handleSearch}
+                        >
+                          Search
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary flex-fill"
+                          onClick={handleReset}
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
               {error && (
                 <div className="alert alert-danger" role="alert">
                   <strong>Error:</strong> {error}
@@ -272,15 +312,13 @@ const PendingForBilling = () => {
               )}
 
               {filteredPatientList.length > 0 && (
-<Pagination
- totalItems={filteredPatientList.length}
- itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
- currentPage={currentPage}
- onPageChange={setCurrentPage}
-/>
-)}
-
-              
+                <Pagination
+                  totalItems={filteredPatientList.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </div>
           </div>
         </div>
