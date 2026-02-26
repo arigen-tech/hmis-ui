@@ -2,7 +2,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_MENSTRUal_PATTERN } from "../../../config/apiConfig";
+import { MAS_MENSTRUAl_PATTERN } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import {
@@ -20,7 +20,7 @@ const MenstrualPatternMaster = () => {
   const [showForm, setShowForm] = useState(false);
 
   const [formData, setFormData] = useState({
-    menstrualPatternCode: "",
+    patternValue: "",
   });
 
   const [editingRecord, setEditingRecord] = useState(null);
@@ -34,6 +34,9 @@ const MenstrualPatternMaster = () => {
     newStatus: "",
   });
 
+  const MAX_LENGTH = 10;
+
+
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -44,12 +47,16 @@ const MenstrualPatternMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const fetchData = async () => {
+  const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_MENSTRUal_PATTERN}/getAll/0`);
+      console.log("Calling API:", `${MAS_MENSTRUAl_PATTERN}/getAll/${flag}`);
+      const { response } = await getRequest(
+        `${MAS_MENSTRUAl_PATTERN}/getAll/${flag}`
+      );
       setData(response || []);
-    } catch {
+    } catch (error) {
+      console.error("Fetch error:", error);
       showPopup(FETCH_MENSTRUAL_PATTERN, "error");
     } finally {
       setLoading(false);
@@ -60,10 +67,10 @@ const MenstrualPatternMaster = () => {
     fetchData();
   }, []);
 
-  const filteredData = data.filter(
-    (rec) =>
-      rec.patternValue?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      rec.menstrualPatternName?.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredData = data.filter((rec) =>
+    String(rec.patternValue ?? "")
+      .toLowerCase()
+      .includes(searchQuery.toLowerCase())
   );
 
   const currentItems = filteredData.slice(
@@ -76,21 +83,14 @@ const MenstrualPatternMaster = () => {
     setCurrentPage(1);
   };
 
-  
-
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const updated = { ...formData, [name]: value };
-    setFormData(updated);
-
-    setIsFormValid(
-      updated.menstrualPatternCode.trim() !== "" &&
-      updated.menstrualPatternName.trim() !== ""
-    );
+    setFormData({ ...formData, [name]: value });
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
-    setFormData({ menstrualPatternCode: "" });
+    setFormData({ patternValue: "" });
     setIsFormValid(false);
     setEditingRecord(null);
   };
@@ -104,13 +104,11 @@ const MenstrualPatternMaster = () => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    const newCode = formData.menstrualPatternCode.trim().toLowerCase();
-    const newName = formData.menstrualPatternName.trim().toLowerCase();
-
     const duplicate = data.find(
       (rec) =>
-        (rec.patternValue?.trim().toLowerCase() === newCode ||
-          rec.menstrualPatternName?.trim().toLowerCase() === newName) &&
+        String(rec.patternValue)
+          .trim()
+          .toLowerCase() === formData.patternValue.trim().toLowerCase() &&
         (!editingRecord || rec.id !== editingRecord.id)
     );
 
@@ -120,18 +118,16 @@ const MenstrualPatternMaster = () => {
     }
 
     try {
-      const payload = {
-        patternValue: formData.menstrualPatternCode,
-      };
+      const payload = { patternValue: formData.patternValue };
 
       if (editingRecord) {
         await putRequest(
-          `${MAS_MENSTRUal_PATTERN}/update/${editingRecord.id}`,
+          `${MAS_MENSTRUAl_PATTERN}/update/${editingRecord.id}`,
           payload
         );
         showPopup(UPDATE_MENSTRUAL_PATTERN, "success");
       } else {
-        await postRequest(`${MAS_MENSTRUal_PATTERN}/create`, {
+        await postRequest(`${MAS_MENSTRUAl_PATTERN}/create`, {
           ...payload,
           status: "Y",
         });
@@ -139,16 +135,15 @@ const MenstrualPatternMaster = () => {
       }
       fetchData();
       handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(FAIL_MENSTRUAL_PATTERN, "error");
     }
   };
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData({
-      menstrualPatternCode: rec.menstrualPatternName || "",
-    });
+    setFormData({ patternValue: rec.patternValue || "" });
     setIsFormValid(true);
     setShowForm(true);
   };
@@ -166,22 +161,21 @@ const MenstrualPatternMaster = () => {
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
       return;
     }
-
     try {
       setLoading(true);
       await putRequest(
-        `${MAS_MENSTRUal_PATTERN}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
+        `${MAS_MENSTRUAl_PATTERN}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
       showPopup(UPDATE_MENSTRUAL_PATTERN, "success");
       fetchData();
-    } catch {
+    } catch (error) {
+      console.error("Status update error:", error);
       showPopup(UPDATE_FAIL_MENSTRUAL_PATTERN, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
   };
-
 
   const showPopup = (message, type) => {
     setPopupMessage({
@@ -194,6 +188,7 @@ const MenstrualPatternMaster = () => {
   return (
     <div className="content-wrapper">
       <div className="card form-card">
+        {/* Header */}
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Menstrual Pattern Master</h4>
           <div className="d-flex">
@@ -204,7 +199,6 @@ const MenstrualPatternMaster = () => {
                 placeholder="Search Patterns"
                 value={searchQuery}
                 onChange={handleSearchChange}
-
               />
             )}
             {!showForm ? (
@@ -218,18 +212,22 @@ const MenstrualPatternMaster = () => {
                 >
                   Add
                 </button>
-                <button className="btn btn-success" onClick={fetchData}>
+                <button
+                  className="btn btn-success"
+                  onClick={() => fetchData(0)}
+                >
                   Show All
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={handleCancel}>
+              <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
           </div>
         </div>
 
+        {/* Body */}
         <div className="card-body">
           {loading ? (
             <LoadingScreen />
@@ -258,7 +256,9 @@ const MenstrualPatternMaster = () => {
                             onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                            {rec.status?.toLowerCase() === "y"
+                              ? "Active"
+                              : "Inactive"}
                           </label>
                         </div>
                       </td>
@@ -275,7 +275,6 @@ const MenstrualPatternMaster = () => {
                   ))}
                 </tbody>
               </table>
-
               <Pagination
                 totalItems={filteredData.length}
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
@@ -289,12 +288,12 @@ const MenstrualPatternMaster = () => {
                 <label>Pattern Code *</label>
                 <input
                   className="form-control"
-                  name="menstrualPatternCode"
-                  value={formData.menstrualPatternCode}
+                  name="patternValue"
+                  value={formData.patternValue}
                   onChange={handleInputChange}
+                  maxLength={MAX_LENGTH}
                 />
               </div>
-
 
               <div className="col-12 text-end">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
@@ -315,8 +314,10 @@ const MenstrualPatternMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.record?.menstrualPatternName}</strong>?
+                    {confirmDialog.newStatus === "y"
+                      ? "activate"
+                      : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.patternValue}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
