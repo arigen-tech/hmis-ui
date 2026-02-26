@@ -43,10 +43,10 @@ const BloodComponentMaster = () => {
   };
 
 
-    const fetchData = async () => {
+    const fetchData = async (flag = 0) => {
         setLoading(true);
         try {
-            const { response } = await getRequest(`${MAS_BLOOD_COMPONENT}/getAll/0`);
+            const { response } = await getRequest(`${MAS_BLOOD_COMPONENT}/getAll/${flag}`);
             setData(response || []);
         } catch {
             showPopup(FETCH_BLOOD_COMPONENT, "error");

@@ -49,11 +49,11 @@ const CervixConsistencyMaster = () => {
   };
 
   /* ---------------- API ---------------- */
-  const fetchData = async () => {
+  const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
       const { response } = await getRequest(
-        `${MAS_CERVIX_CONSISTENCY}/getAll/0`
+        `${MAS_CERVIX_CONSISTENCY}/getAll/${flag}`
       );
       setData(response || []);
     } catch {

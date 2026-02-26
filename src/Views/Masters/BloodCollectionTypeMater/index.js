@@ -56,10 +56,10 @@ const BloodCollectionTypeMaster = () => {
 
 
   // Fetch API data
-  const fetchData = async () => {
+  const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_BLOOD_COLLECTION}/getAll/0`);
+      const { response } = await getRequest(`${MAS_BLOOD_COLLECTION}/getAll/${flag}`);
       setData(response || []);
     } catch {
       showPopup(FETCH_BLOOD_COLLECTION, "error");
