@@ -11,7 +11,8 @@ import {
   UPDATE_CERVIX_CONSISTENCY,
   ADD_CERVIX_CONSISTENCY,
   FAIL_CERVIX_CONSISTENCY,
-  UPDATE_FAIL_CERVIX_CONSISTENCY
+  UPDATE_FAIL_CERVIX_CONSISTENCY,
+  INVALID_PAGE_NO_WARN_MSG
 } from "../../../config/constants";
 
 const CervixConsistencyMaster = () => {
@@ -24,16 +25,16 @@ const CervixConsistencyMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     record: null,
     newStatus: "",
   });
 
-  // logic fix only (design same)
   const MAX_LENGTH = 50;
 
-  /* ---------------- Utils ---------------- */
+  // Format date
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -48,13 +49,11 @@ const CervixConsistencyMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  /* ---------------- API ---------------- */
+  // Fetch
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(
-        `${MAS_CERVIX_CONSISTENCY}/getAll/${flag}`
-      );
+      const { response } = await getRequest(`${MAS_CERVIX_CONSISTENCY}/getAll/${flag}`);
       setData(response || []);
     } catch {
       showPopup(FETCH_CERVIX_CONSISTENCY, "error");
@@ -68,23 +67,100 @@ const CervixConsistencyMaster = () => {
     fetchData();
   }, []);
 
-  /* ---------------- Search + Pagination ---------------- */
+  // Search + Pagination
   const filteredData = data.filter((rec) =>
-    (rec.cervixConsistency || "")
-      .toLowerCase()
-      .includes(searchQuery.toLowerCase())
+    (rec.cervixConsistency || "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   useEffect(() => {
     setCurrentPage(1);
+    setPageInput("1");
   }, [searchQuery]);
 
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
-    currentPage * DEFAULT_ITEMS_PER_PAGE
-  );
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filteredData.length / DEFAULT_ITEMS_PER_PAGE);
 
-  /* ---------------- Form ---------------- */
+  useEffect(() => {
+    setPageInput(currentPage.toString());
+  }, [currentPage]);
+
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
+
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
+
+  const handlePageNavigation = () => {
+    const pageNumber = parseInt(pageInput);
+    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
+      setPageInput(currentPage.toString());
+    }
+  };
+
+  const renderPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
+
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
+
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) pageNumbers.push("ellipsis-left");
+    }
+
+    for (let i = startPage; i <= endPage; i++) pageNumbers.push(i);
+
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) pageNumbers.push("ellipsis-right");
+      pageNumbers.push(totalPages);
+    }
+
+    return pageNumbers.map((number, index) => {
+      if (number === "ellipsis-left" || number === "ellipsis-right") {
+        return (
+          <li key={index} className="page-item disabled">
+            <span className="page-link">...</span>
+          </li>
+        );
+      }
+      return (
+        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+          <button
+            className="page-link"
+            onClick={() => {
+              setCurrentPage(number);
+              setPageInput(number.toString());
+            }}
+          >
+            {number}
+          </button>
+        </li>
+      );
+    });
+  };
+
+  // Form Input
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updatedValue = value.slice(0, MAX_LENGTH);
+    const updated = { ...formData, [name]: updatedValue };
+    setFormData(updated);
+
+    const valid = updated.cervixConsistency.trim().length > 0;
+    setIsFormValid(valid);
+  };
+
   const resetForm = () => {
     setFormData({ cervixConsistency: "" });
     setIsFormValid(false);
@@ -96,20 +172,7 @@ const CervixConsistencyMaster = () => {
     setShowForm(false);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    const updatedValue = value.slice(0, MAX_LENGTH);
-
-    const updated = { ...formData, [name]: updatedValue };
-    setFormData(updated);
-
-    const valid =
-      updated.cervixConsistency.trim().length > 0 &&
-      updated.cervixConsistency.trim().length <= MAX_LENGTH;
-
-    setIsFormValid(valid);
-  };
-
+  // Save / Update
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -149,7 +212,7 @@ const CervixConsistencyMaster = () => {
     }
   };
 
-  /* ---------------- Actions ---------------- */
+  // Edit
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({ cervixConsistency: rec.cervixConsistency || "" });
@@ -157,6 +220,7 @@ const CervixConsistencyMaster = () => {
     setShowForm(true);
   };
 
+  // Status
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
@@ -184,13 +248,6 @@ const CervixConsistencyMaster = () => {
     }
   };
 
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    fetchData();
-  };
-
-  /* ---------------- UI ---------------- */
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -219,7 +276,7 @@ const CervixConsistencyMaster = () => {
                 >
                   Add
                 </button>
-                <button className="btn btn-success" onClick={handleRefresh}>
+                <button className="btn btn-success" onClick={() => fetchData()}>
                   Show All
                 </button>
               </>
@@ -236,63 +293,92 @@ const CervixConsistencyMaster = () => {
             <LoadingScreen />
           ) : !showForm ? (
             <>
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
-                  <tr>
-                    <th>Cervix Consistency</th>
-                    <th>Last Update</th>
-                    <th>Status</th>
-                    <th>Edit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentItems.map((rec) => (
-                    <tr key={rec.id}>
-                      <td>{rec.cervixConsistency}</td>
-                      <td>{formatDate(rec.lastUpdateDate)}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={rec.status?.toLowerCase() === "y"}
-                            onChange={() => handleSwitchChange(rec)}
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status?.toLowerCase() === "y"
-                              ? "Active"
-                              : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          onClick={() => handleEdit(rec)}
-                          disabled={rec.status?.toLowerCase() !== "y"}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
-                      </td>
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Cervix Consistency</th>
+                      <th>Last Update</th>
+                      <th>Status</th>
+                      <th>Edit</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {currentItems.map((rec) => (
+                      <tr key={rec.id}>
+                        <td>{rec.cervixConsistency}</td>
+                        <td>{formatDate(rec.lastUpdateDate)}</td>
+                        <td>
+                          <div className="form-check form-switch">
+                            <input
+                              type="checkbox"
+                              className="form-check-input"
+                              checked={rec.status?.toLowerCase() === "y"}
+                              onChange={() => handleSwitchChange(rec)}
+                            />
+                            <label className="form-check-label ms-2">
+                              {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                            </label>
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-success btn-sm"
+                            disabled={rec.status?.toLowerCase() !== "y"}
+                            onClick={() => handleEdit(rec)}
+                          >
+                            <i className="fa fa-pencil"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+              {/* pagination */}
+              <nav className="d-flex justify-content-between align-items-center mt-3">
+                <span className="text-muted">
+                  Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filteredData.length)} of {filteredData.length} entries
+                </span>
+
+                <ul className="pagination mb-0">
+                  <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={handlePrevPage}>
+                      &laquo; Previous
+                    </button>
+                  </li>
+
+                  {renderPageNumbers()}
+
+                  <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                    <button className="page-link" onClick={handleNextPage}>
+                      Next &raquo;
+                    </button>
+                  </li>
+                </ul>
+
+                <div className="d-flex align-items-center">
+                  <span className="me-2">Go to:</span>
+                  <input
+                    type="number"
+                    min="1"
+                    max={totalPages}
+                    value={pageInput}
+                    onChange={(e) => setPageInput(e.target.value)}
+                    className="form-control me-2"
+                    style={{ width: "80px" }}
+                  />
+                  <button className="btn btn-primary" onClick={handlePageNavigation}>
+                    Go
+                  </button>
+                </div>
+              </nav>
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-5">
-                <label>
-                  Cervix Consistency{" "}
-                  <span className="text-danger">*</span>
-                </label>
+                <label>Cervix Consistency <span className="text-danger">*</span></label>
                 <input
                   name="cervixConsistency"
                   className="form-control"
@@ -308,7 +394,7 @@ const CervixConsistencyMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -329,25 +415,14 @@ const CervixConsistencyMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y"
-                      ? "activate"
-                      : "deactivate"}{" "}
-                    <strong>
-                      {confirmDialog.record?.cervixConsistency}
-                    </strong>
-                    ?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.cervixConsistency}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
+                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
                       No
                     </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
                       Yes
                     </button>
                   </div>
