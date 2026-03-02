@@ -28,6 +28,7 @@ const MenstrualPatternMaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [popupMessage, setPopupMessage] = useState(null);
+
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     record: null,
@@ -36,27 +37,30 @@ const MenstrualPatternMaster = () => {
 
   const MAX_LENGTH = 10;
 
-
+  // ---------- Utils ----------
   const formatDate = (dateString) => {
-    if (!dateString?.trim()) return "N/A";
+    if (!dateString) return "N/A";
     const date = new Date(dateString);
     if (isNaN(date.getTime())) return "N/A";
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    return `${day}/${month}/${year}`;
+    return `${String(date.getDate()).padStart(2, "0")}/${String(
+      date.getMonth() + 1
+    ).padStart(2, "0")}/${date.getFullYear()}`;
   };
 
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+  // ---------- Fetch ----------
   const fetchData = async (flag = 0) => {
-    setLoading(true);
     try {
-      console.log("Calling API:", `${MAS_MENSTRUAl_PATTERN}/getAll/${flag}`);
+      setLoading(true);
       const { response } = await getRequest(
         `${MAS_MENSTRUAl_PATTERN}/getAll/${flag}`
       );
       setData(response || []);
     } catch (error) {
-      console.error("Fetch error:", error);
+      console.error(error);
       showPopup(FETCH_MENSTRUAL_PATTERN, "error");
     } finally {
       setLoading(false);
@@ -67,6 +71,7 @@ const MenstrualPatternMaster = () => {
     fetchData();
   }, []);
 
+  // ---------- Search & Pagination ----------
   const filteredData = data.filter((rec) =>
     String(rec.patternValue ?? "")
       .toLowerCase()
@@ -78,14 +83,10 @@ const MenstrualPatternMaster = () => {
     currentPage * DEFAULT_ITEMS_PER_PAGE
   );
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
-
+  // ---------- Form ----------
   const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData({ ...formData, [name]: value });
+    const { value } = e.target;
+    setFormData({ patternValue: value });
     setIsFormValid(value.trim() !== "");
   };
 
@@ -100,15 +101,21 @@ const MenstrualPatternMaster = () => {
     setShowForm(false);
   };
 
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({ patternValue: rec.patternValue || "" });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    const duplicate = data.find(
+    const duplicate = data.some(
       (rec) =>
-        String(rec.patternValue)
-          .trim()
-          .toLowerCase() === formData.patternValue.trim().toLowerCase() &&
+        rec.patternValue?.toLowerCase() ===
+          formData.patternValue.trim().toLowerCase() &&
         (!editingRecord || rec.id !== editingRecord.id)
     );
 
@@ -118,7 +125,8 @@ const MenstrualPatternMaster = () => {
     }
 
     try {
-      const payload = { patternValue: formData.patternValue };
+      setLoading(true);
+      const payload = { patternValue: formData.patternValue.trim() };
 
       if (editingRecord) {
         await putRequest(
@@ -133,21 +141,18 @@ const MenstrualPatternMaster = () => {
         });
         showPopup(ADD_MENSTRUAL_PATTERN, "success");
       }
+
       fetchData();
       handleCancel();
     } catch (error) {
-      console.error("Save error:", error);
+      console.error(error);
       showPopup(FAIL_MENSTRUAL_PATTERN, "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData({ patternValue: rec.patternValue || "" });
-    setIsFormValid(true);
-    setShowForm(true);
-  };
-
+  // ---------- Status ----------
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
@@ -161,6 +166,7 @@ const MenstrualPatternMaster = () => {
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
       return;
     }
+
     try {
       setLoading(true);
       await putRequest(
@@ -169,7 +175,7 @@ const MenstrualPatternMaster = () => {
       showPopup(UPDATE_MENSTRUAL_PATTERN, "success");
       fetchData();
     } catch (error) {
-      console.error("Status update error:", error);
+      console.error(error);
       showPopup(UPDATE_FAIL_MENSTRUAL_PATTERN, "error");
     } finally {
       setLoading(false);
@@ -177,30 +183,28 @@ const MenstrualPatternMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => setPopupMessage(null),
-    });
-  };
-
+  // ---------- UI ----------
   return (
     <div className="content-wrapper">
       <div className="card form-card">
-        {/* Header */}
+        {/* HEADER */}
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Menstrual Pattern Master</h4>
+
           <div className="d-flex">
             {!showForm && (
               <input
-                style={{ width: "220px" }}
                 className="form-control me-2"
-                placeholder="Search Patterns"
+                style={{ width: 220 }}
+                placeholder="Search Pattern"
                 value={searchQuery}
-                onChange={handleSearchChange}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             )}
+
             {!showForm ? (
               <>
                 <button
@@ -220,14 +224,14 @@ const MenstrualPatternMaster = () => {
                 </button>
               </>
             ) : (
-              <button type="button" className="btn btn-secondary" onClick={handleCancel}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
           </div>
         </div>
 
-        {/* Body */}
+        {/* BODY */}
         <div className="card-body">
           {loading ? (
             <LoadingScreen />
@@ -237,44 +241,53 @@ const MenstrualPatternMaster = () => {
                 <thead className="table-light">
                   <tr>
                     <th>Pattern Code</th>
-                    <th>Last Update Date</th>
+                    <th>Last Updated</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map((rec) => (
-                    <tr key={rec.id}>
-                      <td>{rec.patternValue}</td>
-                      <td>{formatDate(rec.lastUpdateDate)}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={rec.status?.toLowerCase() === "y"}
-                            onChange={() => handleSwitchChange(rec)}
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status?.toLowerCase() === "y"
-                              ? "Active"
-                              : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          disabled={rec.status?.toLowerCase() !== "y"}
-                          onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
+                  {currentItems.length ? (
+                    currentItems.map((rec) => (
+                      <tr key={rec.id}>
+                        <td>{rec.patternValue}</td>
+                        <td>{formatDate(rec.lastUpdateDate)}</td>
+                        <td>
+                          <div className="form-check form-switch">
+                            <input
+                              className="form-check-input"
+                              type="checkbox"
+                              checked={rec.status?.toLowerCase() === "y"}
+                              onChange={() => handleSwitchChange(rec)}
+                            />
+                            <label className="form-check-label ms-2">
+                              {rec.status?.toLowerCase() === "y"
+                                ? "Active"
+                                : "Inactive"}
+                            </label>
+                          </div>
+                        </td>
+                        <td>
+                          <button
+                            className="btn btn-success btn-sm"
+                            disabled={rec.status?.toLowerCase() !== "y"}
+                            onClick={() => handleEdit(rec)}
+                          >
+                            <i className="fa fa-pencil"></i>
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="4" className="text-center">
+                        No record found
                       </td>
                     </tr>
-                  ))}
+                  )}
                 </tbody>
               </table>
+
               <Pagination
                 totalItems={filteredData.length}
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
@@ -283,12 +296,17 @@ const MenstrualPatternMaster = () => {
               />
             </>
           ) : (
-            <form onSubmit={handleSave} className="row g-3">
+            <form className="row g-3" onSubmit={handleSave}>
+              <h5>
+                {editingRecord
+                  ? "Update Menstrual Pattern"
+                  : "Add Menstrual Pattern"}
+              </h5>
+
               <div className="col-md-5">
                 <label>Pattern Code *</label>
                 <input
                   className="form-control"
-                  name="patternValue"
                   value={formData.patternValue}
                   onChange={handleInputChange}
                   maxLength={MAX_LENGTH}
@@ -296,10 +314,23 @@ const MenstrualPatternMaster = () => {
               </div>
 
               <div className="col-12 text-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid || loading}
+                >
+                  {loading
+                    ? "Saving..."
+                    : editingRecord
+                    ? "Update"
+                    : "Save"}
                 </button>
-                <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
                   Cancel
                 </button>
               </div>
@@ -310,20 +341,29 @@ const MenstrualPatternMaster = () => {
 
           {confirmDialog.isOpen && (
             <div className="modal d-block">
-              <div className="modal-dialog">
+              <div className="modal-dialog modal-dialog-centered">
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
                     {confirmDialog.newStatus === "y"
                       ? "activate"
                       : "deactivate"}{" "}
-                    <strong>{confirmDialog.record?.patternValue}</strong>?
+                    <strong>
+                      {confirmDialog.record?.patternValue}
+                    </strong>
+                    ?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
                       No
                     </button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
                       Yes
                     </button>
                   </div>
