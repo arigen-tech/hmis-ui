@@ -3,6 +3,7 @@ import placeholderImage from "../../../assets/images/placeholder.jpg"
 import { useNavigate } from "react-router-dom"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 import {
   ADD_ROW_WARNING,
   INVALID_DATE_TEXT,
@@ -34,11 +35,14 @@ const PendingForRadiologyBilling = () => {
   const [packageItems, setPackageItems] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
-  const [pendingList, setPendingList] = useState([])
-  const [searchRegistrationNo, setSearchRegistrationNo] = useState("")
+  const [patientList, setPatientList] = useState([])
+  const [filteredPatientList, setFilteredPatientList] = useState([])
+  const [searchData, setSearchData] = useState({
+    patientName: "",
+    mobileNo: "",
+    sessionNo: ""
+  })
   const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(1)
-  const [pageSize] = useState(10)
   const [showPatientDetails, setShowPatientDetails] = useState(false)
   const [selectedPatient, setSelectedPatient] = useState(null)
 
@@ -189,223 +193,399 @@ const PendingForRadiologyBilling = () => {
       gstApplicable: true,
       gstPercent: 18,
     })
+
+    // Initialize with mock data
+    const mockData = [
+      {
+        id: 1,
+        registrationNo: "REG001",
+        patientName: "John Doe",
+        mobileNo: "9876543210",
+        age: "30Y 2M 10D",
+        sex: "Male",
+        gender: "Male",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 10:30 AM",
+        amount: 1500,
+        sessionNo: "S001",
+        consultedDoctor: "Dr. Sharma",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "John",
+        middleName: "A",
+        lastName: "Doe",
+        email: "john.doe@email.com",
+        relationId: 1,
+        dob: "1994-01-15",
+        address1: "123 Main St",
+        city: "Mumbai",
+        pinCode: "400001",
+        country: 1,
+        state: 1,
+        district: 1,
+        // Investigation details
+        investigations: [
+          {
+            id: 1,
+            name: "X-Ray Chest",
+            date: "2024-01-15",
+            originalAmount: 800,
+            discountAmount: 0,
+            netAmount: 800,
+            type: "investigation",
+            itemId: 2
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 2,
+        registrationNo: "REG002",
+        patientName: "Jane Smith",
+        mobileNo: "9876543211",
+        age: "25Y 5M 15D",
+        sex: "Female",
+        gender: "Female",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 11:00 AM",
+        amount: 2500,
+        sessionNo: "S002",
+        consultedDoctor: "Dr. Patel",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "Jane",
+        middleName: "B",
+        lastName: "Smith",
+        email: "jane.smith@email.com",
+        relationId: 1,
+        dob: "1999-08-20",
+        address1: "456 Oak Ave",
+        city: "Pune",
+        pinCode: "411001",
+        country: 1,
+        state: 1,
+        district: 2,
+        // Investigation details
+        investigations: [
+          {
+            id: 2,
+            name: "MRI Brain",
+            date: "2024-01-15",
+            originalAmount: 5000,
+            discountAmount: 500,
+            netAmount: 4500,
+            type: "investigation",
+            itemId: 3
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 3,
+        registrationNo: "REG003",
+        patientName: "Mike Johnson",
+        mobileNo: "9876543212",
+        age: "45Y 0M 5D",
+        sex: "Male",
+        gender: "Male",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 11:30 AM",
+        amount: 5000,
+        sessionNo: "S003",
+        consultedDoctor: "Dr. Kumar",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "Mike",
+        middleName: "C",
+        lastName: "Johnson",
+        email: "mike.j@email.com",
+        relationId: 1,
+        dob: "1979-03-10",
+        address1: "789 Pine St",
+        city: "Nagpur",
+        pinCode: "440001",
+        country: 1,
+        state: 1,
+        district: 3,
+        // Investigation details
+        investigations: [
+          {
+            id: 3,
+            name: "CT Scan Abdomen",
+            date: "2024-01-15",
+            originalAmount: 4000,
+            discountAmount: 400,
+            netAmount: 3600,
+            type: "investigation",
+            itemId: 4
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 4,
+        registrationNo: "REG004",
+        patientName: "Sarah Williams",
+        mobileNo: "9876543213",
+        age: "35Y 8M 20D",
+        sex: "Female",
+        gender: "Female",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 12:00 PM",
+        amount: 800,
+        sessionNo: "S004",
+        consultedDoctor: "Dr. Sharma",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "Sarah",
+        middleName: "D",
+        lastName: "Williams",
+        email: "sarah.w@email.com",
+        relationId: 1,
+        dob: "1989-05-25",
+        address1: "321 Elm Rd",
+        city: "Mumbai",
+        pinCode: "400002",
+        country: 1,
+        state: 1,
+        district: 1,
+        // Investigation details
+        investigations: [
+          {
+            id: 4,
+            name: "X-Ray Chest",
+            date: "2024-01-15",
+            originalAmount: 800,
+            discountAmount: 0,
+            netAmount: 800,
+            type: "investigation",
+            itemId: 2
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 5,
+        registrationNo: "REG005",
+        patientName: "David Brown",
+        mobileNo: "9876543214",
+        age: "50Y 3M 12D",
+        sex: "Male",
+        gender: "Male",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 02:00 PM",
+        amount: 4000,
+        sessionNo: "S005",
+        consultedDoctor: "Dr. Patel",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "David",
+        middleName: "E",
+        lastName: "Brown",
+        email: "david.b@email.com",
+        relationId: 1,
+        dob: "1974-11-30",
+        address1: "654 Cedar Ln",
+        city: "Pune",
+        pinCode: "411002",
+        country: 1,
+        state: 1,
+        district: 2,
+        // Investigation details
+        investigations: [
+          {
+            id: 5,
+            name: "CT Scan Abdomen",
+            date: "2024-01-15",
+            originalAmount: 4000,
+            discountAmount: 400,
+            netAmount: 3600,
+            type: "investigation",
+            itemId: 4
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 6,
+        registrationNo: "REG006",
+        patientName: "Emily Wilson",
+        mobileNo: "9876543215",
+        age: "28Y 4M 20D",
+        sex: "Female",
+        gender: "Female",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 03:30 PM",
+        amount: 1200,
+        sessionNo: "S006",
+        consultedDoctor: "Dr. Kumar",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "Emily",
+        middleName: "F",
+        lastName: "Wilson",
+        email: "emily.w@email.com",
+        relationId: 1,
+        dob: "1996-08-15",
+        address1: "987 Maple Dr",
+        city: "Mumbai",
+        pinCode: "400003",
+        country: 1,
+        state: 1,
+        district: 1,
+        // Investigation details
+        investigations: [
+          {
+            id: 6,
+            name: "X-Ray Chest",
+            date: "2024-01-15",
+            originalAmount: 800,
+            discountAmount: 0,
+            netAmount: 800,
+            type: "investigation",
+            itemId: 2
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 7,
+        registrationNo: "REG007",
+        patientName: "Robert Taylor",
+        mobileNo: "9876543216",
+        age: "55Y 2M 5D",
+        sex: "Male",
+        gender: "Male",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-15 04:00 PM",
+        amount: 3200,
+        sessionNo: "S007",
+        consultedDoctor: "Dr. Sharma",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "Robert",
+        middleName: "G",
+        lastName: "Taylor",
+        email: "robert.t@email.com",
+        relationId: 1,
+        dob: "1969-10-05",
+        address1: "555 Birch Ln",
+        city: "Pune",
+        pinCode: "411003",
+        country: 1,
+        state: 1,
+        district: 2,
+        // Investigation details
+        investigations: [
+          {
+            id: 7,
+            name: "MRI Brain",
+            date: "2024-01-15",
+            originalAmount: 5000,
+            discountAmount: 500,
+            netAmount: 4500,
+            type: "investigation",
+            itemId: 3
+          }
+        ],
+        fullData: {}
+      },
+      {
+        id: 8,
+        registrationNo: "REG008",
+        patientName: "Lisa Anderson",
+        mobileNo: "9876543217",
+        age: "42Y 1M 10D",
+        sex: "Female",
+        gender: "Female",
+        relation: "Self",
+        billingType: "Radiology",
+        appointmentDateTime: "2024-01-16 09:00 AM",
+        amount: 2800,
+        sessionNo: "S008",
+        consultedDoctor: "Dr. Patel",
+        department: "Radiology",
+        billingStatus: "Pending",
+        // Additional patient details
+        firstName: "Lisa",
+        middleName: "H",
+        lastName: "Anderson",
+        email: "lisa.a@email.com",
+        relationId: 1,
+        dob: "1982-11-20",
+        address1: "123 Spruce St",
+        city: "Nagpur",
+        pinCode: "440002",
+        country: 1,
+        state: 1,
+        district: 3,
+        // Investigation details
+        investigations: [
+          {
+            id: 8,
+            name: "CT Scan Abdomen",
+            date: "2024-01-16",
+            originalAmount: 4000,
+            discountAmount: 400,
+            netAmount: 3600,
+            type: "investigation",
+            itemId: 4
+          }
+        ],
+        fullData: {}
+      }
+    ]
+
+    setPatientList(mockData)
+    setFilteredPatientList(mockData)
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  const fetchPendingList = async (page = 1, regNo = "") => {
-    setLoading(true)
-    try {
-      // Mock API call - replace with actual API
-      setTimeout(() => {
-        const mockData = [
-          {
-            registrationNo: "REG001",
-            patientName: "John Doe",
-            mobileNo: "9876543210",
-            age: "30Y 2M 10D",
-            gender: "Male",
-            billingType: "Radiology",
-            appointmentDateTime: "2024-01-15 10:30 AM",
-            billAmount: 1500,
-            // Additional patient details
-            firstName: "John",
-            middleName: "A",
-            lastName: "Doe",
-            email: "john.doe@email.com",
-            relation: 1,
-            dob: "1994-01-15",
-            address1: "123 Main St",
-            city: "Mumbai",
-            pinCode: "400001",
-            country: 1,
-            state: 1,
-            district: 1,
-            // Investigation details
-            investigations: [
-              {
-                id: 1,
-                name: "X-Ray Chest",
-                date: "2024-01-15",
-                originalAmount: 800,
-                discountAmount: 0,
-                netAmount: 800,
-                type: "investigation",
-                itemId: 2
-              }
-            ]
-          },
-          {
-            registrationNo: "REG002",
-            patientName: "Jane Smith",
-            mobileNo: "9876543211",
-            age: "25Y 5M 15D",
-            gender: "Female",
-            billingType: "Radiology",
-            appointmentDateTime: "2024-01-15 11:00 AM",
-            billAmount: 2500,
-            // Additional patient details
-            firstName: "Jane",
-            middleName: "B",
-            lastName: "Smith",
-            email: "jane.smith@email.com",
-            relation: 1,
-            dob: "1999-08-20",
-            address1: "456 Oak Ave",
-            city: "Pune",
-            pinCode: "411001",
-            country: 1,
-            state: 1,
-            district: 2,
-            // Investigation details
-            investigations: [
-              {
-                id: 2,
-                name: "MRI Brain",
-                date: "2024-01-15",
-                originalAmount: 5000,
-                discountAmount: 500,
-                netAmount: 4500,
-                type: "investigation",
-                itemId: 3
-              }
-            ]
-          },
-          {
-            registrationNo: "REG003",
-            patientName: "Mike Johnson",
-            mobileNo: "9876543212",
-            age: "45Y 0M 5D",
-            gender: "Male",
-            billingType: "Radiology",
-            appointmentDateTime: "2024-01-15 11:30 AM",
-            billAmount: 5000,
-            // Additional patient details
-            firstName: "Mike",
-            middleName: "C",
-            lastName: "Johnson",
-            email: "mike.j@email.com",
-            relation: 1,
-            dob: "1979-03-10",
-            address1: "789 Pine St",
-            city: "Nagpur",
-            pinCode: "440001",
-            country: 1,
-            state: 1,
-            district: 3,
-            // Investigation details
-            investigations: [
-              {
-                id: 3,
-                name: "CT Scan Abdomen",
-                date: "2024-01-15",
-                originalAmount: 4000,
-                discountAmount: 400,
-                netAmount: 3600,
-                type: "investigation",
-                itemId: 4
-              }
-            ]
-          },
-          {
-            registrationNo: "REG004",
-            patientName: "Sarah Williams",
-            mobileNo: "9876543213",
-            age: "35Y 8M 20D",
-            gender: "Female",
-            billingType: "Radiology",
-            appointmentDateTime: "2024-01-15 12:00 PM",
-            billAmount: 800,
-            // Additional patient details
-            firstName: "Sarah",
-            middleName: "D",
-            lastName: "Williams",
-            email: "sarah.w@email.com",
-            relation: 1,
-            dob: "1989-05-25",
-            address1: "321 Elm Rd",
-            city: "Mumbai",
-            pinCode: "400002",
-            country: 1,
-            state: 1,
-            district: 1,
-            // Investigation details
-            investigations: [
-              {
-                id: 4,
-                name: "X-Ray Chest",
-                date: "2024-01-15",
-                originalAmount: 800,
-                discountAmount: 0,
-                netAmount: 800,
-                type: "investigation",
-                itemId: 2
-              }
-            ]
-          },
-          {
-            registrationNo: "REG005",
-            patientName: "David Brown",
-            mobileNo: "9876543214",
-            age: "50Y 3M 12D",
-            gender: "Male",
-            billingType: "Radiology",
-            appointmentDateTime: "2024-01-15 02:00 PM",
-            billAmount: 4000,
-            // Additional patient details
-            firstName: "David",
-            middleName: "E",
-            lastName: "Brown",
-            email: "david.b@email.com",
-            relation: 1,
-            dob: "1974-11-30",
-            address1: "654 Cedar Ln",
-            city: "Pune",
-            pinCode: "411002",
-            country: 1,
-            state: 1,
-            district: 2,
-            // Investigation details
-            investigations: [
-              {
-                id: 5,
-                name: "CT Scan Abdomen",
-                date: "2024-01-15",
-                originalAmount: 4000,
-                discountAmount: 400,
-                netAmount: 3600,
-                type: "investigation",
-                itemId: 4
-              }
-            ]
-          }
-        ]
-
-        // Filter by registration number if provided
-        const filteredData = regNo 
-          ? mockData.filter(item => item.registrationNo.toLowerCase().includes(regNo.toLowerCase()))
-          : mockData
-
-        setPendingList(filteredData)
-        setTotalPages(Math.ceil(filteredData.length / pageSize))
-        setLoading(false)
-      }, 1000)
-    } catch (error) {
-      console.error("Error fetching pending list:", error)
-      showPopup("Error fetching pending list", "error")
-      setLoading(false)
-    }
+  const handleSearchChange = (e) => {
+    const { id, value } = e.target
+    setSearchData(prev => ({ ...prev, [id]: value }))
+    setCurrentPage(1)
   }
 
   const handleSearch = () => {
-    setCurrentPage(1)
-    setShowPatientDetails(false)
-    setSelectedPatient(null)
-    fetchPendingList(1, searchRegistrationNo)
+    setLoading(true)
+    setTimeout(() => {
+      const filtered = patientList.filter((item) => {
+        const patientNameMatch = searchData.patientName === "" || 
+          item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
+        
+        const mobileNoMatch = searchData.mobileNo === "" || 
+          item.mobileNo.includes(searchData.mobileNo)
+
+        const sessionNoMatch = searchData.sessionNo === "" || 
+          (item.sessionNo && item.sessionNo.toLowerCase().includes(searchData.sessionNo.toLowerCase()))
+        
+        return patientNameMatch && mobileNoMatch && sessionNoMatch
+      })
+      setFilteredPatientList(filtered)
+      setCurrentPage(1)
+      setLoading(false)
+    }, 500)
   }
+
+  
 
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    fetchPendingList(page, searchRegistrationNo)
   }
 
   const handleRowClick = (patient) => {
@@ -420,7 +600,7 @@ const PendingForRadiologyBilling = () => {
       lastName: patient.lastName,
       mobileNo: patient.mobileNo,
       gender: patient.gender === "Male" ? 1 : patient.gender === "Female" ? 2 : 3,
-      relation: patient.relation || 1,
+      relation: patient.relationId || 1,
       dob: patient.dob,
       age: patient.age,
       email: patient.email,
@@ -437,6 +617,12 @@ const PendingForRadiologyBilling = () => {
     if (patient.investigations && patient.investigations.length > 0) {
       setCheckedRows(new Array(patient.investigations.length).fill(true))
     }
+  }
+
+  const handleBackToList = () => {
+    setShowPatientDetails(false)
+    setSelectedPatient(null)
+    handleReset()
   }
 
   const showPopup = (message, type = "info", shouldRefreshData = false, onCloseCallback = null) => {
@@ -1154,6 +1340,10 @@ const PendingForRadiologyBilling = () => {
     setImage(placeholderImage)
     setImageURL("")
     setCheckedRows([true])
+  }
+
+  const handleDetailsReset = () => {
+    handleReset()
     setShowPatientDetails(false)
     setSelectedPatient(null)
   }
@@ -1176,10 +1366,12 @@ const PendingForRadiologyBilling = () => {
   }
 
   const paymentBreakdown = calculatePaymentBreakdown()
-  const paginatedData = pendingList.slice((currentPage - 1) * pageSize, currentPage * pageSize)
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast)
 
   return (
-    <div className="body d-flex py-3">
+    <div className="content-wrapper">
       {popupMessage && (
         <Popup
           message={popupMessage.message}
@@ -1188,854 +1380,883 @@ const PendingForRadiologyBilling = () => {
         />
       )}
 
-      <div className="container-xxl">
-        <div className="row align-items-center">
-          <div className="border-0 mb-4">
-            <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0">Pending for Radiology Billing</h3>
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title p-2">Pending for Radiology Billing</h4>
+              {showPatientDetails && (
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary"
+                  onClick={handleBackToList}
+                >
+                  <i className="icofont-arrow-left me-1"></i> Back to List
+                </button>
+              )}
             </div>
-          </div>
-        </div>
 
-        {/* Search Section - Always Visible */}
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-body">
-                <div className="row g-3 align-items-end">
-                  <div className="col-md-4">
-                    <label className="form-label">Registration No.</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      placeholder="Enter Registration Number"
-                      value={searchRegistrationNo}
-                      onChange={(e) => setSearchRegistrationNo(e.target.value)}
-                    />
+            <div className="card-body">
+              {/* Search Section - Only visible when not showing patient details */}
+              {!showPatientDetails && (
+                <>
+                  <div className="mb-4">
+                    <div className="card-body">
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Patient Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="patientName"
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Mobile No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="mobileNo"
+                            placeholder="Enter mobile number"
+                            value={searchData.mobileNo}
+                            onChange={handleSearchChange}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Session No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="sessionNo"
+                            placeholder="Enter session number"
+                            value={searchData.sessionNo}
+                            onChange={handleSearchChange}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <div className="d-flex gap-2">
+                            <button 
+                              type="button" 
+                              className="btn btn-primary flex-fill"
+                              onClick={handleSearch}
+                              disabled={loading}
+                            >
+                              {loading ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Searching...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="icofont-search me-1"></i> Search
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary flex-fill"
+                              onClick={handleReset}
+                            >
+                              Reset
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                   </div>
-                  <div className="col-md-2">
-                    <button 
-                      type="button" 
-                      className="btn btn-primary w-100"
-                      onClick={handleSearch}
-                      disabled={loading}
-                    >
-                      {loading ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Searching...
-                        </>
-                      ) : (
-                        <>
-                          <i className="icofont-search me-1"></i> Search
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
 
-        {/* Pending List Table - Shows after search */}
-        {pendingList.length > 0 && (
-          <div className="row mb-3">
-            <div className="col-sm-12">
-              <div className="card shadow mb-3">
-                <div className="card-header py-3 border-bottom-1">
-                  <h6 className="mb-0 fw-bold">Radiology Billing Pending List</h6>
-                </div>
-                <div className="card-body">
-                  <div className="table-responsive">
-                    <table className="table table-bordered table-hover">
-                      <thead>
-                        <tr>
-                          <th>Registration No.</th>
-                          <th>Patient Name</th>
-                          <th>Mobile No.</th>
-                          <th>Age</th>
-                          <th>Gender</th>
-                          <th>Billing Type</th>
-                          <th>Appointment Date/Time</th>
-                          <th>Bill Amount</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {paginatedData.map((item, index) => (
-                          <tr 
-                            key={index} 
-                            onClick={() => handleRowClick(item)}
-                            style={{ cursor: "pointer" }}
-                            className={selectedPatient?.registrationNo === item.registrationNo ? "table-primary" : ""}
-                          >
-                            <td>{item.registrationNo}</td>
-                            <td>{item.patientName}</td>
-                            <td>{item.mobileNo}</td>
-                            <td>{item.age}</td>
-                            <td>{item.gender}</td>
-                            <td>{item.billingType}</td>
-                            <td>{item.appointmentDateTime}</td>
-                            <td>₹{item.billAmount}</td>
+                  {/* Pending List Table */}
+                  {filteredPatientList.length > 0 ? (
+                    <div className="table-responsive packagelist">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Patient Name</th>
+                            <th>Mobile No.</th>
+                            <th>Age</th>
+                            <th>Sex</th>
+                            <th>Relation</th>
+                            <th>Billing Type</th>
+                            <th>Consulted Doctor</th>
+                            <th>Department</th>
+                            <th>Amount</th>
+                            <th>Billing Status</th>
                           </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-
-                  {/* Pagination */}
-                  {totalPages > 1 && (
-                    <div className="d-flex justify-content-end mt-3">
-                      <nav>
-                        <ul className="pagination">
-                          <li className={`page-item ${currentPage === 1 ? 'disabled' : ''}`}>
-                            <button 
-                              className="page-link" 
-                              onClick={() => handlePageChange(currentPage - 1)}
-                              disabled={currentPage === 1}
+                        </thead>
+                        <tbody>
+                          {currentItems.map((item) => (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleRowClick(item)}
+                              role="button"
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(item) }}
+                              style={{ cursor: "pointer" }}
                             >
-                              Previous
-                            </button>
-                          </li>
-                          {[...Array(totalPages)].map((_, i) => (
-                            <li key={i} className={`page-item ${currentPage === i + 1 ? 'active' : ''}`}>
-                              <button 
-                                className="page-link" 
-                                onClick={() => handlePageChange(i + 1)}
-                              >
-                                {i + 1}
-                              </button>
-                            </li>
+                              <td>{item.patientName}</td>
+                              <td>{item.mobileNo}</td>
+                              <td>{item.age}</td>
+                              <td>{item.sex}</td>
+                              <td>{item.relation}</td>
+                              <td>
+                                <span className="badge bg-info">{item.billingType}</span>
+                              </td>
+                              <td>{item.consultedDoctor}</td>
+                              <td>{item.department}</td>
+                              <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
+                              <td>
+                                <button
+                                  className="btn btn-warning btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                                  style={{
+                                    cursor: "pointer",
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "#ff6b35",
+                                    textDecoration: "underline",
+                                  }}
+                                  aria-label={`Open ${item.patientName} billing details`}
+                                >
+                                  {item.billingStatus}
+                                </button>
+                              </td>
+                            </tr>
                           ))}
-                          <li className={`page-item ${currentPage === totalPages ? 'disabled' : ''}`}>
-                            <button 
-                              className="page-link" 
-                              onClick={() => handlePageChange(currentPage + 1)}
-                              disabled={currentPage === totalPages}
-                            >
-                              Next
-                            </button>
-                          </li>
-                        </ul>
-                      </nav>
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="alert alert-info" role="alert">
+                      <i className="mdi mdi-information"></i> No pending radiology billing records found.
                     </div>
                   )}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {/* Patient Details Sections - Shows only when a patient is selected */}
-        {showPatientDetails && (
-          <>
-            {/* Patient Personal Details */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header py-3 border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Personal Details</h6>
-                  </div>
-                  <div className="card-body">
-                    <form>
-                      <div className="row g-3">
-                        <div className="col-md-12">
-                          <div className="row g-3">
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="firstName">
-                                First Name <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
-                                id="firstName"
-                                name="firstName"
-                                value={formData.firstName || ""}
-                                onChange={handleChange}
-                                placeholder="Enter First Name"
-                                readOnly
-                              />
-                              {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="middleName">
-                                Middle Name
-                              </label>
-                              <input
-                                type="text"
-                                id="middleName"
-                                value={formData.middleName || ""}
-                                name="middleName"
-                                onChange={handleChange}
-                                className="form-control"
-                                placeholder="Enter Middle Name"
-                                readOnly
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="lastName">
-                                Last Name
-                              </label>
-                              <input
-                                type="text"
-                                id="lastName"
-                                value={formData.lastName || ""}
-                                name="lastName"
-                                onChange={handleChange}
-                                className="form-control"
-                                placeholder="Enter Last Name"
-                                readOnly
-                              />
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="mobileNo">
-                                Mobile No.<span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="text"
-                                id="mobileNo"
-                                className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
-                                name="mobileNo"
-                                value={formData.mobileNo || ""}
-                                maxLength={10}
-                                onChange={(e) => {
-                                  if (/^\d*$/.test(e.target.value)) {
-                                    handleChange(e)
-                                  }
-                                }}
-                                placeholder="Enter Mobile Number"
-                                readOnly
-                              />
-                              {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="gender">
-                                Gender <span className="text-danger">*</span>
-                              </label>
-                              <select
-                                className={`form-select ${errors.gender ? "is-invalid" : ""}`}
-                                id="gender"
-                                name="gender"
-                                value={formData.gender || ""}
-                                onChange={handleChange}
-                                disabled
-                              >
-                                <option value="">Select</option>
-                                {genderData.map((gender) => (
-                                  <option key={gender.id} value={gender.id}>
-                                    {gender.genderName}
-                                  </option>
-                                ))}
-                              </select>
-                              {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="relation">
-                                Relation <span className="text-danger">*</span>
-                              </label>
-                              <select
-                                className={`form-select ${errors.relation ? "is-invalid" : ""}`}
-                                id="relation"
-                                name="relation"
-                                value={formData.relation || ""}
-                                onChange={handleChange}
-                                disabled
-                              >
-                                <option value="">Select</option>
-                                {relationData.map((relation) => (
-                                  <option key={relation.id} value={relation.id}>
-                                    {relation.relationName}
-                                  </option>
-                                ))}
-                              </select>
-                              {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="dob">
-                                DOB <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="date"
-                                id="dob"
-                                name="dob"
-                                className={`form-control ${errors.dob ? "is-invalid" : ""}`}
-                                value={formData.dob || ""}
-                                max={new Date().toISOString().split("T")[0]}
-                                onChange={handleChange}
-                                placeholder="Select Date of Birth"
-                                readOnly
-                              />
-                              {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="age">
-                                Age
-                              </label>
-                              <input
-                                type="text"
-                                id="age"
-                                name="age"
-                                className={`form-control ${errors.age ? "is-invalid" : ""}`}
-                                value={formData.age || ""}
-                                onChange={handleChange}
-                                placeholder="Enter Age"
-                                readOnly
-                              />
-                              {errors.age && <div className="invalid-feedback">{errors.age}</div>}
-                            </div>
-                            <div className="col-md-4">
-                              <label className="form-label" htmlFor="email">
-                                Email <span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="email"
-                                id="email"
-                                name="email"
-                                className={`form-control ${errors.email ? "is-invalid" : ""}`}
-                                value={formData.email || ""}
-                                onChange={handleChange}
-                                placeholder="Enter Email Address"
-                                readOnly
-                              />
-                              {errors.email && <div className="invalid-feedback">{errors.email}</div>}
-                            </div>
-                          </div>
+                  {/* Pagination */}
+                  {filteredPatientList.length > 0 && (
+                    <Pagination
+                      totalItems={filteredPatientList.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={handlePageChange}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Patient Details Sections - Shows only when a patient is selected */}
+              {showPatientDetails && selectedPatient && (
+                <>
+                  {/* Patient Personal Details */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header py-3 border-bottom-1">
+                          <h6 className="mb-0 fw-bold">Personal Details</h6>
                         </div>
-                        
-                      </div>
-                    </form>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Lab Investigation/Package Details */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">
-                      {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
-                    </h6>
-                  </div>
-                  <div className="card-body">
-                    <div className="mb-3">
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="type"
-                          id="investigation"
-                          value="investigation"
-                          checked={formData.type === "investigation"}
-                          onChange={() => handleTypeChange("investigation")}
-                        />
-                        <label className="form-check-label" htmlFor="investigation">
-                          Investigation
-                        </label>
-                      </div>
-                      <div className="form-check form-check-inline">
-                        <input
-                          className="form-check-input"
-                          type="radio"
-                          name="type"
-                          id="package"
-                          value="package"
-                          checked={formData.type === "package"}
-                          onChange={() => handleTypeChange("package")}
-                        />
-                        <label className="form-check-label" htmlFor="package">
-                          Package
-                        </label>
-                      </div>
-                    </div>
-
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"} <span className="text-danger">*</span></th>
-                          <th>Date  <span className="text-danger">*</span></th>
-                          <th>Original Amount  <span className="text-danger">*</span></th>
-                          <th>Discount Amount</th>
-                          <th>Net Amount</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.rows.map((row, index) => (
-                          <tr key={index}>
-                            <td>
-                              <div className="d-flex align-items-center gap-2">
-                                <input
-                                  type="checkbox"
-                                  style={{ width: "20px", height: "20px", border: "2px solid black" }}
-                                  className="form-check-input"
-                                  checked={checkedRows[index] || false}
-                                  onChange={(e) => {
-                                    const updated = [...checkedRows]
-                                    updated[index] = e.target.checked
-                                    setCheckedRows(updated)
-                                  }}
-                                />
-                                <div className="dropdown-search-container position-relative flex-grow-1">
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={row.name}
-                                    autoComplete="on"
-                                    placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
-                                    onChange={(e) => {
-                                      handleRowChange(index, "name", e.target.value)
-                                      if (e.target.value.trim() !== "") {
-                                        setActiveRowIndex(index)
-                                      } else {
-                                        setActiveRowIndex(null)
-                                      }
-                                    }}
-                                    onFocus={() => {
-                                      if (row.name.trim() !== "") {
-                                        setActiveRowIndex(index)
-                                      }
-                                    }}
-                                    onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
-                                  />
-                                  {activeRowIndex === index && row.name.trim() !== "" && (
-                                    <ul
-                                      className="list-group position-absolute w-100 mt-1"
-                                      style={{
-                                        zIndex: 1000,
-                                        maxHeight: "200px",
-                                        overflowY: "auto",
-                                        backgroundColor: "#fff",
-                                        border: "1px solid #ccc",
+                        <div className="card-body">
+                          <form>
+                            <div className="row g-3">
+                              <div className="col-md-12">
+                                <div className="row g-3">
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="firstName">
+                                      First Name <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
+                                      id="firstName"
+                                      name="firstName"
+                                      value={formData.firstName || ""}
+                                      onChange={handleChange}
+                                      placeholder="Enter First Name"
+                                      readOnly
+                                    />
+                                    {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="middleName">
+                                      Middle Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="middleName"
+                                      value={formData.middleName || ""}
+                                      name="middleName"
+                                      onChange={handleChange}
+                                      className="form-control"
+                                      placeholder="Enter Middle Name"
+                                      readOnly
+                                    />
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="lastName">
+                                      Last Name
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="lastName"
+                                      value={formData.lastName || ""}
+                                      name="lastName"
+                                      onChange={handleChange}
+                                      className="form-control"
+                                      placeholder="Enter Last Name"
+                                      readOnly
+                                    />
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="mobileNo">
+                                      Mobile No.<span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="mobileNo"
+                                      className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
+                                      name="mobileNo"
+                                      value={formData.mobileNo || ""}
+                                      maxLength={10}
+                                      onChange={(e) => {
+                                        if (/^\d*$/.test(e.target.value)) {
+                                          handleChange(e)
+                                        }
                                       }}
+                                      placeholder="Enter Mobile Number"
+                                      readOnly
+                                    />
+                                    {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="gender">
+                                      Gender <span className="text-danger">*</span>
+                                    </label>
+                                    <select
+                                      className={`form-select ${errors.gender ? "is-invalid" : ""}`}
+                                      id="gender"
+                                      name="gender"
+                                      value={formData.gender || ""}
+                                      onChange={handleChange}
+                                      disabled
                                     >
-                                      {formData.type === "investigation"
-                                        ? investigationItems
-                                          .filter((item) =>
-                                            item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                          )
-                                          .map((item, i) => {
-                                            const hasDiscount = item.disc && item.disc > 0
-                                            const displayPrice = item.price || 0
-                                            const discountAmount = hasDiscount ? item.disc : 0
-                                            const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
-
-                                            return (
-                                              <li
-                                                key={i}
-                                                className="list-group-item list-group-item-action"
-                                                style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                onClick={() => {
-                                                  const currentRowDate = row.date || new Date().toISOString().split('T')[0]
-                                                  
-                                                  if (isInvestigationInSelectedPackages(item.investigationId, currentRowDate)) {
-                                                    showPopup(
-                                                      DUPLICATE_INV_INCLUDE_PACKAGE,
-                                                      "warning"
-                                                    )
-                                                    return
-                                                  }
-                                                  
-                                                  if (isInvestigationAlreadySelected(item.investigationId, currentRowDate)) {
-                                                    showPopup(
-                                                      DUPLICATE_INV_INCLUDE_PACKAGE,
-                                                      "warning"
-                                                    )
-                                                    return
-                                                  }
-                                                  if (item.price === null || item.price === 0 || item.price === "0") {
-                                                    showPopup("Price not configured for this investigation", "warning")
-                                                  } else {
-                                                    const hasDiscount = item.disc && item.disc > 0
-                                                    const displayPrice = item.price || 0
-                                                    const discountAmount = hasDiscount ? item.disc : 0
-                                                    const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
-
-                                                    handleRowChange(index, "name", item.investigationName)
-                                                    handleRowChange(index, "itemId", item.investigationId)
-                                                    handleRowChange(index, "originalAmount", displayPrice)
-                                                    handleRowChange(index, "discountAmount", discountAmount)
-                                                    handleRowChange(index, "netAmount", finalPrice)
-                                                    handleRowChange(index, "type", formData.type)
-                                                    setActiveRowIndex(null)
-                                                  }
-                                                }}
-                                              >
-                                                <div>
-                                                  <strong>{item.investigationName}</strong>
-                                                  <div className="d-flex justify-content-between">
-                                                    <span>
-                                                      {item.price === null
-                                                        ? "Price not configured"
-                                                        : `₹${finalPrice.toFixed(2)}`}
-                                                    </span>
-                                                    {hasDiscount && (
-                                                      <span className="text-success">
-                                                        (Discount: ₹{discountAmount.toFixed(2)})
-                                                      </span>
-                                                    )}
-                                                  </div>
-                                                  {item.investigationType && (
-                                                    <small className="text-muted">
-                                                      Type: {item.investigationType}
-                                                    </small>
-                                                  )}
-                                                </div>
-                                              </li>
-                                            )
-                                          })
-                                        : packageItems
-                                          .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                          .map((item, i) => (
-                                            <li
-                                              key={i}
-                                              className="list-group-item list-group-item-action"
-                                              style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                              onClick={async () => {
-                                                const currentRowDate = row.date || new Date().toISOString().split('T')[0];
-                                                
-                                                // Check for duplicate package
-                                                if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
-                                                  showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
-                                                  return;
-                                                }
-
-                                                const priceDetails = await fetchPackagePrice(item.packName);
-                                                if (!priceDetails || !priceDetails.actualCost) {
-                                                  showPopup("Price not configured for this package", "warning");
-                                                  return;
-                                                }
-
-                                                const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName);
-
-                                                // Check if investigations in this package are already selected individually FOR THE SAME DATE
-                                                const alreadySelectedInvestigations = [];
-                                                investigationIds.forEach(invId => {
-                                                  if (isInvestigationAlreadySelected(invId, currentRowDate)) {
-                                                    const invItem = investigationItems.find(inv => inv.investigationId === invId);
-                                                    if (invItem) {
-                                                      alreadySelectedInvestigations.push(invItem.investigationName);
-                                                    }
-                                                  }
-                                                });
-
-                                                if (alreadySelectedInvestigations.length > 0) {
-                                                  showPopup(
-                                                    `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(', ')}`,
-                                                    "warning"
-                                                  );
-                                                  return;
-                                                }
-
-                                                // Check if investigations in this package are already in other packages FOR THE SAME DATE
-                                                const alreadyInOtherPackage = [];
-                                                investigationIds.forEach(invId => {
-                                                  if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
-                                                    const containingPackage = formData.rows.find((row, idx) =>
-                                                      checkedRows[idx] &&
-                                                      row.type === "package" &&
-                                                      row.investigationIds &&
-                                                      row.investigationIds.includes(invId) &&
-                                                      row.date === currentRowDate
-                                                    );
-                                                    if (containingPackage) {
-                                                      const invItem = investigationItems.find(inv => inv.investigationId === invId);
-                                                      if (invItem) {
-                                                        alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`);
-                                                      }
-                                                    }
-                                                  }
-                                                });
-
-                                                if (alreadyInOtherPackage.length > 0) {
-                                                  showPopup(
-                                                    `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(', ')}`,
-                                                    "warning"
-                                                  );
-                                                  return;
-                                                }
-
-                                                handleRowChange(index, "name", item.packName);
-                                                handleRowChange(index, "itemId", item.packageId || priceDetails.packId);
-                                                handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
-                                                handleRowChange(index, "discountAmount", priceDetails.disc || 0);
-                                                handleRowChange(index, "netAmount", priceDetails.actualCost);
-                                                handleRowChange(index, "type", formData.type);
-                                                handleRowChange(index, "investigationIds", investigationIds);
-                                                setActiveRowIndex(null);
-                                              }}
-                                            >
-                                              <div>
-                                                <strong>{item.packName}</strong>
-                                                <div className="d-flex justify-content-between">
-                                                  <span>₹{item.actualCost.toFixed(2)}</span>
-                                                </div>
-                                              </div>
-                                            </li>
-                                          ))}
-                                    </ul>
-                                  )}
+                                      <option value="">Select</option>
+                                      {genderData.map((gender) => (
+                                        <option key={gender.id} value={gender.id}>
+                                          {gender.genderName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="relation">
+                                      Relation <span className="text-danger">*</span>
+                                    </label>
+                                    <select
+                                      className={`form-select ${errors.relation ? "is-invalid" : ""}`}
+                                      id="relation"
+                                      name="relation"
+                                      value={formData.relation || ""}
+                                      onChange={handleChange}
+                                      disabled
+                                    >
+                                      <option value="">Select</option>
+                                      {relationData.map((relation) => (
+                                        <option key={relation.id} value={relation.id}>
+                                          {relation.relationName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                    {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="dob">
+                                      DOB <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                      type="date"
+                                      id="dob"
+                                      name="dob"
+                                      className={`form-control ${errors.dob ? "is-invalid" : ""}`}
+                                      value={formData.dob || ""}
+                                      max={new Date().toISOString().split("T")[0]}
+                                      onChange={handleChange}
+                                      placeholder="Select Date of Birth"
+                                      readOnly
+                                    />
+                                    {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="age">
+                                      Age
+                                    </label>
+                                    <input
+                                      type="text"
+                                      id="age"
+                                      name="age"
+                                      className={`form-control ${errors.age ? "is-invalid" : ""}`}
+                                      value={formData.age || ""}
+                                      onChange={handleChange}
+                                      placeholder="Enter Age"
+                                      readOnly
+                                    />
+                                    {errors.age && <div className="invalid-feedback">{errors.age}</div>}
+                                  </div>
+                                  <div className="col-md-4">
+                                    <label className="form-label" htmlFor="email">
+                                      Email <span className="text-danger">*</span>
+                                    </label>
+                                    <input
+                                      type="email"
+                                      id="email"
+                                      name="email"
+                                      className={`form-control ${errors.email ? "is-invalid" : ""}`}
+                                      value={formData.email || ""}
+                                      onChange={handleChange}
+                                      placeholder="Enter Email Address"
+                                      readOnly
+                                    />
+                                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                                  </div>
                                 </div>
                               </div>
-                            </td>
-                            <td>
-                              <input
-                                type="date"
-                                className="form-control"
-                                value={row.date || new Date().toISOString().split('T')[0]}
-                                onChange={(e) => handleDateChange(index, e.target.value)}
-                                min={new Date().toISOString().split('T')[0]}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={row.originalAmount}
-                                onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
-                                min="0"
-                                step="0.01"
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control"
-                                value={row.discountAmount}
-                                onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
-                                min="0"
-                                step="0.01"
-                              />
-                            </td>
-                            <td>
-                              <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
-                            </td>
-                            <td>
-                              <div className="d-flex align-item-center gap-2">
-                                <div className="form-check form-check-muted m-0"></div>
-                                <button
-                                  type="button"
-                                  className="btn btn-danger"
-                                  onClick={() => removeRow(index)}
-                                  disabled={formData.rows.length === 1}
-                                >
-                                  <i className="icofont-close"></i>
-                                </button>
-                              </div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-
-                    <div className="d-flex justify-content-between align-items-center">
-                      <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
-                        Add {formData.type === "investigation" ? "Investigation" : "Package"} +
-                      </button>
-
-                      <div className="d-flex">
-                        <input
-                          type="text"
-                          className="form-control me-2"
-                          placeholder="Enter Coupon Code"
-                          style={{ width: "200px" }}
-                        />
-                        <button type="button" className="btn btn-primary me-2">
-                          <i className="icofont-ticket me-1"></i> Apply Coupon
-                        </button>
+                            </div>
+                          </form>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Enhanced Payment Summary Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div
-                  className="card shadow mb-3"
-                  style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
-                >
-                  <div
-                    className="card-header py-3 text-white"
-                    style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
-                  >
-                    <div className="d-flex align-items-center gap-3">
-                      <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
-                        <i className="fa fa-calculator text-primary"></i>
-                      </div>
-                      <div>
-                        <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
-                        <small className="text-white" style={{ opacity: 0.8 }}>
-                          {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
-                        </small>
+                  {/* Lab Investigation/Package Details */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header border-bottom-1 py-3">
+                          <h6 className="fw-bold mb-0">
+                            {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                          </h6>
+                        </div>
+                        <div className="card-body">
+                          <div className="mb-3">
+                            <div className="form-check form-check-inline">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="type"
+                                id="investigation"
+                                value="investigation"
+                                checked={formData.type === "investigation"}
+                                onChange={() => handleTypeChange("investigation")}
+                              />
+                              <label className="form-check-label" htmlFor="investigation">
+                                Investigation
+                              </label>
+                            </div>
+                            <div className="form-check form-check-inline">
+                              <input
+                                className="form-check-input"
+                                type="radio"
+                                name="type"
+                                id="package"
+                                value="package"
+                                checked={formData.type === "package"}
+                                onChange={() => handleTypeChange("package")}
+                              />
+                              <label className="form-check-label" htmlFor="package">
+                                Package
+                              </label>
+                            </div>
+                          </div>
+
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"} <span className="text-danger">*</span></th>
+                                <th>Date  <span className="text-danger">*</span></th>
+                                <th>Original Amount  <span className="text-danger">*</span></th>
+                                <th>Discount Amount</th>
+                                <th>Net Amount</th>
+                                <th>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {formData.rows.map((row, index) => (
+                                <tr key={index}>
+                                  <td>
+                                    <div className="d-flex align-items-center gap-2">
+                                      <input
+                                        type="checkbox"
+                                        style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                        className="form-check-input"
+                                        checked={checkedRows[index] || false}
+                                        onChange={(e) => {
+                                          const updated = [...checkedRows]
+                                          updated[index] = e.target.checked
+                                          setCheckedRows(updated)
+                                        }}
+                                      />
+                                      <div className="dropdown-search-container position-relative flex-grow-1">
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          value={row.name}
+                                          autoComplete="on"
+                                          placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
+                                          onChange={(e) => {
+                                            handleRowChange(index, "name", e.target.value)
+                                            if (e.target.value.trim() !== "") {
+                                              setActiveRowIndex(index)
+                                            } else {
+                                              setActiveRowIndex(null)
+                                            }
+                                          }}
+                                          onFocus={() => {
+                                            if (row.name.trim() !== "") {
+                                              setActiveRowIndex(index)
+                                            }
+                                          }}
+                                          onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                                        />
+                                        {activeRowIndex === index && row.name.trim() !== "" && (
+                                          <ul
+                                            className="list-group position-absolute w-100 mt-1"
+                                            style={{
+                                              zIndex: 1000,
+                                              maxHeight: "200px",
+                                              overflowY: "auto",
+                                              backgroundColor: "#fff",
+                                              border: "1px solid #ccc",
+                                            }}
+                                          >
+                                            {formData.type === "investigation"
+                                              ? investigationItems
+                                                .filter((item) =>
+                                                  item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
+                                                )
+                                                .map((item, i) => {
+                                                  const hasDiscount = item.disc && item.disc > 0
+                                                  const displayPrice = item.price || 0
+                                                  const discountAmount = hasDiscount ? item.disc : 0
+                                                  const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+
+                                                  return (
+                                                    <li
+                                                      key={i}
+                                                      className="list-group-item list-group-item-action"
+                                                      style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                                      onClick={() => {
+                                                        const currentRowDate = row.date || new Date().toISOString().split('T')[0]
+                                                        
+                                                        if (isInvestigationInSelectedPackages(item.investigationId, currentRowDate)) {
+                                                          showPopup(
+                                                            DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                            "warning"
+                                                          )
+                                                          return
+                                                        }
+                                                        
+                                                        if (isInvestigationAlreadySelected(item.investigationId, currentRowDate)) {
+                                                          showPopup(
+                                                            DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                            "warning"
+                                                          )
+                                                          return
+                                                        }
+                                                        if (item.price === null || item.price === 0 || item.price === "0") {
+                                                          showPopup("Price not configured for this investigation", "warning")
+                                                        } else {
+                                                          const hasDiscount = item.disc && item.disc > 0
+                                                          const displayPrice = item.price || 0
+                                                          const discountAmount = hasDiscount ? item.disc : 0
+                                                          const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+
+                                                          handleRowChange(index, "name", item.investigationName)
+                                                          handleRowChange(index, "itemId", item.investigationId)
+                                                          handleRowChange(index, "originalAmount", displayPrice)
+                                                          handleRowChange(index, "discountAmount", discountAmount)
+                                                          handleRowChange(index, "netAmount", finalPrice)
+                                                          handleRowChange(index, "type", formData.type)
+                                                          setActiveRowIndex(null)
+                                                        }
+                                                      }}
+                                                    >
+                                                      <div>
+                                                        <strong>{item.investigationName}</strong>
+                                                        <div className="d-flex justify-content-between">
+                                                          <span>
+                                                            {item.price === null
+                                                              ? "Price not configured"
+                                                              : `₹${finalPrice.toFixed(2)}`}
+                                                          </span>
+                                                          {hasDiscount && (
+                                                            <span className="text-success">
+                                                              (Discount: ₹{discountAmount.toFixed(2)})
+                                                            </span>
+                                                          )}
+                                                        </div>
+                                                        {item.investigationType && (
+                                                          <small className="text-muted">
+                                                            Type: {item.investigationType}
+                                                          </small>
+                                                        )}
+                                                      </div>
+                                                    </li>
+                                                  )
+                                                })
+                                              : packageItems
+                                                .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
+                                                .map((item, i) => (
+                                                  <li
+                                                    key={i}
+                                                    className="list-group-item list-group-item-action"
+                                                    style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
+                                                    onClick={async () => {
+                                                      const currentRowDate = row.date || new Date().toISOString().split('T')[0];
+                                                      
+                                                      // Check for duplicate package
+                                                      if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
+                                                        showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+                                                        return;
+                                                      }
+
+                                                      const priceDetails = await fetchPackagePrice(item.packName);
+                                                      if (!priceDetails || !priceDetails.actualCost) {
+                                                        showPopup("Price not configured for this package", "warning");
+                                                        return;
+                                                      }
+
+                                                      const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName);
+
+                                                      // Check if investigations in this package are already selected individually FOR THE SAME DATE
+                                                      const alreadySelectedInvestigations = [];
+                                                      investigationIds.forEach(invId => {
+                                                        if (isInvestigationAlreadySelected(invId, currentRowDate)) {
+                                                          const invItem = investigationItems.find(inv => inv.investigationId === invId);
+                                                          if (invItem) {
+                                                            alreadySelectedInvestigations.push(invItem.investigationName);
+                                                          }
+                                                        }
+                                                      });
+
+                                                      if (alreadySelectedInvestigations.length > 0) {
+                                                        showPopup(
+                                                          `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(', ')}`,
+                                                          "warning"
+                                                        );
+                                                        return;
+                                                      }
+
+                                                      // Check if investigations in this package are already in other packages FOR THE SAME DATE
+                                                      const alreadyInOtherPackage = [];
+                                                      investigationIds.forEach(invId => {
+                                                        if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
+                                                          const containingPackage = formData.rows.find((row, idx) =>
+                                                            checkedRows[idx] &&
+                                                            row.type === "package" &&
+                                                            row.investigationIds &&
+                                                            row.investigationIds.includes(invId) &&
+                                                            row.date === currentRowDate
+                                                          );
+                                                          if (containingPackage) {
+                                                            const invItem = investigationItems.find(inv => inv.investigationId === invId);
+                                                            if (invItem) {
+                                                              alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`);
+                                                            }
+                                                          }
+                                                        }
+                                                      });
+
+                                                      if (alreadyInOtherPackage.length > 0) {
+                                                        showPopup(
+                                                          `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(', ')}`,
+                                                          "warning"
+                                                        );
+                                                        return;
+                                                      }
+
+                                                      handleRowChange(index, "name", item.packName);
+                                                      handleRowChange(index, "itemId", item.packageId || priceDetails.packId);
+                                                      handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
+                                                      handleRowChange(index, "discountAmount", priceDetails.disc || 0);
+                                                      handleRowChange(index, "netAmount", priceDetails.actualCost);
+                                                      handleRowChange(index, "type", formData.type);
+                                                      handleRowChange(index, "investigationIds", investigationIds);
+                                                      setActiveRowIndex(null);
+                                                    }}
+                                                  >
+                                                    <div>
+                                                      <strong>{item.packName}</strong>
+                                                      <div className="d-flex justify-content-between">
+                                                        <span>₹{item.actualCost.toFixed(2)}</span>
+                                                      </div>
+                                                    </div>
+                                                  </li>
+                                                ))}
+                                          </ul>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="date"
+                                      className="form-control"
+                                      value={row.date || new Date().toISOString().split('T')[0]}
+                                      onChange={(e) => handleDateChange(index, e.target.value)}
+                                      min={new Date().toISOString().split('T')[0]}
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.originalAmount}
+                                      onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                                      min="0"
+                                      step="0.01"
+                                    />
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.discountAmount}
+                                      onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                                      min="0"
+                                      step="0.01"
+                                    />
+                                  </td>
+                                  <td>
+                                    <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                                  </td>
+                                  <td>
+                                    <div className="d-flex align-item-center gap-2">
+                                      <div className="form-check form-check-muted m-0"></div>
+                                      <button
+                                        type="button"
+                                        className="btn btn-danger"
+                                        onClick={() => removeRow(index)}
+                                        disabled={formData.rows.length === 1}
+                                      >
+                                        <i className="icofont-close"></i>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+
+                          <div className="d-flex justify-content-between align-items-center">
+                            <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
+                              Add {formData.type === "investigation" ? "Investigation" : "Package"} +
+                            </button>
+
+                            <div className="d-flex">
+                              <input
+                                type="text"
+                                className="form-control me-2"
+                                placeholder="Enter Coupon Code"
+                                style={{ width: "200px" }}
+                              />
+                              <button type="button" className="btn btn-primary me-2">
+                                <i className="icofont-ticket me-1"></i> Apply Coupon
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                  <div className="card-body text-white">
-                    <div className="row g-3 mb-4">
-                      <div className="col-md-3">
+
+                  {/* Enhanced Payment Summary Section */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div
+                        className="card shadow mb-3"
+                        style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
+                      >
                         <div
-                          className="card h-100"
-                          style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+                          className="card-header py-3 text-white"
+                          style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
                         >
-                          <div className="card-body text-center">
-                            <div className="mb-2">
-                              <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
+                              <i className="fa fa-calculator text-primary"></i>
                             </div>
-                            <h6 className="card-title text-white mb-1">Total Amount</h6>
-                            <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
+                            <div>
+                              <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
+                              <small className="text-white" style={{ opacity: 0.8 }}>
+                                {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
+                              </small>
+                            </div>
                           </div>
                         </div>
-                      </div>
-
-                      <div className="col-md-3">
-                        <div
-                          className="card h-100"
-                          style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
-                        >
-                          <div className="card-body text-center">
-                            <div className="mb-2">
-                              <i className="fa fa-percent fa-2x text-success"></i>
-                            </div>
-                            <h6 className="card-title text-white mb-1">Total Discount</h6>
-                            <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
-                          </div>
-                        </div>
-                      </div>
-
-                      {paymentBreakdown.gstApplicable && (
-                        <div className="col-md-3">
-                          <div
-                            className="card h-100"
-                            style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
-                          >
-                            <div className="card-body text-center">
-                              <div className="mb-2">
-                                <i className="fa fa-file-invoice fa-2x text-warning"></i>
+                        <div className="card-body text-white">
+                          <div className="row g-3 mb-4">
+                            <div className="col-md-3">
+                              <div
+                                className="card h-100"
+                                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+                              >
+                                <div className="card-body text-center">
+                                  <div className="mb-2">
+                                    <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
+                                  </div>
+                                  <h6 className="card-title text-white mb-1">Total Amount</h6>
+                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
+                                </div>
                               </div>
-                              <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
-                              <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
                             </div>
-                          </div>
-                        </div>
-                      )}
 
-                      <div className="col-md-3">
-                        <div
-                          className="card h-100"
-                          style={{
-                            background: "linear-gradient(45deg, #28a745, #20c997)",
-                            border: "none",
-                            boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
-                          }}
-                        >
-                          <div className="card-body text-center">
-                            <div className="mb-2">
-                              <i className="fa fa-credit-card fa-2x text-white"></i>
-                            </div>
-                            <h6 className="card-title text-white mb-1">Final Amount</h6>
-                            <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
-                      <div className="card-body">
-                        <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                          <i className="fa fa-list-alt text-primary"></i>
-                          Payment Breakdown
-                        </h6>
-                        <div className="row">
-                          <div className="col-md-8">
-                            <div className="d-flex justify-content-between py-2 border-bottom">
-                              <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                              <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
-                            </div>
-                            {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                              <div className="d-flex justify-content-between py-2 border-bottom">
-                                <span className="text-success">Discount Applied</span>
-                                <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
+                            <div className="col-md-3">
+                              <div
+                                className="card h-100"
+                                style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
+                              >
+                                <div className="card-body text-center">
+                                  <div className="mb-2">
+                                    <i className="fa fa-percent fa-2x text-success"></i>
+                                  </div>
+                                  <h6 className="card-title text-white mb-1">Total Discount</h6>
+                                  <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
+                                </div>
                               </div>
-                            )}
-                            <div className="d-flex justify-content-between py-2 border-bottom">
-                              <span className="text-muted">Amount after Discount</span>
-                              <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
                             </div>
+
                             {paymentBreakdown.gstApplicable && (
-                              <div className="d-flex justify-content-between py-2 border-bottom">
-                                <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                                <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                              <div className="col-md-3">
+                                <div
+                                  className="card h-100"
+                                  style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
+                                >
+                                  <div className="card-body text-center">
+                                    <div className="mb-2">
+                                      <i className="fa fa-file-invoice fa-2x text-warning"></i>
+                                    </div>
+                                    <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
+                                    <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
+                                  </div>
+                                </div>
                               </div>
                             )}
-                            <div className="d-flex justify-content-between py-3 border-top">
-                              <span className="h5 fw-bold text-dark">Total Payable</span>
-                              <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+
+                            <div className="col-md-3">
+                              <div
+                                className="card h-100"
+                                style={{
+                                  background: "linear-gradient(45deg, #28a745, #20c997)",
+                                  border: "none",
+                                  boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+                                }}
+                              >
+                                <div className="card-body text-center">
+                                  <div className="mb-2">
+                                    <i className="fa fa-credit-card fa-2x text-white"></i>
+                                  </div>
+                                  <h6 className="card-title text-white mb-1">Final Amount</h6>
+                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
+                                </div>
+                              </div>
                             </div>
                           </div>
-                          <div className="col-md-4">
-                            <div className="d-flex flex-wrap gap-2">
-                              <span className="badge bg-secondary px-3 py-2">
-                                {paymentBreakdown.itemCount} Items Selected
-                              </span>
-                              {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                                <span className="badge bg-success px-3 py-2">Discount Applied</span>
-                              )}
-                              {paymentBreakdown.gstApplicable && (
-                                <span className="badge bg-info px-3 py-2">GST Included</span>
-                              )}
+
+                          <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
+                            <div className="card-body">
+                              <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                <i className="fa fa-list-alt text-primary"></i>
+                                Payment Breakdown
+                              </h6>
+                              <div className="row">
+                                <div className="col-md-8">
+                                  <div className="d-flex justify-content-between py-2 border-bottom">
+                                    <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
+                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
+                                  </div>
+                                  {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                                    <div className="d-flex justify-content-between py-2 border-bottom">
+                                      <span className="text-success">Discount Applied</span>
+                                      <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
+                                    </div>
+                                  )}
+                                  <div className="d-flex justify-content-between py-2 border-bottom">
+                                    <span className="text-muted">Amount after Discount</span>
+                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
+                                  </div>
+                                  {paymentBreakdown.gstApplicable && (
+                                    <div className="d-flex justify-content-between py-2 border-bottom">
+                                      <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
+                                      <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                                    </div>
+                                  )}
+                                  <div className="d-flex justify-content-between py-3 border-top">
+                                    <span className="h5 fw-bold text-dark">Total Payable</span>
+                                    <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                                  </div>
+                                </div>
+                                <div className="col-md-4">
+                                  <div className="d-flex flex-wrap gap-2">
+                                    <span className="badge bg-secondary px-3 py-2">
+                                      {paymentBreakdown.itemCount} Items Selected
+                                    </span>
+                                    {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                                      <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                                    )}
+                                    {paymentBreakdown.gstApplicable && (
+                                      <span className="badge bg-info px-3 py-2">GST Included</span>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
-            </div>
 
-            {/* Submit and Reset Buttons */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="mt-4">
-                        <button
-                          type="button"
-                          className="btn btn-primary me-2"
-                          onClick={async () => {
-                            const missingFields = getMissingMandatoryFields()
-                            if (loading) return
-                            if (missingFields.length > 0) {
-                              showPopup("Please fill all mandatory fields", "warning")
-                              return
-                            }
-                            try {
-                              console.log("Pay Now button clicked")
-                              await handleSubmit(true)
-                            } catch (error) {
-                              console.error("Error in payment flow:", error)
-                            }
-                          }}
-                        >
-                          <i className="fa fa-credit-card me-1"></i>
-                          {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
-                        </button>
-                        <button type="button" className="btn btn-secondary" onClick={handleReset}>
-                          Reset
-                        </button>
+                  {/* Submit and Reset Buttons */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-body">
+                          <div className="row g-3">
+                            <div className="mt-4">
+                              <button
+                                type="button"
+                                className="btn btn-primary me-2"
+                                onClick={async () => {
+                                  const missingFields = getMissingMandatoryFields()
+                                  if (loading) return
+                                  if (missingFields.length > 0) {
+                                    showPopup("Please fill all mandatory fields", "warning")
+                                    return
+                                  }
+                                  try {
+                                    console.log("Pay Now button clicked")
+                                    await handleSubmit(true)
+                                  } catch (error) {
+                                    console.error("Error in payment flow:", error)
+                                  }
+                                }}
+                              >
+                                <i className="fa fa-credit-card me-1"></i>
+                                {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                              </button>
+                              <button type="button" className="btn btn-secondary" onClick={handleDetailsReset}>
+                                Reset
+                              </button>
+                            </div>
+                          </div>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              </div>
+                </>
+              )}
             </div>
-          </>
-        )}
+          </div>
+        </div>
       </div>
     </div>
   )
