@@ -931,6 +931,29 @@ export const  UPDATE_FAIL_MENSTRUAL_PATTERN = "Status update failed";
 
 
 
+// BloodDonationStatusMaster
+export const FETCH_BLOOD_DONATION_STATUS = "Failed to fetch records";
+export const DUPLICATE_BLOOD_DONATION_STATUS = "Status Code or Status Name already exists";
+export const UPDATE_BLOOD_DONATION_STATUS = "Updated successfully";
+export const ADD_BLOOD_DONATION_STATUS = "New record added successfully";
+export const FAIL_BLOOD_DONATION_STATUS = "Failed to save changes";
+export const  UPDATE_STATUS_BLOOD_DONATION_STATUS  ="Status updated";
+export const FAIL_UPDATE_BLOOD_DONATION_STATUS = "Failed to update status";
+
+///BagtypeMaster
+export const FETCH_BAG_TYPE = "Failed to fetch records";
+export const DUPLICATE_BAG_TYPE = "Status Code or Status Name already exists";
+export const UPDATE_BAG_TYPE = "Updated successfully";
+export const ADD_BAG_TYPE = "New record added successfully";
+export const FAIL_BAG_TYPE = "Failed to save changes";
+export const FAIL_UPDATE_STATUS_BAG_TYPE = "Failed to update status";
+
+
+
+
+
+
+
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
 export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";
