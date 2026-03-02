@@ -5,9 +5,14 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_BLOOD_UNIT } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import {FETCH_BLOOD_UNIT,DUPLICATE_BLOOD_UNIT,UPDATE_BLOOD_UNIT,ADD_BLOOD_UNIT,FAIL_BLOOD_UNIT,UPDATE_FAIL_BLOOD_UNIT, } from "../../../config/constants";
-
-
+import {
+  FETCH_BLOOD_UNIT,
+  DUPLICATE_BLOOD_UNIT,
+  UPDATE_BLOOD_UNIT,
+  ADD_BLOOD_UNIT,
+  FAIL_BLOOD_UNIT,
+  UPDATE_FAIL_BLOOD_UNIT,
+} from "../../../config/constants";
 
 const BloodUnitStatus = () => {
   const [data, setData] = useState([]);
@@ -121,14 +126,11 @@ const BloodUnitStatus = () => {
 
     try {
       if (editingRecord) {
-        await putRequest(
-          `${MAS_BLOOD_UNIT}/update/${editingRecord.statusId}`,
-          {
-            statusCode: formData.statusCode.trim(),
-            statusName: formData.statusName.trim(),
-            description: formData.description.trim(),
-          }
-        );
+        await putRequest(`${MAS_BLOOD_UNIT}/update/${editingRecord.statusId}`, {
+          statusCode: formData.statusCode.trim(),
+          statusName: formData.statusName.trim(),
+          description: formData.description.trim(),
+        });
         showPopup(UPDATE_BLOOD_UNIT, "success");
       } else {
         await postRequest(`${MAS_BLOOD_UNIT}/create`, {
@@ -146,7 +148,7 @@ const BloodUnitStatus = () => {
     }
   };
 
-  // Edit button handler
+  // Edit button handler (always enabled)
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -211,7 +213,13 @@ const BloodUnitStatus = () => {
             )}
             {!showForm ? (
               <>
-                <button className="btn btn-success me-2" onClick={() => { resetForm(); setShowForm(true); }}>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
                   Add
                 </button>
                 <button className="btn btn-success" onClick={handleRefresh}>
@@ -263,10 +271,10 @@ const BloodUnitStatus = () => {
                         </div>
                       </td>
                       <td>
+                        {/* Edit button is always enabled */}
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
-                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -285,8 +293,11 @@ const BloodUnitStatus = () => {
             </>
           ) : (
             <form onSubmit={handleSave} className="row g-3">
+             
               <div className="col-md-3">
-                <label>Unit Code <span className="text-danger">*</span></label>
+                <label>
+                  Unit Code <span className="text-danger">*</span>
+                </label>
                 <input
                   name="statusCode"
                   className="form-control"
@@ -295,7 +306,9 @@ const BloodUnitStatus = () => {
                 />
               </div>
               <div className="col-md-3">
-                <label>Unit Status <span className="text-danger">*</span></label>
+                <label>
+                  Unit Status <span className="text-danger">*</span>
+                </label>
                 <input
                   name="statusName"
                   className="form-control"
@@ -314,10 +327,18 @@ const BloodUnitStatus = () => {
               </div>
 
               <div className="col-12 text-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  {editingRecord ? "Update" : "Save"}
                 </button>
-                <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -336,10 +357,16 @@ const BloodUnitStatus = () => {
                     <strong>{confirmDialog.record?.statusName}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
                       No
                     </button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
                       Yes
                     </button>
                   </div>
