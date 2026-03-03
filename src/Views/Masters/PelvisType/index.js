@@ -4,22 +4,24 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OP_PELVIS_TYPE } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_PELVISTYPE,DUPLICATE_PELVISTYPE,UPDATE_PELVISTYPE,FAIL_PELVISTYPE,UPDATE_FAIL_PRLVISTYPE} from "../../../config/constants";
+import {
+  FETCH_PELVISTYPE,
+  DUPLICATE_PELVISTYPE,
+  UPDATE_PELVISTYPE,
+  FAIL_PELVISTYPE,
+  UPDATE_FAIL_PRLVISTYPE,
+} from "../../../config/constants";
 
 const PelvisType = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
-
-
   const [formData, setFormData] = useState({ pelvisType: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
@@ -31,10 +33,6 @@ const PelvisType = () => {
 
   const MAX_LENGTH = 20;
 
-
-
-
-  //  Date
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -45,9 +43,6 @@ const PelvisType = () => {
     return `${day}/${month}/${year}`;
   };
 
-
-
-  // fetchData
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -61,20 +56,13 @@ const PelvisType = () => {
     }
   };
 
-
   useEffect(() => {
     fetchData();
   }, []);
 
-
-
-  // ================= SEARCH =================
-
-
   const filteredData = data.filter((rec) =>
     (rec?.pelvisType ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
-
 
   const totalPages = Math.ceil(filteredData.length / itemsPerPage);
 
@@ -83,29 +71,21 @@ const PelvisType = () => {
     currentPage * itemsPerPage
   );
 
-
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-
-  // ================= FORM =================
-
   const handleInputChange = (e) => {
-    const  value = e.target.value;
+    const value = e.target.value;
     setFormData({ pelvisType: value });
     setIsFormValid(value.trim() !== "");
   };
-
-
-
 
   const resetForm = () => {
     setFormData({ pelvisType: "" });
     setIsFormValid(false);
   };
-
 
   const handleCancel = () => {
     resetForm();
@@ -113,11 +93,9 @@ const PelvisType = () => {
     setShowForm(false);
   };
 
-  // ================= SAVE =================
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-
 
     const newValue = formData.pelvisType.trim().toLowerCase();
     const duplicate = data.find(
@@ -130,7 +108,6 @@ const PelvisType = () => {
       showPopup(DUPLICATE_PELVISTYPE, "error");
       return;
     }
-
 
     try {
       if (editingRecord) {
@@ -153,8 +130,6 @@ const PelvisType = () => {
     }
   };
 
-
-  // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({ pelvisType: rec.pelvisType || "" });
@@ -162,7 +137,6 @@ const PelvisType = () => {
     setIsFormValid(true);
   };
 
-  // ================= STATUS =================
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
@@ -171,27 +145,26 @@ const PelvisType = () => {
     });
   };
 
-
   const handleConfirm = async (confirmed) => {
     if (!confirmed) {
       setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
       return;
     }
 
-    const { record, newStatus } = confirmDialog;
     try {
       setLoading(true);
-      await putRequest(`${MAS_OP_PELVIS_TYPE}/status/${confirmDialog.reccord.id}?status=${confirmDialog.newStatus}`);
+      await putRequest(
+        `${MAS_OP_PELVIS_TYPE}/status/${confirmDialog.reccord.id}?status=${confirmDialog.newStatus}`
+      );
       showPopup(UPDATE_PELVISTYPE, "success");
       fetchData();
     } catch {
       showPopup(UPDATE_FAIL_PRLVISTYPE, "error");
     } finally {
       setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
     }
   };
-
 
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
@@ -203,8 +176,6 @@ const PelvisType = () => {
     fetchData();
   };
 
-
-  // ================= UI =================
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -224,12 +195,23 @@ const PelvisType = () => {
 
             {!showForm ? (
               <>
-                <button className="btn btn-success me-2"  onClick={() => { resetForm(); setShowForm(true); setEditingRecord(null);}}>Add</button>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                    setEditingRecord(null);
+                  }}
+                >
+                  Add
+                </button>
 
-                <button className="btn btn-success" onClick={handleRefresh}>Show All</button>
+                <button className="btn btn-success" onClick={handleRefresh}>
+                  Show All
+                </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -282,7 +264,6 @@ const PelvisType = () => {
                 </tbody>
               </table>
 
-              {/* PAGINATION */}
               {filteredData.length > 0 && (
                 <Pagination
                   totalItems={filteredData.length}
@@ -295,7 +276,9 @@ const PelvisType = () => {
           ) : (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-5">
-                <label>Pelvis Type<span className="text-danger">*</span></label>
+                <label>
+                  Pelvis Type<span className="text-danger">*</span>
+                </label>
                 <input
                   id="pelvisType"
                   className="form-control"
@@ -306,10 +289,18 @@ const PelvisType = () => {
               </div>
 
               <div className="col-12 text-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  {editingRecord ? "Update" : "Save"}
                 </button>
-                <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -328,10 +319,16 @@ const PelvisType = () => {
                     <strong>{confirmDialog.reccord?.pelvisType}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
                       No
                     </button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
                       Yes
                     </button>
                   </div>
@@ -339,7 +336,6 @@ const PelvisType = () => {
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

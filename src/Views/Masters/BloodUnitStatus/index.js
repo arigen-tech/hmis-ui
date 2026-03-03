@@ -318,7 +318,7 @@ const BloodUnitStatus = () => {
               </div>
               <div className="col-md-3">
                 <label>Description</label>
-                <input
+                <textarea
                   name="description"
                   className="form-control"
                   value={formData.description}

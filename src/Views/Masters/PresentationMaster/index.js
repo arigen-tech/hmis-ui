@@ -5,7 +5,13 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_PRESENTATION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_PRESENTATION,DUPLICATE_PRESENTATION,UPDATE_PRESENTATION,Fail_PRESENTATION,UPDATE_FAIL_PRESENTATION} from "../../../config/constants";
+import {
+  FETCH_PRESENTATION,
+  DUPLICATE_PRESENTATION,
+  UPDATE_PRESENTATION,
+  Fail_PRESENTATION,
+  UPDATE_FAIL_PRESENTATION
+} from "../../../config/constants";
 
 
 const PresentationMaster = () => {
@@ -23,7 +29,6 @@ const PresentationMaster = () => {
     record: null,
     newStatus: "",
   });
-
 
   const MAX_LENGTH = 8;
 
@@ -174,7 +179,6 @@ const PresentationMaster = () => {
     fetchData();
   };
 
-  // ================= UI =================
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -190,7 +194,6 @@ const PresentationMaster = () => {
                 onChange={handleSearchChange}
               />
             )}
-
             {!showForm ? (
               <>
                 <button
@@ -286,7 +289,7 @@ const PresentationMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -312,7 +315,7 @@ const PresentationMaster = () => {
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes </button>
+                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
                   </div>
                 </div>
               </div>
