@@ -89,7 +89,7 @@ const EarTmStatusMaster = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     setLoading(true);
     try {
       // Check for duplicate
@@ -176,7 +176,7 @@ const EarTmStatusMaster = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const date = new Date(dateString);
       // Format as YYYY-MM-DD
@@ -347,9 +347,9 @@ const EarTmStatusMaster = () => {
                 <button
                   className="btn btn-primary me-2"
                   type="submit"
-                  disabled={!isFormValid}
-                >
-                  Save
+                  disabled={!isFormValid}>
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   className="btn btn-danger"

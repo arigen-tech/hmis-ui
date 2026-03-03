@@ -5,8 +5,14 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_ENT_SEPTUM } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_ENT_MAS_SEPTUM, DUPLICATE_ENT_MAS_SEPTUM, UPDATE_ENT_MAS_SEPTUM,ADD_ENT_MAS_SEPTUM,FAIL_ENT_MAS_SEPTUM,STATUS_FAIL_UPDATED} from "../../../config/constants";
-
+import {
+  FETCH_ENT_MAS_SEPTUM,
+  DUPLICATE_ENT_MAS_SEPTUM,
+  UPDATE_ENT_MAS_SEPTUM,
+  ADD_ENT_MAS_SEPTUM,
+  FAIL_ENT_MAS_SEPTUM,
+  STATUS_FAIL_UPDATED,
+} from "../../../config/constants";
 
 const EntMasSeptum = () => {
   const [data, setData] = useState([]);
@@ -25,7 +31,6 @@ const EntMasSeptum = () => {
     newStatus: "",
   });
 
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -36,7 +41,6 @@ const EntMasSeptum = () => {
     return `${day}/${month}/${year}`;
   };
 
-  // Fetch data
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -54,7 +58,6 @@ const EntMasSeptum = () => {
     fetchData();
   }, []);
 
-  /* ================= FILTER + PAGINATION ================= */
   const filteredData = data.filter((rec) =>
     (rec?.septumStatus ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -64,7 +67,6 @@ const EntMasSeptum = () => {
     currentPage * DEFAULT_ITEMS_PER_PAGE
   );
 
-  /* ================= HANDLERS ================= */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -72,15 +74,14 @@ const EntMasSeptum = () => {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
-    setIsFormValid(updated.septumStatus.trim() !== "");
+    setFormData({ ...formData, [id]: value });
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
     setFormData({ septumStatus: "" });
-    setIsFormValid(false);
     setEditingRecord(null);
+    setIsFormValid(false);
   };
 
   const handleCancel = () => {
@@ -126,8 +127,8 @@ const EntMasSeptum = () => {
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({ septumStatus: rec.septumStatus || "" });
-    setIsFormValid(true);
     setShowForm(true);
+    setIsFormValid(true);
   };
 
   const handleSwitchChange = (rec) => {
@@ -143,7 +144,6 @@ const EntMasSeptum = () => {
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
       return;
     }
-    if (!confirmDialog.record) return;
 
     try {
       setLoading(true);
@@ -170,8 +170,6 @@ const EntMasSeptum = () => {
     fetchData();
   };
 
-
-  
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -187,21 +185,23 @@ const EntMasSeptum = () => {
                 onChange={handleSearchChange}
               />
             )}
-
             {!showForm ? (
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => { resetForm(); setShowForm(true); }}
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
                 >
                   Add
                 </button>
-                <button className="btn btn-success " onClick={handleRefresh}>
+                <button className="btn btn-success" onClick={handleRefresh}>
                   Show All
                 </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={resetForm}>
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
@@ -209,7 +209,9 @@ const EntMasSeptum = () => {
         </div>
 
         <div className="card-body">
-          {!showForm ? (
+          {loading ? (
+            <LoadingScreen />
+          ) : !showForm ? (
             <>
               <div className="table-responsive">
                 <table className="table table-bordered table-hover">
@@ -235,7 +237,9 @@ const EntMasSeptum = () => {
                               onChange={() => handleSwitchChange(rec)}
                             />
                             <label className="form-check-label ms-2">
-                              {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                              {rec.status?.toLowerCase() === "y"
+                                ? "Active"
+                                : "Inactive"}
                             </label>
                           </div>
                         </td>
@@ -273,10 +277,18 @@ const EntMasSeptum = () => {
                 />
               </div>
               <div className="col-12 text-end mt-3">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  {editingRecord ? "Update" : "Save"}
                 </button>
-                <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
                   Cancel
                 </button>
               </div>
@@ -291,13 +303,20 @@ const EntMasSeptum = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}?
+                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    this record?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
                       No
                     </button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
                       Yes
                     </button>
                   </div>
@@ -305,8 +324,6 @@ const EntMasSeptum = () => {
               </div>
             </div>
           )}
-
-          {loading && <LoadingScreen />}
         </div>
       </div>
     </div>

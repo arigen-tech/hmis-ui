@@ -23,16 +23,7 @@ const DesignationMaster = () => {
         created_by: "",
     });
     
-
     
-
-
-
-
-
-
-
-
     const showPopup = (msg, type) => {
         setPopupMessage({ message: msg, type, onClose: () => setPopupMessage(null) });
     };
