@@ -10,6 +10,8 @@ import {
   MISSING_MANDOTORY_FIELD,
   MISSING_MANDOTORY_FIELD_MSG,
 } from "../../../config/constants";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
 
 const OPDBillingDetails = () => {
   const navigate = useNavigate();
@@ -48,6 +50,18 @@ const OPDBillingDetails = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [appointmentPolicies, setAppointmentPolicies] = useState({});
   const [loading, setLoading] = useState(false);
+  const [patientList, setPatientList] = useState([]);
+  const [filteredPatientList, setFilteredPatientList] = useState([]);
+  const [searchData, setSearchData] = useState({
+    patientName: "",
+    mobileNo: "",
+    sessionNo: ""
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [isLoading, setIsLoading] = useState(false);
+
   const generateFreePaymentReference = () => {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 1000);
@@ -81,39 +95,283 @@ const OPDBillingDetails = () => {
     }
   }
 
-  const formatDateDDMMYYYY = (dateStr) => {
-    if (!dateStr) return "";
-    const date = new Date(dateStr);
-    const dd = String(date.getDate()).padStart(2, "0");
-    const mm = String(date.getMonth() + 1).padStart(2, "0");
-    const yyyy = date.getFullYear();
-    return `${dd}/${mm}/${yyyy}`;
-  };
+  // Mock function to fetch pending OPD billing list
+  const fetchPendingOPDBilling = async () => {
+    setIsLoading(true);
+    try {
+      // This would be replaced with actual API call
+      // const response = await getRequest(`${OPD_API}/pending`);
+      
+      // Mock data for demonstration
+      const mockData = [
+        {
+          id: 1,
+          patientUhid: "UHID001",
+          patientName: "John Doe",
+          mobileNo: "9876543210",
+          age: "30Y 2M 10D",
+          sex: "Male",
+          relation: "Self",
+          billingType: "Consultation Services",
+          consultedDoctor: "Dr. Sharma",
+          department: "OPD",
+          amount: 500,
+          billingStatus: "Pending",
+          registrationCost: 100,
+          patientId: "P001",
+          address: "123 Main St, Mumbai",
+          appointments: [
+            {
+              visitId: "V001",
+              tokenNo: "T001",
+              department: "OPD",
+              consultedDoctor: "Dr. Sharma",
+              sessionName: "Morning",
+              visitDate: "2024-01-15",
+              visitType: "New",
+              billingHdId: "BH001",
+              basePrice: 400,
+              discount: 0,
+              taxAmount: 72,
+              netAmount: 472
+            }
+          ],
+          details: [
+            {
+              basePrice: 400,
+              discount: 0,
+              taxAmount: 72,
+              netAmount: 472
+            }
+          ]
+        },
+        {
+          id: 2,
+          patientUhid: "UHID002",
+          patientName: "Jane Smith",
+          mobileNo: "9876543211",
+          age: "25Y 5M 15D",
+          sex: "Female",
+          relation: "Self",
+          billingType: "Consultation Services",
+          consultedDoctor: "Dr. Patel",
+          department: "OPD",
+          amount: 750,
+          billingStatus: "Pending",
+          registrationCost: 100,
+          patientId: "P002",
+          address: "456 Oak Ave, Pune",
+          appointments: [
+            {
+              visitId: "V002",
+              tokenNo: "T002",
+              department: "OPD",
+              consultedDoctor: "Dr. Patel",
+              sessionName: "Evening",
+              visitDate: "2024-01-15",
+              visitType: "Follow-up",
+              billingHdId: "BH002",
+              basePrice: 650,
+              discount: 50,
+              taxAmount: 108,
+              netAmount: 708
+            }
+          ],
+          details: [
+            {
+              basePrice: 650,
+              discount: 50,
+              taxAmount: 108,
+              netAmount: 708
+            }
+          ]
+        },
+        {
+          id: 3,
+          patientUhid: "UHID003",
+          patientName: "Mike Johnson",
+          mobileNo: "9876543212",
+          age: "45Y 0M 5D",
+          sex: "Male",
+          relation: "Self",
+          billingType: "Consultation Services",
+          consultedDoctor: "Dr. Kumar",
+          department: "OPD",
+          amount: 1200,
+          billingStatus: "Pending",
+          registrationCost: 100,
+          patientId: "P003",
+          address: "789 Pine St, Nagpur",
+          appointments: [
+            {
+              visitId: "V003",
+              tokenNo: "T003",
+              department: "OPD",
+              consultedDoctor: "Dr. Kumar",
+              sessionName: "Morning",
+              visitDate: "2024-01-16",
+              visitType: "New",
+              billingHdId: "BH003",
+              basePrice: 1100,
+              discount: 100,
+              taxAmount: 180,
+              netAmount: 1180
+            }
+          ],
+          details: [
+            {
+              basePrice: 1100,
+              discount: 100,
+              taxAmount: 180,
+              netAmount: 1180
+            }
+          ]
+        },
+        {
+          id: 4,
+          patientUhid: "UHID004",
+          patientName: "Sarah Williams",
+          mobileNo: "9876543213",
+          age: "35Y 8M 20D",
+          sex: "Female",
+          relation: "Self",
+          billingType: "Consultation Services",
+          consultedDoctor: "Dr. Sharma",
+          department: "OPD",
+          amount: 350,
+          billingStatus: "Pending",
+          registrationCost: 100,
+          patientId: "P004",
+          address: "321 Elm Rd, Mumbai",
+          appointments: [
+            {
+              visitId: "V004",
+              tokenNo: "T004",
+              department: "OPD",
+              consultedDoctor: "Dr. Sharma",
+              sessionName: "Evening",
+              visitDate: "2024-01-16",
+              visitType: "Follow-up",
+              billingHdId: "BH004",
+              basePrice: 250,
+              discount: 0,
+              taxAmount: 45,
+              netAmount: 295
+            }
+          ],
+          details: [
+            {
+              basePrice: 250,
+              discount: 0,
+              taxAmount: 45,
+              netAmount: 295
+            }
+          ]
+        },
+        {
+          id: 5,
+          patientUhid: "UHID005",
+          patientName: "David Brown",
+          mobileNo: "9876543214",
+          age: "50Y 3M 12D",
+          sex: "Male",
+          relation: "Self",
+          billingType: "Consultation Services",
+          consultedDoctor: "Dr. Patel",
+          department: "OPD",
+          amount: 950,
+          billingStatus: "Pending",
+          registrationCost: 100,
+          patientId: "P005",
+          address: "654 Cedar Ln, Pune",
+          appointments: [
+            {
+              visitId: "V005",
+              tokenNo: "T005",
+              department: "OPD",
+              consultedDoctor: "Dr. Patel",
+              sessionName: "Morning",
+              visitDate: "2024-01-17",
+              visitType: "New",
+              billingHdId: "BH005",
+              basePrice: 850,
+              discount: 50,
+              taxAmount: 144,
+              netAmount: 944
+            }
+          ],
+          details: [
+            {
+              basePrice: 850,
+              discount: 50,
+              taxAmount: 144,
+              netAmount: 944
+            }
+          ]
+        }
+      ];
 
-  const safeSex = (sexField) => {
-    if (!sexField) return "";
-    if (typeof sexField === "string") return sexField;
-    if (typeof sexField === "object") {
-      return sexField.genderName || sexField.name || sexField.displayName || "";
+      setPatientList(mockData);
+      setFilteredPatientList(mockData);
+    } catch (error) {
+      console.error("Error fetching pending OPD billing:", error);
+      Swal.fire(ERROR, "Failed to fetch pending list", "error");
+    } finally {
+      setIsLoading(false);
     }
-    return "";
-  };
-
-  const normalizeVisitType = (visitType) => {
-    if (!visitType) return "New";
-    if (visitType === "N") return "New";
-    if (visitType === "F") return "Follow-up";
-    if (visitType === "E") return "Emergency";
-    return visitType;
   };
 
   useEffect(() => {
-    if (!location.state || !location.state.billingData) {
-      navigate("/PendingForBilling");
-      return;
-    }
+    fetchPendingOPDBilling();
+  }, []);
 
-    const data = location.state.billingData;
+  const handleSearchChange = (e) => {
+    const { id, value } = e.target;
+    setSearchData(prev => ({ ...prev, [id]: value }));
+    setCurrentPage(1);
+  };
+
+  const handleSearch = () => {
+    setIsLoading(true);
+    setTimeout(() => {
+      const filtered = patientList.filter((item) => {
+        const patientNameMatch = searchData.patientName === "" || 
+          item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase());
+        
+        const mobileNoMatch = searchData.mobileNo === "" || 
+          item.mobileNo.includes(searchData.mobileNo);
+
+        const sessionNoMatch = searchData.sessionNo === "" || 
+          (item.sessionNo && item.sessionNo.toLowerCase().includes(searchData.sessionNo.toLowerCase()));
+        
+        return patientNameMatch && mobileNoMatch && sessionNoMatch;
+      });
+      setFilteredPatientList(filtered);
+      setCurrentPage(1);
+      setIsLoading(false);
+    }, 500);
+  };
+
+  const handleReset = () => {
+    setSearchData({
+      patientName: "",
+      mobileNo: "",
+      sessionNo: ""
+    });
+    setFilteredPatientList(patientList);
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleRowClick = (patient) => {
+    setSelectedPatient(patient);
+    setShowPatientDetails(true);
+    
+    // Process the selected patient data exactly as in the original useEffect
+    const data = patient;
 
     fetchGstConfiguration(data.categoryId || null);
 
@@ -129,7 +387,8 @@ const OPDBillingDetails = () => {
 
     if (incomingAppointments.length === 0) {
       Swal.fire(ERROR, APPOINTMENT_NOT_FOUND_ERR_MSG, "error");
-      navigate("/PendingForBilling");
+      setShowPatientDetails(false);
+      setSelectedPatient(null);
       return;
     }
 
@@ -163,7 +422,7 @@ const OPDBillingDetails = () => {
       const netAmount = totalAmount + registrationCost; // total + registration
 
       return {
-        billingHdId: appt.billingHdId || null, // Fixed variable name
+        billingHdId: appt.billingHdId || null,
         visitId: appt.visitId,
         tokenNo: appt.tokenNo,
         department: appt.department,
@@ -190,7 +449,7 @@ const OPDBillingDetails = () => {
     });
 
     setAppointments(processedAppointments);
-    console.log(data);
+
     setFormData({
       patientName: data.patientName || "",
       mobileNo: data.mobileNo || "",
@@ -213,7 +472,39 @@ const OPDBillingDetails = () => {
         fetchPolicyForAppointment(appointment.billingPolicyId, index);
       }
     });
-  }, [location.state, navigate]);
+  };
+
+  const handleBackToList = () => {
+    setShowPatientDetails(false);
+    setSelectedPatient(null);
+    handleReset();
+  };
+
+  const formatDateDDMMYYYY = (dateStr) => {
+    if (!dateStr) return "";
+    const date = new Date(dateStr);
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+    return `${dd}/${mm}/${yyyy}`;
+  };
+
+  const safeSex = (sexField) => {
+    if (!sexField) return "";
+    if (typeof sexField === "string") return sexField;
+    if (typeof sexField === "object") {
+      return sexField.genderName || sexField.name || sexField.displayName || "";
+    }
+    return "";
+  };
+
+  const normalizeVisitType = (visitType) => {
+    if (!visitType) return "New";
+    if (visitType === "N") return "New";
+    if (visitType === "F") return "Follow-up";
+    if (visitType === "E") return "Emergency";
+    return visitType;
+  };
 
   async function fetchPolicyForAppointment(policyId, appointmentIndex) {
     try {
@@ -572,341 +863,273 @@ const OPDBillingDetails = () => {
     0,
   );
 
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast);
+
+  if (isLoading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">OPD Billing Details</h4>
-              <button
-                type="button"
-                className="btn btn-secondary"
-                onClick={handleBack}
-              >
-                <i className="mdi mdi-arrow-left"></i> Back to Pending List
-              </button>
+              <h4 className="card-title p-2">OPD Billing</h4>
+              {showPatientDetails ? (
+                <button
+                  type="button"
+                  className="btn btn-outline-secondary"
+                  onClick={handleBackToList}
+                >
+                  <i className="mdi mdi-arrow-left"></i> Back to List
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleBack}
+                >
+                  <i className="mdi mdi-arrow-left"></i> Back to Pending List
+                </button>
+              )}
             </div>
 
             <div className="card-body">
-              <form className="forms row" onSubmit={handleSave}>
-                {/* Patient Details */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header  ">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-account"></i> Patient Details
-                      </h5>
-                    </div>
+              {/* Search Section - Only visible when not showing patient details */}
+              {!showPatientDetails && (
+                <>
+                  <div className="mb-4">
                     <div className="card-body">
-                      <div className="row">
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Patient Name <span className="text-danger">*</span>
-                          </label>
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Patient Name</label>
                           <input
                             type="text"
                             className="form-control"
                             id="patientName"
-                            value={formData.patientName}
-                            readOnly
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
                           />
                         </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Mobile No. <span className="text-danger">*</span>
-                          </label>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Mobile No.</label>
                           <input
                             type="text"
                             className="form-control"
                             id="mobileNo"
-                            value={formData.mobileNo}
-                            readOnly
+                            placeholder="Enter mobile number"
+                            value={searchData.mobileNo}
+                            onChange={handleSearchChange}
                           />
                         </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Age</label>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Session No.</label>
                           <input
                             type="text"
                             className="form-control"
-                            id="age"
-                            value={formData.age}
-                            readOnly
+                            id="sessionNo"
+                            placeholder="Enter session number"
+                            value={searchData.sessionNo}
+                            onChange={handleSearchChange}
                           />
                         </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Sex</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="sex"
-                            value={formData.sex}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Relation</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="relation"
-                            value={formData.relation}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Patient ID</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="patientId"
-                            value={formData.patientUhid}
-                            readOnly
-                          />
-                        </div>
-                        <div className="form-group col-md-12 mt-3">
-                          <label>Address</label>
-                          <textarea
-                            className="form-control"
-                            id="address"
-                            value={formData.address}
-                            rows="2"
-                            readOnly
-                          />
+                        <div className="col-md-3">
+                          <div className="d-flex gap-2">
+                            <button 
+                              type="button" 
+                              className="btn btn-primary flex-fill"
+                              onClick={handleSearch}
+                              disabled={isLoading}
+                            >
+                              {isLoading ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Searching...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="mdi mdi-magnify"></i> Search
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary flex-fill"
+                              onClick={handleReset}
+                            >
+                              Reset
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Appointments */}
-                {appointments.map((appointment, index) => (
-                  <div
-                    className="col-12 mt-4"
-                    key={appointment.visitId || index}
-                  >
-                    <div className="card">
-                      <div className="card-header   d-flex justify-content-between align-items-center">
-                        <h5 className="mb-0">
-                          <i className="mdi mdi-hospital-building"></i> OPD
-                          Visit
-                          {appointments.length > 1 ? ` ${index + 1}` : ""}
-                          <span className="badge bg-primary ms-2">
-                            {appointment.visitType}
-                          </span>
-                        </h5>
-                      </div>
-                      <div className="card-body">
-                        <div className="row">
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Visit Date</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={formatDateDDMMYYYY(appointment.visitDate)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Doctor Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.consultedDoctor}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Department</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.department}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>OPD Session</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.sessionName}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Visit Type</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.visitType}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Token No</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.tokenNo || "N/A"}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Room</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.room || "N/A"}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-3 mt-3">
-                            <label>Tariff Plan</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={appointment.tariffPlan}
-                              readOnly
-                            />
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-
-                    {/* Billing for this appointment */}
-                    <div className="card mt-2">
-                      <div className="card-header  ">
-                        <h5 className="mb-0">
-                          <i className="mdi mdi-currency-inr"></i> Billing
-                          Policies and Details
-                        </h5>
-                      </div>
-                      <div className="card-body">
-                        {appointment.isPolicyLoading ? (
-                          <div className="text-center py-3">
-                            <div
-                              className="spinner-border text-primary"
-                              role="status"
+                  {/* Pending List Table */}
+                  {filteredPatientList.length > 0 ? (
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Patient Name</th>
+                            <th>Mobile No.</th>
+                            <th>Age</th>
+                            <th>Sex</th>
+                            <th>Relation</th>
+                            <th>Billing Type</th>
+                            <th>Consulted Doctor</th>
+                            <th>Department</th>
+                            <th>Amount</th>
+                            <th>Billing Status</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentItems.map((item) => (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleRowClick(item)}
+                              role="button"
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(item) }}
+                              style={{ cursor: "pointer" }}
                             >
-                              <span className="visually-hidden">
-                                Loading policy...
-                              </span>
-                            </div>
-                            <p className="mt-2">Loading policy details...</p>
-                          </div>
-                        ) : appointment.policyInfo ? (
-                          <>
-                            <div className="row">
-                              <div className="form-group col-md-4 mt-3">
-                                <label>Policy Name</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={appointment.policyInfo.policyName}
-                                  readOnly
-                                />
-                              </div>
-                              <div className="form-group col-md-4 mt-3">
-                                <label>Policy Type</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={appointment.policyInfo.policyType}
-                                  readOnly
-                                />
-                              </div>
-                              <div className="form-group col-md-4 mt-3">
-                                <label>Eligibility</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={getEligibilityDisplay(
-                                    appointment.policyInfo.eligibility,
-                                  )}
-                                  readOnly
-                                />
-                              </div>
-                              <div className="form-group col-md-4 mt-3">
-                                <label>Discount Applied</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={appointment.policyInfo.discountApplied}
-                                  readOnly
-                                />
-                              </div>
-                              <div className="form-group col-md-8 mt-3">
-                                <label>Remarks</label>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={appointment.policyInfo.remarks}
-                                  readOnly
-                                />
-                              </div>
-                            </div>
-                          </>
-                        ) : (
-                          <div className="alert alert-warning">
-                            <i className="mdi mdi-alert"></i> No policy
-                            information available
-                          </div>
-                        )}
+                              <td>{item.patientName}</td>
+                              <td>{item.mobileNo}</td>
+                              <td>{item.age}</td>
+                              <td>{item.sex}</td>
+                              <td>{item.relation}</td>
+                              <td>
+                                <span className="badge bg-info">{item.billingType}</span>
+                              </td>
+                              <td>{item.consultedDoctor}</td>
+                              <td>{item.department}</td>
+                              <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
+                              <td>
+                                <button
+                                  className="btn btn-warning btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                                  style={{
+                                    cursor: "pointer",
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "#ff6b35",
+                                    textDecoration: "underline",
+                                  }}
+                                  aria-label={`Open ${item.patientName} billing details`}
+                                >
+                                  {item.billingStatus}
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  ) : (
+                    <div className="alert alert-info" role="alert">
+                      <i className="mdi mdi-information"></i> No pending OPD billing records found.
+                    </div>
+                  )}
+
+                  {/* Pagination */}
+                  {filteredPatientList.length > 0 && (
+                    <Pagination
+                      totalItems={filteredPatientList.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={handlePageChange}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Patient Details Section - Shows only when a patient is selected */}
+              {showPatientDetails && selectedPatient && (
+                <form className="forms row" onSubmit={handleSave}>
+                  {/* Patient Details */}
+                  <div className="col-12 mt-4">
+                    <div className="card">
+                      <div className="card-header">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-account"></i> Patient Details
+                        </h5>
+                      </div>
+                      <div className="card-body">
                         <div className="row">
-                          <div className="form-group col-md-2 mt-3">
-                            <label>Base Price</label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={appointment.basePrice.toFixed(2)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-2 mt-3">
-                            <label>Discount</label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={appointment.discount.toFixed(2)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-2 mt-3">
-                            <label>GST ({gstConfig.gstPercent}%)</label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={appointment.gst.toFixed(2)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-2 mt-3">
-                            <label>Total (Base-Disc+GST)</label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={appointment.totalAmount.toFixed(2)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-2 mt-3">
-                            <label>Registration</label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={appointment.registrationCost.toFixed(2)}
-                              readOnly
-                            />
-                          </div>
-                          <div className="form-group col-md-2 mt-3">
+                          <div className="form-group col-md-4 mt-3">
                             <label>
-                              <strong>Net Amount</strong>
+                              Patient Name <span className="text-danger">*</span>
                             </label>
                             <input
-                              type="number"
-                              className="form-control  "
-                              value={appointment.netAmount.toFixed(2)}
+                              type="text"
+                              className="form-control"
+                              id="patientName"
+                              value={formData.patientName}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>
+                              Mobile No. <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="mobileNo"
+                              value={formData.mobileNo}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Age</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="age"
+                              value={formData.age}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Sex</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="sex"
+                              value={formData.sex}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Relation</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="relation"
+                              value={formData.relation}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Patient ID</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="patientId"
+                              value={formData.patientUhid}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-12 mt-3">
+                            <label>Address</label>
+                            <textarea
+                              className="form-control"
+                              id="address"
+                              value={formData.address}
+                              rows="2"
                               readOnly
                             />
                           </div>
@@ -914,97 +1137,334 @@ const OPDBillingDetails = () => {
                       </div>
                     </div>
                   </div>
-                ))}
 
-                {/* Grand Total Summary - Show always, not just when multiple */}
-                <div className="col-12 mt-4">
-                  <div className="card border-primary">
-                    <div className="card-header bg-primary text-white">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-calculator"></i> Grand Total
-                        Summary
-                      </h5>
+                  {/* Appointments */}
+                  {appointments.map((appointment, index) => (
+                    <div
+                      className="col-12 mt-4"
+                      key={appointment.visitId || index}
+                    >
+                      <div className="card">
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                          <h5 className="mb-0">
+                            <i className="mdi mdi-hospital-building"></i> OPD
+                            Visit
+                            {appointments.length > 1 ? ` ${index + 1}` : ""}
+                            <span className="badge bg-primary ms-2">
+                              {appointment.visitType}
+                            </span>
+                          </h5>
+                        </div>
+                        <div className="card-body">
+                          <div className="row">
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Visit Date</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={formatDateDDMMYYYY(appointment.visitDate)}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Doctor Name</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.consultedDoctor}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Department</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.department}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>OPD Session</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.sessionName}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Visit Type</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.visitType}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Token No</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.tokenNo || "N/A"}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Room</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.room || "N/A"}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-3 mt-3">
+                              <label>Tariff Plan</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={appointment.tariffPlan}
+                                readOnly
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Billing for this appointment */}
+                      <div className="card mt-2">
+                        <div className="card-header">
+                          <h5 className="mb-0">
+                            <i className="mdi mdi-currency-inr"></i> Billing
+                            Policies and Details
+                          </h5>
+                        </div>
+                        <div className="card-body">
+                          {appointment.isPolicyLoading ? (
+                            <div className="text-center py-3">
+                              <div
+                                className="spinner-border text-primary"
+                                role="status"
+                              >
+                                <span className="visually-hidden">
+                                  Loading policy...
+                                </span>
+                              </div>
+                              <p className="mt-2">Loading policy details...</p>
+                            </div>
+                          ) : appointment.policyInfo ? (
+                            <>
+                              <div className="row">
+                                <div className="form-group col-md-4 mt-3">
+                                  <label>Policy Name</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={appointment.policyInfo.policyName}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="form-group col-md-4 mt-3">
+                                  <label>Policy Type</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={appointment.policyInfo.policyType}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="form-group col-md-4 mt-3">
+                                  <label>Eligibility</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={getEligibilityDisplay(
+                                      appointment.policyInfo.eligibility,
+                                    )}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="form-group col-md-4 mt-3">
+                                  <label>Discount Applied</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={appointment.policyInfo.discountApplied}
+                                    readOnly
+                                  />
+                                </div>
+                                <div className="form-group col-md-8 mt-3">
+                                  <label>Remarks</label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={appointment.policyInfo.remarks}
+                                    readOnly
+                                  />
+                                </div>
+                              </div>
+                            </>
+                          ) : (
+                            <div className="alert alert-warning">
+                              <i className="mdi mdi-alert"></i> No policy
+                              information available
+                            </div>
+                          )}
+                          <div className="row">
+                            <div className="form-group col-md-2 mt-3">
+                              <label>Base Price</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={appointment.basePrice.toFixed(2)}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-2 mt-3">
+                              <label>Discount</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={appointment.discount.toFixed(2)}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-2 mt-3">
+                              <label>GST ({gstConfig.gstPercent}%)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={appointment.gst.toFixed(2)}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-2 mt-3">
+                              <label>Total (Base-Disc+GST)</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={appointment.totalAmount.toFixed(2)}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-2 mt-3">
+                              <label>Registration</label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={appointment.registrationCost.toFixed(2)}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-2 mt-3">
+                              <label>
+                                <strong>Net Amount</strong>
+                              </label>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={appointment.netAmount.toFixed(2)}
+                                readOnly
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
-                    <div className="card-body">
-                      <div className="row">
-                        <div className="col-md-2">
-                          <strong>Total Base:</strong>
-                          <p className="mb-0">₹{totalBasePrice.toFixed(2)}</p>
-                        </div>
-                        <div className="col-md-2">
-                          <strong>Total Discount:</strong>
-                          <p className="mb-0">₹{totalDiscount.toFixed(2)}</p>
-                        </div>
-                        <div className="col-md-2">
-                          <strong>Total GST:</strong>
-                          <p className="mb-0">₹{totalGST.toFixed(2)}</p>
-                        </div>
-                        <div className="col-md-2">
-                          <strong>Total (Base-Disc+GST):</strong>
-                          <p className="mb-0">₹{totalAmount.toFixed(2)}</p>
-                        </div>
-                        <div className="col-md-2">
-                          <strong>Registration Cost:</strong>
-                          <p className="mb-0">
-                            ₹{totalRegistration.toFixed(2)}
-                          </p>
-                        </div>
-                        <div className="col-md-2">
-                          <strong className="text-primary">NET AMOUNT:</strong>
-                          <h4 className="mb-0 text-primary">
-                            ₹{grandTotal.toFixed(2)}
-                          </h4>
+                  ))}
+
+                  {/* Grand Total Summary */}
+                  <div className="col-12 mt-4">
+                    <div className="card border-primary">
+                      <div className="card-header bg-primary text-white">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-calculator"></i> Grand Total
+                          Summary
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <div className="row">
+                          <div className="col-md-2">
+                            <strong>Total Base:</strong>
+                            <p className="mb-0">₹{totalBasePrice.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Total Discount:</strong>
+                            <p className="mb-0">₹{totalDiscount.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Total GST:</strong>
+                            <p className="mb-0">₹{totalGST.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Total (Base-Disc+GST):</strong>
+                            <p className="mb-0">₹{totalAmount.toFixed(2)}</p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong>Registration Cost:</strong>
+                            <p className="mb-0">
+                              ₹{totalRegistration.toFixed(2)}
+                            </p>
+                          </div>
+                          <div className="col-md-2">
+                            <strong className="text-primary">NET AMOUNT:</strong>
+                            <h4 className="mb-0 text-primary">
+                              ₹{grandTotal.toFixed(2)}
+                            </h4>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-                {/* Action Buttons */}
-                <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                  {grandTotal === 0 ? (
+                  {/* Action Buttons */}
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    {grandTotal === 0 ? (
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={handleSave}
+                        disabled={!isFormValid || loading}
+                        style={{ minWidth: "200px" }}
+                      >
+                        {loading ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                            ></span>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <i className="mdi mdi-file-check"></i> Generate Bill
+                          </>
+                        )}
+                      </button>
+                    ) : (
+                      <button
+                        type="button"
+                        className="btn btn-primary me-2"
+                        onClick={handleSave}
+                        disabled={!isFormValid}
+                        style={{ minWidth: "200px" }}
+                      >
+                        <i className="mdi mdi-cash"></i> Pay Now - ₹
+                        {grandTotal.toFixed(2)}
+                      </button>
+                    )}
                     <button
                       type="button"
-                      className="btn btn-success me-2"
-                      onClick={handleSave}
-                      disabled={!isFormValid || loading} // Add loading state
-                      style={{ minWidth: "200px" }}
+                      className="btn btn-danger"
+                      onClick={handleBackToList}
                     >
-                      {loading ? (
-                        <>
-                          <span
-                            className="spinner-border spinner-border-sm me-2"
-                            role="status"
-                          ></span>
-                          Generating...
-                        </>
-                      ) : (
-                        <>
-                          <i className="mdi mdi-file-check"></i> Generate Bill
-                        </>
-                      )}
+                      <i className="mdi mdi-close"></i> Cancel
                     </button>
-                  ) : (
-                    <button
-                      type="button" // Change from submit to button
-                      className="btn btn-primary me-2"
-                      onClick={handleSave}
-                      disabled={!isFormValid}
-                      style={{ minWidth: "200px" }}
-                    >
-                      <i className="mdi mdi-cash"></i> Pay Now - ₹
-                      {grandTotal.toFixed(2)}
-                    </button>
-                  )}
-                  <button
-                    type="button"
-                    className="btn btn-danger"
-                    onClick={handleBack}
-                  >
-                    <i className="mdi mdi-close"></i> Cancel
-                  </button>
-                </div>
-              </form>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
