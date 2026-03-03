@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -13,7 +12,6 @@ import {
   FAIL_BLOOD_DONATION,
   UPDATE_FAIL_BLOOD_DONATION,
 } from "../../../config/constants";
-
 
 const BloodDonationType = () => {
   const [data, setData] = useState([]);
@@ -35,10 +33,8 @@ const BloodDonationType = () => {
     newStatus: "",
   });
 
+  const MAX_LENGTH = 10;
 
-  const MAX_LENGTH = 10
-
-  /* ---------------- FORMAT DATE ---------------- */
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -49,7 +45,6 @@ const BloodDonationType = () => {
     return `${day}/${month}/${year}`;
   };
 
-  /* ---------------- FETCH ---------------- */
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -67,7 +62,6 @@ const BloodDonationType = () => {
     fetchData();
   }, []);
 
-  /* ---------------- SEARCH ---------------- */
   const filteredData = data.filter((rec) =>
     (rec?.donationTypeName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -77,7 +71,6 @@ const BloodDonationType = () => {
     currentPage * DEFAULT_ITEMS_PER_PAGE
   );
 
-  /* ---------------- HANDLERS ---------------- */
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -103,12 +96,10 @@ const BloodDonationType = () => {
     setShowForm(false);
   };
 
-  /* ---------------- SAVE / ADD / EDIT ---------------- */
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
-    // Duplicate check (case-insensitive)
     const normalized = formData.donationTypeName.trim().toLowerCase();
     const duplicate = data.find(
       (rec) =>
@@ -141,7 +132,6 @@ const BloodDonationType = () => {
     }
   };
 
-  /* ---------------- EDIT ---------------- */
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -153,7 +143,6 @@ const BloodDonationType = () => {
     setIsFormValid(true);
   };
 
-  /* ---------------- STATUS CHANGE ---------------- */
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
@@ -187,7 +176,6 @@ const BloodDonationType = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  /* ---------------- UI ---------------- */
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -313,7 +301,7 @@ const BloodDonationType = () => {
               </div>
               <div className="col-md-4">
                 <label>Description</label>
-                <input
+                <textarea
                   name="description"
                   className="form-control"
                   value={formData.description}
@@ -323,7 +311,7 @@ const BloodDonationType = () => {
 
               <div className="col-12 text-end">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel

@@ -1,11 +1,11 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import axios from "axios";
-import { API_HOST, MAS_COUNTRY} from "../../../config/apiConfig";
+import { API_HOST, MAS_COUNTRY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_COUNTRY_ERR_MSG,DUPLICATE_COUNTRY,UPDATE_COUNTRY_SUCC_MSG,ADD_COUNTRY_SUCC_MSG,FAIL_TO_SAVE_CHANGES} from "../../../config/constants";
+import { FETCH_COUNTRY_ERR_MSG, DUPLICATE_COUNTRY, UPDATE_COUNTRY_SUCC_MSG, ADD_COUNTRY_SUCC_MSG, FAIL_TO_SAVE_CHANGES } from "../../../config/constants";
 
 const CountryMaster = () => {
     const [countries, setCountries] = useState([]);
@@ -26,7 +26,7 @@ const CountryMaster = () => {
     const COUNTRY_CODE_MAX_LENGTH = 8;
     const COUNTRY_NAME_MAX_LENGTH = 30;
 
-    
+
     useEffect(() => {
         fetchCountries(0);
     }, []);
@@ -78,33 +78,33 @@ const CountryMaster = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-        
+
         setIsLoading(true);
         try {
-            
+
             const isDuplicate = countries.some(
                 (country) =>
                     country.id !== (editingCountry ? editingCountry.id : null) &&
                     (country.countryCode === formData.countryCode ||
-                     country.countryName === formData.countryName)
+                        country.countryName === formData.countryName)
             );
-    
+
             if (isDuplicate) {
                 showPopup(DUPLICATE_COUNTRY, "error");
                 setIsLoading(false);
                 return;
             }
-    
+
             if (editingCountry) {
-                
+
                 const response = await putRequest(`${MAS_COUNTRY}/updateById/${editingCountry.id}`, {
                     countryCode: formData.countryCode,
                     countryName: formData.countryName,
                     status: editingCountry.status,
                 });
-    
+
                 if (response && response.status === 200) {
-                    fetchCountries(); 
+                    fetchCountries();
                     showPopup(UPDATE_COUNTRY_SUCC_MSG, "success");
                 }
             } else {
@@ -114,14 +114,14 @@ const CountryMaster = () => {
                     countryName: formData.countryName,
                     status: "y",
                 });
-    
+
                 if (response && response.status === 200) {
-                    fetchCountries(); 
+                    fetchCountries();
                     showPopup(ADD_COUNTRY_SUCC_MSG, "success");
                 }
             }
-    
-            
+
+
             setEditingCountry(null);
             setFormData({ countryCode: "", countryName: "" });
             setShowForm(false);
@@ -131,7 +131,7 @@ const CountryMaster = () => {
             setIsLoading(false);
         }
     };
-    
+
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -155,7 +155,7 @@ const CountryMaster = () => {
                     `${MAS_COUNTRY}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
                 );
                 if (response && response.status === 200) {
-                    fetchCountries(); 
+                    fetchCountries();
                     showPopup(
                         `Country ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
@@ -222,9 +222,9 @@ const CountryMaster = () => {
                                 <div className="d-flex align-items-center ">
                                     {!showForm ? (
                                         <>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2" 
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
                                                 onClick={() => {
                                                     setEditingCountry(null);
                                                     setFormData({ countryCode: "", countryName: "" });
@@ -234,9 +234,9 @@ const CountryMaster = () => {
                                             >
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2 flex-shrink-0" 
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
                                                 onClick={handleRefresh}
                                             >
                                                 <i className="mdi mdi-refresh"></i> Show All
@@ -339,10 +339,10 @@ const CountryMaster = () => {
                                             required
                                         />
                                     </div>
-                                    
+
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingCountry ? "Update" : "Save"}
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

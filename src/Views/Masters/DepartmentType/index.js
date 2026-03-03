@@ -5,8 +5,9 @@ import { API_HOST, MAS_DEPARTMENT_TYPE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_DEPARTMENT_TYPE_ERR_MSG,UPDATE_DEPARTMENT_TYPE_SUCC_MSG,DUPLICATE_DEPARTMENT_TYPE,ADD_DEPARTMENT_TYPE_SUCC_MSG,
-FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
+import {
+    FETCH_DEPARTMENT_TYPE_ERR_MSG, UPDATE_DEPARTMENT_TYPE_SUCC_MSG, DUPLICATE_DEPARTMENT_TYPE, ADD_DEPARTMENT_TYPE_SUCC_MSG,
+    FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS
 } from "../../../config/constants";
 
 const Departmenttype = () => {
@@ -342,7 +343,8 @@ const Departmenttype = () => {
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingType ? "Update" : "Save"}
+
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

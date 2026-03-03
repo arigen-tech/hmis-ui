@@ -18,7 +18,7 @@ const DepartmentMaster = () => {
         departmentTypeId: "",
         departmentNo: "",
         wardCategoryId: "",
-        indentApplicable: "n" 
+        indentApplicable: "n"
     });
     const [searchQuery, setSearchQuery] = useState("");
     const [showForm, setShowForm] = useState(false);
@@ -98,7 +98,7 @@ const DepartmentMaster = () => {
 
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredDepartments.length > 0 ? 
+    const currentItems = filteredDepartments.length > 0 ?
         filteredDepartments.slice(indexOfFirst, indexOfLast) : [];
 
     const handleSearchChange = (e) => {
@@ -124,9 +124,9 @@ const DepartmentMaster = () => {
 
     const handleCheckboxChange = (e) => {
         const { id, checked } = e.target;
-        setFormData((prevData) => ({ 
-            ...prevData, 
-            [id]: checked ? "y" : "n" 
+        setFormData((prevData) => ({
+            ...prevData,
+            [id]: checked ? "y" : "n"
         }));
     };
 
@@ -206,14 +206,14 @@ const DepartmentMaster = () => {
             }
 
             setEditingDepartment(null);
-            setFormData({ 
-                departmentCode: "", 
-                departmentName: "", 
-                departmentType: "", 
+            setFormData({
+                departmentCode: "",
+                departmentName: "",
+                departmentType: "",
                 departmentTypeId: "",
                 departmentNo: "",
                 wardCategoryId: "",
-                indentApplicable: "n" 
+                indentApplicable: "n"
             });
             setShowForm(false);
             fetchDepartments();
@@ -321,7 +321,7 @@ const DepartmentMaster = () => {
                                                         departmentTypeId: "",
                                                         departmentNo: "",
                                                         wardCategoryId: "",
-                                                        indentApplicable: "n" 
+                                                        indentApplicable: "n"
                                                     });
                                                     setIsFormValid(false);
                                                 }}
@@ -408,7 +408,7 @@ const DepartmentMaster = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    
+
                                     {filteredDepartments.length > DEFAULT_ITEMS_PER_PAGE && (
                                         <Pagination
                                             totalItems={filteredDepartments.length}
@@ -437,7 +437,7 @@ const DepartmentMaster = () => {
                                             required
                                         />
                                     </div>
-                                    
+
                                     <div className="form-group col-md-4">
                                         <label >
                                             Department Type <span className="text-danger">*</span>
@@ -502,7 +502,7 @@ const DepartmentMaster = () => {
                                         />
                                     </div>
 
-                                    
+
                                     {/* Ward Category Field - Only shown when department type ID is WARD_ID (10) */}
                                     {parseInt(formData.departmentTypeId) === WARD_ID && (
                                         <div className="form-group col-md-4 mt-3">
@@ -526,7 +526,7 @@ const DepartmentMaster = () => {
                                             </select>
                                         </div>
                                     )}
-                                    
+
                                     <div className="form-group col-md-4 mt-3">
                                         <div className="form-check d-flex align-items-center" style={{ height: "100%" }}>
                                             <label
@@ -554,7 +554,7 @@ const DepartmentMaster = () => {
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingDepartment ? "Update" : "Save"}
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel
