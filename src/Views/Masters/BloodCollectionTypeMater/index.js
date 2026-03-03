@@ -420,7 +420,7 @@ const BloodCollectionTypeMaster = () => {
               </div>
               <div className="col-md-4">
                 <label>Description</label>
-                <input
+                <textarea
                   className="form-control"
                   name="description"
                   value={formData.description}
