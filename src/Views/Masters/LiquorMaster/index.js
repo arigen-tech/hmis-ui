@@ -295,7 +295,8 @@ const LiquorMaster = () => {
                   type="submit"
                   disabled={!isFormValid}
                 >
-                  Save
+                                        {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   className="btn btn-danger"

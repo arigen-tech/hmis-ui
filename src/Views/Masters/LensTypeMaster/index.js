@@ -4,7 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OPTH_LENSTYPE } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_LENSTYPE,DUPLICATE_LENSTYPE,UPDATE_LENSTYPE,ADD_LENSTYPE,FAIL_LENSTYPE,UPDATE_FAIL_LENSTYPE,} from "../../../config/constants";
+import { FETCH_LENSTYPE, DUPLICATE_LENSTYPE, UPDATE_LENSTYPE, ADD_LENSTYPE, FAIL_LENSTYPE, UPDATE_FAIL_LENSTYPE, } from "../../../config/constants";
 
 const LensTypeMaster = () => {
   const [data, setData] = useState([]);
@@ -20,7 +20,7 @@ const LensTypeMaster = () => {
   /* ---------- Pagination ---------- */
   const [currentPage, setCurrentPage] = useState(1);
 
-    const MAX_LENGTH = 8; 
+  const MAX_LENGTH = 8;
 
   const itemsPerPage = 5;
 
@@ -197,7 +197,7 @@ const LensTypeMaster = () => {
               <input
                 type="text"
                 style={{ width: "220px" }}
-                className="form-control w-50 me-2"
+                className="form-control me-2"
                 placeholder="Search"
                 value={searchQuery}
                 onChange={handleSearchChange}
@@ -300,7 +300,8 @@ const LensTypeMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   type="button"
