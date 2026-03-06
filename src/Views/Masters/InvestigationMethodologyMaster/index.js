@@ -24,7 +24,7 @@ const InvestigationMethodologyMaster = () => {
     const METHOD_NAME_MAX_LENGTH = 30;
     const NOTE_MAX_LENGTH = 50;
 
-    
+
     useEffect(() => {
         fetchMethodologies();
     }, []);
@@ -71,32 +71,32 @@ const InvestigationMethodologyMaster = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-        
+
         setIsLoading(true);
         try {
-            
+
             const isDuplicate = methodologies.some(
                 (methodology) =>
                     methodology.methodId !== (editingMethodology ? editingMethodology.methodId : null) &&
                     (methodology.methodName === formData.methodName ||
-                     methodology.note === formData.note)
+                        methodology.note === formData.note)
             );
-    
+
             if (isDuplicate) {
                 showPopup(DUPLICATE_INV_METHODOLOGY, "error");
                 setIsLoading(false);
                 return;
             }
-    
+
             if (editingMethodology) {
-                
+
                 const response = await putRequest(`${DG_MAS_INVESTIGATION_METHODOLOGY}/update/${editingMethodology.methodId}`, {
                     methodName: formData.methodName,
                     note: formData.note,
                 });
-    
+
                 if (response && response.status === 200) {
-                    fetchMethodologies(); 
+                    fetchMethodologies();
                     showPopup(UPDATE_INV_METHODOLOGY_SUCC_MSG, "success");
                 }
             } else {
@@ -105,14 +105,14 @@ const InvestigationMethodologyMaster = () => {
                     methodName: formData.methodName,
                     note: formData.note,
                 });
-    
+
                 if (response && response.status === 200) {
-                    fetchMethodologies(); 
+                    fetchMethodologies();
                     showPopup(ADD_INV_METHODOLOGY_SUCC_MSG, "success");
                 }
             }
-    
-            
+
+
             setEditingMethodology(null);
             setFormData({ methodName: "", note: "" });
             setShowForm(false);
@@ -122,7 +122,7 @@ const InvestigationMethodologyMaster = () => {
             setIsLoading(false);
         }
     };
-    
+
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -145,7 +145,7 @@ const InvestigationMethodologyMaster = () => {
             return updatedData;
         });
     };
-    
+
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
@@ -187,9 +187,9 @@ const InvestigationMethodologyMaster = () => {
                                             <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2 flex-shrink-0" 
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
                                                 onClick={handleRefresh}
                                             >
                                                 <i className="mdi mdi-refresh"></i> Show All
@@ -241,7 +241,7 @@ const InvestigationMethodologyMaster = () => {
                                             </tbody>
                                         </table>
                                     </div>
-                                    
+
                                     {/* PAGINATION USING REUSABLE COMPONENT */}
                                     {filteredMethodologies.length > 0 && (
                                         <Pagination
@@ -280,10 +280,10 @@ const InvestigationMethodologyMaster = () => {
                                             required
                                         />
                                     </div>
-                                    
+
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingMethodology ? "Update" : "Save"}
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

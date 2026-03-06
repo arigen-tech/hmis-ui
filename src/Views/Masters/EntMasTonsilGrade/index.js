@@ -6,7 +6,7 @@ import { API_HOST, MAS_TONSIL_GRADE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_ENTMAS,DUPLICATE_ENTMAS,UPDATE_ENTMAS,ADD_ENTMAS,FAIL_ENTMAS,UPDATE_FAIL_ENTMAS,} from "../../../config/constants";
+import { FETCH_ENTMAS, DUPLICATE_ENTMAS, UPDATE_ENTMAS, ADD_ENTMAS, FAIL_ENTMAS, UPDATE_FAIL_ENTMAS, } from "../../../config/constants";
 
 
 
@@ -29,7 +29,7 @@ const EntMasTonsilGradeMaster = () => {
 
 
 
-  
+
   const fetchRecords = async (flag = 0) => {
     setLoading(true);
     try {
@@ -141,6 +141,11 @@ const EntMasTonsilGradeMaster = () => {
     setIsFormValid(false);
   };
 
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchRecords(0);
+  };
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, recordId: id, newStatus });
   };
@@ -176,15 +181,30 @@ const EntMasTonsilGradeMaster = () => {
               <div className="d-flex align-items-center">
                 {!showForm && (
                   <input
-                    type="text"
-                    className="form-control w-50 me-2"
+                    style={{ width: "220px" }}
+                    className="form-control me-2"
                     placeholder="Search Tonsil Grade"
                     value={searchQuery}
                     onChange={handleSearchChange}
                   />
                 )}
                 {!showForm ? (
-                  <button className="btn btn-success" onClick={() => setShowForm(true)}>Add</button>
+                  <>
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
+                    </button>
+                    <button className="btn btn-success" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+
+
                 ) : (
                   <button className="btn btn-secondary" onClick={resetForm}>Back</button>
                 )}
@@ -253,7 +273,9 @@ const EntMasTonsilGradeMaster = () => {
                     <input type="text" id="tonsilGrade" className="form-control" value={formData.tonsilGrade} onChange={handleInputChange} maxLength={TONSILGRADE_CODE_MAX_LENGTH} required />
                   </div>
                   <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                      {editingRecord ? "Update" : "Save"}
+                    </button>
                     <button type="button" className="btn btn-danger" onClick={resetForm}>Cancel</button>
                   </div>
                 </form>
