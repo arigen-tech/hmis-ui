@@ -4,7 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OB_TRIMESTER } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_TRIME_STER,DUPLICATE_TRIME_STER,UPDATE_TRIME_STER, ADD_TRIME_STER,FAIL_TRIME_STER,FAIL_UPDATE_TRIME_STER} from "../../../config/constants";
+import { FETCH_TRIME_STER, DUPLICATE_TRIME_STER, UPDATE_TRIME_STER, ADD_TRIME_STER, FAIL_TRIME_STER, FAIL_UPDATE_TRIME_STER } from "../../../config/constants";
 
 
 const TrimesterMaster = () => {
@@ -294,7 +294,10 @@ const TrimesterMaster = () => {
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                  {editingRecord ? "Update" : "Save"}
+
+                </button>
                 <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>
               </div>
             </form>

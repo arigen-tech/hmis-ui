@@ -13,12 +13,12 @@ const SmearResultMaster = () => {
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    record: null, 
+    record: null,
     newStatus: "",
   });
 
   const [formData, setFormData] = useState({
-    papResult: "",  
+    papResult: "",
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -30,7 +30,7 @@ const SmearResultMaster = () => {
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   const MAX_LENGTH = 8;
-  
+
 
   // Format date
   const formatDate = (dateString) => {
@@ -135,7 +135,7 @@ const SmearResultMaster = () => {
   // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData({ papResult: rec.papResult });  
+    setFormData({ papResult: rec.papResult });
     setShowForm(true);
     setIsFormValid(true);
   };
@@ -229,7 +229,7 @@ const SmearResultMaster = () => {
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Smear Result</th>  
+                    <th>Smear Result</th>
                     <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
@@ -249,14 +249,14 @@ const SmearResultMaster = () => {
                             onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}  
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
                       <td>
                         <button
                           className="btn btn-success btn-sm"
-                          disabled={rec.status?.toLowerCase() !== "y"} 
+                          disabled={rec.status?.toLowerCase() !== "y"}
                           onClick={() => handleEdit(rec)}
                         >
                           <i className="fa fa-pencil"></i>
@@ -282,7 +282,7 @@ const SmearResultMaster = () => {
                   Smear Result <span className="text-danger">*</span>
                 </label>
                 <input
-                  id="papResult"  
+                  id="papResult"
                   className="form-control"
                   value={formData.papResult}
                   onChange={handleInputChange}
@@ -297,7 +297,7 @@ const SmearResultMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -322,7 +322,7 @@ const SmearResultMaster = () => {
                   <div className="modal-body">
                     Are you sure you want to{" "}
                     {confirmDialog.newStatus === "y" ? "deactivate" : "activate"}{" "}
-                    <strong>{confirmDialog.record?.papResult}</strong>? 
+                    <strong>{confirmDialog.record?.papResult}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button

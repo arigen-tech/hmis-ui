@@ -3,13 +3,13 @@ import Popup from "../../../Components/popup";
 import { MAS_SPECIALTY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-import { 
-  ADD_SPECIALTY_SUCC_MSG, 
-  DUPLICATE_SPECIALTY, 
-  FAIL_TO_SAVE_CHANGES, 
-  FAIL_TO_UPDATE_STS, 
-  FETCH_SPECIALTY_ERR_MSG, 
-  UPDATE_SPECIALTY_SUCC_MSG 
+import {
+    ADD_SPECIALTY_SUCC_MSG,
+    DUPLICATE_SPECIALTY,
+    FAIL_TO_SAVE_CHANGES,
+    FAIL_TO_UPDATE_STS,
+    FETCH_SPECIALTY_ERR_MSG,
+    UPDATE_SPECIALTY_SUCC_MSG
 } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
@@ -283,48 +283,48 @@ const SpecialityMaster = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {currentItems.length>0?
-                                                (currentItems.map((specialty) => (
-                                                    <tr key={specialty.id}>
-                                                        <td>{specialty.centerName}</td>
-                                                        <td>{specialty.description}</td>
-                                                        <td>{specialty.lastUpdated}</td>
-                                                        <td>
-                                                            <div className="form-check form-switch">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    checked={specialty.status === "y"}
-                                                                    onChange={() => handleSwitchChange(specialty.id, specialty.status === "y" ? "n" : "y", specialty.centerName)}
-                                                                    id={`switch-${specialty.id}`}
-                                                                />
-                                                                <label
-                                                                    className="form-check-label px-0"
-                                                                    htmlFor={`switch-${specialty.id}`}
+                                                {currentItems.length > 0 ?
+                                                    (currentItems.map((specialty) => (
+                                                        <tr key={specialty.id}>
+                                                            <td>{specialty.centerName}</td>
+                                                            <td>{specialty.description}</td>
+                                                            <td>{specialty.lastUpdated}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={specialty.status === "y"}
+                                                                        onChange={() => handleSwitchChange(specialty.id, specialty.status === "y" ? "n" : "y", specialty.centerName)}
+                                                                        id={`switch-${specialty.id}`}
+                                                                    />
+                                                                    <label
+                                                                        className="form-check-label px-0"
+                                                                        htmlFor={`switch-${specialty.id}`}
+                                                                    >
+                                                                        {specialty.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(specialty)}
+                                                                    disabled={specialty.status !== "y"}
                                                                 >
-                                                                    {specialty.status === "y" ? "Active" : "Deactivated"}
-                                                                </label>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                className="btn btn-sm btn-success me-2"
-                                                                onClick={() => handleEdit(specialty)}
-                                                                disabled={specialty.status !== "y"}
-                                                            >
-                                                                <i className="fa fa-pencil"></i>
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                ))
-                                                ): (
-                                                    <tr>
-                                                        <td colSpan={6} className="text-center">
-                                                            No specialty data found
-                                                        </td>
-                                                    </tr>
-                                                )
-                                            }
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                    ) : (
+                                                        <tr>
+                                                            <td colSpan={6} className="text-center">
+                                                                No specialty data found
+                                                            </td>
+                                                        </tr>
+                                                    )
+                                                }
                                             </tbody>
                                         </table>
                                     </div>
@@ -368,7 +368,7 @@ const SpecialityMaster = () => {
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingRecord ? "Update" : "Save"}
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

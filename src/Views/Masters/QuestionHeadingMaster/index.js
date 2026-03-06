@@ -355,7 +355,8 @@ const QuestionHeadingMaster = () => {
 
               <div className="col-12 text-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                                                          {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>Cancel</button>
               </div>

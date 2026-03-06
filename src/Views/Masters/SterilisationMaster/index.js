@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_STERILISATION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_STERILI_SATION,DUPLICATE_STERILI_SATION,UPDATE_STERILI_SATION,ADD_STERILI_SATION,FAIL_STERILI_SATION,FAIL_UPDATE_STERILI_SATION} from "../../../config/constants"
+import { FETCH_STERILI_SATION, DUPLICATE_STERILI_SATION, UPDATE_STERILI_SATION, ADD_STERILI_SATION, FAIL_STERILI_SATION, FAIL_UPDATE_STERILI_SATION } from "../../../config/constants"
 
 const SterilisationMaster = () => {
   const [data, setData] = useState([]);
@@ -103,7 +103,7 @@ const SterilisationMaster = () => {
     );
 
     if (duplicate) {
-      showPopup(DUPLICATE_STERILI_SATION, "error"); 
+      showPopup(DUPLICATE_STERILI_SATION, "error");
       return;
     }
 
@@ -173,7 +173,7 @@ const SterilisationMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData(); 
+    fetchData();
   };
 
   // ================= UI =================
@@ -289,7 +289,7 @@ const SterilisationMaster = () => {
                   Sterilisation Name <span className="text-danger">*</span>
                 </label>
                 <input
-                  id="sterilisationType" 
+                  id="sterilisationType"
                   className="form-control"
                   value={formData.sterilisationType}
                   onChange={handleInputChange}
@@ -304,7 +304,8 @@ const SterilisationMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   type="button"
