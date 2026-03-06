@@ -4,13 +4,39 @@ import { useEffect, useState } from "react"
 import { useLocation, useNavigate } from "react-router-dom"
 import Swal from "sweetalert2"
 import LoadingScreen from "../../../Components/Loading"
-import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig"
+import { MAS_SERVICE_CATEGORY, LAB } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { ERROR, INVALID_INVESTIGATION_ERROR, INVALID_INVESTIGATION_ID, INVALID_PATIENT_ID, PAYMENT_ERROR, REGISTRATION, REGISTRATION_ERR_MSG, REGISTRATION_SUCCESS_MSG, SELECT_INVESTIGATIONS_ERROR_MSG, UNEXPECTED_ERROR } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { 
+  ERROR, 
+  INVALID_INVESTIGATION_ERROR, 
+  INVALID_INVESTIGATION_ID, 
+  INVALID_PATIENT_ID, 
+  PAYMENT_ERROR, 
+  REGISTRATION, 
+  REGISTRATION_ERR_MSG, 
+  REGISTRATION_SUCCESS_MSG, 
+  SELECT_INVESTIGATIONS_ERROR_MSG, 
+  UNEXPECTED_ERROR 
+} from "../../../config/constants"
 
 const LabBillingDetails = () => {
   const navigate = useNavigate()
   const location = useLocation()
+  
+  const [patientList, setPatientList] = useState([])
+  const [filteredPatientList, setFilteredPatientList] = useState([])
+  const [searchData, setSearchData] = useState({
+    patientName: "",
+    mobileNo: "",
+    sessionNo: ""
+  })
+  const [currentPage, setCurrentPage] = useState(1)
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  const [showPatientDetails, setShowPatientDetails] = useState(false)
+  const [selectedPatient, setSelectedPatient] = useState(null)
+  
   const [formData, setFormData] = useState({
     billingType: "",
     patientName: "",
@@ -26,7 +52,6 @@ const LabBillingDetails = () => {
   const [isFormValid, setIsFormValid] = useState(false)
   const [checkedRows, setCheckedRows] = useState([])
   const [activeRowIndex, setActiveRowIndex] = useState(null)
-  const [isLoading, setIsLoading] = useState(true)
   const [investigationItems, setInvestigationItems] = useState([])
   const [packageItems, setPackageItems] = useState([])
 
@@ -36,6 +61,72 @@ const LabBillingDetails = () => {
   })
 
   const [gstConfigLoaded, setGstConfigLoaded] = useState(false)
+
+  // Fetch pending lab billing list
+  const fetchPendingLabBilling = async () => {
+    try {
+      setIsLoading(true)
+      setError(null)
+
+      const response = await getRequest(`${LAB}/pending`)
+
+      if (response && response.response) {
+        const mappedData = response.response.map((item) => {
+          // Get first appointment data if available
+          const firstAppointment = item.appointments?.[0] || {}
+
+          return {
+            id: item.billinghdid || item.orderhdid,
+            patientId: item.patientid,
+            patientName: item.patientName || "N/A",
+            mobileNo: item.mobileNo || "N/A",
+            age: item.age || "N/A",
+            sex: item.sex || "N/A",
+            relation: item.relation || "N/A",
+            address: item.address || "",
+            sessionNo: firstAppointment.sessionName || item.sessionName || null,
+
+            // Billing type handling
+            billingType: "Laboratory Services",
+
+            // Doctor and department
+            consultedDoctor: firstAppointment.consultedDoctor || item.consultedDoctor || "N/A",
+            department: firstAppointment.department || item.department || "N/A",
+
+            // Amount and status
+            amount: item.amount || 0,
+            billingStatus: item.billingStatus === "n" || item.orderhdPaymentStatus === "n"
+              ? "Pending"
+              : "Completed",
+
+            // Visit information
+            tokenNo: firstAppointment.tokenNo || item.tokenNo || null,
+            visitDate: firstAppointment.visitDate || item.visitDate || null,
+            sessionName: firstAppointment.sessionName || item.sessionName || null,
+
+            // Original data
+            appointments: item.appointments || [],
+            details: item.details || [],
+            flag: item.flag,
+            source: item.source,
+            billinghdid: item.billinghdid,
+            orderhdid: item.orderhdid,
+
+            // Store complete original data
+            fullData: item
+          }
+        })
+
+        setPatientList(mappedData)
+        setFilteredPatientList(mappedData)
+      }
+    } catch (error) {
+      console.error("Error fetching pending lab billing data:", error)
+      setError(error.message)
+    } finally {
+      setIsLoading(false)
+    }
+  }
 
   async function fetchGstConfiguration() {
     try {
@@ -69,130 +160,173 @@ const LabBillingDetails = () => {
   }
 
   useEffect(() => {
+    fetchPendingLabBilling()
     fetchGstConfiguration()
   }, [])
 
-  useEffect(() => {
-    if (location.state && location.state.billingData) {
-      const responseData = location.state.billingData
-      const billingData = Array.isArray(responseData) ? responseData[0] : responseData
-      const details = billingData.details || []
-      console.log("=== BILLING DATA ===", billingData)
-      console.log("=== BILLING DETAILS ===", details)
+  const handleSearchChange = (e) => {
+    const { id, value } = e.target
+    setSearchData(prev => ({ ...prev, [id]: value }))
+    setCurrentPage(1)
+  }
 
-      const investigations = details
-        .filter((item) => item.investigationId !== null && item.investigationId !== undefined)
-        .map((item) => ({
-          investigationId: item.investigationId,
-          investigationName: item.investigationName || item.itemName,
-          price: item.basePrice || item.tariff || 0,
-          disc: item.discount || 0,
-        }))
+  const handleSearch = () => {
+    setIsLoading(true)
+    setTimeout(() => {
+      const filtered = patientList.filter((item) => {
+        const patientNameMatch = searchData.patientName === "" || 
+          item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
+        
+        const mobileNoMatch = searchData.mobileNo === "" || 
+          item.mobileNo.includes(searchData.mobileNo)
 
-      const packages = details
-        .filter((item) => item.packageId !== null && item.packageId !== undefined)
-        .map((item) => ({
-          id: item.packageId,
-          packName: item.packageName || item.itemName,
-          actualCost: item.amountAfterDiscount || 0,
-          baseCost: item.basePrice || item.tariff || 0,
-          disc: item.discount || 0,
-        }))
-
-      setInvestigationItems(investigations)
-      setPackageItems(packages)
-
-      const patientData = {
-        billingType: billingData.billingType || "",
-        patientName: billingData.patientName || "",
-        mobileNo: billingData.mobileNo || "",
-        age: billingData.age || "",
-        sex: billingData.sex || "",
-        relation: billingData.relation || "",
-        patientId: billingData.patientid?.toString() || billingData.patientId?.toString() || "",
-        address: billingData.address || "",
-      }
-
-      const formattedRows = details.map((item, index) => {
-        const isPackage = item.packageId !== null && item.packageId !== undefined
-        const isInvestigation = item.investigationId !== null && item.investigationId !== undefined
-
-        const investigationId = item.investigationId
-        const packageId = item.packageId
-
-        const itemId = isPackage ? packageId : investigationId
-
-        const validItemId = itemId !== null && itemId !== undefined && itemId !== 0
-
-        console.log(`Row ${index} ID Mapping:`, {
-          itemName: item.itemName,
-          isPackage,
-          isInvestigation,
-          investigationId,
-          packageId,
-          extractedItemId: itemId,
-          validItemId,
-          basePrice: item.basePrice,
-          discount: item.discount
-        })
-
-        if (!validItemId) {
-          console.error(`❌ INVALID ITEM ID for row ${index}:`, item)
-        }
-
-        return {
-          id: item.id || index + 1,
-          name: item.itemName || (isPackage ? item.packageName : item.investigationName) || "",
-          date: new Date().toISOString().split("T")[0],
-          originalAmount: item.basePrice || item.tariff || 0,
-          discountAmount: item.discount || 0,
-          netAmount: item.amountAfterDiscount || item.netAmount || 0,
-          type: isPackage ? "package" : "investigation",
-          investigationId: investigationId,
-          packageId: packageId,
-          itemId: itemId,
-          itemDetails: item,
-          hasValidId: validItemId,
-        }
+        const sessionNoMatch = searchData.sessionNo === "" || 
+          (item.sessionNo && item.sessionNo.toLowerCase().includes(searchData.sessionNo.toLowerCase()))
+        
+        return patientNameMatch && mobileNoMatch && sessionNoMatch
       })
-
-      const rowsWithInvalidIds = formattedRows.filter(row => !row.hasValidId)
-      if (rowsWithInvalidIds.length > 0) {
-        console.warn(`⚠️ Found ${rowsWithInvalidIds.length} rows with invalid IDs:`, rowsWithInvalidIds)
-      }
-
-      const hasPackages = formattedRows.some((row) => row.type === "package")
-      const hasInvestigations = formattedRows.some((row) => row.type === "investigation")
-
-      let defaultType = "investigation"
-      if (hasPackages && !hasInvestigations) {
-        defaultType = "package"
-      }
-
-      console.log("=== FINAL FORMATTED DATA ===")
-      console.log("Patient Data:", patientData)
-      console.log("Formatted Rows:", formattedRows)
-      console.log("Rows with valid IDs:", formattedRows.filter(row => row.hasValidId).length)
-      console.log("Rows with invalid IDs:", formattedRows.filter(row => !row.hasValidId).length)
-      console.log("Default type:", defaultType)
-
-      setFormData({
-        ...patientData,
-        rows: formattedRows.length > 0 ? formattedRows : [],
-        type: defaultType,
-      })
-
-      setCheckedRows(new Array(formattedRows.length).fill(true))
-
-      const isValid = !!(patientData.patientName && patientData.mobileNo && patientData.age && patientData.sex)
-      setIsFormValid(isValid)
+      setFilteredPatientList(filtered)
+      setCurrentPage(1)
       setIsLoading(false)
-    } else {
-      console.log("No billing data found in location.state")
-      navigate("/PendingForBilling")
+    }, 500)
+  }
+
+  const handleReset = () => {
+    setSearchData({
+      patientName: "",
+      mobileNo: "",
+      sessionNo: ""
+    })
+    setFilteredPatientList(patientList)
+    setCurrentPage(1)
+  }
+
+  const handleRowClick = (patient) => {
+    setSelectedPatient(patient)
+    setShowPatientDetails(true)
+    
+    // Process the selected patient data for lab billing
+    const responseData = patient.fullData
+    const billingData = Array.isArray(responseData) ? responseData[0] : responseData
+    const details = billingData.details || []
+    
+    console.log("=== BILLING DATA ===", billingData)
+    console.log("=== BILLING DETAILS ===", details)
+
+    const investigations = details
+      .filter((item) => item.investigationId !== null && item.investigationId !== undefined)
+      .map((item) => ({
+        investigationId: item.investigationId,
+        investigationName: item.investigationName || item.itemName,
+        price: item.basePrice || item.tariff || 0,
+        disc: item.discount || 0,
+      }))
+
+    const packages = details
+      .filter((item) => item.packageId !== null && item.packageId !== undefined)
+      .map((item) => ({
+        id: item.packageId,
+        packName: item.packageName || item.itemName,
+        actualCost: item.amountAfterDiscount || 0,
+        baseCost: item.basePrice || item.tariff || 0,
+        disc: item.discount || 0,
+      }))
+
+    setInvestigationItems(investigations)
+    setPackageItems(packages)
+
+    const patientData = {
+      billingType: billingData.billingType || "",
+      patientName: billingData.patientName || "",
+      mobileNo: billingData.mobileNo || "",
+      age: billingData.age || "",
+      sex: billingData.sex || "",
+      relation: billingData.relation || "",
+      patientId: billingData.patientid?.toString() || billingData.patientId?.toString() || "",
+      address: billingData.address || "",
     }
-  }, [location.state, navigate])
-  // Add GST config change effect - same as lab registration
+
+    const formattedRows = details.map((item, index) => {
+      const isPackage = item.packageId !== null && item.packageId !== undefined
+      const isInvestigation = item.investigationId !== null && item.investigationId !== undefined
+
+      const investigationId = item.investigationId
+      const packageId = item.packageId
+
+      const itemId = isPackage ? packageId : investigationId
+
+      const validItemId = itemId !== null && itemId !== undefined && itemId !== 0
+
+      console.log(`Row ${index} ID Mapping:`, {
+        itemName: item.itemName,
+        isPackage,
+        isInvestigation,
+        investigationId,
+        packageId,
+        extractedItemId: itemId,
+        validItemId,
+        basePrice: item.basePrice,
+        discount: item.discount
+      })
+
+      if (!validItemId) {
+        console.error(`❌ INVALID ITEM ID for row ${index}:`, item)
+      }
+
+      return {
+        id: item.id || index + 1,
+        name: item.itemName || (isPackage ? item.packageName : item.investigationName) || "",
+        date: new Date().toISOString().split("T")[0],
+        originalAmount: item.basePrice || item.tariff || 0,
+        discountAmount: item.discount || 0,
+        netAmount: item.amountAfterDiscount || item.netAmount || 0,
+        type: isPackage ? "package" : "investigation",
+        investigationId: investigationId,
+        packageId: packageId,
+        itemId: itemId,
+        itemDetails: item,
+        hasValidId: validItemId,
+      }
+    })
+
+    const rowsWithInvalidIds = formattedRows.filter(row => !row.hasValidId)
+    if (rowsWithInvalidIds.length > 0) {
+      console.warn(`⚠️ Found ${rowsWithInvalidIds.length} rows with invalid IDs:`, rowsWithInvalidIds)
+    }
+
+    const hasPackages = formattedRows.some((row) => row.type === "package")
+    const hasInvestigations = formattedRows.some((row) => row.type === "investigation")
+
+    let defaultType = "investigation"
+    if (hasPackages && !hasInvestigations) {
+      defaultType = "package"
+    }
+
+    console.log("=== FINAL FORMATTED DATA ===")
+    console.log("Patient Data:", patientData)
+    console.log("Formatted Rows:", formattedRows)
+    console.log("Rows with valid IDs:", formattedRows.filter(row => row.hasValidId).length)
+    console.log("Rows with invalid IDs:", formattedRows.filter(row => !row.hasValidId).length)
+    console.log("Default type:", defaultType)
+
+    setFormData({
+      ...patientData,
+      rows: formattedRows.length > 0 ? formattedRows : [],
+      type: defaultType,
+    })
+
+    setCheckedRows(new Array(formattedRows.length).fill(true))
+
+    const isValid = !!(patientData.patientName && patientData.mobileNo && patientData.age && patientData.sex)
+    setIsFormValid(isValid)
+  }
+
+  const handleBackToList = () => {
+    setShowPatientDetails(false)
+    setSelectedPatient(null)
+    handleReset()
+  }
+
   useEffect(() => {
     console.log("GST Config changed:", gstConfig)
   }, [gstConfig])
@@ -323,246 +457,246 @@ const LabBillingDetails = () => {
     return breakdown
   }
 
+  const handleSave = async (e) => {
+    e.preventDefault()
+    if (!isFormValid) return
 
- const handleSave = async (e) => {
-  e.preventDefault()
-  if (!isFormValid) return
+    try {
+      setIsLoading(true)
 
-  try {
-    setIsLoading(true)
+      const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
+      if (!hasCheckedItems) {
+        Swal.fire(ERROR, SELECT_INVESTIGATIONS_ERROR_MSG, "error")
+        setIsLoading(false)
+        return
+      }
 
-    const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
-    if (!hasCheckedItems) {
-      Swal.fire(ERROR, SELECT_INVESTIGATIONS_ERROR_MSG, "error")
-      setIsLoading(false)
-      return
-    }
+      const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
+      if (invalidRow) {
+        Swal.fire(
+          ERROR,
+          INVALID_INVESTIGATION_ERROR,
+          "error",
+        )
+        setIsLoading(false)
+        return
+      }
 
-    const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
-    if (invalidRow) {
-      Swal.fire(
-        ERROR,
-        INVALID_INVESTIGATION_ERROR,
-        "error",
-      )
-      setIsLoading(false)
-      return
-    }
+      const billingData = selectedPatient?.fullData
+      const isArray = Array.isArray(billingData)
+      const data = isArray ? billingData[0] : billingData
 
-    const billingData = location.state?.billingData
-    const isArray = Array.isArray(billingData)
-    const data = isArray ? billingData[0] : billingData
+      console.log("=== SAVE - BILLING DATA ===")
+      console.log("Original billing data:", data)
+      console.log("Existing billinghdid:", data?.billinghdid)
+      console.log("orderhdid:", data?.orderhdid)
 
-    console.log("=== SAVE - BILLING DATA ===")
-    console.log("Original billing data:", data)
-    console.log("Existing billinghdid:", data?.billinghdid)
-    console.log("orderhdid:", data?.orderhdid)
+      const patientId = formData.patientId || data?.patientid || data?.patientId
 
-    const patientId = formData.patientId || data?.patientid || data?.patientId
-
-    if (!patientId) {
-      Swal.fire({
-        title: ERROR,
-        text:INVALID_PATIENT_ID,
-        icon: "error",
-        confirmButtonText: "Go Back",
-      })
-      setIsLoading(false)
-      return
-    }
-
-    let billingHeaderId = data?.billinghdid
-
-    if (!billingHeaderId) {
-      console.log("❌ No existing billing header found. Checking if registration is needed...")
-
-      const itemsWithValidIds = formData.rows.filter(row =>
-        row.itemId && row.itemId !== null && row.itemId !== undefined && row.itemId !== 0
-      )
-
-      if (itemsWithValidIds.length === 0) {
+      if (!patientId) {
         Swal.fire({
           title: ERROR,
-          text: INVALID_INVESTIGATION_ID,
+          text: INVALID_PATIENT_ID,
           icon: "error",
-          confirmButtonText: "OK",
+          confirmButtonText: "Go Back",
         })
         setIsLoading(false)
         return
       }
 
-      try {
-        const allItemsForRegistration = itemsWithValidIds.map((row) => {
-          console.log(`Registration - Row: ${row.name}, ItemId: ${row.itemId}, Type: ${row.type}`)
+      let billingHeaderId = data?.billinghdid
 
-          return {
-            id: Number(row.itemId),
-            appointmentDate: row.date || new Date().toISOString().split("T")[0],
-            checkStatus: true,
-            actualAmount: Number.parseFloat(row.originalAmount) || 0,
-            discountedAmount: Number.parseFloat(row.discountAmount) || 0,
-            type: row.type === "investigation" ? "i" : "p",
-          }
-        })
+      if (!billingHeaderId) {
+        console.log("❌ No existing billing header found. Checking if registration is needed...")
 
-        console.log("=== REGISTERING NEW BILLING HEADER ===")
-        console.log("Items for registration:", allItemsForRegistration)
+        const itemsWithValidIds = formData.rows.filter(row =>
+          row.itemId && row.itemId !== null && row.itemId !== undefined && row.itemId !== 0
+        )
 
-        let registrationResponse;
-
-        if (data?.orderhdid) {
-          console.log("=== USING EXISTING ORDER API ===")
-          const labBillingData = {
-            patientId: Number(patientId),
-            orderhdid: data.orderhdid,
-            labInvestigationReq: allItemsForRegistration,
-          }
-
-          registrationResponse = await postRequest("/lab/registration/billing", labBillingData)
-        } else {
-          console.log("=== USING FRESH REGISTRATION API ===")
-          const labRegistrationData = {
-            patientId: Number(patientId),
-            labInvestigationReq: allItemsForRegistration,
-          }
-
-          registrationResponse = await postRequest("/lab/registration", labRegistrationData)
+        if (itemsWithValidIds.length === 0) {
+          Swal.fire({
+            title: ERROR,
+            text: INVALID_INVESTIGATION_ID,
+            icon: "error",
+            confirmButtonText: "OK",
+          })
+          setIsLoading(false)
+          return
         }
 
-        console.log("=== REGISTRATION RESPONSE ===")
-        console.log("Response:", registrationResponse)
+        try {
+          const allItemsForRegistration = itemsWithValidIds.map((row) => {
+            console.log(`Registration - Row: ${row.name}, ItemId: ${row.itemId}, Type: ${row.type}`)
 
-        if (!registrationResponse || registrationResponse.status !== 200) {
-          throw new Error(registrationResponse?.message || "Registration failed.")
+            return {
+              id: Number(row.itemId),
+              appointmentDate: row.date || new Date().toISOString().split("T")[0],
+              checkStatus: true,
+              actualAmount: Number.parseFloat(row.originalAmount) || 0,
+              discountedAmount: Number.parseFloat(row.discountAmount) || 0,
+              type: row.type === "investigation" ? "i" : "p",
+            }
+          })
+
+          console.log("=== REGISTERING NEW BILLING HEADER ===")
+          console.log("Items for registration:", allItemsForRegistration)
+
+          let registrationResponse;
+
+          if (data?.orderhdid) {
+            console.log("=== USING EXISTING ORDER API ===")
+            const labBillingData = {
+              patientId: Number(patientId),
+              orderhdid: data.orderhdid,
+              labInvestigationReq: allItemsForRegistration,
+            }
+
+            registrationResponse = await postRequest("/lab/registration/billing", labBillingData)
+          } else {
+            console.log("=== USING FRESH REGISTRATION API ===")
+            const labRegistrationData = {
+              patientId: Number(patientId),
+              labInvestigationReq: allItemsForRegistration,
+            }
+
+            registrationResponse = await postRequest("/lab/registration", labRegistrationData)
+          }
+
+          console.log("=== REGISTRATION RESPONSE ===")
+          console.log("Response:", registrationResponse)
+
+          if (!registrationResponse || registrationResponse.status !== 200) {
+            throw new Error(registrationResponse?.message || "Registration failed.")
+          }
+
+          billingHeaderId =
+            registrationResponse?.response?.billinghdId ||
+            registrationResponse?.response?.billinghdid ||
+            registrationResponse?.response?.billHeaderId ||
+            registrationResponse?.response?.id
+
+          if (!billingHeaderId) {
+            throw new Error("Billing Header ID not returned from registration")
+          }
+
+          console.log("✓ NEW Registration successful. Billing Header ID:", billingHeaderId)
+
+          await Swal.fire({
+            title: REGISTRATION,
+            text: `${REGISTRATION_SUCCESS_MSG} ${billingHeaderId}`,
+            icon: "success",
+            confirmButtonText: "Continue to Payment",
+          })
+
+        } catch (registrationError) {
+          console.error("❌ Registration error:", registrationError)
+          Swal.fire(REGISTRATION_ERR_MSG, registrationError.message, "error")
+          setIsLoading(false)
+          return
         }
+      } else {
+        console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId)
+        console.log("🚫 SKIPPING REGISTRATION - Using existing billing header")
+      }
 
-        billingHeaderId =
-          registrationResponse?.response?.billinghdId ||
-          registrationResponse?.response?.billinghdid ||
-          registrationResponse?.response?.billHeaderId ||
-          registrationResponse?.response?.id
+      const paymentBreakdown = calculatePaymentBreakdown()
+      const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
 
-        if (!billingHeaderId) {
-          throw new Error("Billing Header ID not returned from registration")
-        }
+      const selectedItemsForPayment = formData.rows
+        .filter((row, index) => checkedRows[index] && row.itemId)
+        .map((row) => ({
+          id: Number(row.itemId),
+          type: row.type === "investigation" ? "i" : "p",
+        }))
 
-        console.log("✓ NEW Registration successful. Billing Header ID:", billingHeaderId)
+      console.log("=== PAYMENT ITEMS ===")
+      console.log("Selected items for payment:", selectedItemsForPayment)
+      console.log("Total selected items:", selectedItemsForPayment.length)
 
-        await Swal.fire({
-          title: REGISTRATION,
-          text: `${REGISTRATION_SUCCESS_MSG} ${billingHeaderId}`,
-          icon: "success",
-          confirmButtonText: "Continue to Payment",
-        })
-
-      } catch (registrationError) {
-        console.error("❌ Registration error:", registrationError)
-        Swal.fire(REGISTRATION_ERR_MSG, registrationError.message, "error")
+      if (selectedItemsForPayment.length === 0) {
+        Swal.fire(ERROR, PAYMENT_ERROR, "error")
         setIsLoading(false)
         return
       }
-    } else {
 
-      console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId)
-      console.log("🚫 SKIPPING REGISTRATION - Using existing billing header")
-    }
+      // ✅ Prepare payment data - ONLY payment update, no registration
+      const paymentData = {
+        billHeaderId: Number(billingHeaderId), // Use existing or newly created billing header
+        amount: totalFinalAmount,
+        mode: "cash",
+        paymentReferenceNo: `PAY${Date.now()}`,
+        investigationandPackegBillStatus: selectedItemsForPayment,
+        // ✅ CRITICAL: Add flags to prevent duplicate registration in payment API
+        isPaymentUpdate: true,
+        shouldNotCreateNewBilling: true,
+        useExistingBillingHeader: true,
+        operationType: "payment_update_only"
+      }
 
+      console.log("=== PAYMENT DATA ===")
+      console.log("Payment data to send:", paymentData)
+      console.log("Billing Header Source:", data?.billinghdid ? "EXISTING" : "NEW")
 
-    const paymentBreakdown = calculatePaymentBreakdown()
-    const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
+      // ✅ Prepare labData for payment page
+      const labData = {
+        response: {
+          billinghdId: billingHeaderId,
+          billinghdid: billingHeaderId,
+          billHeaderId: billingHeaderId,
+          patientId: patientId,
+          totalAmount: totalFinalAmount,
+        },
+      }
 
-    const selectedItemsForPayment = formData.rows
-      .filter((row, index) => checkedRows[index] && row.itemId)
-      .map((row) => ({
-        id: Number(row.itemId),
-        type: row.type === "investigation" ? "i" : "p",
-      }))
-
-    console.log("=== PAYMENT ITEMS ===")
-    console.log("Selected items for payment:", selectedItemsForPayment)
-    console.log("Total selected items:", selectedItemsForPayment.length)
-
-    if (selectedItemsForPayment.length === 0) {
-      Swal.fire(ERROR, PAYMENT_ERROR, "error")
+      // ✅ Final confirmation with clear billing header info
+      Swal.fire({
+        title: "Confirm Payment",
+        icon: "question",
+        showCancelButton: true,
+        confirmButtonText: "Proceed to Payment",
+        cancelButtonText: "Cancel",
+      }).then((result) => {
+        if (result.isConfirmed) {
+          console.log("=== NAVIGATING TO PAYMENT ===")
+          console.log("Billing Header ID:", billingHeaderId)
+          console.log("Was Registered:", !data?.billinghdid)
+          
+          navigate("/payment", {
+            state: {
+              amount: totalFinalAmount,
+              patientId: patientId,
+              labData: labData,
+              paymentData: paymentData,
+              investigationandPackegBillStatus: selectedItemsForPayment,
+              paymentBreakdown: paymentBreakdown,
+              billingHeaderId: billingHeaderId,
+              billingType: "Laboratory Services",
+              wasRegistered: !data?.billinghdid,
+              originalOrderHdId: data?.orderhdid,
+              originalBillingData: data,
+              billingHeaderSource: data?.billinghdid ? 'pending_api' : 'new_registration'
+            },
+          })
+        }
+      })
+    } catch (error) {
+      console.error("❌ Error:", error)
+      Swal.fire("Error!", error.message || UNEXPECTED_ERROR, "error")
+    } finally {
       setIsLoading(false)
-      return
     }
-
-    // ✅ Prepare payment data - ONLY payment update, no registration
-    const paymentData = {
-      billHeaderId: Number(billingHeaderId), // Use existing or newly created billing header
-      amount: totalFinalAmount,
-      mode: "cash",
-      paymentReferenceNo: `PAY${Date.now()}`,
-      investigationandPackegBillStatus: selectedItemsForPayment,
-      // ✅ CRITICAL: Add flags to prevent duplicate registration in payment API
-      isPaymentUpdate: true,
-      shouldNotCreateNewBilling: true,
-      useExistingBillingHeader: true,
-      operationType: "payment_update_only"
-    }
-
-    console.log("=== PAYMENT DATA ===")
-    console.log("Payment data to send:", paymentData)
-    console.log("Billing Header Source:", data?.billinghdid ? "EXISTING" : "NEW")
-
-    // ✅ Prepare labData for payment page
-    const labData = {
-      response: {
-        billinghdId: billingHeaderId,
-        billinghdid: billingHeaderId,
-        billHeaderId: billingHeaderId,
-        patientId: patientId,
-        totalAmount: totalFinalAmount,
-      },
-    }
-
-    // ✅ Final confirmation with clear billing header info
-    Swal.fire({
-      title: "Confirm Payment",
-      
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonText: "Proceed to Payment",
-      cancelButtonText: "Cancel",
-    }).then((result) => {
-      if (result.isConfirmed) {
-        console.log("=== NAVIGATING TO PAYMENT ===")
-        console.log("Billing Header ID:", billingHeaderId)
-        console.log("Was Registered:", !data?.billinghdid)
-        
-        navigate("/payment", {
-          state: {
-            amount: totalFinalAmount,
-            patientId: patientId,
-            labData: labData,
-            paymentData: paymentData,
-            investigationandPackegBillStatus: selectedItemsForPayment,
-            paymentBreakdown: paymentBreakdown,
-            billingHeaderId: billingHeaderId,
-            billingType: "Laboratory Services",
-            wasRegistered: !data?.billinghdid,
-            originalOrderHdId: data?.orderhdid,
-            originalBillingData: data,
-            billingHeaderSource: data?.billinghdid ? 'pending_api' : 'new_registration'
-          },
-        })
-      }
-    })
-  } catch (error) {
-    console.error("❌ Error:", error)
-    Swal.fire("Error!", error.message || UNEXPECTED_ERROR, "error")
-  } finally {
-    setIsLoading(false)
   }
-}
+
   const handleBack = () => {
     navigate("/PendingForBilling")
   }
 
   const paymentBreakdown = calculatePaymentBreakdown()
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast)
 
-  if (isLoading) {
+  if (isLoading && !showPatientDetails) {
     return <LoadingScreen />
   }
 
@@ -572,368 +706,542 @@ const LabBillingDetails = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Lab Billing Details</h4>
-              <button type="button" className="btn btn-secondary" onClick={handleBack}>
-                <i className="mdi mdi-arrow-left"></i> Back to Pending List
-              </button>
+              <h4 className="card-title p-2">Lab Billing</h4>
+              {showPatientDetails ? (
+                <button 
+                  type="button" 
+                  className="btn btn-outline-secondary"
+                  onClick={handleBackToList}
+                >
+                  <i className="mdi mdi-arrow-left"></i> Back to List
+                </button>
+              ) : (
+                <button type="button" className="btn btn-secondary" onClick={handleBack}>
+                  <i className="mdi mdi-arrow-left"></i> Back to Pending List
+                </button>
+              )}
             </div>
+
             <div className="card-body">
-              <form className="forms row" onSubmit={handleSave}>
-                {/* Patient Details Section */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header  ">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-account"></i> Patient Details
-                      </h5>
-                    </div>
+              {/* Search Section - Only visible when not showing patient details */}
+              {!showPatientDetails && (
+                <>
+                  <div className="mb-4">
                     <div className="card-body">
-                      <div className="row">
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Patient Name <span className="text-danger">*</span>
-                          </label>
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Patient Name</label>
                           <input
                             type="text"
                             className="form-control"
                             id="patientName"
-                            placeholder="Patient Name"
-                            onChange={handleInputChange}
-                            value={formData.patientName}
-                            required
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
                           />
                         </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Age <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="age"
-                            placeholder="Age"
-                            onChange={handleInputChange}
-                            value={formData.age}
-                            required
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Mobile No. <span className="text-danger">*</span>
-                          </label>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Mobile No.</label>
                           <input
                             type="text"
                             className="form-control"
                             id="mobileNo"
-                            placeholder="Mobile Number"
-                            onChange={handleInputChange}
-                            value={formData.mobileNo}
-                            required
+                            placeholder="Enter mobile number"
+                            value={searchData.mobileNo}
+                            onChange={handleSearchChange}
                           />
                         </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            Sex <span className="text-danger">*</span>
-                          </label>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Session No.</label>
                           <input
                             type="text"
                             className="form-control"
-                            id="sex"
-                            placeholder="Sex"
-                            onChange={handleInputChange}
-                            value={formData.sex}
-                            required
+                            id="sessionNo"
+                            placeholder="Enter session number"
+                            value={searchData.sessionNo}
+                            onChange={handleSearchChange}
                           />
                         </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Relation</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="relation"
-                            placeholder="Relation"
-                            onChange={handleInputChange}
-                            value={formData.relation}
-                          />
-                        </div>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>Patient ID</label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="patientId"
-                            placeholder="Patient ID"
-                            onChange={handleInputChange}
-                            value={formData.patientId}
-                          />
-                        </div>
-                        <div className="form-group col-md-12 mt-3">
-                          <label>Address</label>
-                          <textarea
-                            className="form-control"
-                            id="address"
-                            placeholder="Address"
-                            onChange={handleInputChange}
-                            value={formData.address}
-                            rows="2"
-                          />
+                        <div className="col-md-3">
+                          <div className="d-flex gap-2">
+                            <button 
+                              type="button" 
+                              className="btn btn-primary flex-fill"
+                              onClick={handleSearch}
+                              disabled={isLoading}
+                            >
+                              {isLoading ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Searching...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="mdi mdi-magnify"></i> Search
+                                </>
+                              )}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-secondary flex-fill"
+                              onClick={handleReset}
+                            >
+                              Reset
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
-                </div>
 
-
-
-
-                {/* Rest of the component remains the same... */}
-                {/* Lab Investigation/Package Details */}
-                <div className="col-12 mt-4">
-                  <div className="card">
-                    <div className="card-header  ">
-                      <h5 className="mb-0">
-                        <i className="mdi mdi-test-tube"></i>{" "}
-                        {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
-                      </h5>
+                  {error && (
+                    <div className="alert alert-danger" role="alert">
+                      <strong>Error:</strong> {error}
+                      <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={fetchPendingLabBilling}>
+                        Retry
+                      </button>
                     </div>
-                    <div className="card-body">
-                      <table className="table table-bordered">
-                        <thead>
+                  )}
+
+                  {!error && filteredPatientList.length === 0 && (
+                    <div className="alert alert-info" role="alert">
+                      <i className="mdi mdi-information"></i> No pending lab billing records found.
+                    </div>
+                  )}
+
+                  {filteredPatientList.length > 0 && (
+                    <div className="table-responsive packagelist">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead className="table-light">
                           <tr>
-                            <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"}</th>
-                            <th>Date</th>
-                            <th>Original Amount</th>
-                            <th>Discount Amount</th>
-                            <th>Net Amount</th>
-                            <th>Action</th>
+                            <th>Patient Name</th>
+                            <th>Mobile No.</th>
+                            <th>Age</th>
+                            <th>Sex</th>
+                            <th>Relation</th>
+                            <th>Billing Type</th>
+                            <th>Consulted Doctor</th>
+                            <th>Department</th>
+                            <th>Amount</th>
+                            <th>Billing Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {formData.rows.map((row, index) => (
-                            <tr key={index}>
+                          {currentItems.map((item) => (
+                            <tr
+                              key={item.id}
+                              onClick={() => handleRowClick(item)}
+                              role="button"
+                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(item) }}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <td>{item.patientName}</td>
+                              <td>{item.mobileNo}</td>
+                              <td>{item.age}</td>
+                              <td>{item.sex}</td>
+                              <td>{item.relation}</td>
                               <td>
-                                <div className="d-flex align-items-center gap-2">
-                                  <input
-                                    type="checkbox"
-                                    style={{ width: "20px", height: "20px", border: "2px solid black" }}
-                                    className="form-check-input"
-                                    checked={checkedRows[index] || false}
-                                    onChange={(e) => {
-                                      const updated = [...checkedRows]
-                                      updated[index] = e.target.checked
-                                      setCheckedRows(updated)
-                                    }}
-                                  />
-                                  <div className="dropdown-search-container position-relative flex-grow-1">
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.name}
-                                      autoComplete="off"
-                                      placeholder={
-                                        formData.type === "investigation" ? "Investigation Name" : "Package Name"
-                                      }
-                                      readOnly
-                                    />
-                                  </div>
-                                </div>
+                                <span className="badge bg-info">{item.billingType}</span>
                               </td>
+                              <td>{item.consultedDoctor}</td>
+                              <td>{item.department}</td>
+                              <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
                               <td>
-                                <input
-                                  type="date"
-                                  className="form-control"
-                                  value={row.date}
-                                  onChange={(e) => handleRowChange(index, "date", e.target.value)}
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  value={row.originalAmount}
-                                  onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className="form-control"
-                                  value={row.discountAmount}
-                                  onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
-                                  min="0"
-                                  step="0.01"
-                                />
-                              </td>
-                              <td>
-                                <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
-                              </td>
-                              <td>
-                                <div className="d-flex align-item-center gap-2">
-                                  <button
-                                    type="button"
-                                    className="btn btn-danger"
-                                    onClick={() => removeRow(index)}
-                                    disabled={formData.rows.length === 1}
-                                  >
-                                    <i className="icofont-close"></i>
-                                  </button>
-                                </div>
+                                <button
+                                  className="btn btn-warning btn-sm"
+                                  onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                                  style={{
+                                    cursor: "pointer",
+                                    border: "none",
+                                    background: "transparent",
+                                    color: "#ff6b35",
+                                    textDecoration: "underline",
+                                  }}
+                                  aria-label={`Open ${item.patientName} billing details`}
+                                >
+                                  {item.billingStatus}
+                                </button>
                               </td>
                             </tr>
                           ))}
                         </tbody>
                       </table>
                     </div>
-                  </div>
-                </div>
+                  )}
 
-                {/* Enhanced Payment Summary Section - same as lab registration */}
-                {gstConfigLoaded && (
+                  {filteredPatientList.length > 0 && (
+                    <Pagination
+                      totalItems={filteredPatientList.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  )}
+                </>
+              )}
+
+              {/* Patient Details Section - Shows only when a patient is selected */}
+              {showPatientDetails && selectedPatient && (
+                <form className="forms row" onSubmit={handleSave}>
+                  {/* Patient Details Section */}
                   <div className="col-12 mt-4">
-                    <div
-                      className="card shadow mb-3"
-                      style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
-                    >
-                      <div
-                        className="card-header py-3 text-white"
-                        style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
-                      >
-                        <div className="d-flex align-items-center gap-3">
-                          <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
-                            <i className="fa fa-calculator text-primary"></i>
+                    <div className="card">
+                      <div className="card-header">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-account"></i> Patient Details
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <div className="row">
+                          <div className="form-group col-md-4 mt-3">
+                            <label>
+                              Patient Name <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="patientName"
+                              placeholder="Patient Name"
+                              onChange={handleInputChange}
+                              value={formData.patientName}
+                              required
+                              readOnly
+                            />
                           </div>
-                          <div>
-                            <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
-                            <small className="text-white" style={{ opacity: 0.8 }}>
-                              {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
-                            </small>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>
+                              Age <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="age"
+                              placeholder="Age"
+                              onChange={handleInputChange}
+                              value={formData.age}
+                              required
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>
+                              Mobile No. <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="mobileNo"
+                              placeholder="Mobile Number"
+                              onChange={handleInputChange}
+                              value={formData.mobileNo}
+                              required
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>
+                              Sex <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="sex"
+                              placeholder="Sex"
+                              onChange={handleInputChange}
+                              value={formData.sex}
+                              required
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Relation</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="relation"
+                              placeholder="Relation"
+                              onChange={handleInputChange}
+                              value={formData.relation}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-4 mt-3">
+                            <label>Patient ID</label>
+                            <input
+                              type="text"
+                              className="form-control"
+                              id="patientId"
+                              placeholder="Patient ID"
+                              onChange={handleInputChange}
+                              value={formData.patientId}
+                              readOnly
+                            />
+                          </div>
+                          <div className="form-group col-md-12 mt-3">
+                            <label>Address</label>
+                            <textarea
+                              className="form-control"
+                              id="address"
+                              placeholder="Address"
+                              onChange={handleInputChange}
+                              value={formData.address}
+                              rows="2"
+                              readOnly
+                            />
                           </div>
                         </div>
                       </div>
-                      <div className="card-body text-white">
-                        {/* Summary Cards Grid */}
-                        <div className="row g-3 mb-4">
-                          {/* Total Original Amount Card */}
-                          <div className="col-md-3">
-                            <div
-                              className="card h-100"
-                              style={{
-                                background: "rgba(255,255,255,0.15)",
-                                border: "1px solid rgba(255,255,255,0.2)",
-                              }}
-                            >
-                              <div className="card-body text-center">
-                                <div className="mb-2">
-                                  <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
-                                </div>
-                                <h6 className="card-title text-white mb-1">Total Amount</h6>
-                                <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
-                              </div>
-                            </div>
-                          </div>
-                          {/* Discount Card */}
-                          <div className="col-md-3">
-                            <div
-                              className="card h-100"
-                              style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
-                            >
-                              <div className="card-body text-center">
-                                <div className="mb-2">
-                                  <i className="fa fa-percent fa-2x text-success"></i>
-                                </div>
-                                <h6 className="card-title text-white mb-1">Total Discount</h6>
-                                <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
-                              </div>
-                            </div>
-                          </div>
-                          {/* Tax Card - only show if GST is applicable */}
-                          {paymentBreakdown.gstApplicable && (
-                            <div className="col-md-3">
-                              <div
-                                className="card h-100"
-                                style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
-                              >
-                                <div className="card-body text-center">
-                                  <div className="mb-2">
-                                    <i className="fa fa-file-invoice fa-2x text-warning"></i>
+                    </div>
+                  </div>
+
+                  {/* Lab Investigation/Package Details */}
+                  <div className="col-12 mt-4">
+                    <div className="card">
+                      <div className="card-header">
+                        <h5 className="mb-0">
+                          <i className="mdi mdi-test-tube"></i>{" "}
+                          {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                        </h5>
+                      </div>
+                      <div className="card-body">
+                        <table className="table table-bordered">
+                          <thead>
+                            <tr>
+                              <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"}</th>
+                              <th>Date</th>
+                              <th>Original Amount</th>
+                              <th>Discount Amount</th>
+                              <th>Net Amount</th>
+                              <th>Action</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {formData.rows.map((row, index) => (
+                              <tr key={index}>
+                                <td>
+                                  <div className="d-flex align-items-center gap-2">
+                                    <input
+                                      type="checkbox"
+                                      style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                      className="form-check-input"
+                                      checked={checkedRows[index] || false}
+                                      onChange={(e) => {
+                                        const updated = [...checkedRows]
+                                        updated[index] = e.target.checked
+                                        setCheckedRows(updated)
+                                      }}
+                                    />
+                                    <div className="dropdown-search-container position-relative flex-grow-1">
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        value={row.name}
+                                        autoComplete="off"
+                                        placeholder={
+                                          formData.type === "investigation" ? "Investigation Name" : "Package Name"
+                                        }
+                                        readOnly
+                                      />
+                                    </div>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">
-                                    Tax ({paymentBreakdown.gstPercent}% GST)
-                                  </h6>
-                                  <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
-                                </div>
-                              </div>
+                                </td>
+                                <td>
+                                  <input
+                                    type="date"
+                                    className="form-control"
+                                    value={row.date}
+                                    onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={row.originalAmount}
+                                    onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                                    min="0"
+                                    step="0.01"
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={row.discountAmount}
+                                    onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                                    min="0"
+                                    step="0.01"
+                                  />
+                                </td>
+                                <td>
+                                  <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                                </td>
+                                <td>
+                                  <div className="d-flex align-item-center gap-2">
+                                    <button
+                                      type="button"
+                                      className="btn btn-danger"
+                                      onClick={() => removeRow(index)}
+                                      disabled={formData.rows.length === 1}
+                                    >
+                                      <i className="icofont-close"></i>
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Enhanced Payment Summary Section */}
+                  {gstConfigLoaded && (
+                    <div className="col-12 mt-4">
+                      <div
+                        className="card shadow mb-3"
+                        style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
+                      >
+                        <div
+                          className="card-header py-3 text-white"
+                          style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
+                        >
+                          <div className="d-flex align-items-center gap-3">
+                            <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
+                              <i className="fa fa-calculator text-primary"></i>
                             </div>
-                          )}
-                          {/* Final Amount Card */}
-                          <div className="col-md-3">
-                            <div
-                              className="card h-100"
-                              style={{
-                                background: "linear-gradient(45deg, #28a745, #20c997)",
-                                border: "none",
-                                boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
-                              }}
-                            >
-                              <div className="card-body text-center">
-                                <div className="mb-2">
-                                  <i className="fa fa-credit-card fa-2x text-white"></i>
-                                </div>
-                                <h6 className="card-title text-white mb-1">Final Amount</h6>
-                                <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
-                              </div>
+                            <div>
+                              <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
+                              <small className="text-white" style={{ opacity: 0.8 }}>
+                                {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
+                              </small>
                             </div>
                           </div>
                         </div>
-                        {/* Detailed Breakdown */}
-                        <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
-                          <div className="card-body">
-                            <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
-                              <i className="fa fa-list-alt text-primary"></i>
-                              Payment Breakdown
-                            </h6>
-                            <div className="row">
-                              <div className="col-md-8">
-                                <div className="d-flex justify-content-between py-2 border-bottom">
-                                  <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                                  <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
-                                </div>
-                                {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                                  <div className="d-flex justify-content-between py-2 border-bottom">
-                                    <span className="text-success">Discount Applied</span>
-                                    <span className="fw-medium text-success">
-                                      -₹{paymentBreakdown.totalDiscountAmount}
-                                    </span>
+                        <div className="card-body text-white">
+                          {/* Summary Cards Grid */}
+                          <div className="row g-3 mb-4">
+                            {/* Total Original Amount Card */}
+                            <div className="col-md-3">
+                              <div
+                                className="card h-100"
+                                style={{
+                                  background: "rgba(255,255,255,0.15)",
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                }}
+                              >
+                                <div className="card-body text-center">
+                                  <div className="mb-2">
+                                    <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
                                   </div>
-                                )}
-                                <div className="d-flex justify-content-between py-2 border-bottom">
-                                  <span className="text-muted">Amount after Discount</span>
-                                  <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
-                                </div>
-                                {paymentBreakdown.gstApplicable && (
-                                  <div className="d-flex justify-content-between py-2 border-bottom">
-                                    <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                                    <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
-                                  </div>
-                                )}
-                                <div className="d-flex justify-content-between py-3 border-top">
-                                  <span className="h5 fw-bold text-dark">Total Payable</span>
-                                  <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                                  <h6 className="card-title text-white mb-1">Total Amount</h6>
+                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
                                 </div>
                               </div>
-                              <div className="col-md-4">
-                                <div className="d-flex flex-wrap gap-2">
-                                  <span className="badge bg-secondary px-3 py-2">
-                                    {paymentBreakdown.itemCount} Items Selected
-                                  </span>
+                            </div>
+                            {/* Discount Card */}
+                            <div className="col-md-3">
+                              <div
+                                className="card h-100"
+                                style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
+                              >
+                                <div className="card-body text-center">
+                                  <div className="mb-2">
+                                    <i className="fa fa-percent fa-2x text-success"></i>
+                                  </div>
+                                  <h6 className="card-title text-white mb-1">Total Discount</h6>
+                                  <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
+                                </div>
+                              </div>
+                            </div>
+                            {/* Tax Card - only show if GST is applicable */}
+                            {paymentBreakdown.gstApplicable && (
+                              <div className="col-md-3">
+                                <div
+                                  className="card h-100"
+                                  style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
+                                >
+                                  <div className="card-body text-center">
+                                    <div className="mb-2">
+                                      <i className="fa fa-file-invoice fa-2x text-warning"></i>
+                                    </div>
+                                    <h6 className="card-title text-white mb-1">
+                                      Tax ({paymentBreakdown.gstPercent}% GST)
+                                    </h6>
+                                    <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                            {/* Final Amount Card */}
+                            <div className="col-md-3">
+                              <div
+                                className="card h-100"
+                                style={{
+                                  background: "linear-gradient(45deg, #28a745, #20c997)",
+                                  border: "none",
+                                  boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
+                                }}
+                              >
+                                <div className="card-body text-center">
+                                  <div className="mb-2">
+                                    <i className="fa fa-credit-card fa-2x text-white"></i>
+                                  </div>
+                                  <h6 className="card-title text-white mb-1">Final Amount</h6>
+                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+                          {/* Detailed Breakdown */}
+                          <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
+                            <div className="card-body">
+                              <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
+                                <i className="fa fa-list-alt text-primary"></i>
+                                Payment Breakdown
+                              </h6>
+                              <div className="row">
+                                <div className="col-md-8">
+                                  <div className="d-flex justify-content-between py-2 border-bottom">
+                                    <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
+                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
+                                  </div>
                                   {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                                    <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                                    <div className="d-flex justify-content-between py-2 border-bottom">
+                                      <span className="text-success">Discount Applied</span>
+                                      <span className="fw-medium text-success">
+                                        -₹{paymentBreakdown.totalDiscountAmount}
+                                      </span>
+                                    </div>
                                   )}
+                                  <div className="d-flex justify-content-between py-2 border-bottom">
+                                    <span className="text-muted">Amount after Discount</span>
+                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
+                                  </div>
                                   {paymentBreakdown.gstApplicable && (
-                                    <span className="badge bg-info px-3 py-2">GST Included</span>
+                                    <div className="d-flex justify-content-between py-2 border-bottom">
+                                      <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
+                                      <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                                    </div>
                                   )}
+                                  <div className="d-flex justify-content-between py-3 border-top">
+                                    <span className="h5 fw-bold text-dark">Total Payable</span>
+                                    <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                                  </div>
+                                </div>
+                                <div className="col-md-4">
+                                  <div className="d-flex flex-wrap gap-2">
+                                    <span className="badge bg-secondary px-3 py-2">
+                                      {paymentBreakdown.itemCount} Items Selected
+                                    </span>
+                                    {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                                      <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                                    )}
+                                    {paymentBreakdown.gstApplicable && (
+                                      <span className="badge bg-info px-3 py-2">GST Included</span>
+                                    )}
+                                  </div>
                                 </div>
                               </div>
                             </div>
@@ -941,32 +1249,32 @@ const LabBillingDetails = () => {
                         </div>
                       </div>
                     </div>
-                  </div>
-                )}
+                  )}
 
-                <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                  <button
-                    type="submit"
-                    className="btn btn-primary me-2"
-                    disabled={!isFormValid || isLoading || !gstConfigLoaded}
-                  >
-                    {isLoading ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status"></span>
-                        Processing...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa fa-credit-card me-1"></i>
-                        Pay Now - ₹{paymentBreakdown.finalAmount}
-                      </>
-                    )}
-                  </button>
-                  <button type="button" className="btn btn-danger" onClick={handleBack}>
-                    Cancel
-                  </button>
-                </div>
-              </form>
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || isLoading || !gstConfigLoaded}
+                    >
+                      {isLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                          Processing...
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa fa-credit-card me-1"></i>
+                          Pay Now - ₹{paymentBreakdown.finalAmount}
+                        </>
+                      )}
+                    </button>
+                    <button type="button" className="btn btn-danger" onClick={handleBackToList}>
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
             </div>
           </div>
         </div>
