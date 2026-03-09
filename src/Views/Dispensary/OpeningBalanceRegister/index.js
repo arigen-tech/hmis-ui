@@ -2,14 +2,30 @@ import { useState } from "react";
 import { ALL_REPORTS } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import {
+  SELECT_BALANCE_TYPE_ERR_MSG,
+  SELECT_DATES_ERR_MSG,
+  FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG,
+  FUTURE_DATE_ERR_MSG,
+  HOSPITAL_DEPT_REQUIRED_ERR_MSG,
+  REPORT_GEN_FAILED_ERR_MSG,
+  PRINT_FAILED_ERR_MSG,
+  SELECT_FROM_DATE_FIRST_ERR_MSG,
+  FROM_DATE_FUTURE_ERR_MSG,
+  TO_DATE_FUTURE_ERR_MSG,
+  OPENING_BALANCE_REGISTER_PDF_NAME
+} from "../../../config/constants";
 
 const OpeningBalanceRegister = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
+  const [balanceType, setBalanceType] = useState("");
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isPrinting, setIsPrinting] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
+
+  const balanceTypeOptions = ["Drug", "Non Drug"];
 
   const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
   const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
@@ -25,26 +41,59 @@ const OpeningBalanceRegister = () => {
     })
   }
 
- 
+  // Check if all mandatory fields are filled
+  const areMandatoryFieldsFilled = () => {
+    // Check balance type
+    if (!balanceType) {
+      return false;
+    }
+
+    // Check dates
+    if (!fromDate || !toDate) {
+      return false;
+    }
+
+    // Check hospital/department
+    if (!hospitalId || !departmentId) {
+      return false;
+    }
+
+    return true;
+  };
+
+  // Reset all fields
+  const handleReset = () => {
+    setBalanceType("");
+    setFromDate("");
+    setToDate("");
+    setPdfUrl(null);
+    setIsGeneratingPDF(false);
+    setIsPrinting(false);
+  };
 
   const handleViewDownload = async () => {
+    if (!balanceType) {
+      showPopup(SELECT_BALANCE_TYPE_ERR_MSG, "error");
+      return;
+    }
+
     if (!fromDate || !toDate) {
-      showPopup("Please select both From Date and To Date", "error");
+      showPopup(SELECT_DATES_ERR_MSG, "error");
       return;
     }
 
     if (new Date(fromDate) > new Date(toDate)) {
-      showPopup("From Date cannot be later than To Date", "error");
+      showPopup(FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG, "error");
       return;
     }
 
     if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
-      showPopup("Dates cannot be in the future", "error");
+      showPopup(FUTURE_DATE_ERR_MSG, "error");
       return;
     }
 
     if (!hospitalId || !departmentId) {
-      showPopup("Hospital and Department must be selected.", "error");
+      showPopup(HOSPITAL_DEPT_REQUIRED_ERR_MSG, "error");
       return;
     }
 
@@ -52,19 +101,11 @@ const OpeningBalanceRegister = () => {
     setPdfUrl(null);
     
     try {
-      const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
+      // Convert balance type to parameter (D for Drug, N for Non Drug)
+      const balanceTypeParam = balanceType === "Drug" ? "D" : "N";
 
-      const formattedFromDate = formatDate(fromDate);
-      const formattedToDate = formatDate(toDate);
-
-      // Use "d" flag for download/view
-      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=d`;
+      // Use "d" flag for download/view with balanceType parameter
+      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&balanceType=${balanceTypeParam}&flag=d`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -84,49 +125,46 @@ const OpeningBalanceRegister = () => {
       
     } catch (error) {
       console.error("Error generating PDF", error);
-      showPopup("Report generation failed", "error");
+      showPopup(REPORT_GEN_FAILED_ERR_MSG, "error");
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
   const handlePrint = async () => {
+    if (!balanceType) {
+      showPopup(SELECT_BALANCE_TYPE_ERR_MSG, "error");
+      return;
+    }
+
     if (!fromDate || !toDate) {
-      showPopup("Please select both From Date and To Date", "error");
+      showPopup(SELECT_DATES_ERR_MSG, "error");
       return;
     }
 
     if (new Date(fromDate) > new Date(toDate)) {
-      showPopup("From Date cannot be later than To Date", "error");
+      showPopup(FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG, "error");
       return;
     }
 
     if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
-      showPopup("Dates cannot be in the future", "error");
+      showPopup(FUTURE_DATE_ERR_MSG, "error");
       return;
     }
 
     if (!hospitalId || !departmentId) {
-      showPopup("Hospital and Department must be selected.", "error");
+      showPopup(HOSPITAL_DEPT_REQUIRED_ERR_MSG, "error");
       return;
     }
 
     setIsPrinting(true);
     
     try {
-      const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0');
-        const year = date.getFullYear();
-        return `${day}-${month}-${year}`;
-      };
+      // Convert balance type to parameter (D for Drug, N for Non Drug)
+      const balanceTypeParam = balanceType === "Drug" ? "D" : "N";
 
-      const formattedFromDate = formatDate(fromDate);
-      const formattedToDate = formatDate(toDate);
-
-      // Use "p" flag for printing
-      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=p`;
+      // Use "p" flag for printing with balanceType parameter
+      const url = `${ALL_REPORTS}/openingBalanceRegistryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&balanceType=${balanceTypeParam}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -139,12 +177,10 @@ const OpeningBalanceRegister = () => {
       if (!response.ok) {
         throw new Error("Failed to send to printer");
       }
-
-      //showPopup("Report sent to printer successfully!", "success");
       
     } catch (error) {
       console.error("Error printing report", error);
-      showPopup("Report printing failed", "error");
+      showPopup(PRINT_FAILED_ERR_MSG, "error");
     } finally {
       setIsPrinting(false);
     }
@@ -154,14 +190,15 @@ const OpeningBalanceRegister = () => {
     const selectedDate = e.target.value;
     const today = new Date().toISOString().split('T')[0];
 
+    // Only check if date is in future, don't show popup for other validations
     if (selectedDate > today) {
-      showPopup("From date cannot be in the future", "error");
+      showPopup(FROM_DATE_FUTURE_ERR_MSG, "error");
       return;
     }
 
     setFromDate(selectedDate);
 
-    // Reset To Date if it's now invalid
+    // Reset To Date if it's now invalid (but don't show popup)
     if (toDate && selectedDate > toDate) {
       setToDate("");
     }
@@ -171,13 +208,9 @@ const OpeningBalanceRegister = () => {
     const selectedDate = e.target.value;
     const today = new Date().toISOString().split('T')[0];
 
+    // Only check if date is in future
     if (selectedDate > today) {
-      showPopup("To date cannot be in the future", "error");
-      return;
-    }
-
-    if (fromDate && selectedDate < fromDate) {
-      showPopup("To date cannot be earlier than From date", "error");
+      showPopup(TO_DATE_FUTURE_ERR_MSG, "error");
       return;
     }
 
@@ -189,7 +222,7 @@ const OpeningBalanceRegister = () => {
     if (!fromDate) {
       e.preventDefault();
       e.target.blur();
-      showPopup("Please select From Date first", "error");
+      showPopup(SELECT_FROM_DATE_FIRST_ERR_MSG, "error");
     }
   };
 
@@ -205,8 +238,30 @@ const OpeningBalanceRegister = () => {
             </div>
             <div className="card-body">
               <div className="row mb-4">
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">From Date</label>
+                {/* Balance Type Dropdown */}
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">
+                    Balance Type <span className="text-danger">*</span>
+                  </label>
+                  <select
+                    className="form-control"
+                    value={balanceType}
+                    onChange={(e) => setBalanceType(e.target.value)}
+                    required
+                  >
+                    <option value="">Select Balance Type</option>
+                    {balanceTypeOptions.map((type) => (
+                      <option key={type} value={type}>
+                        {type}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">
+                    From Date <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="date"
                     className="form-control"
@@ -215,8 +270,10 @@ const OpeningBalanceRegister = () => {
                     onChange={handleFromDateChange}
                   />
                 </div>
-                <div className="col-md-2">
-                  <label className="form-label fw-bold">To Date</label>
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">
+                    To Date <span className="text-danger">*</span>
+                  </label>
                   <input
                     type="date"
                     className="form-control"
@@ -227,13 +284,19 @@ const OpeningBalanceRegister = () => {
                     onFocus={handleToDateFocus}
                   />
                 </div>
-                <div className="col-md-8 d-flex align-items-end gap-2">
-                 
+                <div className="col-md-6 mt-4 d-flex align-items-end gap-2">
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="btn btn-secondary"
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success"
                     onClick={handleViewDownload}
-                    disabled={isGeneratingPDF || isPrinting}
+                    disabled={!areMandatoryFieldsFilled() || isGeneratingPDF || isPrinting}
                   >
                     {isGeneratingPDF ? (
                       <>
@@ -250,7 +313,7 @@ const OpeningBalanceRegister = () => {
                     type="button"
                     className="btn btn-warning"
                     onClick={handlePrint}
-                    disabled={isPrinting || isGeneratingPDF}
+                    disabled={!areMandatoryFieldsFilled() || isPrinting || isGeneratingPDF}
                   >
                     {isPrinting ? (
                       <>
@@ -277,7 +340,7 @@ const OpeningBalanceRegister = () => {
           onClose={() => {
             setPdfUrl(null);
           }}
-          name="Opening Balance Register"
+          name={OPENING_BALANCE_REGISTER_PDF_NAME}
         />
       )}
 

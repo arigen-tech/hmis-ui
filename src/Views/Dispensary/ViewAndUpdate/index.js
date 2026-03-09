@@ -8,13 +8,15 @@ import ReactDOM from 'react-dom';
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 import {WARNING_DUPLICATE_BATCH_ENTRY, CONFIRM_OPENING_BALANCE_ACTION,ERROR_UPDATE_ENTRIES_FAILED,
-  CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT,
+  CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT, WARNING_DOM_DOE_VALIDATION,
 }  from "../../../config/constants";
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list")
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [loading, setLoading] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
+  const [isSubmitting, setIsSubmitting] = useState(false)
   const [approvalData, setApprovalData] = useState([])
   const [brandOptions, setBrandOptions] = useState([])
   const [dtRecord, setDtRecord] = useState([])
@@ -250,7 +252,7 @@ const OpeningBalanceApproval = () => {
         const dom = field === "dom" ? value : entry.dom;
         const doe = field === "doe" ? value : entry.doe;
         if (dom && doe && new Date(dom) > new Date(doe)) {
-          alert("Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE).");
+          showPopup(WARNING_DOM_DOE_VALIDATION, "warning");
           return entry;
         }
 
@@ -339,6 +341,12 @@ const OpeningBalanceApproval = () => {
     };
 
     try {
+      if (status === "s") {
+        setIsUpdating(true);
+      } else if (status === "p") {
+        setIsSubmitting(true);
+      }
+      
       const response = await putRequest(
         `${OPEN_BALANCE}/updateById/${selectedRecord.balanceMId}`,
         requestPayload
@@ -351,6 +359,9 @@ const OpeningBalanceApproval = () => {
     } catch (error) {
       console.error("Error submitting data:", error);
       return { success: false, message: "Failed to update entries!" };
+    } finally {
+      setIsUpdating(false);
+      setIsSubmitting(false);
     }
   };
 
@@ -436,43 +447,17 @@ const OpeningBalanceApproval = () => {
     ])
   }
 
-  const generatereport = async (id) => {
-    if (!id) {
-      alert("Please select List");
-      return;
-    }
-
-    setIsGeneratingPDF(true);
-
-    try {
-      const url = `${ALL_REPORTS}/openingBalanceReport?balanceMId=${id}`;
-
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
+  // Handle Report button click
+  const handleReport = () => {
+    if (selectedRecord?.balanceMId) {
+      navigate('/ViewDownloadReport', {
+        state: {
+          reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${selectedRecord.balanceMId}`,
+          title: 'Opening Balance Report',
+          fileName: 'Opening_Balance_Report',
+          returnPath: window.location.pathname
+        }
       });
-
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      const blob = await response.blob();
-      const fileURL = window.URL.createObjectURL(blob);
-
-      const link = document.createElement("a");
-      link.href = fileURL;
-      link.setAttribute("download", "DrugExpiryReport.pdf");
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
-
-    } catch (error) {
-      console.error("Error generating PDF", error);
-      alert("Error generating PDF report. Please try again.");
-    } finally {
-      setIsGeneratingPDF(false);
     }
   };
 
@@ -553,23 +538,6 @@ const OpeningBalanceApproval = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3 mt-3">
-                    <button
-                      onClick={() => generatereport(selectedRecord?.balanceMId)}
-                      className="btn btn-success"
-                      disabled={isGeneratingPDF}
-                      type="button"
-                    >
-                      {isGeneratingPDF ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Generating...
-                        </>
-                      ) : (
-                        " Download Invoice"
-                      )}
-                    </button>
-                  </div>
                 </div>
 
                 <div className="table-responsive" style={{ maxHeight: "500px", overflowY: "auto" }}>
@@ -579,8 +547,8 @@ const OpeningBalanceApproval = () => {
                         <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
                           S.No.
                         </th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                        <th style={{ width: "200px", minWidth: "200px" }}>Drug Name</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Item Code</th>
+                        <th style={{ width: "200px", minWidth: "200px" }}>Item Name</th>
                         <th style={{ width: "80px", minWidth: "80px" }}>Unit</th>
                         <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
@@ -982,27 +950,73 @@ const OpeningBalanceApproval = () => {
                   </table>
                 </div>
 
-                {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
+                {(selectedRecord?.status === "s" || selectedRecord?.status === "r") ? (
+                  // Editable mode buttons (for Saved/Rejected status)
                   <div className="d-flex justify-content-end mt-4">
+                    <button
+                      type="button"
+                      className="btn btn-info me-2"
+                      onClick={handleReport}
+                      style={{ color: "white" }}
+                    >
+                      Report
+                    </button>
+                    
                     <button
                       type="button"
                       className="btn me-2"
                       style={{ backgroundColor: "#e67e22", color: "white" }}
                       onClick={() => handleUpdate("s")}
+                      disabled={isUpdating || isSubmitting}
                     >
-                      Update
+                      {isUpdating ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Updating...
+                        </>
+                      ) : (
+                        "Update"
+                      )}
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-success me-2"
                       onClick={() => handleUpdate("p")}
+                      disabled={isUpdating || isSubmitting}
                     >
-                      Submit
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit"
+                      )}
                     </button>
 
-                    <button type="button" className="btn btn-danger" onClick={handleReset}>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={handleReset}
+                      disabled={isUpdating || isSubmitting}
+                    >
                       Reset
+                    </button>
+                  </div>
+                ) : (
+                  // View-only mode buttons (for Approved/Pending status)
+                  <div className="d-flex justify-content-end mt-4">
+                    <button
+                      type="button"
+                      className="btn btn-info me-2"
+                      onClick={handleReport}
+                      style={{ color: "white" }}
+                    >
+                      Report
+                    </button>
+                    <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
+                      Back
                     </button>
                   </div>
                 )}
@@ -1031,7 +1045,7 @@ const OpeningBalanceApproval = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Opening Balance Approval List</h4>
+              <h4 className="card-title p-2 mb-0">View And Update Opening Balance Entry</h4>
             </div>
 
             <div className="card-body">

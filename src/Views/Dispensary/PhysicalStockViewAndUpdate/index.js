@@ -1,12 +1,15 @@
 import { useState, useRef, useEffect } from "react";
 import ReactDOM from "react-dom";
+import { useNavigate } from 'react-router-dom';
 import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService";
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 import { INVALID_ORDER_ID_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG } from '../../../config/constants';
 
 const PhysicalStockAdjustmentViewUpdate = () => {
+  const navigate = useNavigate();
   const [currentView, setCurrentView] = useState("list");
   const [processing, setProcessing] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
@@ -17,6 +20,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   const [physicalStockData, setPhysicalStockData] = useState([]);
   const [filteredPhysicalStockData, setFilteredPhysicalStockData] = useState([]);
   const [reasonForStockTaking, setReasonForStockTaking] = useState("");
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
   const [stockEntries, setStockEntries] = useState([
     {
       id: 1,
@@ -51,6 +55,24 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   // PDF Viewer states
   const [pdfUrl, setPdfUrl] = useState(null);
   const [pdfSelectedRecord, setPdfSelectedRecord] = useState(null);
+
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
 
   const fetchDrugCodeOptions = async () => {
     try {
@@ -285,19 +307,20 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     setDtRecord((prev) => [...prev, id]);
   };
 
-  const handleSubmit = async (status) => {
+  // Helper function to handle the actual update/submit logic
+  const handleUpdateOrSubmit = async (status) => {
     const hasEmptyRequiredFields = stockEntries.some(
       (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
     );
 
     if (hasEmptyRequiredFields) {
-      showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error");
-      return;
+      showPopup("Please fill in all required fields (Item Code, Item Name, Physical Stock)", "error");
+      return null;
     }
 
     if (!reasonForStockTaking.trim()) {
       showPopup("Please provide a reason for stock taking", "error");
-      return;
+      return null;
     }
 
     const payload = {
@@ -325,18 +348,140 @@ const PhysicalStockAdjustmentViewUpdate = () => {
     try {
       setProcessing(true);
       const response = await putRequest(`${OPEN_BALANCE}/updatePhysicalById/${selectedRecord.takingMId}`, payload);
+      
       if (response && response.response) {
-        showPopup("Stock adjustment submitted successfully!", "success");
-        handleReset();
+        const trackingId = selectedRecord.takingMId;
+        return { success: true, response, trackingId, action: status === "s" ? "update" : "submit" };
       } else {
-        showPopup("Failed to submit stock adjustment. Please try again.", "error");
+        return { 
+          success: false, 
+          message: response?.message || `Failed to ${status === "s" ? 'update' : 'submit'} stock adjustment. Please try again.` 
+        };
       }
     } catch (error) {
       console.error("Error submitting stock adjustment:", error);
-      showPopup("Error submitting stock adjustment. Please try again.", "error");
+      return { 
+        success: false, 
+        message: "Something went wrong. Please try again." 
+      };
     } finally {
       setProcessing(false);
     }
+  };
+
+  // Handle Update - With Confirmation Popup
+  const handleUpdate = async () => {
+    showConfirmationPopup(
+      "Are you sure you want to update the stock adjustment?",
+      "info",
+      async () => {
+        const result = await handleUpdateOrSubmit("s");
+        
+        if (result?.success) {
+          const trackingId = result.trackingId;
+          
+          showConfirmationPopup(
+            "Stock adjustment updated successfully! Do you want to print report?",
+            "success",
+            () => {
+              // Navigate to report page
+                navigate('/ViewDownloadReport', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/stockTakingReport?takingMId=${trackingId}&flag=D`,
+                    title: 'Physical Stock Adjustment Update Report',
+                    fileName: 'Physical Stock Adjustment Update Report',
+                    returnPath: window.location.pathname
+                  }
+                });
+              handleReset();
+              // Refresh the list data
+              fetchPhysicalStock();
+              handleBackToList();
+            },
+            () => {
+              // User clicked "No" - just reset and go back to list
+              handleReset();
+              fetchPhysicalStock();
+              handleBackToList();
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          showConfirmationPopup(
+            result?.message || "Failed to update data. Please try again.",
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
+        }
+      },
+      () => {
+        console.log("Update cancelled by user");
+      },
+      "Yes, Update",
+      "Cancel"
+    );
+  };
+
+  // Handle Submit - With Confirmation Popup
+  const handleSubmit = async () => {
+    showConfirmationPopup(
+      "Are you sure you want to submit the stock adjustment for approval?",
+      "info",
+      async () => {
+        const result = await handleUpdateOrSubmit("p");
+        
+        if (result?.success) {
+          const trackingId = result.trackingId;
+          
+          showConfirmationPopup(
+            "Stock adjustment submitted successfully! Do you want to print report?",
+            "success",
+            () => {
+              // Navigate to report page
+              
+                navigate('/ViewDownloadReport', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/stockTakingReport?takingMId=${trackingId}&flag=D`,
+                    title: 'Physical Stock Adjustment Submit Report',
+                    fileName: 'Physical Stock Adjustment Submit Report',
+                    returnPath: window.location.pathname
+                  }
+                });
+              handleReset();
+              // Refresh the list data
+              fetchPhysicalStock();
+              handleBackToList();
+            },
+            () => {
+              // User clicked "No" - just reset and go back to list
+              handleReset();
+              fetchPhysicalStock();
+              handleBackToList();
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          showConfirmationPopup(
+            result?.message || "Failed to submit data. Please try again.",
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
+        }
+      },
+      () => {
+        console.log("Submit cancelled by user");
+      },
+      "Yes, Submit",
+      "Cancel"
+    );
   };
 
   const handleReset = () => {
@@ -532,6 +677,17 @@ const PhysicalStockAdjustmentViewUpdate = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
+        {/* Add ConfirmationPopup component */}
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
+        
         {pdfUrl && pdfSelectedRecord && (
           <PdfViewer
             pdfUrl={pdfUrl}
@@ -598,7 +754,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                     />
                   </div>
                   
-                  {/* Report Action Buttons - Updated with 3 separate buttons */}
+                  {/* Report Action Buttons */}
                   <div className="col-md-6 mt-3 gap-2 d-row d-flex">
                     <button
                       className="btn btn-primary"
@@ -616,7 +772,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                       )}
                     </button>
 
-                      <button
+                    <button
                       type="button"
                       className="btn btn-warning"
                       onClick={() => handlePrintReport(selectedRecord)}
@@ -632,26 +788,6 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                       )}
                     </button>
                   </div>
-                  
-                  {/* <div className="col-md-2 mt-3">
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleDownloadReport(selectedRecord)}
-                      disabled={isGeneratingForDownload}
-                      type="button"
-                    >
-                      {isGeneratingForDownload ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Downloading...
-                        </>
-                      ) : (
-                        "Download"
-                      )}
-                    </button>
-                  </div> */}
-                  
-                 
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
@@ -659,8 +795,8 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                     <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                       <tr>
                         <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>S.No.</th>
-                        <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                        <th style={{ width: "300px", minWidth: "300px" }}>Drug Name</th>
+                        <th style={{ width: "120px", minWidth: "120px" }}>Item Code</th>
+                        <th style={{ width: "300px", minWidth: "300px" }}>Item Name</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Batch No.</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Computed Stock</th>
@@ -784,7 +920,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                                   setActiveDrugNameDropdown(null);
                                 }
                               }}
-                              placeholder="Drug Name"
+                              placeholder="Item Name"
                               style={{ minWidth: "280px" }}
                               autoComplete="off"
                               onFocus={() => setActiveDrugNameDropdown(index)}
@@ -999,10 +1135,20 @@ const PhysicalStockAdjustmentViewUpdate = () => {
 
                 {(selectedRecord?.status === "s" || selectedRecord?.status === "r") && (
                   <div className="d-flex justify-content-end gap-2 mt-4">
-                    <button type="button" className="btn btn-primary" onClick={() => handleSubmit("s")} disabled={processing}>
+                    <button 
+                      type="button" 
+                      className="btn btn-warning" 
+                      onClick={handleUpdate} 
+                      disabled={processing}
+                    >
                       Update
                     </button>
-                    <button type="button" className="btn btn-primary" onClick={() => handleSubmit("p")} disabled={processing}>
+                    <button 
+                      type="button" 
+                      className="btn btn-primary" 
+                      onClick={handleSubmit} 
+                      disabled={processing}
+                    >
                       Submit
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleReset}>

@@ -3,7 +3,7 @@ import ReactDOM from "react-dom"
 import { useNavigate } from 'react-router-dom'; // Add this import
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
-import { Store_Internal_Indent, ALL_REPORTS } from "../../../config/apiConfig" // Add ALL_REPORTS
+import { Store_Internal_Indent, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig" // Add ALL_REPORTS
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -15,6 +15,7 @@ const IndentIssue = () => {
   const [currentView, setCurrentView] = useState("list")
   const [processing, setProcessing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [detailsLoading, setDetailsLoading] = useState(false) // New state for details loading
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
   const [batchOptions, setBatchOptions] = useState({})
@@ -62,7 +63,7 @@ const IndentIssue = () => {
     });
   };
 
-  // Fetch pending indents for issue department
+  // Fetch pending indents for issue department (only indent masters)
   const fetchPendingIndentsForIssue = async (deptId) => {
     try {
       if (!deptId) {
@@ -72,7 +73,8 @@ const IndentIssue = () => {
       }
 
       setLoading(true);
-      const url = `${Store_Internal_Indent}/getallindentforissue?deptId=${deptId}`;
+      // Updated URL to use the new endpoint for indent masters only
+      const url = `${INVENTORY}/indents/forIssue?deptId=${deptId}`;
       console.log("Fetching indents for issue from URL:", url);
 
       const response = await getRequest(url);
@@ -106,57 +108,8 @@ const IndentIssue = () => {
     fetchPendingIndentsForIssue(departmentId);
   }, [departmentId]);
 
-  useEffect(() => {
-    // Extract all items from indents for dropdown options
-    const allItems = [];
-    const batchMap = {};
-
-    console.log("Processing indent data for batch options:", indentData);
-
-    indentData.forEach(indent => {
-      if (indent.items && Array.isArray(indent.items)) {
-        indent.items.forEach(item => {
-          const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
-
-          let totalAvailableStock = 0;
-          if (item.batches && Array.isArray(item.batches)) {
-            totalAvailableStock = item.batches.reduce((sum, batch) => {
-              return sum + (Number(batch.batchstock) || 0);
-            }, 0);
-          }
-
-          if (!allItems.some(existing => existing.itemId === item.itemId)) {
-            allItems.push({
-              id: item.itemId,
-              code: itemCode,
-              name: item.itemName || "",
-              unit: item.unitAuName || "",
-              availableStock: totalAvailableStock
-            });
-          }
-
-          // Extract batch options for this item - Backend returns batches SORTED BY EXPIRY DATE (FEFO)
-          if (item.batches && Array.isArray(item.batches)) {
-            console.log(`Processing batches for item ${itemCode}:`, item.batches);
-
-            // Batches come from backend ALREADY SORTED by expiry date
-            batchMap[itemCode] = item.batches.map(batch => ({
-              batchNo: batch.batchNo,
-              dom: batch.manufactureDate,
-              doe: batch.expiryDate,
-              stock: batch.batchStock || 0,
-              totalAvailableStock: totalAvailableStock
-            }));
-          }
-        });
-      }
-    });
-
-    console.log("Batch map created:", batchMap);
-    console.log("Item options created:", allItems);
-    setItemOptions(allItems);
-    setBatchOptions(batchMap);
-  }, [indentData]);
+  // Remove the useEffect that was processing itemOptions and batchOptions from indentData
+  // because now indentData only contains master records without items
 
   const handleSearch = () => {
     if (!fromDate || !toDate) {
@@ -203,6 +156,7 @@ const IndentIssue = () => {
       return Math.min(batchStockNum, availableStockNum).toString();
     }
   };
+
   const handleIndentEntryChange = (index, field, value) => {
     const updatedEntries = [...indentEntries];
 
@@ -298,36 +252,28 @@ const IndentIssue = () => {
     setIndentEntries(updatedEntries);
   };
 
-  const handleEditClick = async (record, e) => {
-    e.stopPropagation();
-    setLoading(true);
-
+  // New function to fetch indent details when row is clicked
+  const fetchIndentDetails = async (indentMId, deptId) => {
     try {
-      setSelectedRecord(record);
-      if (!record || !Array.isArray(record.items)) return;
+      setDetailsLoading(true);
+      const url = `${INVENTORY}/indentDetailsForIssue/${indentMId}?deptId=${deptId}`;
+      console.log("Fetching indent details from URL:", url);
 
-      const entries = record.items.map((item) => {
-        // Get the first batch (FEFO sorted)
-        const defaultBatch = item.batches && item.batches.length > 0 ? item.batches[0] : null;
-        // FIXED: Use batch.batchStock instead of batch.batchstock
-        const defaultBatchStock = defaultBatch ? defaultBatch.batchStock : 0;
-        const approvedQty = item.approvedQty || 0;
-        const previousIssuedQty = item.issuedQty || 0;
+      const response = await getRequest(url);
+      console.log("Indent Details API Response:", response);
 
-        let totalAvailableStock = 0;
-        if (item.batches && Array.isArray(item.batches)) {
-          totalAvailableStock = item.batches.reduce((sum, batch) => {
-            // FIXED: Use batch.batchStock instead of batch.batchstock
-            return sum + (Number(batch.batchStock) || 0);
-          }, 0);
-        }
+      let items = [];
+      if (response && response.response && Array.isArray(response.response)) {
+        items = response.response;
+      } else if (response && Array.isArray(response)) {
+        items = response;
+      } else {
+        console.warn("Unexpected response structure for indent details:", response);
+        items = [];
+      }
 
-        // Calculate the remaining quantity to issue
-        const remainingQty = Math.max(0, approvedQty - previousIssuedQty);
-
-        // Auto-suggest the full remaining quantity if we have enough stock
-        const autoQtyIssued = totalAvailableStock >= remainingQty ? remainingQty.toString() : "";
-
+      // Process items to create entries for the table
+      const entries = items.map((item) => {
         return {
           id: item.indentTId || null,
           itemId: item.itemId || "",
@@ -335,19 +281,77 @@ const IndentIssue = () => {
           itemName: item.itemName || "",
           apu: item.unitAuName || "",
           qtyDemanded: item.requestedQty || 0,
-          approvedQty: approvedQty,
-          previousIssuedQty: previousIssuedQty,
-          batchNo: defaultBatch ? defaultBatch.batchNo : "",
-          dom: defaultBatch ? defaultBatch.manufactureDate : "",
-          doe: defaultBatch ? defaultBatch.expiryDate : "",
-          qtyIssued: autoQtyIssued,
-          balanceAfterIssue: Math.max(0, remainingQty - Number(autoQtyIssued)),
-          batchStock: defaultBatchStock,
-          availableStock: totalAvailableStock,
+          approvedQty: item.approvedQty || 0,
+          previousIssuedQty: 0, // Set to 0 since issueStatus is "N"
+          batchNo: item.batchNo || "",
+          dom: formatDateForDisplay(item.mfgDate), 
+          doe: formatDateForDisplay(item.expDate), 
+          qtyIssued: item.approvedQty, // Will be auto-calculated when batch is selected
+          balanceAfterIssue: Math.max(0, (item.approvedQty || 0)),
+          batchStock: item.batchAvailableStock || 0,
+          availableStock: item.availableStock || 0,
         };
       });
 
       setIndentEntries(entries);
+
+      // Build item options and batch options from the response
+      const allItems = [];
+      const batchMap = {};
+
+      items.forEach(item => {
+        const itemCode = item.pvmsNo || `ITEM_${item.itemId}`;
+        
+        // Add to item options if not already present
+        if (!allItems.some(existing => existing.id === item.itemId)) {
+          allItems.push({
+            id: item.itemId,
+            code: itemCode,
+            name: item.itemName || "",
+            unit: item.unitAuName || "",
+            availableStock: item.availableStock || 0
+          });
+        }
+
+        // Create batch entry for this item
+        if (item.batchNo) {
+          if (!batchMap[itemCode]) {
+            batchMap[itemCode] = [];
+          }
+          
+          batchMap[itemCode].push({
+            batchNo: item.batchNo,
+            dom: "", // DOM not available
+            doe: "", // DOE not available
+            stock: item.batchAvailableStock || 0,
+            totalAvailableStock: item.availableStock || 0
+          });
+        }
+      });
+
+      console.log("Item options created from details:", allItems);
+      console.log("Batch map created from details:", batchMap);
+      setItemOptions(allItems);
+      setBatchOptions(batchMap);
+
+    } catch (error) {
+      console.error("Error fetching indent details:", error);
+      showPopup("Error fetching indent details. Please try again.", "error");
+    } finally {
+      setDetailsLoading(false);
+    }
+  };
+
+  const handleEditClick = async (record, e) => {
+    e.stopPropagation();
+    
+    try {
+      setSelectedRecord(record);
+      setLoading(true); // Show main loading
+
+      // Fetch indent details for the selected record
+      await fetchIndentDetails(record.indentMId, departmentId);
+      
       setCurrentView("detail");
     } catch (error) {
       console.error("Error in handleEditClick:", error);
@@ -360,6 +364,8 @@ const IndentIssue = () => {
     setCurrentView("list")
     setSelectedRecord(null)
     setIndentEntries([])
+    setItemOptions([]) // Clear item options
+    setBatchOptions({}) // Clear batch options
   }
 
   const handleShowAll = () => {
@@ -473,11 +479,6 @@ const IndentIssue = () => {
               errors.push(`Row ${index + 1}: Must issue full remaining quantity (${remainingQty})`);
             }
 
-            // REMOVED: Batch stock limitation check
-            // if (qtyIssued > batchStock) {
-            //   errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Batch Stock (${batchStock})`);
-            // }
-
             if (qtyIssued > remainingQty) {
               errors.push(`Row ${index + 1}: Qty Issued (${qtyIssued}) cannot exceed Remaining Approved Qty (${remainingQty})`);
             }
@@ -564,12 +565,12 @@ const IndentIssue = () => {
       console.log("Payload to submit:", payload);
 
       // Call the API
-      const response = await postRequest(`${Store_Internal_Indent}/issue`, payload);
+      const response = await postRequest(`${INVENTORY}/indent/issue`, payload);
       console.log("API Response:", response);
 
       if (response && response.status === 200) {
         const indentMId = selectedRecord?.indentMId;
-        const issueResponse = await getRequest(`/indent/get-issueMId?indentMId=${indentMId}`);
+        const issueResponse = await getRequest(`${INVENTORY}/indent/getIssueMId?indentMId=${indentMId}`);
         console.log("issue MId response :: ",issueResponse)
         // Show success confirmation popup with navigation
         showConfirmationPopup(
@@ -651,7 +652,7 @@ const IndentIssue = () => {
       setPreviousIssuesData([]);
       setShowPreviousIssues(true);
 
-      const url = `${Store_Internal_Indent}/getpreviousissues?itemId=${entry.itemId}&indentMId=${selectedRecord?.indentMId || ''}`;
+      const url = `${INVENTORY}/indents/getPrevIssueInfos?itemId=${entry.itemId}&indentMId=${selectedRecord?.indentMId || ''}`;
 
       console.log("Fetching previous issues from URL:", url);
 
@@ -695,6 +696,20 @@ const IndentIssue = () => {
     const year = date.getFullYear();
 
     return `${day}/${month}/${year}`;
+  };
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
   };
 
   const formatDateTime = (dateTimeStr) => {
@@ -869,7 +884,7 @@ const IndentIssue = () => {
               </div>
               <div className="card-body">
                 <div className="row mb-4">
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Indent No.</label>
                     <input
                       type="text"
@@ -879,7 +894,7 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Indent Date</label>
                     <input
                       type="text"
@@ -889,7 +904,7 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Requested By</label>
                     <input
                       type="text"
@@ -899,7 +914,9 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3">
+                </div>           
+                <div className="row mb-4">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Submission Date/Time</label>
                     <input
                       type="text"
@@ -909,10 +926,7 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                </div>
-
-                <div className="row mb-4">
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Approval Date/Time</label>
                     <input
                       type="text"
@@ -922,7 +936,7 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Approved By</label>
                     <input
                       type="text"
@@ -932,7 +946,9 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                  <div className="col-md-3">
+                  </div>
+                  <div className="row mb-4">
+                    <div className="col-md-4">
                     <label className="form-label fw-bold">Approved Date/Time({selectedRecord?.toDeptName || "Store"})</label>
 
                     <input
@@ -944,7 +960,7 @@ const IndentIssue = () => {
                     />
                   </div>
 
-                  <div className="col-md-3">
+                  <div className="col-md-4">
                     <label className="form-label fw-bold">Approved By  ({selectedRecord?.toDeptName || "Store"}) </label>
                     <input
                       type="text"
@@ -954,7 +970,19 @@ const IndentIssue = () => {
                       readOnly
                     />
                   </div>
-                </div>
+
+                  <div className="col-md-4">
+                    <label className="form-label fw-bold">Indent Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.indentType || ""}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+
+                  </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
                   <table className="table table-bordered table-hover align-middle text-center">
@@ -963,9 +991,9 @@ const IndentIssue = () => {
                         <th className="text-center" style={{ width: "20px", padding: "0" }}>S.No.</th>
                         <th style={{ width: "400px", padding: "0", minWidth: "400px" }}>Item Name/<br />Code</th>
                         <th style={{ width: "60px", minWidth: "60px", padding: "0", textAlign: "center" }}>A/U</th>
-                        <th style={{ width: "100px", minWidth: "100px", whiteSpace: "normal", padding: "0", lineHeight: "1.2" }}>Batch<br />No.</th>
-                        <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOM</th>
-                        <th style={{ width: "100px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOE</th>
+                        <th style={{ width: "180px", minWidth: "100px", whiteSpace: "normal", padding: "0", lineHeight: "1.2" }}>Batch<br />No.</th>
+                        <th style={{ width: "60px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOM</th>
+                        <th style={{ width: "60px", whiteSpace: "normal", padding: "1", lineHeight: "1" }}>DOE</th>
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Demanded</th>
                         <th style={{ width: "90px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Approved<br />Qty</th>
                         <th style={{ width: "120px", whiteSpace: "normal", padding: "1", lineHeight: "1.2" }}>Qty<br />Issued</th>
@@ -978,171 +1006,82 @@ const IndentIssue = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {indentEntries.map((entry, index) => (
-                        <tr key={entry.id || index}>
-                          <td className="text-center fw-bold"
-                            style={{ padding: "0", width: "20px" }}
-                          >{index + 1}</td>
+                      {indentEntries.length === 0 && detailsLoading ? (
+                        <tr>
+                          <td colSpan="15" className="text-center py-4">
+                            <div className="spinner-border text-primary" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <p className="mt-2">Loading indent details...</p>
+                          </td>
+                        </tr>
+                      ) : (
+                        indentEntries.map((entry, index) => (
+                          <tr key={entry.id || index}>
+                            <td className="text-center fw-bold"
+                              style={{ padding: "0", width: "20px" }}
+                            >{index + 1}</td>
 
-                          <td style={{ position: "relative", overflow: "visible" }}>
-                            <input
-                              ref={(el) => (itemInputRefs.current[index] = el)}
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.itemName}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                handleIndentEntryChange(index, "itemName", value)
-                                if (value.length > 0) {
-                                  setActiveItemDropdown(index)
-                                } else {
-                                  setActiveItemDropdown(null)
-                                }
-                              }}
-                              placeholder="Item Name/Code"
-                              autoComplete="off"
-                              onFocus={() => setActiveItemDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) {
+                            <td style={{ position: "relative", overflow: "visible" }}>
+                              <input
+                                ref={(el) => (itemInputRefs.current[index] = el)}
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.itemName}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  handleIndentEntryChange(index, "itemName", value)
+                                  if (value.length > 0) {
+                                    setActiveItemDropdown(index)
+                                  } else {
                                     setActiveItemDropdown(null)
                                   }
-                                  dropdownClickedRef.current = false
-                                }, 150)
-                              }}
-                            />
-                            {activeItemDropdown === index && (
-                              <ul
-                                className="list-group position-absolute"
-                                style={{
-                                  zIndex: 9999,
-                                  maxHeight: 200,
-                                  overflowY: "auto",
-                                  minWidth: "450px",
-                                  bottom: indentEntries.length - index <= 2 ? "100%" : "auto",
-                                  top: indentEntries.length - index <= 2 ? "auto" : "100%",
-                                  left: 0,
-                                  backgroundColor: "white",
-                                  border: "1px solid #dee2e6",
-                                  borderRadius: "0.375rem",
-                                  boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
                                 }}
-                              >
-                                {itemOptions
-                                  .filter(
-                                    (opt) =>
-                                      entry.itemName === "" ||
-                                      opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                      opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                  )
-                                  .map((opt) => (
-                                    <li
-                                      key={opt.id}
-                                      className="list-group-item list-group-item-action"
-                                      style={{
-                                        cursor: "pointer",
-                                        padding: "8px 12px",
-                                        fontSize: "14px"
-                                      }}
-                                      onMouseDown={(e) => {
-                                        e.preventDefault()
-                                        dropdownClickedRef.current = true
-                                      }}
-                                      onClick={(e) => {
-                                        e.preventDefault()
-                                        e.stopPropagation()
-                                        handleIndentEntryChange(index, "itemName", opt.name)
-                                        setActiveItemDropdown(null)
-                                        dropdownClickedRef.current = false
-                                      }}
-                                    >
-                                      {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
-                                    </li>
-                                  ))}
-                                {itemOptions.filter(
-                                  (opt) =>
-                                    entry.itemName === "" ||
-                                    opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
-                                    opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
-                                ).length === 0 &&
-                                  entry.itemName !== "" && (
-                                    <li
-                                      className="list-group-item text-muted"
-                                      style={{ padding: "8px 12px" }}
-                                    >
-                                      No matches found
-                                    </li>
-                                  )}
-                              </ul>
-                            )}
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.apu}
-                              onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
-                              placeholder="Unit"
-                              disabled
-                            />
-                          </td>
-
-                          <td style={{ position: "relative" }}>
-                            <input
-                              ref={(el) => (batchInputRefs.current[index] = el)}
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={entry.batchNo}
-                              onChange={(e) => {
-                                const value = e.target.value
-                                handleIndentEntryChange(index, "batchNo", value)
-                                if (value.length > 0) {
-                                  setActiveBatchDropdown(index)
-                                } else {
-                                  setActiveBatchDropdown(null)
-                                }
-                              }}
-                              placeholder="Batch"
-                              autoComplete="off"
-                              onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
-                              onBlur={() => {
-                                setTimeout(() => {
-                                  if (!dropdownClickedRef.current) {
-                                    setActiveBatchDropdown(null)
-                                  }
-                                  dropdownClickedRef.current = false
-                                }, 150)
-                              }}
-                            />
-                            {activeBatchDropdown === index &&
-                              entry.itemCode &&
-                              batchOptions[entry.itemCode] &&
-                              ReactDOM.createPortal(
+                                placeholder="Item Name/Code"
+                                autoComplete="off"
+                                onFocus={() => setActiveItemDropdown(index)}
+                                onBlur={() => {
+                                  setTimeout(() => {
+                                    if (!dropdownClickedRef.current) {
+                                      setActiveItemDropdown(null)
+                                    }
+                                    dropdownClickedRef.current = false
+                                  }, 150)
+                                }}
+                              />
+                              {activeItemDropdown === index && (
                                 <ul
-                                  className="list-group position-fixed"
+                                  className="list-group position-absolute"
                                   style={{
                                     zIndex: 9999,
                                     maxHeight: 200,
                                     overflowY: "auto",
-                                    top: `${batchInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                    left: `${batchInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
+                                    minWidth: "450px",
+                                    bottom: indentEntries.length - index <= 2 ? "100%" : "auto",
+                                    top: indentEntries.length - index <= 2 ? "auto" : "100%",
+                                    left: 0,
                                     backgroundColor: "white",
                                     border: "1px solid #dee2e6",
                                     borderRadius: "0.375rem",
                                     boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
                                   }}
                                 >
-                                  {batchOptions[entry.itemCode]
+                                  {itemOptions
                                     .filter(
-                                      (batch) =>
-                                        entry.batchNo === "" ||
-                                        batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
+                                      (opt) =>
+                                        entry.itemName === "" ||
+                                        opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
+                                        opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
                                     )
-                                    .map((batch, batchIndex) => (
+                                    .map((opt) => (
                                       <li
-                                        key={`${batch.batchNo}-${batchIndex}`}
+                                        key={opt.id}
                                         className="list-group-item list-group-item-action"
-                                        style={{ cursor: "pointer" }}
+                                        style={{
+                                          cursor: "pointer",
+                                          padding: "8px 12px",
+                                          fontSize: "14px"
+                                        }}
                                         onMouseDown={(e) => {
                                           e.preventDefault()
                                           dropdownClickedRef.current = true
@@ -1150,175 +1089,275 @@ const IndentIssue = () => {
                                         onClick={(e) => {
                                           e.preventDefault()
                                           e.stopPropagation()
-                                          handleIndentEntryChange(index, "batchNo", batch.batchNo)
-                                          setActiveBatchDropdown(null)
+                                          handleIndentEntryChange(index, "itemName", opt.name)
+                                          setActiveItemDropdown(null)
                                           dropdownClickedRef.current = false
                                         }}
                                       >
-                                        <div>
-                                          <strong>{batch.batchNo}</strong>
-                                        </div>
-                                        <div>
-                                          <small className="text-muted">
-                                            DOM: {formatDate(batch.dom)} | DOE: {formatDate(batch.doe)}
-                                          </small>
-                                        </div>
-                                        <div>
-                                          <small className="text-muted">
-                                            Batch Stock: {batch.stock} | Total Available: {batch.totalAvailableStock}
-                                          </small>
-                                        </div>
+                                        {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
                                       </li>
                                     ))}
-                                  {batchOptions[entry.itemCode].filter(
-                                    (batch) =>
-                                      entry.batchNo === "" ||
-                                      batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
+                                  {itemOptions.filter(
+                                    (opt) =>
+                                      entry.itemName === "" ||
+                                      opt.name.toLowerCase().includes(entry.itemName.toLowerCase()) ||
+                                      opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
                                   ).length === 0 &&
-                                    entry.batchNo !== "" && (
-                                      <li className="list-group-item text-muted">No matches found</li>
+                                    entry.itemName !== "" && (
+                                      <li
+                                        className="list-group-item text-muted"
+                                        style={{ padding: "8px 12px" }}
+                                      >
+                                        No matches found
+                                      </li>
                                     )}
-                                </ul>,
-                                document.body,
+                                </ul>
                               )}
-                          </td>
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.apu}
+                                onChange={(e) => handleIndentEntryChange(index, "apu", e.target.value)}
+                                placeholder="Unit"
+                                disabled
+                              />
+                            </td>
 
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              style={{ width: "100px", padding: "0" }}
-                              value={formatDate(entry.dom)}
-                              onChange={(e) => handleIndentEntryChange(index, "dom", e.target.value)}
-                              readOnly
-                            />
-                          </td>
+                            <td>
+                              <input
+                                ref={(el) => (batchInputRefs.current[index] = el)}
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.batchNo}
+                                onChange={(e) => {
+                                  const value = e.target.value
+                                  handleIndentEntryChange(index, "batchNo", value)
+                                  if (value.length > 0) {
+                                    setActiveBatchDropdown(index)
+                                  } else {
+                                    setActiveBatchDropdown(null)
+                                  }
+                                }}
+                                placeholder="Batch"
+                                autoComplete="off"
+                                onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
+                                onBlur={() => {
+                                  setTimeout(() => {
+                                    if (!dropdownClickedRef.current) {
+                                      setActiveBatchDropdown(null)
+                                    }
+                                    dropdownClickedRef.current = false
+                                  }, 150)
+                                }}
+                              />
+                              {activeBatchDropdown === index &&
+                                entry.itemCode &&
+                                batchOptions[entry.itemCode] &&
+                                ReactDOM.createPortal(
+                                  <ul
+                                    className="list-group position-fixed"
+                                    style={{
+                                      zIndex: 9999,
+                                      maxHeight: 200,
+                                      overflowY: "auto",
+                                      top: `${batchInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
+                                      left: `${batchInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
+                                      backgroundColor: "white",
+                                      border: "1px solid #dee2e6",
+                                      borderRadius: "0.375rem",
+                                      boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                                    }}
+                                  >
+                                    {batchOptions[entry.itemCode]
+                                      .filter(
+                                        (batch) =>
+                                          entry.batchNo === "" ||
+                                          batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
+                                      )
+                                      .map((batch, batchIndex) => (
+                                        <li
+                                          key={`${batch.batchNo}-${batchIndex}`}
+                                          className="list-group-item list-group-item-action"
+                                          style={{ cursor: "pointer" }}
+                                          onMouseDown={(e) => {
+                                            e.preventDefault()
+                                            dropdownClickedRef.current = true
+                                          }}
+                                          onClick={(e) => {
+                                            e.preventDefault()
+                                            e.stopPropagation()
+                                            handleIndentEntryChange(index, "batchNo", batch.batchNo)
+                                            setActiveBatchDropdown(null)
+                                            dropdownClickedRef.current = false
+                                          }}
+                                        >
+                                          <div>
+                                            <strong>{batch.batchNo}</strong>
+                                          </div>
+                                          <div>
+                                            <small className="text-muted">
+                                              DOM: {formatDate(batch.mfgDate)} | DOE: {formatDate(batch.expDate)}
+                                            </small>
+                                          </div>
+                                          <div>
+                                            <small className="text-muted">
+                                              Batch Stock: {batch.stock} | Total Available: {batch.totalAvailableStock}
+                                            </small>
+                                          </div>
+                                        </li>
+                                      ))}
+                                    {batchOptions[entry.itemCode].filter(
+                                      (batch) =>
+                                        entry.batchNo === "" ||
+                                        batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
+                                    ).length === 0 &&
+                                      entry.batchNo !== "" && (
+                                        <li className="list-group-item text-muted">No matches found</li>
+                                      )}
+                                  </ul>,
+                                  document.body,
+                                )}
+                            </td>
 
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              style={{ width: "100px", padding: "0" }}
-                              value={formatDate(entry.doe)}
-                              onChange={(e) => handleIndentEntryChange(index, "doe", e.target.value)}
-                              readOnly
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                style={{ width: "60px", padding: "0" }}
+                                value={entry.dom}
+                                onChange={(e) => handleIndentEntryChange(index, "dom", e.target.value)}
+                                readOnly
+                              />
+                            </td>
 
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.qtyDemanded}
-                              onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
-                              placeholder="0"
-                              readOnly
-                              min="0"
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                style={{ width: "60px", padding: "0" }}
+                                value={entry.doe}
+                                onChange={(e) => handleIndentEntryChange(index, "doe", e.target.value)}
+                                readOnly
+                              />
+                            </td>
 
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.approvedQty}
-                              onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
-                              placeholder="0"
-                              readOnly
-                              min="0"
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.qtyDemanded}
+                                onChange={(e) => handleIndentEntryChange(index, "qtyDemanded", e.target.value)}
+                                placeholder="0"
+                                readOnly
+                                min="0"
+                              />
+                            </td>
+
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.approvedQty}
+                                onChange={(e) => handleIndentEntryChange(index, "approvedQty", e.target.value)}
+                                placeholder="0"
+                                readOnly
+                                min="0"
+                              />
+                            </td>
 
 
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.qtyIssued}
-                              style={{ width: "60px" }}
-                              onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
-                              placeholder="0"
-                              min="0"
-                              max={Math.max(0, entry.approvedQty - entry.previousIssuedQty)}
-                              title={`Enter quantity to issue (max: ${Math.max(0, entry.approvedQty - entry.previousIssuedQty)})`}
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.qtyIssued}
+                                style={{ width: "60px" }}
+                                onChange={(e) => handleIndentEntryChange(index, "qtyIssued", e.target.value)}
+                                placeholder="0"
+                                min="0"
+                                max={Math.max(0, entry.approvedQty - entry.previousIssuedQty)}
+                                title={`Enter quantity to issue (max: ${Math.max(0, entry.approvedQty - entry.previousIssuedQty)})`}
+                              />
+                            </td>
 
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.balanceAfterIssue}
-                              placeholder="0"
-                              style={{ backgroundColor: "#f8f9fa" }}
-                              readOnly
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.balanceAfterIssue}
+                                placeholder="0"
+                                style={{ backgroundColor: "#f8f9fa" }}
+                                readOnly
+                              />
+                            </td>
 
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              style={{ width: "80px" }}
-                              value={entry.batchStock}
-                              placeholder="0"
-                              readOnly
-                              title="Stock for selected batch only"
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                style={{ width: "80px" }}
+                                value={entry.batchStock}
+                                placeholder="0"
+                                readOnly
+                                title="Stock for selected batch only"
+                              />
+                            </td>
 
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={entry.availableStock}
-                              placeholder="0"
-                              readOnly
-                              title="Total stock across all batches for this item"
-                            />
-                          </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.availableStock}
+                                placeholder="0"
+                                readOnly
+                                title="Total stock across all batches for this item"
+                              />
+                            </td>
 
-                          <td>
-                            <button
-                              type="button"
-                              className="btn btn-info btn-sm"
-                              onClick={() => handleViewPreviousIssues(entry)}
-                            >
-                              <i className="bi bi-info-circle"></i>
-                            </button>
-                          </td>
+                            <td>
+                              <button
+                                type="button"
+                                className="btn btn-info btn-sm"
+                                onClick={() => handleViewPreviousIssues(entry)}
+                              >
+                                <i className="bi bi-info-circle"></i>
+                              </button>
+                            </td>
 
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-success btn-sm"
-                              onClick={addNewRow}
-                              style={{
-                                color: "white",
-                                border: "none",
-                                height: "35px",
-                              }}
-                              title="Add Row"
-                            >
-                              +
-                            </button>
-                          </td>
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-danger btn-sm"
-                              onClick={() => removeRow(index)}
-                              disabled={indentEntries.length === 1}
-                              title="Delete Row"
-                              style={{
-                                height: "35px",
-                              }}
-                            >
-                              −
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-success btn-sm"
+                                onClick={addNewRow}
+                                style={{
+                                  color: "white",
+                                  border: "none",
+                                  height: "35px",
+                                }}
+                                title="Add Row"
+                              >
+                                +
+                              </button>
+                            </td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-danger btn-sm"
+                                onClick={() => removeRow(index)}
+                                disabled={indentEntries.length === 1}
+                                title="Delete Row"
+                                style={{
+                                  height: "35px",
+                                }}
+                              >
+                                −
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -1328,7 +1367,7 @@ const IndentIssue = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleIssueClick}
-                    disabled={processing}
+                    disabled={processing || detailsLoading}
                     title="Issue indent"
                   >
                     {processing ? "Processing..." : "Issue"}
@@ -1425,6 +1464,7 @@ const IndentIssue = () => {
                       <th>Indent Date</th>
                       <th>Submission Date/Time</th>
                       <th>Approval Date/Time</th>
+                      <th>Drug / Non Drug</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -1443,6 +1483,7 @@ const IndentIssue = () => {
                           <td>{formatDateTime(item.indentDate)}</td>
                           <td>{formatDateTime(item.indentDate)}</td>
                           <td>{formatDateTime(item.approvedDate)}</td>
+                          <td>{item.indentType}</td>
                           <td>
                             <span
                               className="badge bg-warning text-dark"

@@ -318,5 +318,11 @@ export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
 export const OPD_SERVICE_CATAGORY = "SC001";
 
-export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
+export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INVENTORY=`/inventory`
+  export const SECTION_ID_FOR_DRUGS=18;
+
+
+
+
+
 

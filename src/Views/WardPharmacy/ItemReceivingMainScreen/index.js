@@ -1,26 +1,30 @@
 import { useEffect, useState } from "react"
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { useNavigate } from 'react-router-dom';
 import LoadingScreen from "../../../Components/Loading"
-import { Store_Internal_Indent, ALL_REPORTS } from "../../../config/apiConfig" // Add ALL_REPORTS
+import { Store_Internal_Indent, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import Popup from "../../../Components/popup"
-import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
-import {ERROR_DEPARTMENT_ID_NOT_FOUND,ERROR_FETCH_INDENTS,CONFIRM_SAVE_INDENT_RECEIVING,SUCCESS_RECEIVING_SAVED_PRINT,
-ERROR_SAVE_RECEIVING_FAILED,ERROR_SAVING_RECEIVING,} from  "../../../config/constants";
-
+import {
+  ERROR_DEPARTMENT_ID_NOT_FOUND, ERROR_FETCH_INDENTS, CONFIRM_SAVE_INDENT_RECEIVING,
+  SUCCESS_RECEIVING_SAVED_PRINT, ERROR_SAVE_RECEIVING_FAILED, ERROR_SAVING_RECEIVING,
+  ERROR_FETCH_INDENT_DETAILS,
+} from "../../../config/constants";
 
 const ItemReceivingMainScreen = () => {
-  const [indentData, setIndentData] = useState([])
-  const [filteredIndentData, setFilteredIndentData] = useState([])
+  const [indentHeaders, setIndentHeaders] = useState([]) // Renamed from indentData
+  const [filteredIndentHeaders, setFilteredIndentHeaders] = useState([]) // Renamed from filteredIndentData
   const [currentView, setCurrentView] = useState("list")
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [receivingItems, setReceivingItems] = useState([])
   const [loading, setLoading] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(false) // New state for details loading
+  const [isSearching, setIsSearching] = useState(false) // New state for search
   const [popupMessage, setPopupMessage] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
-  const [confirmationPopup, setConfirmationPopup] = useState(null) // Add this state
+  const [confirmationPopup, setConfirmationPopup] = useState(null)
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1)
@@ -31,7 +35,6 @@ const ItemReceivingMainScreen = () => {
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
 
-  // Add navigate hook
   const navigate = useNavigate();
 
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId")
@@ -55,8 +58,8 @@ const ItemReceivingMainScreen = () => {
     });
   };
 
-  // Fetch indents for receiving
-  const fetchReceivingIndents = async () => {
+  // Fetch indents headers for receiving (NEW API)
+  const fetchIndentHeaders = async () => {
     try {
       setLoading(true);
 
@@ -67,7 +70,7 @@ const ItemReceivingMainScreen = () => {
         return;
       }
 
-      let url = `${Store_Internal_Indent}/receiving/list`;
+      let url = `${INVENTORY}/indents/forReceiving`; // Updated API endpoint
       const params = new URLSearchParams();
 
       params.append("fromDeptId", fromDeptId);
@@ -76,10 +79,10 @@ const ItemReceivingMainScreen = () => {
 
       url += `?${params.toString()}`;
 
-      console.log("Fetching receiving indents from URL:", url);
+      console.log("Fetching indent headers from URL:", url);
 
       const response = await getRequest(url);
-      console.log("Receiving Indents API Full Response:", response);
+      console.log("Indent Headers API Full Response:", response);
 
       let data = [];
       if (response && response.response && Array.isArray(response.response)) {
@@ -91,23 +94,77 @@ const ItemReceivingMainScreen = () => {
         data = [];
       }
 
-      console.log("Processed receiving indents data:", data);
-      setIndentData(data);
-      setFilteredIndentData(data);
+      console.log("Processed indent headers data:", data);
+      setIndentHeaders(data);
+      setFilteredIndentHeaders(data);
 
     } catch (err) {
-      console.error("Error fetching receiving indents:", err);
+      console.error("Error fetching indent headers:", err);
       showPopup(ERROR_FETCH_INDENTS, "error");
-      setIndentData([]);
-      setFilteredIndentData([]);
+      setIndentHeaders([]);
+      setFilteredIndentHeaders([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch indents on component mount
+  // Fetch indent details when row is clicked (NEW API)
+  const fetchIndentDetails = async (indentMId) => {
+    try {
+      setLoadingDetails(true); // Enable loading state for details
+      
+      const url = `${INVENTORY}/indentDetailsForReceive/${indentMId}`;
+      console.log("Fetching indent details from URL:", url);
+
+      const response = await getRequest(url);
+      console.log("Indent Details API Response:", response);
+
+      let items = [];
+      if (response && response.response && Array.isArray(response.response)) {
+        items = response.response;
+      } else if (response && Array.isArray(response)) {
+        items = response;
+      } else {
+        console.warn("Unexpected details response structure, using empty array:", response);
+        items = [];
+      }
+
+      // Transform API response items to match frontend structure
+      const transformedItems = items.map((item, index) => ({
+        id: `${item.indentTId}-${index}`,
+        indentTId: item.indentTId,
+        itemId: item.itemId,
+        drugCode: item.pvmsNo,
+        drugName: item.itemName,
+        apu: item.unitAuName,
+        batchNo: item.batchNo || "N/A",
+        dom: item.mfgDate || "",
+        doe: item.expDate || "",
+        qtyDemanded: item.qtyDemanded || 0,
+        qtyIssued: item.qtyIssued || 0,
+        qtyReceived: item.qtyIssued || 0, // Default to issued quantity
+        qtyReject: 0,
+        previousReceivedQty: item.previousReceivedQty || 0,
+        batchstock: 0,
+        manufacturerName: item.manufacturerName || "",
+        brandName: item.brandName || ""
+      }));
+
+      console.log("Transformed receiving items:", transformedItems);
+      setReceivingItems(transformedItems);
+
+    } catch (err) {
+      console.error("Error fetching indent details:", err);
+      showPopup(ERROR_FETCH_INDENT_DETAILS, "error");
+      setReceivingItems([]);
+    } finally {
+      setLoadingDetails(false); // Disable loading state for details
+    }
+  };
+
+  // Fetch indents headers on component mount
   useEffect(() => {
-    fetchReceivingIndents();
+    fetchIndentHeaders();
   }, []);
 
   const formatDate = (value) => {
@@ -140,93 +197,41 @@ const ItemReceivingMainScreen = () => {
 
   const handleSearch = () => {
     if (!fromDate || !toDate) {
-      setFilteredIndentData(indentData)
+      setFilteredIndentHeaders(indentHeaders)
       setCurrentPage(1)
       return
     }
-    const from = new Date(fromDate)
-    const to = new Date(toDate)
-    const filtered = indentData.filter((item) => {
-      const itemDate = new Date(item.indentDate)
-      return itemDate >= from && itemDate <= to
-    })
-    setFilteredIndentData(filtered)
-    setCurrentPage(1)
+    
+    setIsSearching(true); // Set searching state to true
+    
+    // Simulate a slight delay to show the searching state
+    setTimeout(() => {
+      const from = new Date(fromDate)
+      const to = new Date(toDate)
+      const filtered = indentHeaders.filter((item) => {
+        const itemDate = new Date(item.indentDate)
+        return itemDate >= from && itemDate <= to
+      })
+      setFilteredIndentHeaders(filtered)
+      setCurrentPage(1)
+      setIsSearching(false); // Set searching state to false
+    }, 300); // Small delay to ensure spinner is visible
   }
 
   const handleShowAll = () => {
     setFromDate("")
     setToDate("")
-    setFilteredIndentData(indentData)
+    setFilteredIndentHeaders(indentHeaders)
     setCurrentPage(1)
   }
 
-  const handleRowClick = (record) => {
+  const handleRowClick = async (record) => {
     console.log("Selecting record for receiving:", record);
-    setSelectedRecord(record)
-
-    // Transform API response items to match frontend structure
-    const transformedItems = [];
-
-    (record.items || []).forEach((item) => {
-      const batches = item.batches || [];
-      const totalRequestedQty = item.requestedQty || 0;
-      const totalIssuedQty = item.issuedQty || 0;
-      const previousReceivedQty = item.receivedQty || 0;
-
-      if (batches.length === 0) {
-        // If no batches, create one row with total values
-        transformedItems.push({
-          id: `${item.indentTId}-no-batch`,
-          indentTId: item.indentTId,
-          itemId: item.itemId,
-          drugCode: item.pvmsNo,
-          drugName: item.itemName,
-          apu: item.unitAuName,
-          batchNo: "N/A",
-          dom: "",
-          doe: "",
-          qtyDemanded: totalRequestedQty,
-          qtyIssued: totalIssuedQty,
-          qtyReceived: totalIssuedQty,
-          qtyReject: 0,
-          previousReceivedQty: previousReceivedQty,
-          batchstock: 0,
-          manufacturerName: "",
-          brandName: ""
-        });
-      } else {
-        // Create separate row for each batch
-        batches.forEach((batch, batchIndex) => {
-          const batchIssuedQty = batch.batchIssuedQty || 0;
-
-          transformedItems.push({
-            id: `${item.indentTId}-batch-${batchIndex}`,
-            indentTId: item.indentTId,
-            itemId: item.itemId,
-            drugCode: item.pvmsNo,
-            drugName: item.itemName,
-            apu: item.unitAuName,
-            batchNo: batch.batchNo || "N/A",
-            dom: batch.manufactureDate || "",
-            doe: batch.expiryDate || "",
-            qtyDemanded: totalRequestedQty,
-            qtyIssued: batchIssuedQty,
-            qtyReceived: batchIssuedQty,
-            qtyReject: 0,
-            previousReceivedQty: batch.batchReceivedQty || 0, // Use batchReceivedQty from API
-            batchstock: batch.batchstock || 0,
-            manufacturerName: batch.manufacturerName || "",
-            brandName: batch.brandName || ""
-          });
-        });
-      }
-    });
-
-    console.log("Transformed receiving items:", transformedItems);
-
-    setReceivingItems(transformedItems)
-    setCurrentView("detail")
+    setSelectedRecord(record);
+    setCurrentView("detail");
+    
+    // Fetch details using the new API
+    await fetchIndentDetails(record.indentMId);
   }
 
   const handleBack = () => {
@@ -239,18 +244,22 @@ const ItemReceivingMainScreen = () => {
     const updated = [...receivingItems]
     const qtyReceived = value === "" ? 0 : Number(value);
     const qtyIssued = updated[index].qtyIssued || 0;
-    const qtyReject = updated[index].qtyReject || 0;
 
-    // Validate received quantity - NO POPUP HERE
+    // Validate received quantity - cannot exceed issued quantity
     if (qtyReceived < 0) {
-      // Don't update if negative
       return;
     }
 
-    // Remove the validation popup check
+    // Ensure received quantity doesn't exceed issued quantity
+    const validQtyReceived = Math.min(qtyReceived, qtyIssued);
+    
+    // Calculate reject quantity as issued - received
+    const qtyReject = qtyIssued - validQtyReceived;
+
     updated[index] = {
       ...updated[index],
-      qtyReceived: qtyReceived,
+      qtyReceived: validQtyReceived,
+      qtyReject: qtyReject >= 0 ? qtyReject : 0,
     }
     setReceivingItems(updated)
   }
@@ -259,25 +268,28 @@ const ItemReceivingMainScreen = () => {
     const updated = [...receivingItems]
     const qtyReject = value === "" ? 0 : Number(value);
     const qtyIssued = updated[index].qtyIssued || 0;
-    const qtyReceived = updated[index].qtyReceived || 0;
 
-    // Validate reject quantity - NO POPUP HERE
+    // Validate reject quantity
     if (qtyReject < 0) {
-      // Don't update if negative
       return;
     }
 
-    // Remove the validation popup check
+    // Ensure reject quantity doesn't exceed issued quantity
+    const validQtyReject = Math.min(qtyReject, qtyIssued);
+    
+    // Calculate received quantity as issued - reject
+    const qtyReceived = qtyIssued - validQtyReject;
+
     updated[index] = {
       ...updated[index],
-      qtyReject: qtyReject,
+      qtyReject: validQtyReject,
+      qtyReceived: qtyReceived >= 0 ? qtyReceived : 0,
     }
     setReceivingItems(updated)
   }
 
-  // Handle save receiving - UPDATED WITH CONFIRMATION POPUP
+  // Handle save receiving
   const handleSaveReceiving = async () => {
-    // Prevent multiple clicks
     if (isSaving) return;
 
     // Validate all items first
@@ -296,26 +308,21 @@ const ItemReceivingMainScreen = () => {
       }
     });
 
-    // Show error popup immediately if validation fails
     if (validationErrors.length > 0) {
       showPopup(
         `Please fix the following items:\n\n${validationErrors.join("\n\n")}`,
         "warning"
       );
-      // Stop execution here
       return;
     }
 
-    // Show confirmation popup
     showConfirmationPopup(
       CONFIRM_SAVE_INDENT_RECEIVING,
       "info",
       () => {
-        // On confirm, proceed with save
         handleConfirmSaveReceiving();
       },
       () => {
-        // On cancel, do nothing
         console.log("Save receiving cancelled by user");
       },
       "Yes, Save",
@@ -348,27 +355,24 @@ const ItemReceivingMainScreen = () => {
 
       console.log("Saving receiving payload:", payload);
 
-      const response = await postRequest(`${Store_Internal_Indent}/receive/save`, payload);
+      const response = await postRequest(`${INVENTORY}/indent/receive`, payload);
 
       console.log("Save response:", response);
 
-      // Check if the request was successful
       if (response && response.status === 200) {
         const responseData = response.response || {};
         let message = responseData.message || "Receiving saved successfully!";
 
-        // Check if return was created
         if (responseData.returnCreated) {
           message += " " + (responseData.returnMessage || "Return created for rejected items.");
         }
 
         const indentMId = selectedRecord?.indentMId;
-        // Show success confirmation popup with navigation
+        
         showConfirmationPopup(
           SUCCESS_RECEIVING_SAVED_PRINT,
           "success",
           () => {
-            // Navigate to report page
             navigate('/ViewDownloadReport', {
               state: {
                 reportUrl: `${ALL_REPORTS}/indentReceiving?indentMId=${indentMId}`,
@@ -378,25 +382,22 @@ const ItemReceivingMainScreen = () => {
               }
             });
             
-            // Refresh the list and go back
             handleBack();
-            fetchReceivingIndents();
+            fetchIndentHeaders(); // Refresh the headers list
           },
           () => {
-            // User clicked "No" - just reset and stay on same page
             handleBack();
-            fetchReceivingIndents();
+            fetchIndentHeaders(); // Refresh the headers list
           },
           "Yes",
           "No"
         );
       } else {
-        // Show error confirmation popup
         showConfirmationPopup(
           response?.message || ERROR_SAVE_RECEIVING_FAILED,
           "error",
-          () => {}, // Empty function for OK button
-          null, // No cancel function
+          () => {},
+          null,
           "OK",
           "Close"
         );
@@ -406,12 +407,11 @@ const ItemReceivingMainScreen = () => {
     } catch (error) {
       console.error("Error saving receiving:", error);
       
-      // Show error confirmation popup
       showConfirmationPopup(
         ERROR_SAVING_RECEIVING,
         "error",
-        () => {}, // Empty function for OK button
-        null, // No cancel function
+        () => {},
+        null,
         "OK",
         "Close"
       );
@@ -422,18 +422,17 @@ const ItemReceivingMainScreen = () => {
   };
 
   // Pagination slice
-  const totalPages = Math.ceil(filteredIndentData.length / itemsPerPage) || 1
+  const totalPages = Math.ceil(filteredIndentHeaders.length / itemsPerPage) || 1
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredIndentData.slice(indexOfFirst, indexOfLast);
+  const currentItems = filteredIndentHeaders.slice(indexOfFirst, indexOfLast);
 
   // Detail view
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen />}
+        {(loading) && <LoadingScreen />}
         
-        {/* Add ConfirmationPopup component */}
         <ConfirmationPopup
           show={confirmationPopup !== null}
           message={confirmationPopup?.message || ''}
@@ -466,7 +465,7 @@ const ItemReceivingMainScreen = () => {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label fw-bold">Issue Date</label>
-                    <input type="text" className="form-control" value={formatDateTime(selectedRecord?.issuedDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
+                    <input type="text" className="form-control" value={formatDateTime(selectedRecord?.issueDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
                   </div>
                   <div className="col-md-4 mt-2">
                     <label className="form-label fw-bold">Issue No.</label>
@@ -474,7 +473,7 @@ const ItemReceivingMainScreen = () => {
                   </div>
                 </div>
 
-                {/* Items table */}
+                {/* Items table with loading spinner */}
                 <div className="table-responsive">
                   <table className="table table-bordered align-middle text-center">
                     <thead>
@@ -494,69 +493,89 @@ const ItemReceivingMainScreen = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {receivingItems.map((item, idx) => {
-                        const qtyIssued = item.qtyIssued || 0;
-                        const qtyReceived = item.qtyReceived || 0;
-                        const qtyReject = item.qtyReject || 0;
-                        const isValid = (qtyReceived + qtyReject) === qtyIssued;
+                      {loadingDetails ? (
+                        <tr>
+                          <td colSpan={12} className="text-center py-5">
+                            <div className="d-flex justify-content-center align-items-center">
+                              <div className="spinner-border text-primary me-2" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              <span className="text-muted">Loading indent details...</span>
+                            </div>
+                          </td>
+                        </tr>
+                      ) : receivingItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={12} className="text-center">
+                            No items found for this indent.
+                          </td>
+                        </tr>
+                      ) : (
+                        receivingItems.map((item, idx) => {
+                          const qtyIssued = item.qtyIssued || 0;
+                          const qtyReceived = item.qtyReceived || 0;
+                          const qtyReject = item.qtyReject || 0;
+                          const isValid = (qtyReceived + qtyReject) === qtyIssued;
 
-                        return (
-                          <tr
-                            key={item.id || idx}
-                            className={item.qtyIssued === 0 ? "table-warning" : ""}
-                          >
-                            <td className="fw-bold">{idx + 1}</td>
-                            <td>{item.drugCode}</td>
-                            <td className="text-start">
-                              {item.drugName}
-                              <br />
-                              <small className="text-muted">
-                                Mfg: {item.manufacturerName} | Brand: {item.brandName}
-                              </small>
-                            </td>
-                            <td>{item.apu}</td>
-                            <td>{item.batchNo}</td>
-                            <td>{formatDate(item.dom)}</td>
-                            <td>{formatDate(item.doe)}</td>
-                            <td>{item.qtyDemanded}</td>
-                            <td>{qtyIssued}</td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control form-control-sm text-center"
-                                value={qtyReceived}
-                                onChange={(e) => handleQtyReceivedChange(idx, e.target.value)}
-                                min="0"
-                                max={qtyIssued}
-                              />
-                            </td>
-                            <td>
-                              <input
-                                type="number"
-                                className="form-control form-control-sm text-center"
-                                style={{ width: "50px" }}
-                                value={qtyReject}
-                                onChange={(e) => handleQtyRejectChange(idx, e.target.value)}
-                                min="0"
-                                max={qtyIssued}
-                              />
-                            </td>
-                            <td>
-                              <span
-                                className="badge"
-                                style={{
-                                  backgroundColor: item.previousReceivedQty > 0 ? "#d1ecf1" : "#f8f9fa",
-                                  color: item.previousReceivedQty > 0 ? "#0c5460" : "#6c757d",
-                                  padding: "6px 12px",
-                                  borderRadius: "4px",
-                                }}
-                              >
-                                {item.previousReceivedQty}
-                              </span>
-                            </td>
-                          </tr>
-                        );
-                      })}
+                          return (
+                            <tr
+                              key={item.id || idx}
+                              className={item.qtyIssued === 0 ? "table-warning" : ""}
+                            >
+                              <td className="fw-bold">{idx + 1}</td>
+                              <td>{item.drugCode}</td>
+                              <td className="text-start">
+                                {item.drugName}
+                                <br />
+                                <small className="text-muted">
+                                  Mfg: {item.manufacturerName} | Brand: {item.brandName}
+                                </small>
+                              </td>
+                              <td>{item.apu}</td>
+                              <td>{item.batchNo}</td>
+                              <td>{formatDate(item.dom)}</td>
+                              <td>{formatDate(item.doe)}</td>
+                              <td>{item.qtyDemanded}</td>
+                              <td>{qtyIssued}</td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className="form-control form-control-sm text-center"
+                                  value={qtyReceived}
+                                  onChange={(e) => handleQtyReceivedChange(idx, e.target.value)}
+                                  min="0"
+                                  max={qtyIssued}
+                                />
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className="form-control form-control-sm text-center"
+                                  style={{ width: "50px" }}
+                                  value={qtyReject}
+                                  onChange={(e) => handleQtyRejectChange(idx, e.target.value)}
+                                  min="0"
+                                  max={qtyIssued}
+                                  readOnly // Make reject field read-only since it's auto-calculated
+                                />
+                              </td>
+                              <td>
+                                <span
+                                  className="badge"
+                                  style={{
+                                    backgroundColor: item.previousReceivedQty > 0 ? "#d1ecf1" : "#f8f9fa",
+                                    color: item.previousReceivedQty > 0 ? "#0c5460" : "#6c757d",
+                                    padding: "6px 12px",
+                                    borderRadius: "4px",
+                                  }}
+                                >
+                                  {item.previousReceivedQty}
+                                </span>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -566,7 +585,7 @@ const ItemReceivingMainScreen = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSaveReceiving}
-                    disabled={loading || isSaving}
+                    disabled={loading || loadingDetails || isSaving || receivingItems.length === 0}
                   >
                     {isSaving ? (
                       <>
@@ -599,9 +618,8 @@ const ItemReceivingMainScreen = () => {
   // List view
   return (
     <div className="content-wrapper">
-      {loading && <LoadingScreen />}
+      {(loading ) && <LoadingScreen />}
       
-      {/* Add ConfirmationPopup component for list view */}
       <ConfirmationPopup
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
@@ -627,26 +645,34 @@ const ItemReceivingMainScreen = () => {
               {/* Search Row */}
               <div className="row mb-3">
                 <div className="col-md-3">
-                   <DatePicker
+                  <DatePicker
                     label="From Date"
                     value={fromDate}
                     onChange={setFromDate}  
                     compact={true}
-                    
                   />
                 </div>
                 <div className="col-md-3">
-                 <DatePicker
+                  <DatePicker
                     label="To Date"
                     value={toDate}
                     onChange={setToDate}  
                     compact={true}
-                    
                   />
                 </div>
                 <div className="col-md-2 d-flex align-items-end">
-                  <button type="button" className="btn btn-primary" onClick={handleSearch}>
-                    Search
+                  <button 
+                    type="button" 
+                    className="btn btn-primary" 
+                    onClick={handleSearch}
+                    disabled={isSearching}
+                  >
+                    {isSearching ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Searching...
+                      </>
+                    ) : "Search"}
                   </button>
                 </div>
               </div>
@@ -658,7 +684,7 @@ const ItemReceivingMainScreen = () => {
                     <tr>
                       <th>Indent No.</th>
                       <th>Indent Date</th>
-                      <th>issueNo</th>
+                      <th>Issue No.</th>
                       <th>Issue Date</th>
                     </tr>
                   </thead>
@@ -671,11 +697,16 @@ const ItemReceivingMainScreen = () => {
                       </tr>
                     ) : (
                       currentItems.map((item) => (
-                        <tr key={item.indentMId} onClick={() => handleRowClick(item)} style={{ cursor: "pointer" }}>
+                        <tr 
+                          key={item.indentMId} 
+                          onClick={() => handleRowClick(item)} 
+                          style={{ cursor: "pointer" }}
+                          className="hover-row"
+                        >
                           <td>{item.indentNo}</td>
                           <td>{formatDate(item.indentDate)}</td>
                           <td>{item.issueNo}</td>
-                          <td>{formatDate(item.issuedDate)}</td>
+                          <td>{formatDate(item.issueDate)}</td>
                         </tr>
                       ))
                     )}
@@ -684,11 +715,11 @@ const ItemReceivingMainScreen = () => {
               </div>
 
               <Pagination
-                                            totalItems={filteredIndentData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
+                totalItems={filteredIndentHeaders.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>
@@ -706,4 +737,4 @@ const ItemReceivingMainScreen = () => {
   )
 }
 
-export default ItemReceivingMainScreen
+export default ItemReceivingMainScreen;

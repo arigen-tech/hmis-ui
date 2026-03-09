@@ -99,7 +99,7 @@ const ViewDownLoadReport = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="lead">{title} generated successfully</h4>
+              <h4 className="lead">{title}</h4>
             </div>
 
             <div className="card-body mt-4">

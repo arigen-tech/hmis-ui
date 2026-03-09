@@ -1,11 +1,13 @@
 import { useState, useRef, useEffect } from "react"
 import ReactDOM from "react-dom"
-import { OPEN_BALANCE, MAS_DRUG_MAS } from "../../../config/apiConfig";
+import { useNavigate } from 'react-router-dom';
+import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
-
-
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { FAIL_TO_SAVE_CHANGES, PHYSICAL_STOCK_SAVE_MSG, PHYSICAL_STOCK_SAVE_SUCC_MSG, PHYSICAL_STOCK_SAVE_TITLE, PHYSICAL_STOCK_SUBMIT_FILE_NAME, PHYSICAL_STOCK_SUBMIT_MSG, PHYSICAL_STOCK_SUBMIT_SUCC_MSG, PHYSICAL_STOCK_SUBMIT_TITLE } from "../../../config/constants";
 
 const PhysicalStockAdjustment = () => {
+  const navigate = useNavigate();
   const [reasonForTraking, setReasonForStockTaking] = useState("")
   const [stockEntries, setStockEntries] = useState([
     {
@@ -25,6 +27,7 @@ const PhysicalStockAdjustment = () => {
   ])
   console.log("Initial Stock Entries:", stockEntries)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
   const dropdownClickedRef = useRef(false)
   const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null)
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null)
@@ -32,16 +35,33 @@ const PhysicalStockAdjustment = () => {
   const [batchData, setBatchData] = useState([])
   const [processing, setProcessing] = useState(false);
 
-
   // Create refs for input elements
   const drugCodeInputRefs = useRef({})
   const drugNameInputRefs = useRef({})
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
+
   const fatchDrugCodeOptions = async () => {
     try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      const response = await getRequest(`${OPEN_BALANCE}/stock/items`);
       if (response && response.response) {
         setDrugCodeOptions(response.response);
       }
@@ -116,7 +136,6 @@ const PhysicalStockAdjustment = () => {
           }
         }
 
-
         return updatedEntry
       }
       return entry
@@ -136,6 +155,8 @@ const PhysicalStockAdjustment = () => {
       surplus: "",
       deficient: "",
       remarks: "",
+      stockId: "",
+      itemId: "",
     }
     setStockEntries([...stockEntries, newEntry])
   }
@@ -147,75 +168,20 @@ const PhysicalStockAdjustment = () => {
     }
   }
 
-
-  //   const handleSave = async () => {
-  //   const hasEmptyRequiredFields = stockEntries.some(
-  //     (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
-  //   );
-
-  //   if (hasEmptyRequiredFields) {
-  //     showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error");
-  //     return;
-  //   }
-
-  //   if (!reasonForTraking.trim()) {
-  //     showPopup("Please provide a reason for stock taking", "error");
-  //     return;
-  //   }
-
-  //   const payload = {
-  //     id: "",
-  //     reasonForTraking: reasonForTraking.trim(),
-  //     stockEntries: stockEntries
-  //       .filter((entry) => entry.drugCode || entry.drugName)
-  //       .map((entry) => ({
-  //         id: entry.id,
-  //         drugCode: entry.drugCode,
-  //         drugName: entry.drugName,
-  //         batchNo: entry.batchNo,
-  //         doe: entry.doe,
-  //         computedStock: entry.computedStock,
-  //         storeStockService: entry.physicalStock,
-  //         stockSurplus: entry.surplus,
-  //         stockDeficient: entry.deficient,
-  //         remarks: entry.remarks,
-  //         stockId: entry.stockId,
-  //         itemId: entry.itemId,
-  //         trakingMId: "",
-  //       })),
-  //   };
-
-  //   try {
-  //     setProcessing(true);
-
-  //     const response = await postRequest(`${OPEN_BALANCE}/createPhysicalStock`, payload);
-  //     if (response && response.response) {
-  //       showPopup("Stock adjustment submitted successfully!", "success");
-  //       handleReset();
-  //     } else {
-  //       showPopup("Failed to submit stock adjustment. Please try again.", "error");
-  //     }
-  //   } catch (error) {
-  //     console.error("Error submitting stock adjustment:", error);
-  //     showPopup("Error submitting stock adjustment. Please try again.", "error");
-  //   }finally {
-  //     setProcessing(false);
-  //   }
-  // };
-
-  const handleSubmit = async (submitStatus) => {
+  // Helper function to handle the actual save/submit logic
+  const handleSaveOrSubmit = async (submitStatus) => {
     const hasEmptyRequiredFields = stockEntries.some(
       (entry) => !entry.drugCode || !entry.drugName || !entry.physicalStock
     );
 
     if (hasEmptyRequiredFields) {
-      showPopup("Please fill in all required fields (Drug Code, Drug Name, Physical Stock)", "error");
-      return;
+      showPopup("Please fill in all required fields (Item Code, Item Name, Physical Stock)", "error");
+      return null;
     }
 
     if (!reasonForTraking.trim()) {
       showPopup("Please provide a reason for stock taking", "error");
-      return;
+      return null;
     }
 
     const payload = {
@@ -241,25 +207,134 @@ const PhysicalStockAdjustment = () => {
       status: submitStatus,
     };
 
-
     try {
       setProcessing(true);
-
       const response = await postRequest(`${OPEN_BALANCE}/createPhysicalStock`, payload);
+      
       if (response && response.response) {
-        showPopup("Stock adjustment submitted successfully!", "success");
-        handleReset();
+        const trackingId = response.response?.trackingMId || response.response?.id;
+        return { success: true, response, trackingId, action: submitStatus === "s" ? "save" : "submit" };
       } else {
-        showPopup("Failed to submit stock adjustment. Please try again.", "error");
+        return { 
+          success: false, 
+          message: response?.message || `Failed to ${submitStatus === "s" ? 'save' : 'submit'} stock adjustment. Please try again.` 
+        };
       }
     } catch (error) {
       console.error("Error submitting stock adjustment:", error);
-      showPopup("Error submitting stock adjustment. Please try again.", "error");
+      return { 
+        success: false, 
+        message: "Something went wrong. Please try again." 
+      };
     } finally {
       setProcessing(false);
     }
   };
 
+  // Handle Save - With Confirmation Popup
+  const handleSave = async () => {
+    showConfirmationPopup(
+      PHYSICAL_STOCK_SAVE_MSG,
+      "info",
+      async () => {
+        const result = await handleSaveOrSubmit("s");
+        
+        if (result?.success) {
+          const trackingId = result.trackingId;
+          
+          showConfirmationPopup(
+            PHYSICAL_STOCK_SAVE_SUCC_MSG,
+            "success",
+            () => {
+              // Navigate to report page
+                navigate('/ViewDownloadReport', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/physicalStockReport?trackingMId=${trackingId}`,
+                    title: PHYSICAL_STOCK_SAVE_TITLE,
+                    fileName: PHYSICAL_STOCK_SAVE_SUCC_MSG,
+                    returnPath: window.location.pathname
+                  }
+                });
+              
+              handleReset();
+            },
+            () => {
+              // User clicked "No" - just reset and stay on same page
+              handleReset();
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          showConfirmationPopup(
+            result?.message || FAIL_TO_SAVE_CHANGES,
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
+        }
+      },
+      () => {
+        console.log("Save cancelled by user");
+      },
+      "Yes, Save",
+      "Cancel"
+    );
+  };
+
+  // Handle Submit - With Confirmation Popup
+  const handleSubmit = async () => {
+    showConfirmationPopup(
+      PHYSICAL_STOCK_SUBMIT_MSG,
+      "info",
+      async () => {
+        const result = await handleSaveOrSubmit("p");
+        
+        if (result?.success) {
+          const trackingId = result.trackingId;
+          
+          showConfirmationPopup(
+            PHYSICAL_STOCK_SUBMIT_SUCC_MSG,
+            "success",
+            () => {
+              // Navigate to report page
+                navigate('/ViewDownloadReport', {
+                  state: {
+                    reportUrl: `${ALL_REPORTS}/physicalStockReport?trackingMId=${trackingId}`,
+                    title: PHYSICAL_STOCK_SUBMIT_TITLE,
+                    fileName: PHYSICAL_STOCK_SUBMIT_FILE_NAME,
+                    returnPath: window.location.pathname
+                  }
+                });
+              handleReset();
+            },
+            () => {
+              // User clicked "No" - just reset and stay on same page
+              handleReset();
+            },
+            "Yes",
+            "No"
+          );
+        } else {
+          showConfirmationPopup(
+            result?.message ||FAIL_TO_SAVE_CHANGES,
+            "error",
+            () => {},
+            null,
+            "OK",
+            "Close"
+          );
+        }
+      },
+      () => {
+        console.log("Submit cancelled by user");
+      },
+      "Yes, Submit",
+      "Cancel"
+    );
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -293,6 +368,17 @@ const PhysicalStockAdjustment = () => {
 
   return (
     <div className="content-wrapper">
+      {/* Add ConfirmationPopup component */}
+      <ConfirmationPopup
+        show={confirmationPopup !== null}
+        message={confirmationPopup?.message || ''}
+        type={confirmationPopup?.type || 'info'}
+        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onCancel={confirmationPopup?.onCancel}
+        confirmText={confirmationPopup?.confirmText || 'OK'}
+        cancelText={confirmationPopup?.cancelText}
+      />
+      
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -315,8 +401,8 @@ const PhysicalStockAdjustment = () => {
                       <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
                         S.No.
                       </th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                      <th style={{ width: "300px", minWidth: "300px" }}>Drug Name</th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>Item Code</th>
+                      <th style={{ width: "300px", minWidth: "300px" }}>Item Name</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>Batch No.</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>DOE</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>Computed Stock</th>
@@ -457,7 +543,7 @@ const PhysicalStockAdjustment = () => {
                                 setActiveDrugNameDropdown(null);
                               }
                             }}
-                            placeholder="Drug Name"
+                            placeholder="Item Name"
                             style={{ minWidth: "280px" }}
                             autoComplete="off"
                             onFocus={() => setActiveDrugNameDropdown(index)}
@@ -564,7 +650,6 @@ const PhysicalStockAdjustment = () => {
                           </select>
                         </td>
 
-
                         <td>
                           <input
                             type="date"
@@ -604,8 +689,6 @@ const PhysicalStockAdjustment = () => {
 
                               if (num < 0) num = 0;
 
-                              
-
                               handleStockEntryChange(index, "physicalStock", num.toString());
                             }}
                             placeholder="0"
@@ -620,7 +703,6 @@ const PhysicalStockAdjustment = () => {
                             }}
                           />
                         </td>
-
 
                         <td>
                           <input
@@ -723,11 +805,16 @@ const PhysicalStockAdjustment = () => {
                   type="button"
                   className="btn btn-warning"
                   disabled={processing}
-                  onClick={() => handleSubmit("s")}
+                  onClick={handleSave}
                 >
                   Save
                 </button>
-                <button type="button" className="btn btn-primary" onClick={() => handleSubmit("p")} disabled={processing}>
+                <button 
+                  type="button" 
+                  className="btn btn-primary" 
+                  onClick={handleSubmit} 
+                  disabled={processing}
+                >
                   Submit
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleReset}>

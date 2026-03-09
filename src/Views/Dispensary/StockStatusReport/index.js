@@ -1,14 +1,15 @@
 import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
 import './StockStatusReport.css';
-import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { getRequest } from "../../../service/apiService";
 import { MAS_DRUG_MAS, ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
-import LoadingScreen from "../../../Components/Loading";
-import paths from "../../../assets/images/logoPath.jpeg";
-import axios from "axios";
-import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"; // Add this import
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";  
-
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  REPORT_GEN_FAILED_ERR_MSG,
+  PRINT_FAILED_ERR_MSG,
+  GENERATE_REPORT_FIRST_ERR_MSG
+} from "../../../config/constants";
 
 const StockStatusReport = () => {
   const [sections, setSections] = useState([])
@@ -20,13 +21,13 @@ const StockStatusReport = () => {
   const token = localStorage.getItem("token") || sessionStorage.getItem("token");
   const [currentItemId, setCurrentItemId] = useState(null);
   const [drugCodeOptions, setDrugCodeOptions] = useState([]);
-  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
-  const dropdownClickedRef = useRef(false);
   const [activeCodeDropdown, setActiveCodeDropdown] = useState(null);
   const [activeNameDropdown, setActiveNameDropdown] = useState(null);
+  const dropdownClickedRef = useRef(false);
 
   // Add these states for PDF handling - separate states for each button
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
@@ -39,7 +40,6 @@ const StockStatusReport = () => {
       const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSections(data.response);
-        await fetchItemClassData();
       } else {
         setSections([]);
       }
@@ -70,11 +70,8 @@ const StockStatusReport = () => {
   })
 
   const [reportType, setReportType] = useState("summary")
-  const [searchQuery, setSearchQuery] = useState("")
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
   const [reportGenerated, setReportGenerated] = useState(false);
   const drugCodeInputRefs = useRef({})
   const drugNameInputRefs = useRef({})
@@ -95,12 +92,20 @@ const StockStatusReport = () => {
     }
   };
 
-  console.log("reporttype", reportType)
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1)
-  }
+  const handleReset = () => {
+    setFilters({
+      class: "All",
+      section: "All",
+      itemCode: "",
+      itemName: "",
+    });
+    setCurrentItemId(null);
+    setStocks([]);
+    setReportGenerated(false);
+    setCurrentPage(1);
+    setActiveCodeDropdown(null);
+    setActiveNameDropdown(null);
+  };
 
   // Filter function for both stocks and stockDt
   const filterItems = (items) => {
@@ -120,8 +125,8 @@ const StockStatusReport = () => {
 
   const filteredStockList = filterItems(stocks);
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-    const currentItems = filteredStockList.slice(indexOfFirst, indexOfLast)
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
+  const currentItems = filteredStockList.slice(indexOfFirst, indexOfLast)
 
   
   const showPopup = (message, type = "info") => {
@@ -136,13 +141,13 @@ const StockStatusReport = () => {
 
   const handleGenerateReport = () => {
     setLoading(true);
+    setIsSearching(true);
 
     const fetchStoreReportData = async () => {
       try {
         const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
         if (data.status === 200 && Array.isArray(data.response)) {
           setStocks(data.response);
-          //showPopup("Report generated successfully!", "success");
           setReportGenerated(true);
         } else {
           console.error("Unexpected API response format:", data);
@@ -151,6 +156,7 @@ const StockStatusReport = () => {
       } catch (error) {
         console.error("Error fetching Store Report data:", error);
       } finally {
+        setIsSearching(false);
         setLoading(false);
       }
     };
@@ -161,7 +167,7 @@ const StockStatusReport = () => {
   // Function for view/download (flag="d")
   const handleViewDownload = async () => {
     if (stocks.length === 0) {
-      alert("Please generate report first");
+      showPopup(GENERATE_REPORT_FIRST_ERR_MSG, "error");
       return;
     }
     
@@ -171,9 +177,10 @@ const StockStatusReport = () => {
     try {
       const sectionId = filters.section !== "All" ? filters.section : 0;
       const classId = filters.class !== "All" ? filters.class : 0;
-
-      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=d`;
-      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=d`;
+      const itemId = filters.itemCode || filters.itemName ? currentItemId : 0;
+      
+      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${itemId}&flag=d`;
+      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${itemId}&flag=d`;
 
       const url = reportType === "summary" ? summaryUrl : detailsUrl;
       
@@ -195,7 +202,7 @@ const StockStatusReport = () => {
       
     } catch (error) {
       console.error("Error generating PDF", error);
-      showPopup("Report generation failed", "error")
+      showPopup(REPORT_GEN_FAILED_ERR_MSG, "error")
     } finally {
       setIsGeneratingPDF(false);
     }
@@ -204,7 +211,7 @@ const StockStatusReport = () => {
   // Function for print (flag="p") - just fetch the URL, API should handle printing
   const handlePrint = async () => {
     if (stocks.length === 0) {
-      alert("Please generate report first");
+      showPopup(GENERATE_REPORT_FIRST_ERR_MSG, "error");
       return;
     }
     
@@ -227,16 +234,13 @@ const StockStatusReport = () => {
         },
       });
 
-      if (response.ok) {
-        // API should handle printing automatically when flag="p"
-        // No need to open blob or print manually
-      } else {
+      if (!response.ok) {
         throw new Error("Failed to send to printer");
       }
       
     } catch (error) {
       console.error("Error printing report", error);
-      showPopup("Report generation failed", "error")
+      showPopup(PRINT_FAILED_ERR_MSG, "error")
     } finally {
       setIsPrinting(false);
     }
@@ -250,15 +254,12 @@ const StockStatusReport = () => {
       }
     } catch (err) {
       console.error("Error fetching drug options:", err);
-    } finally {
     }
   };
 
   useEffect(() => {
     fatchDrugCodeOptions();
   }, []);
-
-  
 
   return (
     <div className="content-wrapper">
@@ -273,7 +274,7 @@ const StockStatusReport = () => {
             <div className="card-body">
               {/* Filters Section */}
               <div className="row mb-4">
-                <div className="col-md-7">
+                <div className="col-md-4">
                   <label className="form-label">Section</label>
                   <select
                     className="form-select"
@@ -289,7 +290,7 @@ const StockStatusReport = () => {
                     ))}
                   </select>
                 </div>
-                <div className="col-md-5 mb-2">
+                <div className="col-md-4 mb-2">
                   <label className="form-label">Class</label>
                   <select
                     className="form-select"
@@ -336,7 +337,7 @@ const StockStatusReport = () => {
                   />
                 </div>
 
-                <div className="col-md-8">
+                <div className="col-md-4 mt-2">
                   <label className="form-label">Drug Name</label>
                   <input
                     ref={(el) => (drugNameInputRefs.current[0] = el)}
@@ -504,12 +505,31 @@ const StockStatusReport = () => {
                     type="button"
                     className="btn btn-primary me-2"
                     onClick={handleGenerateReport}
+                    disabled={isSearching}
                   >
-                    Search
+                    {isSearching ? (
+                      <>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
                   </button>
                   <button
                     type="button"
-                    className="btn btn-primary me-2"
+                    className="btn btn-secondary me-2"
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
                     onClick={handleViewDownload}
                     disabled={isGeneratingPDF || stocks.length === 0}
                   >
@@ -562,7 +582,7 @@ const StockStatusReport = () => {
                         {currentItems.length > 0 ? (
                           currentItems.map((item, index) => (
                             <tr key={item.stockId}>
-                              <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td>{(currentPage - 1) * DEFAULT_ITEMS_PER_PAGE + index + 1}</td>
                               <td>{item.itemCode}</td>
                               <td>{item.itemName}</td>
                               <td>{item.unitAu}</td>
@@ -598,7 +618,7 @@ const StockStatusReport = () => {
                         {currentItems?.length > 0 ? (
                           currentItems.map((item, index) => (
                             <tr key={item.stockId}>
-                              <td>{(currentPage - 1) * itemsPerPage + index + 1}</td>
+                              <td>{(currentPage - 1) * DEFAULT_ITEMS_PER_PAGE + index + 1}</td>
                               <td>{item.itemCode}</td>
                               <td>{item.itemName}</td>
                               <td>{item.unitAu}</td>
@@ -624,14 +644,14 @@ const StockStatusReport = () => {
               )}
 
               {/* Pagination */}
-              <>
-              <Pagination
-                             totalItems={filteredStockList.length}
-                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                             currentPage={currentPage}
-                             onPageChange={setCurrentPage}
-                           /> 
-                 </>          
+              {reportGenerated && filteredStockList.length > 0 && (
+                <Pagination
+                  totalItems={filteredStockList.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}          
             </div>
           </div>
         </div>

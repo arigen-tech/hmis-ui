@@ -8,6 +8,9 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG,
   WARNING_SELECT_ACTION,WARNING_REMARKS_MANDATORY,CONFIRM_OPENING_BALANCE_ACTION, CONFIRM_OPENING_BALANCE_RESULT,ERROR_PROCESS_REQUEST_FAILED,
+  OPENING_BALANCE_APPROVE_TITLE,
+  OPENING_BALANCE_APPROVE_FILE_NAME,
+  OPENING_BALANCE_ENTRY_FILE_NAME,
 
  } from '../../../config/constants';
 
@@ -18,6 +21,7 @@ const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [loading, setLoading] = useState(true);
+  const [isProcessing, setIsProcessing] = useState(false); // Add this state for button spinner
   const [approvalData, setApprovalData] = useState([]);
   const [action, setAction] = useState("");
   const [remark, setRemark] = useState("");
@@ -94,6 +98,20 @@ const OpeningBalanceApproval = () => {
     return d.toISOString().split("T")[0];
   };
 
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
+  };
+
   // Filtered data based on date range (only when both dates are present)
   const filteredApprovalData = approvalData.filter((item) => {
     if (!fromDate || !toDate) return true;
@@ -158,12 +176,15 @@ const OpeningBalanceApproval = () => {
     };
 
     try {
+      setIsProcessing(true); // Set processing to true before API call
       const response = await putRequest(`${OPEN_BALANCE}/Approved/${selectedRecord.balanceMId}`, payload);
       return { success: true, response, balanceMId: selectedRecord.balanceMId };
 
     } catch (error) {
       console.error("Error submitting data:", error);
       return { success: false, message: "Failed to process the request. Please try again." };
+    } finally {
+      setIsProcessing(false); // Reset processing state
     }
   };
 
@@ -193,8 +214,8 @@ const OpeningBalanceApproval = () => {
                 navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
-                    title: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
-                    fileName: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
+                    title: OPENING_BALANCE_APPROVE_TITLE(action),
+                    fileName:OPENING_BALANCE_APPROVE_FILE_NAME(action) ,
                     returnPath: window.location.pathname
                   }
                 });
@@ -237,6 +258,20 @@ const OpeningBalanceApproval = () => {
       `Yes, ${actionDisplayText}`,
       "Cancel"
     );
+  };
+
+  // Handle Report button click - NEW FUNCTION
+  const handleReport = () => {
+    if (selectedRecord?.balanceMId) {
+      navigate('/ViewDownloadReport', {
+        state: {
+          reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${selectedRecord.balanceMId}`,
+          title: OPENING_BALANCE_ENTRY_FILE_NAME, 
+          fileName: OPENING_BALANCE_ENTRY_FILE_NAME, 
+          returnPath: window.location.pathname
+        }
+      });
+    }
   };
 
 
@@ -400,7 +435,7 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               placeholder="DD/MM/YYYY"
-                              value={entry.manufactureDate}
+                              value={formatDateForDisplay(entry.manufactureDate)}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -411,7 +446,7 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               placeholder="DD/MM/YYYY"
-                              value={entry.expiryDate}
+                              value={formatDateForDisplay(entry.expiryDate)}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -512,6 +547,7 @@ const OpeningBalanceApproval = () => {
                       className="form-select"
                       value={action}
                       onChange={(e) => setAction(e.target.value)}
+                      disabled={isProcessing}
                     >
                       <option value="">Select Action</option>
                       <option value="a">Approve</option>
@@ -527,23 +563,46 @@ const OpeningBalanceApproval = () => {
                       placeholder="Enter your remark here"
                       value={remark}
                       onChange={(e) => setRemark(e.target.value)}
+                      disabled={isProcessing}
                     />
                   </div>
                 </div>
 
-                {/* Action Buttons */}
+                
                 <div className="d-flex justify-content-end mt-4">
+                
+                  <button
+                    type="button"
+                    className="btn btn-info me-2"
+                    onClick={handleReport}
+                    style={{ color: "white" }}
+                    disabled={isProcessing}
+                  >
+                    Report
+                  </button>
+                  
                   <button
                     type="button"
                     className="btn me-2"
                     style={{ backgroundColor: "#e67e22", color: "white" }}
                     onClick={handleSubmit}
+                    disabled={isProcessing || !action}
                   >
-
-                    {action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit"}
-
+                    {isProcessing ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        {action === "a" ? "Approving..." : action === "r" ? "Rejecting..." : "Submitting..."}
+                      </>
+                    ) : (
+                      action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit"
+                    )}
                   </button>
-                  <button type="button" className="btn btn-danger" onClick={handleBackToList} >
+                  <button 
+                    type="button" 
+                    className="btn btn-danger" 
+                    onClick={handleBackToList}
+                    disabled={isProcessing}
+                  >
                     Cancel
                   </button>
                 </div>

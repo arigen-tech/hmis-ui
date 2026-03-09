@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer"; // Import the PdfViewer component
-import { MAS_DRUG_MAS, ALL_REPORTS } from "../../../../config/apiConfig";
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import { ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../../config/apiConfig";
 import { getRequest } from "../../../../service/apiService";
 
 const ReceivingReport = () => {
@@ -12,21 +12,34 @@ const ReceivingReport = () => {
     const [toDate, setToDate] = useState("");
     const [itemName, setItemName] = useState("");
     const [selectedItem, setSelectedItem] = useState(null);
-    const [itemsList, setItemsList] = useState([]);
-    const [filteredItems, setFilteredItems] = useState([]);
-    const [isItemDropdownVisible, setItemDropdownVisible] = useState(false);
     const [reportType, setReportType] = useState("itemwise");
     const [isGenerating, setIsGenerating] = useState(false);
+    const [isPrinting, setIsPrinting] = useState(false);
     const [showReport, setShowReport] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [popupMessage, setPopupMessage] = useState(null);
     const [generatedDate, setGeneratedDate] = useState("");
     const [reportRange, setReportRange] = useState("");
-    const [isLoadingItems, setIsLoadingItems] = useState(false);
     const [pdfUrl, setPdfUrl] = useState(null);
-    const [isPrinting, setIsPrinting] = useState(false);
-    const [searchTimeout, setSearchTimeout] = useState(null);
     const [showPdfViewer, setShowPdfViewer] = useState(false);
+    
+    // Item Type state
+    const [itemType, setItemType] = useState("");
+    const itemTypeOptions = ["Drug", "Non Drug"];
+
+    // Drug search state with debounce - Same as IndentCreation
+    const [itemDropdown, setItemDropdown] = useState([]);
+    const [itemSearch, setItemSearch] = useState("");
+    const [itemPage, setItemPage] = useState(0);
+    const [itemLastPage, setItemLastPage] = useState(true);
+    const [showItemDropdown, setShowItemDropdown] = useState(false);
+    const [isItemLoading, setIsItemLoading] = useState(false);
+    
+    // Refs for debounce and dropdown
+    const debounceItemRef = useRef(null);
+    const dropdownItemRef = useRef(null);
+
+    const hospitalId = sessionStorage.getItem("hospitalId");
 
     // Get today's date
     const getTodayDate = () => {
@@ -82,42 +95,135 @@ const ReceivingReport = () => {
         }
     };
 
-    // Fetch all items for autocomplete
-    const fetchAllItems = async () => {
-        setIsLoadingItems(true);
+    // Fetch items from API with debounce - Same as IndentCreation
+    const fetchItems = async (page, searchText = "") => {
         try {
-            const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`);
-            console.log("API Response:", response); // Debug log
-            
-            // Check different possible response structures
-            if (response && response.data) {
-                // If response has data property
-                const responseData = response.data;
-                if (responseData.success && responseData.data) {
-                    setItemsList(responseData.data || []);
-                } else if (Array.isArray(responseData)) {
-                    // If response.data is directly an array
-                    setItemsList(responseData || []);
-                } else if (responseData.response && Array.isArray(responseData.response)) {
-                    // If response has response property with array
-                    setItemsList(responseData.response || []);
-                }
-            } else if (Array.isArray(response)) {
-                // If response is directly an array
-                setItemsList(response || []);
-            } else if (response && response.response && Array.isArray(response.response)) {
-                // If response has response property
-                setItemsList(response.response || []);
+            setIsItemLoading(true);
+            // Determine section ID based on item type
+            const params = new URLSearchParams();
+
+            if (itemType === "Drug") {
+                params.append("sectionId", SECTION_ID_FOR_DRUGS);
             }
-            
-            console.log("Items List:", itemsList); // Debug log
+
+            params.append("keyword", searchText);
+            params.append("page", page);
+            params.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+            const url = `${INVENTORY}/item/search?${params.toString()}`;
+            const data = await getRequest(url);
+
+            if (data.status === 200 && data.response?.content) {
+                return {
+                    list: data.response.content,
+                    last: data.response.last,
+                    totalPages: data.response.totalPages,
+                    totalElements: data.response.totalElements
+                };
+            }
+            return { list: [], last: true, totalPages: 0, totalElements: 0 };
         } catch (error) {
             console.error("Error fetching items:", error);
-            showPopup("Failed to load items list", "error");
+            return { list: [], last: true, totalPages: 0, totalElements: 0 };
         } finally {
-            setIsLoadingItems(false);
+            setIsItemLoading(false);
         }
     };
+
+    // Fetch item details by ID
+    const fetchItemDetails = async (itemId) => {
+        try {
+            const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+            const response = await getRequest(url);
+            
+            if (response.status === 200 && response.response) {
+                return response.response;
+            }
+            return null;
+        } catch (error) {
+            console.error("Error fetching item details:", error);
+            showPopup("Failed to fetch item details", "error");
+            return null;
+        } 
+    };
+
+    // Handle item search with debounce - Same as IndentCreation
+    const handleItemSearch = (value) => {
+        // Check if item type is selected
+        if (!itemType) {
+            showPopup("Please select Item Type first", "warning");
+            return;
+        }
+
+        setItemSearch(value);
+        setItemName(value);
+        
+        // Clear selections when user types
+        if (!value.trim() || (selectedItem && !value.includes(selectedItem.nomenclature))) {
+            setSelectedItem(null);
+        }
+
+        // Debounce API call
+        if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
+        debounceItemRef.current = setTimeout(async () => {
+            if (!value.trim()) {
+                setItemDropdown([]);
+                setShowItemDropdown(false);
+                return;
+            }
+            const result = await fetchItems(0, value);
+            setItemDropdown(result.list);
+            setItemLastPage(result.last);
+            setItemPage(0);
+            setShowItemDropdown(true);
+        }, 700);
+    };
+
+    // Load first page of items for dropdown
+    const loadFirstItemPage = (searchText) => {
+        if (!searchText.trim() || !itemType) return;
+        setItemSearch(searchText);
+        fetchItems(0, searchText).then(result => {
+            setItemDropdown(result.list);
+            setItemLastPage(result.last);
+            setItemPage(0);
+            setShowItemDropdown(true);
+        });
+    };
+
+    // Load more items for infinite scroll
+    const loadMoreItems = async () => {
+        if (itemLastPage) return;
+        const nextPage = itemPage + 1;
+        const result = await fetchItems(nextPage, itemSearch);
+        setItemDropdown(prev => [...prev, ...result.list]);
+        setItemLastPage(result.last);
+        setItemPage(nextPage);
+    };
+
+    // Handle item selection from dropdown
+    const handleItemSelect = async (item) => {
+        // Fetch complete item details
+        const itemDetails = await fetchItemDetails(item.itemId);
+        
+        if (itemDetails) {
+            setItemName(itemDetails.nomenclature || "");
+            setSelectedItem(itemDetails);
+            setItemSearch(""); // Clear the search after selection
+            setShowItemDropdown(false); // Hide dropdown
+        }
+    };
+
+    // Handle click outside dropdown
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
+                setShowItemDropdown(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     // Handle from date change with validation
     const handleFromDateChange = (e) => {
@@ -159,57 +265,33 @@ const ReceivingReport = () => {
         setToDate(selectedDate);
     };
 
-    // Handle item name change with debouncing
-    const handleItemNameChange = (e) => {
-        const value = e.target.value;
-        setItemName(value);
-        
-        // Clear previous timeout
-        if (searchTimeout) {
-            clearTimeout(searchTimeout);
-        }
-        
-        // Set new timeout for filtering
-        const timeout = setTimeout(() => {
-            if (value.trim()) {
-                const searchTerm = value.toLowerCase().trim();
-                const filtered = itemsList.filter(item => {
-                    // Check for different possible property names
-                    const name = item.nomenclature || item.itemName || item.name || "";
-                    const code = item.pvmsNo || item.itemCode || item.code || "";
-                    const category = item.masItemCategoryName || item.category || "";
-                    
-                    return (
-                        name.toLowerCase().includes(searchTerm) ||
-                        code.toLowerCase().includes(searchTerm) ||
-                        category.toLowerCase().includes(searchTerm)
-                    );
-                });
-                setFilteredItems(filtered);
-                setItemDropdownVisible(filtered.length > 0);
-            } else {
-                setFilteredItems([]);
-                setItemDropdownVisible(false);
-            }
-        }, 300);
-        
-        setSearchTimeout(timeout);
-    };
-
-    // Handle item selection
-    const handleItemSelect = (item) => {
-        setItemName(item.nomenclature || item.itemName || item.name || "");
-        setSelectedItem(item);
-        setItemDropdownVisible(false);
-        setFilteredItems([]);
-    };
-
     // Clear search filter
     const clearItemSearch = () => {
         setItemName("");
         setSelectedItem(null);
-        setFilteredItems([]);
-        setItemDropdownVisible(false);
+        setItemSearch("");
+        setItemDropdown([]);
+        setShowItemDropdown(false);
+    };
+
+    // Check if all mandatory fields are filled
+    const areMandatoryFieldsFilled = () => {
+        // Check dates
+        if (!fromDate || !toDate) {
+            return false;
+        }
+
+        // Check item type
+        if (!itemType) {
+            return false;
+        }
+
+        // For item-wise report, check item selection
+        if (reportType === "itemwise" && !selectedItem) {
+            return false;
+        }
+
+        return true;
     };
 
     // Validate form
@@ -221,6 +303,12 @@ const ReceivingReport = () => {
 
         if (new Date(fromDate) > new Date(toDate)) {
             showPopup("From Date cannot be later than To Date", "error");
+            return false;
+        }
+
+        // Item Type is mandatory for both report types
+        if (!itemType) {
+            showPopup("Please select Item Type", "error");
             return false;
         }
 
@@ -239,7 +327,12 @@ const ReceivingReport = () => {
             return;
         }
 
-        setIsGenerating(true);
+        if (flag === "D") {
+            setIsGenerating(true);
+        } else {
+            setIsPrinting(true);
+        }
+        
         setPdfUrl(null);
         setShowPdfViewer(false);
 
@@ -249,20 +342,25 @@ const ReceivingReport = () => {
             
             let url = "";
             let params = {
+                hospitalId: hospitalId,
+                departmentId: sessionStorage.getItem("departmentId"),
                 fromDate: formattedFromDate,
                 toDate: formattedToDate,
-                flag: flag
             };
 
             if (reportType === "itemwise") {
                 if (!selectedItem || !selectedItem.itemId) {
                     showPopup("Please select a valid item", "error");
                     setIsGenerating(false);
+                    setIsPrinting(false);
                     return;
                 }
                 url = `${ALL_REPORTS}/itemWiseReceiving`;
-                params.itemId = selectedItem.itemId; // Use itemId from your response
+                params.itemId = selectedItem.itemId;
+                params.flag = flag;
             } else {
+                params.indentType = itemType.charAt(0).toUpperCase();
+                params.flag = flag;
                 url = `${ALL_REPORTS}/dateWiseReceiving`;
             }
 
@@ -272,7 +370,7 @@ const ReceivingReport = () => {
                 .join('&');
 
             const fullUrl = `${url}?${queryString}`;
-            console.log("API URL:", fullUrl); // Debug log
+            console.log("API URL:", fullUrl);
 
             const response = await fetch(fullUrl, {
                 method: "GET",
@@ -286,26 +384,27 @@ const ReceivingReport = () => {
                     const blob = await response.blob();
                     const fileURL = window.URL.createObjectURL(blob);
                     setPdfUrl(fileURL);
-                    setShowPdfViewer(true); // Show the PDF viewer
-                    // showPopup("Report generated successfully!", "success");
+                    setShowPdfViewer(true);
                 } else {
                     const errorText = await response.text();
                     showPopup(`Failed to generate report: ${errorText}`, "error");
                 }
+                setIsGenerating(false);
             } else if (flag === "P") {
                 if (response.ok) {
-                    // showPopup("Report sent to printer successfully", "success");
+                    
                 } else {
                     const errorText = await response.text();
                     showPopup(`Failed to print report: ${errorText}`, "error");
                 }
+                setIsPrinting(false);
             }
 
         } catch (error) {
             console.error("Error generating report:", error);
             showPopup("Failed to generate report. Please try again.", "error");
-        } finally {
             setIsGenerating(false);
+            setIsPrinting(false);
         }
     };
 
@@ -323,11 +422,14 @@ const ReceivingReport = () => {
     const handleReset = () => {
         setItemName("");
         setSelectedItem(null);
-        setFilteredItems([]);
+        setItemSearch("");
+        setItemDropdown([]);
+        setShowItemDropdown(false);
         setShowReport(false);
         setPdfUrl(null);
         setShowPdfViewer(false);
         setCurrentPage(1);
+        setItemType("");
         
         // Reset dates to default (last 30 days)
         const today = getTodayDate();
@@ -342,13 +444,12 @@ const ReceivingReport = () => {
     const handleClosePdf = () => {
         setShowPdfViewer(false);
         setPdfUrl(null);
-        // Clean up the blob URL to prevent memory leaks
         if (pdfUrl) {
             window.URL.revokeObjectURL(pdfUrl);
         }
     };
 
-    // Initialize dates and fetch items
+    // Initialize dates
     useEffect(() => {
         const today = getTodayDate();
         const defaultFromDate = new Date();
@@ -357,13 +458,10 @@ const ReceivingReport = () => {
         setFromDate(formatDateForInput(defaultFromDate.toISOString()));
         setToDate(today);
         
-        // Fetch items for autocomplete
-        fetchAllItems();
-        
         // Cleanup timeout
         return () => {
-            if (searchTimeout) {
-                clearTimeout(searchTimeout);
+            if (debounceItemRef.current) {
+                clearTimeout(debounceItemRef.current);
             }
         };
     }, []);
@@ -377,7 +475,9 @@ const ReceivingReport = () => {
         if (reportType === "datewise") {
             setItemName("");
             setSelectedItem(null);
-            setFilteredItems([]);
+            setItemSearch("");
+            setItemDropdown([]);
+            setShowItemDropdown(false);
         }
     }, [reportType]);
 
@@ -390,10 +490,18 @@ const ReceivingReport = () => {
         };
     }, [pdfUrl]);
 
-    // Calculate pagination (if you have table data in the future)
+    // Clear item dropdown when item type changes
+    useEffect(() => {
+        setItemName("");
+        setSelectedItem(null);
+        setItemSearch("");
+        setItemDropdown([]);
+        setShowItemDropdown(false);
+    }, [itemType]);
+
+    // Calculate pagination
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    // const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
@@ -437,9 +545,29 @@ const ReceivingReport = () => {
                                     </div>
                                 </div>
 
+                                {/* Item Type - Mandatory for both report types */}
+                                <div className="col-md-3">
+                                    <label className="form-label fw-bold">
+                                        Item Type <span className="text-danger">*</span>
+                                    </label>
+                                    <select
+                                        className="form-control"
+                                        value={itemType}
+                                        onChange={(e) => setItemType(e.target.value)}
+                                        required
+                                    >
+                                        <option value="">Select Item Type</option>
+                                        {itemTypeOptions.map((type) => (
+                                            <option key={type} value={type}>
+                                                {type}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </div>
+
                                 {/* Item Name (Autocomplete) - Only for item-wise */}
                                 {reportType === "itemwise" && (
-                                    <div className="col-md-6 position-relative">
+                                    <div className="col-md-5 position-relative" ref={dropdownItemRef}>
                                         <label className="form-label fw-bold">
                                             Item Name <span className="text-danger">*</span>
                                         </label>
@@ -447,18 +575,19 @@ const ReceivingReport = () => {
                                             <input
                                                 type="text"
                                                 className="form-control"
-                                                placeholder="Search by Item Name, PVMS No, or Category"
+                                                placeholder={itemType ? "Type item name or code..." : "Select Item Type first"}
                                                 value={itemName}
-                                                onChange={handleItemNameChange}
-                                                onFocus={() => {
-                                                    if (itemName && filteredItems.length > 0) {
-                                                        setItemDropdownVisible(true);
+                                                onChange={(e) => handleItemSearch(e.target.value)}
+                                                onClick={() => {
+                                                    if (itemName?.trim() && itemType) {
+                                                        loadFirstItemPage(itemName);
+                                                    } else if (!itemType) {
+                                                        showPopup("Please select Item Type first", "warning");
                                                     }
                                                 }}
-                                                onBlur={() => setTimeout(() => setItemDropdownVisible(false), 200)}
                                                 autoComplete="off"
                                                 required
-                                                disabled={isLoadingItems}
+                                                disabled={!itemType}
                                             />
                                             {itemName && (
                                                 <button
@@ -469,69 +598,70 @@ const ReceivingReport = () => {
                                                     <i className="fa fa-times"></i>
                                                 </button>
                                             )}
-                                            {isLoadingItems && (
-                                                <span className="input-group-text">
-                                                    <span className="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>
-                                                </span>
-                                            )}
                                         </div>
                                         
-                                        {isItemDropdownVisible && filteredItems.length > 0 && (
-                                            <ul className="list-group position-absolute w-100 mt-1" style={{ zIndex: 1000, maxHeight: '250px', overflowY: 'auto' }}>
-                                                {filteredItems.map((item) => (
-                                                    <li
-                                                        key={item.itemId || item.id}
-                                                        className="list-group-item list-group-item-action"
-                                                        onClick={() => handleItemSelect(item)}
-                                                        style={{ cursor: 'pointer' }}
-                                                    >
-                                                        <div>
-                                                            <strong>{item.nomenclature || item.itemName || item.name || "Unnamed Item"}</strong>
-                                                            <small className="text-muted ms-2">
-                                                                (PVMS: {item.pvmsNo || item.itemCode || "N/A"})
-                                                            </small>
+                                        {/* Search Dropdown - Same as IndentCreation */}
+                                        {showItemDropdown && itemType && (
+                                            <div 
+                                                className="border rounded mt-1 bg-white position-absolute w-100"
+                                                style={{ maxHeight: "250px", zIndex: 1000, overflowY: "auto" }}
+                                                onScroll={(e) => {
+                                                    const target = e.target;
+                                                    if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
+                                                        loadMoreItems();
+                                                    }
+                                                }}
+                                            >
+                                                {isItemLoading && itemDropdown.length === 0 ? (
+                                                    <div className="text-center p-3">
+                                                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                                            <span className="visually-hidden">Loading...</span>
                                                         </div>
-                                                        <div className="d-flex justify-content-between mt-1">
-                                                            <small className="text-muted">
-                                                                ID: {item.itemId || item.id}
-                                                            </small>
-                                                            <small className="text-muted">
-                                                                Category: {item.masItemCategoryName || item.sectionName || "N/A"}
-                                                            </small>
-                                                        </div>
-                                                        <small className="text-muted d-block">
-                                                            Unit: {item.unitAuName || item.uom || "N/A"}
-                                                        </small>
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        )}
-                                        
-                                        {isItemDropdownVisible && itemName && filteredItems.length === 0 && !isLoadingItems && (
-                                            <div className="position-absolute w-100 mt-1 border bg-white p-2" style={{ zIndex: 1000 }}>
-                                                <small className="text-muted">No items found matching "{itemName}"</small>
+                                                    </div>
+                                                ) : itemDropdown.length > 0 ? (
+                                                    <>
+                                                        {itemDropdown.map((item) => (
+                                                            <div
+                                                                key={item.itemId}
+                                                                className="p-2 cursor-pointer hover-bg-light"
+                                                                onMouseDown={(e) => {
+                                                                    e.preventDefault();
+                                                                    handleItemSelect(item);
+                                                                }}
+                                                                style={{ 
+                                                                    cursor: 'pointer',
+                                                                    borderBottom: '1px solid #f0f0f0'
+                                                                }}
+                                                            >
+                                                                <div className="fw-bold">{item.nomenclature}</div>
+                                                                <div className="d-flex justify-content-between align-items-center">
+                                                                    <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                                                                </div>
+                                                            </div>
+                                                        ))}
+                                                        
+                                                        {!itemLastPage && (
+                                                            <div className="text-center p-2 text-primary small">
+                                                                {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
+                                                            </div>
+                                                        )}
+                                                    </>
+                                                ) : (
+                                                    <div className="p-2 text-muted text-center">No items found</div>
+                                                )}
                                             </div>
                                         )}
                                         
                                         {selectedItem && (
                                             <div className="alert alert-success mt-2 py-2">
                                                 <small className="d-block">
-                                                    <strong>Selected Item:</strong> {selectedItem.nomenclature || selectedItem.itemName || selectedItem.name}
+                                                    <strong>Selected Item:</strong> {selectedItem.nomenclature || selectedItem.itemName}
                                                 </small>
                                                 <small className="d-block">
-                                                    <strong>PVMS No:</strong> {selectedItem.pvmsNo || selectedItem.itemCode}
+                                                    <strong>PVMS No:</strong> {selectedItem.pvmsNo}
                                                 </small>
                                                 <small className="d-block">
-                                                    <strong>Category:</strong> {selectedItem.masItemCategoryName || selectedItem.sectionName}
-                                                </small>
-                                            </div>
-                                        )}
-                                        
-                                        {isLoadingItems && (
-                                            <div className="mt-1">
-                                                <small className="text-info">
-                                                    <i className="fa fa-spinner fa-spin me-1"></i>
-                                                    Loading items...
+                                                    <strong>Category:</strong> {selectedItem.sectionName}
                                                 </small>
                                             </div>
                                         )}
@@ -539,7 +669,7 @@ const ReceivingReport = () => {
                                 )}
 
                                 {/* Date Range */}
-                                <div className={reportType === "itemwise" ? "col-md-3" : "col-md-4"}>
+                                <div className={reportType === "itemwise" ? "col-md-2" : "col-md-3"}>
                                     <label className="form-label fw-bold">
                                         From Date <span className="text-danger">*</span>
                                     </label>
@@ -553,7 +683,7 @@ const ReceivingReport = () => {
                                     />
                                 </div>
 
-                                <div className={reportType === "itemwise" ? "col-md-3" : "col-md-4"}>
+                                <div className={reportType === "itemwise" ? "col-md-2" : "col-md-3"}>
                                     <label className="form-label fw-bold">
                                         To Date <span className="text-danger">*</span>
                                     </label>
@@ -571,13 +701,12 @@ const ReceivingReport = () => {
                             {/* Action Buttons */}
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-between gap-2">
-
                                     <div className="d-flex gap-2">
                                         <button
                                             type="button"
                                             className="btn btn-success"
                                             onClick={handleViewReport}
-                                            disabled={isGenerating || isLoadingItems}
+                                            disabled={!areMandatoryFieldsFilled() || isGenerating || isPrinting}
                                         >
                                             {isGenerating ? (
                                                 <>
@@ -587,7 +716,7 @@ const ReceivingReport = () => {
                                             ) : (
                                                 <>
                                                     <i className="fa fa-eye me-2"></i>
-                                                    View/Download PDF
+                                                    VIEW / DOWNLOAD
                                                 </>
                                             )}
                                         </button>
@@ -596,30 +725,32 @@ const ReceivingReport = () => {
                                             type="button"
                                             className="btn btn-warning"
                                             onClick={handlePrintReport}
-                                            disabled={isGenerating || isLoadingItems}
+                                            disabled={!areMandatoryFieldsFilled() || isGenerating || isPrinting}
                                         >
-                                            <i className="fa fa-print me-2"></i>
-                                            Print Report
+                                            {isPrinting ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Printing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-print me-2"></i>
+                                                    PRINT
+                                                </>
+                                            )}
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
+                            {/* Remove the LoadingScreen and just keep the text if needed */}
                             {isGenerating && (
                                 <div className="text-center py-4">
-                                    <LoadingScreen />
-                                    <p className="mt-2">Generating report...</p>
+                                    <p className="mt-2 text-success">Generating report, please wait...</p>
                                 </div>
                             )}
+                            
 
-                            {/* Debug info - Remove in production */}
-                            <div className="mt-3" style={{ display: 'none' }}>
-                                <small className="text-muted">
-                                    Items loaded: {itemsList.length} | 
-                                    Filtered: {filteredItems.length} | 
-                                    Selected: {selectedItem ? "Yes" : "No"}
-                                </small>
-                            </div>
                         </div>
                     </div>
                 </div>
@@ -634,12 +765,12 @@ const ReceivingReport = () => {
                 />
             )}
 
-            {/* PDF Viewer - Using the same component as LabPaymentSuccess */}
+            {/* PDF Viewer */}
             {showPdfViewer && pdfUrl && (
                 <PdfViewer
                     pdfUrl={pdfUrl}
                     onClose={handleClosePdf}
-                    name={`${reportType === "itemwise" ? "Item-wise" : "Date-wise"} Receiving Report  `}
+                    name={`${reportType === "itemwise" ? "Item-wise" : "Date-wise"} Receiving Report`}
                 />
             )}
         </div>

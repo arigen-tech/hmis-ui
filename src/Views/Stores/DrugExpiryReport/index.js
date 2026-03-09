@@ -1,9 +1,16 @@
-import { useState, useRef, useEffect } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest } from "../../../service/apiService";
 import { OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  SELECT_DATES_ERR_MSG,
+  FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG,
+  REPORT_GEN_FAILED_ERR_MSG,
+  PRINT_FAILED_ERR_MSG
+} from "../../../config/constants";
 
 const DrugExpiry = () => {
   const today = new Date().toISOString().split("T")[0];
@@ -21,25 +28,18 @@ const DrugExpiry = () => {
   const [showCodeDropdown, setShowCodeDropdown] = useState(false);
   const [showNameDropdown, setShowNameDropdown] = useState(false);
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
+  const [isPrintingPDF, setPrintingPDF] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
-  const [printingIds, setPrintingIds] = useState(new Set());
   const [dateFieldsEnabled, setDateFieldsEnabled] = useState(true);
 
-  console.log("searchFormData", searchFormData)
-
   const [filteredResults, setFilteredResults] = useState([])
-  const [filtered, setFiltered] = useState([])
 
   const [showResults, setShowResults] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const [showDrugDropdown, setShowDrugDropdown] = useState(false)
-  const drugDropdownRef = useRef(null)
-  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
   const [loading, setLoading] = useState(false)
+  const [isSearching, setIsSearching] = useState(false);
 
-  console.log("filteredResults", filteredResults)
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
@@ -57,64 +57,53 @@ const DrugExpiry = () => {
     }
   };
 
+  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
+
   useEffect(() => {
     fatchDrugCodeOptions();
   }, []);
 
-  useEffect(() => {
-    if (!showDrugDropdown) return;
-    function handleClickOutside(event) {
-      if (drugDropdownRef.current && !drugDropdownRef.current.contains(event.target)) {
-        setShowDrugDropdown(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, [showDrugDropdown]);
-
-  const itemsPerPage = 5
-
   const handleSearchInputChange = (e) => {
     const { id, value } = e.target
-    
+
     if (id === "daysOption") {
       const newValue = value;
-      setSearchFormData(prevData => ({ 
-        ...prevData, 
-        [id]: newValue 
+      setSearchFormData(prevData => ({
+        ...prevData,
+        [id]: newValue
       }));
-      
+
       // Enable/disable date fields based on selection
       if (newValue === "other") {
         setDateFieldsEnabled(true);
-      } else {
+      } else if (newValue) {
         setDateFieldsEnabled(false);
-        
+
         // Calculate dates based on selected days
         const today = new Date();
-        let fromDate = new Date();
-        
+        let toDate = new Date();
+
         if (newValue === "30") {
-          fromDate.setDate(today.getDate() - 30);
+          toDate.setDate(today.getDate() + 30);
         } else if (newValue === "60") {
-          fromDate.setDate(today.getDate() - 60);
+          toDate.setDate(today.getDate() + 60);
         } else if (newValue === "90") {
-          fromDate.setDate(today.getDate() - 90);
+          toDate.setDate(today.getDate() + 90);
         } else if (newValue === "120") {
-          fromDate.setDate(today.getDate() - 120);
+          toDate.setDate(today.getDate() + 120);
         } else {
-          fromDate = today;
+          toDate = today;
         }
-        
+
         const formatDate = (date) => {
           return date.toISOString().split("T")[0];
         };
-        
+
         setSearchFormData(prevData => ({
           ...prevData,
           daysOption: newValue,
-          fromDate: formatDate(fromDate),
-          toDate: formatDate(today)
+          fromDate: formatDate(today),
+          toDate: formatDate(toDate)
         }));
       }
     } else {
@@ -160,19 +149,18 @@ const DrugExpiry = () => {
     event.preventDefault();
 
     if (!searchFormData.fromDate || !searchFormData.toDate) {
-      showPopup("Please fill all mandatory fields (From Date, To Date)", "error")
+      showPopup(SELECT_DATES_ERR_MSG, "error")
       return
     }
 
     if (searchFormData.fromDate && searchFormData.toDate) {
       await fetchBatchStock();
-    } else {
-      console.warn("Please select both fromDate and toDate");
     }
   };
 
   const fetchBatchStock = async () => {
     try {
+      setIsSearching(true);
       const { fromDate, toDate, drugCode } = searchFormData;
 
       const drugCodeStr = (drugCode ?? "").toString().trim();
@@ -187,20 +175,19 @@ const DrugExpiry = () => {
 
       const data = await getRequest(url);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setFiltered(data.response);
         setFilteredResults(data.response);
         setShowResults(true);
         setCurrentPage(1);
       } else {
-        setFiltered([]);
         setFilteredResults([]);
         setShowResults(true);
       }
     } catch (error) {
-      setFiltered([]);
       setFilteredResults([]);
-      setShowResults(true); // <-- ensure this is set
+      setShowResults(true);
       console.error("Error fetching Store Item data:", error);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -237,34 +224,25 @@ const DrugExpiry = () => {
     const toDate = searchFormData.toDate;
 
     if (!fromDate || !toDate) {
-      alert("Please select both From Date and To Date");
+      showPopup(SELECT_DATES_ERR_MSG, "error");
       return;
     }
 
     if (new Date(fromDate) > new Date(toDate)) {
-      alert("From Date cannot be later than To Date");
+      showPopup(FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG, "error");
       return;
     }
-
-    if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
-      alert("Dates cannot be in the future");
-      return;
-    }
-
-    const hospitalId =
-      localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-    const departmentId =
-      localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
 
     setIsGeneratingPDF(true);
 
     try {
-      const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
-      };
+      // Start with base URL
+      let url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=d`;
 
-      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${fromDate}&toDate=${toDate}&flag=d`;
+      // Only add itemId if a drug was actually selected
+      if (searchFormData.drugCode) {
+        url += `&itemId=${searchFormData.drugCode}`;
+      }
 
       const response = await fetch(url, {
         method: "GET",
@@ -284,31 +262,26 @@ const DrugExpiry = () => {
 
     } catch (error) {
       console.error("Error generating PDF", error);
-      alert("Error generating PDF report. Please try again.");
+      showPopup(REPORT_GEN_FAILED_ERR_MSG, "error");
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
-  const handlePrintReport = async (record) => {
-    const balanceMId = record.balanceMId;
-
-    const hospitalId =
-      localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-    const departmentId =
-      localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
-
-    setPrintingIds(prev => new Set(prev).add(hospitalId));
+  const handlePrintReport = async () => {
+    setPrintingPDF(true);
 
     try {
       const fromDate = searchFormData.fromDate;
       const toDate = searchFormData.toDate;
-      const formatDate = (dateStr) => {
-        const date = new Date(dateStr);
-        return `${String(date.getDate()).padStart(2, '0')}-${String(date.getMonth() + 1).padStart(2, '0')}-${date.getFullYear()}`;
-      };
 
-      const url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&itemId=12956&fromDate=${fromDate}&toDate=${toDate}&flag=p`;
+      // Start with base URL
+      let url = `${ALL_REPORTS}/drugExpiryReport?hospitalId=${hospitalId}&departmentId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}&flag=p`;
+
+      // Only add itemId if a drug was actually selected
+      if (searchFormData.drugCode) {
+        url += `&itemId=${searchFormData.drugCode}`;
+      }
 
       const response = await fetch(url, {
         method: "GET",
@@ -317,20 +290,21 @@ const DrugExpiry = () => {
         },
       });
 
+      if (!response.ok) {
+        throw new Error("Failed to print");
+      }
+
+    } catch (error) {
+      console.error("Error printing report", error);
+      showPopup(PRINT_FAILED_ERR_MSG, "error");
     } finally {
-      setPrintingIds(prev => {
-        const newSet = new Set(prev);
-        newSet.delete(balanceMId);
-        return newSet;
-      });
+      setPrintingPDF(false);
     }
   };
 
-  const filteredTotalPages = Math.ceil(filteredResults.length / itemsPerPage)
-  const currentItems = filteredResults.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-
-  
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredResults.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
@@ -338,7 +312,7 @@ const DrugExpiry = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header" >
-              <h4 className="card-title p-2 mb-0">Drug Expiry</h4>
+              <h4 className="card-title p-2 mb-0">Drug Expiry Report</h4>
             </div>
             {pdfUrl && (
               <PdfViewer
@@ -350,7 +324,7 @@ const DrugExpiry = () => {
             {loading && <LoadingScreen />}
 
             <div className="card-body">
-              <form className="forms row" >
+              <form className="forms row" onSubmit={handleSearchSubmit}>
                 <div className="row">
                   <div className="form-group col-md-4 mt-3">
                     <label>
@@ -468,9 +442,20 @@ const DrugExpiry = () => {
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      onClick={handleSearchSubmit}
+                      disabled={isSearching}
                     >
-                      Search
+                      {isSearching ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                          Searching...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
                     </button>
 
                     <button
@@ -486,22 +471,22 @@ const DrugExpiry = () => {
 
               {showResults && (
                 <>
-                  {filteredResults.length > 0 ? (
-                    <div className="mt-4">
-                      <div className="table-responsive">
-                        <table className="table table-bordered table-hover align-middle">
-                          <thead >
-                            <tr>
-                              <th>Drug Code</th>
-                              <th>Drug Name</th>
-                              <th>A/U</th>
-                              <th>Batch No.</th>
-                              <th>Closing Stock</th>
-                              <th>Expiry Date</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {currentItems.map((item) => (
+                  <div className="mt-4">
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead>
+                          <tr>
+                            <th>Drug Code</th>
+                            <th>Drug Name</th>
+                            <th>A/U</th>
+                            <th>Batch No.</th>
+                            <th>Closing Stock</th>
+                            <th>Expiry Date</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {filteredResults.length > 0 ? (
+                            currentItems.map((item) => (
                               <tr key={item.stockId}>
                                 <td>{item.itemCode}</td>
                                 <td>{item.itemName}</td>
@@ -510,44 +495,69 @@ const DrugExpiry = () => {
                                 <td>{item.closingQty}</td>
                                 <td>{new Date(item.doe).toLocaleDateString('en-GB')}</td>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-
-                      
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="6" className="text-center text-danger">
+                                No records found.
+                              </td>
+                            </tr>
+                          )}
+                        </tbody>
+                      </table>
                     </div>
-                  ) : (
-                    <div className="mt-4 text-center text-danger">
-                      No records found.
-                    </div>
-                  )}
-
-                  <div className="d-flex justify-content-end mt-3 gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={handleGenerate}
-                      disabled={isGeneratingPDF || filteredResults.length === 0}
-                    >
-                      {isGeneratingPDF ? (
-                        <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Generating...
-                        </>
-                      ) : (
-                        "View/Download PDF"
-                      )}
-                    </button>
-                     <button
-                      type="button"
-                      className="btn btn-warning"
-                      onClick={handlePrintReport}
-
-                    >
-                        Print PDF
-                    </button>
                   </div>
+
+                  {filteredResults.length > 0 && (
+                    <>
+                      {/* PAGINATION USING REUSABLE COMPONENT */}
+                      <Pagination
+                        totalItems={filteredResults.length}
+                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                      />
+                      
+                      <div className="d-flex justify-content-end mt-3 gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-success btn-sm"
+                          onClick={handleGenerate}
+                          disabled={isGeneratingPDF || filteredResults.length === 0}
+                        >
+                          {isGeneratingPDF ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                              Generating...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fa fa-eye me-2"></i>
+                              VIEW / DOWNLOAD
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-warning btn-sm"
+                          onClick={handlePrintReport}
+                          disabled={isPrintingPDF || filteredResults.length === 0}
+                        >
+                          {isPrintingPDF ? (
+                            <>
+                              <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                              Printing...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fa fa-print me-2"></i>
+                              PRINT
+                            </>
+                          )}
+                        </button>
+                      </div>
+                    </>
+                  )}
                 </>
               )}
 

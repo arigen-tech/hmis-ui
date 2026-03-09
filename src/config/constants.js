@@ -430,7 +430,10 @@ export const ROL_IMPORT_SUCCESS = "items imported successfully from ROL";
 export const ROL_LOAD_ERROR = "Error fetching ROL items from server";
 export const NO_ROL_DATA = "No items found below reorder level. All items have sufficient stock.";
 export const IMPORT_FROM_PREVIOUS = "Import from Previous Indent feature coming soon";
-export const FETCH_ITEM_ERR_MSG = "Error fetching drugs";
+export const FETCH_ITEM_ERR_MSG = "Error fetching items";
+export const FETCH_ITEM_DETAILS_ERR_MSG ="Failed to load item details";
+export const INDENT_TYPE_CHANGE_WARN_MSG="If you switch the indent type, your entered data will be lost. Do you want to continue?"
+export const INDENT_TYPE_MANDARORY_WARN_MSG="Please select indent type before adding items";
 
 
 //Blood GAROUP Master
@@ -1016,6 +1019,20 @@ export const INDENT_SAVE_TITLE = "Indent saved successfully";
 export const INDENT_SAVE_FILE_NAME = "Indent Save Report";
 export const INDENT_SUBMIT_TITLE = "Indent submitted successfully";
 export const INDENT_SUBMIT_FILE_NAME = "Indent submit Report";
+export const PHYSICAL_STOCK_SAVE_TITLE="Physical Stock Adjustment Saved successfully";
+export const PHYSICAL_STOCK_SAVE_FILE_NAME="Physical Stock Adjustment Save Report";
+export const PHYSICAL_STOCK_SUBMIT_TITLE="Physical Stock Adjustment submitted successfully";
+export const PHYSICAL_STOCK_SUBMIT_FILE_NAME="Physical Stock Adjustment submit Report";
+export const OPENING_BALANCE_APPROVE_TITLE= (action) =>
+  action === "a"
+    ? "Opening Balance approved successfully!"
+    : "Opening Balance rejected successfully!";
+export const OPENING_BALANCE_APPROVE_FILE_NAME= (action) =>
+  action === "a"
+    ? "Opening Balance Approval Report"
+    : "Opening Balance Rejection Report";
+export const OPENING_BALANCE_ENTRY_TITLE="Opening Balance Saved successfully";
+export const OPENING_BALANCE_ENTRY_FILE_NAME="Opening Balance Save Report";
 
 
 
@@ -1049,6 +1066,7 @@ export const CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT = (status) =>
     ? "Opening Balance submitted successfully! Do you want to print report ?"
     : "Opening Balance updated successfully! Do you want to print report ?";
 export const ERROR_UPDATE_ENTRIES_FAILED ="Failed to update entries!";
+export const WARNING_DOM_DOE_VALIDATION = "Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE).";
 
 //openingbalanceentry
 export const WARNING_DUPLICATE_BATCH_ENTRY = "Duplicate entry found for Batch No/Serial No, DOM, and DOE.";
@@ -1073,6 +1091,7 @@ export const CONFIRM_SAVE_INDENT_RECEIVING ="Are you sure you want to save the r
 export const SUCCESS_RECEIVING_SAVED_PRINT = "Receiving saved successfully! Do you want to print report ?";
 export const ERROR_SAVE_RECEIVING_FAILED = "Failed to save receiving";
 export const ERROR_SAVING_RECEIVING = "Error saving receiving. Please try again.";
+export const ERROR_FETCH_INDENT_DETAILS = "Error fetching indent details. Please try again.";
 
 //viewupdate
 export const WARNING_DRUG_ALREADY_ADDED = "This drug is already added in another row. Please select a different drug.";
@@ -1089,3 +1108,27 @@ export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated su
 export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
 export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
         
+//Physical Stock Adjustment
+
+export const PHYSICAL_STOCK_SAVE_MSG="Are you sure you want to save the stock adjustment?";
+export const PHYSICAL_STOCK_SAVE_SUCC_MSG="Stock adjustment saved successfully! Do you want to print report?";
+export const PHYSICAL_STOCK_SUBMIT_MSG="Are you sure you want to submit the stock adjustment?";
+export const PHYSICAL_STOCK_SUBMIT_SUCC_MSG="Stock adjustment submitted successfully! Do you want to print report?";
+
+
+// Opening Balance Register Constants
+export const SELECT_BALANCE_TYPE_ERR_MSG = "Please select Balance Type";
+export const SELECT_DATES_ERR_MSG = "Please select both From Date and To Date";
+export const FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG = "From Date cannot be later than To Date";
+export const FUTURE_DATE_ERR_MSG = "Dates cannot be in the future";
+export const HOSPITAL_DEPT_REQUIRED_ERR_MSG = "Hospital and Department must be selected.";
+export const REPORT_GEN_FAILED_ERR_MSG = "Report generation failed";
+export const PRINT_FAILED_ERR_MSG = "Report printing failed";
+export const SELECT_FROM_DATE_FIRST_ERR_MSG = "Please select From Date first";
+export const FROM_DATE_FUTURE_ERR_MSG = "From date cannot be in the future";
+export const TO_DATE_FUTURE_ERR_MSG = "To date cannot be in the future";
+export const OPENING_BALANCE_REGISTER_PDF_NAME= "Opening Balance Register Report";
+
+
+//Stock Status Report
+export const GENERATE_REPORT_FIRST_ERR_MSG = "Please generate report first";

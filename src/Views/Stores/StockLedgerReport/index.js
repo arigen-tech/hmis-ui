@@ -4,6 +4,7 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { getRequest } from "../../../service/apiService";
+import { INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
 
 const StoreStockLedgerReport = () => {
   // State for form inputs
@@ -41,6 +42,8 @@ const StoreStockLedgerReport = () => {
   const debounceItemRef = useRef(null);
   const dropdownItemRef = useRef(null);
 
+  const hospitalId=sessionStorage.getItem("hospitalId");
+
   // Check if both required fields are selected
   const isSearchEnabled = () => {
     return selectedItem?.itemId && batchNo?.trim() !== "";
@@ -55,11 +58,11 @@ const StoreStockLedgerReport = () => {
         page: page,
         size: DEFAULT_ITEMS_PER_PAGE
       });
-      
+      if(hospitalId) params.append('hospitalId',hospitalId);
       if (selectedItem?.itemId) params.append('itemId', selectedItem.itemId);
       if (batchNo) params.append('batchNo', batchNo);
       
-      const response = await getRequest(`/indent/store-stock-ledger/report?${params.toString()}`);
+      const response = await getRequest(`${INVENTORY}/storeStockLedger?${params.toString()}`);
       
       if (response?.response) {
         const mappedData = mapApiData(response.response.content);
@@ -126,7 +129,7 @@ const StoreStockLedgerReport = () => {
   // Fetch items from API with debounce
   const fetchItems = async (page, searchText = "") => {
     try {
-      const url = `/indent/item/search?keyword=${encodeURIComponent(searchText)}&page=${page}&size=10`;
+      const url = `${INVENTORY}/item/search?sectionId=${SECTION_ID_FOR_DRUGS}&keyword=${encodeURIComponent(searchText)}&page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -148,7 +151,7 @@ const StoreStockLedgerReport = () => {
   const fetchBatches = async (itemId) => {
     try {
       setIsBatchLoading(true);
-      const url = `/indent/item/batches/${itemId}`;
+      const url = `${INVENTORY}/item/batches/${itemId}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response) {

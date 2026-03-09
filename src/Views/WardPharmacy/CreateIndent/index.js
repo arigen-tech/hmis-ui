@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { MAS_DEPARTMENT, Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
+import { Store_Internal_Indent, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import DatePicker from "../../../Components/DatePicker";
@@ -33,30 +33,44 @@ import {
   INDENT_SUBMIT_TITLE,
   INDENT_SUBMIT_FILE_NAME,
   FETCH_DEPARTMENT_ERR_MSG,
-  FETCH_ITEM_ERR_MSG
+  FETCH_ITEM_ERR_MSG,
+  FETCH_ITEM_DETAILS_ERR_MSG,
+  INDENT_TYPE_CHANGE_WARN_MSG,
+  INDENT_TYPE_MANDARORY_WARN_MSG
 } from "../../../config/constants";
+import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const IndentCreation = () => {
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null)
   const [confirmationPopup, setConfirmationPopup] = useState(null);
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+  const hospitalId = sessionStorage.getItem("hospitalId");
 
   // Form State
   const [indentDate, setIndentDate] = useState(new Date().toISOString().split("T")[0]);
   const [department, setDepartment] = useState("");
   const [departments, setDepartments] = useState([]);
-  const [loggedInDepartment, setLoggedInDepartment] = useState(""); // Will be auto-filled from department ID
+  const [loggedInDepartment, setLoggedInDepartment] = useState("");
 
-  // Drug search state
-  const [allDrugs, setAllDrugs] = useState([]);
-  const [dropdownVisible, setDropdownVisible] = useState(false);
+  const [indentType, setIndentType] = useState(""); 
+  const [pendingIndentType, setPendingIndentType] = useState(null);
+
+  // Drug search state with debounce - Now per row
+  const [itemDropdown, setItemDropdown] = useState([]);
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemPage, setItemPage] = useState(0);
+  const [itemLastPage, setItemLastPage] = useState(true);
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [isItemLoading, setIsItemLoading] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
-  const [dropdownPosition, setDropdownPosition] = useState({ x: 0, y: 0, width: 0 });
-  const [selectedDrugs, setSelectedDrugs] = useState([]);
+  
+  // Refs for debounce and dropdown
+  const debounceItemRef = useRef(null);
+  const dropdownItemRef = useRef(null);
 
   const [indentEntries, setIndentEntries] = useState([
-    { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
+    { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null },
   ]);
 
   // Validation state
@@ -77,7 +91,7 @@ const IndentCreation = () => {
         return;
       }
 
-      const response = await getRequest(`${MAS_DEPARTMENT}/getById/${departmentId}`);
+      const response = await getRequest(`${INVENTORY}/currentDepartment/${departmentId}`);
       console.log("Current Department API Response:", response);
 
       if (response && response.data) {
@@ -98,7 +112,7 @@ const IndentCreation = () => {
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${Store_Internal_Indent}/fixed-dropdown`);
+      const response = await getRequest(`${INVENTORY}/indentApplicable/departments`);
       console.log("Departments API Response:", response);
 
       if (response && response.response && Array.isArray(response.response)) {
@@ -117,35 +131,426 @@ const IndentCreation = () => {
     }
   };
 
-  // Fetch all drugs
-  const fetchAllDrugs = async () => {
+  // Fetch items from API with debounce - Modified to use sectionId based on indent type
+  const fetchItems = async (page, searchText = "") => {
+    try {
+      setIsItemLoading(true);
+      // Determine section ID based on indent type
+      const params = new URLSearchParams();
+
+if (indentType === "drug") {
+  params.append("sectionId", SECTION_ID_FOR_DRUGS);
+}
+
+params.append("keyword", searchText);
+params.append("page", page);
+params.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+          totalPages: data.response.totalPages,
+          totalElements: data.response.totalElements
+        };
+      }
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } finally {
+      setIsItemLoading(false);
+    }
+  };
+
+  // Fetch item details by ID
+  const fetchItemDetails = async (itemId) => {
+    try {
+      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const response = await getRequest(url);
+      
+      if (response.status === 200 && response.response) {
+        return response.response;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+      showPopup(FETCH_ITEM_DETAILS_ERR_MSG, "error");
+      return null;
+    } 
+  };
+
+  // Handle item search with debounce - Now per row
+  const handleItemSearch = (value, index) => {
+    // Check if indent type is selected
+    if (!indentType) {
+      showPopup("Please select Indent Type first", "warning");
+      return;
+    }
+
+    setItemSearch(value);
+    setActiveRowIndex(index);
+    
+    // Update the drugName in the entry
+    const newEntries = [...indentEntries];
+    newEntries[index] = {
+      ...newEntries[index],
+      drugName: value
+    };
+    setIndentEntries(newEntries);
+    
+    // Clear selections when user types
+    if (!value.trim() || (newEntries[index].drugId && !value.includes(newEntries[index].drugName))) {
+      newEntries[index] = {
+        ...newEntries[index],
+        drugId: null,
+        drugCode: "",
+        unit: "",
+        storesStock: "",
+        wardStock: "",
+        drugData: null
+      };
+      setIndentEntries(newEntries);
+    }
+
+    // Debounce API call
+    if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
+    debounceItemRef.current = setTimeout(async () => {
+      if (!value.trim()) {
+        setItemDropdown([]);
+        setShowItemDropdown(false);
+        return;
+      }
+      const result = await fetchItems(0, value);
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    }, 700);
+  };
+
+  // Load first page of items for dropdown - Now per row
+  const loadFirstItemPage = (searchText) => {
+    if (!searchText.trim() || !indentType) return;
+    setItemSearch(searchText);
+    fetchItems(0, searchText).then(result => {
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    });
+  };
+
+  // Load more items for infinite scroll
+  const loadMoreItems = async () => {
+    if (itemLastPage) return;
+    const nextPage = itemPage + 1;
+    const result = await fetchItems(nextPage, itemSearch);
+    setItemDropdown(prev => [...prev, ...result.list]);
+    setItemLastPage(result.last);
+    setItemPage(nextPage);
+  };
+
+  // Handle item selection from dropdown
+  const handleItemSelect = async (index, item) => {
+    // Check if drug is already selected in another row
+    const isDuplicate = indentEntries.some((entry, i) => 
+      i !== index && entry.drugId === item.itemId
+    );
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_DRUG_WARNING, "warning");
+      return;
+    }
+
+    // Fetch complete item details
+    const itemDetails = await fetchItemDetails(item.itemId);
+    
+    if (itemDetails) {
+      const newEntries = [...indentEntries];
+      
+      // Use available stock fields from the API response
+      const storesStock = itemDetails.storestocks !== null && itemDetails.storestocks !== undefined ? itemDetails.storestocks : 0;
+      const wardStock = itemDetails.wardstocks !== null && itemDetails.wardstocks !== undefined ? itemDetails.wardstocks : 0;
+
+      // Update the selected row with complete item information
+      newEntries[index] = {
+        ...newEntries[index],
+        drugId: itemDetails.itemId,
+        drugCode: itemDetails.pvmsNo || "",
+        drugName: itemDetails.nomenclature || "",
+        unit: itemDetails.unitAuName || itemDetails.dispUnitName || "",
+        storesStock: storesStock,
+        wardStock: wardStock,
+        drugData: {
+          reOrderLevelStore: itemDetails.reOrderLevelStore,
+          reOrderLevelDispensary: itemDetails.reOrderLevelDispensary,
+          adispQty: itemDetails.adispQty,
+          storestocks: itemDetails.storestocks,
+          wardstocks: itemDetails.wardstocks,
+          dispstocks: itemDetails.dispstocks,
+          sectionName: itemDetails.sectionName,
+          itemTypeName: itemDetails.itemTypeName,
+          groupName: itemDetails.groupName,
+          itemClassName: itemDetails.itemClassName
+        }
+      };
+
+      setIndentEntries(newEntries);
+      setItemSearch(""); // Clear the search after selection
+      setShowItemDropdown(false); // Hide dropdown
+      setActiveRowIndex(null);
+
+      // Clear errors for this row
+      const newErrors = { ...errors };
+      delete newErrors[`drug_${index}`];
+      delete newErrors[`qty_${index}`];
+      delete newErrors[`stock_${index}`];
+      setErrors(newErrors);
+    }
+  };
+
+  // Handle indent type change with confirmation
+  const handleIndentTypeChange = (e) => {
+    const newIndentType = e.target.value;
+    
+    // Check if there are any non-empty entries (with drug name or drugId)
+    const hasData = indentEntries.some(entry => 
+      entry.drugName?.trim() !== "" || entry.drugId !== null
+    );
+
+    if (hasData && newIndentType !== indentType) {
+      // Store the pending indent type and show confirmation
+      setPendingIndentType(newIndentType);
+      setConfirmationPopup({
+        message: INDENT_TYPE_CHANGE_WARN_MSG,
+        onConfirm: () => {
+          // User confirmed - change indent type and clear data
+          setIndentType(newIndentType);
+          
+          // Clear indent type error if exists
+          if (errors.indentType) {
+            const newErrors = { ...errors };
+            delete newErrors.indentType;
+            setErrors(newErrors);
+          }
+          
+          // Reset item search and dropdown
+          setItemSearch("");
+          setItemDropdown([]);
+          setShowItemDropdown(false);
+          setActiveRowIndex(null);
+          
+          // Clear drug selections from all rows
+          setIndentEntries(prevEntries => 
+            prevEntries.map(entry => ({
+              ...entry,
+              drugCode: "",
+              drugName: "",
+              unit: "",
+              requiredQty: "",
+              storesStock: "",
+              wardStock: "",
+              drugId: null,
+              drugData: null
+            }))
+          );
+          
+          setPendingIndentType(null);
+          setConfirmationPopup(null);
+        },
+        onCancel: () => {
+          // User cancelled - revert to previous indent type
+          setPendingIndentType(null);
+          setConfirmationPopup(null);
+        },
+        confirmText: "Yes",
+        cancelText: "No",
+        type: "warning"
+      });
+    } else {
+      // No data or same indent type - change directly
+      setIndentType(newIndentType);
+      
+      // Clear indent type error if exists
+      if (errors.indentType) {
+        const newErrors = { ...errors };
+        delete newErrors.indentType;
+        setErrors(newErrors);
+      }
+      
+      // Reset item search and dropdown
+      setItemSearch("");
+      setItemDropdown([]);
+      setShowItemDropdown(false);
+      setActiveRowIndex(null);
+      
+      // If switching to a different indent type with no data, still clear the rows
+      if (newIndentType !== indentType) {
+        setIndentEntries(prevEntries => 
+          prevEntries.map(entry => ({
+            ...entry,
+            drugCode: "",
+            drugName: "",
+            unit: "",
+            requiredQty: "",
+            storesStock: "",
+            wardStock: "",
+            drugId: null,
+            drugData: null
+          }))
+        );
+      }
+    }
+  };
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
+        setShowItemDropdown(false);
+        setActiveRowIndex(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  useEffect(() => {
+    fetchDepartments();
+    fetchCurrentDepartment();
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle entry change
+  const handleEntryChange = (id, field, value) => {
+    setIndentEntries(prevEntries => {
+      const updatedEntries = prevEntries.map(entry =>
+        entry.id === id ? { ...entry, [field]: value } : entry
+      );
+      return updatedEntries;
+    });
+
+    // Clear errors when user starts typing
+    const entryIndex = indentEntries.findIndex(entry => entry.id === id);
+    if (entryIndex !== -1) {
+      const newErrors = { ...errors };
+      if (field === "requiredQty") {
+        delete newErrors[`qty_${entryIndex}`];
+        delete newErrors[`stock_${entryIndex}`];
+      }
+      setErrors(newErrors);
+    }
+  };
+
+  const handleAddRow = () => {
+    // Check if current row has drug name
+    const lastRow = indentEntries[indentEntries.length - 1];
+
+    if (!lastRow.drugName || lastRow.drugName.trim() === "") {
+      showPopup(EMPTY_DRUG_NAME_WARNING, "warning");
+      return;
+    }
+
+    const newId = Math.max(...indentEntries.map(e => e.id), 0) + 1;
+    setIndentEntries([
+      ...indentEntries,
+      { id: newId, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null }
+    ]);
+  };
+
+  const handleDeleteRow = (id) => {
+    if (indentEntries.length > 1) {
+      setIndentEntries(indentEntries.filter(entry => entry.id !== id));
+
+      // Clear errors for deleted row
+      const entryIndex = indentEntries.findIndex(entry => entry.id === id);
+      if (entryIndex !== -1) {
+        const newErrors = { ...errors };
+        delete newErrors[`drug_${entryIndex}`];
+        delete newErrors[`qty_${entryIndex}`];
+        delete newErrors[`stock_${entryIndex}`];
+        setErrors(newErrors);
+      }
+    } else {
+      showPopup(MINIMUM_ROWS_WARNING, "warning");
+    }
+  };
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+      },
+    })
+  }
+
+  // Validate form
+  const validateForm = () => {
+    const newErrors = {};
+
+    // Department validation
+    if (!department) {
+      newErrors.department = INVALID_DEPARTMENT_ERROR;
+    }
+
+    // Date validation
+    if (!indentDate) {
+      newErrors.indentDate = INVALID_DATE_ERROR;
+    }
+
+    // Indent Type validation
+    if (!indentType) {
+      newErrors.indentType = "Please select Indent Type";
+    }
+
+    // Entries validation - check for drugId
+    indentEntries.forEach((entry, index) => {
+      if (!entry.drugId) {
+        newErrors[`drug_${index}`] = SELECT_DRUG_ERROR;
+      }
+      if (!entry.requiredQty || entry.requiredQty <= 0) {
+        newErrors[`qty_${index}`] = INVALID_QUANTITY_ERROR;
+      }
+      if (entry.requiredQty && entry.storesStock && parseFloat(entry.requiredQty) > parseFloat(entry.storesStock)) {
+        newErrors[`stock_${index}`] = EXCEED_STOCK_ERROR;
+      }
+    });
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
+  };
+
+  // Check for duplicate drugs
+  const hasDuplicateDrugs = () => {
+    const drugIds = indentEntries
+      .filter(entry => entry.drugId)
+      .map(entry => entry.drugId);
+
+    const uniqueDrugIds = [...new Set(drugIds)];
+    return drugIds.length !== uniqueDrugIds.length;
+  };
+
+  // ROL Popup Functions
+  const handleImportROL = async () => {
+    console.log("Import from ROL triggered");
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`);
-      console.log("Drugs API Response:", response);
-
-      if (response && response.response && Array.isArray(response.response)) {
-        setAllDrugs(response.response);
-        console.log("Drugs loaded:", response.response.length);
-      } else if (response && Array.isArray(response)) {
-        setAllDrugs(response);
-        console.log("Drugs loaded:", response.length);
-      } else if (response && response.data && Array.isArray(response.data)) {
-        setAllDrugs(response.data);
-        console.log("Drugs loaded:", response.data.length);
-      } else {
-        console.error("Unexpected drugs response structure:", response);
-        showPopup("Error: Unexpected drugs response format", "error");
-      }
+      await fetchROLItems();
+      setShowROLPopup(true);
     } catch (err) {
-      console.error("Error fetching drugs:", err);
-      showPopup(FETCH_ITEM_ERR_MSG, "error");
+      console.error("Error preparing ROL popup:", err);
+      showPopup(ROL_LOAD_ERROR, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  // Update the ROL items fetch and processing
+  // Update the ROL items fetch
   const fetchROLItems = async () => {
     try {
       setLoading(true);
@@ -197,7 +602,7 @@ const IndentCreation = () => {
     }
   };
 
-  // Update the ROL import function to properly set drugId
+  // Update ROL import function
   const handleImportROLItems = () => {
     const selectedItems = rolItems.filter(item => item.selected);
 
@@ -252,273 +657,8 @@ const IndentCreation = () => {
       setIndentEntries([...indentEntries, ...entriesWithNewIds]);
     }
 
-    // Update selected drugs tracking
-    const newDrugIds = newEntries.map(entry => entry.drugId);
-    setSelectedDrugs(prev => [...prev, ...newDrugIds]);
-
     setShowROLPopup(false);
     showPopup(`${selectedItems.length} ${ROL_IMPORT_SUCCESS}`, "success");
-  };
-
-  useEffect(() => {
-    fetchDepartments();
-    fetchAllDrugs();
-    fetchCurrentDepartment();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Helper function to get display value with drug code in unique format
-  const getDrugDisplayValue = (drugName, drugCode) => {
-    if (!drugName && !drugCode) return "";
-    if (drugName && drugCode) {
-      return `${drugName} [${drugCode}]`;
-    }
-    return drugName || drugCode;
-  };
-
-  // Helper function to extract drug name from display value (for search)
-  const extractDrugName = (displayValue) => {
-    if (!displayValue) return "";
-    // Remove the code part in brackets for searching
-    const bracketIndex = displayValue.lastIndexOf('[');
-    if (bracketIndex > -1) {
-      return displayValue.substring(0, bracketIndex).trim();
-    }
-    return displayValue;
-  };
-
-  // Filter drugs based on search input
-  const filterDrugsBySearch = (searchTerm) => {
-    if (!searchTerm) return [];
-
-    return allDrugs.filter(drug =>
-      drug.nomenclature?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      drug.pvmsNo?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      drug.itemId?.toString().includes(searchTerm)
-    ).slice(0, 10);
-  };
-
-  // Handle drug input focus for dropdown positioning
-  const handleDrugInputFocus = (event, index) => {
-    const input = event.target;
-    const rect = input.getBoundingClientRect();
-
-    setDropdownPosition({
-      x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollY,
-      width: rect.width
-    });
-
-    setActiveRowIndex(index);
-    setDropdownVisible(true);
-  };
-
-  // Debug payload function
-  const debugPayload = (payload) => {
-    console.log("=== DEBUG PAYLOAD ===");
-    console.log("Department ID:", payload.toDeptId);
-    console.log("Items count:", payload.items.length);
-    payload.items.forEach((item, index) => {
-      console.log(`Item ${index + 1}:`, {
-        itemId: item.itemId,
-        requestedQty: item.requestedQty,
-        availableStock: item.availableStock,
-        reason: item.reason
-      });
-    });
-    console.log("=== END DEBUG ===");
-  };
-
-  // Validate form
-  const validateForm = () => {
-    const newErrors = {};
-
-    // Department validation
-    if (!department) {
-      newErrors.department = INVALID_DEPARTMENT_ERROR;
-    }
-
-    // Date validation
-    if (!indentDate) {
-      newErrors.indentDate = INVALID_DATE_ERROR;
-    }
-
-    // Entries validation - check for drugId instead of drugName
-    indentEntries.forEach((entry, index) => {
-      if (!entry.drugId) {
-        newErrors[`drug_${index}`] = SELECT_DRUG_ERROR;
-      }
-      if (!entry.requiredQty || entry.requiredQty <= 0) {
-        newErrors[`qty_${index}`] = INVALID_QUANTITY_ERROR;
-      }
-      if (entry.requiredQty && entry.storesStock && parseFloat(entry.requiredQty) > parseFloat(entry.storesStock)) {
-        newErrors[`stock_${index}`] = EXCEED_STOCK_ERROR;
-      }
-    });
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  // Check for duplicate drugs
-  const hasDuplicateDrugs = () => {
-    const drugIds = indentEntries
-      .filter(entry => entry.drugId)
-      .map(entry => entry.drugId);
-
-    const uniqueDrugIds = [...new Set(drugIds)];
-    return drugIds.length !== uniqueDrugIds.length;
-  };
-
-  // Handle drug selection from dropdown
-  const handleDrugSelect = (index, drug) => {
-    // Check if drug is already selected in another row
-    const isDuplicate = selectedDrugs.some(id => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId);
-
-    if (isDuplicate) {
-      showPopup(DUPLICATE_DRUG_WARNING, "warning");
-      return;
-    }
-
-    const newEntries = [...indentEntries];
-
-    // Use available stock fields from the API response
-    const storesStock = drug.storestocks !== null && drug.storestocks !== undefined ? drug.storestocks : 0;
-    const wardStock = drug.wardstocks !== null && drug.wardstocks !== undefined ? drug.wardstocks : 0;
-
-    // Update the selected row with drug information
-    newEntries[index] = {
-      ...newEntries[index],
-      drugId: drug.itemId,
-      drugCode: drug.pvmsNo || "",
-      drugName: drug.nomenclature || "",
-      unit: drug.unitAuName || drug.dispUnitName || "",
-      storesStock: storesStock,
-      wardStock: wardStock,
-      drugData: {
-        reOrderLevelStore: drug.reOrderLevelStore,
-        reOrderLevelDispensary: drug.reOrderLevelDispensary,
-        adispQty: drug.adispQty,
-        storestocks: drug.storestocks,
-        wardstocks: drug.wardstocks,
-        dispstocks: drug.dispstocks,
-        sectionName: drug.sectionName,
-        itemTypeName: drug.itemTypeName,
-        groupName: drug.groupName,
-        itemClassName: drug.itemClassName
-      }
-    };
-
-    setIndentEntries(newEntries);
-
-    // Update selected drugs tracking
-    const newSelectedDrugs = selectedDrugs.filter(id => id !== newEntries[index].drugId);
-    newSelectedDrugs.push(drug.itemId);
-    setSelectedDrugs(newSelectedDrugs);
-
-    // Clear errors for this row
-    const newErrors = { ...errors };
-    delete newErrors[`drug_${index}`];
-    delete newErrors[`qty_${index}`];
-    delete newErrors[`stock_${index}`];
-    setErrors(newErrors);
-
-    setDropdownVisible(false);
-    setActiveRowIndex(null);
-  };
-
-  // Handle entry change
-  const handleEntryChange = (id, field, value) => {
-    setIndentEntries(prevEntries => {
-      const updatedEntries = prevEntries.map(entry =>
-        entry.id === id ? { ...entry, [field]: value } : entry
-      );
-
-      // If drug name is being cleared, remove from selected drugs
-      if (field === "drugName" && value === "") {
-        const entry = prevEntries.find(e => e.id === id);
-        if (entry && entry.drugId) {
-          setSelectedDrugs(prevSelected => prevSelected.filter(drugId => drugId !== entry.drugId));
-        }
-      }
-
-      return updatedEntries;
-    });
-
-    // Clear errors when user starts typing
-    const entryIndex = indentEntries.findIndex(entry => entry.id === id);
-    if (entryIndex !== -1) {
-      const newErrors = { ...errors };
-      if (field === "requiredQty") {
-        delete newErrors[`qty_${entryIndex}`];
-        delete newErrors[`stock_${entryIndex}`];
-      }
-      setErrors(newErrors);
-    }
-  };
-
-  const handleAddRow = () => {
-    // Check if current row has drug name
-    const lastRow = indentEntries[indentEntries.length - 1];
-
-    if (!lastRow.drugName || lastRow.drugName.trim() === "") {
-      showPopup(EMPTY_DRUG_NAME_WARNING, "warning");
-      return;
-    }
-
-    const newId = Math.max(...indentEntries.map(e => e.id), 0) + 1;
-    setIndentEntries([
-      ...indentEntries,
-      { id: newId, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" }
-    ]);
-  };
-
-  const handleDeleteRow = (id) => {
-    if (indentEntries.length > 1) {
-      // Remove drug from selected drugs if it was selected
-      const entryToDelete = indentEntries.find(entry => entry.id === id);
-      if (entryToDelete && entryToDelete.drugId) {
-        setSelectedDrugs(selectedDrugs.filter(drugId => drugId !== entryToDelete.drugId));
-      }
-
-      setIndentEntries(indentEntries.filter(entry => entry.id !== id));
-
-      // Clear errors for deleted row
-      const entryIndex = indentEntries.findIndex(entry => entry.id === id);
-      if (entryIndex !== -1) {
-        const newErrors = { ...errors };
-        delete newErrors[`drug_${entryIndex}`];
-        delete newErrors[`qty_${entryIndex}`];
-        delete newErrors[`stock_${entryIndex}`];
-        setErrors(newErrors);
-      }
-    } else {
-      showPopup(MINIMUM_ROWS_WARNING, "warning");
-    }
-  };
-
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
-    })
-  }
-
-  // ROL Popup Functions
-  const handleImportROL = async () => {
-    console.log("Import from ROL triggered");
-    try {
-      setLoading(true);
-      await fetchROLItems();
-      setShowROLPopup(true);
-    } catch (err) {
-      console.error("Error preparing ROL popup:", err);
-      showPopup(ROL_LOAD_ERROR, "error");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleImportPreviousIndent = () => {
@@ -548,11 +688,31 @@ const IndentCreation = () => {
   const resetForm = () => {
     setIndentDate(new Date().toISOString().split("T")[0]);
     setDepartment("");
+    setIndentType(""); // Reset indent type
     setIndentEntries([
-      { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "" },
+      { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null },
     ]);
-    setSelectedDrugs([]);
     setErrors({});
+    setShowItemDropdown(false);
+    setActiveRowIndex(null);
+    setItemSearch("");
+    setItemDropdown([]);
+  };
+
+  // Debug payload function
+  const debugPayload = (payload) => {
+    console.log("=== DEBUG PAYLOAD ===");
+    console.log("Department ID:", payload.toDeptId);
+    console.log("Items count:", payload.items.length);
+    payload.items.forEach((item, index) => {
+      console.log(`Item ${index + 1}:`, {
+        itemId: item.itemId,
+        requestedQty: item.requestedQty,
+        availableStock: item.availableStock,
+        reason: item.reason
+      });
+    });
+    console.log("=== END DEBUG ===");
   };
 
   const handleSave = async () => {
@@ -598,7 +758,7 @@ const IndentCreation = () => {
       setLoading(true);
       console.log("Saving indent payload:", payload);
 
-      const response = await postRequest(`${Store_Internal_Indent}/save`, payload);
+      const response = await postRequest(`${INVENTORY}/indent/save`, payload);
       console.log("Save response:", response);
 
       // Show confirmation popup instead of regular popup
@@ -692,7 +852,7 @@ const IndentCreation = () => {
       setLoading(true);
       console.log("Submitting indent payload:", payload);
 
-      const response = await postRequest(`${Store_Internal_Indent}/submit`, payload);
+      const response = await postRequest(`${INVENTORY}/indent/submit`, payload);
       console.log("Submit response:", response);
 
       // Show confirmation popup instead of regular popup
@@ -730,21 +890,6 @@ const IndentCreation = () => {
       setLoading(false);
     }
   };
-
-  // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (dropdownVisible && !event.target.closest('.dropdown-search-container')) {
-        setDropdownVisible(false);
-        setActiveRowIndex(null);
-      }
-    };
-
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [dropdownVisible]);
 
   return (
     <div className="content-wrapper">
@@ -790,7 +935,21 @@ const IndentCreation = () => {
                 </div>
 
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">Department</label>
+                  <label className="form-label fw-bold">Indent Type <span className="text-danger">*</span></label>
+                  <select
+                    className={`form-select ${errors.indentType ? 'is-invalid' : ''}`}
+                    value={indentType}
+                    onChange={handleIndentTypeChange}
+                  >
+                    <option value="">Select Indent Type</option>
+                    <option value="drug">Drug</option>
+                    <option value="nondrug">Non Drug</option>
+                  </select>
+                  {errors.indentType && <div className="invalid-feedback">{errors.indentType}</div>}
+                </div>
+
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Department <span className="text-danger">*</span></label>
                   <select
                     className={`form-select ${errors.department ? 'is-invalid' : ''}`}
                     value={department}
@@ -861,102 +1020,91 @@ const IndentCreation = () => {
                   <tbody>
                     {indentEntries.map((entry, index) => (
                       <tr key={entry.id}>
-                        <td style={{ position: 'relative' }}>
+                        <td style={{ position: 'relative' }} ref={dropdownItemRef}>
                           <div className="dropdown-search-container position-relative">
                             <input
                               type="text"
                               className={`form-control ${errors[`drug_${index}`] ? 'is-invalid' : ''}`}
-                              value={getDrugDisplayValue(entry.drugName, entry.drugCode)}
+                              value={entry.drugName} // Bind to entry.drugName for this specific row
                               autoComplete="off"
-                              onChange={(e) => {
-                                const displayValue = e.target.value;
-                                const drugName = extractDrugName(displayValue);
-                                handleEntryChange(entry.id, "drugName", drugName);
-                                if (drugName.trim() !== "") {
-                                  setActiveRowIndex(index);
-                                  setDropdownVisible(true);
-                                } else {
-                                  setDropdownVisible(false);
+                              onChange={(e) => handleItemSearch(e.target.value, index)}
+                              onClick={() => {
+                                if (entry.drugName?.trim() && indentType) {
+                                  loadFirstItemPage(entry.drugName);
+                                } else if (!indentType) {
+                                  showPopup(INDENT_TYPE_MANDARORY_WARN_MSG, "warning");
                                 }
                               }}
-                              onFocus={(e) => handleDrugInputFocus(e, index)}
-                              placeholder="Enter item name or code"
+                              placeholder={indentType ? "Type item name or code..." : "Select Indent Type first"}
                               style={{ borderRadius: "4px", minWidth: "280px" }}
+                              disabled={!indentType}
                             />
                             {errors[`drug_${index}`] && (
                               <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
                             )}
 
-                            {/* Search Dropdown */}
-                            {dropdownVisible && activeRowIndex === index &&
-                              extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode)).trim() !== "" && (
-                                <ul
-                                  className="list-group position-fixed dropdown-list"
-                                  style={{
-                                    top: `${dropdownPosition.y}px`,
-                                    left: `${dropdownPosition.x}px`,
-                                    width: `${dropdownPosition.width}px`,
-                                    zIndex: 99999,
-                                    backgroundColor: "#fff",
-                                    border: "1px solid #ccc",
-                                    borderRadius: "4px",
-                                    boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-                                    maxHeight: "250px",
-                                    overflowY: "auto",
-                                  }}
-                                >
-                                  {filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).length > 0 ? (
-                                    filterDrugsBySearch(extractDrugName(getDrugDisplayValue(entry.drugName, entry.drugCode))).map((drug) => {
-                                      const isSelectedInOtherRow = selectedDrugs.some(
-                                        (id) => id === drug.itemId && indentEntries[index]?.drugId !== drug.itemId
+                            {/* Search Dropdown - Only show for active row */}
+                            {showItemDropdown && activeRowIndex === index && indentType && (
+                              <div 
+                                className="border rounded mt-1 bg-white position-absolute w-100"
+                                style={{ maxHeight: "250px", zIndex: 1000, overflowY: "auto" }}
+                                onScroll={(e) => {
+                                  const target = e.target;
+                                  if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
+                                    loadMoreItems();
+                                  }
+                                }}
+                              >
+                                {isItemLoading && itemDropdown.length === 0 ? (
+                                  <div className="text-center p-3">
+                                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                      <span className="visually-hidden">Loading...</span>
+                                    </div>
+                                  </div>
+                                ) : itemDropdown.length > 0 ? (
+                                  <>
+                                    {itemDropdown.map((item) => {
+                                      const isSelectedInOtherRow = indentEntries.some(
+                                        (e, i) => i !== index && e.drugId === item.itemId
                                       );
                                       return (
-                                        <li
-                                          key={drug.itemId}
-                                          className="list-group-item list-group-item-action"
-                                          style={{
-                                            backgroundColor: isSelectedInOtherRow ? "#ffc107" : "#f8f9fa",
-                                            cursor: isSelectedInOtherRow ? "not-allowed" : "pointer",
-                                            padding: "8px 12px",
+                                        <div
+                                          key={item.itemId}
+                                          className="p-2 cursor-pointer hover-bg-light"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            if (!isSelectedInOtherRow) {
+                                              handleItemSelect(index, item);
+                                            }
                                           }}
-                                          onClick={() => {
-                                            if (!isSelectedInOtherRow) handleDrugSelect(index, drug);
+                                          style={{ 
+                                            cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
+                                            backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
+                                            borderBottom: '1px solid #f0f0f0'
                                           }}
                                         >
-                                          <div>
-                                            <strong>{drug.nomenclature}</strong>
-                                            <div
-                                              style={{
-                                                color: "#6c757d",
-                                                fontSize: "0.8rem",
-                                                marginTop: "2px",
-                                                display: "flex",
-                                                justifyContent: "space-between",
-                                                alignItems: "center"
-                                              }}
-                                            >
-                                              <div>
-                                                <span className="badge bg-info me-1" style={{ fontFamily: "monospace", fontSize: "0.75rem" }}>
-                                                  <i className="fas fa-hashtag me-1"></i>CODE:{drug.pvmsNo}
-                                                </span>
-                                              </div>
-                                              {isSelectedInOtherRow && (
-                                                <span className="text-success">
-                                                  <i className="fas fa-check-circle me-1"></i> Added
-                                                </span>
-                                              )}
-                                            </div>
+                                          <div className="fw-bold">{item.nomenclature}</div>
+                                          <div className="d-flex justify-content-between align-items-center">
+                                            <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                                            {isSelectedInOtherRow && (
+                                              <span className="badge bg-warning text-dark">Already Added</span>
+                                            )}
                                           </div>
-                                        </li>
+                                        </div>
                                       );
-                                    })
-                                  ) : (
-                                    <li className="list-group-item text-muted text-center">
-                                      {allDrugs.length === 0 ? "No drugs available" : "No drugs found"}
-                                    </li>
-                                  )}
-                                </ul>
-                              )}
+                                    })}
+                                    
+                                    {!itemLastPage && (
+                                      <div className="text-center p-2 text-primary small">
+                                        {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="p-2 text-muted text-center">No items found</div>
+                                )}
+                              </div>
+                            )}
                           </div>
                         </td>
                         <td>
@@ -1211,4 +1359,4 @@ const IndentCreation = () => {
   )
 }
 
-export default IndentCreation
+export default IndentCreation;
