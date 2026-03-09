@@ -1,27 +1,32 @@
-import { useState, useEffect } from "react"
-import LoadingScreen from "../../../Components/Loading"
-import { getRequest } from "../../../service/apiService"
-import { BILLING, LAB_REPORT_API, OPD_REPORT_API } from "../../../config/apiConfig"
-import Popup from "../../../Components/popup"
-import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+import { useState, useEffect } from "react";
+import LoadingScreen from "../../../Components/Loading";
+import { getRequest } from "../../../service/apiService";
+import {
+  BILLING,
+  LAB_REPORT_API,
+  OPD_REPORT_API,
+} from "../../../config/apiConfig";
+import Popup from "../../../Components/popup";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 const PatientwiseBilldatails = () => {
-  const [patientList, setPatientList] = useState([])
+  const [patientList, setPatientList] = useState([]);
   const [searchData, setSearchData] = useState({
     patientName: "",
-    mobileNo: ""
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const itemsPerPage = 5
+    mobileNo: "",
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
+  const [isLoading, setIsLoading] = useState(true);
+  const [searchLoading, setSearchLoading] = useState(false); // Add this line
+  const [error, setError] = useState(null);
+  const itemsPerPage = 5;
 
   // Add state variables for PDF handling
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
-  
+
   // Track loading states for individual records
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
@@ -38,10 +43,10 @@ const PatientwiseBilldatails = () => {
 
   const fetchBillingStatus = async () => {
     try {
-      setIsLoading(true)
-      setError(null)
+      setIsLoading(true);
+      setError(null);
 
-      const response = await getRequest(`${BILLING}`)
+      const response = await getRequest(`${BILLING}`);
 
       if (response && response.response) {
         const mappedData = response.response.map((item) => ({
@@ -60,27 +65,28 @@ const PatientwiseBilldatails = () => {
           billNo: item.billNo,
           billDate: item.billDate || "",
           serviceCategoryId: item.serviceCategoryId || null,
+          registrationNo: item.registrationNo || null,
           fullData: item,
-        }))
+        }));
 
-        setPatientList(mappedData)
+        setPatientList(mappedData);
       }
     } catch (error) {
-      console.error("Error fetching billing status data:", error)
-      setError(error.message)
+      console.error("Error fetching billing status data:", error);
+      setError(error.message);
       showPopup("Failed to fetch billing data", "error");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   useEffect(() => {
-    fetchBillingStatus()
-  }, [])
+    fetchBillingStatus();
+  }, []);
 
   useEffect(() => {
-    setCurrentPage(1)
-  }, [searchData.patientName, searchData.mobileNo])
+    setCurrentPage(1);
+  }, [searchData.patientName, searchData.mobileNo]);
 
   // Helper function to check if a record is generating PDF
   const isGeneratingPdf = (recordId) => {
@@ -95,20 +101,20 @@ const PatientwiseBilldatails = () => {
   // Generate PDF report based on serviceCategoryId
   const generateReport = async (record, flag = "D") => {
     const recordId = record.id;
-    
+
     // Add this record to generating set
     if (flag === "D") {
-      setGeneratingPdfIds(prev => new Set(prev).add(recordId));
+      setGeneratingPdfIds((prev) => new Set(prev).add(recordId));
     } else {
-      setPrintingIds(prev => new Set(prev).add(recordId));
+      setPrintingIds((prev) => new Set(prev).add(recordId));
     }
-    
+
     setPdfUrl(null);
     setSelectedRecord(record);
 
     try {
       let apiUrl = "";
-      
+
       // Determine API endpoint based on serviceCategoryId
       if (record.serviceCategoryId === 1) {
         // OPD Report
@@ -117,7 +123,10 @@ const PatientwiseBilldatails = () => {
         // Lab Report
         apiUrl = `${LAB_REPORT_API}?billNo=${record.billNo}&paymentStatus=${record.billingStatus}&flag=${flag}`;
       } else {
-        showPopup("Report type not supported for this service category", "error");
+        showPopup(
+          "Report type not supported for this service category",
+          "error",
+        );
         return;
       }
 
@@ -141,7 +150,6 @@ const PatientwiseBilldatails = () => {
         // For print - just send to printer, no need to display
         showPopup("Report sent to printer successfully!", "success");
       }
-
     } catch (error) {
       console.error("Error generating PDF", error);
       if (flag === "D") {
@@ -152,13 +160,13 @@ const PatientwiseBilldatails = () => {
     } finally {
       // Remove this record from loading sets
       if (flag === "D") {
-        setGeneratingPdfIds(prev => {
+        setGeneratingPdfIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(recordId);
           return newSet;
         });
       } else {
-        setPrintingIds(prev => {
+        setPrintingIds((prev) => {
           const newSet = new Set(prev);
           newSet.delete(recordId);
           return newSet;
@@ -167,82 +175,95 @@ const PatientwiseBilldatails = () => {
     }
   };
 
+  const handleSearch = () => {
+    setSearchLoading(true);
+    setTimeout(() => {
+      setSearchLoading(false);
+      setCurrentPage(1);
+    }, 300);
+  };
+
   // View report handler
   const handleViewReport = (record) => {
     console.log("View report for:", record);
     generateReport(record, "D");
-  }
+  };
 
   // Print report handler
   const handlePrintReport = (record) => {
     console.log("Print report for:", record);
     generateReport(record, "P");
-  }
+  };
 
   const handleSearchChange = (e) => {
-    const { id, value } = e.target
-    setSearchData((prevData) => ({ ...prevData, [id]: value }))
-  }
+    const { id, value } = e.target;
+    setSearchData((prevData) => ({ ...prevData, [id]: value }));
+  };
 
   const handleSearchReset = () => {
     setSearchData({
       patientName: "",
-      mobileNo: ""
-    })
-  }
+      mobileNo: "",
+    });
+  };
 
   const filteredPatientList = patientList.filter(
     (item) =>
-      (searchData.patientName === "" || 
-        item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())) &&
-      (searchData.mobileNo === "" || 
-        (item.mobileNo && item.mobileNo.includes(searchData.mobileNo)))
-  )
+      (searchData.patientName === "" ||
+        item.patientName
+          .toLowerCase()
+          .includes(searchData.patientName.toLowerCase())) &&
+      (searchData.mobileNo === "" ||
+        (item.mobileNo && item.mobileNo.includes(searchData.mobileNo))),
+  );
 
-  const filteredTotalPages = Math.ceil(filteredPatientList.length / itemsPerPage)
-  const currentItems = filteredPatientList.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
-
-
+  const filteredTotalPages = Math.ceil(
+    filteredPatientList.length / itemsPerPage,
+  );
+  const currentItems = filteredPatientList.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   // Format date for better display
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A"
+    if (!dateString) return "N/A";
     try {
-      const date = new Date(dateString)
-      return date.toLocaleDateString('en-GB')
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-GB");
     } catch (error) {
-      return dateString
+      return dateString;
     }
-  }
+  };
 
   // Get status badge color
   const getStatusBadgeColor = (status) => {
-    switch(status?.toLowerCase()) {
-      case 'paid':
-        return 'bg-success'
-      case 'pending':
-        return 'bg-warning'
-      case 'cancelled':
-        return 'bg-danger'
+    switch (status?.toLowerCase()) {
+      case "paid":
+        return "bg-success";
+      case "pending":
+        return "bg-warning";
+      case "cancelled":
+        return "bg-danger";
       default:
-        return 'bg-secondary'
+        return "bg-secondary";
     }
-  }
+  };
 
   // Format billing type badge
   const getBillingTypeBadge = (type) => {
-    switch(type?.toLowerCase()) {
-      case 'op':
-        return 'bg-info'
-      case 'ip':
-        return 'bg-primary'
+    switch (type?.toLowerCase()) {
+      case "op":
+        return "bg-info";
+      case "ip":
+        return "bg-primary";
       default:
-        return 'bg-secondary'
+        return "bg-secondary";
     }
-  }
+  };
 
   if (isLoading) {
-    return <LoadingScreen />
+    return <LoadingScreen />;
   }
 
   return (
@@ -264,7 +285,7 @@ const PatientwiseBilldatails = () => {
             setPdfUrl(null);
             setSelectedRecord(null);
           }}
-          name={`${selectedRecord?.serviceCategoryId === 1 ? 'OPD' : 'LAB'} Invoice - ${selectedRecord?.patientName || 'Patient'}`}
+          name={`${selectedRecord?.serviceCategoryId === 1 ? "OPD" : "LAB"} Invoice - ${selectedRecord?.patientName || "Patient"}`}
         />
       )}
 
@@ -272,14 +293,20 @@ const PatientwiseBilldatails = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Patient wise Bill Details</h4>
+              <h4 className="card-title p-2">
+                Invoice Report – OPD, Lab, and Radiology
+              </h4>
             </div>
 
             <div className="card-body">
               {error && (
                 <div className="alert alert-danger" role="alert">
                   <strong>Error:</strong> {error}
-                  <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={fetchBillingStatus}>
+                  <button
+                    type="button"
+                    className="btn btn-sm btn-outline-danger ms-2"
+                    onClick={fetchBillingStatus}
+                  >
                     Retry
                   </button>
                 </div>
@@ -316,17 +343,32 @@ const PatientwiseBilldatails = () => {
                         />
                       </div>
                       <div className="col-md-3 d-flex">
-                        <button 
-                          type="button" 
+                        <button
+                          type="button"
                           className="btn btn-primary me-2"
-                          onClick={() => {}}
+                          onClick={handleSearch}
+                          disabled={searchLoading}
                         >
-                          <i className="fa fa-search"></i> Search
+                          {searchLoading ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Searching...
+                            </>
+                          ) : (
+                            <>
+                              <i className="fa fa-search"></i> Search
+                            </>
+                          )}
                         </button>
                         <button
                           type="button"
                           className="btn btn-secondary"
                           onClick={handleSearchReset}
+                          disabled={searchLoading}
                         >
                           <i className="mdi mdi-refresh"></i> Reset
                         </button>
@@ -338,7 +380,8 @@ const PatientwiseBilldatails = () => {
 
               {!error && filteredPatientList.length === 0 && (
                 <div className="alert alert-info" role="alert">
-                  <i className="mdi mdi-information"></i> No billing records found.
+                  <i className="mdi mdi-information"></i> No billing records
+                  found.
                 </div>
               )}
 
@@ -347,6 +390,7 @@ const PatientwiseBilldatails = () => {
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
+                        <th>Registration No</th>
                         <th>Bill No</th>
                         <th>Patient Name</th>
                         <th>Contact No.</th>
@@ -362,16 +406,26 @@ const PatientwiseBilldatails = () => {
                     <tbody>
                       {currentItems.map((item) => (
                         <tr key={item.id}>
+                          <td>{item.registrationNo}</td>
                           <td>{item.billNo}</td>
                           <td>{item.patientName}</td>
                           <td>{item.mobileNo}</td>
-                          <td>{item.age}/{item.sex}</td>
+                          <td>
+                            {item.age}/{item.sex}
+                          </td>
                           <td>{item.relation}</td>
                           <td>{item.department}</td>
                           <td>{formatDate(item.billDate)}</td>
-                          <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
                           <td>
-                            <span className={`badge ${getBillingTypeBadge(item.billingType)}`}>
+                            ₹
+                            {typeof item.amount === "number"
+                              ? item.amount.toFixed(2)
+                              : item.amount}
+                          </td>
+                          <td>
+                            <span
+                              className={`badge ${getBillingTypeBadge(item.billingType)}`}
+                            >
                               {item.billingType}
                             </span>
                           </td>
@@ -380,12 +434,19 @@ const PatientwiseBilldatails = () => {
                               <button
                                 className="btn btn-success btn-sm"
                                 onClick={() => handleViewReport(item)}
-                                disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
+                                disabled={
+                                  isGeneratingPdf(item.id) ||
+                                  isPrinting(item.id)
+                                }
                                 title="View Report"
                               >
                                 {isGeneratingPdf(item.id) ? (
                                   <>
-                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    <span
+                                      className="spinner-border spinner-border-sm me-1"
+                                      role="status"
+                                      aria-hidden="true"
+                                    ></span>
                                     Generating...
                                   </>
                                 ) : (
@@ -397,17 +458,25 @@ const PatientwiseBilldatails = () => {
                               <button
                                 className="btn btn-primary btn-sm"
                                 onClick={() => handlePrintReport(item)}
-                                disabled={isGeneratingPdf(item.id) || isPrinting(item.id)}
+                                disabled={
+                                  isGeneratingPdf(item.id) ||
+                                  isPrinting(item.id)
+                                }
                                 title="Print Report"
                               >
                                 {isPrinting(item.id) ? (
                                   <>
-                                    <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                    <span
+                                      className="spinner-border spinner-border-sm me-1"
+                                      role="status"
+                                      aria-hidden="true"
+                                    ></span>
                                     Printing...
                                   </>
                                 ) : (
                                   <>
-                                    <i className="mdi mdi-printer me-1"></i> Print
+                                    <i className="mdi mdi-printer me-1"></i>{" "}
+                                    Print
                                   </>
                                 )}
                               </button>
@@ -419,14 +488,12 @@ const PatientwiseBilldatails = () => {
                   </table>
                 </div>
               )}
-
-             
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default PatientwiseBilldatails
+export default PatientwiseBilldatails;

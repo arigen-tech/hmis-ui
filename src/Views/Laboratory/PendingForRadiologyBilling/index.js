@@ -4,6 +4,8 @@ import { useNavigate } from "react-router-dom"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { getRequest } from "../../../service/apiService"
+
 import {
   ADD_ROW_WARNING,
   INVALID_DATE_TEXT,
@@ -18,6 +20,7 @@ import {
   COMMON_INV_IN_PACKAGES,
   DUPLICATE_PACKAGE_WRT_INV,
 } from "../../../config/constants"
+import { CATAGORY_WISE_BILLING, RADIOLOGY_SERVICE_CATAGORY } from "../../../config/apiConfig"
 
 const PendingForRadiologyBilling = () => {
   const [errors, setErrors] = useState({})
@@ -37,10 +40,13 @@ const PendingForRadiologyBilling = () => {
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
   const [patientList, setPatientList] = useState([])
   const [filteredPatientList, setFilteredPatientList] = useState([])
+  const [isLoading, setIsLoading] = useState(true)
+  const [error, setError] = useState(null)
+  
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
-    sessionNo: ""
+    RegistrationNo: ""
   })
   const [currentPage, setCurrentPage] = useState(1)
   const [showPatientDetails, setShowPatientDetails] = useState(false)
@@ -110,450 +116,91 @@ const PendingForRadiologyBilling = () => {
   const [checkedRows, setCheckedRows] = useState([true])
 
   useEffect(() => {
-    // Mock data initialization
-    setGenderData([
-      { id: 1, genderName: "Male", genderCode: "M" },
-      { id: 2, genderName: "Female", genderCode: "F" },
-      { id: 3, genderName: "Other", genderCode: "O" }
-    ])
-    
-    setRelationData([
-      { id: 1, relationName: "Self" },
-      { id: 2, relationName: "Father" },
-      { id: 3, relationName: "Mother" },
-      { id: 4, relationName: "Spouse" },
-      { id: 5, relationName: "Child" }
-    ])
-    
-    setCountryData([
-      { id: 1, countryName: "India" },
-      { id: 2, countryName: "USA" },
-      { id: 3, countryName: "UK" }
-    ])
-    
-    setInvestigationItems([
-      { 
-        investigationId: 1, 
-        investigationName: "Blood Test", 
-        price: 500, 
-        disc: 50,
-        investigationType: "Pathology"
-      },
-      { 
-        investigationId: 2, 
-        investigationName: "X-Ray Chest", 
-        price: 800, 
-        disc: 0,
-        investigationType: "Radiology"
-      },
-      { 
-        investigationId: 3, 
-        investigationName: "MRI Brain", 
-        price: 5000, 
-        disc: 500,
-        investigationType: "Radiology"
-      },
-      { 
-        investigationId: 4, 
-        investigationName: "CT Scan Abdomen", 
-        price: 4000, 
-        disc: 400,
-        investigationType: "Radiology"
-      }
-    ])
-    
-    setPackageItems([
-      { 
-        packageId: 1, 
-        packName: "Basic Health Package", 
-        actualCost: 2500,
-        baseCost: 3000,
-        disc: 500,
-        investigationIds: [1, 2]
-      },
-      { 
-        packageId: 2, 
-        packName: "Comprehensive Health Package", 
-        actualCost: 8000,
-        baseCost: 10000,
-        disc: 2000,
-        investigationIds: [1, 2, 3, 4]
-      },
-      { 
-        packageId: 3, 
-        packName: "Cardiac Package", 
-        actualCost: 3500,
-        baseCost: 4000,
-        disc: 500,
-        investigationIds: [1, 3]
-      }
-    ])
-    
-    setGstConfig({
-      gstApplicable: true,
-      gstPercent: 18,
-    })
-
-    // Initialize with mock data
-    const mockData = [
-      {
-        id: 1,
-        registrationNo: "REG001",
-        patientName: "John Doe",
-        mobileNo: "9876543210",
-        age: "30Y 2M 10D",
-        sex: "Male",
-        gender: "Male",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 10:30 AM",
-        amount: 1500,
-        sessionNo: "S001",
-        consultedDoctor: "Dr. Sharma",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "John",
-        middleName: "A",
-        lastName: "Doe",
-        email: "john.doe@email.com",
-        relationId: 1,
-        dob: "1994-01-15",
-        address1: "123 Main St",
-        city: "Mumbai",
-        pinCode: "400001",
-        country: 1,
-        state: 1,
-        district: 1,
-        // Investigation details
-        investigations: [
-          {
-            id: 1,
-            name: "X-Ray Chest",
-            date: "2024-01-15",
-            originalAmount: 800,
-            discountAmount: 0,
-            netAmount: 800,
-            type: "investigation",
-            itemId: 2
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 2,
-        registrationNo: "REG002",
-        patientName: "Jane Smith",
-        mobileNo: "9876543211",
-        age: "25Y 5M 15D",
-        sex: "Female",
-        gender: "Female",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 11:00 AM",
-        amount: 2500,
-        sessionNo: "S002",
-        consultedDoctor: "Dr. Patel",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "Jane",
-        middleName: "B",
-        lastName: "Smith",
-        email: "jane.smith@email.com",
-        relationId: 1,
-        dob: "1999-08-20",
-        address1: "456 Oak Ave",
-        city: "Pune",
-        pinCode: "411001",
-        country: 1,
-        state: 1,
-        district: 2,
-        // Investigation details
-        investigations: [
-          {
-            id: 2,
-            name: "MRI Brain",
-            date: "2024-01-15",
-            originalAmount: 5000,
-            discountAmount: 500,
-            netAmount: 4500,
-            type: "investigation",
-            itemId: 3
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 3,
-        registrationNo: "REG003",
-        patientName: "Mike Johnson",
-        mobileNo: "9876543212",
-        age: "45Y 0M 5D",
-        sex: "Male",
-        gender: "Male",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 11:30 AM",
-        amount: 5000,
-        sessionNo: "S003",
-        consultedDoctor: "Dr. Kumar",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "Mike",
-        middleName: "C",
-        lastName: "Johnson",
-        email: "mike.j@email.com",
-        relationId: 1,
-        dob: "1979-03-10",
-        address1: "789 Pine St",
-        city: "Nagpur",
-        pinCode: "440001",
-        country: 1,
-        state: 1,
-        district: 3,
-        // Investigation details
-        investigations: [
-          {
-            id: 3,
-            name: "CT Scan Abdomen",
-            date: "2024-01-15",
-            originalAmount: 4000,
-            discountAmount: 400,
-            netAmount: 3600,
-            type: "investigation",
-            itemId: 4
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 4,
-        registrationNo: "REG004",
-        patientName: "Sarah Williams",
-        mobileNo: "9876543213",
-        age: "35Y 8M 20D",
-        sex: "Female",
-        gender: "Female",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 12:00 PM",
-        amount: 800,
-        sessionNo: "S004",
-        consultedDoctor: "Dr. Sharma",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "Sarah",
-        middleName: "D",
-        lastName: "Williams",
-        email: "sarah.w@email.com",
-        relationId: 1,
-        dob: "1989-05-25",
-        address1: "321 Elm Rd",
-        city: "Mumbai",
-        pinCode: "400002",
-        country: 1,
-        state: 1,
-        district: 1,
-        // Investigation details
-        investigations: [
-          {
-            id: 4,
-            name: "X-Ray Chest",
-            date: "2024-01-15",
-            originalAmount: 800,
-            discountAmount: 0,
-            netAmount: 800,
-            type: "investigation",
-            itemId: 2
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 5,
-        registrationNo: "REG005",
-        patientName: "David Brown",
-        mobileNo: "9876543214",
-        age: "50Y 3M 12D",
-        sex: "Male",
-        gender: "Male",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 02:00 PM",
-        amount: 4000,
-        sessionNo: "S005",
-        consultedDoctor: "Dr. Patel",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "David",
-        middleName: "E",
-        lastName: "Brown",
-        email: "david.b@email.com",
-        relationId: 1,
-        dob: "1974-11-30",
-        address1: "654 Cedar Ln",
-        city: "Pune",
-        pinCode: "411002",
-        country: 1,
-        state: 1,
-        district: 2,
-        // Investigation details
-        investigations: [
-          {
-            id: 5,
-            name: "CT Scan Abdomen",
-            date: "2024-01-15",
-            originalAmount: 4000,
-            discountAmount: 400,
-            netAmount: 3600,
-            type: "investigation",
-            itemId: 4
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 6,
-        registrationNo: "REG006",
-        patientName: "Emily Wilson",
-        mobileNo: "9876543215",
-        age: "28Y 4M 20D",
-        sex: "Female",
-        gender: "Female",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 03:30 PM",
-        amount: 1200,
-        sessionNo: "S006",
-        consultedDoctor: "Dr. Kumar",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "Emily",
-        middleName: "F",
-        lastName: "Wilson",
-        email: "emily.w@email.com",
-        relationId: 1,
-        dob: "1996-08-15",
-        address1: "987 Maple Dr",
-        city: "Mumbai",
-        pinCode: "400003",
-        country: 1,
-        state: 1,
-        district: 1,
-        // Investigation details
-        investigations: [
-          {
-            id: 6,
-            name: "X-Ray Chest",
-            date: "2024-01-15",
-            originalAmount: 800,
-            discountAmount: 0,
-            netAmount: 800,
-            type: "investigation",
-            itemId: 2
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 7,
-        registrationNo: "REG007",
-        patientName: "Robert Taylor",
-        mobileNo: "9876543216",
-        age: "55Y 2M 5D",
-        sex: "Male",
-        gender: "Male",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-15 04:00 PM",
-        amount: 3200,
-        sessionNo: "S007",
-        consultedDoctor: "Dr. Sharma",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "Robert",
-        middleName: "G",
-        lastName: "Taylor",
-        email: "robert.t@email.com",
-        relationId: 1,
-        dob: "1969-10-05",
-        address1: "555 Birch Ln",
-        city: "Pune",
-        pinCode: "411003",
-        country: 1,
-        state: 1,
-        district: 2,
-        // Investigation details
-        investigations: [
-          {
-            id: 7,
-            name: "MRI Brain",
-            date: "2024-01-15",
-            originalAmount: 5000,
-            discountAmount: 500,
-            netAmount: 4500,
-            type: "investigation",
-            itemId: 3
-          }
-        ],
-        fullData: {}
-      },
-      {
-        id: 8,
-        registrationNo: "REG008",
-        patientName: "Lisa Anderson",
-        mobileNo: "9876543217",
-        age: "42Y 1M 10D",
-        sex: "Female",
-        gender: "Female",
-        relation: "Self",
-        billingType: "Radiology",
-        appointmentDateTime: "2024-01-16 09:00 AM",
-        amount: 2800,
-        sessionNo: "S008",
-        consultedDoctor: "Dr. Patel",
-        department: "Radiology",
-        billingStatus: "Pending",
-        // Additional patient details
-        firstName: "Lisa",
-        middleName: "H",
-        lastName: "Anderson",
-        email: "lisa.a@email.com",
-        relationId: 1,
-        dob: "1982-11-20",
-        address1: "123 Spruce St",
-        city: "Nagpur",
-        pinCode: "440002",
-        country: 1,
-        state: 1,
-        district: 3,
-        // Investigation details
-        investigations: [
-          {
-            id: 8,
-            name: "CT Scan Abdomen",
-            date: "2024-01-16",
-            originalAmount: 4000,
-            discountAmount: 400,
-            netAmount: 3600,
-            type: "investigation",
-            itemId: 4
-          }
-        ],
-        fullData: {}
-      }
-    ]
-
-    setPatientList(mockData)
-    setFilteredPatientList(mockData)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    fetchPendingBilling();
   }, [])
+
+    const fetchPendingBilling = async () => {
+      try {
+        setIsLoading(true)
+        setError(null)
+  
+      const response = await getRequest(
+        `${CATAGORY_WISE_BILLING}/${RADIOLOGY_SERVICE_CATAGORY}`,
+      );
+        if (response && response.response) {
+          const mappedData = response.response.map((item) => {
+            // Determine billing type and source
+            const isConsultation = item.billinghdid !== null && item.billingType === "Consultation Services"
+            const isLabRadiology = item.orderhdid !== null && item.billinghdid === null
+  
+            // Get first appointment data if available
+            const firstAppointment = item.appointments?.[0] || {}
+  
+            // Normalize visit type
+            const getVisitTypeLabel = (visitType) => {
+              if (!visitType) return "New"
+              if (visitType === "N") return "New"
+              if (visitType === "F") return "Follow-up"
+              return visitType
+            }
+  
+            return {
+              id: item.billinghdid || item.orderhdid,
+              patientId: item.patientid,
+              patientName: item.patientName || "N/A",
+              mobileNo: item.mobileNo || "N/A",
+              age: item.age || "N/A",
+              sex: item.sex || "N/A",
+              relation: item.relation || "N/A",
+              address: item.address || "",
+  
+              // Billing type handling
+              billingType: isLabRadiology
+                ? "Laboratory Services"
+                : (item.billingType || "N/A"),
+  
+              // Doctor and department - prioritize appointment data
+              consultedDoctor: firstAppointment.consultedDoctor || item.consultedDoctor || "N/A",
+              department: firstAppointment.department || item.department || "N/A",
+  
+              // Amount and status
+              amount: item.amount || 0,
+              billingStatus: item.billingStatus === "n" || item.orderhdPaymentStatus === "n"
+                ? "Pending"
+                : "Completed",
+  
+              // Visit information
+              visitType: getVisitTypeLabel(firstAppointment.visitType || item.visitType),
+              tokenNo: firstAppointment.tokenNo || item.tokenNo || null,
+              visitDate: firstAppointment.visitDate || item.visitDate || null,
+              sessionName: firstAppointment.sessionName || item.sessionName || null,
+  
+              // Registration cost - use top-level value
+              registrationCost: Number(item.registrationCost || 0),
+  
+              // Original data
+              appointments: item.appointments || [],
+              details: item.details || [],
+              flag: item.flag,
+              source: item.source,
+              billinghdid: item.billinghdid,
+              orderhdid: item.orderhdid,
+  
+              // Store complete original data
+              fullData: item
+            }
+          })
+  
+          setPatientList(mappedData)
+          setFilteredPatientList(mappedData)
+        }
+      } catch (error) {
+        console.error("Error fetching pending billing data:", error)
+        setError(error.message)
+      } finally {
+        setIsLoading(false)
+      }
+    }
 
   const handleSearchChange = (e) => {
     const { id, value } = e.target
@@ -1426,13 +1073,13 @@ const PendingForRadiologyBilling = () => {
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Session No.</label>
+                          <label className="form-label fw-semibold">Registration No.</label>
                           <input
                             type="text"
                             className="form-control"
-                            id="sessionNo"
-                            placeholder="Enter session number"
-                            value={searchData.sessionNo}
+                            id="registrationNo"
+                            placeholder="Enter Registration number"
+                            value={searchData.registrationNo}
                             onChange={handleSearchChange}
                           />
                         </div>
@@ -1477,7 +1124,7 @@ const PendingForRadiologyBilling = () => {
                             <th>Patient Name</th>
                             <th>Mobile No.</th>
                             <th>Age</th>
-                            <th>Sex</th>
+                            <th>Gender</th>
                             <th>Relation</th>
                             <th>Billing Type</th>
                             <th>Consulted Doctor</th>

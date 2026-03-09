@@ -1,7 +1,15 @@
 import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
-import { MAS_SERVICE_CATEGORY, POLICY_API, UPDATE_PATIENT_STATUS } from "../../../config/apiConfig";
+import {
+  CATAGORY_WISE_BILLING,
+  MAS_SERVICE_CATEGORY,
+  OPD_SERVICE_CATAGORY,
+  PATIENT_VISIT_DETAILS,
+  PENDING_BILLING_PATIENTS,
+  POLICY_API,
+  UPDATE_LAB_PAYMENT_STATUS,
+} from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
   APPOINTMENT_NOT_FOUND_ERR_MSG,
@@ -10,7 +18,9 @@ import {
   MISSING_MANDOTORY_FIELD,
   MISSING_MANDOTORY_FIELD_MSG,
 } from "../../../config/constants";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
 
 const OPDBillingDetails = () => {
@@ -48,14 +58,14 @@ const OPDBillingDetails = () => {
 
   const [appointments, setAppointments] = useState([]);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [appointmentPolicies, setAppointmentPolicies] = useState({});
   const [loading, setLoading] = useState(false);
   const [patientList, setPatientList] = useState([]);
   const [filteredPatientList, setFilteredPatientList] = useState([]);
+  const [error, setError] = useState(null);
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
-    sessionNo: ""
+    registrationNo: "",
   });
   const [currentPage, setCurrentPage] = useState(1);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
@@ -66,6 +76,21 @@ const OPDBillingDetails = () => {
     const timestamp = Date.now();
     const random = Math.floor(Math.random() * 1000);
     return `FREE${timestamp}${random}`;
+  };
+
+  const formatDateTime = (dateStr) => {
+    if (!dateStr) return "";
+
+    const date = new Date(dateStr);
+
+    const dd = String(date.getDate()).padStart(2, "0");
+    const mm = String(date.getMonth() + 1).padStart(2, "0");
+    const yyyy = date.getFullYear();
+
+    const hh = String(date.getHours()).padStart(2, "0");
+    const min = String(date.getMinutes()).padStart(2, "0");
+
+    return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
   };
 
   async function fetchGstConfiguration(optionalCategoryId) {
@@ -95,230 +120,109 @@ const OPDBillingDetails = () => {
     }
   }
 
-  // Mock function to fetch pending OPD billing list
   const fetchPendingOPDBilling = async () => {
-    setIsLoading(true);
     try {
-      // This would be replaced with actual API call
-      // const response = await getRequest(`${OPD_API}/pending`);
-      
-      // Mock data for demonstration
-      const mockData = [
-        {
-          id: 1,
-          patientUhid: "UHID001",
-          patientName: "John Doe",
-          mobileNo: "9876543210",
-          age: "30Y 2M 10D",
-          sex: "Male",
-          relation: "Self",
-          billingType: "Consultation Services",
-          consultedDoctor: "Dr. Sharma",
-          department: "OPD",
-          amount: 500,
-          billingStatus: "Pending",
-          registrationCost: 100,
-          patientId: "P001",
-          address: "123 Main St, Mumbai",
-          appointments: [
-            {
-              visitId: "V001",
-              tokenNo: "T001",
-              department: "OPD",
-              consultedDoctor: "Dr. Sharma",
-              sessionName: "Morning",
-              visitDate: "2024-01-15",
-              visitType: "New",
-              billingHdId: "BH001",
-              basePrice: 400,
-              discount: 0,
-              taxAmount: 72,
-              netAmount: 472
-            }
-          ],
-          details: [
-            {
-              basePrice: 400,
-              discount: 0,
-              taxAmount: 72,
-              netAmount: 472
-            }
-          ]
-        },
-        {
-          id: 2,
-          patientUhid: "UHID002",
-          patientName: "Jane Smith",
-          mobileNo: "9876543211",
-          age: "25Y 5M 15D",
-          sex: "Female",
-          relation: "Self",
-          billingType: "Consultation Services",
-          consultedDoctor: "Dr. Patel",
-          department: "OPD",
-          amount: 750,
-          billingStatus: "Pending",
-          registrationCost: 100,
-          patientId: "P002",
-          address: "456 Oak Ave, Pune",
-          appointments: [
-            {
-              visitId: "V002",
-              tokenNo: "T002",
-              department: "OPD",
-              consultedDoctor: "Dr. Patel",
-              sessionName: "Evening",
-              visitDate: "2024-01-15",
-              visitType: "Follow-up",
-              billingHdId: "BH002",
-              basePrice: 650,
-              discount: 50,
-              taxAmount: 108,
-              netAmount: 708
-            }
-          ],
-          details: [
-            {
-              basePrice: 650,
-              discount: 50,
-              taxAmount: 108,
-              netAmount: 708
-            }
-          ]
-        },
-        {
-          id: 3,
-          patientUhid: "UHID003",
-          patientName: "Mike Johnson",
-          mobileNo: "9876543212",
-          age: "45Y 0M 5D",
-          sex: "Male",
-          relation: "Self",
-          billingType: "Consultation Services",
-          consultedDoctor: "Dr. Kumar",
-          department: "OPD",
-          amount: 1200,
-          billingStatus: "Pending",
-          registrationCost: 100,
-          patientId: "P003",
-          address: "789 Pine St, Nagpur",
-          appointments: [
-            {
-              visitId: "V003",
-              tokenNo: "T003",
-              department: "OPD",
-              consultedDoctor: "Dr. Kumar",
-              sessionName: "Morning",
-              visitDate: "2024-01-16",
-              visitType: "New",
-              billingHdId: "BH003",
-              basePrice: 1100,
-              discount: 100,
-              taxAmount: 180,
-              netAmount: 1180
-            }
-          ],
-          details: [
-            {
-              basePrice: 1100,
-              discount: 100,
-              taxAmount: 180,
-              netAmount: 1180
-            }
-          ]
-        },
-        {
-          id: 4,
-          patientUhid: "UHID004",
-          patientName: "Sarah Williams",
-          mobileNo: "9876543213",
-          age: "35Y 8M 20D",
-          sex: "Female",
-          relation: "Self",
-          billingType: "Consultation Services",
-          consultedDoctor: "Dr. Sharma",
-          department: "OPD",
-          amount: 350,
-          billingStatus: "Pending",
-          registrationCost: 100,
-          patientId: "P004",
-          address: "321 Elm Rd, Mumbai",
-          appointments: [
-            {
-              visitId: "V004",
-              tokenNo: "T004",
-              department: "OPD",
-              consultedDoctor: "Dr. Sharma",
-              sessionName: "Evening",
-              visitDate: "2024-01-16",
-              visitType: "Follow-up",
-              billingHdId: "BH004",
-              basePrice: 250,
-              discount: 0,
-              taxAmount: 45,
-              netAmount: 295
-            }
-          ],
-          details: [
-            {
-              basePrice: 250,
-              discount: 0,
-              taxAmount: 45,
-              netAmount: 295
-            }
-          ]
-        },
-        {
-          id: 5,
-          patientUhid: "UHID005",
-          patientName: "David Brown",
-          mobileNo: "9876543214",
-          age: "50Y 3M 12D",
-          sex: "Male",
-          relation: "Self",
-          billingType: "Consultation Services",
-          consultedDoctor: "Dr. Patel",
-          department: "OPD",
-          amount: 950,
-          billingStatus: "Pending",
-          registrationCost: 100,
-          patientId: "P005",
-          address: "654 Cedar Ln, Pune",
-          appointments: [
-            {
-              visitId: "V005",
-              tokenNo: "T005",
-              department: "OPD",
-              consultedDoctor: "Dr. Patel",
-              sessionName: "Morning",
-              visitDate: "2024-01-17",
-              visitType: "New",
-              billingHdId: "BH005",
-              basePrice: 850,
-              discount: 50,
-              taxAmount: 144,
-              netAmount: 944
-            }
-          ],
-          details: [
-            {
-              basePrice: 850,
-              discount: 50,
-              taxAmount: 144,
-              netAmount: 944
-            }
-          ]
-        }
-      ];
+      setIsLoading(true);
+      setError(null);
 
-      setPatientList(mockData);
-      setFilteredPatientList(mockData);
+      const response = await getRequest(
+        `${CATAGORY_WISE_BILLING}/${OPD_SERVICE_CATAGORY}`,
+      );
+      if (response && response.response) {
+        console.log(response);
+        const mappedData = response.response.map((item) => {
+          const firstAppointment = item.appointments?.[0] || {};
+
+          const getVisitTypeLabel = (visitType) => {
+            if (!visitType) return "New";
+            if (visitType === "N") return "New";
+            if (visitType === "F") return "Follow-up";
+            return visitType;
+          };
+
+          return {
+            registrationNo: item.registrationNo,
+            id: item.billinghdid || item.orderhdid,
+            patientId: item.patientId,
+            patientName: item.patientName || "N/A",
+            mobileNo: item.mobileNo || "N/A",
+            age: item.age || "N/A",
+            gender: item.gender || "N/A",
+            relation: item.relation || "N/A",
+            address: item.address || "",
+            consultingDoctorName:
+              firstAppointment.consultingDoctorName ||
+              item.consultingDoctorName ||
+              "N/A",
+            departmentName:
+              firstAppointment.departmentName || item.departmentName || "N/A",
+            amount: item.amount || 0,
+            billingStatus: "Pending",
+            billingType: item.billingType,
+            appointmentDate: item.appointmentDate,
+            netAmount: item.netAmount,
+          };
+        });
+
+        setPatientList(mappedData);
+        setFilteredPatientList(mappedData);
+      }
     } catch (error) {
-      console.error("Error fetching pending OPD billing:", error);
-      Swal.fire(ERROR, "Failed to fetch pending list", "error");
+      console.error("Error fetching pending billing data:", error);
+      setError(error.message);
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const processBillingDetails = (data) => {
+    setFormData({
+      patientName: data.patientName,
+      mobileNo: data.mobileNo,
+      age: data.age,
+      sex: data.gender,
+      relation: data.relation,
+      patientId: data.patientid,
+      address: data.address,
+      patientUhid: data.patientUhid,
+    });
+
+    const processedAppointments = (data.appointments || []).map((appt) => {
+      const basePrice = Number(appt.tariff || 0);
+      const discount = Number(appt.discount || 0);
+      const gst = Number(appt.taxAmount || 0);
+
+      const totalAmount = basePrice - discount + gst;
+      const netAmount = Number(appt.netAmount || totalAmount);
+
+      return {
+        billingHdId: appt.billingHdId,
+        visitId: appt.visitId,
+        tokenNo: appt.tokenNo,
+        department: appt.department,
+        consultedDoctor: appt.consultedDoctor,
+        visitDate: appt.visitDate,
+        sessionName: appt.sessionName,
+        visitType: appt.visitType,
+
+        basePrice,
+        discount,
+        gst,
+        totalAmount,
+        registrationCost: appt.registrationCost || 0,
+        netAmount,
+
+        policyInfo: {
+          policyName: appt.policyCode || "N/A",
+          policyType: appt.policyType || "N/A",
+          eligibility: appt.policyEligibilityDays ?? "N/A",
+          discountApplied: `${appt.policyDiscountPercent || 0}%`,
+          remarks:appt.policyDescription||"N/A",
+        },
+      };
+    });
+
+    setAppointments(processedAppointments);
   };
 
   useEffect(() => {
@@ -327,7 +231,7 @@ const OPDBillingDetails = () => {
 
   const handleSearchChange = (e) => {
     const { id, value } = e.target;
-    setSearchData(prev => ({ ...prev, [id]: value }));
+    setSearchData((prev) => ({ ...prev, [id]: value }));
     setCurrentPage(1);
   };
 
@@ -335,15 +239,23 @@ const OPDBillingDetails = () => {
     setIsLoading(true);
     setTimeout(() => {
       const filtered = patientList.filter((item) => {
-        const patientNameMatch = searchData.patientName === "" || 
-          item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase());
-        
-        const mobileNoMatch = searchData.mobileNo === "" || 
+        const patientNameMatch =
+          searchData.patientName === "" ||
+          item.patientName
+            .toLowerCase()
+            .includes(searchData.patientName.toLowerCase());
+
+        const mobileNoMatch =
+          searchData.mobileNo === "" ||
           item.mobileNo.includes(searchData.mobileNo);
 
-        const sessionNoMatch = searchData.sessionNo === "" || 
-          (item.sessionNo && item.sessionNo.toLowerCase().includes(searchData.sessionNo.toLowerCase()));
-        
+        const sessionNoMatch =
+          searchData.sessionNo === "" ||
+          (item.sessionNo &&
+            item.sessionNo
+              .toLowerCase()
+              .includes(searchData.sessionNo.toLowerCase()));
+
         return patientNameMatch && mobileNoMatch && sessionNoMatch;
       });
       setFilteredPatientList(filtered);
@@ -356,7 +268,7 @@ const OPDBillingDetails = () => {
     setSearchData({
       patientName: "",
       mobileNo: "",
-      sessionNo: ""
+      sessionNo: "",
     });
     setFilteredPatientList(patientList);
     setCurrentPage(1);
@@ -366,112 +278,25 @@ const OPDBillingDetails = () => {
     setCurrentPage(page);
   };
 
-  const handleRowClick = (patient) => {
-    setSelectedPatient(patient);
-    setShowPatientDetails(true);
-    
-    // Process the selected patient data exactly as in the original useEffect
-    const data = patient;
+  const handleRowClick = async (patientId) => {
+    try {
+      setIsLoading(true);
+      console.log(patientId);
+      setSelectedPatient(patientId);
+      setShowPatientDetails(true);
 
-    fetchGstConfiguration(data.categoryId || null);
+      const response = await getRequest(
+        `${PATIENT_VISIT_DETAILS}/${patientId}`,
+      );
 
-    const topLevelRegCost = Number(data.registrationCost || 0);
-
-    const incomingAppointments =
-      Array.isArray(data.appointments) && data.appointments.length > 0
-        ? data.appointments
-        : [];
-
-    // Get details array
-    const details = Array.isArray(data.details) ? data.details : [];
-
-    if (incomingAppointments.length === 0) {
-      Swal.fire(ERROR, APPOINTMENT_NOT_FOUND_ERR_MSG, "error");
-      setShowPatientDetails(false);
-      setSelectedPatient(null);
-      return;
+      if (response?.status === 200) {
+        processBillingDetails(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching billing details:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    const processedAppointments = incomingAppointments.map((appt, idx) => {
-      let detail = details[idx] || details[0];
-
-      const visitType = normalizeVisitType(appt.visitType);
-      const basePrice = Number(detail?.basePrice || 0);
-      const discount = Number(detail?.discount || 0);
-      const taxAmount = Number(detail?.taxAmount || 0);
-      const detailNetAmount = Number(detail?.netAmount || 0);
-
-      // Calculate registration cost: only for "New" visits
-      let registrationCost = 0;
-      if (visitType === "New") {
-        if (incomingAppointments.length === 1) {
-          registrationCost = topLevelRegCost;
-        } else {
-          const newAppointmentsCount = incomingAppointments.filter(
-            (a) => normalizeVisitType(a.visitType) === "New",
-          ).length;
-          registrationCost =
-            newAppointmentsCount > 0
-              ? topLevelRegCost / newAppointmentsCount
-              : 0;
-        }
-      }
-
-      // Calculate amounts correctly
-      const totalAmount = basePrice - discount + taxAmount; // base - discount + tax
-      const netAmount = totalAmount + registrationCost; // total + registration
-
-      return {
-        billingHdId: appt.billingHdId || null,
-        visitId: appt.visitId,
-        tokenNo: appt.tokenNo,
-        department: appt.department,
-        consultedDoctor: appt.consultedDoctor,
-        sessionName: appt.sessionName,
-        visitDate: appt.visitDate?.split("T")[0] || "",
-        visitType,
-        room: appt.room || "",
-        tariffPlan: "General Tariff",
-
-        basePrice,
-        discount,
-        gst: taxAmount,
-        registrationCost,
-        totalAmount, // base - discount + tax
-        netAmount, // totalAmount + registrationCost
-
-        rawDetail: detail,
-
-        billingPolicyId: appt.billingPolicyId,
-        policyInfo: null,
-        isPolicyLoading: false,
-      };
-    });
-
-    setAppointments(processedAppointments);
-
-    setFormData({
-      patientName: data.patientName || "",
-      mobileNo: data.mobileNo || "",
-      age: data.age || "",
-      sex: safeSex(data.sex),
-      relation: data.relation || "",
-      patientId: data.patientid || "",
-      address: data.address || "",
-      billingType: data.billingType || "Consultation Services",
-      billingHeaderIds: Array.isArray(data.billingHeaderIds)
-        ? data.billingHeaderIds
-        : [data.billingHdId || data.billinghdid].filter(Boolean),
-      registrationCost: topLevelRegCost,
-      patientUhid: data.patientUhid || "",
-      billingPolicyId: data.billingPolicyId,
-    });
-
-    processedAppointments.forEach((appointment, index) => {
-      if (appointment.billingPolicyId) {
-        fetchPolicyForAppointment(appointment.billingPolicyId, index);
-      }
-    });
   };
 
   const handleBackToList = () => {
@@ -775,7 +600,7 @@ const OPDBillingDetails = () => {
       };
 
       const response = await postRequest(
-        `${UPDATE_PATIENT_STATUS}`,
+        `${UPDATE_LAB_PAYMENT_STATUS}`,
         paymentRequest,
       );
 
@@ -905,7 +730,9 @@ const OPDBillingDetails = () => {
                     <div className="card-body">
                       <div className="row g-4 align-items-end">
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Patient Name</label>
+                          <label className="form-label fw-semibold">
+                            Patient Name
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -916,7 +743,9 @@ const OPDBillingDetails = () => {
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Mobile No.</label>
+                          <label className="form-label fw-semibold">
+                            Mobile No.
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -927,27 +756,33 @@ const OPDBillingDetails = () => {
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Session No.</label>
+                          <label className="form-label fw-semibold">
+                            Registration No.
+                          </label>
                           <input
                             type="text"
                             className="form-control"
                             id="sessionNo"
-                            placeholder="Enter session number"
+                            placeholder="Enter Registration number"
                             value={searchData.sessionNo}
                             onChange={handleSearchChange}
                           />
                         </div>
                         <div className="col-md-3">
                           <div className="d-flex gap-2">
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
                               disabled={isLoading}
                             >
                               {isLoading ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
                                   Searching...
                                 </>
                               ) : (
@@ -975,42 +810,57 @@ const OPDBillingDetails = () => {
                       <table className="table table-bordered table-hover align-middle">
                         <thead className="table-light">
                           <tr>
+                            <th>Registration No.</th>
                             <th>Patient Name</th>
                             <th>Mobile No.</th>
                             <th>Age</th>
-                            <th>Sex</th>
-                            <th>Relation</th>
-                            <th>Billing Type</th>
-                            <th>Consulted Doctor</th>
+                            <th>Gender</th>
                             <th>Department</th>
-                            <th>Amount</th>
-                            <th>Billing Status</th>
+                            <th>Consulted Doctor</th>
+                            <th>Billing Type</th>
+                            <th>Appointment Date </th>
+                            <th>Bill Amount</th>
+                            <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
                           {currentItems.map((item) => (
                             <tr
                               key={item.id}
-                              onClick={() => handleRowClick(item)}
+                              onClick={() => handleRowClick(item.patientId)}
                               role="button"
-                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(item) }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ")
+                                  handleRowClick(item.patientId);
+                              }}
                               style={{ cursor: "pointer" }}
                             >
+                              <td>{item.registrationNo}</td>
                               <td>{item.patientName}</td>
                               <td>{item.mobileNo}</td>
                               <td>{item.age}</td>
-                              <td>{item.sex}</td>
-                              <td>{item.relation}</td>
+                              <td>{item.gender}</td>
+                              <td>{item.departmentName}</td>
+                              <td>{item.consultingDoctorName}</td>
                               <td>
-                                <span className="badge bg-info">{item.billingType}</span>
+                                <span className="badge bg-info">
+                                  {item.billingType}
+                                </span>
                               </td>
-                              <td>{item.consultedDoctor}</td>
-                              <td>{item.department}</td>
-                              <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
+                              <td>{formatDateTime(item.appointmentDate)}</td>
+                              <td>
+                                ₹
+                                {typeof item.netAmount === "number"
+                                  ? item.netAmount.toFixed(2)
+                                  : item.netAmount}
+                              </td>
                               <td>
                                 <button
                                   className="btn btn-warning btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRowClick(item.patientId);
+                                  }}
                                   style={{
                                     cursor: "pointer",
                                     border: "none",
@@ -1030,7 +880,8 @@ const OPDBillingDetails = () => {
                     </div>
                   ) : (
                     <div className="alert alert-info" role="alert">
-                      <i className="mdi mdi-information"></i> No pending OPD billing records found.
+                      <i className="mdi mdi-information"></i> No pending OPD
+                      billing records found.
                     </div>
                   )}
 
@@ -1061,7 +912,8 @@ const OPDBillingDetails = () => {
                         <div className="row">
                           <div className="form-group col-md-4 mt-3">
                             <label>
-                              Patient Name <span className="text-danger">*</span>
+                              Patient Name{" "}
+                              <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
@@ -1162,7 +1014,9 @@ const OPDBillingDetails = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={formatDateDDMMYYYY(appointment.visitDate)}
+                                value={formatDateDDMMYYYY(
+                                  appointment.visitDate,
+                                )}
                                 readOnly
                               />
                             </div>
@@ -1291,7 +1145,9 @@ const OPDBillingDetails = () => {
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={appointment.policyInfo.discountApplied}
+                                    value={
+                                      appointment.policyInfo.discountApplied
+                                    }
                                     readOnly
                                   />
                                 </div>
@@ -1332,7 +1188,7 @@ const OPDBillingDetails = () => {
                               />
                             </div>
                             <div className="form-group col-md-2 mt-3">
-                              <label>GST ({gstConfig.gstPercent}%)</label>
+                              <label>GST ({appointment.taxPercent}%)</label>
                               <input
                                 type="number"
                                 className="form-control"
@@ -1409,7 +1265,9 @@ const OPDBillingDetails = () => {
                             </p>
                           </div>
                           <div className="col-md-2">
-                            <strong className="text-primary">NET AMOUNT:</strong>
+                            <strong className="text-primary">
+                              NET AMOUNT:
+                            </strong>
                             <h4 className="mb-0 text-primary">
                               ₹{grandTotal.toFixed(2)}
                             </h4>

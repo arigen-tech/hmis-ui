@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import LoadingScreen from "../../../Components/Loading"
-import { LAB } from "../../../config/apiConfig"
+import { LAB, PENDING_BILLING_PATIENTS } from "../../../config/apiConfig"
 import { getRequest } from "../../../service/apiService"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
@@ -24,7 +24,7 @@ const PendingForBilling = () => {
       setIsLoading(true)
       setError(null)
 
-      const response = await getRequest(`${LAB}/pending`)
+      const response = await getRequest(`${PENDING_BILLING_PATIENTS}`)
 
       if (response && response.response) {
         const mappedData = response.response.map((item) => {
@@ -259,7 +259,7 @@ const PendingForBilling = () => {
                         <th>Patient Name</th>
                         <th>Mobile No.</th>
                         <th>Age</th>
-                        <th>Sex</th>
+                        <th>Gender</th>
                         <th>Relation</th>
                         <th>Billing Type</th>
                         <th>Consulted Doctor</th>

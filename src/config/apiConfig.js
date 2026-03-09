@@ -304,13 +304,19 @@ export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
 export const RESCHEDULE_APPOINTMENT = `/registration/rescheduleAppointment`;
 export const PATIENT_FOLLOW_UP_DETAILS = "/registration/getPatientDetails";
 export const GET_CANCELLED_APPOINTMENTS ="/registration/getCancelledAppointments";
-export const UPDATE_PATIENT_STATUS = `/registration/updatePaymentStatus`;
 export const GET_TOKENS = `/registration/getAppointmentSlots`;
 export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
 
-
+//billing
+export const UPDATE_OPD_PAYMENT_STATUS = `/billing/payment`;
+export const UPDATE_LAB_PAYMENT_STATUS = `/billing/updatePaymentStatus`
+export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
+export const PATIENT_VISIT_DETAILS = `/billing/patientBillingDetails`
+export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
+export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
+export const OPD_SERVICE_CATAGORY = "SC001";
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 

@@ -752,13 +752,13 @@ const LabBillingDetails = () => {
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Session No.</label>
+                          <label className="form-label fw-semibold">Registration No.</label>
                           <input
                             type="text"
                             className="form-control"
-                            id="sessionNo"
-                            placeholder="Enter session number"
-                            value={searchData.sessionNo}
+                            id="registrationNo"
+                            placeholder="Enter Registration number"
+                            value={searchData.registrationNo}
                             onChange={handleSearchChange}
                           />
                         </div>
