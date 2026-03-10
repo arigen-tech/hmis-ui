@@ -211,6 +211,9 @@ const validRoutes = [
   "/DetailedRadiologyReportPage",
   "/OPDReports",
   "/PendingForRadiologyBilling",
+  "/RequestForBlood",
+  // "/PendingBloodRequests",
+  "/BloodRequestTracking",
   
 ];
 

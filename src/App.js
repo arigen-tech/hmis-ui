@@ -207,6 +207,9 @@ import DetailedRadiologyReportPage from './Views/Radiology/DetailedReportPage';
 import BloodFailureReasonMaster from './Views/Masters/BloodFailureReasonMaster';
 import OPDReports from './Views/OPD/OpdReports';
 import PendingForRadiologyBilling from './Views/Laboratory/PendingForRadiologyBilling';
+import RequestForBlood from './Views/BloodBank/RequestForBlood';
+// import PendingBloodRequests from './Views/BloodBank/PendingBloodRequests';
+import BloodRequestTracking from './Views/BloodBank/BloodRequestTracking';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -448,7 +451,10 @@ function App() {
                 <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
                 <Route path='/BloodFailureReasonMaster' element={<BloodFailureReasonMaster/>}/>
                 <Route path="/OPDReports" element={<OPDReports/>} />
-                <Route path="PendingForRadiologyBilling" element={<PendingForRadiologyBilling/>} />
+                <Route path="/PendingForRadiologyBilling" element={<PendingForRadiologyBilling/>} />
+                <Route path="/RequestForBlood" element={<RequestForBlood/>} />
+                {/* <Route path="/PendingBloodRequests" element={<PendingBloodRequests/>} /> */}
+                <Route path="/BloodRequestTracking" element={<BloodRequestTracking/>} />
               </Route>
             </Route>
 
