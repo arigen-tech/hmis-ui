@@ -208,7 +208,7 @@ import BloodFailureReasonMaster from './Views/Masters/BloodFailureReasonMaster';
 import OPDReports from './Views/OPD/OpdReports';
 import PendingForRadiologyBilling from './Views/Laboratory/PendingForRadiologyBilling';
 import RequestForBlood from './Views/BloodBank/RequestForBlood';
-// import PendingBloodRequests from './Views/BloodBank/PendingBloodRequests';
+import PendingBloodRequests from './Views/BloodBank/PendingBloodRequests';
 import BloodRequestTracking from './Views/BloodBank/BloodRequestTracking';
 import OPDRegister from './Views/OPD/OpdRegister';
 
@@ -454,7 +454,7 @@ function App() {
                 <Route path="/OPDReports" element={<OPDReports/>} />
                 <Route path="/PendingForRadiologyBilling" element={<PendingForRadiologyBilling/>} />
                 <Route path="/RequestForBlood" element={<RequestForBlood/>} />
-                {/* <Route path="/PendingBloodRequests" element={<PendingBloodRequests/>} /> */}
+                <Route path="/PendingBloodRequests" element={<PendingBloodRequests/>} />
                 <Route path="/BloodRequestTracking" element={<BloodRequestTracking/>} />
                 <Route path="/OpdRegister" element={<OPDRegister/>} />
               </Route>

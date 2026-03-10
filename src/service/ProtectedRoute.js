@@ -212,7 +212,7 @@ const validRoutes = [
   "/OPDReports",
   "/PendingForRadiologyBilling",
   "/RequestForBlood",
-  // "/PendingBloodRequests",
+  "/PendingBloodRequests",
   "/BloodRequestTracking",
   "/OpdRegister"
   
