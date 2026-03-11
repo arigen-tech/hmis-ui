@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { Store_Internal_Indent, MAS_DRUG_MAS } from "../../../config/apiConfig"
+import { Store_Internal_Indent, MAS_DRUG_MAS, INVENTORY } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -10,6 +10,7 @@ const IndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
   const [processing, setProcessing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
@@ -24,11 +25,12 @@ const IndentApproval = () => {
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
-  // Status mapping
+  // Status mapping - updated to use statusName
   const statusMap = {
-    'A': { label: "Pending for Issue Department ", badge: "bg-success", textColor: "text-white" },
+    'Approved': { label: "Pending for Issue Department", badge: "bg-success", textColor: "text-white" },
   }
 
+  // Fetch pending indents (list view) - UPDATED to use new endpoint
   const fetchPendingIndents = async (deptId) => {
     try {
       if (!deptId) {
@@ -39,7 +41,8 @@ const IndentApproval = () => {
 
       setLoading(true);
 
-      const url = `${Store_Internal_Indent}/getallindentforapproved?deptId=${deptId}`;
+      // Updated URL to use the new endpoint
+      const url = `${INVENTORY}/indents/approvedForIssueDept?deptId=${deptId}`;
 
       console.log("Fetching pending indents from URL:", url);
 
@@ -70,43 +73,96 @@ const IndentApproval = () => {
     }
   };
 
-  // Fetch all drugs for dropdown with current stock
-  const fetchAllDrugs = async () => {
+  // Fetch indent details by indentMId - NEW FUNCTION
+  const fetchIndentDetails = async (indentMId) => {
     try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
-      console.log("Drugs API Response:", response)
+      setLoadingDetails(true)
+      // Use the new endpoint with indentMId and departmentId
+      const url = `${INVENTORY}/indentDetailsForIssueWithAvailableStock/${indentMId}?departmentId=${departmentId}`
 
+      console.log("Fetching indent details from URL:", url)
+
+      const response = await getRequest(url)
+      console.log("Indent Details API Full Response:", response)
+
+      let items = []
       if (response && response.response && Array.isArray(response.response)) {
-        const drugs = response.response.map(drug => ({
-          id: drug.itemId,
-          code: drug.pvmsNo || "",
-          name: drug.nomenclature || "",
-          unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0,
-          storesStock: drug.storestocks || 0
-        }))
-        setItemOptions(drugs)
-        console.log("Loaded drugs with stock:", drugs)
+        items = response.response
       } else if (response && Array.isArray(response)) {
-        const drugs = response.map(drug => ({
-          id: drug.itemId,
-          code: drug.pvmsNo || "",
-          name: drug.nomenclature || "",
-          unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0,
-          storesStock: drug.storestocks || 0
-        }))
-        setItemOptions(drugs)
-        console.log("Loaded drugs with stock:", drugs)
+        items = response
+      } else {
+        console.warn("Unexpected response structure, using empty array:", response)
+        items = []
       }
+
+      // Transform the API response to match the indentEntries format
+      const entries = items.map((item) => {
+        // Try to get current stock from drug list first
+        const drugInfo = itemOptions.find(drug => drug.name === item.itemName)
+        
+        return {
+          id: item.indentTId || null,
+          itemId: item.itemId || "", // Note: itemId might not be in the response
+          itemCode: item.itemCode || "", // Note: itemCode might not be in the response
+          itemName: item.itemName || "",
+          apu: item.itemUnitName || "",
+          requestedQty: item.qtyRequested || "",
+          approveQty: item.qtyRequested || "", // Default to requested quantity for approval
+          availableStock: item.availableStock || drugInfo?.availableStock || 0,
+          storesStock: drugInfo?.storesStock || "",
+          reasonForIndent: item.reasonForIndent || "",
+        }
+      })
+
+      console.log("Setting indent entries from details:", entries)
+      setIndentEntries(entries)
+
     } catch (err) {
-      console.error("Error fetching drugs:", err)
+      console.error("Error fetching indent details:", err)
+      showPopup("Error fetching indent details. Please try again.", "error")
+      setIndentEntries([])
+    } finally {
+      setLoadingDetails(false)
     }
   }
 
+  // Fetch all drugs for dropdown with current stock
+  // const fetchAllDrugs = async () => {
+  //   try {
+  //     const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
+  //     console.log("Drugs API Response:", response)
+
+  //     if (response && response.response && Array.isArray(response.response)) {
+  //       const drugs = response.response.map(drug => ({
+  //         id: drug.itemId,
+  //         code: drug.pvmsNo || "",
+  //         name: drug.nomenclature || "",
+  //         unit: drug.unitAuName || drug.dispUnitName || "",
+  //         availableStock: drug.wardstocks || drug.storestocks || 0,
+  //         storesStock: drug.storestocks || 0
+  //       }))
+  //       setItemOptions(drugs)
+  //       console.log("Loaded drugs with stock:", drugs)
+  //     } else if (response && Array.isArray(response)) {
+  //       const drugs = response.map(drug => ({
+  //         id: drug.itemId,
+  //         code: drug.pvmsNo || "",
+  //         name: drug.nomenclature || "",
+  //         unit: drug.unitAuName || drug.dispUnitName || "",
+  //         availableStock: drug.wardstocks || drug.storestocks || 0,
+  //         storesStock: drug.storestocks || 0
+  //       }))
+  //       setItemOptions(drugs)
+  //       console.log("Loaded drugs with stock:", drugs)
+  //     }
+  //   } catch (err) {
+  //     console.error("Error fetching drugs:", err)
+  //   }
+  // }
+
   useEffect(() => {
     fetchPendingIndents(departmentId)
-    fetchAllDrugs()
+    // fetchAllDrugs()
   }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle search by date range
@@ -126,52 +182,16 @@ const IndentApproval = () => {
     setCurrentPage(1)
   }
 
-  // Handle edit click - for approval/rejection
+  // Handle edit click - UPDATED to fetch indent details using indentMId
   const handleEditClick = async (record, e) => {
     e.stopPropagation()
 
     console.log("Approving record:", record)
     setSelectedRecord(record)
 
-    // Initialize entries from the items array in the record
-    let entries = []
+    // Fetch the detailed items for this indent using indentMId
+    await fetchIndentDetails(record.indentMId)
 
-    if (record.items && Array.isArray(record.items) && record.items.length > 0) {
-      console.log("Items found:", record.items)
-
-      // Create entries with current stock data
-      entries = await Promise.all(
-        record.items.map(async (item) => {
-          // Try to get current stock from drug list first
-          const drugInfo = itemOptions.find(drug => drug.id === item.itemId)
-          let currentStock = drugInfo?.availableStock || 0
-
-          // If not found in drug list, use the availableStock from backend
-          if (!currentStock && item.availableStock) {
-            currentStock = item.availableStock
-          }
-
-          return {
-            id: item.indentTId || null,
-            itemId: item.itemId || "",
-            itemCode: item.pvmsNo || "",
-            itemName: item.itemName || "",
-            apu: item.unitAuName || "",
-            requestedQty: item.requestedQty || "",
-            approveQty: item.requestedQty || "", // Default to requested quantity for approval
-            availableStock: currentStock,
-            storesStock: item.storesStock || "",
-            reasonForIndent: item.reason || "",
-          }
-        })
-      )
-    } else {
-      console.log("No items found")
-      entries = []
-    }
-
-    console.log("Setting indent entries for approval:", entries)
-    setIndentEntries(entries)
     setAction("")
     setRemarks("")
     setCurrentView("detail")
@@ -282,10 +302,10 @@ const IndentApproval = () => {
       remarks: remarks,
       deletedT: [], // Always send empty array
       items: indentEntries
-        .filter((entry) => entry.itemId && entry.itemName)
+        .filter((entry) => entry.itemName) // Filter out empty entries
         .map((entry) => {
           const itemPayload = {
-            itemId: Number(entry.itemId),
+            itemId: entry.itemId ? Number(entry.itemId) : 0, // Use 0 if itemId is not available
             requestedQty: entry.requestedQty ? Number(entry.requestedQty) : 0,
             approveQty: entry.approveQty
               ? Number(entry.approveQty)
@@ -314,7 +334,7 @@ const IndentApproval = () => {
 
       // Call ISSUE approval API endpoint
       await postRequest(
-        `${Store_Internal_Indent}/submitapprove`,
+        `${INVENTORY}/indent/approvedByIssueDept`,
         payload
       )
 
@@ -355,11 +375,12 @@ const IndentApproval = () => {
 
   // Detail View - WITH APPROVAL FUNCTIONALITY
   if (currentView === "detail") {
-    const statusInfo = statusMap[selectedRecord?.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
+    // Use statusName from the new API response
+    const statusInfo = statusMap[selectedRecord?.statusName] || { label: selectedRecord?.statusName || "Unknown", badge: "bg-secondary", textColor: "text-white" };
 
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen />}
+        {(loading || loadingDetails) && <LoadingScreen />}
 
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -397,7 +418,7 @@ const IndentApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.departmentName || selectedRecord?.fromDeptName || ""}
+                      value={selectedRecord?.deptName || selectedRecord?.departmentName || ""}
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -445,6 +466,16 @@ const IndentApproval = () => {
                       readOnly
                     />
                   </div>
+                   <div className="col-md-3">
+                    <label className="form-label fw-bold">Indent Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.indentType }
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
@@ -454,7 +485,7 @@ const IndentApproval = () => {
                         <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
                           S.No.
                         </th>
-                        <th style={{ width: "300px", minWidth: "300px" }}>Item Name/Code</th>
+                        <th style={{ width: "300px", minWidth: "300px" }}>Item Name</th>
                         <th style={{ width: "100px", minWidth: "100px" }}>A/U</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Requested Quantity</th>
                         <th style={{ width: "120px", minWidth: "120px" }}>Approve Quantity</th>
@@ -463,7 +494,13 @@ const IndentApproval = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {indentEntries.length === 0 ? (
+                      {loadingDetails ? (
+                        <tr>
+                          <td colSpan={7} className="text-center">
+                            <LoadingScreen />
+                          </td>
+                        </tr>
+                      ) : indentEntries.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center text-muted">
                             No items found.
@@ -508,7 +545,7 @@ const IndentApproval = () => {
                                 max={Math.min(entry.availableStock, entry.requestedQty)}
                                 step="1"
                                 style={{ minWidth: "110px" }}
-                                disabled={action === "rejected"} // Disable if rejected
+                                disabled={action === "rejected" || loadingDetails} // Disable if rejected or loading
                               />
                             </td>
                             <td>
@@ -551,6 +588,7 @@ const IndentApproval = () => {
                       className="form-select"
                       value={action}
                       onChange={(e) => setAction(e.target.value)}
+                      disabled={loadingDetails}
                     >
                       <option value="">Select</option>
                       <option value="approved">Approved</option>
@@ -567,6 +605,7 @@ const IndentApproval = () => {
                       onChange={(e) => setRemarks(e.target.value)}
                       placeholder="Enter remarks for approval or rejection"
                       rows="3"
+                      disabled={loadingDetails}
                     />
                   </div>
                 </div>
@@ -576,7 +615,7 @@ const IndentApproval = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSubmit}
-                    disabled={processing || !action || !remarks.trim()}
+                    disabled={processing || !action || !remarks.trim() || loadingDetails}
                   >
                     {processing ? "Processing..." : "Submit"}
                   </button>
@@ -653,6 +692,7 @@ const IndentApproval = () => {
                       <th>Department Name</th>
                       <th>Created By</th>
                       <th>Approved Date</th>
+                      <th>Drug / Non Drug</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -665,14 +705,16 @@ const IndentApproval = () => {
                       </tr>
                     ) : (
                       currentItems.map((item) => {
-                        const statusInfo = statusMap[item.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
+                        // Use statusName from the new API response
+                        const statusInfo = statusMap[item.statusName] || { label: item.statusName || "Unknown", badge: "bg-secondary", textColor: "text-white" };
                         return (
                           <tr key={item.indentMId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
                             <td>{formatDateTime(item.indentDate)}</td>
                             <td>{item.indentNo}</td>
-                            <td>{item.departmentName || item.fromDeptName}</td>
+                            <td>{item.deptName}</td>
                             <td>{item.createdBy}</td>
                             <td>{item.approvedDate ? formatDateTime(item.approvedDate) : "Pending"}</td>
+                            <td>{item.indentType}</td>
                             <td>
                               <span
                                 className={`badge ${statusInfo.badge} ${statusInfo.textColor}`}

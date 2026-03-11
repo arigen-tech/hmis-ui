@@ -712,7 +712,7 @@ const RoomMasterScreen = () => {
                           onClick={() => handleConfirm(true)}
                           disabled={loading}
                         >
-                          {loading ? "Processing..." : "Confirm"}
+                          Cancel
                         </button>
                       </div>
                     </div>

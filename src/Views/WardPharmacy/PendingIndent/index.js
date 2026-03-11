@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useNavigate } from 'react-router-dom'
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"
-import { Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig"
+import { Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -15,6 +15,7 @@ const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
   const [processing, setProcessing] = useState(false)
   const [loading, setLoading] = useState(false)
+  const [loadingDetails, setLoadingDetails] = useState(false)
   const [selectedRecord, setSelectedRecord] = useState(null)
   const [itemOptions, setItemOptions] = useState([])
   const [dtRecord, setDtRecord] = useState([])
@@ -28,22 +29,31 @@ const PendingIndentApproval = () => {
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [action, setAction] = useState("")
   const [remarks, setRemarks] = useState("")
+  const [selectedDrugs, setSelectedDrugs] = useState([]) // Added for drug selection tracking
+
+  // New state for item search similar to IndentViewUpdate
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemPage, setItemPage] = useState(0);
+  const [itemLastPage, setItemLastPage] = useState(true);
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [isItemLoading, setIsItemLoading] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [itemDropdown, setItemDropdown] = useState([]);
+  
+  // Refs for debounce and dropdown
+  const debounceItemRef = useRef(null);
+  const dropdownItemRef = useRef(null);
+  const itemInputRefs = useRef({});
 
   // Add navigate hook
   const navigate = useNavigate();
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
+  const departmentName = sessionStorage.getItem('departmentName') || "Current Dept"
 
-  // Status mapping
+  // Status mapping based on statusName from the new API response
   const statusMap = {
-    's': { label: "Draft", badge: "bg-info", textColor: "text-white" },
-    'S': { label: "Draft", badge: "bg-info", textColor: "text-white" },
-    'y': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark" },
-    'Y': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark" },
-    'aa': { label: "Approved", badge: "bg-success", textColor: "text-white" },
-    'AA': { label: "Approved", badge: "bg-success", textColor: "text-white" },
-    'rr': { label: "Rejected", badge: "bg-danger", textColor: "text-white" },
-    'RR': { label: "Rejected", badge: "bg-danger", textColor: "text-white" },
+    'Submitted': { label: "Pending for Approval", badge: "bg-warning", textColor: "text-dark" }
   }
 
   // Confirmation Popup Helper Function
@@ -64,11 +74,12 @@ const PendingIndentApproval = () => {
     });
   };
 
-  // Fetch pending indents (status 'Y')
+  // Fetch pending indents (list view) - UPDATED to use new endpoint
   const fetchPendingIndents = async (deptId) => {
     try {
       setLoading(true)
-      const url = `${Store_Internal_Indent}/getallindentforpending?deptId=${deptId}`
+      // Updated URL to use the new endpoint
+      const url = `${INVENTORY}/indents/approval/pending?deptId=${deptId}`
 
       console.log("Fetching pending indents from URL:", url)
 
@@ -99,47 +110,282 @@ const PendingIndentApproval = () => {
     }
   }
 
-  // Fetch all drugs for dropdown with current stock
-  const fetchAllDrugs = async () => {
+  // Fetch indent details by indentMId - UPDATED to use new endpoint with available stock
+  const fetchIndentDetails = async (indentMId) => {
     try {
-      setLoading(true)
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
-      console.log("Drugs API Response:", response)
+      setLoadingDetails(true)
+      // Updated URL to use the new endpoint with indentMId and departmentId
+      const url = `${INVENTORY}/indents/viewUpdate/details/${indentMId}?currentDeptId=${departmentId}`
 
+      console.log("Fetching indent details from URL:", url)
+
+      const response = await getRequest(url)
+      console.log("Indent Details API Full Response:", response)
+
+      let items = []
       if (response && response.response && Array.isArray(response.response)) {
-        const drugs = response.response.map(drug => ({
-          id: drug.itemId,
-          code: drug.pvmsNo || "",
-          name: drug.nomenclature || "",
-          unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0,
-          storesStock: drug.storestocks || 0
-        }))
-        setItemOptions(drugs)
-        console.log("Loaded drugs with stock:", drugs)
+        items = response.response
       } else if (response && Array.isArray(response)) {
-        const drugs = response.map(drug => ({
-          id: drug.itemId,
-          code: drug.pvmsNo || "",
-          name: drug.nomenclature || "",
-          unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0,
-          storesStock: drug.storestocks || 0
-        }))
-        setItemOptions(drugs)
-        console.log("Loaded drugs with stock:", drugs)
+        items = response
+      } else {
+        console.warn("Unexpected response structure, using empty array:", response)
+        items = []
       }
+
+      // Transform the API response to match the indentEntries format with new stock fields
+      const entries = items.map((item) => ({
+        id: item.indentTId || null,
+        itemId: item.itemId || "",
+        itemCode: item.pvmsNo || "",
+        itemName: item.itemName || "",
+        apu: item.itemUnitName || "",
+        requestedQty: item.qtyRequested || "",
+        storeAvailableStock: item.storeAvailableStock || 0, // Store available stock
+        currentDeptAvailableStock: item.currentDeptAvailableStock || 0, // Current department available stock
+        reasonForIndent: item.reasonForIndent || "",
+      }))
+
+      console.log("Setting indent entries from details:", entries)
+      setIndentEntries(entries)
+      
+      // Update selected drugs tracking
+      const drugIds = entries.filter(entry => entry.itemId).map(entry => entry.itemId)
+      setSelectedDrugs(drugIds)
+
     } catch (err) {
-      console.error("Error fetching drugs:", err)
+      console.error("Error fetching indent details:", err)
+      showPopup("Error fetching indent details. Please try again.", "error")
+      setIndentEntries([])
     } finally {
-      setLoading(false)
+      setLoadingDetails(false)
     }
   }
 
+  // Fetch items from API with debounce
+  const fetchItems = async (page, searchText = "") => {
+    try {
+      setIsItemLoading(true);
+      
+      const params = new URLSearchParams();
+
+      if (selectedRecord?.indentType === "Drug") {
+        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+      }
+
+      params.append("keyword", searchText);
+      params.append("page", page);
+      params.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+      const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+          totalPages: data.response.totalPages,
+          totalElements: data.response.totalElements
+        };
+      }
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } finally {
+      setIsItemLoading(false);
+    }
+  };
+
+  // Fetch item details by ID
+  const fetchItemDetails = async (itemId) => {
+    try {
+      const hospitalId = sessionStorage.getItem("hospitalId");
+      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const response = await getRequest(url);
+      
+      if (response.status === 200 && response.response) {
+        const itemData = response.response;
+        return {
+          itemId: itemData.itemId,
+          pvmsNo: itemData.pvmsNo || "",
+          nomenclature: itemData.nomenclature || "",
+          unitAuName: itemData.unitAuName || itemData.dispUnitName || "",
+          storestocks: itemData.storestocks || 0,
+          wardstocks: itemData.wardstocks || 0,
+          dispstocks: itemData.dispstocks || 0,
+        };
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+      showPopup("Error fetching item details", "error");
+      return null;
+    } 
+  };
+
+  // Handle item search with debounce
+  const handleItemSearch = (value, index) => {
+    setItemSearch(value);
+    setActiveRowIndex(index);
+    
+    // Update the itemName in the entry
+    const newEntries = [...indentEntries];
+    newEntries[index] = {
+      ...newEntries[index],
+      itemName: value
+    };
+    setIndentEntries(newEntries);
+    
+    // Clear selections when user types
+    if (!value.trim() || (newEntries[index].itemId && !value.includes(newEntries[index].itemName))) {
+      newEntries[index] = {
+        ...newEntries[index],
+        itemId: null,
+        itemCode: "",
+        apu: "",
+        storeAvailableStock: "",
+        currentDeptAvailableStock: "",
+      };
+      setIndentEntries(newEntries);
+      
+      // Update selected drugs tracking
+      if (newEntries[index].itemId) {
+        setSelectedDrugs(selectedDrugs.filter(id => id !== newEntries[index].itemId));
+      }
+    }
+
+    // Debounce API call
+    if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
+    debounceItemRef.current = setTimeout(async () => {
+      if (!value.trim()) {
+        setItemDropdown([]);
+        setShowItemDropdown(false);
+        return;
+      }
+      const result = await fetchItems(0, value);
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    }, 700);
+  };
+
+  // Load first page of items for dropdown
+  const loadFirstItemPage = (searchText, index) => {
+    if (!searchText.trim()) return;
+    setItemSearch(searchText);
+    setActiveRowIndex(index);
+    fetchItems(0, searchText).then(result => {
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    });
+  };
+
+  // Load more items for infinite scroll
+  const loadMoreItems = async () => {
+    if (itemLastPage) return;
+    const nextPage = itemPage + 1;
+    const result = await fetchItems(nextPage, itemSearch);
+    setItemDropdown(prev => [...prev, ...result.list]);
+    setItemLastPage(result.last);
+    setItemPage(nextPage);
+  };
+
+  // Handle item selection from dropdown
+  const handleItemSelect = async (index, item) => {
+    // Check if drug is already selected in another row
+    const isDuplicate = selectedDrugs.some(id => id === item.itemId && indentEntries[index]?.itemId !== item.itemId);
+
+    if (isDuplicate) {
+      showPopup("Drug already added in another row", "warning");
+      return;
+    }
+
+    // Fetch complete item details
+    const itemDetails = await fetchItemDetails(item.itemId);
+    
+    if (itemDetails) {
+      const newEntries = [...indentEntries];
+      
+      // Update the selected row with complete item information from API response
+      newEntries[index] = {
+        ...newEntries[index],
+        itemId: itemDetails.itemId,
+        itemCode: itemDetails.pvmsNo || "",
+        itemName: itemDetails.nomenclature || "",
+        apu: itemDetails.unitAuName || "",
+        storeAvailableStock: itemDetails.storestocks || 0, // Store available stock from API
+        currentDeptAvailableStock: itemDetails.wardstocks || 0, // Current department available stock from API
+      };
+
+      setIndentEntries(newEntries);
+      
+      // Update selected drugs tracking
+      const newSelectedDrugs = selectedDrugs.filter(id => id !== newEntries[index].itemId);
+      newSelectedDrugs.push(itemDetails.itemId);
+      setSelectedDrugs(newSelectedDrugs);
+      
+      setItemSearch(""); // Clear the search after selection
+      setShowItemDropdown(false); // Hide dropdown
+      setActiveRowIndex(null);
+    }
+  };
+
+  // Fetch all drugs for dropdown with current stock
+  // const fetchAllDrugs = async () => {
+  //   try {
+  //     setLoading(true)
+  //     const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
+  //     console.log("Drugs API Response:", response)
+
+  //     if (response && response.response && Array.isArray(response.response)) {
+  //       const drugs = response.response.map(drug => ({
+  //         id: drug.itemId,
+  //         code: drug.pvmsNo || "",
+  //         name: drug.nomenclature || "",
+  //         unit: drug.unitAuName || drug.dispUnitName || "",
+  //         storeAvailableStock: drug.storestocks || 0,
+  //         currentDeptAvailableStock: drug.wardstocks || 0
+  //       }))
+  //       setItemOptions(drugs)
+  //       console.log("Loaded drugs with stock:", drugs)
+  //     } else if (response && Array.isArray(response)) {
+  //       const drugs = response.map(drug => ({
+  //         id: drug.itemId,
+  //         code: drug.pvmsNo || "",
+  //         name: drug.nomenclature || "",
+  //         unit: drug.unitAuName || drug.dispUnitName || "",
+  //         storeAvailableStock: drug.storestocks || 0,
+  //         currentDeptAvailableStock: drug.wardstocks || 0
+  //       }))
+  //       setItemOptions(drugs)
+  //       console.log("Loaded drugs with stock:", drugs)
+  //     }
+  //   } catch (err) {
+  //     console.error("Error fetching drugs:", err)
+  //   } finally {
+  //     setLoading(false)
+  //   }
+  // }
+
   useEffect(() => {
     fetchPendingIndents(departmentId)
-    fetchAllDrugs()
+    // fetchAllDrugs()
   }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
+        setShowItemDropdown(false);
+        setActiveRowIndex(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Handle search by date range
   const handleSearch = () => {
@@ -158,51 +404,16 @@ const PendingIndentApproval = () => {
     setCurrentPage(1)
   }
 
-  // Handle edit click - UPDATED to fetch current stock
+  // Handle edit click - UPDATED to fetch indent details using indentMId
   const handleEditClick = async (record, e) => {
     e.stopPropagation()
 
     console.log("Viewing record:", record)
     setSelectedRecord(record)
 
-    // Initialize entries from the items array in the record
-    let entries = []
+    // Fetch the detailed items for this indent using indentMId
+    await fetchIndentDetails(record.indentMId)
 
-    if (record.items && Array.isArray(record.items) && record.items.length > 0) {
-      console.log("Items found:", record.items)
-
-      // Create entries with current stock data
-      entries = await Promise.all(
-        record.items.map(async (item) => {
-          // Try to get current stock from drug list first
-          const drugInfo = itemOptions.find(drug => drug.id === item.itemId)
-          let currentStock = drugInfo?.availableStock || 0
-
-          // If not found in drug list, use the availableStock from backend
-          if (!currentStock && item.availableStock) {
-            currentStock = item.availableStock
-          }
-
-          return {
-            id: item.indentTId || null,
-            itemId: item.itemId || "",
-            itemCode: item.pvmsNo || "",
-            itemName: item.itemName || "",
-            apu: item.unitAuName || "",
-            requestedQty: item.requestedQty || "",
-            availableStock: currentStock,
-            storesStock: item.storesStock || "",
-            reasonForIndent: item.reason || "",
-          }
-        })
-      )
-    } else {
-      console.log("No items found")
-      entries = []
-    }
-
-    console.log("Setting indent entries with current stock:", entries)
-    setIndentEntries(entries)
     setAction("")
     setRemarks("")
     setCurrentView("detail")
@@ -213,11 +424,17 @@ const PendingIndentApproval = () => {
     setCurrentView("list")
     setSelectedRecord(null)
     setIndentEntries([])
+    setSelectedDrugs([])
     setAction("")
     setRemarks("")
+    setDtRecord([])
+    setItemSearch("")
+    setItemDropdown([])
+    setShowItemDropdown(false)
+    setActiveRowIndex(null)
   }
 
-  // Add new row
+  // Add new row - UPDATED to include new stock fields
   const addNewRow = () => {
     const newEntry = {
       id: null,
@@ -226,8 +443,8 @@ const PendingIndentApproval = () => {
       itemName: "",
       apu: "",
       requestedQty: "",
-      availableStock: "",
-      storesStock: "",
+      storeAvailableStock: "",
+      currentDeptAvailableStock: "",
       reasonForIndent: "",
     }
     setIndentEntries([...indentEntries, newEntry])
@@ -237,6 +454,12 @@ const PendingIndentApproval = () => {
   const removeRow = (index) => {
     if (indentEntries.length > 1) {
       const entryToRemove = indentEntries[index]
+      
+      // Remove from selected drugs if it has an itemId
+      if (entryToRemove.itemId) {
+        setSelectedDrugs(selectedDrugs.filter(id => id !== entryToRemove.itemId))
+      }
+      
       if (entryToRemove.id) {
         setDtRecord((prev) => [...prev, entryToRemove.id])
       }
@@ -278,7 +501,7 @@ const PendingIndentApproval = () => {
     }
 
     // Determine the new status based on action
-    const newStatus = action === "approved" ? "AA" : "RR"
+    const newStatus = action === "approved" ? "Approved" : "Rejected"
 
     const payload = {
       indentMId: selectedRecord?.indentMId,
@@ -293,7 +516,7 @@ const PendingIndentApproval = () => {
             itemId: Number(entry.itemId),
             requestedQty: entry.requestedQty ? Number(entry.requestedQty) : 0,
             reason: entry.reasonForIndent || "",
-            availableStock: entry.availableStock ? Number(entry.availableStock) : 0,
+            storeAvailableStock: entry.storeAvailableStock ? Number(entry.storeAvailableStock) : 0,
           }
 
           // Only send indentTId if it exists and is a number
@@ -311,7 +534,7 @@ const PendingIndentApproval = () => {
       setProcessing(true)
 
       // Call approval API endpoint
-      await postRequest(`${Store_Internal_Indent}/approve`, payload)
+      await postRequest(`${INVENTORY}/indent/approve`, payload)
       
       const indentMId = selectedRecord?.indentMId
       
@@ -416,7 +639,7 @@ const PendingIndentApproval = () => {
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
-        {loading && <LoadingScreen />}
+        {loadingDetails && <LoadingScreen />}
         
         {/* Add ConfirmationPopup component */}
         <ConfirmationPopup
@@ -433,7 +656,7 @@ const PendingIndentApproval = () => {
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">Pending for Indent Approval</h4>
+                <h4 className="card-title p-2 mb-0">Pending for Indent Approval -Request Department</h4>
                 <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
                   Back to List
                 </button>
@@ -475,7 +698,18 @@ const PendingIndentApproval = () => {
                     <input
                       type="text"
                       className="form-control"
-                      value={formatDateTime(selectedRecord?.submissionDateTime || selectedRecord?.createdDate)}
+                      value={formatDateTime(selectedRecord?.approvedDate || selectedRecord?.indentDate)}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
+
+                  <div className="col-md-3 mt-3">
+                    <label className="form-label fw-bold">Indent Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.indentType }
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -519,7 +753,19 @@ const PendingIndentApproval = () => {
                             textAlign: "center"
                           }}
                         >
-                          Avl<br />Stk
+                          Store<br/>Avl Stk
+                        </th>
+
+                        <th
+                          style={{
+                            width: "70px",
+                            minWidth: "70px",
+                            whiteSpace: "normal",
+                            lineHeight: "1.1",
+                            textAlign: "center"
+                          }}
+                        >
+                          {departmentName}<br/>Avl Stk
                         </th>
 
                         <th style={{ width: "200px", minWidth: "180px" }}>
@@ -537,9 +783,15 @@ const PendingIndentApproval = () => {
 
                     </thead>
                     <tbody>
-                      {indentEntries.length === 0 ? (
+                      {loadingDetails ? (
                         <tr>
-                          <td colSpan={8} className="text-center text-muted">
+                          <td colSpan={9} className="text-center">
+                            <LoadingScreen />
+                          </td>
+                        </tr>
+                      ) : indentEntries.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="text-center text-muted">
                             No items found.
                           </td>
                         </tr>
@@ -547,12 +799,92 @@ const PendingIndentApproval = () => {
                         indentEntries.map((entry, index) => (
                           <tr key={entry.id || index}>
                             <td className="text-center fw-bold">{index + 1}</td>
-                            <td>
-                              <div className="d-flex flex-column">
-                                <strong>{entry.itemName}</strong>
-                                <small className="text-muted">{entry.itemCode}</small>
+                            
+                            <td style={{ position: "relative" }} ref={dropdownItemRef}>
+                              <div className="dropdown-search-container position-relative">
+                                <input
+                                  ref={(el) => (itemInputRefs.current[index] = el)}
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={entry.itemName || ""}
+                                  onChange={(e) => {
+                                    handleItemSearch(e.target.value, index);
+                                  }}
+                                  onClick={() => {
+                                    if (entry.itemName?.trim()) {
+                                      loadFirstItemPage(entry.itemName, index);
+                                    }
+                                  }}
+                                  placeholder="Item Name/Code"
+                                  style={{ minWidth: "320px" }}
+                                  autoComplete="off"
+                                />
+
+                                {/* Search Dropdown - Only show for active row */}
+                                {showItemDropdown && activeRowIndex === index && (
+                                  <div 
+                                    className="border rounded mt-1 bg-white position-absolute w-100"
+                                    style={{ maxHeight: "250px", zIndex: 1000, overflowY: "auto" }}
+                                    onScroll={(e) => {
+                                      const target = e.target;
+                                      if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
+                                        loadMoreItems();
+                                      }
+                                    }}
+                                  >
+                                    {isItemLoading && itemDropdown.length === 0 ? (
+                                      <div className="text-center p-3">
+                                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                          <span className="visually-hidden">Loading...</span>
+                                        </div>
+                                      </div>
+                                    ) : itemDropdown.length > 0 ? (
+                                      <>
+                                        {itemDropdown.map((item) => {
+                                          const isSelectedInOtherRow = selectedDrugs.some(
+                                            id => id === item.itemId && indentEntries[index]?.itemId !== item.itemId
+                                          );
+                                          return (
+                                            <div
+                                              key={item.itemId}
+                                              className="p-2 cursor-pointer hover-bg-light"
+                                              onMouseDown={(e) => {
+                                                e.preventDefault();
+                                                if (!isSelectedInOtherRow) {
+                                                  handleItemSelect(index, item);
+                                                }
+                                              }}
+                                              style={{ 
+                                                cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
+                                                backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
+                                                borderBottom: '1px solid #f0f0f0'
+                                              }}
+                                            >
+                                              <div className="fw-bold">{item.nomenclature}</div>
+                                              <div className="d-flex justify-content-between align-items-center">
+                                                <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                                                {isSelectedInOtherRow && (
+                                                  <span className="badge bg-warning text-dark">Already Added</span>
+                                                )}
+                                              </div>
+                                            </div>
+                                          );
+                                        })}
+                                        
+                                        {!itemLastPage && (
+                                          <div className="text-center p-2 text-primary small">
+                                            {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
+                                          </div>
+                                        )}
+                                      </>
+                                    ) : (
+                                      <div className="p-2 text-muted text-center">No items found</div>
+                                    )}
+                                  </div>
+                                )}
                               </div>
                             </td>
+
                             <td>
                               <input
                                 type="text"
@@ -575,14 +907,25 @@ const PendingIndentApproval = () => {
                               <input
                                 type="number"
                                 className="form-control form-control-sm"
-                                value={entry.availableStock || 0}
+                                value={entry.storeAvailableStock || 0}
                                 style={{
-                                  backgroundColor: entry.availableStock > 0 ? "#f5f5f5" : "#ffe6e6",
-                                  color: entry.availableStock === 0 ? "#dc3545" : "inherit"
+                                  backgroundColor: "#f5f5f5",
+                                  color: entry.storeAvailableStock === 0 ? "#dc3545" : "inherit"
                                 }}
                                 readOnly
                               />
-
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.currentDeptAvailableStock || 0}
+                                style={{
+                                  backgroundColor: "#f5f5f5",
+                                  color: entry.currentDeptAvailableStock === 0 ? "#dc3545" : "inherit"
+                                }}
+                                readOnly
+                              />
                             </td>
                             <td>
                               <textarea
@@ -636,6 +979,7 @@ const PendingIndentApproval = () => {
                       className="form-select"
                       value={action}
                       onChange={(e) => setAction(e.target.value)}
+                      disabled={loadingDetails}
                     >
                       <option value="">Select</option>
                       <option value="approved">Approved</option>
@@ -652,16 +996,35 @@ const PendingIndentApproval = () => {
                       onChange={(e) => setRemarks(e.target.value)}
                       placeholder="Enter remarks"
                       rows="3"
+                      disabled={loadingDetails}
                     />
                   </div>
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
                   <button
+    type="button"
+    className="btn btn-info"
+    onClick={() => {
+      const indentMId = selectedRecord?.indentMId;
+      navigate('/ViewDownloadReport', {
+        state: {
+          reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+          title: 'Indent Report',
+          fileName: 'Indent Report',
+          returnPath: window.location.pathname
+        }
+      });
+    }}
+    disabled={!selectedRecord?.indentMId || loadingDetails}
+  >
+    Report
+  </button>
+                  <button
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSubmit}
-                    disabled={processing || !action || !remarks.trim()}
+                    disabled={processing || !action || !remarks.trim() || loadingDetails}
                   >
                     {processing ? "Processing..." : "Submit"}
                   </button>
@@ -692,7 +1055,7 @@ const PendingIndentApproval = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Pending For Indent Approval</h4>
+              <h4 className="card-title p-2 mb-0">Pending For Indent Approval - Request Department</h4>
             </div>
             <div className="card-body">
               <div className="row mb-4">
@@ -738,26 +1101,29 @@ const PendingIndentApproval = () => {
                       <th>From Department</th>
                       <th>To Department</th>
                       <th>Created By</th>
+                      <th>Drug / Non Drug</th>
                       <th>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentItems.length === 0 ? (
                       <tr>
-                        <td colSpan={6} className="text-center">
+                        <td colSpan={7} className="text-center">
                           {loading ? <LoadingScreen/> : "No pending indents found."}
                         </td>
                       </tr>
                     ) : (
                       currentItems.map((item) => {
-                        const statusInfo = statusMap[item.status] || { label: "Unknown", badge: "bg-secondary", textColor: "text-white" };
+                        // Use statusName from the new API response
+                        const statusInfo = statusMap[item.statusName] || { label: item.statusName || "Unknown", badge: "bg-secondary", textColor: "text-white" };
                         return (
                           <tr key={item.indentMId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
                             <td>{formatDate(item.indentDate)}</td>
                             <td>{item.indentNo}</td>
-                            <td>{item.fromDeptName}</td>
-                            <td>{item.toDeptName}</td>
+                            <td>{item.deptName}</td>
+                            <td>{item.toDepartmentName}</td>
                             <td>{item.createdBy}</td>
+                            <td>{item.indentType}</td>
                             <td>
                               <span
                                 className={`badge ${statusInfo.badge} ${statusInfo.textColor}`}

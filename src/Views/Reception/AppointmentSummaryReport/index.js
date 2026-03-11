@@ -452,20 +452,7 @@ const AppointmentSummaryReport = () => {
                 <div className="col-12 mb-3">
                   <label className="form-label fw-bold d-block mb-2">Report Type</label>
                   <div className="d-flex flex-wrap gap-3">
-                    <div className="form-check">
-                      <input
-                        className="form-check-input"
-                        type="radio"
-                        name="reportType"
-                        id="summary"
-                        value="summary"
-                        checked={reportType === "summary"}
-                        onChange={(e) => setReportType(e.target.value)}
-                      />
-                      <label className="form-check-label" htmlFor="summary">
-                        Summary
-                      </label>
-                    </div>
+                    
                     <div className="form-check">
                       <input
                         className="form-check-input"

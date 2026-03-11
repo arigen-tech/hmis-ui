@@ -33,7 +33,7 @@ const Religionmaster = () => {
 
     const RELIGION_NAME_MAX_LENGTH = 30;
 
-    
+
     useEffect(() => {
         fetchReligionData(0);
     }, []);
@@ -48,10 +48,10 @@ const Religionmaster = () => {
             setLoading(true);
             const response = await getRequest(`${MAS_RELIGION}/getAll/${flag}`);
             if (response && response.response) {
-                
+
                 const mappedData = response.response.map(item => ({
                     id: item.id,
-                    religionName: item.name, 
+                    religionName: item.name,
                     status: item.status,
                     lastChgBy: item.lastChgBy,
                     lastChgDate: item.lastChgDate
@@ -75,12 +75,12 @@ const Religionmaster = () => {
         (religion) =>
             religion?.religionName?.toLowerCase().includes(searchQuery?.toLowerCase() || "")
     );
-    
+
 
     // FIXED: Added check for empty filteredReligions
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredReligions.length > 0 ? 
+    const currentItems = filteredReligions.length > 0 ?
         filteredReligions.slice(indexOfFirst, indexOfLast) : [];
 
     // FIXED: Removed handlePageNavigation function (handled by Pagination component)
@@ -97,50 +97,50 @@ const Religionmaster = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-    
+
         try {
             setLoading(true);
-    
+
             // FIXED: Check duplicate including editing case
             const isDuplicate = religionData.some(
                 (religion) =>
                     religion.id !== (editingReligion ? editingReligion.id : null) &&
                     religion.religionName.toLowerCase() === formData.religionName.toLowerCase()
             );
-    
+
             if (isDuplicate && !editingReligion) {
                 showPopup(DUPLICATE_RELIGION, "error");
                 setLoading(false);
                 return;
             }
-    
+
             if (editingReligion) {
-                
+
                 const response = await putRequest(`${MAS_RELIGION}/updateById/${editingReligion.id}`, {
                     name: formData.religionName,
-                    status: editingReligion.status, 
+                    status: editingReligion.status,
                 });
-    
+
                 if (response && response.status === 200) {
-                   
+
                     fetchReligionData();
                     showPopup(UPDATE_RELIGION_SUCC_MSG, "success");
                 }
             } else {
-                
+
                 const response = await postRequest(`${MAS_RELIGION}/create`, {
                     name: formData.religionName,
-                    status: "y", 
+                    status: "y",
                 });
-    
+
                 if (response && response.status === 200) {
-                    
+
                     fetchReligionData();
                     showPopup(ADD_RELIGION_SUCC_MSG, "success");
                 }
             }
-    
-           
+
+
             setEditingReligion(null);
             setFormData({ religionName: "" });
             setShowForm(false);
@@ -241,9 +241,9 @@ const Religionmaster = () => {
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
                                         <>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2" 
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2"
                                                 onClick={() => {
                                                     setShowForm(true);
                                                     setEditingReligion(null);
@@ -349,7 +349,8 @@ const Religionmaster = () => {
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingReligion ? "Update" : "Save"}
+
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

@@ -1,369 +1,384 @@
-import { useState, useEffect } from "react"
-import Popup from "../../../Components/popup";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
+import { useState, useEffect } from "react";
+import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { MAS_BLOOD_DONATION_STATUS } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import {
+    FETCH_BLOOD_DONATION_STATUS,
+    DUPLICATE_BLOOD_DONATION_STATUS,
+    UPDATE_BLOOD_DONATION_STATUS,
+    ADD_BLOOD_DONATION_STATUS,
+    FAIL_BLOOD_DONATION_STATUS,
+    UPDATE_STATUS_BLOOD_DONATION_STATUS,
+    FAIL_UPDATE_BLOOD_DONATION_STATUS
+} from "../../../config/constants";
 
 const BloodDonationStatusMaster = () => {
+    const [donationStatusData, setDonationStatusData] = useState([]);
+    const [loading, setLoading] = useState(false);
+
     const [formData, setFormData] = useState({
         statusCode: "",
         statusName: "",
         description: "",
+        isFinal: "N",
     });
-    const [showForm, setShowForm] = useState(false);
-    const [isFormValid, setIsFormValid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingDonationStatus, setEditingDonationStatus] = useState(null);
-    const [popupMessage, setPopupMessage] = useState(null);
+
     const [searchQuery, setSearchQuery] = useState("");
-    const [pageInput, setPageInput] = useState("");
     const [currentPage, setCurrentPage] = useState(1);
 
-    const [donationStatusData, setDonationStatusData] = useState([
-  { id: 1, statusCode: "P",  statusName: "Pending",     description: "Donation request pending",          status: "y" },
-  { id: 2, statusCode: "S",  statusName: "Scheduled",   description: "Donation appointment scheduled",    status: "y" },
-  { id: 3, statusCode: "IP", statusName: "In Progress", description: "Donation in progress",               status: "y" },
-  { id: 4, statusCode: "C",  statusName: "Completed",   description: "Donation successfully completed",   status: "y" },
-  { id: 5, statusCode: "X",  statusName: "Cancelled",   description: "Donation cancelled",                status: "y" },
-  { id: 6, statusCode: "D",  statusName: "Deferred",    description: "Donor temporarily deferred",         status: "y" },
-  { id: 7, statusCode: "R",  statusName: "Rejected",    description: "Donation rejected",                 status: "y" }
-    ]);
+    const [showForm, setShowForm] = useState(false);
+    const [isFormValid, setIsFormValid] = useState(false);
+    const [editingDonationStatus, setEditingDonationStatus] = useState(null);
 
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, donationStatusId: null, newStatus: false });
+    const [popupMessage, setPopupMessage] = useState(null);
+    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, record: null, newStatus: "" });
 
+    // Format date
+    const formatDate = (dateString) => {
+        if (!dateString?.trim()) return "N/A";
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return "N/A";
+        const day = String(date.getDate()).padStart(2, "0");
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const year = date.getFullYear();
+        return `${day}/${month}/${year}`;
+    };
 
-    const filteredDonationStatuses = donationStatusData.filter(donationStatus =>
-        donationStatus.statusName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (donationStatus.description && donationStatus.description.toLowerCase().includes(searchQuery.toLowerCase()))
+    // Fetch list
+    const fetchData = async (flag = 0) => {
+        setLoading(true);
+        try {
+            const { response } = await getRequest(`${MAS_BLOOD_DONATION_STATUS}/getAll/${flag}`);
+            setDonationStatusData(response || []);
+        } catch {
+            showPopup(FETCH_BLOOD_DONATION_STATUS, "error");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    useEffect(() => {
+        fetchData();
+    }, []);
+
+    // Filter by search
+    const filteredData = donationStatusData.filter(rec =>
+        rec.donationStatusCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        rec.donationStatusName?.toLowerCase().includes(searchQuery.toLowerCase())
     );
 
-    const handleSearch = (e) => {
+    const currentItems = filteredData.slice(
+        (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+        currentPage * DEFAULT_ITEMS_PER_PAGE
+    );
+
+    const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
     };
 
-    const handleEdit = (donationStatus) => {
-        setEditingDonationStatus(donationStatus);
+    const handleCancel = () => {
+        resetForm();
+        setShowForm(false);
+    };
+
+    const resetForm = () => {
         setFormData({
-            statusName: donationStatus.statusName,
-            description: donationStatus.description || "",
+            statusCode: "",
+            statusName: "",
+            description: "",
+            isFinal: "N",
         });
+        setIsFormValid(false);
+        setEditingDonationStatus(null);
+    };
+
+    // Form input
+    const handleInputChange = (e) => {
+        const { id, value, type, checked } = e.target;
+        const newVal = type === "checkbox" ? (checked ? "Y" : "N") : value;
+
+        setFormData(prev => {
+            const updated = { ...prev, [id]: newVal };
+
+            // validate
+            setIsFormValid(
+                updated.statusCode.trim() !== "" &&
+                updated.statusName.trim() !== ""
+            );
+
+            return updated;
+        });
+    };
+
+    // Save (Add / Update)
+    const handleSave = async (e) => {
+        e.preventDefault();
+        if (!isFormValid) return;
+
+        const newCode = formData.statusCode.trim().toLowerCase();
+        const newName = formData.statusName.trim().toLowerCase();
+
+        const duplicate = donationStatusData.find(
+            (rec) =>
+                (rec.donationStatusCode?.trim().toLowerCase() === newCode ||
+                    rec.donationStatusName?.trim().toLowerCase() === newName) &&
+                (!editingDonationStatus || rec.donationStatusId !== editingDonationStatus.donationStatusId)
+        );
+
+        if (duplicate) {
+            showPopup(DUPLICATE_BLOOD_DONATION_STATUS, "error");
+            return;
+        }
+
+        try {
+            if (editingDonationStatus) {
+                await putRequest(
+                    `${MAS_BLOOD_DONATION_STATUS}/update/${editingDonationStatus.donationStatusId}`, {
+                        donationStatusCode: formData.statusCode.trim(),
+                        donationStatusName: formData.statusName.trim(),
+                        description: formData.description.trim(),
+                        isFinal: formData.isFinal,
+                    }
+                );
+                showPopup(UPDATE_BLOOD_DONATION_STATUS, "success");
+            } else {
+                await postRequest(`${MAS_BLOOD_DONATION_STATUS}/create`, {
+                    donationStatusCode: formData.statusCode.trim(),
+                    donationStatusName: formData.statusName.trim(),
+                    description: formData.description.trim(),
+                    isFinal: formData.isFinal,
+                });
+                showPopup(ADD_BLOOD_DONATION_STATUS, "success");
+            }
+
+            fetchData();
+            handleCancel();
+        } catch {
+            showPopup(FAIL_BLOOD_DONATION_STATUS, "error");
+        }
+    };
+
+    // Edit row
+    const handleEdit = (rec) => {
+        setEditingDonationStatus(rec);
+        setFormData({
+            statusCode: rec.donationStatusCode,
+            statusName: rec.donationStatusName,
+            description: rec.description,
+            isFinal: rec.isFinal,
+        });
+
+        setIsFormValid(
+            rec.donationStatusCode.trim() !== "" &&
+            rec.donationStatusName.trim() !== ""
+        );
+
         setShowForm(true);
     };
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery]);
-
-
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
-        const updateStatusCode = e.target.elements.statusCode.value;
-        const updatedStatusName = e.target.elements.statusName.value;
-        const updatedDescription = e.target.elements.description.value;
-
-        if (editingDonationStatus) {
-            setDonationStatusData(donationStatusData.map(donationStatus =>
-                donationStatus.id === editingDonationStatus.id
-                    ? { ...donationStatus, statusCode: updateStatusCode, statusName: updatedStatusName, description: updatedDescription }
-                    : donationStatus
-            ));
-        } else {
-            const newDonationStatus = {
-                id: donationStatusData.length + 1,
-                statusCode: updateStatusCode,
-                statusName: updatedStatusName,
-                description: updatedDescription,
-                status: "y"
-            };
-            setDonationStatusData([...donationStatusData, newDonationStatus]);
-        }
-
-        setEditingDonationStatus(null);
-        setShowForm(false);
-        setFormData({ statusCode: "", statusName: "", description: "" });
-        setIsFormValid(false);
-        showPopup("Changes saved successfully!", "success");
-    };
-
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
-            }
+    // Toggle status
+    const handleSwitchChange = (rec) => {
+        setConfirmDialog({
+            isOpen: true,
+            record: rec,
+            newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y"
         });
     };
 
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
-
-        const isStatusNameValid = id === "statusName" ? value.trim() !== "" : formData.statusName.trim() !== "";
-        const isDescriptionValid = true; // Description is optional
-
-        setIsFormValid(isStatusNameValid && isDescriptionValid);
-    };
-
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (formData.statusName) {
-            setDonationStatusData([...donationStatusData, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ statusName: "", description: "" })
-            setShowForm(false)
-        } else {
-            alert("Please fill out all required fields.")
+    const handleConfirm = async (confirmed) => {
+        if (!confirmed) {
+            setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+            return;
         }
-    }
-
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, donationStatusId: id, newStatus });
-    };
-
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.donationStatusId !== null) {
-            setDonationStatusData((prevData) =>
-                prevData.map((donationStatus) =>
-                    donationStatus.id === confirmDialog.donationStatusId ? { ...donationStatus, status: confirmDialog.newStatus } : donationStatus
-                )
-            );
+        try {
+            setLoading(true);
+            await putRequest(`${MAS_BLOOD_DONATION_STATUS}/status/${confirmDialog.record.donationStatusId}?status=${confirmDialog.newStatus}`);
+            showPopup(UPDATE_STATUS_BLOOD_DONATION_STATUS, "success");
+            fetchData();
+        } catch {
+            showPopup(FAIL_UPDATE_BLOOD_DONATION_STATUS, "error");
+        } finally {
+            setLoading(false);
+            setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
         }
-        setConfirmDialog({ isOpen: false, donationStatusId: null, newStatus: null });
     };
 
-
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredDonationStatuses.slice(indexOfFirst, indexOfLast);
-
-    
+    const showPopup = (message, type) => {
+        setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+    };
 
     return (
         <div className="content-wrapper">
-            <div className="row">
-                <div className="col-12 grid-margin stretch-card">
-                    <div className="card form-card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title">Blood Donation Status Master</h4>
-                            <div className="d-flex justify-content-between align-items-center">
+            <div className="card form-card">
+                <div className="card-header d-flex justify-content-between align-items-center">
+                    <h4>Blood Donation Status Master</h4>
+                    <div className="d-flex">
+                        {!showForm && (
+                            <input
+                                style={{ width: "220px" }}
+                                className="form-control me-2"
+                                placeholder="Search"
+                                value={searchQuery}
+                                onChange={handleSearchChange}
+                            />
+                        )}
+                        {!showForm ? (
+                            <>
+                                <button className="btn btn-success me-2" onClick={() => {
+                                    setShowForm(true);
+                                    resetForm();
+                                }}>
+                                    Add
+                                </button>
+                                <button className="btn btn-success" onClick={fetchData}>
+                                    Show All
+                                </button>
+                            </>
+                        ) : (
+                            <button className="btn btn-secondary" onClick={handleCancel}>
+                                Back
+                            </button>
+                        )}
+                    </div>
+                </div>
 
-                                {!showForm ? (
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search Donation Status"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
+                <div className="card-body">
+                    {loading ? (
+                        <LoadingScreen />
+                    ) : !showForm ? (
+                        <>
+                            <table className="table table-bordered table-hover">
+                                <thead>
+                                    <tr>
+                                        <th>Status Code</th>
+                                        <th>Status Name</th>
+                                        <th>Description</th>
+                                        <th>Is Final</th>
+                                        <th>Last Update Date</th>
+                                        <th>Status</th>
+                                        <th>Edit</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {currentItems.map((rec) => (
+                                        <tr key={rec.donationStatusId}>
+                                            <td>{rec.donationStatusCode}</td>
+                                            <td>{rec.donationStatusName}</td>
+                                            <td>{rec.description}</td>
+                                            <td>{rec.isFinal === "Y" ? "Yes" : "No"}</td>
+                                            <td>{formatDate(rec.createdDate)}</td>
+                                            <td>
+                                                <div className="form-check form-switch">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        checked={rec.status?.toLowerCase() === "y"}
+                                                        onChange={() => handleSwitchChange(rec)}
+                                                    />
+                                                    <label className="form-check-label ms-2">
+                                                        {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+                                                    </label>
+                                                </div>
+                                            </td>
+                                            <td>
+                                                <button className="btn btn-success btn-sm" onClick={() => handleEdit(rec)}>
+                                                    <i className="fa fa-pencil"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
 
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <></>
-                                )}
+                            <Pagination
+                                totalItems={filteredData.length}
+                                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                currentPage={currentPage}
+                                onPageChange={setCurrentPage}
+                            />
+                        </>
+                    ) : (
+                        <form className="row g-3" onSubmit={handleSave}>
+                            <div className="col-md-3">
+                                <label>Status Code *</label>
+                                <input
+                                    id="statusCode"
+                                    className="form-control"
+                                    value={formData.statusCode}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+                            <div className="col-md-3">
+                                <label>Status Name *</label>
+                                <input
+                                    id="statusName"
+                                    className="form-control"
+                                    value={formData.statusName}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+                            <div className="col-md-3">
+                                <label>Description</label>
+                                <textarea
+                                    id="description"
+                                    className="form-control"
+                                    value={formData.description}
+                                    onChange={handleInputChange}
+                                />
+                            </div>
+                            <div className="col-md-3">
+                                <label htmlFor="isFinal">Is Final</label>
+                                <input
+                                    type="checkbox"
+                                    id="isFinal"
+                                    checked={formData.isFinal === "Y"}
+                                    onChange={handleInputChange}
+                                    style={{ width: "20px", height: "24px", accentColor: "#6aab9c", display: "block" }}
+                                />
+                            </div>
 
+                            <div className="col-12 text-end">
+                                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
+                                    {editingDonationStatus ? "Update" : "Save"}
+                                </button>
+                                <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    )}
 
-                                <div className="d-flex align-items-center">
-                                    {!showForm ? (
-                                        <>
+                    {popupMessage && <Popup {...popupMessage} />}
 
-                                            <button type="button" className="btn btn-success me-2" onClick={() => { 
-                                                setShowForm(true); 
-                                                setFormData({ statusName: "", description: "" }); 
-                                                setEditingDonationStatus(null);
-                                            }}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-plus"></i> Show All
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => {
-                                            setShowForm(false);
-                                            setEditingDonationStatus(null);
-                                            setFormData({ statusName: "", description: "" });
-                                        }}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
+                    {confirmDialog.isOpen && (
+                        <div className="modal d-block">
+                            <div className="modal-dialog">
+                                <div className="modal-content">
+                                    <div className="modal-body">
+                                        Are you sure you want to{" "}
+                                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                        <strong>{confirmDialog.record?.donationStatusName}</strong>?
+                                    </div>
+                                    <div className="modal-footer">
+                                        <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                                            No
                                         </button>
-                                    )}
+                                        <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                                            Yes
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Status Code</th>
-                                                <th>Status Name</th>
-                                                <th>Description</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((donationStatus) => (
-                                                <tr key={donationStatus.id}>
-                                                    <td>{donationStatus.statusCode}</td>
-                                                    <td>{donationStatus.statusName}</td>
-                                                    <td>{donationStatus.description}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={donationStatus.status === "y"}
-                                                                onChange={() => handleSwitchChange(donationStatus.id, donationStatus.status === "y" ? "n" : "y")}
-                                                                id={`switch-${donationStatus.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${donationStatus.id}`}
-                                                            >
-                                                                {donationStatus.status === "y" ? 'Active' : 'Inactive'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(donationStatus)}
-                                                            disabled={donationStatus.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-
-                                    {filteredDonationStatuses.length > 0 && (
-                                        <Pagination
-                                            totalItems={filteredDonationStatuses.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-                                    )}
-                                 
-                                </div>
-                            ) : (
-                                <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-4">
-                                        <label>Status Code <span className="text-danger">*</span></label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="statusCode"
-                                            placeholder="Enter status code"
-                                            value={formData.statusCode}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-4">
-                                        <label>Status Name <span className="text-danger">*</span></label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="statusName"
-                                            placeholder="Enter status name"
-                                            value={formData.statusName}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-4">
-                                        <label>Description</label>
-                                        <input
-                                            className="form-control"
-                                            id="description"
-                                            placeholder="Enter description (optional)"
-                                            value={formData.description}
-                                            onChange={handleInputChange}
-                                            rows="3"
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            {editingDonationStatus ? 'Update' : 'Save'}
-                                        </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => {
-                                            setShowForm(false);
-                                            setEditingDonationStatus(null);
-                                            setFormData({ statusName: "", description: "" });
-                                        }}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Reports</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Generate</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-                            {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{donationStatusData.find(donationStatus => donationStatus.id === confirmDialog.donationStatusId)?.statusName}</strong>?
-                                                </p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
+                    )}
                 </div>
             </div>
         </div>
-    )
-}
+    );
+};
 
 export default BloodDonationStatusMaster;

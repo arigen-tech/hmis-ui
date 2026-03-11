@@ -565,7 +565,8 @@ const PackageMaster = () => {
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2">
-                      Save
+                                                              {editingPackage ? "Update" : "Save"}
+
                     </button>
                     <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                       Cancel

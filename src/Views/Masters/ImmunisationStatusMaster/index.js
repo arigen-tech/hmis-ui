@@ -89,7 +89,7 @@ const ImmunisationStatus = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    
+
     setLoading(true);
     try {
       // Check for duplicate
@@ -177,7 +177,7 @@ const ImmunisationStatus = () => {
   // Function to format date to show only date (without time)
   const formatDate = (dateString) => {
     if (!dateString) return 'N/A';
-    
+
     try {
       const date = new Date(dateString);
       // Format as YYYY-MM-DD
@@ -351,7 +351,8 @@ const ImmunisationStatus = () => {
                   type="submit"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   className="btn btn-danger"

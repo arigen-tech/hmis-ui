@@ -4,9 +4,10 @@ import Popup from "../../../Components/popup"
 import { MAS_OPD_SESSION } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-import { FETCH_OPD_ERR_MSG,
+import {
+  FETCH_OPD_ERR_MSG,
   FAIL_TO_SAVE_CHANGES,
-  ADD_OPD_SUCC_MSG,END_TIME_AFTER_START_TIME,FAIL_TO_UPDATE_STS,
+  ADD_OPD_SUCC_MSG, END_TIME_AFTER_START_TIME, FAIL_TO_UPDATE_STS,
   UPDATE_OPD_SUCC_MSG,
   DUPLICATE_OPD
 } from "../../../config/constants"
@@ -20,7 +21,7 @@ const OpdSessionMaster = () => {
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
 
-  
+
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, sessionId: null, newStatus: false })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
@@ -72,7 +73,7 @@ const OpdSessionMaster = () => {
 
   const handleEdit = (session) => {
     setEditingSession(session)
-   
+
     setFormData({
       sessionName: session.sessionName,
       fromTime: session.fromTime,
@@ -198,8 +199,8 @@ const OpdSessionMaster = () => {
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
       updatedFormData.sessionName.trim() !== "" &&
-        updatedFormData.fromTime.trim() !== "" &&
-        updatedFormData.endTime.trim() !== "",
+      updatedFormData.fromTime.trim() !== "" &&
+      updatedFormData.endTime.trim() !== "",
     )
   }
 
@@ -218,9 +219,9 @@ const OpdSessionMaster = () => {
   // Function to convert time input to HH:MM:SS format
   const formatTimeInput = (timeInput) => {
     if (!timeInput) return ""
-    
+
     if (timeInput.split(":").length === 3) return timeInput
-    
+
     return timeInput + ":00"
   }
 
@@ -324,13 +325,13 @@ const OpdSessionMaster = () => {
                   <div>
 
                     {filteredSessions.length > 0 && (
-                    <Pagination
-                      totalItems={filteredSessions.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
-                    />
-                  )}
+                      <Pagination
+                        totalItems={filteredSessions.length}
+                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                        currentPage={currentPage}
+                        onPageChange={setCurrentPage}
+                      />
+                    )}
                   </div>
 
                 </div>
@@ -401,7 +402,7 @@ const OpdSessionMaster = () => {
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                      {editingSession ? "Update" : "Save"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                       Cancel

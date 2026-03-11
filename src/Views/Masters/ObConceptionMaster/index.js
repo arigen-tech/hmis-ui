@@ -333,7 +333,10 @@ const ObConceptionMaster = () => {
               </div>
 
               <div className="col-md-12 mt-4 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                                                          {editingRecord ? "Update" : "Save"}
+
+                </button>
                 <button className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>
               </div>
             </form>

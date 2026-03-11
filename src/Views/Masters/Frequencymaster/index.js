@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import {MAS_FREQUENCY } from "../../../config/apiConfig"
+import { MAS_FREQUENCY } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 import {
-FETCH_FREQUENCY_ERR_MSG,DUPLICATE_FREQUENCY,UPDATE_FREQUENCY_SUCC_MSG,ADD_FREQUENCY_SUCC_MSG,
-FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS
+  FETCH_FREQUENCY_ERR_MSG, DUPLICATE_FREQUENCY, UPDATE_FREQUENCY_SUCC_MSG, ADD_FREQUENCY_SUCC_MSG,
+  FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS
 } from "../../../config/constants";
 
 const FrequencyMaster = () => {
@@ -192,8 +192,8 @@ const FrequencyMaster = () => {
     const updatedFormData = { ...formData, [id]: value }
     setIsFormValid(
       updatedFormData.frequency.trim() !== "" &&
-        updatedFormData.frequencyName.trim() !== "" &&
-        updatedFormData.orderNo.trim() !== "",
+      updatedFormData.frequencyName.trim() !== "" &&
+      updatedFormData.orderNo.trim() !== "",
     )
   }
 
@@ -361,7 +361,8 @@ const FrequencyMaster = () => {
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                      {editingFrequency ? "Update" : "Save"}
+
                     </button>
                     <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                       Cancel

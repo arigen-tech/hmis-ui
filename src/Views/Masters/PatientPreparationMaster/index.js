@@ -464,7 +464,8 @@ const PatientPreparationMaster = () => {
                       className="btn btn-primary me-2" 
                       disabled={!isFormValid}
                     >
-                      Save
+                                                              {editingPreparation ? "Update" : "Save"}
+
                     </button>
                     <button 
                       type="button" 

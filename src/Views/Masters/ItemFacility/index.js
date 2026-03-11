@@ -45,7 +45,7 @@ const ItemFacility = () => {
       setLoading(true);
       // Replace with your actual API call
       // const response = await getRequest(`${MAS_ITEM_FACILITY}/getAll/${flag}`);
-      
+
       // For now, using mock data
       const mockData = [
         { id: 1, facilityCode: "FAC001", facilityName: "Main Operation Theater", departmentName: "Cardiology", status: "y" },
@@ -54,7 +54,7 @@ const ItemFacility = () => {
         { id: 4, facilityCode: "FAC004", facilityName: "ICU Unit", departmentName: "ICU", status: "y" },
         { id: 5, facilityCode: "FAC005", facilityName: "Chemotherapy Room", departmentName: "Oncology", status: "y" },
       ];
-      
+
       const transformedData = mockData.map(facility => ({
         id: facility.id,
         facilityCode: facility.facilityCode,
@@ -423,7 +423,7 @@ const ItemFacility = () => {
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                      {editingFacility ? "Update" : "Save"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                       Cancel

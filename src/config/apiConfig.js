@@ -238,7 +238,12 @@ export const MAS_OB_TRIMESTER = `${MASTERS}/obMasTrimester`;
 export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
 export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
 export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
+export const MAS_BLOOD_COMPONENT = `${MASTERS}/masBloodComponent`
+export const MAS_BLOOD_COLLECTION = `${MASTERS}/masBloodCollectionType`;
+export const MAS_MENSTRUAl_PATTERN  =`${MASTERS}/gynMasMenstrualPattern`;
 export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;
+export const MAS_BLOOD_DONATION_STATUS =`${MASTERS}/masBloodDonationStatus`;
+export const MAS_BAG_TYPE = `${MASTERS}/masBloodBagType`;
 export const BILLING = `${LAB}/billingStatus`;
 export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
 export const MAS_CERVIX_POSITION = `${MASTERS}/ObMasCervixPosition`;
@@ -299,13 +304,25 @@ export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
 export const RESCHEDULE_APPOINTMENT = `/registration/rescheduleAppointment`;
 export const PATIENT_FOLLOW_UP_DETAILS = "/registration/getPatientDetails";
 export const GET_CANCELLED_APPOINTMENTS ="/registration/getCancelledAppointments";
-export const UPDATE_PATIENT_STATUS = `/registration/updatePaymentStatus`;
 export const GET_TOKENS = `/registration/getAppointmentSlots`;
 export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
 export const SET_VITALS=`/patient/saveVitalDetails`;
 export const GET_WAITING_LIST=`/patient/getWaitingList`;
 
+//billing
+export const UPDATE_OPD_PAYMENT_STATUS = `/billing/payment`;
+export const UPDATE_LAB_PAYMENT_STATUS = `/billing/updatePaymentStatus`
+export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
+export const PATIENT_VISIT_DETAILS = `/billing/patientBillingDetails`
+export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
+export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
+export const OPD_SERVICE_CATAGORY = "SC001";
+
+export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INVENTORY=`/inventory`
+  export const SECTION_ID_FOR_DRUGS=18;
 
 
-export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
+
+
+
 

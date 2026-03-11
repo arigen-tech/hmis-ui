@@ -107,12 +107,12 @@ const StateMaster = () => {
 
         try {
             setLoading(true);
-            
+
             const isDuplicate = states.some(
                 (state) =>
                     state.id !== (editingState ? editingState.id : null) &&
                     (state.stateCode === formData.stateCode ||
-                     state.stateName === formData.stateName)
+                        state.stateName === formData.stateName)
             );
 
             if (isDuplicate) {
@@ -200,21 +200,21 @@ const StateMaster = () => {
         const { id, value } = e.target;
         setFormData((prevData) => {
             const updatedData = { ...prevData, [id]: value };
-            
+
             if (id === "country") {
                 const selectedIndex = e.target.selectedIndex;
                 const selectedOption = e.target.options[selectedIndex];
                 const countryId = parseInt(selectedOption.getAttribute('data-id'), 10);
-                
+
                 updatedData.countryId = isNaN(countryId) ? null : countryId;
             }
-            
+
             setIsFormValid(
                 updatedData.stateCode.trim() !== "" &&
                 updatedData.stateName.trim() !== "" &&
                 updatedData.countryId
             );
-            
+
             return updatedData;
         });
     };
@@ -266,9 +266,9 @@ const StateMaster = () => {
                                             }}>
                                                 <i className="mdi mdi-plus"></i> ADD
                                             </button>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2 flex-shrink-0" 
+                                            <button
+                                                type="button"
+                                                className="btn btn-success me-2 flex-shrink-0"
                                                 onClick={handleRefresh}
                                             >
                                                 <i className="mdi mdi-refresh"></i> Show All
@@ -303,7 +303,7 @@ const StateMaster = () => {
                                                     currentItems.map((state) => {
                                                         const country = countries.find(c => c.id === state.countryId);
                                                         const countryName = country ? country.countryName : "N/A";
-                                                        
+
                                                         return (
                                                             <tr key={state.id}>
                                                                 <td>{state.stateCode}</td>
@@ -408,7 +408,8 @@ const StateMaster = () => {
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                                         <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                            {editingState ? "Update" : "Save"}
+
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

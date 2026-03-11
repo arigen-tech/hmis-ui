@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OPTH_COLOR_VISION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_OPTH_COLOR,DUPLICATE_OPTH_COLOR,UPDATE_OPTH_COLOR,FAIL_OPTH_COLOR,UPDATE_STATUS_OPTH_COLOR}  from "../../../config/constants"
+import { FETCH_OPTH_COLOR, DUPLICATE_OPTH_COLOR, UPDATE_OPTH_COLOR, FAIL_OPTH_COLOR, UPDATE_STATUS_OPTH_COLOR } from "../../../config/constants"
 
 const OpthColorVisionMaster = () => {
   const [data, setData] = useState([]);
@@ -237,7 +237,7 @@ const OpthColorVisionMaster = () => {
                               onChange={() => handleSwitchChange(rec)}
                             />
                             <label className="form-check-label px-0">
-                              {rec.status  === "y"
+                              {rec.status === "y"
                                 ? "Active"
                                 : "Inactive"}
                             </label>
@@ -284,7 +284,7 @@ const OpthColorVisionMaster = () => {
 
               <div className="form-group col-md-12 mt-4 d-flex justify-content-end">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                   Cancel

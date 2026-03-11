@@ -273,7 +273,8 @@ const MAX_LENGTH = 8;
 
               <div className="col-12 text-end mt-3">
                 <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                                                          {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel

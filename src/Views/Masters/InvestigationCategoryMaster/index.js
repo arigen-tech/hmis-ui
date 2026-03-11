@@ -36,7 +36,7 @@ const InvestigationCategory = () => {
       }
     } catch (err) {
       console.error("Error fetching categories:", err);
-      showPopup( FETCH_INV_CATEGORY_ERR_MSG, "error");
+      showPopup(FETCH_INV_CATEGORY_ERR_MSG, "error");
     } finally {
       setIsLoading(false);
     }
@@ -53,11 +53,11 @@ const InvestigationCategory = () => {
   );
 
   const indexOfLastItem = currentPage * itemsPerPage;
-   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-   const currentItems = filteredCategories.slice(
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentItems = filteredCategories.slice(
     indexOfFirstItem,
     indexOfLastItem
-);
+  );
 
   const handleEdit = (category) => {
     setEditingCategory(category);
@@ -134,10 +134,10 @@ const InvestigationCategory = () => {
     const { id, value } = e.target;
     setFormData((prevData) => {
       const updatedData = { ...prevData, [id]: value };
-      
+
       // Validate form
       setIsFormValid(updatedData.categoryName.trim() !== "");
-      
+
       return updatedData;
     });
   };
@@ -148,7 +148,7 @@ const InvestigationCategory = () => {
     fetchCategories();
   };
 
-  
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -177,9 +177,9 @@ const InvestigationCategory = () => {
                 <div className="d-flex align-items-center ms-auto">
                   {!showForm ? (
                     <>
-                      <button 
-                        type="button" 
-                        className="btn btn-success me-2" 
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
                         onClick={() => {
                           setEditingCategory(null);
                           setFormData({ categoryName: "" });
@@ -189,8 +189,8 @@ const InvestigationCategory = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
+                      <button
+                        type="button"
                         className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
@@ -198,9 +198,9 @@ const InvestigationCategory = () => {
                       </button>
                     </>
                   ) : (
-                    <button 
-                      type="button" 
-                      className="btn btn-secondary" 
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
                       onClick={() => setShowForm(false)}
                     >
                       <i className="mdi mdi-arrow-left"></i> Back
@@ -243,14 +243,14 @@ const InvestigationCategory = () => {
                       )}
                     </tbody>
                   </table>
-                  
+
                   {filteredCategories.length > 0 && (
-                   <Pagination
-                                     totalItems={filteredCategories.length}
-                                     itemsPerPage={itemsPerPage}
-                                     currentPage={currentPage}
-                                     onPageChange={setCurrentPage}
-                                   />
+                    <Pagination
+                      totalItems={filteredCategories.length}
+                      itemsPerPage={itemsPerPage}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
                   )}
                 </div>
               ) : (
@@ -268,18 +268,18 @@ const InvestigationCategory = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button 
-                      type="submit" 
-                      className="btn btn-primary me-2" 
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
                       disabled={!isFormValid || isLoading}
                     >
-                      {isLoading ? "Saving..." : "Save"}
+                      {editingCategory ? "Update" : "Save"}
                     </button>
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={() => setShowForm(false)}
                       disabled={isLoading}
                     >
@@ -288,7 +288,7 @@ const InvestigationCategory = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}

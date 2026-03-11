@@ -185,7 +185,7 @@ const EarWeberMaster = () => {
 
           <div className="d-flex align-items-center">
             {!showForm && (
-               <input
+              <input
                 style={{ width: "220px" }}
                 className="form-control me-2"
                 placeholder="Search"
@@ -289,7 +289,8 @@ const EarWeberMaster = () => {
 
               <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>
-                  Save
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button className="btn btn-danger" type="button" onClick={resetForm}>
                   Cancel
@@ -310,7 +311,7 @@ const EarWeberMaster = () => {
                   <div className="modal-body">
                     Are you sure you want to{" "}
                     {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                   <strong>{confirmDialog.record.weberResult}</strong>
+                    <strong>{confirmDialog.record.weberResult}</strong>
 
                     ?
                   </div>

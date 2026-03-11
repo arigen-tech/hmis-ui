@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_ENT_MUCOSA } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_ENTMASMUCOSA,DUPLICATE_ENTMASMUCOSA,UPDATE_ENTMASMUCOSA,ADD_ENTMASMUCOSA,FAIL_ENTMASMUCOSA,UPDATE_FAIL_ENTMASMUCOSA} from "../../../config/constants";
+import { FETCH_ENTMASMUCOSA, DUPLICATE_ENTMASMUCOSA, UPDATE_ENTMASMUCOSA, ADD_ENTMASMUCOSA, FAIL_ENTMASMUCOSA, UPDATE_FAIL_ENTMASMUCOSA } from "../../../config/constants";
 
 
 const EntMasMucosaMaster = () => {
@@ -25,7 +25,7 @@ const EntMasMucosaMaster = () => {
     newStatus: "",
   });
 
-  
+
 
   // Format date
   const formatDate = (dateString) => {
@@ -38,7 +38,7 @@ const EntMasMucosaMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-  
+
 
   // Fetch data
   const fetchData = async (flag = 0) => {
@@ -121,7 +121,7 @@ const EntMasMucosaMaster = () => {
       fetchData();
       handleCancel();
     } catch {
-      showPopup(FAIL_ENTMASMUCOSA , "error");
+      showPopup(FAIL_ENTMASMUCOSA, "error");
     }
   };
 
@@ -289,7 +289,8 @@ const EntMasMucosaMaster = () => {
                   type="submit"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   className="btn btn-danger"

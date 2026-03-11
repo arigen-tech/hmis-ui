@@ -1,32 +1,29 @@
-import { useState, useRef, useEffect } from "react"
-import { useNavigate } from 'react-router-dom'; // Add this import
-import Popup from "../../../Components/popup"
-import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
-import { API_HOST, MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
+import { useState, useEffect, useCallback } from "react"
+import { useNavigate } from 'react-router-dom';
+import LoadingScreen from "../../../Components/Loading"
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { OPEN_BALANCE, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
-import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG,
-  WARNING_SELECT_ACTION,WARNING_REMARKS_MANDATORY,CONFIRM_OPENING_BALANCE_ACTION, CONFIRM_OPENING_BALANCE_RESULT,ERROR_PROCESS_REQUEST_FAILED,
-
- } from '../../../config/constants';
-
-
-
+import {
+  WARNING_SELECT_ACTION, WARNING_REMARKS_MANDATORY, CONFIRM_OPENING_BALANCE_ACTION, CONFIRM_OPENING_BALANCE_RESULT, ERROR_PROCESS_REQUEST_FAILED,
+  OPENING_BALANCE_APPROVE_TITLE,
+  OPENING_BALANCE_APPROVE_FILE_NAME,
+  OPENING_BALANCE_ENTRY_FILE_NAME,
+} from '../../../config/constants';
 
 const OpeningBalanceApproval = () => {
   const [currentView, setCurrentView] = useState("list") // "list" or "detail"
   const [selectedRecord, setSelectedRecord] = useState(null)
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [approvalData, setApprovalData] = useState([]);
   const [action, setAction] = useState("");
   const [remark, setRemark] = useState("");
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [confirmationPopup, setConfirmationPopup] = useState(null); // Add this state
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
-  // Add navigate hook
   const navigate = useNavigate();
 
   // Confirmation Popup Helper Function
@@ -47,42 +44,33 @@ const OpeningBalanceApproval = () => {
     });
   };
 
-
-
-  const fetchOpenBalance = async () => {
+  const fetchOpenBalanceHeaders = useCallback(async () => {
     try {
       setLoading(true);
-      const status = "p";
-      const response = await getRequest(`${OPEN_BALANCE}/list/${status}/${hospitalId}/${departmentId}`);
+      const response = await getRequest(`${INVENTORY}/openingBalanceEntry/headers/withoutPagination?hospitalId=${hospitalId}&departmentId=${departmentId}`);
 
-      if (response && Array.isArray(response)) {
-
-        setApprovalData(response);
-        console.log("Transformed approval data:", response);
+      if (response && response.response && Array.isArray(response.response)) {
+        setApprovalData(response.response);
+        console.log("Transformed approval data:", response.response);
       }
     } catch (err) {
-      console.error("Error fetching drug options:", err);
+      console.error("Error fetching opening balance headers:", err);
     } finally {
       setLoading(false);
     }
-  };
-
+  }, [hospitalId, departmentId]);
 
   useEffect(() => {
-    fetchOpenBalance();
-  }, []);
+    fetchOpenBalanceHeaders();
+  }, [fetchOpenBalanceHeaders]);
 
   useEffect(() => {
     console.log("approvalData updated:", approvalData);
   }, [approvalData]);
 
-
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-
-
 
   const [detailEntries, setDetailEntries] = useState([])
 
@@ -92,6 +80,20 @@ const OpeningBalanceApproval = () => {
     const d = new Date(date);
     if (isNaN(d.getTime())) return "";
     return d.toISOString().split("T")[0];
+  };
+
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "";
+    }
   };
 
   // Filtered data based on date range (only when both dates are present)
@@ -107,48 +109,50 @@ const OpeningBalanceApproval = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredApprovalData.slice(indexOfFirst, indexOfLast);
 
+  // Function to fetch details when editing a record
+  const fetchOpeningBalanceDetails = async (balanceMId) => {
+    try {
+      const response = await getRequest(`${INVENTORY}/openingBalanceEntry/details/${balanceMId}`);
+      
+      if (response && response.response && Array.isArray(response.response)) {
+        setDetailEntries(response.response);
+        console.log("Fetched details:", response.response);
+      }
+    } catch (err) {
+      console.error("Error fetching opening balance details:", err);
+      showConfirmationPopup("Failed to fetch details. Please try again.", "error", () => {});
+    }
+  };
 
-  const handleEdit = (item) => {
-    setSelectedRecord(item)
-    setDetailEntries(item.openingBalanceDtResponseList)
-    setCurrentView("detail")
-  }
+  const handleEdit = async (item) => {
+    setSelectedRecord(item);
+    await fetchOpeningBalanceDetails(item.balanceMId);
+    setCurrentView("detail");
+  };
 
   const handleBackToList = () => {
-    setCurrentView("list")
-    setSelectedRecord(null)
-  }
-
-  const handleSearch = () => {
-    console.log("Searching from", fromDate, "to", toDate)
-  }
+    setCurrentView("list");
+    setSelectedRecord(null);
+    setDetailEntries([]);
+    setAction("");
+    setRemark("");
+  };
 
   const handleShowAll = () => {
     setFromDate("");
     setToDate("");
     setCurrentPage(1);
-  }
-
-
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
-    })
-  }
+  };
 
   // Helper function to handle the actual submit logic
   const handleSubmitLogic = async () => {
     if (!action) {
-      showPopup(WARNING_SELECT_ACTION, "warning");
+      showConfirmationPopup(WARNING_SELECT_ACTION, "warning", () => {});
       return { success: false, message: "Please select an action" };
     }
 
     if (!remark.trim()) {
-      showPopup(WARNING_REMARKS_MANDATORY, "warning");
+      showConfirmationPopup(WARNING_REMARKS_MANDATORY, "warning", () => {});
       return { success: false, message: "Remarks are mandatory" };
     }
 
@@ -158,58 +162,54 @@ const OpeningBalanceApproval = () => {
     };
 
     try {
-      const response = await putRequest(`${OPEN_BALANCE}/Approved/${selectedRecord.balanceMId}`, payload);
+      setIsProcessing(true);
+      const response = await putRequest(`${INVENTORY}/openingBalanceEntry/approve/${selectedRecord.balanceMId}`, payload);
       return { success: true, response, balanceMId: selectedRecord.balanceMId };
-
     } catch (error) {
       console.error("Error submitting data:", error);
       return { success: false, message: "Failed to process the request. Please try again." };
+    } finally {
+      setIsProcessing(false);
     }
   };
 
-  // Handle Submit - UPDATED WITH CONFIRMATION POPUP
+  // Handle Submit
   const handleSubmit = async () => {
     const actionText = action === "a" ? "approve" : action === "r" ? "reject" : "submit";
     const actionDisplayText = action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit";
     
-    // Show confirmation popup
     showConfirmationPopup(
       CONFIRM_OPENING_BALANCE_ACTION(actionText),
       "info",
       async () => {
-        // On confirm, proceed with submit
         const result = await handleSubmitLogic();
         
         if (result?.success) {
           const balanceMId = result.balanceMId;
           
-          // Show success confirmation popup with navigation
           showConfirmationPopup(
             CONFIRM_OPENING_BALANCE_RESULT(action),
             "success",
             () => {
-              // Navigate to report page
               if (balanceMId) {
                 navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
-                    title: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
-                    fileName: action === "a" ? 'Opening Balance Approval Report' : 'Opening Balance Rejection Report',
+                    title: OPENING_BALANCE_APPROVE_TITLE(action),
+                    fileName: OPENING_BALANCE_APPROVE_FILE_NAME(action),
                     returnPath: window.location.pathname
                   }
                 });
               }
               
-              // Refresh the list and go back
-              fetchOpenBalance();
+              fetchOpenBalanceHeaders();
               setCurrentView("list");
               setSelectedRecord(null);
               setAction("");
               setRemark("");
             },
             () => {
-              // User clicked "No" - just reset and stay on same page
-              fetchOpenBalance();
+              fetchOpenBalanceHeaders();
               setCurrentView("list");
               setSelectedRecord(null);
               setAction("");
@@ -219,19 +219,17 @@ const OpeningBalanceApproval = () => {
             "No"
           );
         } else {
-          // Show error confirmation popup
           showConfirmationPopup(
             result?.message || ERROR_PROCESS_REQUEST_FAILED,
             "error",
-            () => {}, // Empty function for OK button
-            null, // No cancel function
+            () => {},
+            null,
             "OK",
             "Close"
           );
         }
       },
       () => {
-        // On cancel, do nothing
         console.log(`${actionText} cancelled by user`);
       },
       `Yes, ${actionDisplayText}`,
@@ -239,14 +237,23 @@ const OpeningBalanceApproval = () => {
     );
   };
 
-
-
+  // Handle Report button click
+  const handleReport = () => {
+    if (selectedRecord?.balanceMId) {
+      navigate('/ViewDownloadReport', {
+        state: {
+          reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${selectedRecord.balanceMId}`,
+          title: OPENING_BALANCE_ENTRY_FILE_NAME, 
+          fileName: OPENING_BALANCE_ENTRY_FILE_NAME, 
+          returnPath: window.location.pathname
+        }
+      });
+    }
+  };
 
   if (currentView === "detail") {
     return (
-
       <div className="content-wrapper">
-        {/* Add ConfirmationPopup component */}
         <ConfirmationPopup
           show={confirmationPopup !== null}
           message={confirmationPopup?.message || ''}
@@ -281,7 +288,6 @@ const OpeningBalanceApproval = () => {
                           ? new Date(selectedRecord.enteredDt).toLocaleDateString("en-GB")
                           : ""
                       }
-
                       style={{ backgroundColor: "#e9ecef" }}
                       readOnly
                     />
@@ -316,6 +322,17 @@ const OpeningBalanceApproval = () => {
                       readOnly
                     />
                   </div>
+
+                  <div className="col-md-3 mt-3">
+                    <label className="form-label fw-bold">Balance Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.balanceType || ""}
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
                 </div>
 
                 {/* Detail Table */}
@@ -344,7 +361,7 @@ const OpeningBalanceApproval = () => {
                     </thead>
                     <tbody>
                       {detailEntries.map((entry, index) => (
-                        <tr key={entry.balanceMId}>
+                        <tr key={entry.balanceTId || index}>
                           <td className="text-center">
                             <input
                               type="text"
@@ -400,7 +417,7 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               placeholder="DD/MM/YYYY"
-                              value={entry.manufactureDate}
+                              value={formatDateForDisplay(entry.manufactureDate)}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -411,7 +428,7 @@ const OpeningBalanceApproval = () => {
                               type="text"
                               className="form-control"
                               placeholder="DD/MM/YYYY"
-                              value={entry.expiryDate}
+                              value={formatDateForDisplay(entry.expiryDate)}
                               style={{ width: "110px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
@@ -481,24 +498,22 @@ const OpeningBalanceApproval = () => {
                             <input
                               type="text"
                               className="form-control"
-                              value={entry.manufacturerName || ""}
-                              style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
                               value={entry.brandName || ""}
                               style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
                               readOnly
                               disabled
                             />
                           </td>
-
+                          <td>
+                            <input
+                              type="text"
+                              className="form-control"
+                              value={entry.manufacturerName || ""}
+                              style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
+                              readOnly
+                              disabled
+                            />
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -512,6 +527,7 @@ const OpeningBalanceApproval = () => {
                       className="form-select"
                       value={action}
                       onChange={(e) => setAction(e.target.value)}
+                      disabled={isProcessing}
                     >
                       <option value="">Select Action</option>
                       <option value="a">Approve</option>
@@ -527,23 +543,44 @@ const OpeningBalanceApproval = () => {
                       placeholder="Enter your remark here"
                       value={remark}
                       onChange={(e) => setRemark(e.target.value)}
+                      disabled={isProcessing}
                     />
                   </div>
                 </div>
 
-                {/* Action Buttons */}
                 <div className="d-flex justify-content-end mt-4">
+                  <button
+                    type="button"
+                    className="btn btn-info me-2"
+                    onClick={handleReport}
+                    style={{ color: "white" }}
+                    disabled={isProcessing}
+                  >
+                    Report
+                  </button>
+                  
                   <button
                     type="button"
                     className="btn me-2"
                     style={{ backgroundColor: "#e67e22", color: "white" }}
                     onClick={handleSubmit}
+                    disabled={isProcessing || !action}
                   >
-
-                    {action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit"}
-
+                    {isProcessing ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        {action === "a" ? "Approving..." : action === "r" ? "Rejecting..." : "Submitting..."}
+                      </>
+                    ) : (
+                      action === "a" ? "Approve" : action === "r" ? "Reject" : "Submit"
+                    )}
                   </button>
-                  <button type="button" className="btn btn-danger" onClick={handleBackToList} >
+                  <button 
+                    type="button" 
+                    className="btn btn-danger" 
+                    onClick={handleBackToList}
+                    disabled={isProcessing}
+                  >
                     Cancel
                   </button>
                 </div>
@@ -557,7 +594,7 @@ const OpeningBalanceApproval = () => {
 
   return (
     <div className="content-wrapper">
-      {/* Add ConfirmationPopup component for list view */}
+      {loading && <LoadingScreen />}
       <ConfirmationPopup
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
@@ -607,7 +644,7 @@ const OpeningBalanceApproval = () => {
                 </div>
                 <div className="col-md-3 d-flex align-items-end"></div>
                 <div className="col-md-3 d-flex justify-content-end align-items-end">
-                  <button type="button" className="btn btn-success" onClick={handleShowAll}>
+                  <button type="button" className="btn btn-secondary" onClick={handleShowAll}>
                     Show All
                   </button>
                 </div>
@@ -621,8 +658,9 @@ const OpeningBalanceApproval = () => {
                       <th>Balance No.</th>
                       <th>Opening Balance Date</th>
                       <th>Department</th>
+                      <th>Submitted By</th> 
+                      <th>Drug / Non Drug</th>
                       <th>Status</th>
-                      <th>Submitted By</th>
                       <th>Action</th>
                     </tr>
                   </thead>
@@ -632,6 +670,8 @@ const OpeningBalanceApproval = () => {
                         <td>{item.balanceNo}</td>
                         <td>{new Date(item.enteredDt).toLocaleDateString("en-GB")}</td>
                         <td>{item.departmentName}</td>
+                        <td>{item.enteredBy}</td>
+                        <td>{item.balanceType}</td>
                         <td>
                           <span
                             className="badge"
@@ -647,7 +687,6 @@ const OpeningBalanceApproval = () => {
                                 : item.status}
                           </span>
                         </td>
-                        <td>{item.enteredBy}</td>
                         <td>
                           <button
                             className="btn btn-sm btn-success me-2"

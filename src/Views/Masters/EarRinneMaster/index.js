@@ -5,12 +5,19 @@ import LoadingScreen from "../../../Components/Loading";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_ENT_RINNE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_EAR,DUPLICATE_EAR,UPDATE_EAR,ADD_EAR,FAIL_EAR,UPDATE_FAIL_EAR} from  "../../../config/constants";
-
+import {
+  FETCH_EAR,
+  DUPLICATE_EAR,
+  UPDATE_EAR,
+  ADD_EAR,
+  FAIL_EAR,
+  UPDATE_FAIL_EAR,
+} from "../../../config/constants";
 
 const EarRinneMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+
   const [formData, setFormData] = useState({ rinneResult: "" });
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -18,15 +25,15 @@ const EarRinneMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     record: null,
     newStatus: "",
   });
 
-  const MAX_LENGTH = 8; 
+  const MAX_LENGTH = 8;
 
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -37,7 +44,6 @@ const EarRinneMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-  // Fetch data
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -55,7 +61,6 @@ const EarRinneMaster = () => {
     fetchData();
   }, []);
 
-  // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
     (rec?.rinneResult ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -70,11 +75,9 @@ const EarRinneMaster = () => {
     setCurrentPage(1);
   };
 
-  // ================= FORM =================
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    const updated = { ...formData, [id]: value };
-    setFormData(updated);
+    setFormData({ ...formData, [id]: value });
     setIsFormValid(value.trim() !== "");
   };
 
@@ -89,7 +92,6 @@ const EarRinneMaster = () => {
     setShowForm(false);
   };
 
-  // ================= SAVE =================
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -126,20 +128,18 @@ const EarRinneMaster = () => {
     }
   };
 
-  // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({ rinneResult: rec.rinneResult || "" });
-    setShowForm(true);
     setIsFormValid(true);
+    setShowForm(true);
   };
 
-  // ================= STATUS =================
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y", // Fixed: using lowercase comparison
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
@@ -152,7 +152,9 @@ const EarRinneMaster = () => {
 
     try {
       setLoading(true);
-      await putRequest(`${MAS_ENT_RINNE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`);
+      await putRequest(
+        `${MAS_ENT_RINNE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
+      );
       showPopup(UPDATE_EAR, "success");
       fetchData();
     } catch {
@@ -177,7 +179,7 @@ const EarRinneMaster = () => {
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Ear Rinne Test Master</h4> {/* Removed card-title class for consistency */}
+          <h4>Ear Rinne Test Master</h4>
           <div className="d-flex">
             {!showForm && (
               <input
@@ -189,12 +191,14 @@ const EarRinneMaster = () => {
                 onChange={handleSearchChange}
               />
             )}
-
             {!showForm ? (
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => { resetForm(); setShowForm(true); }}
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
                 >
                   Add
                 </button>
@@ -234,11 +238,13 @@ const EarRinneMaster = () => {
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status?.toLowerCase() === "y"} // Fixed: using lowercase
+                            checked={rec.status?.toLowerCase() === "y"}
                             onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"} {/* Fixed: using lowercase */}
+                            {rec.status?.toLowerCase() === "y"
+                              ? "Active"
+                              : "Inactive"}
                           </label>
                         </div>
                       </td>
@@ -246,7 +252,7 @@ const EarRinneMaster = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
-                          disabled={rec.status?.toLowerCase() !== "y"} // Fixed: using lowercase
+                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -256,7 +262,6 @@ const EarRinneMaster = () => {
                 </tbody>
               </table>
 
-              {/* PAGINATION */}
               {filteredData.length > 0 && (
                 <Pagination
                   totalItems={filteredData.length}
@@ -269,7 +274,9 @@ const EarRinneMaster = () => {
           ) : (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-5">
-                <label>Rinne Result<span className="text-danger">*</span></label>
+                <label>
+                  Rinne Result<span className="text-danger">*</span>
+                </label>
                 <input
                   id="rinneResult"
                   className="form-control"
@@ -286,7 +293,7 @@ const EarRinneMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -311,8 +318,18 @@ const EarRinneMaster = () => {
                     <strong>{confirmDialog.record?.rinneResult}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
+                      No
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>

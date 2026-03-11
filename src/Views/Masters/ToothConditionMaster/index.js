@@ -18,11 +18,11 @@ const ToothConditionMaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    conditionId: null, 
-    newStatus: false, 
-    conditionName: "" 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    conditionId: null,
+    newStatus: false,
+    conditionName: ""
   });
   const [popupMessage, setPopupMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -214,16 +214,16 @@ const ToothConditionMaster = () => {
 
   const handleInputChange = (e) => {
     const { id, value, type, checked } = e.target;
-    
+
     if (type === "checkbox" && id === "isExclusive") {
-      setFormData((prevData) => ({ 
-        ...prevData, 
-        [id]: checked ? "y" : "n" 
+      setFormData((prevData) => ({
+        ...prevData,
+        [id]: checked ? "y" : "n"
       }));
     } else {
       setFormData((prevData) => ({ ...prevData, [id]: value }));
     }
-    
+
     // Validate form - check condition name only
     if (id === "conditionName") {
       setIsFormValid(value.trim() !== "");
@@ -325,8 +325,8 @@ const ToothConditionMaster = () => {
                                     type="checkbox"
                                     checked={toothCondition.status === "y"}
                                     onChange={() => handleSwitchChange(
-                                      toothCondition.id, 
-                                      toothCondition.status === "y" ? "n" : "y", 
+                                      toothCondition.id,
+                                      toothCondition.status === "y" ? "n" : "y",
                                       toothCondition.conditionName
                                     )}
                                     id={`switch-${toothCondition.id}`}
@@ -385,7 +385,7 @@ const ToothConditionMaster = () => {
                       required
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-3">
                     <label>Points</label>
                     <input
@@ -397,7 +397,7 @@ const ToothConditionMaster = () => {
                       onChange={handleInputChange}
                     />
                   </div>
-                  
+
                   <div className="form-group col-md-3">
                     <div className="form-check mt-4 pt-3">
                       <input
@@ -412,10 +412,10 @@ const ToothConditionMaster = () => {
                       </label>
                     </div>
                   </div>
-                  
+
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                      {editingRecord ? "Update" : "Save"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleBack}>
                       Cancel

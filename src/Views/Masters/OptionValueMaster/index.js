@@ -115,7 +115,7 @@ const OptionValueMaster = () => {
     rec.optionCode.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
- const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
@@ -191,10 +191,10 @@ const OptionValueMaster = () => {
   const handleSwitchChange = (id, newStatus, optionCode) => {
     setConfirmDialog({ isOpen: true, id, newStatus, optionCode });
   };
-const handleRefresh = () => {
-  setSearchQuery("");
-  setCurrentPage(1);
-};
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+  };
 
   const handleConfirm = (confirmed) => {
     if (confirmed) {
@@ -224,8 +224,8 @@ const handleRefresh = () => {
           <div className="d-flex">
             {!showForm && (
               <input
-              type="text"
-               style={{ width: "220px" }}
+                type="text"
+                style={{ width: "220px" }}
                 className="form-control me-2"
                 placeholder="Search..."
                 value={searchQuery}
@@ -236,23 +236,23 @@ const handleRefresh = () => {
               />
             )}
 
-           {!showForm ? (
-  <>
-    <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-      Add
-    </button>
-     <button className="btn btn-success" onClick={handleRefresh}>
-      Show All
-    </button>
-  </>
-) : (
-  <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
-    Back
-  </button>
-)}
-</div>
-</div>      
-  <div className="card-body">
+            {!showForm ? (
+              <>
+                <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                  Add
+                </button>
+                <button className="btn btn-success" onClick={handleRefresh}>
+                  Show All
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                Back
+              </button>
+            )}
+          </div>
+        </div>
+        <div className="card-body">
 
           {/* ================= LIST ================= */}
           {!showForm && (
@@ -277,25 +277,25 @@ const handleRefresh = () => {
                       <td>{rec.optionName}</td>
                       <td>{rec.optionCode}</td>
                       <td>{rec.score}</td>
-                       <td>
-                <div className="form-check form-switch">
-                <input
-                className="form-check-input"
-                type="checkbox"
-                checked={rec.status === "Y"}
-                onChange={() =>
-                handleSwitchChange(
-                rec.id,
-                rec.status === "Y" ? "N" : "Y",
-               rec.optionCode
-        )
-      }
-    />
-            <label className="form-check-label ms-2">
-           {rec.status === "Y" ? "Active" : "Inactive"}
-        </label>
-               </div>
-                  </td>
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={rec.status === "Y"}
+                            onChange={() =>
+                              handleSwitchChange(
+                                rec.id,
+                                rec.status === "Y" ? "N" : "Y",
+                                rec.optionCode
+                              )
+                            }
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status === "Y" ? "Active" : "Inactive"}
+                          </label>
+                        </div>
+                      </td>
 
                       <td>
                         <button
@@ -312,12 +312,12 @@ const handleRefresh = () => {
               </table>
 
               {/* PAGINATION */}
-             <Pagination
-               totalItems={filteredData.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </>
           )}
 
@@ -339,7 +339,7 @@ const handleRefresh = () => {
                   className="form-select"
                   value={formData.question}
                   onChange={handleInputChange}
-                 
+
                 >
                   <option value="">Select</option>
                   {(questionOptions[formData.heading] || []).map(q => (
@@ -364,7 +364,10 @@ const handleRefresh = () => {
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                  {editingRecord ? "Update" : "Save"}
+
+                </button>
                 <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>
               </div>
             </form>
@@ -379,7 +382,7 @@ const handleRefresh = () => {
                   <div className="modal-body">
                     Are you sure you want to{" "}
                     {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
-                     <strong>{confirmDialog.optionCode}</strong>?
+                    <strong>{confirmDialog.optionCode}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>

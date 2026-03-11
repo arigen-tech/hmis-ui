@@ -2,12 +2,16 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS } from "../../../config/apiConfig";
+import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import {WARNING_DUPLICATE_BATCH_ENTRY,WARNING_CORRECT_ERRORS,CONFIRM_SAVE_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SAVED_PRINT,
-  CONFIRM_SUBMIT_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SUBMITTED_PRINT,ERROR_SUBMIT_DATA_FAILED,ERROR_SAVE_DATA_FAILED
+  CONFIRM_SUBMIT_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SUBMITTED_PRINT,ERROR_SUBMIT_DATA_FAILED,
+  ERROR_SAVE_DATA_FAILED,
+  OPENING_BALANCE_ENTRY_TITLE,
+  OPENING_BALANCE_ENTRY_FILE_NAME,
 }  from "../../../config/constants"
+import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const OpeningBalanceEntry = () => {
 
@@ -25,6 +29,22 @@ const OpeningBalanceEntry = () => {
 
   // Add navigate hook
   const navigate = useNavigate();
+
+  // Add balance type state
+  const [balanceType, setBalanceType] = useState("");
+
+  // Drug search state with debounce - Now per row (similar to IndentCreation)
+  const [itemDropdown, setItemDropdown] = useState([]);
+  const [itemSearch, setItemSearch] = useState("");
+  const [itemPage, setItemPage] = useState(0);
+  const [itemLastPage, setItemLastPage] = useState(true);
+  const [showItemDropdown, setShowItemDropdown] = useState(false);
+  const [isItemLoading, setIsItemLoading] = useState(false);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  
+  // Refs for debounce and dropdown
+  const debounceItemRef = useRef(null);
+  const dropdownItemRef = useRef(null);
 
   const getCurrentDate = () => {
     const today = new Date();
@@ -136,6 +156,186 @@ const OpeningBalanceEntry = () => {
     }
   };
 
+  // Fetch items from API with debounce - Modified to use sectionId based on balance type (similar to IndentCreation)
+  const fetchItems = async (page, searchText = "") => {
+    try {
+      setIsItemLoading(true);
+      // Determine section ID based on balance type
+      const params = new URLSearchParams();
+
+      if (balanceType === "drug") {
+        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+      }
+
+      params.append("keyword", searchText);
+      params.append("page", page);
+      params.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+      const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const data = await getRequest(url);
+
+      if (data.status === 200 && data.response?.content) {
+        return {
+          list: data.response.content,
+          last: data.response.last,
+          totalPages: data.response.totalPages,
+          totalElements: data.response.totalElements
+        };
+      }
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } catch (error) {
+      console.error("Error fetching items:", error);
+      return { list: [], last: true, totalPages: 0, totalElements: 0 };
+    } finally {
+      setIsItemLoading(false);
+    }
+  };
+
+  // Fetch item details by ID
+  const fetchItemDetails = async (itemId) => {
+    try {
+      const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const response = await getRequest(url);
+      
+      if (response.status === 200 && response.response) {
+        return response.response;
+      }
+      return null;
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+      return null;
+    } 
+  };
+
+  // Handle item search with debounce - Now per row (similar to IndentCreation)
+  const handleItemSearch = (value, index) => {
+    // Check if balance type is selected
+    if (!balanceType) {
+      showPopup("Please select Balance Type first", "warning");
+      return;
+    }
+
+    setItemSearch(value);
+    setActiveRowIndex(index);
+    
+    // Update the drugName in the entry
+    const newEntries = [...drugEntries];
+    newEntries[index] = {
+      ...newEntries[index],
+      drugName: value
+    };
+    setDrugEntries(newEntries);
+    
+    // Clear selections when user types
+    if (!value.trim() || (newEntries[index].drugId && !value.includes(newEntries[index].drugName))) {
+      newEntries[index] = {
+        ...newEntries[index],
+        drugId: null,
+        drugCode: "",
+        unit: "",
+        drugData: null
+      };
+      setDrugEntries(newEntries);
+    }
+
+    // Debounce API call
+    if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
+    debounceItemRef.current = setTimeout(async () => {
+      if (!value.trim()) {
+        setItemDropdown([]);
+        setShowItemDropdown(false);
+        return;
+      }
+      const result = await fetchItems(0, value);
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    }, 700);
+  };
+
+  // Load first page of items for dropdown - Now per row
+  const loadFirstItemPage = (searchText) => {
+    if (!searchText.trim() || !balanceType) return;
+    setItemSearch(searchText);
+    fetchItems(0, searchText).then(result => {
+      setItemDropdown(result.list);
+      setItemLastPage(result.last);
+      setItemPage(0);
+      setShowItemDropdown(true);
+    });
+  };
+
+  // Load more items for infinite scroll
+  const loadMoreItems = async () => {
+    if (itemLastPage) return;
+    const nextPage = itemPage + 1;
+    const result = await fetchItems(nextPage, itemSearch);
+    setItemDropdown(prev => [...prev, ...result.list]);
+    setItemLastPage(result.last);
+    setItemPage(nextPage);
+  };
+
+  // Handle item selection from dropdown (similar to IndentCreation)
+  const handleItemSelect = async (index, item) => {
+    // Check if drug is already selected in another row
+    const isDuplicate = drugEntries.some((entry, i) => 
+      i !== index && entry.drugId === item.itemId
+    );
+
+    if (isDuplicate) {
+      showPopup("This item is already added in another row", "warning");
+      return;
+    }
+
+    // Fetch complete item details
+    const itemDetails = await fetchItemDetails(item.itemId);
+    
+    if (itemDetails) {
+      const newEntries = [...drugEntries];
+      
+      // Update the selected row with complete item information
+      newEntries[index] = {
+        ...newEntries[index],
+        drugId: itemDetails.itemId,
+        drugCode: itemDetails.pvmsNo || "",
+        drugName: itemDetails.nomenclature || "",
+        unit: itemDetails.unitAuName || itemDetails.dispUnitName || "",
+        gstPercent: itemDetails.hsnGstPercent || 0,
+        drugData: {
+          itemId: itemDetails.itemId,
+          nomenclature: itemDetails.nomenclature,
+          pvmsNo: itemDetails.pvmsNo,
+          unitAuName: itemDetails.unitAuName,
+          dispUnitName: itemDetails.dispUnitName,
+          gstPercent: itemDetails.gstPercent,
+          sectionName: itemDetails.sectionName,
+          itemTypeName: itemDetails.itemTypeName,
+          groupName: itemDetails.groupName,
+          itemClassName: itemDetails.itemClassName
+        }
+      };
+
+      setDrugEntries(newEntries);
+      setItemSearch(""); // Clear the search after selection
+      setShowItemDropdown(false); // Hide dropdown
+      setActiveRowIndex(null);
+    }
+  };
+
+  // Handle click outside dropdown
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
+        setShowItemDropdown(false);
+        setActiveRowIndex(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   useEffect(() => {
     fetchDepartment();
     fetchCurrentUser();
@@ -162,6 +362,7 @@ const OpeningBalanceEntry = () => {
       totalCost: "",
       brandName: "",
       manufacturer: "",
+      drugData: null, // Add drugData field
     },
   ])
 
@@ -180,14 +381,7 @@ const OpeningBalanceEntry = () => {
       if (i === index) {
         const updatedEntry = { ...entry, [field]: value };
 
-        // DOM and DOE validation
-        const dom = field === "dom" ? value : entry.dom;
-        const doe = field === "doe" ? value : entry.doe;
-
-        if (dom && doe && new Date(dom) > new Date(doe)) {
-          alert("Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE).");
-          return entry;
-        }
+        // REMOVED: Date validation removed from here - now only happens on save/submit
 
         // Auto-calculate totalCost
         if (field === "qty" || field === "mrpPerUnit") {
@@ -221,6 +415,8 @@ const OpeningBalanceEntry = () => {
       totalCost: "",
       brandName: "",
       manufacturer: "",
+      drugId: null,
+      drugData: null,
     }
     setDrugEntries([...drugEntries, newEntry])
   }
@@ -249,6 +445,16 @@ const OpeningBalanceEntry = () => {
       if (!entry.batchNoSerialNo) errors.batchNoSerialNo = "batchNoSerialNo is required";
       if (!entry.dom) errors.dom = "dom is required";
       if (!entry.doe) errors.doe = "doe is required";
+      
+      // ADDED: Date validation here - only checks when both dates exist
+      if (entry.dom && entry.doe) {
+        const domDate = new Date(entry.dom);
+        const doeDate = new Date(entry.doe);
+        if (domDate > doeDate) {
+          errors.dateValidation = "Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE)";
+        }
+      }
+      
       if (!entry.qty || isNaN(entry.qty)) errors.qty = "qty is required";
       if (!entry.unitsPerPack || isNaN(entry.unitsPerPack)) errors.unitsPerPack = "unitsPerPack is required";
       if (!entry.purchaseRatePerUnit || isNaN(entry.purchaseRatePerUnit)) errors.purchaseRatePerUnit = "purchaseRatePerUnit is required";
@@ -305,7 +511,12 @@ const OpeningBalanceEntry = () => {
           const error = drugErrors[i];
           const errorKeys = Object.keys(error);
           if (errorKeys.length > 0) {
-            firstErrorMsg = `${errorKeys[0]} is required`;
+            // UPDATED: Check for date validation error first
+            if (error.dateValidation) {
+              firstErrorMsg = error.dateValidation;
+            } else {
+              firstErrorMsg = `${errorKeys[0]} is required`;
+            }
             break;
           }
         }
@@ -341,7 +552,7 @@ const OpeningBalanceEntry = () => {
 
     try {
       setProcessing(true);
-      const endpoint = isSave ? `${OPEN_BALANCE}/create` : `${OPEN_BALANCE}/submit`;
+      const endpoint = isSave ? `${INVENTORY}/openingBalanceEntry/save` : `${INVENTORY}/openingBalanceEntry/submit`;
       const response = await postRequest(endpoint, payload);
 
       if (response?.status === 200 || response?.success) {
@@ -381,8 +592,8 @@ const OpeningBalanceEntry = () => {
                 navigate('/ViewDownloadReport', {
                   state: {
                     reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
-                    title: 'Opening Balance Save Report',
-                    fileName: 'Opening Balance Save Report',
+                    title: OPENING_BALANCE_ENTRY_TITLE,
+                    fileName: OPENING_BALANCE_ENTRY_FILE_NAME,
                     returnPath: window.location.pathname
                   }
                 });
@@ -490,6 +701,7 @@ const OpeningBalanceEntry = () => {
       enteredBy: currentLogUser,
       department: deptId,
     })
+    setBalanceType(""); // Reset balance type
     setDrugEntries([
       {
         id: 1,
@@ -507,8 +719,14 @@ const OpeningBalanceEntry = () => {
         totalCost: "",
         brandName: "",
         manufacturer: "",
+        drugId: null,
+        drugData: null,
       },
     ])
+    setShowItemDropdown(false);
+    setActiveRowIndex(null);
+    setItemSearch("");
+    setItemDropdown([]);
   }
 
   const dropdownClickedRef = useRef(false);
@@ -538,7 +756,7 @@ const OpeningBalanceEntry = () => {
             <div className="card-body">
               {/* Entry Details Section */}
               <div className="mb-4">
-                <h5 className=" mb-3">Entry Details:</h5>
+                <h5 className="mb-3">Entry Details:</h5>
                 <div className="row g-3">
                   <div className="col-md-3">
                     <label className="form-label fw-bold">Balance Entry Date</label>
@@ -576,6 +794,18 @@ const OpeningBalanceEntry = () => {
                       readOnly
                     />
                   </div>
+                   <div className="col-md-3">
+                    <label className="form-label fw-bold">Balance Type <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select"
+                      value={balanceType}
+                      onChange={(e) => setBalanceType(e.target.value)}
+                    >
+                      <option value="">Select Balance Type</option>
+                      <option value="drug">Drug</option>
+                      <option value="nondrug">Non Drug</option>
+                    </select>
+                  </div>
                 </div>
               </div>
 
@@ -596,8 +826,8 @@ const OpeningBalanceEntry = () => {
                       <th className="text-center" style={{ width: "60px", minWidth: "60px" }}>
                         S.No.
                       </th>
-                      <th style={{ width: "120px", minWidth: "120px" }}>Drug Code</th>
-                      <th style={{ width: "200px", minWidth: "200px" }}>Drug Name</th>
+                      <th style={{ width: "120px", minWidth: "120px" }}>Item Code</th>
+                      <th style={{ width: "200px", minWidth: "200px" }}>Item Name</th>
                       <th style={{ width: "80px", minWidth: "80px" }}>Unit</th>
                       <th style={{ width: "150px", minWidth: "150px" }}>Batch No/ Serial No</th>
                       <th style={{ width: "120px", minWidth: "120px" }}>DOM</th>
@@ -618,190 +848,102 @@ const OpeningBalanceEntry = () => {
                     {drugEntries.map((entry, index) => (
                       <tr key={entry.id}>
                         <td className="text-center fw-bold">{index + 1}</td>
-                        {/* Drug Code Input with its own dropdown */}
-                        <td style={{ position: "relative", overflow: "visible", zIndex: activeDrugCodeDropdown === index ? 999 : 'auto' }}>
+                        {/* Drug Code - Now auto-filled from selection */}
+                        <td>
                           <input
                             type="text"
                             className="form-control form-control-sm"
                             value={entry.drugCode}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              handleDrugEntryChange(index, "drugCode", value);
-                              if (value.length > 0) {
-                                setActiveDrugCodeDropdown(index);
-                              } else {
-                                setActiveDrugCodeDropdown(null);
-                              }
-                            }}
-                            placeholder="Code"
-                            style={{ minWidth: "100px" }}
-                            autoComplete="off"
-                            onFocus={() => setActiveDrugCodeDropdown(index)}
-                            onBlur={() => {
-                              setTimeout(() => {
-                                if (!dropdownClickedRef.current) {
-                                  setActiveDrugCodeDropdown(null);
-                                }
-                                dropdownClickedRef.current = false;
-                              }, 150);
-                            }}
+                            readOnly
+                            style={{ backgroundColor: "#f8f9fa", minWidth: "100px" }}
+                            placeholder="Auto-filled"
                           />
-
-                          {activeDrugCodeDropdown === index && (
-                            <ul
-                              className="list-group position-fixed"
-                              style={{
-                                zIndex: 9999,
-                                maxHeight: 180,
-                                overflowY: "auto",
-                                width: "200px",
-                                top: `${document.querySelector(`input[value="${entry.drugCode}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                left: `${document.querySelector(`input[value="${entry.drugCode}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
-                                backgroundColor: "white",
-                                border: "1px solid #dee2e6",
-                                borderRadius: "0.375rem",
-                                boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
-                              }}
-                            >
-                              {drugCodeOptions
-                                .filter((opt) =>
-                                  opt.code.toLowerCase().includes(entry.drugCode.toLowerCase())
-                                )
-                                .map((opt) => (
-                                  <li
-                                    key={opt.id}
-                                    className="list-group-item list-group-item-action"
-                                    style={{ cursor: "pointer" }}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      dropdownClickedRef.current = true;
-                                    }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
-
-                                      const updatedEntries = drugEntries.map((entry, i) => {
-                                        if (i === index) {
-                                          return {
-                                            ...entry,
-                                            drugCode: opt.code,
-                                            drugName: opt.name,
-                                            unit: opt.unit,
-                                            drugId: opt.id,
-                                            gstPercent: opt.hsnGstPercentage || 0,
-                                          };
-                                        }
-                                        return entry;
-                                      });
-
-                                      setDrugEntries(updatedEntries);
-                                      setActiveDrugCodeDropdown(null);
-                                      dropdownClickedRef.current = false;
-                                    }}
-                                  >
-                                    <strong>{opt.code}</strong> — {opt.name}
-                                  </li>
-                                ))}
-                              {drugCodeOptions.filter((opt) =>
-                                opt.code.toLowerCase().includes(entry.drugCode.toLowerCase())
-                              ).length === 0 && entry.drugCode !== "" && (
-                                  <li className="list-group-item text-muted">No matches found</li>
-                                )}
-                            </ul>
-                          )}
                         </td>
 
-                        {/* Drug Name Input with its own dropdown */}
-                        <td style={{ position: "relative", overflow: "visible", zIndex: activeDrugNameDropdown === index ? 999 : 'auto' }}>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
-                            value={entry.drugName}
-                            onChange={(e) => {
-                              const value = e.target.value;
-                              handleDrugEntryChange(index, "drugName", value);
-                              if (value.length > 0) {
-                                setActiveDrugNameDropdown(index);
-                              } else {
-                                setActiveDrugNameDropdown(null);
-                              }
-                            }}
-                            placeholder="Drug Name"
-                            style={{ minWidth: "180px" }}
-                            autoComplete="off"
-                            onFocus={() => setActiveDrugNameDropdown(index)}
-                            onBlur={() => {
-                              setTimeout(() => {
-                                if (!dropdownClickedRef.current) {
-                                  setActiveDrugNameDropdown(null);
+                        {/* Drug Name Input with debounce dropdown (similar to IndentCreation) */}
+                        <td style={{ position: 'relative', overflow: 'visible', zIndex: activeRowIndex === index ? 999 : 'auto' }} ref={dropdownItemRef}>
+                          <div className="dropdown-search-container position-relative">
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={entry.drugName}
+                              autoComplete="off"
+                              onChange={(e) => handleItemSearch(e.target.value, index)}
+                              onClick={() => {
+                                if (entry.drugName?.trim() && balanceType) {
+                                  loadFirstItemPage(entry.drugName);
+                                } else if (!balanceType) {
+                                  showPopup("Please select Balance Type first", "warning");
                                 }
-                                dropdownClickedRef.current = false;
-                              }, 150);
-                            }}
-                          />
-
-                          {activeDrugNameDropdown === index && (
-                            <ul
-                              className="list-group position-fixed"
-                              style={{
-                                zIndex: 9999,
-                                maxHeight: 180,
-                                overflowY: "auto",
-                                width: "200px",
-                                top: `${document.querySelector(`input[value="${entry.drugName}"]`)?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                left: `${document.querySelector(`input[value="${entry.drugName}"]`)?.getBoundingClientRect().left + window.scrollX}px`,
-                                backgroundColor: "white",
-                                border: "1px solid #dee2e6",
-                                borderRadius: "0.375rem",
-                                boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)"
                               }}
-                            >
-                              {drugCodeOptions
-                                .filter((opt) =>
-                                  opt.name.toLowerCase().includes(entry.drugName.toLowerCase())
-                                )
-                                .map((opt) => (
-                                  <li
-                                    key={opt.id}
-                                    className="list-group-item list-group-item-action"
-                                    style={{ cursor: "pointer" }}
-                                    onMouseDown={(e) => {
-                                      e.preventDefault();
-                                      dropdownClickedRef.current = true;
-                                    }}
-                                    onClick={(e) => {
-                                      e.preventDefault();
-                                      e.stopPropagation();
+                              placeholder={balanceType ? "Type item name..." : "Select Balance Type first"}
+                              style={{ minWidth: "180px" }}
+                              disabled={!balanceType}
+                            />
 
-                                      const updatedEntries = drugEntries.map((entry, i) => {
-                                        if (i === index) {
-                                          return {
-                                            ...entry,
-                                            drugCode: opt.code,
-                                            drugName: opt.name,
-                                            unit: opt.unit,
-                                            drugId: opt.id,
-                                            gstPercent: opt.hsnGstPercentage || 0,
-                                          };
-                                        }
-                                        return entry;
-                                      });
-
-                                      setDrugEntries(updatedEntries);
-                                      setActiveDrugNameDropdown(null);
-                                      dropdownClickedRef.current = false;
-                                    }}
-                                  >
-                                    <strong>{opt.name}</strong> — {opt.code}
-                                  </li>
-                                ))}
-                              {drugCodeOptions.filter((opt) =>
-                                opt.name.toLowerCase().includes(entry.drugName.toLowerCase())
-                              ).length === 0 && entry.drugName !== "" && (
-                                  <li className="list-group-item text-muted">No matches found</li>
+                            {/* Search Dropdown - Only show for active row */}
+                            {showItemDropdown && activeRowIndex === index && balanceType && (
+                              <div 
+                                className="border rounded mt-1 bg-white position-absolute w-100"
+                                style={{ maxHeight: "250px", zIndex: 1000, overflowY: "auto" }}
+                                onScroll={(e) => {
+                                  const target = e.target;
+                                  if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
+                                    loadMoreItems();
+                                  }
+                                }}
+                              >
+                                {isItemLoading && itemDropdown.length === 0 ? (
+                                  <div className="text-center p-3">
+                                    <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                      <span className="visually-hidden">Loading...</span>
+                                    </div>
+                                  </div>
+                                ) : itemDropdown.length > 0 ? (
+                                  <>
+                                    {itemDropdown.map((item) => {
+                                      const isSelectedInOtherRow = drugEntries.some(
+                                        (e, i) => i !== index && e.drugId === item.itemId
+                                      );
+                                      return (
+                                        <div
+                                          key={item.itemId}
+                                          className="p-2 cursor-pointer hover-bg-light"
+                                          onMouseDown={(e) => {
+                                            e.preventDefault();
+                                            if (!isSelectedInOtherRow) {
+                                              handleItemSelect(index, item);
+                                            }
+                                          }}
+                                          style={{ 
+                                            cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
+                                            backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
+                                            borderBottom: '1px solid #f0f0f0'
+                                          }}
+                                        >
+                                          <div className="fw-bold">{item.nomenclature}</div>
+                                          <div className="d-flex justify-content-between align-items-center">
+                                            <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                                            {isSelectedInOtherRow && (
+                                              <span className="badge bg-warning text-dark">Already Added</span>
+                                            )}
+                                          </div>
+                                        </div>
+                                      );
+                                    })}
+                                    
+                                    {!itemLastPage && (
+                                      <div className="text-center p-2 text-primary small">
+                                        {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
+                                      </div>
+                                    )}
+                                  </>
+                                ) : (
+                                  <div className="p-2 text-muted text-center">No items found</div>
                                 )}
-                            </ul>
-                          )}
+                              </div>
+                            )}
+                          </div>
                         </td>
 
                         <td>
@@ -809,9 +951,9 @@ const OpeningBalanceEntry = () => {
                             type="text"
                             className="form-control form-control-sm"
                             value={entry.unit}
-                            onChange={(e) => handleDrugEntryChange(index, "unit", e.target.value)}
-                            placeholder="Unit"
-                            style={{ minWidth: "70px" }}
+                            readOnly
+                            style={{ backgroundColor: "#f8f9fa", minWidth: "70px" }}
+                            placeholder="Auto-filled"
                           />
                         </td>
                         <td>
@@ -829,7 +971,6 @@ const OpeningBalanceEntry = () => {
                             type="date"
                             className="form-control form-control-sm"
                             value={entry.dom}
-                            max={entry.doe ? new Date(new Date(entry.doe).getTime() - 86400000).toISOString().split("T")[0] : undefined}
                             onChange={(e) => handleDrugEntryChange(index, "dom", e.target.value)}
                             style={{ minWidth: "120px" }}
                           />
@@ -839,7 +980,6 @@ const OpeningBalanceEntry = () => {
                             type="date"
                             className="form-control form-control-sm"
                             value={entry.doe}
-                            min={entry.dom ? new Date(new Date(entry.dom).getTime() + 86400000).toISOString().split("T")[0] : undefined}
                             onChange={(e) => handleDrugEntryChange(index, "doe", e.target.value)}
                             style={{ minWidth: "120px" }}
                           />

@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_OB_CONSANGUINITY } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_OB_CONSAN,DUPLICATE_OB_CONSAN,UPDATE_OB_CONSAN,ADD_OB_CONSAN,FAIL_OB_CONSAN,UPDATE_FAIL} from "../../../config/constants";
+import { FETCH_OB_CONSAN, DUPLICATE_OB_CONSAN, UPDATE_OB_CONSAN, ADD_OB_CONSAN, FAIL_OB_CONSAN, UPDATE_FAIL } from "../../../config/constants";
 
 
 
@@ -259,7 +259,9 @@ const ObConsanguinityMaster = () => {
               </div>
 
               <div className="col-md-12 text-end mt-4">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                  {editingRecord ? "Update" : "Save"}
+                </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>Cancel</button>
               </div>
             </form>

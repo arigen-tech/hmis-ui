@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import { OPTH_SPECTACLE_USE } from "../../../config/apiConfig"; 
+import { OPTH_SPECTACLE_USE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import {
@@ -10,7 +10,7 @@ import {
   FAIL_TO_UPDATE_STS,
   FETCH_SPECTACLE_USE_ERR_MSG,
   UPDATE_SPECTACLE_USE_SUCC_MSG
-} from "../../../config/constants"; 
+} from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const SpectacleUseMaster = () => {
@@ -18,11 +18,11 @@ const SpectacleUseMaster = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    id: null, 
-    newStatus: false, 
-    useName: "" 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    id: null,
+    newStatus: false,
+    useName: ""
   });
   const [popupMessage, setPopupMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
@@ -277,7 +277,7 @@ const SpectacleUseMaster = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                        
+
                           <th>Spectacle Use</th>
                           <th>Last Updated</th>
                           <th>Status</th>
@@ -288,7 +288,7 @@ const SpectacleUseMaster = () => {
                         {currentItems.length > 0 ? (
                           currentItems.map((spectacleUse) => (
                             <tr key={spectacleUse.id}>
-                            
+
                               <td>{spectacleUse.useName}</td>
                               <td>{spectacleUse.lastUpdated}</td>
                               <td>
@@ -298,8 +298,8 @@ const SpectacleUseMaster = () => {
                                     type="checkbox"
                                     checked={spectacleUse.status === "y"}
                                     onChange={() => handleSwitchChange(
-                                      spectacleUse.id, 
-                                      spectacleUse.status === "y" ? "n" : "y", 
+                                      spectacleUse.id,
+                                      spectacleUse.status === "y" ? "n" : "y",
                                       spectacleUse.useName
                                     )}
                                     id={`switch-${spectacleUse.id}`}
@@ -360,7 +360,7 @@ const SpectacleUseMaster = () => {
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                     <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                      {editingRecord ? "Update" : "Save"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleBack}>
                       Cancel

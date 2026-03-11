@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../Components/popup";
-import { ALL_REPORTS, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { ALL_REPORTS, INVENTORY, MAS_DEPARTMENT } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
 
 const IssueReferenceReport = () => {
@@ -90,7 +90,7 @@ const IssueReferenceReport = () => {
       setIsLoading(true);
       try {
         const response = await getRequest(
-          `/storeInternalIndent/storeIssueM/list?fromDeptId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}`
+          `${INVENTORY}/storeIssueM/list?toDeptId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}`
         );
         
         console.log("Issues API response:", response);
@@ -386,7 +386,7 @@ const IssueReferenceReport = () => {
                           key={issue.issueNo || `issue-${index}`} 
                           value={issue.issueNo}
                         >
-                          {issue.issueNo} - 
+                          {issue.issueNo}  ({issue.indentNo}) - 
                           {issue.issueDate ? new Date(issue.issueDate).toLocaleDateString() : 'No date'}
                         </option>
                       ))

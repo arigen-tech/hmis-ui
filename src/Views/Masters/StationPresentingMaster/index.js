@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_STATION_PRESENTATION } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_STATION_PRESENTING,DUPLICATE_STATION_PRESENTING,UPDATE_STATION_PRESENTING,ADD_STATION_PRESENTING,FAIL_STATION_PRESENTING,FAIL_UPDATE_STATION_PRESENTING} from  "../../../config/constants";
+import { FETCH_STATION_PRESENTING, DUPLICATE_STATION_PRESENTING, UPDATE_STATION_PRESENTING, ADD_STATION_PRESENTING, FAIL_STATION_PRESENTING, FAIL_UPDATE_STATION_PRESENTING } from "../../../config/constants";
 
 const StationPresentingMaster = () => {
   const [data, setData] = useState([]);
@@ -13,7 +13,7 @@ const StationPresentingMaster = () => {
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    record: null, 
+    record: null,
     newStatus: "",
   });
 
@@ -30,7 +30,7 @@ const StationPresentingMaster = () => {
   // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
 
-  const MAX_LENGTH = 8; 
+  const MAX_LENGTH = 8;
 
 
 
@@ -65,7 +65,7 @@ const StationPresentingMaster = () => {
 
   // ================= SEARCH =================
   const filteredData = data.filter((rec) =>
-    (rec?.stationValue ?? "").toLowerCase().includes(searchQuery.toLowerCase()) 
+    (rec?.stationValue ?? "").toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -77,7 +77,7 @@ const StationPresentingMaster = () => {
     const { id, value } = e.target;
     const updated = { ...formData, [id]: value };
     setFormData(updated);
-    setIsFormValid(value.trim() !== ""); 
+    setIsFormValid(value.trim() !== "");
   };
 
   const resetForm = () => {
@@ -104,7 +104,7 @@ const StationPresentingMaster = () => {
     );
 
     if (duplicate) {
-      showPopup(DUPLICATE_STATION_PRESENTING, "error"); 
+      showPopup(DUPLICATE_STATION_PRESENTING, "error");
       return;
     }
 
@@ -131,7 +131,7 @@ const StationPresentingMaster = () => {
   // ================= EDIT =================
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData({ stationValue: rec.stationValue || "" }); 
+    setFormData({ stationValue: rec.stationValue || "" });
     setShowForm(true);
     setIsFormValid(true);
   };
@@ -150,7 +150,7 @@ const StationPresentingMaster = () => {
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
       return;
     }
-    
+
     if (!confirmDialog.record) return;
 
     try {
@@ -202,8 +202,8 @@ const StationPresentingMaster = () => {
 
             {!showForm ? (
               <>
-                <button 
-                  className="btn btn-success me-2" 
+                <button
+                  className="btn btn-success me-2"
                   onClick={() => { resetForm(); setShowForm(true); }}
                 >
                   Add
@@ -228,7 +228,7 @@ const StationPresentingMaster = () => {
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Station Value</th> 
+                    <th>Station Value</th>
                     <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
@@ -256,7 +256,7 @@ const StationPresentingMaster = () => {
                         <td>
                           <button
                             className="btn btn-success btn-sm"
-                            disabled={rec.status?.toLowerCase() !== "y"} 
+                            disabled={rec.status?.toLowerCase() !== "y"}
                             onClick={() => handleEdit(rec)}
                           >
                             <i className="fa fa-pencil"></i>
@@ -304,7 +304,8 @@ const StationPresentingMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   type="button"

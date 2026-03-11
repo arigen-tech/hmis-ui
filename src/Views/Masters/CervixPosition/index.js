@@ -4,7 +4,7 @@ import LoadingScreen from "../../../Components/Loading";
 import { MAS_CERVIX_POSITION } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import {FETCH_CERVIX,DUPLICATE_CERVIX,UPDATE_CERVIX,ADD_CERVIX} from "../../../config/constants";
+import { FETCH_CERVIX, DUPLICATE_CERVIX, UPDATE_CERVIX, ADD_CERVIX } from "../../../config/constants";
 
 
 const CervixPosition = () => {
@@ -319,12 +319,14 @@ const CervixPosition = () => {
                   className="form-control"
                   value={formData.cervixPosition}
                   onChange={handleInputChange}
-                  // maxLength={MAS_CERVIX_POSITION_CODE_MAX_LENGTH}
+                // maxLength={MAS_CERVIX_POSITION_CODE_MAX_LENGTH}
                 />
               </div>
 
               <div className="col-12 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                <button className="btn btn-primary me-2" disabled={!isFormValid}>
+                  {editingRecord ? "Update" : "Save"}
+                </button>
                 <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>
               </div>
             </form>

@@ -4,9 +4,10 @@ import axios from "axios"
 import { API_HOST, INVESTIGATION_PRICE_DETAILS, ALL_INVESTIGATION, ALL_INVESTIGATION_PRICE_DETAILS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
-import { FETCH_INV_PRICING_ERR_MSG, FAIL_TO_LOAD_INV_OPTION,FILL_ALL_REQUIRED_FIELDS,TO_DATE_AFTER_FROM_DATE,
-    UPDATE_INV_PRICING_SUCC_MSG,ADD_INV_PRICING_SUCC_MSG,FAIL_TO_UPDATE_STS,FAIL_TO_SAVE_CHANGES
- } from "../../../config/constants"
+import {
+    FETCH_INV_PRICING_ERR_MSG, FAIL_TO_LOAD_INV_OPTION, FILL_ALL_REQUIRED_FIELDS, TO_DATE_AFTER_FROM_DATE,
+    UPDATE_INV_PRICING_SUCC_MSG, ADD_INV_PRICING_SUCC_MSG, FAIL_TO_UPDATE_STS, FAIL_TO_SAVE_CHANGES
+} from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const Investigationpricing = () => {
@@ -103,88 +104,88 @@ const Investigationpricing = () => {
     }
 
     const handleSave = async (e) => {
-    e.preventDefault()
-    
-    // Check form validation again just to be safe
-    if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
-        showPopup(FILL_ALL_REQUIRED_FIELDS, "error")
-        return
-    }
-    
-    // Check date validation
-    if (new Date(formData.toDate) < new Date(formData.fromDate)) {
-        showPopup(TO_DATE_AFTER_FROM_DATE, "error")
-        return
-    }
+        e.preventDefault()
 
-    try {
-        setLoading(true)
-
-        const requestData = {
-            investigationId: parseInt(formData.investigationId),
-            fromDt: formData.fromDate,
-            toDt: formData.toDate,
-            price: parseFloat(formData.price),
+        // Check form validation again just to be safe
+        if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
+            showPopup(FILL_ALL_REQUIRED_FIELDS, "error")
+            return
         }
 
-        if (editingInvestigation) {
-            // Update existing price details
-            putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
-                .then(response => {
-                    if (response && response.status === 200) {
-                        showPopup(UPDATE_INV_PRICING_SUCC_MSG, "success")
-                        fetchInvestigationPriceDetails() // Refresh the list
-                        resetForm()
-                    } else {
-                        showPopup(response.message||FAIL_TO_SAVE_CHANGES, "error")
-                    }
-                })
-                .catch(error => {
-                    console.error("Error updating investigation price:", error)
-                    
-                    // Extract error message from response
-                    const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
-                    showPopup(errorMessage, "error")
-                })
-                .finally(() => {
-                    setLoading(false)
-                })
-        } else {
-            // Add new price details
-            postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
-                .then(response => {
-                    if (response && response.status === 200) {
-                        showPopup(ADD_INV_PRICING_SUCC_MSG, "success")
-                        fetchInvestigationPriceDetails() // Refresh the list
-                        resetForm()
-                    } else {
-                        showPopup(FAIL_TO_SAVE_CHANGES, "error")
-                    }
-                })
-                .catch(error => {
-                    console.error("Error adding investigation price:", error)
-                    
-                    // Extract error message from response
-                    const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
-                    showPopup(errorMessage, "error")
-                })
-                .finally(() => {
-                    setLoading(false)
-                })
+        // Check date validation
+        if (new Date(formData.toDate) < new Date(formData.fromDate)) {
+            showPopup(TO_DATE_AFTER_FROM_DATE, "error")
+            return
         }
-    } catch (err) {
-        console.error("Error in save operation:", err)
-        showPopup(FAIL_TO_SAVE_CHANGES, "error")
-        setLoading(false)
-    }
-}
 
-// Helper function to reset form state
-const resetForm = () => {
-    setEditingInvestigation(null)
-    setShowForm(false)
-    setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
-}
+        try {
+            setLoading(true)
+
+            const requestData = {
+                investigationId: parseInt(formData.investigationId),
+                fromDt: formData.fromDate,
+                toDt: formData.toDate,
+                price: parseFloat(formData.price),
+            }
+
+            if (editingInvestigation) {
+                // Update existing price details
+                putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
+                    .then(response => {
+                        if (response && response.status === 200) {
+                            showPopup(UPDATE_INV_PRICING_SUCC_MSG, "success")
+                            fetchInvestigationPriceDetails() // Refresh the list
+                            resetForm()
+                        } else {
+                            showPopup(response.message || FAIL_TO_SAVE_CHANGES, "error")
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error updating investigation price:", error)
+
+                        // Extract error message from response
+                        const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
+                        showPopup(errorMessage, "error")
+                    })
+                    .finally(() => {
+                        setLoading(false)
+                    })
+            } else {
+                // Add new price details
+                postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
+                    .then(response => {
+                        if (response && response.status === 200) {
+                            showPopup(ADD_INV_PRICING_SUCC_MSG, "success")
+                            fetchInvestigationPriceDetails() // Refresh the list
+                            resetForm()
+                        } else {
+                            showPopup(FAIL_TO_SAVE_CHANGES, "error")
+                        }
+                    })
+                    .catch(error => {
+                        console.error("Error adding investigation price:", error)
+
+                        // Extract error message from response
+                        const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
+                        showPopup(errorMessage, "error")
+                    })
+                    .finally(() => {
+                        setLoading(false)
+                    })
+            }
+        } catch (err) {
+            console.error("Error in save operation:", err)
+            showPopup(FAIL_TO_SAVE_CHANGES, "error")
+            setLoading(false)
+        }
+    }
+
+    // Helper function to reset form state
+    const resetForm = () => {
+        setEditingInvestigation(null)
+        setShowForm(false)
+        setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
+    }
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -219,7 +220,7 @@ const resetForm = () => {
                         `Investigation price details ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
                     )
-                    fetchInvestigationPriceDetails() 
+                    fetchInvestigationPriceDetails()
                 }
             } catch (err) {
                 console.error("Error updating investigation price details status:", err)
@@ -248,10 +249,10 @@ const resetForm = () => {
         // Check for form validity after input changes
         setTimeout(() => {
             const updatedFormData = { ...formData, [id]: value }
-            const isValid = !!updatedFormData.investigationId && 
-                           !!updatedFormData.price && 
-                           !!updatedFormData.fromDate && 
-                           !!updatedFormData.toDate
+            const isValid = !!updatedFormData.investigationId &&
+                !!updatedFormData.price &&
+                !!updatedFormData.fromDate &&
+                !!updatedFormData.toDate
             setIsFormValid(isValid)
             console.log("Form validity after input change:", isValid, updatedFormData)
         }, 0)
@@ -285,16 +286,16 @@ const resetForm = () => {
         setSearchText(investigation.investigationName || investigation.investigationId.toString())
         setDropdownOpen(false)
 
-       
+
         setTimeout(() => {
             const updatedFormData = {
                 ...formData,
                 investigationId: investigation.investigationId.toString()
             }
-            const isValid = !!updatedFormData.investigationId && 
-                           !!updatedFormData.price && 
-                           !!updatedFormData.fromDate && 
-                           !!updatedFormData.toDate
+            const isValid = !!updatedFormData.investigationId &&
+                !!updatedFormData.price &&
+                !!updatedFormData.fromDate &&
+                !!updatedFormData.toDate
             setIsFormValid(isValid)
             console.log("Form validity after investigation selection:", isValid, updatedFormData)
         }, 0)
@@ -313,12 +314,12 @@ const resetForm = () => {
         }
     }, [dropdownOpen])
 
-    
+
     useEffect(() => {
-        const isValid = !!formData.investigationId && 
-                      !!formData.price && 
-                      !!formData.fromDate && 
-                      !!formData.toDate
+        const isValid = !!formData.investigationId &&
+            !!formData.price &&
+            !!formData.fromDate &&
+            !!formData.toDate
         setIsFormValid(isValid)
         console.log("Form validity in useEffect:", isValid, formData)
     }, [formData])
@@ -334,13 +335,13 @@ const resetForm = () => {
         }
     }
 
-    
+
     const getInvestigationName = (id) => {
         const investigation = investigationOptions.find(item => item.investigationId?.toString() === id?.toString())
         return investigation ? investigation.investigationName : id
     }
 
-   
+
     const debugFormState = () => {
         console.log("Current form state:", formData)
         console.log("Is form valid?", isFormValid)
@@ -478,7 +479,7 @@ const resetForm = () => {
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
-                                            Investigation <span className="text-danger">*</span>
+                                                Investigation <span className="text-danger">*</span>
                                             </label>
 
                                             <div className="dropdown-search-container position-relative">
@@ -521,7 +522,7 @@ const resetForm = () => {
                                                                     style={{ backgroundColor: '#e3e8e6', cursor: 'pointer' }}
                                                                     onClick={() => handleInvestigationSelect(item)}
                                                                 >
-                                                                     {item.investigationName || "N/A"}
+                                                                    {item.investigationName || "N/A"}
                                                                 </li>
                                                             ))}
                                                     </ul>
@@ -580,14 +581,14 @@ const resetForm = () => {
 
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                                         <button
-                                            type="button" 
+                                            type="button"
                                             className="btn btn-primary me-2"
                                             onClick={(e) => {
                                                 debugFormState(); // Debug info in console
                                                 handleSave(e);
                                             }}
                                         >
-                                            Save
+                                            {editingInvestigation ? "Update" : "Save"}
                                         </button>
                                         <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                                             Cancel

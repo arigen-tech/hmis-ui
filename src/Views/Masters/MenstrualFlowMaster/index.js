@@ -288,7 +288,8 @@ const MenstrualFlowMaster = () => {
                   className="btn btn-primary me-2"
                   disabled={!isFormValid}
                 >
-                  Save
+                                                          {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   type="button"
