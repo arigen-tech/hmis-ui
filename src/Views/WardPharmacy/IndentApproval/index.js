@@ -127,42 +127,42 @@ const IndentApproval = () => {
   }
 
   // Fetch all drugs for dropdown with current stock
-  const fetchAllDrugs = async () => {
-    try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
-      console.log("Drugs API Response:", response)
+  // const fetchAllDrugs = async () => {
+  //   try {
+  //     const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
+  //     console.log("Drugs API Response:", response)
 
-      if (response && response.response && Array.isArray(response.response)) {
-        const drugs = response.response.map(drug => ({
-          id: drug.itemId,
-          code: drug.pvmsNo || "",
-          name: drug.nomenclature || "",
-          unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0,
-          storesStock: drug.storestocks || 0
-        }))
-        setItemOptions(drugs)
-        console.log("Loaded drugs with stock:", drugs)
-      } else if (response && Array.isArray(response)) {
-        const drugs = response.map(drug => ({
-          id: drug.itemId,
-          code: drug.pvmsNo || "",
-          name: drug.nomenclature || "",
-          unit: drug.unitAuName || drug.dispUnitName || "",
-          availableStock: drug.wardstocks || drug.storestocks || 0,
-          storesStock: drug.storestocks || 0
-        }))
-        setItemOptions(drugs)
-        console.log("Loaded drugs with stock:", drugs)
-      }
-    } catch (err) {
-      console.error("Error fetching drugs:", err)
-    }
-  }
+  //     if (response && response.response && Array.isArray(response.response)) {
+  //       const drugs = response.response.map(drug => ({
+  //         id: drug.itemId,
+  //         code: drug.pvmsNo || "",
+  //         name: drug.nomenclature || "",
+  //         unit: drug.unitAuName || drug.dispUnitName || "",
+  //         availableStock: drug.wardstocks || drug.storestocks || 0,
+  //         storesStock: drug.storestocks || 0
+  //       }))
+  //       setItemOptions(drugs)
+  //       console.log("Loaded drugs with stock:", drugs)
+  //     } else if (response && Array.isArray(response)) {
+  //       const drugs = response.map(drug => ({
+  //         id: drug.itemId,
+  //         code: drug.pvmsNo || "",
+  //         name: drug.nomenclature || "",
+  //         unit: drug.unitAuName || drug.dispUnitName || "",
+  //         availableStock: drug.wardstocks || drug.storestocks || 0,
+  //         storesStock: drug.storestocks || 0
+  //       }))
+  //       setItemOptions(drugs)
+  //       console.log("Loaded drugs with stock:", drugs)
+  //     }
+  //   } catch (err) {
+  //     console.error("Error fetching drugs:", err)
+  //   }
+  // }
 
   useEffect(() => {
     fetchPendingIndents(departmentId)
-    fetchAllDrugs()
+    // fetchAllDrugs()
   }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // Handle search by date range
@@ -466,6 +466,16 @@ const IndentApproval = () => {
                       readOnly
                     />
                   </div>
+                   <div className="col-md-3">
+                    <label className="form-label fw-bold">Indent Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.indentType }
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
@@ -682,6 +692,7 @@ const IndentApproval = () => {
                       <th>Department Name</th>
                       <th>Created By</th>
                       <th>Approved Date</th>
+                      <th>Drug / Non Drug</th>
                       <th>Status</th>
                     </tr>
                   </thead>
@@ -703,6 +714,7 @@ const IndentApproval = () => {
                             <td>{item.deptName}</td>
                             <td>{item.createdBy}</td>
                             <td>{item.approvedDate ? formatDateTime(item.approvedDate) : "Pending"}</td>
+                            <td>{item.indentType}</td>
                             <td>
                               <span
                                 className={`badge ${statusInfo.badge} ${statusInfo.textColor}`}

@@ -703,6 +703,17 @@ const PendingIndentApproval = () => {
                       readOnly
                     />
                   </div>
+
+                  <div className="col-md-3 mt-3">
+                    <label className="form-label fw-bold">Indent Type</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      value={selectedRecord?.indentType }
+                      style={{ backgroundColor: "#e9ecef" }}
+                      readOnly
+                    />
+                  </div>
                 </div>
 
                 <div className="table-responsive" style={{ overflowX: "auto", maxWidth: "100%", overflowY: "visible" }}>
@@ -991,6 +1002,24 @@ const PendingIndentApproval = () => {
                 </div>
 
                 <div className="d-flex justify-content-end gap-2 mt-4">
+                  <button
+    type="button"
+    className="btn btn-info"
+    onClick={() => {
+      const indentMId = selectedRecord?.indentMId;
+      navigate('/ViewDownloadReport', {
+        state: {
+          reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+          title: 'Indent Report',
+          fileName: 'Indent Report',
+          returnPath: window.location.pathname
+        }
+      });
+    }}
+    disabled={!selectedRecord?.indentMId || loadingDetails}
+  >
+    Report
+  </button>
                   <button
                     type="button"
                     className="btn btn-primary"

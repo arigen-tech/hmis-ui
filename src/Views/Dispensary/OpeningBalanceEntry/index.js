@@ -381,14 +381,7 @@ const OpeningBalanceEntry = () => {
       if (i === index) {
         const updatedEntry = { ...entry, [field]: value };
 
-        // DOM and DOE validation
-        const dom = field === "dom" ? value : entry.dom;
-        const doe = field === "doe" ? value : entry.doe;
-
-        if (dom && doe && new Date(dom) > new Date(doe)) {
-          alert("Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE).");
-          return entry;
-        }
+        // REMOVED: Date validation removed from here - now only happens on save/submit
 
         // Auto-calculate totalCost
         if (field === "qty" || field === "mrpPerUnit") {
@@ -452,6 +445,16 @@ const OpeningBalanceEntry = () => {
       if (!entry.batchNoSerialNo) errors.batchNoSerialNo = "batchNoSerialNo is required";
       if (!entry.dom) errors.dom = "dom is required";
       if (!entry.doe) errors.doe = "doe is required";
+      
+      // ADDED: Date validation here - only checks when both dates exist
+      if (entry.dom && entry.doe) {
+        const domDate = new Date(entry.dom);
+        const doeDate = new Date(entry.doe);
+        if (domDate > doeDate) {
+          errors.dateValidation = "Date of Manufacturing (DOM) cannot be later than Date of Expiry (DOE)";
+        }
+      }
+      
       if (!entry.qty || isNaN(entry.qty)) errors.qty = "qty is required";
       if (!entry.unitsPerPack || isNaN(entry.unitsPerPack)) errors.unitsPerPack = "unitsPerPack is required";
       if (!entry.purchaseRatePerUnit || isNaN(entry.purchaseRatePerUnit)) errors.purchaseRatePerUnit = "purchaseRatePerUnit is required";
@@ -508,7 +511,12 @@ const OpeningBalanceEntry = () => {
           const error = drugErrors[i];
           const errorKeys = Object.keys(error);
           if (errorKeys.length > 0) {
-            firstErrorMsg = `${errorKeys[0]} is required`;
+            // UPDATED: Check for date validation error first
+            if (error.dateValidation) {
+              firstErrorMsg = error.dateValidation;
+            } else {
+              firstErrorMsg = `${errorKeys[0]} is required`;
+            }
             break;
           }
         }
@@ -544,7 +552,7 @@ const OpeningBalanceEntry = () => {
 
     try {
       setProcessing(true);
-      const endpoint = isSave ? `${OPEN_BALANCE}/create` : `${OPEN_BALANCE}/submit`;
+      const endpoint = isSave ? `${INVENTORY}/openingBalanceEntry/save` : `${INVENTORY}/openingBalanceEntry/submit`;
       const response = await postRequest(endpoint, payload);
 
       if (response?.status === 200 || response?.success) {
@@ -963,7 +971,6 @@ const OpeningBalanceEntry = () => {
                             type="date"
                             className="form-control form-control-sm"
                             value={entry.dom}
-                            max={entry.doe ? new Date(new Date(entry.doe).getTime() - 86400000).toISOString().split("T")[0] : undefined}
                             onChange={(e) => handleDrugEntryChange(index, "dom", e.target.value)}
                             style={{ minWidth: "120px" }}
                           />
@@ -973,7 +980,6 @@ const OpeningBalanceEntry = () => {
                             type="date"
                             className="form-control form-control-sm"
                             value={entry.doe}
-                            min={entry.dom ? new Date(new Date(entry.dom).getTime() + 86400000).toISOString().split("T")[0] : undefined}
                             onChange={(e) => handleDrugEntryChange(index, "doe", e.target.value)}
                             style={{ minWidth: "120px" }}
                           />
