@@ -239,6 +239,7 @@ export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
 export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
 export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
 export const MAS_BLOOD_COMPONENT = `${MASTERS}/masBloodComponent`
+export const MAS_BLOOD_COMPATIBILITY = `${MASTERS}/masBloodCompatibility`;
 export const MAS_BLOOD_COLLECTION = `${MASTERS}/masBloodCollectionType`;
 export const MAS_MENSTRUAl_PATTERN  =`${MASTERS}/gynMasMenstrualPattern`;
 export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;

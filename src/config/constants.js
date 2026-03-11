@@ -952,9 +952,16 @@ export const FAIL_BAG_TYPE = "Failed to save changes";
 export const FAIL_UPDATE_STATUS_BAG_TYPE = "Failed to update status";
 
 
-
-
-
+//masBloodCompatibility
+export const FETCH_BLOOD_COMPATIBILITY = "Failed to fetch records";
+export const DUPLICATE_BLOOD_COMPATIBILITY = "Compatibility record already exists!";
+export const UPDATE_BLOOD_COMPATIBILITY = "Record updated successfully";
+export const ADD_BLOOD_COMPATIBILITY = "Record added successfully";
+export const FAIL_BLOOD_COMPATIBILITY = "Failed to save record";
+export const FAIL_UPDATE_BLOOD_COMPATIBILITY = "Failed to update status";
+export const  FAIL_LOAD_COMPONENTS = "Failed to load components";
+export const   BLOOD_GROUP_DATA= "Blood group data format invalid";
+export const  FAIL_BLOOD_GROUP = "Failed to load blood groups";
 
 
 //updatepatientragistration

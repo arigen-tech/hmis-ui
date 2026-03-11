@@ -1,350 +1,668 @@
-import { useState, useEffect } from "react"
+
+import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_BLOOD_COMPATIBILITY, MAS_BLOOD_COMPONENT, MAS_BLOODGROUP } from "../../../config/apiConfig";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import { FETCH_BLOOD_COMPATIBILITY, UPDATE_BLOOD_COMPATIBILITY, ADD_BLOOD_COMPATIBILITY, FAIL_BLOOD_COMPATIBILITY, DUPLICATE_BLOOD_COMPATIBILITY, FAIL_TO_UPDATE_STS, INVALID_PAGE_NO_WARN_MSG,FAIL_LOAD_COMPONENTS,BLOOD_GROUP_DATA,FAIL_BLOOD_GROUP} from "../../../config/constants";
+
 
 
 const BloodCompatibilityMaster = () => {
-    const [formData, setFormData] = useState({bloodGroup: "", description: ""});
-    const [showForm, setShowForm] = useState(false);
-    const [isFormValid, setIsFormValid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingBloodGroup, setEditingBloodGroup] = useState(null);
-    const [popupMessage, setPopupMessage] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
-
-    const [bloodGroupData, setBloodGroupData] = useState([
-        { id: 1, bloodGroup: "A+", description: "Can donate to A+ and AB+, receive from A+, A-, O+, O-", status: "y" },
-        { id: 2, bloodGroup: "A-", description: "Can donate to A+, A-, AB+, AB-, receive from A-, O-", status: "y" },
-        { id: 3, bloodGroup: "B+", description: "Can donate to B+ and AB+, receive from B+, B-, O+, O-", status: "y" },
-        { id: 4, bloodGroup: "B-", description: "Can donate to B+, B-, AB+, AB-, receive from B-, O-", status: "y" },
-        { id: 5, bloodGroup: "O+", description: "Can donate to all Rh+, receive from O+, O-", status: "y" },
-        { id: 6, bloodGroup: "O-", description: "Universal donor, can receive only from O-", status: "y" },
-        { id: 7, bloodGroup: "AB+", description: "Universal recipient, can donate only to AB+", status: "y" },
-        { id: 8, bloodGroup: "AB-", description: "Can donate to AB+ and AB-, receive from A-, B-, AB-, O-", status: "y" },
-    ]);
-
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, bloodGroupId: null, newStatus: false });
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [componentOptions, setComponentOptions] = useState([]);
+  const [bloodGroupOptions, setBloodGroupOptions] = useState([]); 
+  const [showForm, setShowForm] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
 
-    const filteredBloodGroups = bloodGroupData.filter(bloodGroup =>
-        bloodGroup.bloodGroup.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        bloodGroup.description.toLowerCase().includes(searchQuery.toLowerCase())
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("1");
+  const itemsPerPage = 5;
+
+  const [formData, setFormData] = useState({
+    componentId: "",
+    patientBloodGroupId: "",
+    donorBloodGroupId: "",
+    isPreferred: "N",
+  });
+
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    id: null,
+    newStatus: "",
+  });
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date)) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+
+
+  const fetchData = async (flag = 0) => {
+    try {
+      setLoading(true);
+      const { response } = await getRequest(`${MAS_BLOOD_COMPATIBILITY}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_BLOOD_COMPATIBILITY, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  
+
+  const fetchComponentOptions = async (flag = 0) => {
+    try {
+      const response = await getRequest(`${MAS_BLOOD_COMPONENT}/getAll/${flag}`);
+      if (response && response.response) {
+        const options = response.response.map((item) => ({
+          id: item.componentId || item.id,
+          name: (item.componentName || item.name).trim(),
+        }));
+        setComponentOptions(options);
+      }
+    } catch (error) {
+      console.error("Error fetching components:", error);
+      showPopup(FAIL_LOAD_COMPONENTS, "error");
+    }
+  };
+
+
+
+const fetchBloodGroupOptions = async (flag = 0) => {
+  try {
+    const response = await getRequest(`${MAS_BLOODGROUP}/getAll/${flag}`);
+    console.log("API Response:", response); // Debug
+    
+    if (response && response.response && Array.isArray(response.response)) {
+      const options = response.response.map((item) => ({
+        bloodGroupId: item.bloodGroupId,                
+        bloodName: item.bloodGroupName.trim(),           
+      }));
+      
+      setBloodGroupOptions(options);
+    } else {
+      console.error("Unexpected response structure:", response);
+      showPopup(BLOOD_GROUP_DATA, "error");
+    }
+  } catch (error) {
+    console.error("Error fetching blood groups:", error);
+    showPopup(FAIL_BLOOD_GROUP, "error");
+  }
+};
+
+
+
+  useEffect(() => {
+    fetchData();
+    fetchComponentOptions(0);
+    fetchBloodGroupOptions(0); 
+  }, []);
+
+
+
+  // Filtered data based on search
+  const filteredData = data.filter(
+    (rec) =>
+      (rec.componentName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (rec.patientBloodGroup?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+      (rec.donorBloodGroup?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+  );
+
+  // Pagination calculations
+  const indexOfLast = currentPage * itemsPerPage;
+  const indexOfFirst = indexOfLast - itemsPerPage;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+
+  // Reset page when search changes
+  useEffect(() => {
+    setCurrentPage(1);
+    setPageInput("1");
+  }, [searchQuery]);
+
+  // Sync page input with current page
+  useEffect(() => {
+    setPageInput(currentPage.toString());
+  }, [currentPage]);
+
+  const handleSearch = (e) => {
+    setSearchQuery(e.target.value);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updatedForm = { ...formData, [name]: value };
+    setFormData(updatedForm);
+    setIsFormValid(
+      updatedForm.componentId !== "" &&
+      updatedForm.patientBloodGroupId !== "" &&
+      updatedForm.donorBloodGroupId !== ""
     );
+  };
 
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1);
+  const resetForm = () => {
+    setFormData({
+      componentId: "",
+      patientBloodGroupId: "",
+      donorBloodGroupId: "",
+      isPreferred: "N",
+    });
+    setEditingRecord(null);
+    setIsFormValid(false);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const isDuplicate = (form, excludeId = null) => {
+    return data.some(
+      (item) =>
+        item.componentId === Number(form.componentId) &&
+        item.patientBloodGroupId === Number(form.patientBloodGroupId) &&
+        item.donorBloodGroupId === Number(form.donorBloodGroupId) &&
+        (excludeId === null || item.compatibilityId !== excludeId)
+    );
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    if (isDuplicate(formData, editingRecord?.compatibilityId)) {
+      showPopup(DUPLICATE_BLOOD_COMPATIBILITY, "error");
+      return;
+    }
+
+    const payload = {
+      componentId: Number(formData.componentId),
+      patientBloodGroupId: Number(formData.patientBloodGroupId),
+      donorBloodGroupId: Number(formData.donorBloodGroupId),
+      isPreferred: formData.isPreferred,
     };
 
-    const handleEdit = (bloodGroup) => {
-        setEditingBloodGroup(bloodGroup);
-        setFormData({bloodGroup: bloodGroup.bloodGroup, description: bloodGroup.description || "" });
-        setShowForm(true);
-    };
+    try {
+      setLoading(true);
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_BLOOD_COMPATIBILITY}/update/${editingRecord.compatibilityId}`,
+          payload
+        );
+        showPopup(UPDATE_BLOOD_COMPATIBILITY, "success");
+      } else {
+        await postRequest(`${MAS_BLOOD_COMPATIBILITY}/create`, payload);
+        showPopup(ADD_BLOOD_COMPATIBILITY, "success");
+      }
+      await fetchData();
+      handleCancel();
+    } catch {
+      showPopup(FAIL_BLOOD_COMPATIBILITY, "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery]);
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      componentId: rec.componentId || "",
+      patientBloodGroupId: rec.patientBloodGroupId || "",
+      donorBloodGroupId: rec.donorBloodGroupId || "",
+      isPreferred: rec.isPreferred || "N",
+    });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
 
+  const handleSwitchChange = (id, newStatus) => {
+    setConfirmDialog({ isOpen: true, id, newStatus });
+  };
 
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+  const handleConfirm = async (confirmed) => {
+    if (confirmed) {
+      try {
+        setLoading(true);
+        await putRequest(
+          `${MAS_BLOOD_COMPATIBILITY}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+        );
+        setData((prevData) =>
+          prevData.map((item) =>
+            item.compatibilityId === confirmDialog.id
+              ? { ...item, status: confirmDialog.newStatus, lastUpdateDate: new Date().toISOString() }
+              : item
+          )
+        );
+        showPopup(
+          `Record ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          "success"
+        );
+      } catch {
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setLoading(false);
+      }
+    }
+    setConfirmDialog({ isOpen: false, id: null, newStatus: "" });
+  };
 
-        const updatedBloodGroup = e.target.elements.bloodGroup.value;
-        const updatedDescription = e.target.elements.description.value;
+  // Pagination handlers
+  const handlePrevPage = () => {
+    if (currentPage > 1) setCurrentPage(currentPage - 1);
+  };
 
-        if (editingBloodGroup) {
-            setBloodGroupData(bloodGroupData.map(bloodGroup =>
-                bloodGroup.id === editingBloodGroup.id
-                    ? { ...bloodGroup, bloodGroup: updatedBloodGroup, description: updatedDescription }
-                    : bloodGroup
-            ));
-        } else {
-            const newBloodGroup = {
-                id: bloodGroupData.length + 1,
-                bloodGroup: updatedBloodGroup,
-                description: updatedDescription,
-                status: "y"
-            };
-            setBloodGroupData([...bloodGroupData, newBloodGroup]);
-        }
+  const handleNextPage = () => {
+    if (currentPage < totalPages) setCurrentPage(currentPage + 1);
+  };
 
-        setEditingBloodGroup(null);
-        setShowForm(false);
-        setFormData({ bloodGroup: "", description: "" });
-        setIsFormValid(false);
-        showPopup("Changes saved successfully!", "success");
-    };
+  const handlePageNavigation = () => {
+    const pageNumber = parseInt(pageInput);
+    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
+      setCurrentPage(pageNumber);
+    } else {
+      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
+      setPageInput(currentPage.toString());
+    }
+  };
 
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
-            }
-        });
-    };
+  const handlePageInputChange = (e) => {
+    setPageInput(e.target.value);
+  };
 
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
+  const handleKeyPress = (e) => {
+    if (e.key === "Enter") {
+      handlePageNavigation();
+    }
+  };
 
-        const isBloodGroupValid = id === "bloodGroup" ? value.trim() !== "" : formData.bloodGroup.trim() !== "";
-        const isDescriptionValid = true; 
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    setPageInput("1");
+    fetchData();
+    fetchComponentOptions(0);
+    fetchBloodGroupOptions(0); // <-- also refresh blood groups
+  };
 
-        setIsFormValid(isBloodGroupValid && isDescriptionValid);
-    };
+  // Render page numbers with ellipsis
+  const renderPageNumbers = () => {
+    const pageNumbers = [];
+    const maxVisiblePages = 5;
+    let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+    let endPage = Math.min(totalPages, startPage + maxVisiblePages - 1);
 
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, bloodGroupId: id, newStatus });
-    };
+    if (endPage - startPage < maxVisiblePages - 1) {
+      startPage = Math.max(1, endPage - maxVisiblePages + 1);
+    }
 
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.bloodGroupId !== null) {
-            setBloodGroupData((prevData) =>
-                prevData.map((bloodGroup) =>
-                    bloodGroup.id === confirmDialog.bloodGroupId ? { ...bloodGroup, status: confirmDialog.newStatus } : bloodGroup
-                )
-            );
-        }
-        setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-    };
+    if (startPage > 1) {
+      pageNumbers.push(1);
+      if (startPage > 2) {
+        pageNumbers.push("ellipsis-left");
+      }
+    }
 
+    for (let i = startPage; i <= endPage; i++) {
+      pageNumbers.push(i);
+    }
 
+    if (endPage < totalPages) {
+      if (endPage < totalPages - 1) {
+        pageNumbers.push("ellipsis-right");
+      }
+      pageNumbers.push(totalPages);
+    }
 
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredBloodGroups.slice(indexOfFirst, indexOfLast);
+    return pageNumbers.map((number, index) => {
+      if (number === "ellipsis-left" || number === "ellipsis-right") {
+        return (
+          <li key={index} className="page-item disabled">
+            <span className="page-link">...</span>
+          </li>
+        );
+      }
 
+      return (
+        <li key={index} className={`page-item ${number === currentPage ? "active" : ""}`}>
+          <button
+            className="page-link"
+            onClick={() => {
+              setCurrentPage(number);
+              setPageInput(number.toString());
+            }}
+          >
+            {number}
+          </button>
+        </li>
+      );
+    });
+  };
 
-    return (
-        <div className="content-wrapper">
-            <div className="row">
-                <div className="col-12 grid-margin stretch-card">
-                    <div className="card form-card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title">Blood Compatibility Master</h4>
-                            <div className="d-flex justify-content-between align-items-center">
+  return (
+    <div className="content-wrapper">
+      <div className="card form-card">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h4>Blood Compatibility Master</h4>
 
-                                {!showForm ? (
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search Blood Groups"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
+          <div className="d-flex">
+            {!showForm && (
+              <input
+                type="search"
+                className="form-control me-2"
+                style={{ width: "220px" }}
+                placeholder="Search"
+                value={searchQuery}
+                onChange={handleSearch}
+              />
+            )}
 
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <></>
-                                )}
-
-
-                                <div className="d-flex align-items-center">
-                                    {!showForm ? (
-                                        <>
-
-                                            <button type="button" className="btn btn-success me-2" onClick={() => { 
-                                                setShowForm(true); 
-                                                setFormData({ bloodGroup: "", description: "" }); 
-                                                setEditingBloodGroup(null);
-                                            }}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-plus"></i> Show All
-                                            </button>
-        
-                                        </>
-                                    ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => {
-                                            setShowForm(false);
-                                            setEditingBloodGroup(null);
-                                            setFormData({ bloodGroup: "", description: "" });
-                                        }}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Blood Group</th>
-                                                <th>Description</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((bloodGroup) => (
-                                                <tr key={bloodGroup.id}>
-                                                    <td>
-                                                        <span className="badge bg-danger">
-                                                            {bloodGroup.bloodGroup}
-                                                        </span>
-                                                    </td>
-                                                    <td>{bloodGroup.description}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={bloodGroup.status === "y"}
-                                                                onChange={() => handleSwitchChange(bloodGroup.id, bloodGroup.status === "y" ? "n" : "y")}
-                                                                id={`switch-${bloodGroup.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${bloodGroup.id}`}
-                                                            >
-                                                                {bloodGroup.status === "y" ? 'Active' : 'Inactive'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(bloodGroup)}
-                                                            disabled={bloodGroup.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-
-                                    {filteredBloodGroups.length > 0 && (
-                                        <Pagination
-                                            totalItems={filteredBloodGroups.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-                                    )}
-                                 
-                                </div>
-                            ) : (
-                                <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-4">
-                                        <label>Blood Group <span className="text-danger">*</span></label>
-                                        <select
-                                            className="form-control"
-                                            id="bloodGroup"
-                                            value={formData.bloodGroup}
-                                            onChange={handleInputChange}
-                                            required
-                                        >
-                                            <option value="">Select Blood Group</option>
-                                            <option value="A+">A+</option>
-                                            <option value="A-">A-</option>
-                                            <option value="B+">B+</option>
-                                            <option value="B-">B-</option>
-                                            <option value="O+">O+</option>
-                                            <option value="O-">O-</option>
-                                            <option value="AB+">AB+</option>
-                                            <option value="AB-">AB-</option>
-                                        </select>
-                                    </div>
-                                    <div className="form-group col-md-4">
-                                        <label>Description</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="description"
-                                            placeholder="Enter description (e.g., Can donate to...)"
-                                            value={formData.description}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            {editingBloodGroup ? 'Update' : 'Save'}
-                                        </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => {
-                                            setShowForm(false);
-                                            setEditingBloodGroup(null);
-                                            setFormData({ bloodGroup: "", description: "" });
-                                        }}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Blood Group Reports</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>Total Blood Groups: {bloodGroupData.length}</p>
-                                                <p>Active Blood Groups: {bloodGroupData.filter(bg => bg.status === "y").length}</p>
-                                                <p>Inactive Blood Groups: {bloodGroupData.filter(bg => bg.status === "n").length}</p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Generate Report</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-                            {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{bloodGroupData.find(bloodGroup => bloodGroup.id === confirmDialog.bloodGroupId)?.bloodGroup}</strong>?
-                                                </p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+            {!showForm ? (
+              <>
+                <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                  Add
+                </button>
+                <button className="btn btn-success" onClick={handleRefresh}>
+                  Show All
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-secondary" onClick={handleCancel}>
+                Back
+              </button>
+            )}
+          </div>
         </div>
-    )
-}
+
+        <div className="card-body">
+          {loading ? (
+            <LoadingScreen />
+          ) : !showForm ? (
+            <>
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover align-middle">
+                  <thead className="table-light">
+                    <tr>
+                      <th>Component</th>
+                      <th>Patient Blood Group</th>
+                      <th>Donor Blood Group</th>
+                      <th>Preferred</th>
+                      <th>Status</th>
+                      <th>Last Update</th>
+                      <th>Edit</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {currentItems.length > 0 ? (
+                      currentItems.map((rec) => (
+                        <tr key={rec.compatibilityId}>
+                          <td>{rec.componentName}</td>
+                          <td>{rec.patientBloodGroup}</td>
+                          <td>{rec.donorBloodGroup}</td>
+                          <td>{rec.isPreferred === "Y" ? "Yes" : "No"}</td>
+                          <td>
+                            <div className="form-check form-switch">
+                              <input
+                                className="form-check-input"
+                                type="checkbox"
+                                checked={rec.status === "y"}
+                                onChange={() =>
+                                  handleSwitchChange(rec.compatibilityId, rec.status === "y" ? "n" : "y")
+                                }
+                                id={`switch-${rec.compatibilityId}`}
+                              />
+                              <label
+                                className="form-check-label px-0"
+                                htmlFor={`switch-${rec.compatibilityId}`}
+                              >
+                                {rec.status === "y" ? "Active" : "Inactive"}
+                              </label>
+                            </div>
+                          </td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-success"
+                              onClick={() => handleEdit(rec)}
+                              disabled={rec.status !== "y"}
+                            >
+                              <i className="fa fa-pencil"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="7" className="text-center">
+                          No records found
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+
+              {/* Custom Pagination */}
+              {filteredData.length > 0 && (
+                <nav className="d-flex justify-content-between align-items-center mt-3">
+                  <div>
+                    <span className="text-muted">
+                      Showing {indexOfFirst + 1} to {Math.min(indexOfLast, filteredData.length)} of{" "}
+                      {filteredData.length} entries
+                    </span>
+                  </div>
+
+                  <ul className="pagination mb-0">
+                    <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                      <button
+                        className="page-link"
+                        onClick={handlePrevPage}
+                        disabled={currentPage === 1}
+                      >
+                        &laquo; Previous
+                      </button>
+                    </li>
+
+                    {renderPageNumbers()}
+
+                    <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
+                      <button
+                        className="page-link"
+                        onClick={handleNextPage}
+                        disabled={currentPage === totalPages}
+                      >
+                        Next &raquo;
+                      </button>
+                    </li>
+                  </ul>
+
+                  <div className="d-flex align-items-center">
+                    <span className="me-2">Go to:</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max={totalPages}
+                      value={pageInput}
+                      onChange={handlePageInputChange}
+                      onKeyPress={handleKeyPress}
+                      className="form-control me-2"
+                      style={{ width: "80px" }}
+                    />
+                    <button className="btn btn-primary" onClick={handlePageNavigation}>
+                      Go
+                    </button>
+                  </div>
+                </nav>
+              )}
+            </>
+          ) : (
+            <form onSubmit={handleSave} className="row g-3">
+              {/* Component dropdown */}
+              <div className="col-md-4">
+                <label>
+                  Component <span className="text-danger">*</span>
+                </label>
+                <select
+                  name="componentId"
+                  className="form-select"
+                  value={formData.componentId}
+                  onChange={handleInputChange}
+                  required
+                  disabled={loading}
+                >
+                  <option value="">Select Component</option>
+                  {componentOptions.map((comp) => (
+                    <option key={comp.id} value={comp.id}>
+                      {comp.name}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="form-group col-md-4">
+                <label>Patient Blood Group <span className="text-danger">*</span></label>
+                <select
+                  className="form-select mt-1"
+                  name="patientBloodGroupId"
+                  value={formData.patientBloodGroupId}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">Select Blood Group</option>
+                  {bloodGroupOptions.map((bg) => (
+                    <option key={bg.bloodGroupId} value={bg.bloodGroupId}>
+                      {bg.bloodName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Donor Blood Group */}
+              <div className="form-group col-md-4">
+                <label>Donor Blood Group <span className="text-danger">*</span></label>
+                <select
+                  className="form-select mt-1"
+                  name="donorBloodGroupId"
+                  value={formData.donorBloodGroupId}
+                  onChange={handleInputChange}
+                  required
+                >
+                  <option value="">Select Blood Group</option>
+                  {bloodGroupOptions.map((bg) => (
+                    <option key={bg.bloodGroupId} value={bg.bloodGroupId}>
+                      {bg.bloodName}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Preferred Dropdown */}
+              <div className="col-md-4">
+                <label>Preferred</label>
+                <select
+                  name="isPreferred"
+                  className="form-select"
+                  value={formData.isPreferred}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                >
+                  <option value="N">No</option>
+                  <option value="Y">Yes</option>
+                </select>
+              </div>
+
+              <div className="col-12 text-end">
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid || loading}
+                >
+                  {editingRecord ? "Update" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                  disabled={loading}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {popupMessage && <Popup {...popupMessage} />}
+
+          {/* Confirm Dialog for Status Change */}
+          {confirmDialog.isOpen && (
+            <div
+              className="modal d-block"
+              tabIndex="-1"
+              role="dialog"
+              style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+            >
+              <div className="modal-dialog modal-dialog-centered" role="document">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">Confirm Status Change</h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => handleConfirm(false)}
+                      aria-label="Close"
+                      disabled={loading}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <p>
+                      Are you sure you want to{" "}
+                      {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this
+                      compatibility record?
+                    </p>
+                  </div>
+                  <div className="modal-footer">
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={() => setConfirmDialog({ isOpen: false, id: null, newStatus: "" })}
+                      disabled={loading}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                      disabled={loading}
+                    >
+                      Confirm
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default BloodCompatibilityMaster;
