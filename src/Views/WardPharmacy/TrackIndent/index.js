@@ -1275,10 +1275,7 @@ const isSearchEnabled = () => {
                   </button>
                 </div>
 
-                {/* Total Records */}
-                <div className="col-md-3 d-flex justify-content-end align-items-end">
-                  <span className="fw-bold">Total Records: {totalElements}</span>
-                </div>
+               
               </div>
 
               {/* Table */}
