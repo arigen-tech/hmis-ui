@@ -1,15 +1,57 @@
 import { useState, useRef, useEffect } from "react"
-import ReactDOM from "react-dom"
-import { useNavigate } from 'react-router-dom'; // Add this import
+import { createPortal } from "react-dom"
+import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
-import ConfirmationPopup from "../../../Components/ConfirmationPopup"; // Add this import
-import { Store_Internal_Indent, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig" // Add ALL_REPORTS
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { Store_Internal_Indent, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 import {ERROR_MESSAGES,ERROR_FETCHING_INDENTS,CONFIRM_ISSUE_INDENT,CONFIRM_INDENT_ISSUED_PRINT,
   ERROR_ISSUING_INDENT,ERROR_ITEM_ID_MISSING,} from "../../../config/constants";
+
+// PortalDropdown Component - Fixed positioning like in IndentCreation
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4,           // 4 px gap below the input
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "250px",
+        overflowY: "auto",
+        background: "#fff",
+        border: "1px solid #dee2e6",
+        borderRadius: "4px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      });
+    };
+
+    updatePosition();
+
+    // Re-position on scroll or resize
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(
+    <div style={style}>{children}</div>,
+    document.body
+  );
+};
 
 const IndentIssue = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -44,6 +86,26 @@ const IndentIssue = () => {
   const navigate = useNavigate();
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
+
+  // ── close dropdown when clicking outside any tracked input ──────────────
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // Check if click is inside any of the row inputs
+      const clickedInsideItemInput = Object.values(itemInputRefs.current).some(
+        (ref) => ref && ref.contains(e.target)
+      );
+      const clickedInsideBatchInput = Object.values(batchInputRefs.current).some(
+        (ref) => ref && ref.contains(e.target)
+      );
+      
+      if (!clickedInsideItemInput && !clickedInsideBatchInput) {
+        setActiveItemDropdown(null);
+        setActiveBatchDropdown(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Confirmation Popup Helper Function
   const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
@@ -1023,48 +1085,30 @@ const IndentIssue = () => {
                             >{index + 1}</td>
 
                             <td style={{ position: "relative", overflow: "visible" }}>
-                              <input
-                                ref={(el) => (itemInputRefs.current[index] = el)}
-                                type="text"
-                                className="form-control form-control-sm"
-                                value={entry.itemName}
-                                onChange={(e) => {
-                                  const value = e.target.value
-                                  handleIndentEntryChange(index, "itemName", value)
-                                  if (value.length > 0) {
-                                    setActiveItemDropdown(index)
-                                  } else {
-                                    setActiveItemDropdown(null)
-                                  }
-                                }}
-                                placeholder="Item Name/Code"
-                                autoComplete="off"
-                                onFocus={() => setActiveItemDropdown(index)}
-                                onBlur={() => {
-                                  setTimeout(() => {
-                                    if (!dropdownClickedRef.current) {
+                              <div className="dropdown-search-container">
+                                <input
+                                  ref={(el) => { itemInputRefs.current[index] = el; }}
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={entry.itemName}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    handleIndentEntryChange(index, "itemName", value)
+                                    if (value.length > 0) {
+                                      setActiveItemDropdown(index)
+                                    } else {
                                       setActiveItemDropdown(null)
                                     }
-                                    dropdownClickedRef.current = false
-                                  }, 150)
-                                }}
-                              />
-                              {activeItemDropdown === index && (
-                                <ul
-                                  className="list-group position-absolute"
-                                  style={{
-                                    zIndex: 9999,
-                                    maxHeight: 200,
-                                    overflowY: "auto",
-                                    minWidth: "450px",
-                                    bottom: indentEntries.length - index <= 2 ? "100%" : "auto",
-                                    top: indentEntries.length - index <= 2 ? "auto" : "100%",
-                                    left: 0,
-                                    backgroundColor: "white",
-                                    border: "1px solid #dee2e6",
-                                    borderRadius: "0.375rem",
-                                    boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
                                   }}
+                                  placeholder="Item Name/Code"
+                                  autoComplete="off"
+                                  onFocus={() => setActiveItemDropdown(index)}
+                                />
+
+                                {/* PortalDropdown for item search */}
+                                <PortalDropdown
+                                  anchorRef={{ current: itemInputRefs.current[index] }}
+                                  show={activeItemDropdown === index}
                                 >
                                   {itemOptions
                                     .filter(
@@ -1074,28 +1118,35 @@ const IndentIssue = () => {
                                         opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
                                     )
                                     .map((opt) => (
-                                      <li
+                                      <div
                                         key={opt.id}
-                                        className="list-group-item list-group-item-action"
-                                        style={{
-                                          cursor: "pointer",
-                                          padding: "8px 12px",
-                                          fontSize: "14px"
-                                        }}
+                                        className="p-2"
                                         onMouseDown={(e) => {
                                           e.preventDefault()
                                           dropdownClickedRef.current = true
-                                        }}
-                                        onClick={(e) => {
-                                          e.preventDefault()
-                                          e.stopPropagation()
                                           handleIndentEntryChange(index, "itemName", opt.name)
                                           setActiveItemDropdown(null)
-                                          dropdownClickedRef.current = false
+                                          setTimeout(() => {
+                                            dropdownClickedRef.current = false
+                                          }, 100)
+                                        }}
+                                        style={{
+                                          cursor: "pointer",
+                                          borderBottom: "1px solid #f0f0f0"
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.backgroundColor = 'transparent';
                                         }}
                                       >
-                                        {opt.code} - {opt.name} (Total Stock: {opt.availableStock})
-                                      </li>
+                                        <div className="fw-bold">{opt.code}</div>
+                                        <div className="d-flex justify-content-between align-items-center">
+                                          <small>{opt.name}</small>
+                                          <small className="text-muted">Stock: {opt.availableStock}</small>
+                                        </div>
+                                      </div>
                                     ))}
                                   {itemOptions.filter(
                                     (opt) =>
@@ -1104,15 +1155,10 @@ const IndentIssue = () => {
                                       opt.code.toLowerCase().includes(entry.itemName.toLowerCase()),
                                   ).length === 0 &&
                                     entry.itemName !== "" && (
-                                      <li
-                                        className="list-group-item text-muted"
-                                        style={{ padding: "8px 12px" }}
-                                      >
-                                        No matches found
-                                      </li>
+                                      <div className="p-2 text-muted text-center">No matches found</div>
                                     )}
-                                </ul>
-                              )}
+                                </PortalDropdown>
+                              </div>
                             </td>
                             <td>
                               <input
@@ -1126,99 +1172,86 @@ const IndentIssue = () => {
                             </td>
 
                             <td>
-                              <input
-                                ref={(el) => (batchInputRefs.current[index] = el)}
-                                type="text"
-                                className="form-control form-control-sm"
-                                value={entry.batchNo}
-                                onChange={(e) => {
-                                  const value = e.target.value
-                                  handleIndentEntryChange(index, "batchNo", value)
-                                  if (value.length > 0) {
-                                    setActiveBatchDropdown(index)
-                                  } else {
-                                    setActiveBatchDropdown(null)
-                                  }
-                                }}
-                                placeholder="Batch"
-                                autoComplete="off"
-                                onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
-                                onBlur={() => {
-                                  setTimeout(() => {
-                                    if (!dropdownClickedRef.current) {
+                              <div className="dropdown-search-container">
+                                <input
+                                  ref={(el) => { batchInputRefs.current[index] = el; }}
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={entry.batchNo}
+                                  onChange={(e) => {
+                                    const value = e.target.value
+                                    handleIndentEntryChange(index, "batchNo", value)
+                                    if (value.length > 0) {
+                                      setActiveBatchDropdown(index)
+                                    } else {
                                       setActiveBatchDropdown(null)
                                     }
-                                    dropdownClickedRef.current = false
-                                  }, 150)
-                                }}
-                              />
-                              {activeBatchDropdown === index &&
-                                entry.itemCode &&
-                                batchOptions[entry.itemCode] &&
-                                ReactDOM.createPortal(
-                                  <ul
-                                    className="list-group position-fixed"
-                                    style={{
-                                      zIndex: 9999,
-                                      maxHeight: 200,
-                                      overflowY: "auto",
-                                      top: `${batchInputRefs.current[index]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                                      left: `${batchInputRefs.current[index]?.getBoundingClientRect().left + window.scrollX}px`,
-                                      backgroundColor: "white",
-                                      border: "1px solid #dee2e6",
-                                      borderRadius: "0.375rem",
-                                      boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-                                    }}
-                                  >
-                                    {batchOptions[entry.itemCode]
-                                      .filter(
-                                        (batch) =>
-                                          entry.batchNo === "" ||
-                                          batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
-                                      )
-                                      .map((batch, batchIndex) => (
-                                        <li
-                                          key={`${batch.batchNo}-${batchIndex}`}
-                                          className="list-group-item list-group-item-action"
-                                          style={{ cursor: "pointer" }}
-                                          onMouseDown={(e) => {
-                                            e.preventDefault()
-                                            dropdownClickedRef.current = true
-                                          }}
-                                          onClick={(e) => {
-                                            e.preventDefault()
-                                            e.stopPropagation()
-                                            handleIndentEntryChange(index, "batchNo", batch.batchNo)
-                                            setActiveBatchDropdown(null)
-                                            dropdownClickedRef.current = false
-                                          }}
-                                        >
-                                          <div>
-                                            <strong>{batch.batchNo}</strong>
-                                          </div>
-                                          <div>
-                                            <small className="text-muted">
-                                              DOM: {formatDate(batch.mfgDate)} | DOE: {formatDate(batch.expDate)}
-                                            </small>
-                                          </div>
-                                          <div>
-                                            <small className="text-muted">
-                                              Batch Stock: {batch.stock} | Total Available: {batch.totalAvailableStock}
-                                            </small>
-                                          </div>
-                                        </li>
-                                      ))}
-                                    {batchOptions[entry.itemCode].filter(
+                                  }}
+                                  placeholder="Batch"
+                                  autoComplete="off"
+                                  onFocus={() => entry.itemCode && setActiveBatchDropdown(index)}
+                                />
+
+                                {/* PortalDropdown for batch search */}
+                                <PortalDropdown
+                                  anchorRef={{ current: batchInputRefs.current[index] }}
+                                  show={activeBatchDropdown === index && entry.itemCode && batchOptions[entry.itemCode]}
+                                >
+                                  {batchOptions[entry.itemCode]
+                                    ?.filter(
                                       (batch) =>
                                         entry.batchNo === "" ||
                                         batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
-                                    ).length === 0 &&
-                                      entry.batchNo !== "" && (
-                                        <li className="list-group-item text-muted">No matches found</li>
-                                      )}
-                                  </ul>,
-                                  document.body,
-                                )}
+                                    )
+                                    .map((batch, batchIndex) => (
+                                      <div
+                                        key={`${batch.batchNo}-${batchIndex}`}
+                                        className="p-2"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault()
+                                          dropdownClickedRef.current = true
+                                          handleIndentEntryChange(index, "batchNo", batch.batchNo)
+                                          setActiveBatchDropdown(null)
+                                          setTimeout(() => {
+                                            dropdownClickedRef.current = false
+                                          }, 100)
+                                        }}
+                                        style={{
+                                          cursor: "pointer",
+                                          borderBottom: "1px solid #f0f0f0"
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.backgroundColor = 'transparent';
+                                        }}
+                                      >
+                                        <div>
+                                          <strong>{batch.batchNo}</strong>
+                                        </div>
+                                        <div>
+                                          <small className="text-muted">
+                                            DOM: {formatDate(batch.mfgDate)} | DOE: {formatDate(batch.expDate)}
+                                          </small>
+                                        </div>
+                                        <div>
+                                          <small className="text-muted">
+                                            Batch Stock: {batch.stock} | Total Available: {batch.totalAvailableStock}
+                                          </small>
+                                        </div>
+                                      </div>
+                                    ))}
+                                  {batchOptions[entry.itemCode]?.filter(
+                                    (batch) =>
+                                      entry.batchNo === "" ||
+                                      batch.batchNo.toLowerCase().includes(entry.batchNo.toLowerCase()),
+                                  ).length === 0 &&
+                                    entry.batchNo !== "" && (
+                                      <div className="p-2 text-muted text-center">No matches found</div>
+                                    )}
+                                </PortalDropdown>
+                              </div>
                             </td>
 
                             <td>
@@ -1500,11 +1533,11 @@ const IndentIssue = () => {
 
             
                 <Pagination
-                                            totalItems={filteredIndentData.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
+                  totalItems={filteredIndentData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
                 
             </div>
           </div>
