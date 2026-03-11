@@ -1,4 +1,5 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect, useRef, useCallback } from "react"
+import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
@@ -40,6 +41,48 @@ import {
 } from "../../../config/constants";
 import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4,           // 4 px gap below the input
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "250px",
+        overflowY: "auto",
+        background: "#fff",
+        border: "1px solid #dee2e6",
+        borderRadius: "4px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      });
+    };
+
+    updatePosition();
+
+    // Re-position on scroll or resize (the table might scroll horizontally)
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(
+    <div style={style}>{children}</div>,
+    document.body
+  );
+};
+// ────────────────────────────────────────────────────────────────────────────
+
 const IndentCreation = () => {
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null)
@@ -53,7 +96,7 @@ const IndentCreation = () => {
   const [departments, setDepartments] = useState([]);
   const [loggedInDepartment, setLoggedInDepartment] = useState("");
 
-  const [indentType, setIndentType] = useState(""); 
+  const [indentType, setIndentType] = useState("");
   const [pendingIndentType, setPendingIndentType] = useState(null);
 
   // Drug search state with debounce - Now per row
@@ -64,10 +107,11 @@ const IndentCreation = () => {
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [isItemLoading, setIsItemLoading] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
-  
-  // Refs for debounce and dropdown
+
+  // Refs for debounce and per-row input anchoring
   const debounceItemRef = useRef(null);
-  const dropdownItemRef = useRef(null);
+  // Map of row-index → input DOM ref, used to position the portal dropdown
+  const inputRefs = useRef({});
 
   const [indentEntries, setIndentEntries] = useState([
     { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null },
@@ -81,6 +125,22 @@ const IndentCreation = () => {
   const [rolItems, setRolItems] = useState([]);
 
   const navigate = useNavigate();
+
+  // ── close dropdown when clicking outside any tracked input ──────────────
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // Check if click is inside any of the row inputs
+      const clickedInsideInput = Object.values(inputRefs.current).some(
+        (ref) => ref && ref.contains(e.target)
+      );
+      if (!clickedInsideInput) {
+        setShowItemDropdown(false);
+        setActiveRowIndex(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Fetch current department by ID
   const fetchCurrentDepartment = async () => {
@@ -135,18 +195,17 @@ const IndentCreation = () => {
   const fetchItems = async (page, searchText = "") => {
     try {
       setIsItemLoading(true);
-      // Determine section ID based on indent type
       const params = new URLSearchParams();
 
-if (indentType === "drug") {
-  params.append("sectionId", SECTION_ID_FOR_DRUGS);
-}
+      if (indentType === "drug") {
+        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+      }
 
-params.append("keyword", searchText);
-params.append("page", page);
-params.append("size", DEFAULT_ITEMS_PER_PAGE);
+      params.append("keyword", searchText);
+      params.append("page", page);
+      params.append("size", DEFAULT_ITEMS_PER_PAGE);
 
-const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const url = `${INVENTORY}/item/search?${params.toString()}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -171,7 +230,7 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     try {
       const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
       const response = await getRequest(url);
-      
+
       if (response.status === 200 && response.response) {
         return response.response;
       }
@@ -180,12 +239,11 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       console.error("Error fetching item details:", error);
       showPopup(FETCH_ITEM_DETAILS_ERR_MSG, "error");
       return null;
-    } 
+    }
   };
 
   // Handle item search with debounce - Now per row
   const handleItemSearch = (value, index) => {
-    // Check if indent type is selected
     if (!indentType) {
       showPopup("Please select Indent Type first", "warning");
       return;
@@ -193,16 +251,10 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
 
     setItemSearch(value);
     setActiveRowIndex(index);
-    
-    // Update the drugName in the entry
+
     const newEntries = [...indentEntries];
-    newEntries[index] = {
-      ...newEntries[index],
-      drugName: value
-    };
-    setIndentEntries(newEntries);
-    
-    // Clear selections when user types
+    newEntries[index] = { ...newEntries[index], drugName: value };
+
     if (!value.trim() || (newEntries[index].drugId && !value.includes(newEntries[index].drugName))) {
       newEntries[index] = {
         ...newEntries[index],
@@ -213,10 +265,9 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
         wardStock: "",
         drugData: null
       };
-      setIndentEntries(newEntries);
     }
+    setIndentEntries(newEntries);
 
-    // Debounce API call
     if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
     debounceItemRef.current = setTimeout(async () => {
       if (!value.trim()) {
@@ -256,8 +307,7 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
 
   // Handle item selection from dropdown
   const handleItemSelect = async (index, item) => {
-    // Check if drug is already selected in another row
-    const isDuplicate = indentEntries.some((entry, i) => 
+    const isDuplicate = indentEntries.some((entry, i) =>
       i !== index && entry.drugId === item.itemId
     );
 
@@ -266,17 +316,14 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       return;
     }
 
-    // Fetch complete item details
     const itemDetails = await fetchItemDetails(item.itemId);
-    
+
     if (itemDetails) {
       const newEntries = [...indentEntries];
-      
-      // Use available stock fields from the API response
+
       const storesStock = itemDetails.storestocks !== null && itemDetails.storestocks !== undefined ? itemDetails.storestocks : 0;
       const wardStock = itemDetails.wardstocks !== null && itemDetails.wardstocks !== undefined ? itemDetails.wardstocks : 0;
 
-      // Update the selected row with complete item information
       newEntries[index] = {
         ...newEntries[index],
         drugId: itemDetails.itemId,
@@ -300,11 +347,10 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       };
 
       setIndentEntries(newEntries);
-      setItemSearch(""); // Clear the search after selection
-      setShowItemDropdown(false); // Hide dropdown
+      setItemSearch("");
+      setShowItemDropdown(false);
       setActiveRowIndex(null);
 
-      // Clear errors for this row
       const newErrors = { ...errors };
       delete newErrors[`drug_${index}`];
       delete newErrors[`qty_${index}`];
@@ -316,36 +362,30 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
   // Handle indent type change with confirmation
   const handleIndentTypeChange = (e) => {
     const newIndentType = e.target.value;
-    
-    // Check if there are any non-empty entries (with drug name or drugId)
-    const hasData = indentEntries.some(entry => 
+
+    const hasData = indentEntries.some(entry =>
       entry.drugName?.trim() !== "" || entry.drugId !== null
     );
 
     if (hasData && newIndentType !== indentType) {
-      // Store the pending indent type and show confirmation
       setPendingIndentType(newIndentType);
       setConfirmationPopup({
         message: INDENT_TYPE_CHANGE_WARN_MSG,
         onConfirm: () => {
-          // User confirmed - change indent type and clear data
           setIndentType(newIndentType);
-          
-          // Clear indent type error if exists
+
           if (errors.indentType) {
             const newErrors = { ...errors };
             delete newErrors.indentType;
             setErrors(newErrors);
           }
-          
-          // Reset item search and dropdown
+
           setItemSearch("");
           setItemDropdown([]);
           setShowItemDropdown(false);
           setActiveRowIndex(null);
-          
-          // Clear drug selections from all rows
-          setIndentEntries(prevEntries => 
+
+          setIndentEntries(prevEntries =>
             prevEntries.map(entry => ({
               ...entry,
               drugCode: "",
@@ -358,12 +398,11 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
               drugData: null
             }))
           );
-          
+
           setPendingIndentType(null);
           setConfirmationPopup(null);
         },
         onCancel: () => {
-          // User cancelled - revert to previous indent type
           setPendingIndentType(null);
           setConfirmationPopup(null);
         },
@@ -372,25 +411,21 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
         type: "warning"
       });
     } else {
-      // No data or same indent type - change directly
       setIndentType(newIndentType);
-      
-      // Clear indent type error if exists
+
       if (errors.indentType) {
         const newErrors = { ...errors };
         delete newErrors.indentType;
         setErrors(newErrors);
       }
-      
-      // Reset item search and dropdown
+
       setItemSearch("");
       setItemDropdown([]);
       setShowItemDropdown(false);
       setActiveRowIndex(null);
-      
-      // If switching to a different indent type with no data, still clear the rows
+
       if (newIndentType !== indentType) {
-        setIndentEntries(prevEntries => 
+        setIndentEntries(prevEntries =>
           prevEntries.map(entry => ({
             ...entry,
             drugCode: "",
@@ -407,18 +442,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     }
   };
 
-  // Handle click outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
-        setShowItemDropdown(false);
-        setActiveRowIndex(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
   useEffect(() => {
     fetchDepartments();
     fetchCurrentDepartment();
@@ -433,7 +456,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       return updatedEntries;
     });
 
-    // Clear errors when user starts typing
     const entryIndex = indentEntries.findIndex(entry => entry.id === id);
     if (entryIndex !== -1) {
       const newErrors = { ...errors };
@@ -446,7 +468,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
   };
 
   const handleAddRow = () => {
-    // Check if current row has drug name
     const lastRow = indentEntries[indentEntries.length - 1];
 
     if (!lastRow.drugName || lastRow.drugName.trim() === "") {
@@ -465,7 +486,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     if (indentEntries.length > 1) {
       setIndentEntries(indentEntries.filter(entry => entry.id !== id));
 
-      // Clear errors for deleted row
       const entryIndex = indentEntries.findIndex(entry => entry.id === id);
       if (entryIndex !== -1) {
         const newErrors = { ...errors };
@@ -493,22 +513,18 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
   const validateForm = () => {
     const newErrors = {};
 
-    // Department validation
     if (!department) {
       newErrors.department = INVALID_DEPARTMENT_ERROR;
     }
 
-    // Date validation
     if (!indentDate) {
       newErrors.indentDate = INVALID_DATE_ERROR;
     }
 
-    // Indent Type validation
     if (!indentType) {
       newErrors.indentType = "Please select Indent Type";
     }
 
-    // Entries validation - check for drugId
     indentEntries.forEach((entry, index) => {
       if (!entry.drugId) {
         newErrors[`drug_${index}`] = SELECT_DRUG_ERROR;
@@ -550,7 +566,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     }
   };
 
-  // Update the ROL items fetch
   const fetchROLItems = async () => {
     try {
       setLoading(true);
@@ -602,7 +617,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     }
   };
 
-  // Update ROL import function
   const handleImportROLItems = () => {
     const selectedItems = rolItems.filter(item => item.selected);
 
@@ -611,11 +625,8 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       return;
     }
 
-    // Create new entries for selected ROL items
     const newEntries = selectedItems.map((item, index) => {
       const newId = index + 1;
-
-      // Use stock data directly from ROL response
       const storesStock = item.storeStock !== null && item.storeStock !== undefined ? item.storeStock : 0;
       const wardStock = item.wardStock !== null && item.wardStock !== undefined ? item.wardStock : 0;
 
@@ -640,15 +651,12 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       };
     });
 
-    // Check if we have only the default empty row
     const hasOnlyDefaultRow = indentEntries.length === 1 &&
       (!indentEntries[0].drugName || indentEntries[0].drugName.trim() === "");
 
     if (hasOnlyDefaultRow) {
-      // Replace the default row with imported items
       setIndentEntries(newEntries);
     } else {
-      // Add to existing rows
       const nextId = Math.max(...indentEntries.map(e => e.id), 0) + 1;
       const entriesWithNewIds = newEntries.map((entry, index) => ({
         ...entry,
@@ -666,17 +674,12 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     showPopup(IMPORT_FROM_PREVIOUS, "info");
   };
 
-  // Handle select all checkbox in ROL popup
   const handleSelectAllROL = (e) => {
     const isChecked = e.target.checked;
-    const updatedRolItems = rolItems.map(item => ({
-      ...item,
-      selected: isChecked
-    }));
+    const updatedRolItems = rolItems.map(item => ({ ...item, selected: isChecked }));
     setRolItems(updatedRolItems);
   };
 
-  // Handle individual checkbox selection in ROL popup
   const handleROLItemSelect = (id, isSelected) => {
     const updatedRolItems = rolItems.map(item =>
       item.id === id ? { ...item, selected: isSelected } : item
@@ -684,11 +687,10 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     setRolItems(updatedRolItems);
   };
 
-  // Function to reset form
   const resetForm = () => {
     setIndentDate(new Date().toISOString().split("T")[0]);
     setDepartment("");
-    setIndentType(""); // Reset indent type
+    setIndentType("");
     setIndentEntries([
       { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null },
     ]);
@@ -699,7 +701,6 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
     setItemDropdown([]);
   };
 
-  // Debug payload function
   const debugPayload = (payload) => {
     console.log("=== DEBUG PAYLOAD ===");
     console.log("Department ID:", payload.toDeptId);
@@ -716,23 +717,19 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
   };
 
   const handleSave = async () => {
-    // Validate form
     if (!validateForm()) {
       showPopup(`${MANDATORY_FIELD_WARNING}`, "warning");
       return;
     }
 
-    // Check for duplicate drugs
     if (hasDuplicateDrugs()) {
       showPopup(`${DUPLICATE_DRUGS_WARNING}`, "warning");
       return;
     }
 
-    // Build ISO datetime string
     const now = new Date();
     const indentDateTime = now.toISOString().slice(0, 19);
 
-    // Filter out entries without drugId
     const validEntries = indentEntries.filter(entry => entry.drugId);
 
     if (validEntries.length === 0) {
@@ -761,11 +758,9 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       const response = await postRequest(`${INVENTORY}/indent/save`, payload);
       console.log("Save response:", response);
 
-      // Show confirmation popup instead of regular popup
       setConfirmationPopup({
         message: INDENT_SAVE_SUCCESS,
         onConfirm: () => {
-          // If you have a view page for indents, navigate to it
           navigate('/ViewDownloadReport', {
             state: {
               reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
@@ -774,13 +769,10 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
               returnPath: window.location.pathname
             }
           });
-
-          // Reset form after navigation
           resetForm();
           setConfirmationPopup(null);
         },
         onCancel: () => {
-          // Reset form and stay on same page
           resetForm();
           setConfirmationPopup(null);
         },
@@ -791,15 +783,10 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
 
     } catch (err) {
       console.error("Error saving indent:", err);
-      // Show error popup without navigation
       setConfirmationPopup({
         message: INDENT_SAVE_ERROR,
-        onConfirm: () => {
-          setConfirmationPopup(null);
-        },
-        onCancel: () => {
-          setConfirmationPopup(null);
-        },
+        onConfirm: () => { setConfirmationPopup(null); },
+        onCancel: () => { setConfirmationPopup(null); },
         confirmText: "OK",
         cancelText: "Close",
         type: "error"
@@ -810,23 +797,19 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
   };
 
   const handleSubmit = async () => {
-    // Validate form
     if (!validateForm()) {
       showPopup(`${MANDATORY_FIELD_WARNING}`, "warning");
       return;
     }
 
-    // Check for duplicate drugs
     if (hasDuplicateDrugs()) {
       showPopup(`${DUPLICATE_DRUGS_WARNING}`, "warning");
       return;
     }
 
-    // Build ISO datetime string (LocalDateTime-compatible)
     const now = new Date();
     const indentDateTime = now.toISOString().slice(0, 19);
 
-    // Filter out entries without drugId and build payload
     const validEntries = indentEntries.filter(entry => entry.drugId);
 
     if (validEntries.length === 0) {
@@ -855,11 +838,9 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
       const response = await postRequest(`${INVENTORY}/indent/submit`, payload);
       console.log("Submit response:", response);
 
-      // Show confirmation popup instead of regular popup
       setConfirmationPopup({
         message: INDENT_SUBMIT_SUCCESS,
         onConfirm: () => {
-          // If you have a view page for indents, navigate to it
           navigate('/ViewDownloadReport', {
             state: {
               reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
@@ -868,13 +849,10 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
               returnPath: window.location.pathname
             }
           });
-
-          // For now, just reset the form
           resetForm();
           setConfirmationPopup(null);
         },
         onCancel: () => {
-          // Reset form and stay on same page
           resetForm();
           setConfirmationPopup(null);
         },
@@ -894,8 +872,7 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
   return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
-      
-      {/* Use the independent ConfirmationPopup component */}
+
       <ConfirmationPopup
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
@@ -910,7 +887,7 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             {/* Header Section */}
-            <div className="card-header" >
+            <div className="card-header">
               <h4 className="card-title p-2 mb-0">Indent Creation</h4>
             </div>
 
@@ -986,7 +963,8 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
               </div>
 
               {/* Table Section */}
-              <div className="table-responsive" style={{ overflowX: "auto" }}>
+             
+              <div className="table-responsive">
                 <table className="table table-bordered align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
                     <tr>
@@ -1020,21 +998,26 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
                   <tbody>
                     {indentEntries.map((entry, index) => (
                       <tr key={entry.id}>
-                        <td style={{ position: 'relative' }} ref={dropdownItemRef}>
-                          <div className="dropdown-search-container position-relative">
+                        {/* ── Item Name cell ── */}
+                        <td>
+                          <div className="dropdown-search-container">
+                           
                             <input
+                              ref={(el) => { inputRefs.current[index] = el; }}
                               type="text"
                               className={`form-control ${errors[`drug_${index}`] ? 'is-invalid' : ''}`}
-                              value={entry.drugName} // Bind to entry.drugName for this specific row
+                              value={entry.drugName}
                               autoComplete="off"
                               onChange={(e) => handleItemSearch(e.target.value, index)}
                               onClick={() => {
                                 if (entry.drugName?.trim() && indentType) {
+                                  setActiveRowIndex(index);
                                   loadFirstItemPage(entry.drugName);
                                 } else if (!indentType) {
                                   showPopup(INDENT_TYPE_MANDARORY_WARN_MSG, "warning");
                                 }
                               }}
+                              onFocus={() => setActiveRowIndex(index)}
                               placeholder={indentType ? "Type item name or code..." : "Select Indent Type first"}
                               style={{ borderRadius: "4px", minWidth: "280px" }}
                               disabled={!indentType}
@@ -1043,70 +1026,73 @@ const url = `${INVENTORY}/item/search?${params.toString()}`;
                               <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
                             )}
 
-                            {/* Search Dropdown - Only show for active row */}
-                            {showItemDropdown && activeRowIndex === index && indentType && (
-                              <div 
-                                className="border rounded mt-1 bg-white position-absolute w-100"
-                                style={{ maxHeight: "250px", zIndex: 1000, overflowY: "auto" }}
-                                onScroll={(e) => {
-                                  const target = e.target;
-                                  if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
-                                    loadMoreItems();
-                                  }
-                                }}
-                              >
-                                {isItemLoading && itemDropdown.length === 0 ? (
-                                  <div className="text-center p-3">
-                                    <div className="spinner-border spinner-border-sm text-primary" role="status">
-                                      <span className="visually-hidden">Loading...</span>
-                                    </div>
+                           
+                            <PortalDropdown
+                              anchorRef={{ current: inputRefs.current[index] }}
+                              show={showItemDropdown && activeRowIndex === index && !!indentType}
+                            >
+                              {isItemLoading && itemDropdown.length === 0 ? (
+                                <div className="text-center p-3">
+                                  <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span className="visually-hidden">Loading...</span>
                                   </div>
-                                ) : itemDropdown.length > 0 ? (
-                                  <>
-                                    {itemDropdown.map((item) => {
-                                      const isSelectedInOtherRow = indentEntries.some(
-                                        (e, i) => i !== index && e.drugId === item.itemId
-                                      );
-                                      return (
-                                        <div
-                                          key={item.itemId}
-                                          className="p-2 cursor-pointer hover-bg-light"
-                                          onMouseDown={(e) => {
-                                            e.preventDefault();
-                                            if (!isSelectedInOtherRow) {
-                                              handleItemSelect(index, item);
-                                            }
-                                          }}
-                                          style={{ 
-                                            cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
-                                            backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
-                                            borderBottom: '1px solid #f0f0f0'
-                                          }}
-                                        >
-                                          <div className="fw-bold">{item.nomenclature}</div>
-                                          <div className="d-flex justify-content-between align-items-center">
-                                            <small className="text-muted">PVMS: {item.pvmsNo}</small>
-                                            {isSelectedInOtherRow && (
-                                              <span className="badge bg-warning text-dark">Already Added</span>
-                                            )}
-                                          </div>
+                                </div>
+                              ) : itemDropdown.length > 0 ? (
+                                <>
+                                  {itemDropdown.map((item) => {
+                                    const isSelectedInOtherRow = indentEntries.some(
+                                      (e, i) => i !== index && e.drugId === item.itemId
+                                    );
+                                    return (
+                                      <div
+                                        key={item.itemId}
+                                        className="p-2"
+                                        onMouseDown={(e) => {
+                                          e.preventDefault();
+                                          if (!isSelectedInOtherRow) {
+                                            handleItemSelect(index, item);
+                                          }
+                                        }}
+                                        style={{
+                                          cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
+                                          backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
+                                          borderBottom: '1px solid #f0f0f0'
+                                        }}
+                                        onMouseEnter={(e) => {
+                                          if (!isSelectedInOtherRow) e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                        }}
+                                        onMouseLeave={(e) => {
+                                          e.currentTarget.style.backgroundColor = isSelectedInOtherRow ? '#fff3cd' : 'transparent';
+                                        }}
+                                      >
+                                        <div className="fw-bold">{item.nomenclature}</div>
+                                        <div className="d-flex justify-content-between align-items-center">
+                                          <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                                          {isSelectedInOtherRow && (
+                                            <span className="badge bg-warning text-dark">Already Added</span>
+                                          )}
                                         </div>
-                                      );
-                                    })}
-                                    
-                                    {!itemLastPage && (
-                                      <div className="text-center p-2 text-primary small">
-                                        {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
                                       </div>
-                                    )}
-                                  </>
-                                ) : (
-                                  <div className="p-2 text-muted text-center">No items found</div>
-                                )}
-                              </div>
-                            )}
+                                    );
+                                  })}
+
+                                  {/* Infinite scroll sentinel */}
+                                  {!itemLastPage && (
+                                    <div
+                                      className="text-center p-2 text-primary small"
+                                      onMouseEnter={loadMoreItems}
+                                    >
+                                      {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
+                                    </div>
+                                  )}
+                                </>
+                              ) : (
+                                <div className="p-2 text-muted text-center">No items found</div>
+                              )}
+                            </PortalDropdown>
                           </div>
                         </td>
+
                         <td>
                           <input
                             type="text"
