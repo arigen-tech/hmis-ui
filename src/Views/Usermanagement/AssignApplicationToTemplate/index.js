@@ -199,7 +199,7 @@ const Assignapplication = () => {
         setLoading(true);
 
         try {
-            const response = await getRequest(`${ASSIGN_TEMPLATES}/getAllTemplateById/${selectedTemplateId}`);
+            const response = await getRequest(`${ASSIGN_TEMPLATES}/getTemplateApplicationsByTemplate/${selectedTemplateId}`);
 
             if (response && response.response) {
                 console.log("Template response:", response.response);

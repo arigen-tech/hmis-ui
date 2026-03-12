@@ -32,14 +32,14 @@ const Manageuserapplication = () => {
     const URL_MAX_LENGTH = 250;
 
     useEffect(() => {
-        fetchApplications(0);
+        fetchApplications();
     }, []);
 
-    const fetchApplications = async (flag = 0) => {
+    const fetchApplications = async () => {
         setLoading(true);
         setError(null);
         try {
-            const response = await getRequest(`${ALL_USER_APPLICATION}/${flag}`);
+            const response = await getRequest(`${ALL_USER_APPLICATION}?flag=0`);
             console.log("API Response:", response);
 
             if (response && response.response) {
@@ -125,7 +125,7 @@ const Manageuserapplication = () => {
     
             if (editingApplication) {
                 // Update existing application
-                const response = await putRequest(`${USER_APPLICATION}/edit/${editingApplication.id}`, {
+                const response = await putRequest(`${USER_APPLICATION}/updateApplication/${editingApplication.id}`, {
                     userAppName: formData.menuName,
                     url: formData.url
                 });
@@ -154,7 +154,7 @@ const Manageuserapplication = () => {
                 }
             } else {
                 // Create a new application
-                const response = await postRequest(`${USER_APPLICATION}/create`, {
+                const response = await postRequest(`${USER_APPLICATION}/createApplication`, {
                     userAppName: formData.menuName,
                     url: formData.url,
                     status: "y"
@@ -208,7 +208,7 @@ const Manageuserapplication = () => {
                 setLoading(true);
                 
                 const response = await putRequest(
-                    `${USER_APPLICATION}/status/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
+                    `${USER_APPLICATION}/changeApplicationStatus/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
                 );
                 
                 if (response && response.status === 200) {

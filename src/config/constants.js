@@ -952,9 +952,24 @@ export const FAIL_BAG_TYPE = "Failed to save changes";
 export const FAIL_UPDATE_STATUS_BAG_TYPE = "Failed to update status";
 
 
+//masBloodCompatibility
+export const FETCH_BLOOD_COMPATIBILITY = "Failed to fetch records";
+export const DUPLICATE_BLOOD_COMPATIBILITY = "Compatibility record already exists!";
+export const UPDATE_BLOOD_COMPATIBILITY = "Record updated successfully";
+export const ADD_BLOOD_COMPATIBILITY = "Record added successfully";
+export const FAIL_BLOOD_COMPATIBILITY = "Failed to save record";
+export const FAIL_UPDATE_BLOOD_COMPATIBILITY = "Failed to update status";
+export const  FAIL_LOAD_COMPONENTS = "Failed to load components";
+export const   BLOOD_GROUP_DATA= "Blood group data format invalid";
+export const  FAIL_BLOOD_GROUP = "Failed to load blood groups";
 
 
-
+//bagTypemaster
+export const  FETCH_BAG_TYPE_MASTER = "Failed to fetch records";
+export const DUPLICATE_BAG_TYPE_MASTER = "Bag Type or Status Name already exists";
+export const UPDATE_BAG_TYPE_MASTER = "Updated successfully";
+export const ADD_BAG_TYPE_MASTER = "Record added successfully";
+export const UPDATE_FAIL_BAG_TYPE_MASTER = "Failed to update status";
 
 
 //updatepatientragistration
@@ -1100,6 +1115,7 @@ export const SUCCESS_INDENT_SAVED_PRINT ="Indent saved successfully! Do you want
 export const SUCCESS_INDENT_SUBMITTED_PRINT = "Indent submitted successfully! Do you want to print report ?";
 export const ERROR_SAVE_SUBMIT_INDENT = (backendStatus) =>
   `Error ${backendStatus === "S" ? "saving" : "submitting"} indent. Please try again.`;
+export const INDENT_ID_NOT_FOUND = "Indent ID not found";
 
 //Radiology template master
 export const FETCH_RADIOLOGY_TEMPLATE_ERR_MSG = "Failed to fetch radiology template data";
@@ -1107,6 +1123,22 @@ export const ADD_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template added success
 export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated successfully!";
 export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
 export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
+        
+
+//Blood Test Master
+export const FETCH_BLOOD_TEST = "Failed to fetch Blood Test data";
+export const ADD_BLOOD_TEST = "Blood Test added successfully";
+export const UPDATE_BLOOD_TEST = "Blood Test updated successfully";
+export const FAIL_BLOOD_TEST = "Operation failed";
+export const DUPLICATE_BLOOD_TEST = "Test Code already exists";
+export const UPDATE_FAIL_BLOOD_TEST = "Failed to update status";
+export const FETCH_COLLECTION_TYPE_ERROR = "Failed to load collection types";
+export const STATUS = {
+  ACTIVE: "y",
+  INACTIVE: "n",
+};
+
+
         
 //Physical Stock Adjustment
 

@@ -78,7 +78,7 @@ const Sidebar = () => {
   const fetchMenuData = async () => {
     setLoading(true)
     try {
-      const data = await getRequest(`/url/getAllUrlByRoles/${rolesId}`)
+      const data = await getRequest(`/configuration/getUrlsByRoles/${rolesId}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setMenuData(data.response)
 

@@ -40,7 +40,7 @@ const Addformreports = () => {
         const fetchMenuNameOptions = async () => {
             try {
                 setLoading(true)
-                const response = await getRequest(`${ALL_USER_APPLICATION}/1`)
+                const response = await getRequest(`${ALL_USER_APPLICATION}?flag=1`)
 
                 if (response && response.response) {
                     const menuOptions = response.response.map((item) => ({

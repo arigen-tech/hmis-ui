@@ -2,7 +2,7 @@
 
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
-//  export const API_HOST = 'http://192.168.1.8:8080';
+//  export const API_HOST = 'http://192.168.1.39:8080';
 
 // export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://localhost:8080';
@@ -239,6 +239,8 @@ export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
 export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
 export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
 export const MAS_BLOOD_COMPONENT = `${MASTERS}/masBloodComponent`
+export const MAS_BLOOD_COMPATIBILITY = `${MASTERS}/masBloodCompatibility`;
+export const MAS_BLOOD_BAG_TYPE = `${MASTERS}/masBloodBagType`;
 export const MAS_BLOOD_COLLECTION = `${MASTERS}/masBloodCollectionType`;
 export const MAS_MENSTRUAl_PATTERN  =`${MASTERS}/gynMasMenstrualPattern`;
 export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;
@@ -293,6 +295,8 @@ export const PET_MODALITY = 48;
   export const APPROVE_EMPLOYEE = `/employee/approveEmployee`;
 
 
+export const MAS_BLOOD_TEST= `${MASTERS}/masBloodTest`;
+
 
 //patient Registration 
 export const PATIENT_IMAGE_UPLOAD = `/registration/uploadPatientImage`;
@@ -320,6 +324,8 @@ export const OPD_SERVICE_CATAGORY = "SC001";
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INVENTORY=`/inventory`
   export const SECTION_ID_FOR_DRUGS=18;
+
+  export const MAS_BLOOD_COLLECTION_TYPE= `${MASTERS}/masBloodCollectionType`;  
 
 
 

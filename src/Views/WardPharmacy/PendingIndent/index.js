@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom'
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"
@@ -10,6 +11,47 @@ import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination
 import {ERROR_FETCH_PENDING_INDENTS,WARNING_SELECT_ACTION,WARNING_REMARKS_MANDATORY,SUCCESS_INDENT_REJECTED_PRINT,
 SUCCESS_INDENT_APPROVED_PRINT,ERROR_PROCESS_INDENT,} from  "../../../config/constants";
 
+// PortalDropdown Component - Fixed positioning like in IndentCreation
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4,           // 4 px gap below the input
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "250px",
+        overflowY: "auto",
+        background: "#fff",
+        border: "1px solid #dee2e6",
+        borderRadius: "4px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      });
+    };
+
+    updatePosition();
+
+    // Re-position on scroll or resize
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(
+    <div style={style}>{children}</div>,
+    document.body
+  );
+};
 
 const PendingIndentApproval = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -42,7 +84,6 @@ const PendingIndentApproval = () => {
   
   // Refs for debounce and dropdown
   const debounceItemRef = useRef(null);
-  const dropdownItemRef = useRef(null);
   const itemInputRefs = useRef({});
 
   // Add navigate hook
@@ -50,6 +91,22 @@ const PendingIndentApproval = () => {
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
   const departmentName = sessionStorage.getItem('departmentName') || "Current Dept"
+
+  // ── close dropdown when clicking outside any tracked input ──────────────
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      // Check if click is inside any of the row inputs
+      const clickedInsideInput = Object.values(itemInputRefs.current).some(
+        (ref) => ref && ref.contains(e.target)
+      );
+      if (!clickedInsideInput) {
+        setShowItemDropdown(false);
+        setActiveRowIndex(null);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Status mapping based on statusName from the new API response
   const statusMap = {
@@ -374,18 +431,6 @@ const PendingIndentApproval = () => {
     fetchPendingIndents(departmentId)
     // fetchAllDrugs()
   }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
-
-  // Handle click outside dropdown
-  useEffect(() => {
-    const handleClickOutside = (e) => {
-      if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
-        setShowItemDropdown(false);
-        setActiveRowIndex(null);
-      }
-    };
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
 
   // Handle search by date range
   const handleSearch = () => {
@@ -800,10 +845,10 @@ const PendingIndentApproval = () => {
                           <tr key={entry.id || index}>
                             <td className="text-center fw-bold">{index + 1}</td>
                             
-                            <td style={{ position: "relative" }} ref={dropdownItemRef}>
-                              <div className="dropdown-search-container position-relative">
+                            <td>
+                              <div className="dropdown-search-container">
                                 <input
-                                  ref={(el) => (itemInputRefs.current[index] = el)}
+                                  ref={(el) => { itemInputRefs.current[index] = el; }}
                                   type="text"
                                   className="form-control form-control-sm"
                                   value={entry.itemName || ""}
@@ -820,68 +865,70 @@ const PendingIndentApproval = () => {
                                   autoComplete="off"
                                 />
 
-                                {/* Search Dropdown - Only show for active row */}
-                                {showItemDropdown && activeRowIndex === index && (
-                                  <div 
-                                    className="border rounded mt-1 bg-white position-absolute w-100"
-                                    style={{ maxHeight: "250px", zIndex: 1000, overflowY: "auto" }}
-                                    onScroll={(e) => {
-                                      const target = e.target;
-                                      if (target.scrollHeight - target.scrollTop <= target.clientHeight + 50) {
-                                        loadMoreItems();
-                                      }
-                                    }}
-                                  >
-                                    {isItemLoading && itemDropdown.length === 0 ? (
-                                      <div className="text-center p-3">
-                                        <div className="spinner-border spinner-border-sm text-primary" role="status">
-                                          <span className="visually-hidden">Loading...</span>
-                                        </div>
+                                {/* PortalDropdown for item search */}
+                                <PortalDropdown
+                                  anchorRef={{ current: itemInputRefs.current[index] }}
+                                  show={showItemDropdown && activeRowIndex === index}
+                                >
+                                  {isItemLoading && itemDropdown.length === 0 ? (
+                                    <div className="text-center p-3">
+                                      <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                        <span className="visually-hidden">Loading...</span>
                                       </div>
-                                    ) : itemDropdown.length > 0 ? (
-                                      <>
-                                        {itemDropdown.map((item) => {
-                                          const isSelectedInOtherRow = selectedDrugs.some(
-                                            id => id === item.itemId && indentEntries[index]?.itemId !== item.itemId
-                                          );
-                                          return (
-                                            <div
-                                              key={item.itemId}
-                                              className="p-2 cursor-pointer hover-bg-light"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                if (!isSelectedInOtherRow) {
-                                                  handleItemSelect(index, item);
-                                                }
-                                              }}
-                                              style={{ 
-                                                cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
-                                                backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
-                                                borderBottom: '1px solid #f0f0f0'
-                                              }}
-                                            >
-                                              <div className="fw-bold">{item.nomenclature}</div>
-                                              <div className="d-flex justify-content-between align-items-center">
-                                                <small className="text-muted">PVMS: {item.pvmsNo}</small>
-                                                {isSelectedInOtherRow && (
-                                                  <span className="badge bg-warning text-dark">Already Added</span>
-                                                )}
-                                              </div>
+                                    </div>
+                                  ) : itemDropdown.length > 0 ? (
+                                    <>
+                                      {itemDropdown.map((item) => {
+                                        const isSelectedInOtherRow = selectedDrugs.some(
+                                          id => id === item.itemId && indentEntries[index]?.itemId !== item.itemId
+                                        );
+                                        return (
+                                          <div
+                                            key={item.itemId}
+                                            className="p-2"
+                                            onMouseDown={(e) => {
+                                              e.preventDefault();
+                                              if (!isSelectedInOtherRow) {
+                                                handleItemSelect(index, item);
+                                              }
+                                            }}
+                                            style={{
+                                              cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
+                                              backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
+                                              borderBottom: '1px solid #f0f0f0'
+                                            }}
+                                            onMouseEnter={(e) => {
+                                              if (!isSelectedInOtherRow) e.currentTarget.style.backgroundColor = '#f8f9fa';
+                                            }}
+                                            onMouseLeave={(e) => {
+                                              e.currentTarget.style.backgroundColor = isSelectedInOtherRow ? '#fff3cd' : 'transparent';
+                                            }}
+                                          >
+                                            <div className="fw-bold">{item.nomenclature}</div>
+                                            <div className="d-flex justify-content-between align-items-center">
+                                              <small className="text-muted">PVMS: {item.pvmsNo}</small>
+                                              {isSelectedInOtherRow && (
+                                                <span className="badge bg-warning text-dark">Already Added</span>
+                                              )}
                                             </div>
-                                          );
-                                        })}
-                                        
-                                        {!itemLastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
                                           </div>
-                                        )}
-                                      </>
-                                    ) : (
-                                      <div className="p-2 text-muted text-center">No items found</div>
-                                    )}
-                                  </div>
-                                )}
+                                        );
+                                      })}
+                                      
+                                      {/* Infinite scroll sentinel */}
+                                      {!itemLastPage && (
+                                        <div
+                                          className="text-center p-2 text-primary small"
+                                          onMouseEnter={loadMoreItems}
+                                        >
+                                          {isItemLoading ? 'Loading...' : 'Scroll to load more...'}
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <div className="p-2 text-muted text-center">No items found</div>
+                                  )}
+                                </PortalDropdown>
                               </div>
                             </td>
 
