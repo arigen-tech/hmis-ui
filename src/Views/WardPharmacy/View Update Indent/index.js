@@ -1390,11 +1390,9 @@ const handleShowAll = async () => {
                       "Search"
                     )}
                   </button>
-                </div>
-                <div className="col-md-4 d-flex justify-content-end align-items-end">
-                  <button 
+                   <button 
                     type="button" 
-                    className="btn btn-secondary" 
+                    className="btn btn-secondary flex-shrink-0" 
                     onClick={handleShowAll}
                     disabled={loading || searchLoading || isSearching || isShowingAll}
                   >
@@ -1408,6 +1406,7 @@ const handleShowAll = async () => {
                     )}
                   </button>
                 </div>
+                 
               </div>
 
               <div className="table-responsive">
