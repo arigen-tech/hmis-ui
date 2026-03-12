@@ -1116,6 +1116,22 @@ export const UPDATE_RADIOLOGY_TEMPLATE_SUCC_MSG = "Radiology template updated su
 export const DUPLICATE_RADIOLOGY_TEMPLATE = "A template with this code or name already exists";
 export const FETCH_MODALITY_ERR_MSG = "Failed to fetch modality data";
         
+
+//Blood Test Master
+export const FETCH_BLOOD_TEST = "Failed to fetch Blood Test data";
+export const ADD_BLOOD_TEST = "Blood Test added successfully";
+export const UPDATE_BLOOD_TEST = "Blood Test updated successfully";
+export const FAIL_BLOOD_TEST = "Operation failed";
+export const DUPLICATE_BLOOD_TEST = "Test Code already exists";
+export const UPDATE_FAIL_BLOOD_TEST = "Failed to update status";
+export const FETCH_COLLECTION_TYPE_ERROR = "Failed to load collection types";
+export const STATUS = {
+  ACTIVE: "y",
+  INACTIVE: "n",
+};
+
+
+        
 //Physical Stock Adjustment
 
 export const PHYSICAL_STOCK_SAVE_MSG="Are you sure you want to save the stock adjustment?";

@@ -2,7 +2,7 @@
 
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
-//  export const API_HOST = 'http://192.168.1.8:8080';
+//  export const API_HOST = 'http://192.168.1.39:8080';
 
 // export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://localhost:8080';
@@ -293,6 +293,8 @@ export const PET_MODALITY = 48;
   export const GET_EMPLOYEE_BY_STATUS = `/employee/getEmployeesByStatus`;
   export const APPROVE_EMPLOYEE = `/employee/approveEmployee`;
 
+
+export const MAS_BLOOD_TEST= `${MASTERS}/masBloodTest`;
 
 
 //patient Registration 
