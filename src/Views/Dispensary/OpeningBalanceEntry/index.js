@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, OPEN_BALANCE, MAS_DRUG_MAS, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
+import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import {WARNING_DUPLICATE_BATCH_ENTRY,WARNING_CORRECT_ERRORS,CONFIRM_SAVE_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SAVED_PRINT,
@@ -18,22 +18,20 @@ const OpeningBalanceEntry = () => {
   const [loading, setLoading] = useState(true);
   const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const crUser = localStorage.getItem("username") || sessionStorage.getItem("username");
-  const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const [brandOptions, setBrandOptions] = useState([]);
   const [manufacturerOptions, setManufacturerOptions] = useState([]);
   const [currentDept, setCurrentDept] = useState(null);
   const [currentLogUser, setCurrentLogUser] = useState(null);
   const [processing, setProcessing] = useState(false);
-  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
   const [confirmationPopup, setConfirmationPopup] = useState(null);
 
-  // Add navigate hook
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const navigate = useNavigate();
 
-  // Add balance type state
   const [balanceType, setBalanceType] = useState("");
 
-  // Drug search state with debounce - Now per row (similar to IndentCreation)
   const [itemDropdown, setItemDropdown] = useState([]);
   const [itemSearch, setItemSearch] = useState("");
   const [itemPage, setItemPage] = useState(0);
@@ -42,7 +40,6 @@ const OpeningBalanceEntry = () => {
   const [isItemLoading, setIsItemLoading] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
   
-  // Refs for debounce and dropdown
   const debounceItemRef = useRef(null);
   const dropdownItemRef = useRef(null);
 
@@ -56,7 +53,6 @@ const OpeningBalanceEntry = () => {
     department: "",
   });
 
-  // Confirmation Popup Helper Function
   const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
     setConfirmationPopup({
       message,
@@ -142,25 +138,9 @@ const OpeningBalanceEntry = () => {
     }
   };
 
-  const fatchDrugCodeOptions = async () => {
-    try {
-      setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
-      if (response && response.response) {
-        setDrugCodeOptions(response.response);
-      }
-    } catch (err) {
-      console.error("Error fetching drug options:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // Fetch items from API with debounce - Modified to use sectionId based on balance type (similar to IndentCreation)
   const fetchItems = async (page, searchText = "") => {
     try {
       setIsItemLoading(true);
-      // Determine section ID based on balance type
       const params = new URLSearchParams();
 
       if (balanceType === "drug") {
@@ -191,7 +171,6 @@ const OpeningBalanceEntry = () => {
     }
   };
 
-  // Fetch item details by ID
   const fetchItemDetails = async (itemId) => {
     try {
       const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
@@ -208,9 +187,7 @@ const OpeningBalanceEntry = () => {
     } 
   };
 
-  // Handle item search with debounce - Now per row (similar to IndentCreation)
   const handleItemSearch = (value, index) => {
-    // Check if balance type is selected
     if (!balanceType) {
       showPopup("Please select Balance Type first", "warning");
       return;
@@ -219,7 +196,6 @@ const OpeningBalanceEntry = () => {
     setItemSearch(value);
     setActiveRowIndex(index);
     
-    // Update the drugName in the entry
     const newEntries = [...drugEntries];
     newEntries[index] = {
       ...newEntries[index],
@@ -227,7 +203,6 @@ const OpeningBalanceEntry = () => {
     };
     setDrugEntries(newEntries);
     
-    // Clear selections when user types
     if (!value.trim() || (newEntries[index].drugId && !value.includes(newEntries[index].drugName))) {
       newEntries[index] = {
         ...newEntries[index],
@@ -239,7 +214,6 @@ const OpeningBalanceEntry = () => {
       setDrugEntries(newEntries);
     }
 
-    // Debounce API call
     if (debounceItemRef.current) clearTimeout(debounceItemRef.current);
     debounceItemRef.current = setTimeout(async () => {
       if (!value.trim()) {
@@ -255,7 +229,6 @@ const OpeningBalanceEntry = () => {
     }, 700);
   };
 
-  // Load first page of items for dropdown - Now per row
   const loadFirstItemPage = (searchText) => {
     if (!searchText.trim() || !balanceType) return;
     setItemSearch(searchText);
@@ -267,7 +240,6 @@ const OpeningBalanceEntry = () => {
     });
   };
 
-  // Load more items for infinite scroll
   const loadMoreItems = async () => {
     if (itemLastPage) return;
     const nextPage = itemPage + 1;
@@ -277,9 +249,7 @@ const OpeningBalanceEntry = () => {
     setItemPage(nextPage);
   };
 
-  // Handle item selection from dropdown (similar to IndentCreation)
   const handleItemSelect = async (index, item) => {
-    // Check if drug is already selected in another row
     const isDuplicate = drugEntries.some((entry, i) => 
       i !== index && entry.drugId === item.itemId
     );
@@ -289,13 +259,11 @@ const OpeningBalanceEntry = () => {
       return;
     }
 
-    // Fetch complete item details
     const itemDetails = await fetchItemDetails(item.itemId);
     
     if (itemDetails) {
       const newEntries = [...drugEntries];
       
-      // Update the selected row with complete item information
       newEntries[index] = {
         ...newEntries[index],
         drugId: itemDetails.itemId,
@@ -318,13 +286,12 @@ const OpeningBalanceEntry = () => {
       };
 
       setDrugEntries(newEntries);
-      setItemSearch(""); // Clear the search after selection
-      setShowItemDropdown(false); // Hide dropdown
+      setItemSearch("");
+      setShowItemDropdown(false);
       setActiveRowIndex(null);
     }
   };
 
-  // Handle click outside dropdown
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
@@ -341,8 +308,7 @@ const OpeningBalanceEntry = () => {
     fetchCurrentUser();
     fetchBrand();
     fetchManufacturer();
-    fatchDrugCodeOptions();
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, []);
 
   const [drugEntries, setDrugEntries] = useState([
     {
@@ -362,7 +328,7 @@ const OpeningBalanceEntry = () => {
       totalCost: "",
       brandName: "",
       manufacturer: "",
-      drugData: null, // Add drugData field
+      drugData: null,
     },
   ])
 
@@ -381,9 +347,6 @@ const OpeningBalanceEntry = () => {
       if (i === index) {
         const updatedEntry = { ...entry, [field]: value };
 
-        // REMOVED: Date validation removed from here - now only happens on save/submit
-
-        // Auto-calculate totalCost
         if (field === "qty" || field === "mrpPerUnit") {
           const qty = parseFloat(field === "qty" ? value : entry.qty) || 0;
           const mrpRate = parseFloat(field === "mrpPerUnit" ? value : entry.mrpPerUnit) || 0;
@@ -446,7 +409,6 @@ const OpeningBalanceEntry = () => {
       if (!entry.dom) errors.dom = "dom is required";
       if (!entry.doe) errors.doe = "doe is required";
       
-      // ADDED: Date validation here - only checks when both dates exist
       if (entry.dom && entry.doe) {
         const domDate = new Date(entry.dom);
         const doeDate = new Date(entry.doe);
@@ -473,7 +435,6 @@ const OpeningBalanceEntry = () => {
     return date.toISOString();
   };
 
-  // Add this function to check for duplicates
   const hasDuplicateDrugEntries = (entries) => {
     const seen = new Set();
     for (const entry of entries) {
@@ -486,7 +447,6 @@ const OpeningBalanceEntry = () => {
     return false;
   };
 
-  // Helper function to handle the actual save/submit logic
   const handleSaveOrSubmit = async (isSave = true) => {
     const formErrors = validateFormData(formData);
     const drugErrors = validateDrugEntries(drugEntries);
@@ -494,7 +454,6 @@ const OpeningBalanceEntry = () => {
     const hasFormErrors = Object.keys(formErrors).length > 0;
     const hasDrugErrors = drugErrors.some(err => Object.keys(err).length > 0);
 
-    // Duplicate check
     if (hasDuplicateDrugEntries(drugEntries)) {
       showPopup(WARNING_DUPLICATE_BATCH_ENTRY, "warning");
       return null;
@@ -511,7 +470,6 @@ const OpeningBalanceEntry = () => {
           const error = drugErrors[i];
           const errorKeys = Object.keys(error);
           if (errorKeys.length > 0) {
-            // UPDATED: Check for date validation error first
             if (error.dateValidation) {
               firstErrorMsg = error.dateValidation;
             } else {
@@ -551,7 +509,12 @@ const OpeningBalanceEntry = () => {
     };
 
     try {
-      setProcessing(true);
+      if (isSave) {
+        setIsSaving(true);
+      } else {
+        setIsSubmitting(true);
+      }
+      
       const endpoint = isSave ? `${INVENTORY}/openingBalanceEntry/save` : `${INVENTORY}/openingBalanceEntry/submit`;
       const response = await postRequest(endpoint, payload);
 
@@ -565,29 +528,28 @@ const OpeningBalanceEntry = () => {
       console.error(`${isSave ? 'Save' : 'Submit'} Error:`, error);
       return { success: false, message: "Something went wrong. Please try again." };
     } finally {
-      setProcessing(false);
+      if (isSave) {
+        setIsSaving(false);
+      } else {
+        setIsSubmitting(false);
+      }
     }
   };
 
-  // Handle Save - UPDATED WITH CONFIRMATION POPUP
   const handleSave = async () => {
-    // Show confirmation popup
     showConfirmationPopup(
       CONFIRM_SAVE_OPENING_BALANCE,
       "info",
       async () => {
-        // On confirm, proceed with save
         const result = await handleSaveOrSubmit(true);
         
         if (result?.success) {
-          const balanceId = result.response?.response?.balanceMId || result.response?.balanceMId;
+          const balanceId = result.response?.response;
           
-          // Show success confirmation popup with navigation
           showConfirmationPopup(
             SUCCESS_OPENING_BALANCE_SAVED_PRINT,
             "success",
             () => {
-              // Navigate to report page
               if (balanceId) {
                 navigate('/ViewDownloadReport', {
                   state: {
@@ -601,14 +563,12 @@ const OpeningBalanceEntry = () => {
               handleReset();
             },
             () => {
-              // User clicked "No" - just reset and stay on same page
               handleReset();
             },
             "Yes",
             "No"
           );
         } else {
-          // Show error confirmation popup
           showConfirmationPopup(
             result?.message || ERROR_SAVE_DATA_FAILED,
             "error",
@@ -620,7 +580,6 @@ const OpeningBalanceEntry = () => {
         }
       },
       () => {
-        // On cancel, do nothing
         console.log("Save cancelled by user");
       },
       "Yes, Save",
@@ -628,25 +587,20 @@ const OpeningBalanceEntry = () => {
     );
   };
 
-  // Handle Submit - UPDATED WITH CONFIRMATION POPUP
   const handleSubmit = async () => {
-    // Show confirmation popup
     showConfirmationPopup(
       CONFIRM_SUBMIT_OPENING_BALANCE,
       "info",
       async () => {
-        // On confirm, proceed with submit
         const result = await handleSaveOrSubmit(false);
         
         if (result?.success) {
-          const balanceId = result.response?.response?.balanceMId || result.response?.balanceMId;
+          const balanceId = result.response?.response;
           
-          // Show success confirmation popup with navigation
           showConfirmationPopup(
             SUCCESS_OPENING_BALANCE_SUBMITTED_PRINT,
             "success",
             () => {
-              // Navigate to report page
               navigate('/ViewDownloadReport', {
                 state: {
                   reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
@@ -658,14 +612,12 @@ const OpeningBalanceEntry = () => {
               handleReset();
             },
             () => {
-              // User clicked "No" - just reset and stay on same page
               handleReset();
             },
             "Yes",
             "No"
           );
         } else {
-          // Show error confirmation popup
           showConfirmationPopup(
             result?.message || ERROR_SUBMIT_DATA_FAILED,
             "error",
@@ -677,7 +629,6 @@ const OpeningBalanceEntry = () => {
         }
       },
       () => {
-        // On cancel, do nothing
         console.log("Submit cancelled by user");
       },
       "Yes, Submit",
@@ -701,7 +652,7 @@ const OpeningBalanceEntry = () => {
       enteredBy: currentLogUser,
       department: deptId,
     })
-    setBalanceType(""); // Reset balance type
+    setBalanceType("");
     setDrugEntries([
       {
         id: 1,
@@ -729,13 +680,9 @@ const OpeningBalanceEntry = () => {
     setItemDropdown([]);
   }
 
-  const dropdownClickedRef = useRef(false);
-  const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
-
   return (
     <div className="content-wrapper">
        {loading && <LoadingScreen />}
-      {/* Add ConfirmationPopup component */}
       <ConfirmationPopup
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
@@ -754,7 +701,6 @@ const OpeningBalanceEntry = () => {
             </div>
 
             <div className="card-body">
-              {/* Entry Details Section */}
               <div className="mb-4">
                 <h5 className="mb-3">Entry Details:</h5>
                 <div className="row g-3">
@@ -809,7 +755,6 @@ const OpeningBalanceEntry = () => {
                 </div>
               </div>
 
-              {/* Drug Entry Table - Horizontally Scrollable */}
               <div
                 className="table-wrapper"
                 style={{
@@ -848,7 +793,6 @@ const OpeningBalanceEntry = () => {
                     {drugEntries.map((entry, index) => (
                       <tr key={entry.id}>
                         <td className="text-center fw-bold">{index + 1}</td>
-                        {/* Drug Code - Now auto-filled from selection */}
                         <td>
                           <input
                             type="text"
@@ -860,7 +804,6 @@ const OpeningBalanceEntry = () => {
                           />
                         </td>
 
-                        {/* Drug Name Input with debounce dropdown (similar to IndentCreation) */}
                         <td style={{ position: 'relative', overflow: 'visible', zIndex: activeRowIndex === index ? 999 : 'auto' }} ref={dropdownItemRef}>
                           <div className="dropdown-search-container position-relative">
                             <input
@@ -878,10 +821,9 @@ const OpeningBalanceEntry = () => {
                               }}
                               placeholder={balanceType ? "Type item name..." : "Select Balance Type first"}
                               style={{ minWidth: "180px" }}
-                              disabled={!balanceType}
+                              disabled={!balanceType || isSaving || isSubmitting}
                             />
 
-                            {/* Search Dropdown - Only show for active row */}
                             {showItemDropdown && activeRowIndex === index && balanceType && (
                               <div 
                                 className="border rounded mt-1 bg-white position-absolute w-100"
@@ -964,6 +906,7 @@ const OpeningBalanceEntry = () => {
                             onChange={(e) => handleDrugEntryChange(index, "batchNoSerialNo", e.target.value)}
                             placeholder="Batch/Serial"
                             style={{ minWidth: "130px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
                         <td>
@@ -973,6 +916,7 @@ const OpeningBalanceEntry = () => {
                             value={entry.dom}
                             onChange={(e) => handleDrugEntryChange(index, "dom", e.target.value)}
                             style={{ minWidth: "120px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
                         <td>
@@ -982,6 +926,7 @@ const OpeningBalanceEntry = () => {
                             value={entry.doe}
                             onChange={(e) => handleDrugEntryChange(index, "doe", e.target.value)}
                             style={{ minWidth: "120px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
 
@@ -995,6 +940,7 @@ const OpeningBalanceEntry = () => {
                             min="0"
                             step="0.01"
                             style={{ minWidth: "70px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
 
@@ -1008,6 +954,7 @@ const OpeningBalanceEntry = () => {
                             min="0"
                             step="1"
                             style={{ minWidth: "90px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
                         <td>
@@ -1020,6 +967,7 @@ const OpeningBalanceEntry = () => {
                             min="0"
                             step="0.01"
                             style={{ minWidth: "110px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
                         <td>
@@ -1033,6 +981,7 @@ const OpeningBalanceEntry = () => {
                             max="100"
                             step="0.01"
                             style={{ minWidth: "90px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
                         <td>
@@ -1045,6 +994,7 @@ const OpeningBalanceEntry = () => {
                             min="0"
                             step="0.01"
                             style={{ minWidth: "90px" }}
+                            disabled={isSaving || isSubmitting}
                           />
                         </td>
                         <td>
@@ -1062,6 +1012,7 @@ const OpeningBalanceEntry = () => {
                             value={entry.brandName}
                             onChange={(e) => handleDrugEntryChange(index, "brandName", e.target.value)}
                             style={{ minWidth: "130px" }}
+                            disabled={isSaving || isSubmitting}
                           >
                             <option value="">Select Brand</option>
                             {brandOptions.map((option) => (
@@ -1078,6 +1029,7 @@ const OpeningBalanceEntry = () => {
                             value={entry.manufacturer}
                             onChange={(e) => handleDrugEntryChange(index, "manufacturer", e.target.value)}
                             style={{ minWidth: "130px" }}
+                            disabled={isSaving || isSubmitting}
                           >
                             <option value="">Select</option>
                             {manufacturerOptions.map((option) => (
@@ -1099,6 +1051,7 @@ const OpeningBalanceEntry = () => {
                               height: "35px",
                             }}
                             title="Add Row"
+                            disabled={isSaving || isSubmitting}
                           >
                             +
                           </button>
@@ -1108,7 +1061,7 @@ const OpeningBalanceEntry = () => {
                             type="button"
                             className="btn btn-danger btn-sm"
                             onClick={() => removeRow(index)}
-                            disabled={drugEntries.length === 1}
+                            disabled={drugEntries.length === 1 || isSaving || isSubmitting}
                             title="Delete Row"
                             style={{
                               width: "35px",
@@ -1127,20 +1080,41 @@ const OpeningBalanceEntry = () => {
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
 
-              {/* Action Buttons */}
               <div className="d-flex justify-content-end gap-2 mt-4">
                 <button
                   type="button"
                   className="btn btn-warning"
-                  disabled={processing}
                   onClick={handleSave}
                 >
-                  Save
+                  {isSaving ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save"
+                  )}
                 </button>
-                <button type="button" className="btn btn-success" onClick={handleSubmit} disabled={processing}>
-                  Submit
+                <button 
+                  type="button" 
+                  className="btn btn-success" 
+                  onClick={handleSubmit} 
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
                 </button>
-                <button type="button" className="btn btn-danger" onClick={handleReset}>
+                <button 
+                  type="button" 
+                  className="btn btn-danger" 
+                  onClick={handleReset}
+                  disabled={isSaving || isSubmitting}
+                >
                   Reset
                 </button>
               </div>
