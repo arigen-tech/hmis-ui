@@ -2,7 +2,7 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate } from 'react-router-dom'
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"
-import { Store_Internal_Indent, MAS_DRUG_MAS, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig"
+import { ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import { createPortal } from "react-dom"
@@ -10,6 +10,8 @@ import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"
 import {ERROR_FETCH_INDENTS,WARNING_DRUG_ALREADY_ADDED,ERROR_AT_LEAST_ONE_ITEM_REQUIRED,SUCCESS_INDENT_SAVED_PRINT,
 SUCCESS_INDENT_SUBMITTED_PRINT,ERROR_SAVE_SUBMIT_INDENT,
+INVALID_DATE_PICK_WARN_MSG,
+INDENT_ID_NOT_FOUND,
 }  from  "../../../config/constants";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation
@@ -79,6 +81,10 @@ const IndentViewUpdate = () => {
   const [isSearchMode, setIsSearchMode] = useState(false)
   const [userSessionData, setUserSessionData] = useState(null)
   const [isInitialLoadDone, setIsInitialLoadDone] = useState(false)
+  
+  // New state for button spinners
+  const [isSearching, setIsSearching] = useState(false);
+  const [isShowingAll, setIsShowingAll] = useState(false);
 
   // New state for item search similar to IndentCreation
   const [itemSearch, setItemSearch] = useState("");
@@ -464,19 +470,17 @@ const IndentViewUpdate = () => {
       // Build URL with query parameters
       let url = `${INVENTORY}/indents/viewUpdate?deptId=${deptId}&page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`
       
-      // Add date filters if in search mode
-      if (isSearchMode) {
-        if (fromDate) {
-          url += `&fromDate=${formatDateForAPI(fromDate)}`
-        }
-        if (toDate) {
-          url += `&toDate=${formatDateForAPI(toDate)}`
-        }
-        // Add status filter if selected
-        if (statusFilter) {
-          const apiStatus = getStatusForAPI(statusFilter)
-          url += `&status=${apiStatus}`
-        }
+      // Add date filters if they exist
+      if (fromDate) {
+        url += `&fromDate=${formatDateForAPI(fromDate)}`
+      }
+      if (toDate) {
+        url += `&toDate=${formatDateForAPI(toDate)}`
+      }
+      // Add status filter if selected
+      if (statusFilter) {
+        const apiStatus = getStatusForAPI(statusFilter)
+        url += `&status=${apiStatus}`
       }
 
       console.log("Fetching indents from URL:", url)
@@ -504,107 +508,16 @@ const IndentViewUpdate = () => {
     } finally {
       if (showSearchLoading) {
         setSearchLoading(false)
+        setIsSearching(false)
       } else {
         setLoading(false)
+        setIsShowingAll(false)
       }
     }
   }
 
-  // Fetch all drugs for dropdown (keeping as fallback)
-  // const fetchAllDrugs = async () => {
-  //   try {
-  //     setLoading(true)
-  //     const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
-  //     console.log("Drugs API Response:", response)
-
-  //     if (response && response.response && Array.isArray(response.response)) {
-  //       const drugs = response.response.map(drug => ({
-  //         id: drug.itemId,
-  //         code: drug.pvmsNo || "",
-  //         name: drug.nomenclature || "",
-  //         unit: drug.unitAuName || drug.dispUnitName || "",
-  //         availableStock: drug.wardstocks || 0,
-  //         storesStock: drug.storestocks || 0
-  //       }))
-  //       setItemOptions(drugs)
-  //     } else if (response && Array.isArray(response)) {
-  //       const drugs = response.map(drug => ({
-  //         id: drug.itemId,
-  //         code: drug.pvmsNo || "",
-  //         name: drug.nomenclature || "",
-  //         unit: drug.unitAuName || drug.dispUnitName || "",
-  //         availableStock: drug.wardstocks || 0,
-  //         storesStock: drug.storestocks || 0
-  //       }))
-  //       setItemOptions(drugs)
-  //     }
-  //   } catch (err) {
-  //     console.error("Error fetching drugs:", err)
-  //   } finally {
-  //     setLoading(false)
-  //   }
-  // }
-
-  // Filter drugs based on search input (keeping as fallback)
-  const filterDrugsBySearch = (searchTerm) => {
-    if (!searchTerm) return [];
-
-    return itemOptions.filter(drug =>
-      drug.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      drug.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      drug.id?.toString().includes(searchTerm)
-    ).slice(0, 10);
-  }
-
-  // Handle drug input focus for dropdown positioning (keeping as fallback)
-  const handleDrugInputFocus = (event, index) => {
-    const input = event.target;
-    const rect = input.getBoundingClientRect();
-
-    setDropdownPosition({
-      x: rect.left + window.scrollX,
-      y: rect.bottom + window.scrollY,
-      width: rect.width
-    });
-
-    setActiveItemDropdown(index);
-  }
-
-  // Handle drug selection from dropdown (keeping as fallback)
-  const handleDrugSelect = (index, drug) => {
-    // Check if drug is already selected in another row
-    const isDuplicate = selectedDrugs.some(id => id === drug.id && indentEntries[index]?.itemId !== drug.id);
-
-    if (isDuplicate) {
-      showPopup(WARNING_DRUG_ALREADY_ADDED, "warning");
-      return;
-    }
-
-    const newEntries = [...indentEntries];
-
-    // Update the selected row with drug information
-    newEntries[index] = {
-      ...newEntries[index],
-      itemId: drug.id,
-      itemCode: drug.code || "",
-      itemName: drug.name || "",
-      apu: drug.unit || "",
-      storeAvailableStock: drug.storesStock || 0,
-      currentDeptAvailableStock: drug.availableStock || 0
-    };
-
-    setIndentEntries(newEntries);
-
-    // Update selected drugs tracking
-    const newSelectedDrugs = selectedDrugs.filter(id => id !== newEntries[index].itemId);
-    newSelectedDrugs.push(drug.id);
-    setSelectedDrugs(newSelectedDrugs);
-
-    setActiveItemDropdown(null);
-  };
-
   // Handle search by date range and status
-  const handleSearch = () => {
+  const handleSearch = async () => {
     // Validate at least one search criteria is provided
     if (!isSearchEnabled()) {
       showPopup("Please select at least one search criteria (Date or Status)", "error");
@@ -617,14 +530,14 @@ const IndentViewUpdate = () => {
       const to = new Date(toDate)
       
       if (from > to) {
-        showPopup("From Date cannot be greater than To Date", "error")
+        showPopup(INVALID_DATE_PICK_WARN_MSG, "error")
         return
       }
     }
 
-    setIsSearchMode(true)
-    setCurrentPage(0)
-    fetchIndents(0, true) // Pass true to show search loading
+    setIsSearching(true);
+    setCurrentPage(0);
+    await fetchIndents(0, true);
   }
 
   // Handle status filter change - ONLY updates state, NO API call
@@ -761,22 +674,55 @@ const IndentViewUpdate = () => {
     setActiveRowIndex(null)
   }
 
-  // Handle show all - resets filters and fetches initial data
-  const handleShowAll = () => {
-    // Reset all filter states
-    setFromDate("")
-    setToDate("")
-    setStatusFilter("")
+ 
+const handleShowAll = async () => {
+  setIsShowingAll(true);
+  
+  // Clear date filters in state
+  setFromDate("");
+  setToDate("");
+  setStatusFilter("");
+  setCurrentPage(0);
+  
+  // Fetch initial unfiltered data from page 0
+  try {
+    // Get department ID from session
+    const deptId = userSessionData?.departmentId;
     
-    // Reset to normal mode (not search mode)
-    setIsSearchMode(false)
+    if (!deptId) {
+      console.error("No department ID found");
+      setIndentData([]);
+      setTotalPages(0);
+      setTotalElements(0);
+      return;
+    }
+
+    // Build URL without any date filters
+    let url = `${INVENTORY}/indents/viewUpdate?deptId=${deptId}&page=0&size=${DEFAULT_ITEMS_PER_PAGE}`;
     
-    // Reset to first page
-    setCurrentPage(0)
-    
-    // Fetch data without any filters (this will get the same data as initial load)
-    fetchIndents(0, false)
+    console.log("Fetching all indents from URL:", url);
+
+    const response = await getRequest(url);
+
+    if (response && response.response) {
+      setIndentData(response.response.content || []);
+      setTotalPages(response.response.totalPages || 0);
+      setTotalElements(response.response.totalElements || 0);
+    } else {
+      setIndentData([]);
+      setTotalPages(0);
+      setTotalElements(0);
+    }
+  } catch (err) {
+    console.error("Error fetching indents:", err);
+    showPopup(ERROR_FETCH_INDENTS, "error");
+    setIndentData([]);
+    setTotalPages(0);
+    setTotalElements(0);
+  } finally {
+    setIsShowingAll(false);
   }
+};
 
   // Handle page change
   const handlePageChange = (page) => {
@@ -966,7 +912,7 @@ const IndentViewUpdate = () => {
         }
       });
     } else {
-      showPopup("Indent ID not found", "error");
+      showPopup(INDENT_ID_NOT_FOUND, "error");
     }
   };
 
@@ -1433,19 +1379,33 @@ const IndentViewUpdate = () => {
                     type="button"
                     className="btn btn-primary me-2"
                     onClick={handleSearch}
-                    disabled={searchLoading || loading || !isSearchEnabled()}
+                    disabled={searchLoading || loading || !isSearchEnabled() || isSearching || isShowingAll}
                   >
-                    {searchLoading ? "Searching..." : "Search"}
+                    {isSearching ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
                   </button>
                 </div>
                 <div className="col-md-4 d-flex justify-content-end align-items-end">
                   <button 
                     type="button" 
-                    className="btn btn-primary" 
+                    className="btn btn-secondary" 
                     onClick={handleShowAll}
-                    disabled={loading || searchLoading}
+                    disabled={loading || searchLoading || isSearching || isShowingAll}
                   >
-                    Show All
+                    {isShowingAll ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Showing All...
+                      </>
+                    ) : (
+                      "Show All"
+                    )}
                   </button>
                 </div>
               </div>
@@ -1465,7 +1425,7 @@ const IndentViewUpdate = () => {
                     {indentData.length === 0 ? (
                       <tr>
                         <td colSpan={5} className="text-center">
-                          {loading || searchLoading ? <LoadingScreen/> : "No records found."}
+                          {loading || searchLoading || isSearching || isShowingAll ? <LoadingScreen/> : "No records found."}
                         </td>
                       </tr>
                     ) : (
