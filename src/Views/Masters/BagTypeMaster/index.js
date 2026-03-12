@@ -1,193 +1,218 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import Pagination, {
-  DEFAULT_ITEMS_PER_PAGE,
-} from "../../../Components/Pagination";
+import { MAS_BLOOD_BAG_TYPE } from "../../../config/apiConfig";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import {
+  FETCH_BAG_TYPE_MASTER,
+  DUPLICATE_BAG_TYPE_MASTER,
+  UPDATE_BAG_TYPE_MASTER,
+  ADD_BAG_TYPE_MASTER,
+  UPDATE_FAIL_BAG_TYPE_MASTER
+} from "../../../config/constants";
+
 
 const BagTypeMaster = () => {
+  const [data, setData] = useState([]);
+  const [showForm, setShowForm] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [editingBagType, setEditingBagType] = useState(null);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     bagTypeCode: "",
     bagTypeName: "",
     description: "",
+    maxComponents: "",
   });
-  const [showForm, setShowForm] = useState(false);
-  const [isFormValid, setIsFormValid] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [editingBagType, setEditingBagType] = useState(null);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [pageInput, setPageInput] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const [bagTypeData, setBagTypeData] = useState([
-    {
-      id: 1,
-      bagTypeCode: "BT-PLA-001",
-      bagTypeName: "Paper Bag",
-      description: "Eco-friendly paper bags",
-      status: "y",
-    },
-    {
-      id: 2,
-      bagTypeCode: "BT-CLO-002",
-      bagTypeName: "Plastic Bag",
-      description: "Regular plastic bags",
-      status: "y",
-    },
-    {
-      id: 3,
-      bagTypeCode: "BT-JUT-003",
-      bagTypeName: "Cloth Bag",
-      description: "Reusable cloth bags",
-      status: "y",
-    },
-    {
-      id: 4,
-      bagTypeCode: "BT-NWB-004",
-      bagTypeName: "Jute Bag",
-      description: "Natural jute bags",
-      status: "y",
-    },
-    {
-      id: 5,
-      bagTypeCode: "BT-ZIP-005",
-      bagTypeName: "Non-Woven Bag",
-      description: "PP non-woven bags",
-      status: "y",
-    },
-  ]);
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     bagTypeId: null,
-    newStatus: false,
+    newStatus: "",
+    bagTypeName: "",
   });
 
-  const filteredBagTypes = bagTypeData.filter(
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+
+  // Fetch data from API
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_BLOOD_BAG_TYPE}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_BAG_TYPE_MASTER, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+
+  useEffect(() => {
+    fetchData(0);
+  }, []);
+
+
+
+
+  const filteredData = data.filter(
     (bagType) =>
-      bagType.bagTypeName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      bagType.description.toLowerCase().includes(searchQuery.toLowerCase()),
+      bagType.bagTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bagType.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      bagType.bagTypeCode?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Pagination
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+
 
   const handleSearch = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
+
+
   const handleEdit = (bagType) => {
     setEditingBagType(bagType);
     setFormData({
-      bagTypeCode: bagType.bagTypeCode,
-      bagTypeName: bagType.bagTypeName,
+      bagTypeCode: bagType.bagTypeCode || "",
+      bagTypeName: bagType.bagTypeName || "",
       description: bagType.description || "",
+      maxComponents: bagType.maxComponents || "",
     });
     setShowForm(true);
   };
+
+
 
   useEffect(() => {
     setCurrentPage(1);
   }, [searchQuery]);
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-    const updateBagTypeCode = e.target.elements.bagTypeCode.value;
-    const updatedBagTypeName = e.target.elements.bagTypeName.value;
-    const updatedDescription = e.target.elements.description.value;
 
-    if (editingBagType) {
-      setBagTypeData(
-        bagTypeData.map((bagType) =>
-          bagType.id === editingBagType.id
-            ? {
-                ...bagType,
-                bagTypeCode: updateBagTypeCode,
-                bagTypeName: updatedBagTypeName,
-                description: updatedDescription,
-              }
-            : bagType,
-        ),
-      );
-    } else {
-      const newBagType = {
-        id: bagTypeData.length + 1,
-        bagTypeCode: updateBagTypeCode,
-        bagTypeName: updatedBagTypeName,
-        description: updatedDescription,
-        status: "y",
-      };
-      setBagTypeData([...bagTypeData, newBagType]);
-    }
-
-    setEditingBagType(null);
-    setShowForm(false);
-    setFormData({ bagTypeName: "", description: "" });
-    setIsFormValid(false);
-    showPopup("Changes saved successfully!", "success");
-  };
-
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
-    });
-  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-
     setFormData((prev) => ({
       ...prev,
       [id]: value,
     }));
 
     const bagTypeCode = id === "bagTypeCode" ? value : formData.bagTypeCode;
-
     const bagTypeName = id === "bagTypeName" ? value : formData.bagTypeName;
-
-    const isBagTypeCodeValid = bagTypeCode.trim() !== "";
-    const isBagTypeNameValid = bagTypeName.trim() !== "";
-
-    setIsFormValid(isBagTypeCodeValid && isBagTypeNameValid);
+    setIsFormValid(bagTypeCode.trim() !== "" && bagTypeName.trim() !== "");
   };
 
-  const handleCreateFormSubmit = (e) => {
+
+
+  const resetForm = () => {
+    setShowForm(false);
+    setEditingBagType(null);
+    setFormData({ bagTypeCode: "", bagTypeName: "", description: "", maxComponents: "" });
+    setIsFormValid(false);
+  };
+
+
+
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (formData.bagTypeName) {
-      setBagTypeData([
-        ...bagTypeData,
-        { ...formData, id: Date.now(), status: "y" },
-      ]);
-      setFormData({ bagTypeName: "", description: "" });
-      setShowForm(false);
-    } else {
-      alert("Please fill out all required fields.");
+    if (!isFormValid) return;
+
+    const newCode = formData.bagTypeCode.trim().toLowerCase();
+    const newName = formData.bagTypeName.trim().toLowerCase();
+
+    const duplicate = data.find(
+      (item) =>
+        (item.bagTypeCode?.trim().toLowerCase() === newCode ||
+          item.bagTypeName?.trim().toLowerCase() === newName) &&
+        (!editingBagType || item.bagTypeId !== editingBagType.bagTypeId)
+    );
+
+    if (duplicate) {
+      showPopup(DUPLICATE_BAG_TYPE_MASTER, "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      if (editingBagType) {
+        await putRequest(`${MAS_BLOOD_BAG_TYPE}/update/${editingBagType.bagTypeId}`, formData);
+        showPopup(UPDATE_BAG_TYPE_MASTER, "success");
+      } else {
+        await postRequest(`${MAS_BLOOD_BAG_TYPE}/create`, {
+          ...formData,
+          status: "y",
+        });
+        showPopup(ADD_BAG_TYPE_MASTER, "success");
+      }
+      await fetchData(0);
+      resetForm();
+    } catch (error) {
+      showPopup(error.message || "Operation failed", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, bagTypeId: id, newStatus });
+
+  const handleSwitchChange = (bagTypeId, currentStatus) => {
+    const bagType = data.find((b) => b.bagTypeId === bagTypeId);
+    const newStatus = currentStatus === "y" ? "n" : "y";
+    setConfirmDialog({
+      isOpen: true,
+      bagTypeId,
+      newStatus,
+      bagTypeName: bagType?.bagTypeName || "",
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.bagTypeId !== null) {
-      setBagTypeData((prevData) =>
-        prevData.map((bagType) =>
-          bagType.id === confirmDialog.bagTypeId
-            ? { ...bagType, status: confirmDialog.newStatus }
-            : bagType,
-        ),
+
+
+  const handleConfirm = async (confirmed) => {
+    const { bagTypeId, newStatus } = confirmDialog;
+    setConfirmDialog({ isOpen: false, bagTypeId: null, newStatus: "", bagTypeName: "" });
+
+    if (!confirmed || !bagTypeId) return;
+
+    setLoading(true);
+    try {
+      await putRequest(
+        `${MAS_BLOOD_BAG_TYPE}/status/${bagTypeId}?status=${newStatus}`
       );
+      showPopup(
+        `Bag type ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+        "success"
+      );
+      await fetchData(0);
+    } catch (error) {
+      showPopup(error.message || UPDATE_FAIL_BAG_TYPE_MASTER, "error");
+    } finally {
+      setLoading(false);
     }
-    setConfirmDialog({ isOpen: false, bagTypeId: null, newStatus: null });
   };
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredBagTypes.slice(indexOfFirst, indexOfLast);
+
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
 
   return (
     <div className="content-wrapper">
@@ -197,11 +222,8 @@ const BagTypeMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Bag Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form
-                    className="d-inline-block searchform me-4"
-                    role="search"
-                  >
+                {!showForm && (
+                  <form className="d-inline-block searchform me-4" role="search">
                     <div className="input-group searchinput">
                       <input
                         type="search"
@@ -216,8 +238,6 @@ const BagTypeMaster = () => {
                       </span>
                     </div>
                   </form>
-                ) : (
-                  <></>
                 )}
 
                 <div className="d-flex align-items-center">
@@ -228,7 +248,7 @@ const BagTypeMaster = () => {
                         className="btn btn-success me-2"
                         onClick={() => {
                           setShowForm(true);
-                          setFormData({ bagTypeName: "", description: "" });
+                          setFormData({ bagTypeCode: "", bagTypeName: "", description: "", maxComponents: "" });
                           setEditingBagType(null);
                         }}
                       >
@@ -236,20 +256,20 @@ const BagTypeMaster = () => {
                       </button>
                       <button
                         type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setSearchQuery("");
+                          fetchData(1);
+                        }}
                       >
-                        <i className="mdi mdi-plus"></i> Show All
+                        <i className="mdi mdi-view-list"></i> Show All
                       </button>
                     </>
                   ) : (
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingBagType(null);
-                        setFormData({ bagTypeName: "", description: "" });
-                      }}
+                      onClick={resetForm}
                     >
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
@@ -257,7 +277,16 @@ const BagTypeMaster = () => {
                 </div>
               </div>
             </div>
+
             <div className="card-body">
+              {loading && !showForm && (
+                <div className="text-center py-3">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                </div>
+              )}
+
               {!showForm ? (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
@@ -266,43 +295,40 @@ const BagTypeMaster = () => {
                         <th>Bag Type Code</th>
                         <th>Bag Type Name</th>
                         <th>Description</th>
+                        <th>Max Components</th>
+                        <th>Last Updated</th>
                         <th>Status</th>
                         <th>Edit</th>
                       </tr>
                     </thead>
+
                     <tbody>
-                      {currentItems.map((bagType) => (
-                        <tr key={bagType.id}>
-                          <td>{bagType.bagTypeCode}</td>
-                          <td>{bagType.bagTypeName}</td>
-                          <td>{bagType.description}</td>
+                      {currentItems.map((rec) => (
+                        <tr key={rec.bagTypeId}>
+                          <td>{rec.bagTypeCode}</td>
+                          <td>{rec.bagTypeName}</td>
+                          <td>{rec.description}</td>
+                          <td>{rec.maxComponents}</td>
+                          <td>{formatDate(rec.lastUpdateDate)}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={bagType.status === "y"}
-                                onChange={() =>
-                                  handleSwitchChange(
-                                    bagType.id,
-                                    bagType.status === "y" ? "n" : "y",
-                                  )
-                                }
-                                id={`switch-${bagType.id}`}
+                                checked={rec.status?.toLowerCase() === "y"}
+                                onChange={() => handleSwitchChange(rec.bagTypeId, rec.status)}
+                                id={`switch-${rec.bagTypeId}`}
                               />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${bagType.id}`}
-                              >
-                                {bagType.status === "y" ? "Active" : "Inactive"}
+                              <label className="form-check-label ms-2" htmlFor={`switch-${rec.bagTypeId}`}>
+                                {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
                           <td>
                             <button
                               className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(bagType)}
-                              disabled={bagType.status !== "y"}
+                              onClick={() => handleEdit(rec)}
+                              disabled={rec.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -312,9 +338,9 @@ const BagTypeMaster = () => {
                     </tbody>
                   </table>
 
-                  {filteredBagTypes.length > 0 && (
+                  {filteredData.length > 0 && (
                     <Pagination
-                      totalItems={filteredBagTypes.length}
+                      totalItems={filteredData.length}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={setCurrentPage}
@@ -336,98 +362,64 @@ const BagTypeMaster = () => {
                       required
                     />
                   </div>
-                  <div className="form-group col-md-4">
+                  <div className="col-md-4">
                     <label>
                       Bag Type Name <span className="text-danger">*</span>
                     </label>
                     <input
                       type="text"
-                      className="form-control"
                       id="bagTypeName"
+                      className="form-control"
                       placeholder="Enter bag type name"
                       value={formData.bagTypeName}
                       onChange={handleInputChange}
                       required
                     />
                   </div>
-                  <div className="form-group col-md-4">
+                  <div className="col-md-4">
                     <label>Description</label>
-                    <input
-                      type="text"
-                      className="form-control"
+                    <textarea
                       id="description"
+                      className="form-control"
                       placeholder="Enter description"
                       value={formData.description}
                       onChange={handleInputChange}
+                      rows="3"
                     />
                   </div>
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                  <div className="col-md-4">
+                    <label>Max Components</label>
+                    <input
+                      type="number"
+                      id="maxComponents"
+                      className="form-control"
+                      placeholder="Enter max components"
+                      value={formData.maxComponents}
+                      onChange={handleInputChange}
+                      min="1"
+                    />
+                  </div>
+
+                  <div className="col-md-12 d-flex justify-content-end mt-3">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid}
+                      disabled={!isFormValid || loading}
                     >
                       {editingBagType ? "Update" : "Save"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => {
-                        setShowForm(false);
-                        setEditingBagType(null);
-                        setFormData({
-                          bagTypeCode: "",
-                          bagTypeName: "",
-                          description: "",
-                        });
-                      }}
+                      onClick={resetForm}
                     >
                       Cancel
                     </button>
                   </div>
                 </form>
               )}
-              {showModal && (
-                <div
-                  className="modal fade show"
-                  style={{ display: "block" }}
-                  tabIndex="-1"
-                  aria-labelledby="staticBackdropLabel"
-                  aria-hidden="true"
-                >
-                  <div className="modal-dialog">
-                    <div className="modal-content">
-                      <div className="modal-header">
-                        <h1
-                          className="modal-title fs-5"
-                          id="staticBackdropLabel"
-                        >
-                          Reports
-                        </h1>
-                        <button
-                          type="button"
-                          className="btn-close"
-                          onClick={() => setShowModal(false)}
-                          aria-label="Close"
-                        ></button>
-                      </div>
-                      <div className="modal-body">...</div>
-                      <div className="modal-footer">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => setShowModal(false)}
-                        >
-                          Close
-                        </button>
-                        <button type="button" className="btn btn-primary">
-                          Generate
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
+
+              {/* Popup notification */}
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
@@ -435,6 +427,8 @@ const BagTypeMaster = () => {
                   onClose={popupMessage.onClose}
                 />
               )}
+
+              {/* Confirmation dialog for status change */}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog">
                   <div className="modal-dialog" role="document">
@@ -452,18 +446,8 @@ const BagTypeMaster = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y"
-                            ? "activate"
-                            : "deactivate"}{" "}
-                          <strong>
-                            {
-                              bagTypeData.find(
-                                (bagType) =>
-                                  bagType.id === confirmDialog.bagTypeId,
-                              )?.bagTypeName
-                            }
-                          </strong>
-                          ?
+                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          <strong>{confirmDialog.bagTypeName}</strong>?
                         </p>
                       </div>
                       <div className="modal-footer">
@@ -478,8 +462,9 @@ const BagTypeMaster = () => {
                           type="button"
                           className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
+                          disabled={loading}
                         >
-                          Yes
+                          {loading ? "Processing..." : "Yes"}
                         </button>
                       </div>
                     </div>

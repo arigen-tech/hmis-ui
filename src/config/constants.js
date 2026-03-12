@@ -964,6 +964,14 @@ export const   BLOOD_GROUP_DATA= "Blood group data format invalid";
 export const  FAIL_BLOOD_GROUP = "Failed to load blood groups";
 
 
+//bagTypemaster
+export const  FETCH_BAG_TYPE_MASTER = "Failed to fetch records";
+export const DUPLICATE_BAG_TYPE_MASTER = "Bag Type or Status Name already exists";
+export const UPDATE_BAG_TYPE_MASTER = "Updated successfully";
+export const ADD_BAG_TYPE_MASTER = "Record added successfully";
+export const UPDATE_FAIL_BAG_TYPE_MASTER = "Failed to update status";
+
+
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
 export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";
