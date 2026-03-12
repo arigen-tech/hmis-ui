@@ -4,7 +4,7 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { getRequest } from "../../../service/apiService";
-import { INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
+import { INVENTORY, SECTION_ID_FOR_DRUGS, ALL_REPORTS } from "../../../config/apiConfig";
 
 const StoreStockLedgerReport = () => {
   // State for form inputs
@@ -20,6 +20,7 @@ const StoreStockLedgerReport = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [showReport, setShowReport] = useState(false);
   
   // State for PDF operations
@@ -42,7 +43,8 @@ const StoreStockLedgerReport = () => {
   const debounceItemRef = useRef(null);
   const dropdownItemRef = useRef(null);
 
-  const hospitalId=sessionStorage.getItem("hospitalId");
+  const hospitalId = sessionStorage.getItem("hospitalId");
+  const departmentId = sessionStorage.getItem("departmentId");
 
   // Check if both required fields are selected
   const isSearchEnabled = () => {
@@ -58,7 +60,7 @@ const StoreStockLedgerReport = () => {
         page: page,
         size: DEFAULT_ITEMS_PER_PAGE
       });
-      if(hospitalId) params.append('hospitalId',hospitalId);
+      if(hospitalId) params.append('hospitalId', hospitalId);
       if (selectedItem?.itemId) params.append('itemId', selectedItem.itemId);
       if (batchNo) params.append('batchNo', batchNo);
       
@@ -79,6 +81,7 @@ const StoreStockLedgerReport = () => {
       resetReportData();
     } finally {
       setSearchLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -258,60 +261,77 @@ const StoreStockLedgerReport = () => {
       showPopup("Please select both Item and Batch", "warning");
       return;
     }
+    setIsSearching(true);
     setCurrentPage(0);
     setIsSearchMode(true);
     fetchStockLedgerReport(0);
   };
 
-  // Generate PDF report
-  const generatePdfReport = async (flag = "D") => {
+  // Generate PDF report - Updated to match ViewDownLoadReport pattern
+  const generatePdfReport = async (flag) => {
     if (!isSearchEnabled()) {
       showPopup("Please select both Item and Batch", "warning");
       return;
     }
 
-    if (flag === "D") setIsViewLoading(true);
-    if (flag === "P") setIsPrintLoading(true);
-    
-    setPdfUrl(null);
-
     try {
-      const params = new URLSearchParams();
-      params.append('flag', flag);
-      if (selectedItem?.itemId) params.append('itemId', selectedItem.itemId);
-      if (batchNo) params.append('batchNo', batchNo);
+      if (flag === "d") {
+        setIsViewLoading(true);
+      } else {
+        setIsPrintLoading(true);
+      }
 
-      const url = `/reports/stockMovementReport?${params.toString()}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "application/pdf" },
+      // Construct the report URL with parameters
+      const params = new URLSearchParams({
+        hospitalId: hospitalId,
+        departmentId: departmentId,
+        itemId: selectedItem.itemId,
+        batchNo: batchNo,
+        flag: flag
       });
 
-      if (!response.ok) throw new Error(`Failed to generate PDF: ${response.statusText}`);
+      const reportUrl = `${ALL_REPORTS}/stockMovement?${params.toString()}`;
+      
+      // Fetch the PDF
+      const response = await fetch(reportUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch report");
+      }
 
       const blob = await response.blob();
       const fileURL = window.URL.createObjectURL(blob);
 
-      if (flag === "D") {
+      if (flag === "d") {
+        // For view/download, set the PDF URL to display in PdfViewer
         setPdfUrl(fileURL);
-      } else if (flag === "P") {
+      } else {
+        // For print, open in new window and print
         const printWindow = window.open(fileURL);
         printWindow.onload = () => printWindow.print();
       }
-    } catch (error) {
-      console.error("Error generating PDF", error);
-      showPopup("Failed to generate report", "error");
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      showPopup("Unable to generate report", "error");
     } finally {
-      if (flag === "D") setIsViewLoading(false);
-      if (flag === "P") setIsPrintLoading(false);
+      if (flag === "d") {
+        setIsViewLoading(false);
+      } else {
+        setIsPrintLoading(false);
+      }
     }
   };
 
   // Handle view report button
-  const handleViewReport = () => generatePdfReport("D");
+  const handleViewReport = () => generatePdfReport("d");
 
   // Handle print report button
-  const handlePrintReport = () => generatePdfReport("P");
+  const handlePrintReport = () => generatePdfReport("p");
 
   // Reset all form and report data
   const handleReset = () => {
@@ -329,6 +349,7 @@ const StoreStockLedgerReport = () => {
     setIsSearchMode(false);
     setPdfUrl(null);
     setShowItemDropdown(false);
+    setIsSearching(false);
   };
 
   return (
@@ -452,64 +473,75 @@ const StoreStockLedgerReport = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSearch}
-                    disabled={searchLoading || !isSearchEnabled()}
+                    disabled={searchLoading || isSearching || !isSearchEnabled()}
                   >
-                    {searchLoading ? (
+                    {isSearching ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" />
                         Searching...
                       </>
-                    ) : "Search"}
+                    ) : (
+                      <>
+                        <i className="fa  me-2"></i>
+                        SEARCH
+                      </>
+                    )}
                   </button>
                   
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-success"
+                      className="btn btn-success btn-sm"
                       onClick={handleViewReport}
-                      disabled={searchLoading || isViewLoading || !isSearchEnabled()}
+                      disabled={searchLoading || isSearching || isViewLoading || !isSearchEnabled()}
                     >
                       {isViewLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" />
                           Generating...
                         </>
-                      ) : "View Report"}
+                      ) : (
+                        <>
+                          <i className="fa fa-eye me-2"></i>
+                          VIEW / DOWNLOAD
+                        </>
+                      )}
                     </button>
+                    
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-warning btn-sm"
                       onClick={handlePrintReport}
-                      disabled={searchLoading || isPrintLoading || !isSearchEnabled()}
+                      disabled={searchLoading || isSearching || isPrintLoading || !isSearchEnabled()}
                     >
                       {isPrintLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" />
                           Printing...
                         </>
-                      ) : "Print Report"}
+                      ) : (
+                        <>
+                          <i className="fa fa-print me-2"></i>
+                          PRINT
+                        </>
+                      )}
                     </button>
+                    
                     <button
                       type="button"
-                      className="btn btn-secondary"
+                      className="btn btn-secondary btn-sm"
                       onClick={handleReset}
-                      disabled={searchLoading}
+                      disabled={searchLoading || isSearching}
                     >
+                      <i className="mdi mdi-format-list-bulleted me-2"></i>
                       Reset
                     </button>
                   </div>
                 </div>
               </div>
 
-              {/* Loading Indicator */}
-              {searchLoading && (
-                <div className="text-center py-4">
-                  <LoadingScreen />
-                </div>
-              )}
-
-              {/* Report Table */}
-              {!searchLoading && showReport && (
+              {/* Loading Indicator - Removed LoadingScreen and added condition to show report only when not searching */}
+              {!searchLoading && !isSearching && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
@@ -523,7 +555,6 @@ const StoreStockLedgerReport = () => {
                             </small>
                           )}
                         </h5>
-                        <span className="fw-bold">Total Records: {totalElements}</span>
                       </div>
                       <div className="card-body">
                         <div className="table-responsive">

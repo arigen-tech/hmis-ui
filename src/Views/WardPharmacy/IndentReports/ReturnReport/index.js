@@ -258,17 +258,15 @@ const ReturnRegister = () => {
 
         if (selectedDate > today) {
             showPopup("From date cannot be in the future", "error");
-            setFromDate(today);
-            return;
-        }
-
-        if (toDate && selectedDate > toDate) {
-            showPopup("From date cannot be later than To date", "error");
-            setFromDate(toDate);
             return;
         }
 
         setFromDate(selectedDate);
+
+        // Reset To Date if it's now invalid
+        if (toDate && selectedDate > toDate) {
+            setToDate("");
+        }
     };
 
     // Handle to date change with validation
@@ -278,13 +276,11 @@ const ReturnRegister = () => {
 
         if (selectedDate > today) {
             showPopup("To date cannot be in the future", "error");
-            setToDate(today);
             return;
         }
 
         if (fromDate && selectedDate < fromDate) {
             showPopup("To date cannot be earlier than From date", "error");
-            setToDate(fromDate);
             return;
         }
 
@@ -302,11 +298,6 @@ const ReturnRegister = () => {
 
     // Check if all mandatory fields are filled
     const areMandatoryFieldsFilled = () => {
-        // Check dates
-        if (!fromDate || !toDate) {
-            return false;
-        }
-
         // Check item type
         if (!itemType) {
             return false;
@@ -322,6 +313,24 @@ const ReturnRegister = () => {
             return false;
         }
 
+        // Date validation - if either date is selected, both must be selected
+        if (fromDate || toDate) {
+            if (!fromDate || !toDate) {
+                return false;
+            }
+            
+            // Validate dates are not in the future
+            const today = getTodayDate();
+            if (fromDate > today || toDate > today) {
+                return false;
+            }
+            
+            // Validate fromDate is not later than toDate
+            if (fromDate > toDate) {
+                return false;
+            }
+        }
+
         return true;
     };
 
@@ -329,16 +338,6 @@ const ReturnRegister = () => {
     const validateForm = () => {
         if (!hospitalId || !departmentId) {
             showPopup("Hospital or department information not found in session. Please login again.", "error");
-            return false;
-        }
-
-        if (!fromDate || !toDate) {
-            showPopup("Please select both From Date and To Date", "error");
-            return false;
-        }
-
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup("From Date cannot be later than To Date", "error");
             return false;
         }
 
@@ -352,6 +351,25 @@ const ReturnRegister = () => {
         if (reportType === "itemwise" && !selectedItem) {
             showPopup("Please select an item for item-wise report", "error");
             return false;
+        }
+
+        // Date validation - if either date is selected, both must be selected
+        if (fromDate || toDate) {
+            if (!fromDate || !toDate) {
+                showPopup("Please select both From Date and To Date or leave both empty", "error");
+                return false;
+            }
+
+            if (fromDate > toDate) {
+                showPopup("From Date cannot be later than To Date", "error");
+                return false;
+            }
+
+            const today = getTodayDate();
+            if (fromDate > today || toDate > today) {
+                showPopup("Dates cannot be in the future", "error");
+                return false;
+            }
         }
 
         return true;
@@ -373,17 +391,18 @@ const ReturnRegister = () => {
         setShowPdfViewer(false);
 
         try {
-            const formattedFromDate = formatDateForAPI(fromDate);
-            const formattedToDate = formatDateForAPI(toDate);
-            
             let url = "";
             let params = {
                 hospitalId: hospitalId,
                 departmentId: departmentId,
-                fromDate: formattedFromDate,
-                toDate: formattedToDate,
                 flag: flag
             };
+
+            // Add date parameters if both are selected
+            if (fromDate && toDate) {
+                params.fromDate = formatDateForAPI(fromDate);
+                params.toDate = formatDateForAPI(toDate);
+            }
 
             if (reportType === "itemwise") {
                 if (!selectedItem || !selectedItem.itemId) {
@@ -465,14 +484,8 @@ const ReturnRegister = () => {
         setShowPdfViewer(false);
         setCurrentPage(1);
         setItemType("");
-        
-        // Reset dates to default (last 30 days)
-        const today = getTodayDate();
-        const defaultFromDate = new Date();
-        defaultFromDate.setDate(defaultFromDate.getDate() - 30);
-        
-        setFromDate(formatDateForInput(defaultFromDate.toISOString()));
-        setToDate(today);
+        setFromDate("");
+        setToDate("");
     };
 
     // Close PDF viewer
@@ -490,8 +503,14 @@ const ReturnRegister = () => {
         const defaultFromDate = new Date();
         defaultFromDate.setDate(defaultFromDate.getDate() - 30);
         
-        setFromDate(formatDateForInput(defaultFromDate.toISOString()));
-        setToDate(today);
+        // Set default dates only for date-wise report initially
+        if (reportType === "datewise") {
+            setFromDate(formatDateForInput(defaultFromDate.toISOString()));
+            setToDate(today);
+        } else {
+            setFromDate("");
+            setToDate("");
+        }
         
         // Get session data
         const hasSessionData = getSessionData();
@@ -519,6 +538,17 @@ const ReturnRegister = () => {
             setItemSearch("");
             setItemDropdown([]);
             setShowItemDropdown(false);
+            
+            // Set default dates for date-wise report
+            const today = getTodayDate();
+            const defaultFromDate = new Date();
+            defaultFromDate.setDate(defaultFromDate.getDate() - 30);
+            setFromDate(formatDateForInput(defaultFromDate.toISOString()));
+            setToDate(today);
+        } else {
+            // Clear dates for item-wise report
+            setFromDate("");
+            setToDate("");
         }
     }, [reportType]);
 
@@ -708,7 +738,7 @@ const ReturnRegister = () => {
                                 {/* Date Range Fields */}
                                 <div className={reportType === "itemwise" ? "col-md-2" : "col-md-3"}>
                                     <label className="form-label fw-bold">
-                                        From Date <span className="text-danger">*</span>
+                                        From Date {reportType === "datewise" && <span className="text-danger">*</span>}
                                     </label>
                                     <input
                                         type="date"
@@ -716,13 +746,13 @@ const ReturnRegister = () => {
                                         value={fromDate}
                                         max={getTodayDate()}
                                         onChange={handleFromDateChange}
-                                        required
+                                        required={reportType === "datewise"}
                                     />
                                 </div>
 
                                 <div className={reportType === "itemwise" ? "col-md-2" : "col-md-3"}>
                                     <label className="form-label fw-bold">
-                                        To Date <span className="text-danger">*</span>
+                                        To Date {reportType === "datewise" && <span className="text-danger">*</span>}
                                     </label>
                                     <input
                                         type="date"
@@ -730,7 +760,7 @@ const ReturnRegister = () => {
                                         value={toDate}
                                         max={getTodayDate()}
                                         onChange={handleToDateChange}
-                                        required
+                                        required={reportType === "datewise"}
                                     />
                                 </div>
                             </div>

@@ -232,17 +232,15 @@ const ReceivingReport = () => {
 
         if (selectedDate > today) {
             showPopup("From date cannot be in the future", "error");
-            setFromDate(today);
-            return;
-        }
-
-        if (toDate && selectedDate > toDate) {
-            showPopup("From date cannot be later than To date", "error");
-            setFromDate(toDate);
             return;
         }
 
         setFromDate(selectedDate);
+
+        // Reset To Date if it's now invalid
+        if (toDate && selectedDate > toDate) {
+            setToDate("");
+        }
     };
 
     // Handle to date change with validation
@@ -252,13 +250,11 @@ const ReceivingReport = () => {
 
         if (selectedDate > today) {
             showPopup("To date cannot be in the future", "error");
-            setToDate(today);
             return;
         }
 
         if (fromDate && selectedDate < fromDate) {
             showPopup("To date cannot be earlier than From date", "error");
-            setToDate(fromDate);
             return;
         }
 
@@ -276,11 +272,6 @@ const ReceivingReport = () => {
 
     // Check if all mandatory fields are filled
     const areMandatoryFieldsFilled = () => {
-        // Check dates
-        if (!fromDate || !toDate) {
-            return false;
-        }
-
         // Check item type
         if (!itemType) {
             return false;
@@ -291,21 +282,29 @@ const ReceivingReport = () => {
             return false;
         }
 
+        // Date validation - if either date is selected, both must be selected
+        if (fromDate || toDate) {
+            if (!fromDate || !toDate) {
+                return false;
+            }
+            
+            // Validate dates are not in the future
+            const today = getTodayDate();
+            if (fromDate > today || toDate > today) {
+                return false;
+            }
+            
+            // Validate fromDate is not later than toDate
+            if (fromDate > toDate) {
+                return false;
+            }
+        }
+
         return true;
     };
 
     // Validate form
     const validateForm = () => {
-        if (!fromDate || !toDate) {
-            showPopup("Please select both From Date and To Date", "error");
-            return false;
-        }
-
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup("From Date cannot be later than To Date", "error");
-            return false;
-        }
-
         // Item Type is mandatory for both report types
         if (!itemType) {
             showPopup("Please select Item Type", "error");
@@ -316,6 +315,25 @@ const ReceivingReport = () => {
         if (reportType === "itemwise" && !selectedItem) {
             showPopup("Please select an item for item-wise report", "error");
             return false;
+        }
+
+        // Date validation - if either date is selected, both must be selected
+        if (fromDate || toDate) {
+            if (!fromDate || !toDate) {
+                showPopup("Please select both From Date and To Date or leave both empty", "error");
+                return false;
+            }
+
+            if (fromDate > toDate) {
+                showPopup("From Date cannot be later than To Date", "error");
+                return false;
+            }
+
+            const today = getTodayDate();
+            if (fromDate > today || toDate > today) {
+                showPopup("Dates cannot be in the future", "error");
+                return false;
+            }
         }
 
         return true;
@@ -337,16 +355,17 @@ const ReceivingReport = () => {
         setShowPdfViewer(false);
 
         try {
-            const formattedFromDate = formatDateForAPI(fromDate);
-            const formattedToDate = formatDateForAPI(toDate);
-            
             let url = "";
             let params = {
                 hospitalId: hospitalId,
-                departmentId: sessionStorage.getItem("departmentId"),
-                fromDate: formattedFromDate,
-                toDate: formattedToDate,
+                departmentId: sessionStorage.getItem("departmentId")
             };
+
+            // Add date parameters if both are selected
+            if (fromDate && toDate) {
+                params.fromDate = formatDateForAPI(fromDate);
+                params.toDate = formatDateForAPI(toDate);
+            }
 
             if (reportType === "itemwise") {
                 if (!selectedItem || !selectedItem.itemId) {
@@ -392,7 +411,7 @@ const ReceivingReport = () => {
                 setIsGenerating(false);
             } else if (flag === "P") {
                 if (response.ok) {
-                    
+                    // Handle print response if needed
                 } else {
                     const errorText = await response.text();
                     showPopup(`Failed to print report: ${errorText}`, "error");
@@ -430,14 +449,8 @@ const ReceivingReport = () => {
         setShowPdfViewer(false);
         setCurrentPage(1);
         setItemType("");
-        
-        // Reset dates to default (last 30 days)
-        const today = getTodayDate();
-        const defaultFromDate = new Date();
-        defaultFromDate.setDate(defaultFromDate.getDate() - 30);
-        
-        setFromDate(formatDateForInput(defaultFromDate.toISOString()));
-        setToDate(today);
+        setFromDate("");
+        setToDate("");
     };
 
     // Close PDF viewer
@@ -455,8 +468,15 @@ const ReceivingReport = () => {
         const defaultFromDate = new Date();
         defaultFromDate.setDate(defaultFromDate.getDate() - 30);
         
-        setFromDate(formatDateForInput(defaultFromDate.toISOString()));
-        setToDate(today);
+        // Set default dates only for date-wise report initially
+        // For item-wise, keep them empty
+        if (reportType === "datewise") {
+            setFromDate(formatDateForInput(defaultFromDate.toISOString()));
+            setToDate(today);
+        } else {
+            setFromDate("");
+            setToDate("");
+        }
         
         // Cleanup timeout
         return () => {
@@ -478,6 +498,17 @@ const ReceivingReport = () => {
             setItemSearch("");
             setItemDropdown([]);
             setShowItemDropdown(false);
+            
+            // Set default dates for date-wise report
+            const today = getTodayDate();
+            const defaultFromDate = new Date();
+            defaultFromDate.setDate(defaultFromDate.getDate() - 30);
+            setFromDate(formatDateForInput(defaultFromDate.toISOString()));
+            setToDate(today);
+        } else {
+            // Clear dates for item-wise report
+            setFromDate("");
+            setToDate("");
         }
     }, [reportType]);
 
@@ -668,10 +699,10 @@ const ReceivingReport = () => {
                                     </div>
                                 )}
 
-                                {/* Date Range */}
+                                {/* Date Range - Always shown, optional for item-wise */}
                                 <div className={reportType === "itemwise" ? "col-md-2" : "col-md-3"}>
                                     <label className="form-label fw-bold">
-                                        From Date <span className="text-danger">*</span>
+                                        From Date {reportType === "datewise" && <span className="text-danger">*</span>}
                                     </label>
                                     <input
                                         type="date"
@@ -679,13 +710,13 @@ const ReceivingReport = () => {
                                         value={fromDate}
                                         max={getTodayDate()}
                                         onChange={handleFromDateChange}
-                                        required
+                                        required={reportType === "datewise"}
                                     />
                                 </div>
 
                                 <div className={reportType === "itemwise" ? "col-md-2" : "col-md-3"}>
                                     <label className="form-label fw-bold">
-                                        To Date <span className="text-danger">*</span>
+                                        To Date {reportType === "datewise" && <span className="text-danger">*</span>}
                                     </label>
                                     <input
                                         type="date"
@@ -693,7 +724,7 @@ const ReceivingReport = () => {
                                         value={toDate}
                                         max={getTodayDate()}
                                         onChange={handleToDateChange}
-                                        required
+                                        required={reportType === "datewise"}
                                     />
                                 </div>
                             </div>
@@ -738,6 +769,15 @@ const ReceivingReport = () => {
                                                     PRINT
                                                 </>
                                             )}
+                                        </button>
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={handleReset}
+                                            disabled={isGenerating || isPrinting}
+                                        >
+                                            Reset
                                         </button>
                                     </div>
                                 </div>

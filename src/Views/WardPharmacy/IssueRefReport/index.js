@@ -86,7 +86,6 @@ const IssueReferenceReport = () => {
         console.log("Invalid dates, skipping API call");
         return;
       }
-
       setIsLoading(true);
       try {
         const response = await getRequest(
@@ -131,6 +130,27 @@ const IssueReferenceReport = () => {
 
     fetchIssues();
   }, [fromDate, toDate, departmentId]);
+  const formatDateForDisplay = (dateTimeStr) => {
+  if (!dateTimeStr) return ;
+  
+  // Handle different possible formats
+  try {
+    // If it's already a Date object or can be parsed
+    const date = new Date(dateTimeStr);
+    
+    // Check if date is valid
+    if (isNaN(date.getTime())) return "-";
+    
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    
+    return `${day}/${month}/${year}`;
+  } catch (error) {
+    console.error("Error formatting date:", error);
+    return;
+  }
+};
 
   const handlePrint = async (flag = "P") => {
     if (!fromDate || !toDate) {
@@ -387,7 +407,7 @@ const IssueReferenceReport = () => {
                           value={issue.issueNo}
                         >
                           {issue.issueNo}  ({issue.indentNo}) - 
-                          {issue.issueDate ? new Date(issue.issueDate).toLocaleDateString() : 'No date'}
+                          {formatDateForDisplay(issue.issueDate)}
                         </option>
                       ))
                     ) : (

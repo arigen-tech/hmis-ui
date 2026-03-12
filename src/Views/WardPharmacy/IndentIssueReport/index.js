@@ -224,13 +224,31 @@ const ItemIssueRegister = () => {
   // Check if all mandatory fields are filled based on report type
   const areMandatoryFieldsFilled = () => {
     // Common fields for both report types
-    if (!itemType || !department || !fromDate || !toDate || !hospitalId) {
+    if (!itemType || !department || !hospitalId) {
       return false;
     }
 
     // For item-wise report, check item selection
     if (reportType === "itemwise" && !selectedItem) {
       return false;
+    }
+
+    // Date validation - if either date is selected, both must be selected
+    if (fromDate || toDate) {
+      if (!fromDate || !toDate) {
+        return false;
+      }
+      
+      // If both dates are selected, validate they are not in the future
+      const today = new Date().toISOString().split('T')[0];
+      if (fromDate > today || toDate > today) {
+        return false;
+      }
+      
+      // Validate fromDate is not later than toDate
+      if (fromDate > toDate) {
+        return false;
+      }
     }
 
     return true;
@@ -248,15 +266,25 @@ const ItemIssueRegister = () => {
       // Convert item type to indentType parameter (D for Drug, N for Non Drug)
       const indentType = itemType === "Drug" ? "D" : "N";
 
-      let url = "";
+      // Build URL with base parameters
+      let url = `${ALL_REPORTS}/indentMedicineIssueRegister?hospitalId=${hospitalId}&departmentId=${department}`;
       
-      if (reportType === "itemwise") {
-        // Item-wise report - include itemId, don't pass indentType
-        url = `${ALL_REPORTS}/indentMedicineIssueRegister?hospitalId=${hospitalId}&departmentId=${department}&itemId=${selectedItem.itemId}&fromDate=${fromDate}&toDate=${toDate}&flag=d`;
-      } else {
-        // Date-wise report - no itemId, pass indentType
-        url = `${ALL_REPORTS}/indentMedicineIssueRegister?hospitalId=${hospitalId}&departmentId=${department}&fromDate=${fromDate}&toDate=${toDate}&indentType=${indentType}&flag=d`;
+      // Add date parameters if both are selected
+      if (fromDate && toDate) {
+        url += `&fromDate=${fromDate}&toDate=${toDate}`;
       }
+      
+      // Add report type specific parameters
+      if (reportType === "itemwise") {
+        // Item-wise report - include itemId
+        url += `&itemId=${selectedItem.itemId}&indentType=${indentType}`;
+      } else {
+        // Date-wise report - pass indentType
+        url += `&indentType=${indentType}`;
+      }
+      
+      // Add flag
+      url += `&flag=d`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -293,15 +321,25 @@ const ItemIssueRegister = () => {
       // Convert item type to indentType parameter (D for Drug, N for Non Drug)
       const indentType = itemType === "Drug" ? "D" : "N";
 
-      let url = "";
+      // Build URL with base parameters
+      let url = `${ALL_REPORTS}/indentMedicineIssueRegister?hospitalId=${hospitalId}&departmentId=${department}`;
       
-      if (reportType === "itemwise") {
-        // Item-wise report - include itemId, don't pass indentType
-        url = `${ALL_REPORTS}/indentMedicineIssueRegister?hospitalId=${hospitalId}&departmentId=${department}&itemId=${selectedItem.itemId}&fromDate=${fromDate}&toDate=${toDate}&flag=p`;
-      } else {
-        // Date-wise report - no itemId, pass indentType
-        url = `${ALL_REPORTS}/indentMedicineIssueRegister?hospitalId=${hospitalId}&departmentId=${department}&fromDate=${fromDate}&toDate=${toDate}&indentType=${indentType}&flag=p`;
+      // Add date parameters if both are selected
+      if (fromDate && toDate) {
+        url += `&fromDate=${fromDate}&toDate=${toDate}`;
       }
+      
+      // Add report type specific parameters
+      if (reportType === "itemwise") {
+        // Item-wise report - include itemId
+        url += `&itemId=${selectedItem.itemId}`;
+      } else {
+        // Date-wise report - pass indentType
+        url += `&indentType=${indentType}`;
+      }
+      
+      // Add flag
+      url += `&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -314,8 +352,6 @@ const ItemIssueRegister = () => {
       if (!response.ok) {
         throw new Error("Failed to send to printer");
       }
-
-      // showPopup("Report sent to printer successfully!", "success");
       
     } catch (error) {
       console.error("Error printing report", error);
@@ -342,19 +378,23 @@ const ItemIssueRegister = () => {
       return false;
     }
 
-    if (!fromDate || !toDate) {
-      showPopup("Please select both From Date and To Date", "error");
-      return false;
-    }
+    // Date validation - if either date is selected, both must be selected
+    if (fromDate || toDate) {
+      if (!fromDate || !toDate) {
+        showPopup("Please select both From Date and To Date or leave both empty", "error");
+        return false;
+      }
 
-    if (new Date(fromDate) > new Date(toDate)) {
-      showPopup("From Date cannot be later than To Date", "error");
-      return false;
-    }
+      if (fromDate > toDate) {
+        showPopup("From Date cannot be later than To Date", "error");
+        return false;
+      }
 
-    if (new Date(fromDate) > new Date() || new Date(toDate) > new Date()) {
-      showPopup("Dates cannot be in the future", "error");
-      return false;
+      const today = new Date().toISOString().split('T')[0];
+      if (fromDate > today || toDate > today) {
+        showPopup("Dates cannot be in the future", "error");
+        return false;
+      }
     }
 
     return true;
@@ -643,7 +683,7 @@ const ItemIssueRegister = () => {
                 {/* Date Range - Adjust column widths based on report type */}
                 <div className={reportType === "itemwise" ? "col-md-4 mt-3" : "col-md-2"}>
                   <label className="form-label fw-bold">
-                    From Date <span className="text-danger">*</span>
+                    From Date
                   </label>
                   <input
                     type="date"
@@ -651,13 +691,12 @@ const ItemIssueRegister = () => {
                     value={fromDate}
                     max={new Date().toISOString().split('T')[0]}
                     onChange={handleFromDateChange}
-                    required
                   />
                 </div>
 
                 <div className={reportType === "itemwise" ? "col-md-4 mt-3" : "col-md-2"}>
                   <label className="form-label fw-bold">
-                    To Date <span className="text-danger">*</span>
+                    To Date
                   </label>
                   <input
                     type="date"
@@ -667,7 +706,6 @@ const ItemIssueRegister = () => {
                     onChange={handleToDateChange}
                     disabled={!fromDate}
                     onFocus={handleToDateFocus}
-                    required
                   />
                 </div>
               </div>
