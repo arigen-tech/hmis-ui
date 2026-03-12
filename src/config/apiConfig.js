@@ -324,6 +324,8 @@ export const OPD_SERVICE_CATAGORY = "SC001";
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INVENTORY=`/inventory`
   export const SECTION_ID_FOR_DRUGS=18;
 
+  export const MAS_BLOOD_COLLECTION_TYPE= `${MASTERS}/masBloodCollectionType`;  
+
 
 
 
