@@ -1,6 +1,6 @@
- //export const API_HOST = 'http://103.133.215.182:8081/hims';
+ export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-  export const API_HOST = 'http://localhost:8080';
+  // export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.39:8080';
 
@@ -255,6 +255,7 @@ export const MAS_PRESENTATION = `${MASTERS}/obMasPresentation`;
 export const MAS_STERILISATION = `${MASTERS}/gynMasSterilisation`;
 export const MAS_STATION_PRESENTATION =`${MASTERS}/obMasStationPresenting`;
 export const MAS_OPTH_LENSTYPE =`${MASTERS}/opthMasLensType`;
+export const MAS_MENARCHE_AGE = `${MASTERS}/gynMasMenarcheAge`;
 export const MAS_EAR_CANAL = `${MASTERS}/entMasEarCanal`;
 export const MAS_ENT_RINNE = `${MASTERS}/entMasRinne`;
 export const MAS_OPTH_NEAR_VISION =`${MASTERS}/opthMasNearVision`;

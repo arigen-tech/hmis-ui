@@ -972,6 +972,15 @@ export const ADD_BAG_TYPE_MASTER = "Record added successfully";
 export const UPDATE_FAIL_BAG_TYPE_MASTER = "Failed to update status";
 
 
+
+//MenarcheMaster
+export const FETCH_MENARCHE = "Failed to fetch records";
+export const DUPLICATE_MENARCHE = "Menarche Name already exists";
+export const UPDATE_MENARCHE = "Updated successfully";
+export const ADD_MENARCHE = "Record added successfully";
+export const UPDATE_FAIL_MENARCHE = "Failed to update status";
+export const FAIL_MENARCHE = "Failed to save changes";
+
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR ="Unexpected API response format:";
 export const FETCH_DEPARTMENT_ERROR = "Error fetching Department data:";
