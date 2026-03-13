@@ -536,7 +536,7 @@ const ItemReceivingMainScreen = () => {
                               <td>{formatDate(item.dom)}</td>
                               <td>{formatDate(item.doe)}</td>
                               <td>{item.qtyDemanded}</td>
-                              <td>{qtyIssued}</td>
+                              <td >{qtyIssued}</td>
                               <td>
                                 <input
                                   type="number"
@@ -545,6 +545,7 @@ const ItemReceivingMainScreen = () => {
                                   onChange={(e) => handleQtyReceivedChange(idx, e.target.value)}
                                   min="0"
                                   max={qtyIssued}
+                                    readOnly 
                                 />
                               </td>
                               <td>
