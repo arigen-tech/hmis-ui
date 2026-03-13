@@ -299,24 +299,10 @@ const PatientwiseBilldatails = () => {
             </div>
 
             <div className="card-body">
-              {error && (
-                <div className="alert alert-danger" role="alert">
-                  <strong>Error:</strong> {error}
-                  <button
-                    type="button"
-                    className="btn btn-sm btn-outline-danger ms-2"
-                    onClick={fetchBillingStatus}
-                  >
-                    Retry
-                  </button>
-                </div>
-              )}
+           
 
               {/* Patient Search Section - Similar to SampleValidation */}
-              <div className="card mb-3">
-                <div className="card-header py-3 border-bottom-1">
-                  <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
-                </div>
+            
                 <div className="card-body">
                   <form>
                     <div className="row g-4 align-items-end">
@@ -360,7 +346,7 @@ const PatientwiseBilldatails = () => {
                             </>
                           ) : (
                             <>
-                              <i className="fa fa-search"></i> Search
+Search
                             </>
                           )}
                         </button>
@@ -376,7 +362,6 @@ const PatientwiseBilldatails = () => {
                     </div>
                   </form>
                 </div>
-              </div>
 
               {!error && filteredPatientList.length === 0 && (
                 <div className="alert alert-info" role="alert">
