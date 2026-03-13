@@ -305,7 +305,7 @@ const OpeningBalanceRegister = () => {
                       </>
                     ) : (
                       <>
-VIEW/DOWNLOAD
+   <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
                       </>
                     )}
                   </button>

@@ -757,7 +757,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                   {/* Report Action Buttons */}
                   <div className="col-md-6 mt-3 gap-2 d-row d-flex">
                     <button
-                      className="btn btn-warning"
+                      className="btn btn-primary"
                       onClick={() => handleViewReport(selectedRecord)}
                       disabled={isGeneratingPdf}
                       type="button"
@@ -768,7 +768,9 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                           Generating...
                         </>
                       ) : (
-                        "View/Download"
+                       <>
+                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                      </>
                       )}
                     </button>
 
@@ -784,7 +786,9 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                           Printing...
                         </>
                       ) : (
-                        "Print"
+                       <>
+                          <i className="fa fa-print me-2"></i> PRINT
+                        </>
                       )}
                     </button>
                   </div>

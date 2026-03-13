@@ -232,7 +232,7 @@ const PhysicalStockTakingRegister = () => {
                 <div className="col-md-8 d-flex align-items-end gap-2">
                   <button
                     type="button"
-                    className="btn btn-primary"
+                    className="btn btn-warning"
                     onClick={handleViewDownload}
                     disabled={isGeneratingPDF || isPrinting}
                   >
