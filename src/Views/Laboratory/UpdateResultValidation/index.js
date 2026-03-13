@@ -1050,10 +1050,7 @@ const UpdateResultValidation = () => {
               ) : (
                 <>
                   {/* Patient Search Section */}
-                  <div className="card mb-3">
-                    <div className="card-header py-3   border-bottom-1">
-                      <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
-                    </div>
+                  
                     <div className="card-body">
                       <form>
                         <div className="row g-4 align-items-end">
@@ -1081,7 +1078,7 @@ const UpdateResultValidation = () => {
                           </div>
                           <div className="col-md-3 d-flex">
                             <button type="button" className="btn btn-primary me-2">
-                              <i className="fa fa-search"></i> Search
+Search
                             </button>
                             <button
                               type="button"
@@ -1099,7 +1096,6 @@ const UpdateResultValidation = () => {
                         </div>
                       </form>
                     </div>
-                  </div>
 
                   {/* Table */}
                   <div className="table-responsive packagelist">
