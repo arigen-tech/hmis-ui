@@ -144,7 +144,6 @@ const ViewDownLoadReport = () => {
                   className="btn btn-secondary btn-sm"
                   onClick={() => navigate(returnPath)}
                 >
-                  <i className="mdi mdi-format-list-bulleted me-2"></i>
                   Back
                 </button>
               </div>

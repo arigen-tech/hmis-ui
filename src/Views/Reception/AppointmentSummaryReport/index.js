@@ -506,7 +506,7 @@ const AppointmentSummaryReport = () => {
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-success"
+                      className="btn btn-warning"
                       onClick={handleViewReport}
                       disabled={isGenerating || isViewLoading || !fromDate || !toDate}
                     >

@@ -533,7 +533,7 @@ const StoreStockLedgerReport = () => {
                       onClick={handleReset}
                       disabled={searchLoading || isSearching}
                     >
-                      <i className="mdi mdi-format-list-bulleted me-2"></i>
+
                       Reset
                     </button>
                   </div>

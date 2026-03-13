@@ -294,7 +294,7 @@ const OpeningBalanceRegister = () => {
                   </button>
                   <button
                     type="button"
-                    className="btn btn-warning"
+                    className="btn btn-primary"
                     onClick={handleViewDownload}
                     disabled={!areMandatoryFieldsFilled() || isGeneratingPDF || isPrinting}
                   >

@@ -665,10 +665,7 @@ const SampleValidation = () => {
               ) : (
                 <>
                   {/* Patient Search Section */}
-                  <div className="card mb-3">
-                    <div className="card-header py-3   border-bottom-1">
-                      <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
-                    </div>
+                  
                     <div className="card-body">
                       <form>
                         <div className="row g-4 align-items-end">
@@ -726,7 +723,6 @@ const SampleValidation = () => {
                         </div>
                       </form>
                     </div>
-                  </div>
 
                   {/* Table */}
                   <div className="table-responsive packagelist">

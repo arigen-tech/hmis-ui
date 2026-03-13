@@ -221,7 +221,6 @@ const ViewDownload = () => {
                   className="btn btn-secondary btn-sm"
                   onClick={handleBackToValidation}
                 >
-                  <i className="mdi mdi-format-list-bulleted me-2"></i> 
                   Back to List
                 </button>
               </div>
