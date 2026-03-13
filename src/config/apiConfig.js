@@ -339,7 +339,7 @@ export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INV
 
   export const MAS_BLOOD_COLLECTION_TYPE= `${MASTERS}/masBloodCollectionType`;  
 
-
+export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
 
 
 

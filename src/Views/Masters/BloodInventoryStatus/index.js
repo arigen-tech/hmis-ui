@@ -2,163 +2,217 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { MAS_BLOOD_INVENTORY_STATUS } from "../../../config/apiConfig";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import {
+  FETCH_BLOOD_INVENTORY_STATUS,
+  STATUS,
+  UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS,
+  ADD_BLOOD_INVENTORY_STATUS_SUCCESS,
+  OPERATION_FAILED,
+  UPDATE_STATUS_FAILED,
+} from "../../../config/constants";
 
 const BloodInventoryStatus = () => {
-  const [bloodInventoryData, setBloodInventoryData] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    StatusCode: ""
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    statusCode: "",
+    description: "",
   });
-
-  const [popupMessage, setPopupMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
-  const [formData, setFormData] = useState({
-    statusCode: "",   
-    description: ""
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
   });
 
-  const [loading, setLoading] = useState(true);
   const MAX_LENGTH = 50;
 
-  /* -------- ORIGINAL BLOOD INVENTORY STATUS DATA -------- */
-  useEffect(() => {
-    setLoading(true);
-    setTimeout(() => {
-      setBloodInventoryData([
-        { id: 1, statusCode: "Available", description: "Blood is available for use", status: "y", lastUpdated: "10/01/2026" },
-        { id: 2, statusCode: "Reserved", description: "Blood is reserved for a specific patient", status: "y", lastUpdated: "12/01/2026" },
-        { id: 3, statusCode: "Issued", description: "Blood has been issued to a patient", status: "y", lastUpdated: "14/01/2026" },
-        { id: 4, statusCode: "Expired", description: "Blood has expired and is no longer usable", status: "n", lastUpdated: "16/01/2026" },
-        { id: 5, statusCode: "Discarded", description: "Blood has been discarded due to contamination or other issues", status: "n", lastUpdated: "18/01/2026" }
-      ]);
-      setLoading(false);
-    }, 600);
-  }, []);
-
-  /* -------- SEARCH -------- */
-  const filteredData = bloodInventoryData.filter(item =>
-    item.statusCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    item.description.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
-
-  /* -------- HANDLERS -------- */
-  const showPopup = (message, type = "success") => {
+  const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleEdit = (record) => {
-    setEditingRecord(record);
-    setFormData({ statusCode: record.statusCode, description: record.description });
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_BLOOD_INVENTORY_STATUS}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_BLOOD_INVENTORY_STATUS, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const filteredData = data.filter((rec) =>
+    rec.statusCode?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const resetForm = () => {
+    setFormData({ statusCode: "", description: "" });
+    setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(updated.statusCode.trim() !== "" && updated.description.trim() !== "");
+  };
+
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_BLOOD_INVENTORY_STATUS}/update/${editingRecord.inventoryStatusId}`,
+          {
+            statusCode: formData.statusCode.trim(),
+            description: formData.description.trim(),
+          }
+        );
+
+        showPopup(UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
+      } else {
+        await postRequest(`${MAS_BLOOD_INVENTORY_STATUS}/create`, {
+          statusCode: formData.statusCode.trim(),
+          description: formData.description.trim(),
+          status: "Y",
+        });
+
+        showPopup(ADD_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
+      }
+
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(OPERATION_FAILED, "error");
+    }
+  };
+
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      statusCode: rec.statusCode,
+      description: rec.description || "",
+    });
     setIsFormValid(true);
     setShowForm(true);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE,
+    });
+  };
 
-    if (editingRecord) {
-      setBloodInventoryData(prev =>
-        prev.map(item =>
-          item.id === editingRecord.id
-            ? { ...item, statusCode: formData.statusCode, description: formData.description }
-            : item
-        )
-      );
-      showPopup("Blood Inventory Status updated successfully");
-    } else {
-      setBloodInventoryData(prev => [
-        ...prev,
-        {
-          id: Date.now(),
-          statusCode: formData.statusCode,
-          description: formData.description,
-          status: "y",
-          lastUpdated: new Date().toLocaleDateString("en-GB")
-        }
-      ]);
-      showPopup("Blood Inventory Status added successfully");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
     }
 
-    handleBack();
-  };
+    try {
+      setLoading(true);
 
-  const handleSwitchChange = (id, newStatus, statusCode) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, statusCode });
-  };
+      await putRequest(
+        `${MAS_BLOOD_INVENTORY_STATUS}/status/${confirmDialog.record.inventoryStatusId}?status=${confirmDialog.newStatus}`
+      );
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setBloodInventoryData(prev =>
-        prev.map(item =>
-          item.id === confirmDialog.id
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
-        )
-      );
-      showPopup(
-        `Blood Inventory Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"}`
-      );
+      showPopup(UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_STATUS_FAILED, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", statusCode: "" });
   };
 
- const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    const updatedForm = { ...formData, [name]: value };
-    setFormData(updatedForm);
-    setIsFormValid(updatedForm.statusCode.trim() !== "" && updatedForm.description.trim() !== "");
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData();
   };
 
-  const handleBack = () => {
-    setShowForm(false);
-    setEditingRecord(null);
-    setFormData({ statusCode: "", description: "", });
-    setIsFormValid(false);
-  };
-
-  /* -------- UI -------- */
   return (
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4 className="card-title">Blood Inventory Status Master</h4>
+          <h4>Blood Inventory Status Master</h4>
 
-          <div className="d-flex gap-2">
+          <div className="d-flex">
             {!showForm && (
               <input
-                type="search"
-                className="form-control"
-                placeholder="Search Inventory Status"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={handleSearchChange}
               />
             )}
 
             {!showForm ? (
               <>
-                <button className="btn btn-success" onClick={() => setShowForm(true)}>Add</button>
-                <button className="btn btn-success" onClick={() => setSearchQuery("")}>Show All</button>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
+                  Add
+                </button>
+
+                <button className="btn btn-success" onClick={handleRefresh}>
+                  Show All
+                </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={handleBack}>Back</button>
+              <button className="btn btn-secondary" onClick={handleCancel}>
+                Back
+              </button>
             )}
           </div>
         </div>
@@ -169,45 +223,44 @@ const BloodInventoryStatus = () => {
           ) : !showForm ? (
             <>
               <table className="table table-bordered table-hover">
-                <thead>
+                <thead className="table-light">
                   <tr>
                     <th>Status Code</th>
                     <th>Description</th>
-                    <th>Last Updated</th>
+                    <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
+
                 <tbody>
-                  {currentItems.map(item => (
-                    <tr key={item.id}>
-                      <td>{item.statusCode}</td>
-                      <td>{item.description}</td>
-                      <td>{item.lastUpdated}</td>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.inventoryStatusId}>
+                      <td>{rec.statusCode}</td>
+                      <td>{rec.description}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
+
                       <td>
                         <div className="form-check form-switch">
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={item.status === "y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                item.id,
-                                item.status === "y" ? "n" : "y",
-                                item.statusCode
-                              )
-                            }
+                            checked={rec.status?.toLowerCase() === STATUS.ACTIVE}
+                            onChange={() => handleSwitchChange(rec)}
                           />
+
                           <label className="form-check-label ms-2">
-                            {item.status === "y" ? "Active" : "Inactive"}
+                            {rec.status?.toLowerCase() === STATUS.ACTIVE
+                              ? "Active"
+                              : "Inactive"}
                           </label>
                         </div>
                       </td>
+
                       <td>
                         <button
-                          className="btn btn-sm btn-success"
-                          onClick={() => handleEdit(item)}
-                          disabled={item.status !== "y"}
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleEdit(rec)}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -225,38 +278,52 @@ const BloodInventoryStatus = () => {
               />
             </>
           ) : (
-            <form onSubmit={handleSave}>
-              <div className="row">
-              <div className="form-group col-md-4">
-                <label> Status Code <span className="text-danger">*</span></label>
-              <input
-  type="text"
-  name="statusCode"        
-  className="form-control"
-  value={formData.statusCode}
-  maxLength={MAX_LENGTH}
-  onChange={handleInputChange}
-  required
-  placeholder="status code"
-/>
-</div>
-              <div className="form-group col-md-4">
-                <label> Description <span className="text-danger">*</span></label>
-               <input
-  type="text"
-  name="description"      
-  className="form-control"
-  value={formData.description}
-  onChange={handleInputChange}
-  maxLength={100}
-  placeholder="description"
-/>
-              </div>
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-4">
+                <label>
+                  Status Code <span className="text-danger">*</span>
+                </label>
+
+                <input
+                  name="statusCode"
+                  className="form-control"
+                  value={formData.statusCode}
+                  maxLength={MAX_LENGTH}
+                  onChange={handleInputChange}
+                  placeholder="status code"
+                />
               </div>
 
-              <div className="mt-3 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
-                <button className="btn btn-danger" type="button" onClick={handleBack}>Cancel</button>
+              <div className="col-md-4">
+                <label>
+                  Description <span className="text-danger">*</span>
+                </label>
+
+                <textarea
+                  name="description"
+                  className="form-control"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="Description"
+                />
+              </div>
+
+              <div className="col-12 text-end">
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  {editingRecord ? "Update" : "Save"}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           )}
@@ -267,22 +334,33 @@ const BloodInventoryStatus = () => {
             <div className="modal d-block">
               <div className="modal-dialog">
                 <div className="modal-content">
-                  <div className="modal-header">
-                    <h5>Confirm Status Change</h5>
-                  </div>
                   <div className="modal-body">
-                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.statusCode}</strong>?
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === STATUS.ACTIVE
+                      ? "activate"
+                      : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.statusCode}</strong>?
                   </div>
+
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
+                      No
+                    </button>
+
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>

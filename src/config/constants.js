@@ -1188,3 +1188,10 @@ export const OPENING_BALANCE_REGISTER_PDF_NAME = "Opening Balance Register Repor
 
 //Stock Status Report
 export const GENERATE_REPORT_FIRST_ERR_MSG = "Please generate report first";
+
+//blood inventory status
+export const FETCH_BLOOD_INVENTORY_STATUS = "Failed to load Blood Inventory Status";
+export const UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS = "Blood Inventory Status updated successfully";
+export const ADD_BLOOD_INVENTORY_STATUS_SUCCESS = "Blood Inventory Status added successfully";
+export const OPERATION_FAILED = "Operation failed";
+export const UPDATE_STATUS_FAILED = "Failed to update status";
