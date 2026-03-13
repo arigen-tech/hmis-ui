@@ -1,6 +1,6 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+ //export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-//  export const API_HOST = 'http://localhost:8080';
+  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.39:8080';
 
@@ -125,7 +125,7 @@ export const ALL_HOSPITAL = `/hospital/getAllHospitals`;
 export const ALL_MARITAL_STATUS = `/marital-status/getAllMaritalStatuses`;
 export const ALL_RELIGION = `/religion/getAllReligions`;
 export const ALL_USER_DEPARTMENT = `/user-departments/getAllUserDepartments`;
-export const ALL_USER_APPLICATION = `/applications/getAllUserApplications`;
+export const ALL_USER_APPLICATION = `/configuration/getApplications`;
 export const ALL_TEMPLATES = `/mas-templates/getAllTemplates`;
 export const ALL_APPLICATIONS = `/mas-applications/getAllApplications`;
 export const ALL_IDENTIFICATION_TYPE = `/identification-types/getAllIdentificationTypes`;
@@ -142,10 +142,10 @@ export const MARITAL_STATUS = `/marital-status`;
 export const RELATION = `/relation`;
 export const RELIGION = `/religion`;
 export const USER_DEPARTMENT = `/user-departments`;
-export const USER_APPLICATION = `/applications`;
+export const USER_APPLICATION = `/configuration`;
 export const TEMPLATES = `/mas-templates`;
 export const APPLICATION = `/mas-applications`;
-export const ASSIGN_TEMPLATES = `/template-applications`;
+export const ASSIGN_TEMPLATES = `/configuration`;
 export const ROLE_TEMPLATE = `/role-template`;
 export const IDENTITY_TYPE = `/identification-types`;
 export const DOCTOR_ROSTER = `/admin`;
