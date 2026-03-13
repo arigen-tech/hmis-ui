@@ -5,7 +5,7 @@ import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { MAS_OPTH_SPECTACLE_USE } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-import {FETCH_SPECTACLE_USE_ERR_MSG, ADD_SPECTACLE_USE_SUCC_MSG,UPDATE_SPECTACLE_USE_SUCC_MSG,FAIL_SPECTACLE_USE,UPDATE_FAIL_SPECTACLE_USE,DUPLICATE_SPECTACLE_USE,} from "../../../config/constants";
+import { FETCH_SPECTACLE_USE_ERR_MSG, ADD_SPECTACLE_USE_SUCC_MSG, UPDATE_SPECTACLE_USE_SUCC_MSG, FAIL_SPECTACLE_USE, UPDATE_FAIL_SPECTACLE_USE, DUPLICATE_SPECTACLE_USE, } from "../../../config/constants";
 
 
 const OpthMasSpectacleUse = () => {
@@ -309,28 +309,15 @@ const OpthMasSpectacleUse = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid || saving}
+                  disabled={!isFormValid}
                 >
-                  {saving ? (
-                    <>
-                      <span
-                        className="spinner-border spinner-border-sm me-1"
-                        role="status"
-                        aria-hidden="true"
-                      ></span>
-                      Saving...
-                    </>
-                  ) : editingRecord ? (
-                    "Update"
-                  ) : (
-                    "Save"
-                  )}
+                  {editingRecord ? "Update" : "Save"}
+
                 </button>
                 <button
                   type="button"
                   className="btn btn-danger"
                   onClick={handleCancel}
-                  disabled={saving}
                 >
                   Cancel
                 </button>
@@ -353,16 +340,14 @@ const OpthMasSpectacleUse = () => {
                     <button
                       className="btn btn-secondary"
                       onClick={() => handleConfirm(false)}
-                      disabled={saving}
                     >
                       No
                     </button>
                     <button
                       className="btn btn-primary"
                       onClick={() => handleConfirm(true)}
-                      disabled={saving}
                     >
-                      {saving ? "Processing..." : "Yes"}
+                      Yes
                     </button>
                   </div>
                 </div>
