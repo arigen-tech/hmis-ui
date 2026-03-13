@@ -256,6 +256,7 @@ export const MAS_STERILISATION = `${MASTERS}/gynMasSterilisation`;
 export const MAS_STATION_PRESENTATION =`${MASTERS}/obMasStationPresenting`;
 export const MAS_OPTH_LENSTYPE =`${MASTERS}/opthMasLensType`;
 export const MAS_MENARCHE_AGE = `${MASTERS}/gynMasMenarcheAge`;
+export const MAS_OPTH_SPECTACLE_USE =`${MASTERS}/opthMasSpectacleUse`;
 export const MAS_EAR_CANAL = `${MASTERS}/entMasEarCanal`;
 export const MAS_ENT_RINNE = `${MASTERS}/entMasRinne`;
 export const MAS_OPTH_NEAR_VISION =`${MASTERS}/opthMasNearVision`;
