@@ -757,7 +757,7 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                   {/* Report Action Buttons */}
                   <div className="col-md-6 mt-3 gap-2 d-row d-flex">
                     <button
-                      className="btn btn-primary"
+                      className="btn btn-warning"
                       onClick={() => handleViewReport(selectedRecord)}
                       disabled={isGeneratingPdf}
                       type="button"

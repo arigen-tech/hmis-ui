@@ -561,8 +561,7 @@ const OpeningBalanceApproval = () => {
                   
                   <button
                     type="button"
-                    className="btn me-2"
-                    style={{ backgroundColor: "#e67e22", color: "white" }}
+                    className="btn me-2 btn-success"
                     onClick={handleSubmit}
                     disabled={isProcessing || !action}
                   >

@@ -1012,17 +1012,17 @@ const UpdateResultValidation = () => {
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
                   <button 
-                    className="btn btn-success me-3" 
+                    className="btn btn-warning me-3" 
                     onClick={handleUpdate} 
                     disabled={loading || editableRows.length === 0}
                   >
-                    <i className="mdi mdi-check-all"></i> UPDATE 
+UPDATE 
                   </button>
                   <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
-                    <i className="mdi mdi-refresh"></i> RESET
+RESET
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
-                    <i className="mdi mdi-arrow-left"></i> BACK
+BACK
                   </button>
                 </div>
               </div>
