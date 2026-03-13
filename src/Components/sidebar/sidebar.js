@@ -2,6 +2,8 @@ import { useState, useEffect, useMemo } from "react"
 import "./sidebar.css"
 import { Link, useLocation } from "react-router-dom"
 import { getRequest } from "../../service/apiService"
+import { GET_URL_BY_ROLES } from "../../config/apiConfig"
+
 
 const iconMap = {
   OPD: "icofont-hospital",
@@ -78,7 +80,7 @@ const Sidebar = () => {
   const fetchMenuData = async () => {
     setLoading(true)
     try {
-      const data = await getRequest(`/configuration/getUrlsByRoles/${rolesId}`)
+      const data = await getRequest(`${GET_URL_BY_ROLES}/${rolesId}`)
       if (data.status === 200 && Array.isArray(data.response)) {
         setMenuData(data.response)
 

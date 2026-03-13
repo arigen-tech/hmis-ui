@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
-import { API_HOST,ALL_USER_APPLICATION,USER_APPLICATION } from "../../../config/apiConfig";
+import { API_HOST,ALL_USER_APPLICATION,USER_APPLICATION,CREATE_USER_APPLICATION,UPDATE_USER_APPLICATION,UPDATE_STATUS_USER_APPLICATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+
 
 
 const Manageuserapplication = () => {
@@ -125,7 +126,7 @@ const Manageuserapplication = () => {
     
             if (editingApplication) {
                 // Update existing application
-                const response = await putRequest(`${USER_APPLICATION}/updateApplication/${editingApplication.id}`, {
+                const response = await putRequest(`${UPDATE_USER_APPLICATION}/${editingApplication.id}`, {
                     userAppName: formData.menuName,
                     url: formData.url
                 });
@@ -154,7 +155,7 @@ const Manageuserapplication = () => {
                 }
             } else {
                 // Create a new application
-                const response = await postRequest(`${USER_APPLICATION}/createApplication`, {
+                const response = await postRequest(`${CREATE_USER_APPLICATION}`, {
                     userAppName: formData.menuName,
                     url: formData.url,
                     status: "y"
@@ -208,7 +209,7 @@ const Manageuserapplication = () => {
                 setLoading(true);
                 
                 const response = await putRequest(
-                    `${USER_APPLICATION}/changeApplicationStatus/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
+                    `${UPDATE_STATUS_USER_APPLICATION}/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
                 );
                 
                 if (response && response.status === 200) {
