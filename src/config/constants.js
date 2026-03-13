@@ -987,15 +987,13 @@ export const FAIL_MENARCHE = "Failed to save changes";
 
 
 
-// OpthMasSpectacleUse
-
-// const DUPLICATE_SPECTACLE_USE = "Spectacle use already exists!";
-// const UPDATE_SPECTACLE_USE = "Record updated successfully";
-// const ADD_SPECTACLE_USE = "Record added successfully";
-// const FAIL_SPECTACLE_USE = "Operation failed";
-// const UPDATE_FAIL_SPECTACLE_USE = "Status update failed";
-
-
+//OpthDistanceVisionMaster
+export const FETC_OPTH_DISTANCE = "Failed to fetch records";
+export const DUPLICATE_OPTH_DISTANCE = "opthDistanceVision Name already exists";
+export const UPDATE_OPTH_DISTANCE_SUCC_MSG = "Updated successfully";
+export const ADD_OPTH_DISTANCE_SUCC_MSG = "Record added successfully";
+export const FAIL_OPTH_DISTANCE = "Failed to save changes"
+export const UPDATE_FAIL_OPTH_DISTANCE = "Failed to update status";
 
 
 //updatepatientragistration
