@@ -2,7 +2,7 @@
 
   // export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
-//  export const API_HOST = 'http://192.168.1.39:8080';
+//export const API_HOST = 'http://192.168.1.39:8080';
 
 // export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://localhost:8080';
@@ -341,6 +341,6 @@ export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INV
 
 export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
 
-
+export const MAS_COMPONENT_FAILURE_REASON = `${MASTERS}/masComponentFailureReason`;
 
 
