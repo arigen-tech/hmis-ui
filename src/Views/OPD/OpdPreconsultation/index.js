@@ -3,18 +3,15 @@ import Swal from "sweetalert2";
 import Popup from "../../../Components/popup";
 import { GET_PRECONSULTATION, SET_VITALS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 
 const OpdPreconsultation = () => {
-
-  const setLoading = (b) => {
-
-  };
+  const setLoading = (b) => {};
 
   async function fetchPendingPreconsultation() {
     try {
-
       const data = await getRequest(`${GET_PRECONSULTATION}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         console.log(data.response);
@@ -34,14 +31,14 @@ const OpdPreconsultation = () => {
     fetchPendingPreconsultation();
   }, []);
   const [visits, setVisits] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
   const itemsPerPage = 5;
 
   const filteredVisits = visits;
 
-  const [selectedPatient, setSelectedPatient] = useState(null)
+  const [selectedPatient, setSelectedPatient] = useState(null);
   const [vitalFormData, setVitalFormData] = useState({
     height: "",
     weight: "",
@@ -52,35 +49,31 @@ const OpdPreconsultation = () => {
     bmi: "",
     rr: "",
     spo2: "",
-  })
-  const [popupMessage, setPopupMessage] = useState(null)
+  });
+  const [popupMessage, setPopupMessage] = useState(null);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
       },
-    })
-  }
+    });
+  };
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1)
-  }
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
 
-
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredVisits.slice(indexOfFirst, indexOfLast)
-
-  
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredVisits.slice(indexOfFirst, indexOfLast);
 
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
-      setSelectedPatient(null) // Unselect if clicking the same patient
+      setSelectedPatient(null); // Unselect if clicking the same patient
       setVitalFormData({
         height: "",
         weight: "",
@@ -91,9 +84,9 @@ const OpdPreconsultation = () => {
         bmi: "",
         rr: "",
         spo2: "",
-      })
+      });
     } else {
-      setSelectedPatient(patient)
+      setSelectedPatient(patient);
       setVitalFormData({
         height: "",
         weight: "",
@@ -104,52 +97,58 @@ const OpdPreconsultation = () => {
         bmi: "",
         rr: "",
         spo2: "",
-      })
+      });
     }
-  }
+  };
 
   const handleVitalInputChange = (e) => {
-    const { name, value } = e.target
+    const { name, value } = e.target;
     setVitalFormData({
       ...vitalFormData,
       [name]: value,
-    })
+    });
 
-    if ((name === "height" || name === "weight") && vitalFormData.height && vitalFormData.weight) {
-      const height = name === "height" ? Number.parseFloat(value) : Number.parseFloat(vitalFormData.height)
-      const weight = name === "weight" ? Number.parseFloat(value) : Number.parseFloat(vitalFormData.weight)
+    if (
+      (name === "height" || name === "weight") &&
+      vitalFormData.height &&
+      vitalFormData.weight
+    ) {
+      const height =
+        name === "height"
+          ? Number.parseFloat(value)
+          : Number.parseFloat(vitalFormData.height);
+      const weight =
+        name === "weight"
+          ? Number.parseFloat(value)
+          : Number.parseFloat(vitalFormData.weight);
 
       if (height && weight) {
-        const heightInMeters = height / 100
-        const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(1)
+        const heightInMeters = height / 100;
+        const bmi = (weight / (heightInMeters * heightInMeters)).toFixed(1);
         setVitalFormData((prev) => ({
           ...prev,
           bmi: bmi,
-        }))
+        }));
       }
     }
-  }
+  };
 
   const handleSaveVitals = (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     const updatedPatients = visits.map((patient) => {
       if (patient.id === selectedPatient.id) {
         return {
           ...patient,
           vitals: vitalFormData,
-        }
+        };
       }
-      return patient
-    })
+      return patient;
+    });
 
-    setVisits(updatedPatients)
+    setVisits(updatedPatients);
     // showPopup(`Vital details for ${selectedPatient?.patientName} have been saved successfully!`, "success")
-  }
-
-  
-
-
+  };
 
   async function submitvitals() {
     const requestData = {
@@ -166,9 +165,9 @@ const OpdPreconsultation = () => {
       patientId: selectedPatient.patient.id,
       visitId: selectedPatient.id,
       departmentId: selectedPatient.department.id,
-      hospitalId: sessionStorage.getItem('hospitalId'),
+      hospitalId: sessionStorage.getItem("hospitalId"),
       doctorId: selectedPatient.doctor.userId,
-      lastChgBy: sessionStorage.getItem('username')
+      lastChgBy: sessionStorage.getItem("username"),
     };
     try {
       // debugger;
@@ -194,7 +193,10 @@ const OpdPreconsultation = () => {
               <h4 className="card-title p-2">OPD Pre-consultation</h4>
               <div className="d-flex justify-content-end align-items-center">
                 <div className="d-flex align-items-center">
-                  <form className="d-inline-block searchform me-4" role="search">
+                  <form
+                    className="d-inline-block searchform me-4"
+                    role="search"
+                  >
                     <div className="input-group searchinput">
                       <input
                         type="search"
@@ -234,19 +236,23 @@ const OpdPreconsultation = () => {
                     {currentItems && currentItems.length > 0 ? (
                       currentItems.map((item) => (
                         <tr
-                          key={item.id}
+                          key={item.visitId}
                           onClick={() => handleRowClick(item)}
-                          className={selectedPatient && selectedPatient.id === item.id ? "table-primary" : ""}
+                          className={
+                            selectedPatient?.visitId === item.visitId
+                              ? "table-primary"
+                              : ""
+                          }
                           style={{ cursor: "pointer" }}
                         >
-                          <td>{`${item.patient.patientFn} ${item.patient.patientMn ?? ""} ${item.patient.patientLn ?? ""}`}</td>
-                          <td>{item.patient.patientAge}</td>
-                          <td>{item.patient.patientGender.genderName}</td>
-                          <td>{item.department.departmentName}</td>
-                          <td>{item.patient.patientMobileNumber}</td>
-                          <td>{item.typeOfPatient}</td>
-                          <td>{`${item.doctor.employee.firstName} ${item.doctor.employee.middleName ?? ""} ${item.doctor.employee.lastName ?? ""}`}</td>
-                          <td>{`${item.startTime.substring(11, 16)} - ${item.endTime.substring(11, 16)}`}</td>
+                          <td>{`${item.patientName}`}</td>
+                          <td>{item.age}</td>
+                          <td>{item.gender}</td>
+                          <td>{item.departmentName}</td>
+                          <td>{item.mobleNumber}</td>
+                          <td>{item.visitType}</td>
+                          <td>{`${item.doctorName}`}</td>
+                          <td>{`${item.appointmentTime}`}</td>
                         </tr>
                       ))
                     ) : (
@@ -257,7 +263,6 @@ const OpdPreconsultation = () => {
                       </tr>
                     )}
                   </tbody>
-
                 </table>
               </div>
 
@@ -266,7 +271,9 @@ const OpdPreconsultation = () => {
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center">
-                        <h6 className="mb-0 fw-bold">Vital Details for {selectedPatient.patientName}</h6>
+                        <h6 className="mb-0 fw-bold">
+                          Vital Details for {selectedPatient.patientName}
+                        </h6>
                         <button
                           type="button"
                           className="btn btn-sm btn-outline-secondary"
@@ -281,7 +288,8 @@ const OpdPreconsultation = () => {
                             {/* Patient Height */}
                             <div className="col-md-4 d-flex">
                               <label className="form-label me-2">
-                                Patient Height<span className="text-danger">*</span>
+                                Patient Height
+                                <span className="text-danger">*</span>
                               </label>
                               <input
                                 type="text"
@@ -313,7 +321,8 @@ const OpdPreconsultation = () => {
 
                             <div className="col-md-4 d-flex">
                               <label className="form-label me-2">
-                                Temperature<span className="text-danger">*</span>
+                                Temperature
+                                <span className="text-danger">*</span>
                               </label>
                               <input
                                 type="text"
@@ -410,7 +419,11 @@ const OpdPreconsultation = () => {
                             </div>
 
                             <div className="col-12 mt-3 d-flex justify-content-end">
-                              <button type="submit" className="btn btn-primary" onClick={submitvitals}>
+                              <button
+                                type="submit"
+                                className="btn btn-primary"
+                                onClick={submitvitals}
+                              >
                                 Save Vital Details
                               </button>
                             </div>
@@ -422,24 +435,28 @@ const OpdPreconsultation = () => {
                 </div>
               )}
 
-             {/* PAGINATION */}
-             <>
-             <Pagination
-               totalItems={filteredVisits.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
-          </>
+              {/* PAGINATION */}
+              <>
+                <Pagination
+                  totalItems={filteredVisits.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              </>
+            </div>
           </div>
-          </div>
-          </div>
-          </div>
+        </div>
+      </div>
       {popupMessage && (
-        <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
       )}
     </div>
-  )
-}
+  );
+};
 
-export default OpdPreconsultation
+export default OpdPreconsultation;
