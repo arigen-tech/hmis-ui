@@ -314,7 +314,8 @@ export const MAS_BLOOD_TEST= `${MASTERS}/masBloodTest`;
 export const PATIENT_IMAGE_UPLOAD = `/registration/uploadPatientImage`;
 export const PATIENT_REGISTRATION=`/registration/createPatient`;
 export const PATIENT_FOLLOW_UP = `/registration/updatePatient`;
-export const SEARCH_PATIENT = `/registration/searchPatient`;
+export const SEARCH_PATIENT_OPD = `/registration/searchPatient`;
+export const SEARCH_PATIENT = `/patient/search`;
 export const CHECH_DUPLICATE_PATIENT = `/registration/checkDuplicatePatient`
 export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
 export const RESCHEDULE_APPOINTMENT = `/registration/rescheduleAppointment`;
@@ -327,12 +328,16 @@ export const GET_WAITING_LIST=`/patient/getWaitingList`;
 
 //billing
 export const UPDATE_OPD_PAYMENT_STATUS = `/billing/payment`;
-export const UPDATE_LAB_PAYMENT_STATUS = `/billing/updatePaymentStatus`
+export const UPDATE_LAB_RADIO_PAYMENT_STATUS = `/billing/updatePaymentStatus`
 export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
 export const PATIENT_VISIT_DETAILS = `/billing/patientBillingDetails`
 export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
 export const OPD_SERVICE_CATAGORY = "SC001";
+export const LAB_SERVICE_CATAGORY = "SC002"
+
+export const LAB_RADIO_BILLING_DATA = "/billing/pendingBillingLabRadioDetails"
+export const INVOICE_REPORTS = `/billing/billingStatus`
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INVENTORY=`/inventory`
   export const SECTION_ID_FOR_DRUGS=18;

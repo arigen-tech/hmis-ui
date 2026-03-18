@@ -1106,7 +1106,7 @@ const RadiologyBookingRegisteredPatient  = () => {
           }
         })
 
-        const labResult = await postRequest("/lab/registration", labData)
+        const labResult = await postRequest("/radiology/registerWithInv", labData)
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Lab registration failed.")
         }

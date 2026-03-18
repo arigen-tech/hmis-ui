@@ -22,6 +22,7 @@ import {
   PATIENT_IMAGE_UPLOAD,
   PATIENT_SEARCH,
   SEARCH_PATIENT,
+  SEARCH_PATIENT_OPD,
   STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
 import { DEPARTMENT_CODE_OPD,IMAGE_TITLE,IMAGE_TEXT,IMAGE_UPLOAD_SUCC_MSG,IMAGE_UPLOAD_FAIL_MSG,
@@ -530,7 +531,7 @@ const UpdatePatientRegistration = () => {
         }
       });
 
-      const response = await postRequest(`${SEARCH_PATIENT}`, searchPayload);
+      const response = await postRequest(`${SEARCH_PATIENT_OPD}`, searchPayload);
 
       if (Array.isArray(response.response)) {
         setPatients(response.response);

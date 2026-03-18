@@ -58,7 +58,7 @@ const validRoutes = [
   "/HSNMaster",
   "/view-and-update",
   "/payment",
-  "/lab-payment-success",
+  "/lab_payment_success",
   "/PackageMaster",
   "/PackageInvestigationMaster",
   "/PendingForBilling",
