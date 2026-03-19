@@ -217,6 +217,8 @@ const validRoutes = [
   "/OpdRegister",
   "/PendingForCrossMatch",
   "/PendingForIssue",
+  "/BloodInventoryStockReport",
+  "/ComponentWiseStockReport",
   
 ];
 
