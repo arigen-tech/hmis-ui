@@ -213,6 +213,7 @@ import PendingBloodRequests from './Views/BloodBank/PendingBloodRequests';
 import BloodRequestTracking from './Views/BloodBank/BloodRequestTracking';
 import OPDRegister from './Views/OPD/OpdRegister';
 import PendingForCrossMatch from './Views/BloodBank/PendingForCrossMatch';
+import PendingForIssue from './Views/BloodBank/PendingForIssue';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -461,6 +462,7 @@ function App() {
                 <Route path="/BloodRequestTracking" element={<BloodRequestTracking/>} />
                 <Route path="/OpdRegister" element={<OPDRegister/>} />
                 <Route path="/PendingForCrossMatch" element={<PendingForCrossMatch/>} />
+                <Route path="/PendingForIssue" element={<PendingForIssue/>} />
               </Route>
             </Route>
 
