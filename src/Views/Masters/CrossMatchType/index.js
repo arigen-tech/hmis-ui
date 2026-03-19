@@ -1,53 +1,95 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 
 const CrossMatchType = () => {
   const [crossMatchData, setCrossMatchData] = useState([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     id: null,
     newStatus: "",
-    crossMatchType: ""
+    name: "",
   });
-
   const [popupMessage, setPopupMessage] = useState(null);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
-
   const [formData, setFormData] = useState({
     code: "",
-    crossMatchType: ""
+    name: "",
+    turnaround: "",
+    cost: "",
+    emergencyAllowed: "",
   });
 
   const [loading, setLoading] = useState(true);
   const MAX_LENGTH = 50;
 
-  /* -------- ORIGINAL CROSS MATCH TYPE DATA -------- */
   useEffect(() => {
     setLoading(true);
     setTimeout(() => {
       setCrossMatchData([
-        { id: 1, code: "CMT001", crossMatchType: "Immediate Spin Crossmatch", status: "y", lastUpdated: "10/01/2026" },
-        { id: 2, code: "CMT002", crossMatchType: "Electronic Crossmatch", status: "y", lastUpdated: "12/01/2026" },
-        { id: 3, code: "CMT003", crossMatchType: "Antiglobulin Crossmatch", status: "y", lastUpdated: "14/01/2026" },
-        { id: 4, code: "CMT004", crossMatchType: "Full Crossmatch", status: "n", lastUpdated: "16/01/2026" },
-        { id: 5, code: "CMT005", crossMatchType: "Emergency Crossmatch", status: "n", lastUpdated: "18/01/2026" }
+        {
+          id: 1,
+          code: "CM001",
+          name: "Immediate Spin Crossmatch",
+          turnaround: "10",
+          cost: "100",
+          emergencyAllowed: "Yes",
+          status: "y",
+        },
+        {
+          id: 2,
+          code: "CM002",
+          name: "Electronic Crossmatch",
+          turnaround: "15",
+          cost: "150",
+          emergencyAllowed: "Yes",
+          status: "y",
+        },
+        {
+          id: 3,
+          code: "CM003",
+          name: "Antiglobulin Crossmatch",
+          turnaround: "20",
+          cost: "200",
+          emergencyAllowed: "No",
+          status: "y",
+        },
+        {
+          id: 4,
+          code: "CM004",
+          name: "Full Crossmatch",
+          turnaround: "30",
+          cost: "300",
+          emergencyAllowed: "No",
+          status: "n",
+        },
+        {
+          id: 5,
+          code: "CM005",
+          name: "Emergency Crossmatch",
+          turnaround: "5",
+          cost: "500",
+          emergencyAllowed: "Yes",
+          status: "y",
+        },
       ]);
       setLoading(false);
     }, 600);
   }, []);
 
-  /* -------- SEARCH -------- */
-  const filteredData = crossMatchData.filter(item =>
-  item.crossMatchType.toLowerCase().includes(searchQuery.toLowerCase()) ||
-  (item.code && item.code.toLowerCase().includes(searchQuery.toLowerCase()))
-);
+  const filteredData = crossMatchData.filter(
+    (item) =>
+      item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (item.code &&
+        item.code.toLowerCase().includes(searchQuery.toLowerCase())),
+  );
 
   useEffect(() => {
     setCurrentPage(1);
@@ -62,39 +104,51 @@ const CrossMatchType = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
- const handleEdit = (record) => {
-  setEditingRecord(record);
-  setFormData({
-    code: record.code,
-    crossMatchType: record.crossMatchType
-  });
-  setIsFormValid(true);
-  setShowForm(true);
-};
+  const handleEdit = (record) => {
+    setEditingRecord(record);
+    setFormData({
+      code: record.code,
+      name: record.name,
+      turnaround: record.turnaround,
+      cost: record.cost,
+      emergencyAllowed: record.emergencyAllowed || "",
+    });
+    setIsFormValid(true);
+    setShowForm(true);
+  };
 
   const handleSave = (e) => {
     e.preventDefault();
     if (!isFormValid) return;
 
     if (editingRecord) {
-      setCrossMatchData(prev =>
-        prev.map(item =>
+      setCrossMatchData((prev) =>
+        prev.map((item) =>
           item.id === editingRecord.id
-            ? { ...item, code: formData.code, crossMatchType: formData.crossMatchType }
-            : item
-        )
+            ? {
+                ...item,
+                code: formData.code,
+                name: formData.name,
+                turnaround: formData.turnaround,
+                cost: formData.cost,
+                emergencyAllowed: formData.emergencyAllowed,
+              }
+            : item,
+        ),
       );
       showPopup("Cross Match Type updated successfully");
     } else {
-      setCrossMatchData(prev => [
+      setCrossMatchData((prev) => [
         ...prev,
         {
           id: Date.now(),
           code: formData.code,
-          crossMatchType: formData.crossMatchType,
+          name: formData.name,
+          turnaround: formData.turnaround,
+          cost: formData.cost,
+          emergencyAllowed: formData.emergencyAllowed,
           status: "y",
-          lastUpdated: new Date().toLocaleDateString("en-GB")
-        }
+        },
       ]);
       showPopup("Cross Match Type added successfully");
     }
@@ -102,49 +156,60 @@ const CrossMatchType = () => {
     handleBack();
   };
 
-  const handleSwitchChange = (id, newStatus, crossMatchType) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, crossMatchType });
+  const handleSwitchChange = (id, newStatus, name) => {
+    setConfirmDialog({ isOpen: true, id, newStatus, name });
   };
 
   const handleConfirm = (confirmed) => {
     if (confirmed) {
-      setCrossMatchData(prev =>
-        prev.map(item =>
+      setCrossMatchData((prev) =>
+        prev.map((item) =>
           item.id === confirmDialog.id
             ? { ...item, status: confirmDialog.newStatus }
-            : item
-        )
+            : item,
+        ),
       );
       showPopup(
-        `Cross Match Type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"}`
+        `Cross Match Type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"}`,
       );
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", crossMatchType: "" });
+    setConfirmDialog({
+      isOpen: false,
+      id: null,
+      newStatus: "",
+      name: "",
+    });
   };
 
   const handleInputChange = (e) => {
-  const { name, value } = e.target;
-  const updatedForm = {
-    ...formData,
-    [name]: value
+    const { name, value } = e.target;
+    const updatedForm = {
+      ...formData,
+      [name]: value,
+    };
+    setFormData(updatedForm);
+    setIsFormValid(
+      updatedForm.code.trim() &&
+        updatedForm.name.trim() &&
+        updatedForm.turnaround.trim() &&
+        updatedForm.cost.trim() &&
+        updatedForm.emergencyAllowed,
+    );
   };
-  setFormData(updatedForm);
-  setIsFormValid(
-    updatedForm.code.trim() !== "" &&
-    updatedForm.crossMatchType.trim() !== ""
-  );
-};
 
- const handleBack = () => {
-  setShowForm(false);
-  setEditingRecord(null);
-  setFormData({
-    code: "",
-    crossMatchType: ""
-  });
-  setIsFormValid(false);
-};
-  /* -------- UI -------- */
+  const handleBack = () => {
+    setShowForm(false);
+    setEditingRecord(null);
+    setFormData({
+      code: "",
+      name: "",
+      turnaround: "",
+      cost: "",
+      emergencyAllowed: "",
+    });
+    setIsFormValid(false);
+  };
+
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -156,7 +221,7 @@ const CrossMatchType = () => {
               <input
                 type="search"
                 className="form-control"
-                placeholder="Search Cross Match Type"
+                placeholder="Search Name"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 style={{ width: "220px" }}
@@ -165,11 +230,23 @@ const CrossMatchType = () => {
 
             {!showForm ? (
               <>
-                <button className="btn btn-success" onClick={() => setShowForm(true)}>Add</button>
-                <button className="btn btn-success" onClick={() => setSearchQuery("")}>Show All</button>
+                <button
+                  className="btn btn-success"
+                  onClick={() => setShowForm(true)}
+                >
+                  Add
+                </button>
+                <button
+                  className="btn btn-success"
+                  onClick={() => setSearchQuery("")}
+                >
+                  Show All
+                </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={handleBack}>Back</button>
+              <button className="btn btn-secondary" onClick={handleBack}>
+                Back
+              </button>
             )}
           </div>
         </div>
@@ -183,18 +260,22 @@ const CrossMatchType = () => {
                 <thead>
                   <tr>
                     <th>Code</th>
-                    <th>Cross Match Type</th>
-                    <th>Last Updated</th>
+                    <th>Name</th>
+                    <th>Turnaround (min)</th>
+                    <th>cost</th>
+                    <th>Emergency Allowed</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {currentItems.map(item => (
+                  {currentItems.map((item) => (
                     <tr key={item.id}>
                       <td>{item.code}</td>
-                      <td>{item.crossMatchType}</td>
-                      <td>{item.lastUpdated}</td>
+                      <td>{item.name}</td>
+                      <td>{item.turnaround}</td>
+                      <td>{item.cost}</td>
+                      <td>{item.emergencyAllowed}</td>
                       <td>
                         <div className="form-check form-switch">
                           <input
@@ -205,7 +286,7 @@ const CrossMatchType = () => {
                               handleSwitchChange(
                                 item.id,
                                 item.status === "y" ? "n" : "y",
-                                item.crossMatchType
+                                item.name,
                               )
                             }
                           />
@@ -238,7 +319,7 @@ const CrossMatchType = () => {
           ) : (
             <form onSubmit={handleSave}>
               <div className="row">
-                <div className="form-group col-md-6">
+                <div className="form-group col-md-4">
                   <label> Code </label>
                   <input
                     type="text"
@@ -250,23 +331,71 @@ const CrossMatchType = () => {
                     required
                   />
                 </div>
-              <div className="form-group col-md-6">
-                <label>Cross Match Type <span className="text-danger">*</span></label>
-                <input
-                  type="text"
-                  name="crossMatchType"
-                  className="form-control"
-                  value={formData.crossMatchType}
-                  maxLength={MAX_LENGTH}
-                  onChange={handleInputChange}
-                  placeholder="cross match type"
-                  required
-                />
+                <div className="form-group col-md-4">
+                  <label>
+                    Name <span className="text-danger">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    name="name"
+                    className="form-control"
+                    value={formData.name}
+                    maxLength={MAX_LENGTH}
+                    onChange={handleInputChange}
+                    placeholder="cross match type"
+                    required
+                  />
+                </div>
+                <div className="form-group col-md-4">
+                  <label>Turnaround</label>
+                  <input
+                    type="text"
+                    name="turnaround"
+                    className="form-control"
+                    value={formData.turnaround}
+                    onChange={handleInputChange}
+                    placeholder="turnaround"
+                  />
+                </div>
+                <div className="form-group col-md-4 mt-3">
+                  <label>Cost</label>
+                  <input
+                    type="text"
+                    name="cost"
+                    className="form-control"
+                    value={formData.cost}
+                    onChange={handleInputChange}
+                    placeholder="cost"
+                  />
+                </div>
+                <div className="form-group col-md-4 mt-3">
+                  <label>Emergency Allowed</label>
+                  <select
+                    name="emergencyAllowed"
+                    className="form-select"
+                    value={formData.emergencyAllowed}
+                    onChange={handleInputChange}
+                  >
+                    <option value="">Select</option>
+                    <option value="Yes">Yes</option>
+                    <option value="No">No</option>
+                  </select>
+                </div>
               </div>
-</div>
               <div className="mt-3 text-end">
-                <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
-                <button className="btn btn-danger" type="button" onClick={handleBack}>Cancel</button>
+                <button
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  Save
+                </button>
+                <button
+                  className="btn btn-danger"
+                  type="button"
+                  onClick={handleBack}
+                >
+                  Cancel
+                </button>
               </div>
             </form>
           )}
@@ -281,18 +410,30 @@ const CrossMatchType = () => {
                     <h5>Confirm Status Change</h5>
                   </div>
                   <div className="modal-body">
-                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.crossMatchType}</strong>?
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === "y"
+                      ? "activate"
+                      : "deactivate"}{" "}
+                    <strong>{confirmDialog.name}</strong>?
                   </div>
                   <div className="modal-footer">
-                    <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                    <button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
+                      No
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
+                      Yes
+                    </button>
                   </div>
                 </div>
               </div>
             </div>
           )}
-
         </div>
       </div>
     </div>
