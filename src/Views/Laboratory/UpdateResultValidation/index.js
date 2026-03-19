@@ -1012,17 +1012,17 @@ const UpdateResultValidation = () => {
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
                   <button 
-                    className="btn btn-success me-3" 
+                    className="btn btn-warning me-3" 
                     onClick={handleUpdate} 
                     disabled={loading || editableRows.length === 0}
                   >
-                    <i className="mdi mdi-check-all"></i> UPDATE 
+UPDATE 
                   </button>
                   <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
-                    <i className="mdi mdi-refresh"></i> RESET
+RESET
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
-                    <i className="mdi mdi-arrow-left"></i> BACK
+BACK
                   </button>
                 </div>
               </div>
@@ -1050,10 +1050,7 @@ const UpdateResultValidation = () => {
               ) : (
                 <>
                   {/* Patient Search Section */}
-                  <div className="card mb-3">
-                    <div className="card-header py-3   border-bottom-1">
-                      <h6 className="mb-0 fw-bold">PATIENT SEARCH</h6>
-                    </div>
+                  
                     <div className="card-body">
                       <form>
                         <div className="row g-4 align-items-end">
@@ -1081,7 +1078,7 @@ const UpdateResultValidation = () => {
                           </div>
                           <div className="col-md-3 d-flex">
                             <button type="button" className="btn btn-primary me-2">
-                              <i className="fa fa-search"></i> Search
+Search
                             </button>
                             <button
                               type="button"
@@ -1099,7 +1096,6 @@ const UpdateResultValidation = () => {
                         </div>
                       </form>
                     </div>
-                  </div>
 
                   {/* Table */}
                   <div className="table-responsive packagelist">

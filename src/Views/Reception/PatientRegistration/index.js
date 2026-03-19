@@ -48,7 +48,7 @@ const PatientRegistration = () => {
   }, []);
 
   // Add state for registration mode
-  const [registrationMode, setRegistrationMode] = useState("registerOnly"); // "registerOnly" or "withAppointment"
+  const [registrationMode, setRegistrationMode] = useState("withAppointment"); // "registerOnly" or "withAppointment"
 
   const [errors, setErrors] = useState({});
   const [loading, setLoading] = useState(false);

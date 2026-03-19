@@ -393,7 +393,7 @@ const PendingForMandatoryTestingList = () => {
                                   className="btn btn-success btn-sm"
                                   onClick={handleAddDocument}
                                 >
-                                  Add
+                                  +
                                 </button>
 
                                 <button
@@ -401,7 +401,7 @@ const PendingForMandatoryTestingList = () => {
                                   className="btn btn-danger btn-sm"
                                   onClick={() => handleRemoveDocument(index)}
                                 >
-                                  Delete
+                                  X
                                 </button>
                               </div>
                             </td>

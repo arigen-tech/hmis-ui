@@ -349,7 +349,7 @@ const SampleRejectionReport = () => {
                                     
                                     <button
                                         type="button"
-                                        className="btn btn-success"
+                                        className="btn btn-warning"
                                         onClick={handleViewReport}
                                         disabled={isSearching || !fromDate || !toDate}
                                     >
@@ -358,7 +358,7 @@ const SampleRejectionReport = () => {
 
                                     <button
                                         type="button"
-                                        className="btn btn-primary"
+                                        className="btn btn-warning"
                                         onClick={handlePrintReport}
                                         disabled={isGenerating || !fromDate || !toDate}
                                     >
@@ -374,7 +374,7 @@ const SampleRejectionReport = () => {
                                     
                                     <button
                                         type="button"
-                                        className="btn btn-warning"
+                                        className="btn btn-secondary"
                                         onClick={handleReset}
                                         disabled={isSearching || isGenerating}
                                     >

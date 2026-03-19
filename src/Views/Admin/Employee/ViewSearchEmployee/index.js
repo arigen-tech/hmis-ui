@@ -62,6 +62,8 @@ const ViewSearchEmployee = () => {
     fromDate: "",
     designationId: "",
     yearOfExperience: "",
+    qualifications: "",
+    medicalRegistrationNo: "",
     languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
     qualification: [
       {
@@ -267,6 +269,8 @@ const ViewSearchEmployee = () => {
       { field: "employmentTypeId", label: "Employment Type" },
       { field: "roleId", label: "Role" },
       { field: "designationId", label: "Designation" },
+       { field: "qualifications", label: "Qualifications" },
+    { field: "medicalRegistrationNo", label: "Medical Registration Number" }, 
     ];
 
     // Check basic fields
@@ -1478,6 +1482,8 @@ const ViewSearchEmployee = () => {
         "",
       yearOfExperience: completeEmployeeData.yearOfExperience ?? "",
       profileDescription: completeEmployeeData.profileDescription || "",
+      qualifications: completeEmployeeData.qualification || "",
+    medicalRegistrationNo: completeEmployeeData.medicalRegistrationNo || "",
     };
 
     // Set specialty centers if available
@@ -1767,6 +1773,8 @@ const ViewSearchEmployee = () => {
     );
     formDataToSend.append("yearOfExperience", formData.yearOfExperience || "");
 
+    formDataToSend.append("qualifications", formData.qualifications || "");
+formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo || "");
     if (formData.designationId) {
       formDataToSend.append("masDesignationId", formData.designationId);
     }
@@ -2671,6 +2679,49 @@ const ViewSearchEmployee = () => {
                       onChange={handleInputChange}
                     />
                   </div>
+
+<div className="col-md-4">
+    <label className="form-label">
+        Qualifications <span className="text-danger">*</span>
+    </label>
+    <input
+        type="text"
+        required
+        className="form-control"
+        id="qualifications"
+        placeholder="Enter qualifications"
+        onChange={handleInputChange}
+        value={formData.qualifications}
+        maxLength={mlenght}
+    />
+    {getErrorMessage("qualifications") && (
+        <div className="invalid-feedback">
+            {getErrorMessage("qualifications")}
+        </div>
+    )}
+</div>
+
+{/* NEW: Medical Registration Number field */}
+<div className="col-md-4">
+    <label className="form-label">
+        Medical Registration Number <span className="text-danger">*</span>
+    </label>
+    <input
+        type="text"
+        required
+        className="form-control"
+        id="medicalRegistrationNo"
+        placeholder="Medical Registration Number"
+        onChange={handleInputChange}
+        value={formData.medicalRegistrationNo}
+        maxLength={mlenght}
+    />
+    {getErrorMessage("medicalRegistrationNo") && (
+        <div className="invalid-feedback">
+            {getErrorMessage("medicalRegistrationNo")}
+        </div>
+    )}
+</div>
                   <div className="col-md-4">
                     <label className="form-label">Type of Employee *</label>
                     <select

@@ -768,7 +768,9 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                           Generating...
                         </>
                       ) : (
-                        "View/Download"
+                       <>
+                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                      </>
                       )}
                     </button>
 
@@ -784,7 +786,9 @@ const PhysicalStockAdjustmentViewUpdate = () => {
                           Printing...
                         </>
                       ) : (
-                        "Print"
+                       <>
+                          <i className="fa fa-print me-2"></i> PRINT
+                        </>
                       )}
                     </button>
                   </div>

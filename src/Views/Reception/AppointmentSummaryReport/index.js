@@ -3,19 +3,22 @@ import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest } from "../../../service/apiService";
+import { DOCTOR_BY_SPECIALITY, FILTER_OPD_DEPT, GET_APPOINTMENT_SUMMARY_REPORT_END_URL,REQUEST_PARAM_HOSPITAL_ID,REQUEST_PARAM_DOCTOR_ID,REQUEST_PARAM_DEPARTMENT_ID,REQUEST_PARAM_TO_DATE,REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_FLAG, APPOINTMENT_SUMMARY_DOCTOR_REPORT_END_URL, APPOINTMENT_SUMMARY_DEPT_REPORT_END_URL, STATUS_D, STATUS_P, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL } from "../../../config/apiConfig";
+import { DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG, EXCEDED_MONTH_SELECTION_WARN, FAIL_TO_LOAD_APPOINTMENT_SUMMARY_ERR_MSG, FAIL_TO_LOAD_DEPARTMENTS, FAIL_TO_LOAD_DOCTORS_ERR_MSG, INVALID_DATE_PICK_WARN_MSG, MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT, REPORT_GENERATION_ERR_MSG, SELECT_DATE_WARN_MSG, SELECT_REPORT_TYPE_WARN_MSG } from "../../../config/constants";
 
 const AppointmentSummaryReport = () => {
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
   const [selectedDepartment, setSelectedDepartment] = useState("");
   const [selectedDoctor, setSelectedDoctor] = useState("");
-  const [reportType, setReportType] = useState("summary"); // summary, doctor, department
+  const [reportType, setReportType] = useState(""); // summary, doctor, department
   
   const [departmentOptions, setDepartmentOptions] = useState([]);
-  const [doctorOptions, setDoctorOptions] = useState([]);
   const [filteredDoctorOptions, setFilteredDoctorOptions] = useState([]);
   
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -25,67 +28,12 @@ const AppointmentSummaryReport = () => {
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
 
-  const departments = [
-    { id: 1, name: "Cardiology", code: "CARD" },
-    { id: 2, name: "Neurology", code: "NEURO" },
-    { id: 3, name: "Orthopedics", code: "ORTHO" },
-    { id: 4, name: "Pediatrics", code: "PED" },
-    { id: 5, name: "Dermatology", code: "DERMA" },
-    { id: 6, name: "Ophthalmology", code: "OPHTHA" },
-    { id: 7, name: "General Medicine", code: "GM" },
-    { id: 8, name: "ENT", code: "ENT" },
-    { id: 9, name: "Gynecology", code: "GYNO" },
-    { id: 10, name: "Urology", code: "URO" }
-  ];
-
-  const doctors = [
-    { id: 1, name: "Dr. Anil Sharma", departmentId: 1, department: "Cardiology" },
-    { id: 2, name: "Dr. Priya Patel", departmentId: 1, department: "Cardiology" },
-    { id: 3, name: "Dr. Rajesh Kumar", departmentId: 2, department: "Neurology" },
-    { id: 4, name: "Dr. Sunita Reddy", departmentId: 2, department: "Neurology" },
-    { id: 5, name: "Dr. Amit Gupta", departmentId: 3, department: "Orthopedics" },
-    { id: 6, name: "Dr. Neha Singh", departmentId: 3, department: "Orthopedics" },
-    { id: 7, name: "Dr. Vikram Joshi", departmentId: 4, department: "Pediatrics" },
-    { id: 8, name: "Dr. Meera Nair", departmentId: 4, department: "Pediatrics" },
-    { id: 9, name: "Dr. Sanjay Verma", departmentId: 7, department: "General Medicine" },
-    { id: 10, name: "Dr. Anjali Desai", departmentId: 7, department: "General Medicine" }
-  ];
-
-  const sampleSummaryData = [
-    { id: 1, date: "01-Jan-2025", booked: 85, completed: 72, cancelled: 8, noShow: 5 },
-    { id: 2, date: "02-Jan-2025", booked: 92, completed: 80, cancelled: 7, noShow: 5 },
-    { id: 3, date: "03-Jan-2025", booked: 78, completed: 68, cancelled: 6, noShow: 4 },
-    { id: 4, date: "04-Jan-2025", booked: 105, completed: 92, cancelled: 9, noShow: 4 },
-    { id: 5, date: "05-Jan-2025", booked: 88, completed: 75, cancelled: 8, noShow: 5 },
-    { id: 6, date: "06-Jan-2025", booked: 95, completed: 82, cancelled: 8, noShow: 5 },
-    { id: 7, date: "07-Jan-2025", booked: 82, completed: 70, cancelled: 7, noShow: 5 },
-    { id: 8, date: "08-Jan-2025", booked: 110, completed: 98, cancelled: 8, noShow: 4 }
-  ];
-
-  const sampleDoctorWiseData = [
-    { id: 1, doctorName: "Dr. John Smith", booked: 160, completed: 145, cancelled: 7, noShow: 8 },
-    { id: 2, doctorName: "Dr. Sarah Johnson", booked: 140, completed: 125, cancelled: 5, noShow: 10 },
-    { id: 3, doctorName: "Dr. Michael Brown", booked: 180, completed: 160, cancelled: 10, noShow: 10 },
-    { id: 4, doctorName: "Dr. Emily Davis", booked: 120, completed: 105, cancelled: 8, noShow: 7 },
-    { id: 5, doctorName: "Dr. Robert Wilson", booked: 200, completed: 180, cancelled: 12, noShow: 8 },
-    { id: 6, doctorName: "Dr. Lisa Anderson", booked: 150, completed: 135, cancelled: 6, noShow: 9 }
-  ];
-
-  const sampleDepartmentWiseData = [
-    { id: 1, department: "OPD", booked: 80, completed: 65, cancelled: 7, noShow: 8 },
-    { id: 2, department: "Dental", booked: 40, completed: 30, cancelled: 3, noShow: 7 },
-    { id: 3, department: "Cardiology", booked: 120, completed: 105, cancelled: 8, noShow: 7 },
-    { id: 4, department: "Orthopedics", booked: 90, completed: 75, cancelled: 10, noShow: 5 },
-    { id: 5, department: "Pediatrics", booked: 110, completed: 95, cancelled: 6, noShow: 9 },
-    { id: 6, department: "Gynecology", booked: 70, completed: 60, cancelled: 5, noShow: 5 },
-    { id: 7, department: "Neurology", booked: 85, completed: 70, cancelled: 8, noShow: 7 },
-    { id: 8, department: "Dermatology", booked: 60, completed: 50, cancelled: 4, noShow: 6 }
-  ];
+  const hospitalId = sessionStorage.getItem("hospitalId"); 
 
   useEffect(() => {
     const today = new Date();
     const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    sixMonthsAgo.setMonth(today.getMonth() - MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT);
     
     const formatDate = (date) => {
       const year = date.getFullYear();
@@ -96,24 +44,59 @@ const AppointmentSummaryReport = () => {
     
     setFromDate(formatDate(sixMonthsAgo));
     setToDate(formatDate(today));
-    setDepartmentOptions(departments);
-    setDoctorOptions(doctors);
-    setFilteredDoctorOptions(doctors);
+    
+    // Fetch departments on component mount
+    fetchDepartments();
   }, []);
 
+  // Check if all mandatory fields are selected to enable buttons
+  const areMandatoryFieldsSelected = () => {
+    return fromDate && toDate && reportType;
+  };
+
+  // Fetch departments from API
+  const fetchDepartments = async () => {
+    try {
+      setIsLoading(true);
+      const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      if (response?.status === 200 && response?.response) {
+        // Filter departments where departmentCode is "OPD"
+        const opdDepartments = response.response;
+        setDepartmentOptions(opdDepartments);
+      }
+    } catch (error) {
+      console.error("Error fetching departments:", error);
+      showPopup(FAIL_TO_LOAD_DEPARTMENTS, "error");
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  // Fetch doctors when department is selected
   useEffect(() => {
     if (selectedDepartment) {
-      const filtered = doctorOptions.filter(doctor => 
-        doctor.departmentId === parseInt(selectedDepartment)
-      );
-      setFilteredDoctorOptions(filtered);
-      if (selectedDoctor && !filtered.some(d => d.id === parseInt(selectedDoctor))) {
-        setSelectedDoctor("");
-      }
+      fetchDoctorsByDepartment(selectedDepartment);
     } else {
-      setFilteredDoctorOptions(doctorOptions);
+      setFilteredDoctorOptions([]);
+      setSelectedDoctor("");
     }
-  }, [selectedDepartment, doctorOptions, selectedDoctor]);
+  }, [selectedDepartment]);
+
+  const fetchDoctorsByDepartment = async (departmentId) => {
+    try {
+      const response = await getRequest(`${DOCTOR_BY_SPECIALITY}${departmentId}`);
+      if (response?.status === 200 && response?.response) {
+        const doctors = response.response.map(doc => ({
+          id: doc.userId,
+          name: `${doc.firstName} ${doc.middleName || ''} ${doc.lastName || ''}`.trim()
+        }));
+        setFilteredDoctorOptions(doctors);
+      }
+    } catch (error) {
+      console.error("Error fetching doctors:", error);
+      showPopup(FAIL_TO_LOAD_DOCTORS_ERR_MSG, "error");
+    }
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -135,10 +118,10 @@ const AppointmentSummaryReport = () => {
       const monthsDiff = (to.getFullYear() - from.getFullYear()) * 12 + 
                          (to.getMonth() - from.getMonth());
       
-      if (monthsDiff > 6) {
-        showPopup("Date range cannot exceed 6 months", "warning");
+      if (monthsDiff > MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT) {
+        showPopup(EXCEDED_MONTH_SELECTION_WARN(MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT), "warning");
         const maxToDate = new Date(from);
-        maxToDate.setMonth(from.getMonth() + 6);
+        maxToDate.setMonth(from.getMonth() + MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT);
         const year = maxToDate.getFullYear();
         const month = String(maxToDate.getMonth() + 1).padStart(2, '0');
         const day = String(maxToDate.getDate()).padStart(2, '0');
@@ -157,10 +140,10 @@ const AppointmentSummaryReport = () => {
       const monthsDiff = (to.getFullYear() - from.getFullYear()) * 12 + 
                          (to.getMonth() - from.getMonth());
       
-      if (monthsDiff > 6) {
-        showPopup("Date range cannot exceed 6 months", "warning");
+      if (monthsDiff > MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT) {
+        showPopup(EXCEDED_MONTH_SELECTION_WARN(MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT), "warning");
         const minFromDate = new Date(to);
-        minFromDate.setMonth(to.getMonth() - 6);
+        minFromDate.setMonth(to.getMonth() - MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT);
         const year = minFromDate.getFullYear();
         const month = String(minFromDate.getMonth() + 1).padStart(2, '0');
         const day = String(minFromDate.getDate()).padStart(2, '0');
@@ -172,6 +155,7 @@ const AppointmentSummaryReport = () => {
   const handleDepartmentChange = (e) => {
     const deptId = e.target.value;
     setSelectedDepartment(deptId);
+    setSelectedDoctor(""); // Reset doctor when department changes
   };
 
   const handleDoctorChange = (e) => {
@@ -179,9 +163,14 @@ const AppointmentSummaryReport = () => {
     setSelectedDoctor(doctorId);
   };
 
+  const handleReportTypeChange = (e) => {
+    setReportType(e.target.value);
+    setShowReport(false); // Hide table when report type changes
+  };
+
   const validateFilters = () => {
     if (!fromDate || !toDate) {
-      showPopup("Please select both from and to dates", "warning");
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
       return false;
     }
     
@@ -189,15 +178,21 @@ const AppointmentSummaryReport = () => {
     const to = new Date(toDate);
     
     if (from > to) {
-      showPopup("From date cannot be after to date", "warning");
+      showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
       return false;
     }
     
     const monthsDiff = (to.getFullYear() - from.getFullYear()) * 12 + 
                        (to.getMonth() - from.getMonth());
     
-    if (monthsDiff > 6) {
-      showPopup("Date range cannot exceed 6 months", "warning");
+    if (monthsDiff > MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT) {
+      showPopup(EXCEDED_MONTH_SELECTION_WARN(MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT), "warning");
+      return false;
+    }
+
+    // Check if report type is selected
+    if (!reportType) {
+      showPopup(SELECT_REPORT_TYPE_WARN_MSG, "warning");
       return false;
     }
     
@@ -205,54 +200,80 @@ const AppointmentSummaryReport = () => {
   };
 
   const fetchAppointmentSummary = async () => {
+    if (!validateFilters()) return;
+    
     try {
-      setIsGenerating(true);
+      setIsSearching(true);
       
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      let data = [];
-      
-      switch(reportType) {
-        case "summary":
-          data = sampleSummaryData;
-          break;
-        case "doctor":
-          data = sampleDoctorWiseData;
-          break;
-        case "department":
-          data = sampleDepartmentWiseData;
-          break;
-        default:
-          data = sampleSummaryData;
+      let flag = 0; // Default for department wise
+      if (reportType === "doctor") {
+        flag = 1; // Doctor wise
+      } else if (reportType === "summary") {
+        // For summary, we might need to handle differently based on your API
+        // This example assumes summary might be department wise with no filters
+        flag = 0;
       }
+
+      const params = new URLSearchParams();
+      params.append(REQUEST_PARAM_HOSPITAL_ID, hospitalId);
+      if (selectedDepartment) params.append(REQUEST_PARAM_DEPARTMENT_ID, selectedDepartment);
+      if (selectedDoctor && reportType === "doctor") params.append(REQUEST_PARAM_DOCTOR_ID, selectedDoctor);
+      params.append(REQUEST_PARAM_FROM_DATE, fromDate);
+      params.append(REQUEST_PARAM_TO_DATE, toDate);
+      params.append(REQUEST_PARAM_FLAG, flag);
+
+      const response = await getRequest(`${GET_APPOINTMENT_SUMMARY_REPORT_END_URL}?${params.toString()}`);
       
-      if (selectedDepartment && reportType === "doctor") {
-        const filtered = data.filter(item => {
-          const doctor = doctors.find(d => d.name === item.doctorName);
-          return doctor && doctor.departmentId === parseInt(selectedDepartment);
-        });
-        data = filtered;
+      if (response?.status === 200 && response?.response) {
+        let data = response.response;
+        
+        // Format the data based on report type
+        if (reportType === "doctor") {
+          data = data.map(item => ({
+            id: item.doctorId,
+            doctorName: item.doctorName,
+            booked: item.totalCount,
+            completed: item.completedCount,
+            cancelled: item.cancelledCount,
+            noShow: item.noShowCount,
+            pending: item.pendingCount
+          }));
+        } else if (reportType === "department") {
+          data = data.map(item => ({
+            id: item.departmentId,
+            department: item.departmentName,
+            booked: item.totalCount,
+            completed: item.completedCount,
+            cancelled: item.cancelledCount,
+            noShow: item.noShowCount,
+            pending: item.pendingCount
+          }));
+        }
+        
+        setReportData(data);
+        setShowReport(true);
+      } else {
+        setReportData([]);
+        setShowReport(true);
+        showPopup(DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG, "info");
       }
-      
-      setReportData(data);
-      setShowReport(true);
       
     } catch (error) {
       console.error("Error fetching appointment summary:", error);
-      showPopup("Failed to fetch appointment summary", "error");
+      showPopup(FAIL_TO_LOAD_APPOINTMENT_SUMMARY_ERR_MSG, "error");
       setReportData([]);
       setShowReport(true);
     } finally {
-      setIsGenerating(false);
+      setIsSearching(false);
     }
   };
 
-  const generatePdfReport = async (flag = "D") => {
+  const generatePdfReport = async (flag = STATUS_D) => {
     if (!validateFilters()) return;
 
-    if (flag === "D") {
+    if (flag === STATUS_D) {
       setIsViewLoading(true);
-    } else if (flag === "P") {
+    } else if (flag === STATUS_P) {
       setIsPrintLoading(true);
     }
     
@@ -260,19 +281,25 @@ const AppointmentSummaryReport = () => {
 
     try {
       const params = new URLSearchParams();
-      params.append('flag', flag);
-      params.append('reportType', reportType);
-      params.append('fromDate', fromDate);
-      params.append('toDate', toDate);
+      params.append(`${REQUEST_PARAM_HOSPITAL_ID}`, hospitalId);
+      params.append(`${REQUEST_PARAM_FLAG}`, flag);
       
       if (selectedDepartment) {
-        params.append('departmentId', selectedDepartment);
+        params.append(`${REQUEST_PARAM_DEPARTMENT_ID}`, selectedDepartment);
       }
       if (selectedDoctor) {
-        params.append('doctorId', selectedDoctor);
+        params.append(`${REQUEST_PARAM_DOCTOR_ID}`, selectedDoctor);
       }
+      params.append(`${REQUEST_PARAM_FROM_DATE}`, fromDate);
+      params.append(`${REQUEST_PARAM_TO_DATE}`, toDate);
 
-      const url = `/reports/appointmentSummaryReport?${params.toString()}`;
+      // Select the appropriate endpoint based on report type
+      let url;
+      if (reportType === "doctor") {
+        url = `${APPOINTMENT_SUMMARY_DOCTOR_REPORT_END_URL}?${params.toString()}`;
+      } else if (reportType === "department") {
+        url = `${APPOINTMENT_SUMMARY_DEPT_REPORT_END_URL}?${params.toString()}`;
+      } 
 
       const response = await fetch(url, {
         method: "GET",
@@ -285,50 +312,41 @@ const AppointmentSummaryReport = () => {
         throw new Error(`Failed to generate PDF: ${response.statusText}`);
       }
 
-      if (flag === "D") {
+      if (flag === STATUS_D) {
         const blob = await response.blob();
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
-      } else if (flag === "P") {
-        const blob = await response.blob();
-        const fileURL = window.URL.createObjectURL(blob);
-        const printWindow = window.open(fileURL);
-        printWindow.onload = () => {
-          printWindow.print();
-        };
       }
 
     } catch (error) {
       console.error("Error generating PDF", error);
-      showPopup("Failed to generate report", "error");
+      showPopup(REPORT_GENERATION_ERR_MSG, "error");
     } finally {
-      if (flag === "D") {
+      if (flag === STATUS_D) {
         setIsViewLoading(false);
-      } else if (flag === "P") {
+      } else if (flag === STATUS_P) {
         setIsPrintLoading(false);
       }
     }
   };
 
   const handleSearch = () => {
-    if (!validateFilters()) return;
-    
     fetchAppointmentSummary();
     setCurrentPage(1);
   };
 
   const handleViewReport = () => {
-    generatePdfReport("D");
+    generatePdfReport(STATUS_D);
   };
 
   const handlePrintReport = () => {
-    generatePdfReport("P");
+    generatePdfReport(STATUS_P);
   };
 
   const handleReset = () => {
     const today = new Date();
     const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    sixMonthsAgo.setMonth(today.getMonth() - MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT);
     
     const formatDate = (date) => {
       const year = date.getFullYear();
@@ -341,7 +359,7 @@ const AppointmentSummaryReport = () => {
     setToDate(formatDate(today));
     setSelectedDepartment("");
     setSelectedDoctor("");
-    setReportType("summary");
+    setReportType("");
     setShowReport(false);
     setReportData([]);
     setCurrentPage(1);
@@ -355,13 +373,13 @@ const AppointmentSummaryReport = () => {
   const getReportColumns = () => {
     switch(reportType) {
       case "summary":
-        return ["Date", "Booked", "Completed", "Cancelled", "No-Show"];
+        return ["Date", "Booked","Pending", "Completed", "Cancelled", "No-Show"];
       case "doctor":
-        return ["Doctor Name", "Booked", "Completed", "Cancelled", "No-Show"];
+        return ["Doctor Name", "Booked","Pending", "Completed", "Cancelled", "No-Show"];
       case "department":
-        return ["Department", "Booked", "Completed", "Cancelled", "No-Show"];
+        return ["Department", "Booked","Pending", "Completed", "Cancelled", "No-Show"];
       default:
-        return ["Date", "Booked", "Completed", "Cancelled", "No-Show"];
+        return ["Date", "Booked","Pending", "Completed", "Cancelled", "No-Show"];
     }
   };
 
@@ -425,7 +443,7 @@ const AppointmentSummaryReport = () => {
                     <option value="">All Departments</option>
                     {departmentOptions.map((dept) => (
                       <option key={dept.id} value={dept.id}>
-                        {dept.name}
+                        {dept.departmentName}
                       </option>
                     ))}
                   </select>
@@ -437,7 +455,7 @@ const AppointmentSummaryReport = () => {
                     className="form-select mt-1" 
                     value={selectedDoctor} 
                     onChange={handleDoctorChange}
-                    disabled={!selectedDepartment && doctorOptions.length > 0}
+                    disabled={!selectedDepartment}
                   >
                     <option value="">All Doctors</option>
                     {filteredDoctorOptions.map((doctor) => (
@@ -446,13 +464,11 @@ const AppointmentSummaryReport = () => {
                       </option>
                     ))}
                   </select>
-                  
                 </div>
                 
                 <div className="col-12 mb-3">
-                  <label className="form-label fw-bold d-block mb-2">Report Type</label>
+                  <label className="form-label fw-bold d-block mb-2">Report Type <span className="text-danger">*</span></label>
                   <div className="d-flex flex-wrap gap-3">
-                    
                     <div className="form-check">
                       <input
                         className="form-check-input"
@@ -461,7 +477,7 @@ const AppointmentSummaryReport = () => {
                         id="doctor"
                         value="doctor"
                         checked={reportType === "doctor"}
-                        onChange={(e) => setReportType(e.target.value)}
+                        onChange={handleReportTypeChange}
                       />
                       <label className="form-check-label" htmlFor="doctor">
                         Doctor Wise
@@ -475,7 +491,7 @@ const AppointmentSummaryReport = () => {
                         id="department"
                         value="department"
                         checked={reportType === "department"}
-                        onChange={(e) => setReportType(e.target.value)}
+                        onChange={handleReportTypeChange}
                       />
                       <label className="form-check-label" htmlFor="department">
                         Department Wise
@@ -491,9 +507,9 @@ const AppointmentSummaryReport = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSearch}
-                    disabled={isGenerating}
+                    disabled={!areMandatoryFieldsSelected() || isSearching }
                   >
-                    {isGenerating ? (
+                    {isSearching ? (
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         Searching...
@@ -506,9 +522,9 @@ const AppointmentSummaryReport = () => {
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-success"
+                      className="btn btn-primary btn-sm"
                       onClick={handleViewReport}
-                      disabled={isGenerating || isViewLoading || !fromDate || !toDate}
+                      disabled={!areMandatoryFieldsSelected() || isSearching || isViewLoading }
                     >
                       {isViewLoading ? (
                         <>
@@ -516,14 +532,17 @@ const AppointmentSummaryReport = () => {
                           Generating...
                         </>
                       ) : (
-                        "View Report"
+                        <>
+                      <i className="fa fa-eye me-2"></i>
+                      VIEW / DOWNLOAD
+                    </>
                       )}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-warning btn-sm"
                       onClick={handlePrintReport}
-                      disabled={isGenerating || isPrintLoading || !fromDate || !toDate}
+                      disabled={!areMandatoryFieldsSelected() || isSearching || isPrintLoading }
                     >
                       {isPrintLoading ? (
                         <>
@@ -531,14 +550,17 @@ const AppointmentSummaryReport = () => {
                           Printing...
                         </>
                       ) : (
-                        "Print Report"
+                        <>
+                      <i className="fa fa-print me-2"></i>
+                      PRINT
+                    </>
                       )}
                     </button>
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={handleReset}
-                      disabled={isGenerating}
+                      disabled={isSearching}
                     >
                       Reset
                     </button>
@@ -546,19 +568,18 @@ const AppointmentSummaryReport = () => {
                 </div>
               </div>
 
-              {isGenerating && (
-                <div className="text-center py-4">
+              {(isLoading) && (
+                
                   <LoadingScreen />
-                </div>
               )}
 
-              {!isGenerating && showReport && (
+              {!isSearching  && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
                       <div className="card-header">
                         <h5 className="card-title mb-0">
-                          Appointment Summary Report - {reportType.charAt(0).toUpperCase() + reportType.slice(1)}
+                          Appointment Summary Report - {reportType === "doctor" ? "Doctor Wise" : "Department Wise"}
                         </h5>
                       </div>
                       <div className="card-body">
@@ -575,31 +596,26 @@ const AppointmentSummaryReport = () => {
                               {reportData.length > 0 ? (
                                 currentItems.map((row, index) => (
                                   <tr key={index}>
-                                    {reportType === "summary" && (
-                                      <>
-                                        <td>{row.date}</td>
-                                        <td className="text-end">{row.booked}</td>
-                                        <td className="text-end">{row.completed}</td>
-                                        <td className="text-end">{row.cancelled}</td>
-                                        <td className="text-end">{row.noShow}</td>
-                                      </>
-                                    )}
                                     {reportType === "doctor" && (
                                       <>
                                         <td>{row.doctorName}</td>
                                         <td className="text-end">{row.booked}</td>
+                                        <td className="text-end">{row.pending}</td>
                                         <td className="text-end">{row.completed}</td>
                                         <td className="text-end">{row.cancelled}</td>
                                         <td className="text-end">{row.noShow}</td>
+                                        
                                       </>
                                     )}
                                     {reportType === "department" && (
                                       <>
                                         <td>{row.department}</td>
                                         <td className="text-end">{row.booked}</td>
+                                        <td className="text-end">{row.pending}</td>
                                         <td className="text-end">{row.completed}</td>
                                         <td className="text-end">{row.cancelled}</td>
                                         <td className="text-end">{row.noShow}</td>
+                                        
                                       </>
                                     )}
                                   </tr>

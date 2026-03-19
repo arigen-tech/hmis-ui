@@ -28,7 +28,7 @@ const OpdPaymentSuccess = () => {
 
   useEffect(() => {
     const handleBack = () => {
-      navigate("/PendingForBilling", { replace: true });
+      navigate("/OPDBillingDetails", { replace: true });
     };
 
     window.addEventListener("popstate", handleBack);
@@ -458,7 +458,7 @@ const OpdPaymentSuccess = () => {
 
                   <button
                     className="btn btn-secondary d-flex align-items-center gap-2"
-                    onClick={() => navigate("/PendingForBilling")}
+                    onClick={() => navigate("/OPDBillingDetails")}
                   >
                     <i className="fa fa-arrow-left me-2"></i>
                     Back to Billing

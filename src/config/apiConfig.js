@@ -1,8 +1,8 @@
  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
+// export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
-//  export const API_HOST = 'http://localhost:8080';
-//  export const API_HOST = 'http://192.168.1.39:8080';
+//export const API_HOST = 'http://192.168.1.39:8080';
 
 // export const API_HOST = 'http://localhost:8080';
 // export const API_HOST = 'http://localhost:8080';
@@ -14,7 +14,7 @@
 
 
 
-
+//common Apis Endponints
 export const MASTERS = `/master`;
 
 export const MAS_APPLICATION = `${MASTERS}/mas-applications`;
@@ -54,14 +54,14 @@ export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
 export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
-export const DG_MAS_INVESTIGATION_CATEGORY=`${MASTERS}/masInvestigationCategory`;
-export const DG_MAS_INVESTIGATION_METHODOLOGY=`${MASTERS}/masInvestigationMethodology`;
+export const DG_MAS_INVESTIGATION_CATEGORY = `${MASTERS}/masInvestigationCategory`;
+export const DG_MAS_INVESTIGATION_METHODOLOGY = `${MASTERS}/masInvestigationMethodology`;
 export const MAS_DESIGNATION = `${MASTERS}/masDesignation`;
 export const MAS_SPECIALITY_CENTER = `${MASTERS}/masSpecialty`;
 export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
 export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
-export const MAS_LANGUAGES= `${MASTERS}/masLanguage`;
+export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
 
 
 
@@ -74,9 +74,9 @@ export const OPD_PATIENT = "/patient";
 
 
 export const FILTER_OPD_DEPT = `OPD`;
-export const ALL_LAB_HISTORY_REPORT=`${ALL_REPORTS}/lab-histrory`;
-export const OPD_REPORT_API=`${ALL_REPORTS}/opdReport`;
-export const LAB_REPORT_API=`${ALL_REPORTS}/labReport`;
+export const ALL_LAB_HISTORY_REPORT = `${ALL_REPORTS}/lab-histrory`;
+export const OPD_REPORT_API = `${ALL_REPORTS}/opdReport`;
+export const LAB_REPORT_API = `${ALL_REPORTS}/labReport`;
 
 
 
@@ -125,7 +125,7 @@ export const ALL_HOSPITAL = `/hospital/getAllHospitals`;
 export const ALL_MARITAL_STATUS = `/marital-status/getAllMaritalStatuses`;
 export const ALL_RELIGION = `/religion/getAllReligions`;
 export const ALL_USER_DEPARTMENT = `/user-departments/getAllUserDepartments`;
-export const ALL_USER_APPLICATION = `/applications/getAllUserApplications`;
+export const ALL_USER_APPLICATION = `/configuration/getApplications`;
 export const ALL_TEMPLATES = `/mas-templates/getAllTemplates`;
 export const ALL_APPLICATIONS = `/mas-applications/getAllApplications`;
 export const ALL_IDENTIFICATION_TYPE = `/identification-types/getAllIdentificationTypes`;
@@ -142,10 +142,19 @@ export const MARITAL_STATUS = `/marital-status`;
 export const RELATION = `/relation`;
 export const RELIGION = `/religion`;
 export const USER_DEPARTMENT = `/user-departments`;
-export const USER_APPLICATION = `/applications`;
+export const USER_APPLICATION = `/configuration`;
+export const CREATE_USER_APPLICATION = `/configuration/createApplication`;
+export const UPDATE_USER_APPLICATION = `/configuration/updateApplication`;
+export const UPDATE_STATUS_USER_APPLICATION = `/configuration/changeApplicationStatus`;
+export const GET_URL_BY_ROLES = `/configuration/getUrlsByRoles`;
+
+
+
 export const TEMPLATES = `/mas-templates`;
 export const APPLICATION = `/mas-applications`;
-export const ASSIGN_TEMPLATES = `/template-applications`;
+export const ASSIGN_TEMPLATES = `/configuration`;
+export const GET_APPS_BY_TEMPLATE_ID = `/configuration/getTemplateApplicationsByTemplate`;
+
 export const ROLE_TEMPLATE = `/role-template`;
 export const IDENTITY_TYPE = `/identification-types`;
 export const DOCTOR_ROSTER = `/admin`;
@@ -186,6 +195,7 @@ export const Store_Internal_Indent = `/storeInternalIndent`
 
 export const RADIOLOGY = `/radiology`;
 export const REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/registerWithInv`;
+export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 
 
 
@@ -194,7 +204,7 @@ export const ITEM_CLASS = {
   CAPSULE: 2,
   EARDROPS: 7,
   LIQUID: 15,
-  EYEEARDROPS:52,
+  EYEEARDROPS: 52,
   SYRUP: 57
 };
 
@@ -204,13 +214,13 @@ export const DRUG_TYPE = {
 };
 
 //For Department Master showing that ward category dropdown on the basis of Department Type as Ward
-export const WARD_ID=10;
-export const MAS_ROOM_CATEGORY=`${MASTERS}/mas-room-category`
+export const WARD_ID = 10;
+export const MAS_ROOM_CATEGORY = `${MASTERS}/mas-room-category`
 export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
-export const MAS_WARD_CATEGORY =`${MASTERS}/masWardCategory`;
+export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
-export const MAS_ROOM= `${MASTERS}/mas-room`;
+export const MAS_ROOM = `${MASTERS}/mas-room`;
 export const MAS_BED = `${MASTERS}/masBed`;
 export const MAS_PROCEDURE_TYPE = `${MASTERS}/masProcedureType`;
 export const MAS_PROCEDURE = `${MASTERS}/masProcedure`;
@@ -235,16 +245,16 @@ export const LAB_AMENDMENT_TYPE_API = `${MASTERS}/lab-amendment-type`;
 export const MAS_PATIENT_PREPARATION = `${MASTERS}/patient-preparation`;
 export const MAS_TONSIL_GRADE = `${MASTERS}/entMasTonsilGrade`;
 export const MAS_OB_TRIMESTER = `${MASTERS}/obMasTrimester`;
-export const MAS_QUESTION_HEADING =`${MASTERS}/masQuestionHeading`;
-export const MAS_BLOOD_DONATION_TYPE =`${MASTERS}/masBloodDonationType`;
+export const MAS_QUESTION_HEADING = `${MASTERS}/masQuestionHeading`;
+export const MAS_BLOOD_DONATION_TYPE = `${MASTERS}/masBloodDonationType`;
 export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
 export const MAS_BLOOD_COMPONENT = `${MASTERS}/masBloodComponent`
 export const MAS_BLOOD_COMPATIBILITY = `${MASTERS}/masBloodCompatibility`;
 export const MAS_BLOOD_BAG_TYPE = `${MASTERS}/masBloodBagType`;
 export const MAS_BLOOD_COLLECTION = `${MASTERS}/masBloodCollectionType`;
-export const MAS_MENSTRUAl_PATTERN  =`${MASTERS}/gynMasMenstrualPattern`;
+export const MAS_MENSTRUAl_PATTERN = `${MASTERS}/gynMasMenstrualPattern`;
 export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;
-export const MAS_BLOOD_DONATION_STATUS =`${MASTERS}/masBloodDonationStatus`;
+export const MAS_BLOOD_DONATION_STATUS = `${MASTERS}/masBloodDonationStatus`;
 export const MAS_BAG_TYPE = `${MASTERS}/masBloodBagType`;
 export const BILLING = `${LAB}/billingStatus`;
 export const MAS_OB_CONCEPTION = `${MASTERS}/obMasConception`;
@@ -253,20 +263,23 @@ export const MAS_OPTH_COLOR_VISION = `${MASTERS}/opthMasColorVision`;
 export const MAS_OP_PELVIS_TYPE = `${MASTERS}/obMasPelvisType`;
 export const MAS_PRESENTATION = `${MASTERS}/obMasPresentation`;
 export const MAS_STERILISATION = `${MASTERS}/gynMasSterilisation`;
-export const MAS_STATION_PRESENTATION =`${MASTERS}/obMasStationPresenting`;
-export const MAS_OPTH_LENSTYPE =`${MASTERS}/opthMasLensType`;
+export const MAS_STATION_PRESENTATION = `${MASTERS}/obMasStationPresenting`;
+export const MAS_OPTH_LENSTYPE = `${MASTERS}/opthMasLensType`;
+export const MAS_OPTH_DISTANCE = `${MASTERS}/opthMasDistanceVision`;
+export const MAS_MENARCHE_AGE = `${MASTERS}/gynMasMenarcheAge`;
+export const MAS_OPTH_SPECTACLE_USE = `${MASTERS}/opthMasSpectacleUse`;
 export const MAS_EAR_CANAL = `${MASTERS}/entMasEarCanal`;
 export const MAS_ENT_RINNE = `${MASTERS}/entMasRinne`;
-export const MAS_OPTH_NEAR_VISION =`${MASTERS}/opthMasNearVision`;
-export const MAS_OB_CONSANGUINITY =`${MASTERS}/obMasConsanguinity`;
-export const MAS_GYN_FLOW =`${MASTERS}/gynMasFlow`;
-export const MAS_ENT_SEPTUM =`${MASTERS}/entMasSeptum`;
-export const MAS_OB_PVLIQUOR=`${MASTERS}/ObMasPvLiquor`;
-export const MAS_ENT_MUCOSA=`${MASTERS}/entMasMucosa`;
-export const MAS_OB_PVMEMBRANE =`${MASTERS}/ObMasPvMembrane`;
-export const MAS_COMMON_STATUS =`${MASTERS}/mas-common-status`;
-export const ENT_MAS_TM_STATUS =`${MASTERS}/entMasTmStatus`;
-export const OB_MAS_IMMUNISED_STATUS = `${MASTERS}/obMasImmunisedStatus`;export const MAS_GYN_POPSMEAR = `${MASTERS}/gynMasPapSmear`;
+export const MAS_OPTH_NEAR_VISION = `${MASTERS}/opthMasNearVision`;
+export const MAS_OB_CONSANGUINITY = `${MASTERS}/obMasConsanguinity`;
+export const MAS_GYN_FLOW = `${MASTERS}/gynMasFlow`;
+export const MAS_ENT_SEPTUM = `${MASTERS}/entMasSeptum`;
+export const MAS_OB_PVLIQUOR = `${MASTERS}/ObMasPvLiquor`;
+export const MAS_ENT_MUCOSA = `${MASTERS}/entMasMucosa`;
+export const MAS_OB_PVMEMBRANE = `${MASTERS}/ObMasPvMembrane`;
+export const MAS_COMMON_STATUS = `${MASTERS}/mas-common-status`;
+export const ENT_MAS_TM_STATUS = `${MASTERS}/entMasTmStatus`;
+export const OB_MAS_IMMUNISED_STATUS = `${MASTERS}/obMasImmunisedStatus`; export const MAS_GYN_POPSMEAR = `${MASTERS}/gynMasPapSmear`;
 export const MAS_ENT_WEBER = `${MASTERS}/entMasWeber`;
 export const XRAY_MODALITY = 40;
 export const USG_MODALITY = 41;
@@ -275,60 +288,116 @@ export const CT_MODALITY = 42;
 export const PET_MODALITY = 48;
 
 // Constants for date validation for Lab report
-  export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
-  export const MAX_DAYS_BACK = MAX_MONTHS_BACK * 30;
+export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
+export const MAX_DAYS_BACK = MAX_MONTHS_BACK * 30;
 
 
 
-  //Blood bank
-  export const DONOR_REGISTER = `/bloodBank/registerDonor`
+//Blood bank
+export const DONOR_REGISTER = `/bloodBank/registerDonor`
 
-  //Employee
-  export const CREATE_EMPLOYEE = `/employee/createEmployee`;
-  export const UPDATE_EMPLOYEE = `/employee/updateEmployee`;
-  export const CREATE_APPROVE_EMPLOYEE = `/employee/createAndApproveEmployee`;
-  export const GET_ALL_EMPLOYEES = `/employee/getAllEmployees`;
-  export const GET_EMPLOYEE_BY_ID = `/employee/getEmployeeById`;
-  export const GET_EMPLOYEE_PROFILE = `/employee/getEmployeeProfileImage`;
-  export const VIEW_EMPLOYEE_DOCUMENT = `/employee/viewEmployeeDocument`;
-  export const GET_EMPLOYEE_BY_STATUS = `/employee/getEmployeesByStatus`;
-  export const APPROVE_EMPLOYEE = `/employee/approveEmployee`;
+//Employee
+export const CREATE_EMPLOYEE = `/employee/createEmployee`;
+export const UPDATE_EMPLOYEE = `/employee/updateEmployee`;
+export const CREATE_APPROVE_EMPLOYEE = `/employee/createAndApproveEmployee`;
+export const GET_ALL_EMPLOYEES = `/employee/getAllEmployees`;
+export const GET_EMPLOYEE_BY_ID = `/employee/getEmployeeById`;
+export const GET_EMPLOYEE_PROFILE = `/employee/getEmployeeProfileImage`;
+export const VIEW_EMPLOYEE_DOCUMENT = `/employee/viewEmployeeDocument`;
+export const GET_EMPLOYEE_BY_STATUS = `/employee/getEmployeesByStatus`;
+export const APPROVE_EMPLOYEE = `/employee/approveEmployee`;
 
 
-export const MAS_BLOOD_TEST= `${MASTERS}/masBloodTest`;
+export const MAS_BLOOD_TEST = `${MASTERS}/masBloodTest`;
 
 
 //patient Registration 
 export const PATIENT_IMAGE_UPLOAD = `/registration/uploadPatientImage`;
-export const PATIENT_REGISTRATION=`/registration/createPatient`;
+export const PATIENT_REGISTRATION = `/registration/createPatient`;
 export const PATIENT_FOLLOW_UP = `/registration/updatePatient`;
-export const SEARCH_PATIENT = `/registration/searchPatient`;
+export const SEARCH_PATIENT_OPD = `/registration/searchPatient`;
+export const SEARCH_PATIENT = `/patient/search`;
 export const CHECH_DUPLICATE_PATIENT = `/registration/checkDuplicatePatient`
 export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
 export const RESCHEDULE_APPOINTMENT = `/registration/rescheduleAppointment`;
 export const PATIENT_FOLLOW_UP_DETAILS = "/registration/getPatientDetails";
-export const GET_CANCELLED_APPOINTMENTS ="/registration/getCancelledAppointments";
+export const GET_CANCELLED_APPOINTMENTS = "/registration/getCancelledAppointments";
 export const GET_TOKENS = `/registration/getAppointmentSlots`;
-export const GET_PRECONSULTATION=`/patient/getPendingPreConsultations`;
-export const SET_VITALS=`/patient/saveVitalDetails`;
-export const GET_WAITING_LIST=`/patient/getWaitingList`;
+export const GET_PRECONSULTATION = `/patient/getPendingPreConsultations`;
+export const SET_VITALS = `/patient/saveVitalDetails`;
+export const GET_WAITING_LIST = `/patient/getWaitingList`;
 
 //billing
 export const UPDATE_OPD_PAYMENT_STATUS = `/billing/payment`;
-export const UPDATE_LAB_PAYMENT_STATUS = `/billing/updatePaymentStatus`
+export const UPDATE_LAB_RADIO_PAYMENT_STATUS = `/billing/updatePaymentStatus`
 export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
 export const PATIENT_VISIT_DETAILS = `/billing/patientBillingDetails`
 export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
 export const OPD_SERVICE_CATAGORY = "SC001";
+export const LAB_SERVICE_CATAGORY = "SC002"
 
-export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";  export const INVENTORY=`/inventory`
-  export const SECTION_ID_FOR_DRUGS=18;
+export const LAB_RADIO_BILLING_DATA = "/billing/pendingBillingLabRadioDetails"
+export const INVOICE_REPORTS = `/billing/billingStatus`
 
-  export const MAS_BLOOD_COLLECTION_TYPE= `${MASTERS}/masBloodCollectionType`;  
+export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate"; export const INVENTORY = `/inventory`
+export const SECTION_ID_FOR_DRUGS = 18;
+
+export const MAS_BLOOD_COLLECTION_TYPE = `${MASTERS}/masBloodCollectionType`;
+export const GENERAL = "/general";
+export const GET_MODALITY_DROPDOWN_WRT_DEPARTMENT = `${GENERAL}/getModalityDetailsByDepartment`;
+export const REQUEST_PARAM_CODE = "code";
+export const RADIOLOGY_DEPARTMENT_CODE = "RADIMG";
+
+export const RADIOLOGY_REPORT_END_URL = `${ALL_REPORTS}/radiologyReport`;
+export const REQUEST_PARAM_FLAG = `flag`;
+export const REQUEST_PARAM_RAD_ORDER_DT_ID = `radOrderDtId`;
+export const STATUS_Y = `Y`;
+export const STATUS_N = `N`;
+export const STATUS_S = `S`;
+export const STATUS_P = `P`;
+export const STATUS_D = `D`;
+export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
+export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
+export const REQUEST_PARAM_STATUS = "status";
+
+
+
+export const GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL = `${MAS_DEPARTMENT}/allForDropdowns`;
+export const REGISTRATION = `/registration`;
+export const REQUEST_PARAM_FROM_DATE = "fromDate";
+export const REQUEST_PARAM_TO_DATE = "toDate";
+export const REQUEST_PARAM_DEPARTMENT_ID = "departmentId";
+export const REQUEST_PARAM_DOCTOR_ID = "doctorId";
+export const REQUEST_PARAM_HOSPITAL_ID = "hospitalId";
+export const REQUEST_PARAM_DEPARTMENT_TYPE_CODE="departmentTypeCode";
+export const REQUEST_PARAM_GENDER_ID="genderId";
+export const REQUEST_PARAM_ICD_ID="icdId";
+export const REQUEST_PARAM_PAGE="page";
+export const REQUEST_PARAM_SIZE="size";
+export const REQUEST_PARAM_CANCELLATION_ID="cancellationId";
+export const REQUEST_PARAM_CANCELLATION_REASON_ID="cancellationReasonId";
+export const ELEMENT_SIZE_PER_PAGE_FOR_ICD=20
+export const ACTIVE_STATUS_FOR_DROPDOWN="1";
+export const REQUEST_PARAM_SEARCH="search";
 
 
 
 
+
+
+export const GET_APPOINTMENT_SUMMARY_REPORT_END_URL = `${REGISTRATION}/getAppointmentSummaryReport`;
+export const APPOINTMENT_SUMMARY_DEPT_REPORT_END_URL = `${ALL_REPORTS}/appointSummaryDeptDash`;
+export const APPOINTMENT_SUMMARY_DOCTOR_REPORT_END_URL = `${ALL_REPORTS}/appointSummaryDoctorDash`;
+export const DAILY_CANCELLATION_REPORT_END_URL=`${ALL_REPORTS}/dailyCancellation`;
+export const OPD_REGISTER_END_URL=`${ALL_REPORTS}/opdRegister`;
+export const MAS_GENDER_GET_ALL_END_URL=`${MASTERS}/gender/getAll`;
+export const MAS_ICD_GET_ALL_END_URL=`${MASTERS}/masIcd/all`;
+
+
+
+export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
+
+export const MAS_COMPONENT_FAILURE_REASON = `${MASTERS}/masComponentFailureReason`;
 
 

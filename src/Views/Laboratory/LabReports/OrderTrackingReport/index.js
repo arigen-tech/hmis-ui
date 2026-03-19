@@ -405,7 +405,7 @@ const OrderTrackingReport = () => {
                                 <div className="col-12 d-flex justify-content-between">
                                     <button
                                         type="button"
-                                        className="btn btn-primary"
+                                        className="btn btn-success"
                                         onClick={handleSearch}
                                         disabled={isSearching || isPrinting || !isSearchButtonEnabled()}
                                     >
@@ -437,7 +437,7 @@ const OrderTrackingReport = () => {
                                         </button>
                                         <button
                                             type="button"
-                                            className="btn btn-success"
+                                            className="btn btn-warning"
                                             onClick={handlePrintReportMain}
                                             disabled={isPrinting || !isSearchButtonEnabled()}
                                         >

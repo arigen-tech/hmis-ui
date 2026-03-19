@@ -1136,7 +1136,7 @@ const OpeningBalanceEntry = () => {
               <div className="d-flex justify-content-end gap-2 mt-4">
                 <button
                   type="button"
-                  className="btn btn-warning"
+                  className="btn btn-success"
                   onClick={handleSave}
                 >
                   {isSaving ? (
@@ -1150,7 +1150,7 @@ const OpeningBalanceEntry = () => {
                 </button>
                 <button 
                   type="button" 
-                  className="btn btn-success" 
+                  className="btn btn-success"
                   onClick={handleSubmit} 
                 >
                   {isSubmitting ? (

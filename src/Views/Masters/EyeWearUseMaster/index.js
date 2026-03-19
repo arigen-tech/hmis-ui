@@ -17,24 +17,22 @@ const EyeWearUseMaster = () => {
 
   const [formData, setFormData] = useState({
     use_name: "",
-    created_by: "",
-    last_updated_by: "",
     status: "Y",
   });
 
-  // Confirmation dialog state (like DepartmentMaster)
+
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: null });
 
   const fetchData = async () => {
     try {
       setLoading(true);
       const dummyData = [
-        { id: 1, use_name: "Work", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-01 08:30:00" },
-        { id: 2, use_name: "Study", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-02 09:15:00" },
-        { id: 3, use_name: "Reading", status: "N", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-03 10:00:00" },
-        { id: 4, use_name: "Sports", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-04 10:45:00" },
-        { id: 5, use_name: "Driving", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-05 11:30:00" },
-        { id: 6, use_name: "Others", status: "Y", created_by: "Admin", last_updated_by: "Admin", last_update_date: "2025-12-06 12:00:00" },
+        { id: 1, use_name: "Work", status: "Y",last_update_date: "01-12-2025 " },
+        { id: 2, use_name: "Study", status: "Y", last_update_date: "02-12-2025 " },
+        { id: 3, use_name: "Reading", status: "N", last_update_date: "03-12-2025 " },
+        { id: 4, use_name: "Sports", status: "Y", last_update_date: "04-12-2025" },
+        { id: 5, use_name: "Driving", status: "Y", last_update_date: "05-12-2025" },
+        { id: 6, use_name: "Others", status: "Y", last_update_date: "06-12-2025" },
       ];
       setData(dummyData);
     } catch (err) {
@@ -139,7 +137,7 @@ const EyeWearUseMaster = () => {
                 <table className="table table-bordered table-hover">
                   <thead className="table-light">
                     <tr>
-                      <th>ID</th>
+                      
                       <th>Use Name</th>
                       <th>Last Update Date</th>
                       <th>Status</th>
@@ -149,7 +147,7 @@ const EyeWearUseMaster = () => {
                   <tbody>
                     {currentItems.length ? currentItems.map((rec) => (
                       <tr key={rec.id}>
-                        <td>{rec.id}</td>
+                        
                         <td>{rec.use_name}</td>
                         <td>{rec.last_update_date}</td>
                         <td>
@@ -170,7 +168,7 @@ const EyeWearUseMaster = () => {
                             disabled={rec.status !== "Y"}
                             style={{ width: "32px", height: "32px" }}
                           >
-                            <i className="bi bi-pencil"></i>
+                            <i className="fa fa-pencil"></i>
                           </button>
                         </td>
 
@@ -194,10 +192,7 @@ const EyeWearUseMaster = () => {
                 <input type="text" id="use_name" className="form-control mt-1" value={formData.use_name} onChange={handleInputChange} />
               </div>
 
-              <div className="form-group col-md-4">
-                <label>Last Updated Date</label>
-                <input type="text" id="last_updated_by" className="form-control mt-1" value={formData.last_updated_by} onChange={handleInputChange} />
-              </div>
+            
               <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
                 <button className="btn btn-danger" type="button" onClick={resetForm}>Cancel</button>

@@ -296,7 +296,7 @@ const PendingInvestigationsReport = () => {
                                    
                                     <button
                                         type="button"
-                                        className="btn btn-warning"
+                                        className="btn btn-secondary"
                                         onClick={handleReset}
                                         disabled={isSearching}
                                     >

@@ -294,7 +294,7 @@ const OpeningBalanceRegister = () => {
                   </button>
                   <button
                     type="button"
-                    className="btn btn-success"
+                    className="btn btn-primary"
                     onClick={handleViewDownload}
                     disabled={!areMandatoryFieldsFilled() || isGeneratingPDF || isPrinting}
                   >
@@ -305,7 +305,7 @@ const OpeningBalanceRegister = () => {
                       </>
                     ) : (
                       <>
-                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+   <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
                       </>
                     )}
                   </button>

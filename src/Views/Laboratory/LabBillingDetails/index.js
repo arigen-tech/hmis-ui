@@ -1,370 +1,369 @@
-"use client"
+"use client";
 
-import { useEffect, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
-import Swal from "sweetalert2"
-import LoadingScreen from "../../../Components/Loading"
-import { MAS_SERVICE_CATEGORY, LAB } from "../../../config/apiConfig"
-import { getRequest, postRequest } from "../../../service/apiService"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
-import { 
-  ERROR, 
-  INVALID_INVESTIGATION_ERROR, 
-  INVALID_INVESTIGATION_ID, 
-  INVALID_PATIENT_ID, 
-  PAYMENT_ERROR, 
-  REGISTRATION, 
-  REGISTRATION_ERR_MSG, 
-  REGISTRATION_SUCCESS_MSG, 
-  SELECT_INVESTIGATIONS_ERROR_MSG, 
-  UNEXPECTED_ERROR 
-} from "../../../config/constants"
+import { useEffect, useMemo, useState } from "react";
+import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
+import LoadingScreen from "../../../Components/Loading";
+import {
+  MAS_SERVICE_CATEGORY,
+  LAB,
+  PENDING_BILLING_PATIENTS,
+  CATAGORY_WISE_BILLING,
+  LAB_SERVICE_CATAGORY,
+  LAB_RADIO_BILLING_DATA,
+} from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
+import {
+  ERROR,
+  INVALID_INVESTIGATION_ERROR,
+  INVALID_INVESTIGATION_ID,
+  INVALID_PATIENT_ID,
+  PAYMENT_ERROR,
+  REGISTRATION,
+  REGISTRATION_ERR_MSG,
+  REGISTRATION_SUCCESS_MSG,
+  SELECT_INVESTIGATIONS_ERROR_MSG,
+  UNEXPECTED_ERROR,
+} from "../../../config/constants";
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return "";
+
+  const date = new Date(dateStr);
+
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
+};
 
 const LabBillingDetails = () => {
-  const navigate = useNavigate()
-  const location = useLocation()
-  
-  const [patientList, setPatientList] = useState([])
-  const [filteredPatientList, setFilteredPatientList] = useState([])
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const [patientList, setPatientList] = useState([]);
+  const [filteredPatientList, setFilteredPatientList] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
-    sessionNo: ""
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  const [showPatientDetails, setShowPatientDetails] = useState(false)
-  const [selectedPatient, setSelectedPatient] = useState(null)
-  
+    registrationNo: "",
+  });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+
   const [formData, setFormData] = useState({
     billingType: "",
     patientName: "",
     mobileNo: "",
     age: "",
-    sex: "",
+    gender: "",
     relation: "",
     patientId: "",
     address: "",
     type: "investigation",
     rows: [],
-  })
-  const [isFormValid, setIsFormValid] = useState(false)
-  const [checkedRows, setCheckedRows] = useState([])
-  const [activeRowIndex, setActiveRowIndex] = useState(null)
-  const [investigationItems, setInvestigationItems] = useState([])
-  const [packageItems, setPackageItems] = useState([])
+  });
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [checkedRows, setCheckedRows] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [investigationItems, setInvestigationItems] = useState([]);
+  const [packageItems, setPackageItems] = useState([]);
 
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 0,
-  })
+  });
 
-  const [gstConfigLoaded, setGstConfigLoaded] = useState(false)
+  const [gstConfigLoaded, setGstConfigLoaded] = useState(false);
 
   // Fetch pending lab billing list
-  const fetchPendingLabBilling = async () => {
+  const fetchPendingLabBilling = async (page = 0) => {
     try {
-      setIsLoading(true)
-      setError(null)
+      setIsLoading(true);
+      setError(null);
 
-      const response = await getRequest(`${LAB}/pending`)
+      const params = new URLSearchParams({
+              page,
+              size: DEFAULT_ITEMS_PER_PAGE,
+              patientName: searchData.patientName,
+              mobileNo: searchData.mobileNo,
+              registrationNo: searchData.registrationNo,
+            });
 
+      const response = await getRequest(
+        `${CATAGORY_WISE_BILLING}/${LAB_SERVICE_CATAGORY}?${params}`,
+      );
       if (response && response.response) {
-        const mappedData = response.response.map((item) => {
-          // Get first appointment data if available
-          const firstAppointment = item.appointments?.[0] || {}
-
+        const mappedData = response.response.content.map((item) => {
           return {
-            id: item.billinghdid || item.orderhdid,
-            patientId: item.patientid,
+            id: item.billingHeaderId,
+            patientId: item.patientId,
+            registrationNo: item.registrationNo,
             patientName: item.patientName || "N/A",
             mobileNo: item.mobileNo || "N/A",
             age: item.age || "N/A",
-            sex: item.sex || "N/A",
-            relation: item.relation || "N/A",
-            address: item.address || "",
-            sessionNo: firstAppointment.sessionName || item.sessionName || null,
+            gender: item.gender || "N/A",
+            appointmentDate: item.appointmentDate,
 
-            // Billing type handling
-            billingType: "Laboratory Services",
+            billingType: item.billingType || "Laboratory Services",
+            amount: item.billAmount || 0,
+            billingStatus: "Pending",
 
-            // Doctor and department
-            consultedDoctor: firstAppointment.consultedDoctor || item.consultedDoctor || "N/A",
-            department: firstAppointment.department || item.department || "N/A",
+            fullData: item,
+          };
+        });
 
-            // Amount and status
-            amount: item.amount || 0,
-            billingStatus: item.billingStatus === "n" || item.orderhdPaymentStatus === "n"
-              ? "Pending"
-              : "Completed",
-
-            // Visit information
-            tokenNo: firstAppointment.tokenNo || item.tokenNo || null,
-            visitDate: firstAppointment.visitDate || item.visitDate || null,
-            sessionName: firstAppointment.sessionName || item.sessionName || null,
-
-            // Original data
-            appointments: item.appointments || [],
-            details: item.details || [],
-            flag: item.flag,
-            source: item.source,
-            billinghdid: item.billinghdid,
-            orderhdid: item.orderhdid,
-
-            // Store complete original data
-            fullData: item
-          }
-        })
-
-        setPatientList(mappedData)
-        setFilteredPatientList(mappedData)
+        setPatientList(mappedData);
+        setFilteredPatientList(mappedData);
+        setTotalElements(response.response.totalElements);
       }
     } catch (error) {
-      console.error("Error fetching pending lab billing data:", error)
-      setError(error.message)
+      console.error("Error fetching pending lab billing data:", error);
+      setError(error.message);
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   async function fetchGstConfiguration() {
     try {
-      console.log("=== FETCHING GST CONFIGURATION ===")
-      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`)
-      console.log("GST API Response:", JSON.stringify(data, null, 2))
+      console.log("=== FETCHING GST CONFIGURATION ===");
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+      console.log("GST API Response:", JSON.stringify(data, null, 2));
 
-      if (data && data.status === 200 && data.response && typeof data.response.gstApplicable !== "undefined") {
+      if (
+        data &&
+        data.status === 200 &&
+        data.response &&
+        typeof data.response.gstApplicable !== "undefined"
+      ) {
         const gstConfiguration = {
           gstApplicable: !!data.response.gstApplicable,
           gstPercent: Number(data.response.gstPercent) || 0,
-        }
-        console.log("Setting GST Configuration:", gstConfiguration)
-        setGstConfig(gstConfiguration)
+        };
+        console.log("Setting GST Configuration:", gstConfiguration);
+        setGstConfig(gstConfiguration);
       } else {
-        console.warn("Invalid GST API response, disabling GST:", data)
+        console.warn("Invalid GST API response, disabling GST:", data);
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
-        })
+        });
       }
     } catch (error) {
-      console.error("Error fetching GST configuration:", error)
+      console.error("Error fetching GST configuration:", error);
       setGstConfig({
         gstApplicable: false,
         gstPercent: 0,
-      })
+      });
     } finally {
-      setGstConfigLoaded(true)
+      setGstConfigLoaded(true);
     }
   }
 
   useEffect(() => {
-    fetchPendingLabBilling()
-    fetchGstConfiguration()
-  }, [])
+    fetchPendingLabBilling(currentPage - 1);
+  }, [currentPage]);
+
+  useEffect(() => {
+    fetchGstConfiguration();
+  }, []);
 
   const handleSearchChange = (e) => {
-    const { id, value } = e.target
-    setSearchData(prev => ({ ...prev, [id]: value }))
-    setCurrentPage(1)
-  }
+    const { id, value } = e.target;
+    setSearchData((prev) => ({ ...prev, [id]: value }));
+    setCurrentPage(1);
+  };
 
   const handleSearch = () => {
-    setIsLoading(true)
+    // check if all fields are empty
+    if (
+      !searchData.patientName &&
+      !searchData.mobileNo &&
+      !searchData.registrationNo
+    ) {
+      // reload full data
+      setIsSearchMode(false);
+      fetchPendingLabBilling(0);
+      return;
+    }
+
+    setIsSearching(true);
+
     setTimeout(() => {
       const filtered = patientList.filter((item) => {
-        const patientNameMatch = searchData.patientName === "" || 
-          item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
-        
-        const mobileNoMatch = searchData.mobileNo === "" || 
-          item.mobileNo.includes(searchData.mobileNo)
+        const patientNameMatch =
+          searchData.patientName === "" ||
+          item.patientName
+            .toLowerCase()
+            .includes(searchData.patientName.toLowerCase());
 
-        const sessionNoMatch = searchData.sessionNo === "" || 
-          (item.sessionNo && item.sessionNo.toLowerCase().includes(searchData.sessionNo.toLowerCase()))
-        
-        return patientNameMatch && mobileNoMatch && sessionNoMatch
-      })
-      setFilteredPatientList(filtered)
-      setCurrentPage(1)
-      setIsLoading(false)
-    }, 500)
-  }
+        const mobileNoMatch =
+          searchData.mobileNo === "" ||
+          item.mobileNo.includes(searchData.mobileNo);
+
+        const registrationMatch =
+          searchData.registrationNo === "" ||
+          item.registrationNo.includes(searchData.registrationNo);
+
+        return patientNameMatch && mobileNoMatch && registrationMatch;
+      });
+
+      setFilteredPatientList(filtered);
+      setCurrentPage(1);
+      setIsSearching(false);
+      setIsSearchMode(true);
+    }, 400);
+  };
 
   const handleReset = () => {
     setSearchData({
       patientName: "",
       mobileNo: "",
-      sessionNo: ""
-    })
-    setFilteredPatientList(patientList)
-    setCurrentPage(1)
-  }
+      registrationNo: "",
+    });
 
-  const handleRowClick = (patient) => {
-    setSelectedPatient(patient)
-    setShowPatientDetails(true)
-    
-    // Process the selected patient data for lab billing
-    const responseData = patient.fullData
-    const billingData = Array.isArray(responseData) ? responseData[0] : responseData
-    const details = billingData.details || []
-    
-    console.log("=== BILLING DATA ===", billingData)
-    console.log("=== BILLING DETAILS ===", details)
+    setFilteredPatientList(patientList);
+    setIsSearchMode(false); // return to API pagination
+    setCurrentPage(1);
+  };
 
-    const investigations = details
-      .filter((item) => item.investigationId !== null && item.investigationId !== undefined)
-      .map((item) => ({
-        investigationId: item.investigationId,
-        investigationName: item.investigationName || item.itemName,
-        price: item.basePrice || item.tariff || 0,
-        disc: item.discount || 0,
-      }))
+  const handleRowClick = async (patient) => {
+    console.log("Row clicked:", patient);
 
-    const packages = details
-      .filter((item) => item.packageId !== null && item.packageId !== undefined)
-      .map((item) => ({
-        id: item.packageId,
-        packName: item.packageName || item.itemName,
-        actualCost: item.amountAfterDiscount || 0,
-        baseCost: item.basePrice || item.tariff || 0,
-        disc: item.discount || 0,
-      }))
+    try {
+      setIsLoading(true);
 
-    setInvestigationItems(investigations)
-    setPackageItems(packages)
+      const billingHeaderId = patient.id;
+      const response = await getRequest(
+        `${LAB_RADIO_BILLING_DATA}/${billingHeaderId}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
+      );
+      console.log("Billing API response:", response);
 
-    const patientData = {
-      billingType: billingData.billingType || "",
-      patientName: billingData.patientName || "",
-      mobileNo: billingData.mobileNo || "",
-      age: billingData.age || "",
-      sex: billingData.sex || "",
-      relation: billingData.relation || "",
-      patientId: billingData.patientid?.toString() || billingData.patientId?.toString() || "",
-      address: billingData.address || "",
-    }
-
-    const formattedRows = details.map((item, index) => {
-      const isPackage = item.packageId !== null && item.packageId !== undefined
-      const isInvestigation = item.investigationId !== null && item.investigationId !== undefined
-
-      const investigationId = item.investigationId
-      const packageId = item.packageId
-
-      const itemId = isPackage ? packageId : investigationId
-
-      const validItemId = itemId !== null && itemId !== undefined && itemId !== 0
-
-      console.log(`Row ${index} ID Mapping:`, {
-        itemName: item.itemName,
-        isPackage,
-        isInvestigation,
-        investigationId,
-        packageId,
-        extractedItemId: itemId,
-        validItemId,
-        basePrice: item.basePrice,
-        discount: item.discount
-      })
-
-      if (!validItemId) {
-        console.error(`❌ INVALID ITEM ID for row ${index}:`, item)
+      if (!response || !response.response) {
+        console.error("Invalid API response");
+        return;
       }
 
-      return {
-        id: item.id || index + 1,
-        name: item.itemName || (isPackage ? item.packageName : item.investigationName) || "",
-        date: new Date().toISOString().split("T")[0],
-        originalAmount: item.basePrice || item.tariff || 0,
-        discountAmount: item.discount || 0,
-        netAmount: item.amountAfterDiscount || item.netAmount || 0,
-        type: isPackage ? "package" : "investigation",
-        investigationId: investigationId,
-        packageId: packageId,
-        itemId: itemId,
-        itemDetails: item,
-        hasValidId: validItemId,
+      const billingData = Array.isArray(response.response)
+        ? response.response[0]
+        : response.response;
+
+      if (!billingData) {
+        console.error("Billing data missing");
+        return;
       }
-    })
 
-    const rowsWithInvalidIds = formattedRows.filter(row => !row.hasValidId)
-    if (rowsWithInvalidIds.length > 0) {
-      console.warn(`⚠️ Found ${rowsWithInvalidIds.length} rows with invalid IDs:`, rowsWithInvalidIds)
+      const details = billingData?.details || [];
+
+      const formattedRows = details.map((item, index) => {
+        const isPackage = item.packageId != null;
+
+        return {
+          id: item.id || index + 1,
+          name:
+            item.itemName || item.packageName || item.investigationName || "",
+          date: new Date().toISOString().split("T")[0],
+          originalAmount: item.basePrice || item.tariff || 0,
+          discountAmount: item.discount || 0,
+          netAmount: item.amountAfterDiscount || item.netAmount || 0,
+          type: isPackage ? "package" : "investigation",
+          investigationId: item.investigationId,
+          packageId: item.packageId,
+          itemId: isPackage ? item.packageId : item.investigationId,
+        };
+      });
+
+      setSelectedPatient({ fullData: billingData });
+
+      setFormData({
+        billingType: billingData.billingType || "",
+        patientName: billingData.patientName || "",
+        mobileNo: billingData.mobileNo || "",
+        age: billingData.age || "",
+        gender: billingData.gender || "",
+        patientId: billingData.patientid || billingData.patientId,
+        address: billingData.address || "",
+        rows: formattedRows,
+        type: "investigation",
+      });
+
+      setCheckedRows(new Array(formattedRows.length).fill(true));
+      setIsFormValid(
+        !!billingData.patientName &&
+          !!billingData.mobileNo &&
+          !!billingData.age &&
+          !!billingData.gender,
+      );
+
+      console.log("isFormValid:", isFormValid);
+      console.log("isLoading:", isLoading);
+      console.log("gstConfigLoaded:", gstConfigLoaded);
+
+      setShowPatientDetails(true);
+    } catch (error) {
+      console.error("Error fetching billing details:", error);
+    } finally {
+      setIsLoading(false);
     }
-
-    const hasPackages = formattedRows.some((row) => row.type === "package")
-    const hasInvestigations = formattedRows.some((row) => row.type === "investigation")
-
-    let defaultType = "investigation"
-    if (hasPackages && !hasInvestigations) {
-      defaultType = "package"
-    }
-
-    console.log("=== FINAL FORMATTED DATA ===")
-    console.log("Patient Data:", patientData)
-    console.log("Formatted Rows:", formattedRows)
-    console.log("Rows with valid IDs:", formattedRows.filter(row => row.hasValidId).length)
-    console.log("Rows with invalid IDs:", formattedRows.filter(row => !row.hasValidId).length)
-    console.log("Default type:", defaultType)
-
-    setFormData({
-      ...patientData,
-      rows: formattedRows.length > 0 ? formattedRows : [],
-      type: defaultType,
-    })
-
-    setCheckedRows(new Array(formattedRows.length).fill(true))
-
-    const isValid = !!(patientData.patientName && patientData.mobileNo && patientData.age && patientData.sex)
-    setIsFormValid(isValid)
-  }
-
+  };
   const handleBackToList = () => {
-    setShowPatientDetails(false)
-    setSelectedPatient(null)
-    handleReset()
-  }
+    setShowPatientDetails(false);
+    setSelectedPatient(null);
+    handleReset();
+  };
 
   useEffect(() => {
-    console.log("GST Config changed:", gstConfig)
-  }, [gstConfig])
+    console.log("GST Config changed:", gstConfig);
+  }, [gstConfig]);
 
   const handleInputChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevData) => ({ ...prevData, [id]: value }))
-    const updatedFormData = { ...formData, [id]: value }
+    const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
+    const updatedFormData = { ...formData, [id]: value };
     setIsFormValid(
-      !!updatedFormData.patientName && !!updatedFormData.mobileNo && !!updatedFormData.age && !!updatedFormData.sex,
-    )
-  }
+      !!updatedFormData.patientName &&
+        !!updatedFormData.mobileNo &&
+        !!updatedFormData.age &&
+        !!updatedFormData.gender,
+    );
+  };
 
   const handleTypeChange = (type) => {
     setFormData((prev) => ({
       ...prev,
       type: type,
-    }))
-  }
+    }));
+  };
 
   const handleRowChange = (index, field, value) => {
     setFormData((prev) => {
       const updatedRows = prev.rows.map((item, i) => {
-        if (i !== index) return item
-        const updatedItem = { ...item, [field]: value }
+        if (i !== index) return item;
+        const updatedItem = { ...item, [field]: value };
         if (field === "originalAmount" || field === "discountAmount") {
-          const original = Number(updatedItem.originalAmount) || 0
-          const discount = Number(updatedItem.discountAmount) || 0
-          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2)
+          const original = Number(updatedItem.originalAmount) || 0;
+          const discount = Number(updatedItem.discountAmount) || 0;
+          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2);
         }
-        return updatedItem
-      })
-      return { ...prev, rows: updatedRows }
-    })
-  }
+        return updatedItem;
+      });
+      return { ...prev, rows: updatedRows };
+    });
+  };
 
   const addRow = (e, type = formData.type) => {
-    e.preventDefault()
+    e.preventDefault();
     setFormData((prev) => ({
       ...prev,
       rows: [
@@ -379,21 +378,21 @@ const LabBillingDetails = () => {
           type: type,
         },
       ],
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
+    }));
+    setCheckedRows((prev) => [...prev, true]);
+  };
 
   const removeRow = (index) => {
     setFormData((prev) => ({
       ...prev,
       rows: prev.rows.filter((_, i) => i !== index),
-    }))
-    setCheckedRows((prev) => prev.filter((_, i) => i !== index))
-  }
+    }));
+    setCheckedRows((prev) => prev.filter((_, i) => i !== index));
+  };
 
   const isLastRowComplete = () => {
-    if (formData.rows.length === 0) return true
-    const lastRow = formData.rows[formData.rows.length - 1]
+    if (formData.rows.length === 0) return true;
+    const lastRow = formData.rows[formData.rows.length - 1];
     return (
       lastRow.name &&
       lastRow.name.trim() !== "" &&
@@ -405,41 +404,43 @@ const LabBillingDetails = () => {
       lastRow.discountAmount !== undefined &&
       lastRow.discountAmount !== "" &&
       !isNaN(lastRow.discountAmount)
-    )
-  }
+    );
+  };
 
   const calculatePaymentBreakdown = () => {
-    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
-    console.log("Current GST Config:", gstConfig)
+    console.log("=== CALCULATING PAYMENT BREAKDOWN ===");
+    console.log("Current GST Config:", gstConfig);
 
-    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
-    console.log("Checked Items:", checkedItems)
+    const checkedItems = formData.rows.filter((_, index) => checkedRows[index]);
+    console.log("Checked Items:", checkedItems);
 
     const totalOriginalAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.originalAmount) || 0)
-    }, 0)
+      return total + (Number.parseFloat(item.originalAmount) || 0);
+    }, 0);
 
     const totalDiscountAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.discountAmount) || 0)
-    }, 0)
+      return total + (Number.parseFloat(item.discountAmount) || 0);
+    }, 0);
 
-    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
+    const totalNetAmount = totalOriginalAmount - totalDiscountAmount;
 
     const totalGstAmount =
       gstConfig.gstApplicable && gstConfig.gstPercent > 0
         ? checkedItems.reduce((total, item) => {
-          const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
-          const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
-          const itemNetAmount = itemOriginalAmount - itemDiscountAmount
-          const itemGstAmount = (itemNetAmount * gstConfig.gstPercent) / 100
-          console.log(
-            `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
-          )
-          return total + itemGstAmount
-        }, 0)
-        : 0
+            const itemOriginalAmount =
+              Number.parseFloat(item.originalAmount) || 0;
+            const itemDiscountAmount =
+              Number.parseFloat(item.discountAmount) || 0;
+            const itemNetAmount = itemOriginalAmount - itemDiscountAmount;
+            const itemGstAmount = (itemNetAmount * gstConfig.gstPercent) / 100;
+            console.log(
+              `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
+            );
+            return total + itemGstAmount;
+          }, 0)
+        : 0;
 
-    const finalAmount = totalNetAmount + totalGstAmount
+    const finalAmount = totalNetAmount + totalGstAmount;
 
     const breakdown = {
       totalOriginalAmount: totalOriginalAmount.toFixed(2),
@@ -450,48 +451,49 @@ const LabBillingDetails = () => {
       gstPercent: gstConfig.gstPercent || 0,
       gstApplicable: gstConfig.gstApplicable || false,
       itemCount: checkedItems.length,
-    }
+    };
 
-    console.log("Final Payment Breakdown:", breakdown)
-    console.log("=== END PAYMENT BREAKDOWN ===")
-    return breakdown
-  }
+    console.log("Final Payment Breakdown:", breakdown);
+    console.log("=== END PAYMENT BREAKDOWN ===");
+    return breakdown;
+  };
 
   const handleSave = async (e) => {
-    e.preventDefault()
-    if (!isFormValid) return
+    e.preventDefault();
+    if (!isFormValid) return;
 
     try {
-      setIsLoading(true)
+      setIsLoading(true);
 
-      const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
+      const hasCheckedItems = formData.rows.some(
+        (row, index) => checkedRows[index],
+      );
       if (!hasCheckedItems) {
-        Swal.fire(ERROR, SELECT_INVESTIGATIONS_ERROR_MSG, "error")
-        setIsLoading(false)
-        return
+        Swal.fire(ERROR, SELECT_INVESTIGATIONS_ERROR_MSG, "error");
+        setIsLoading(false);
+        return;
       }
 
-      const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
+      const invalidRow = formData.rows.find(
+        (row, index) => checkedRows[index] && !row.itemId,
+      );
       if (invalidRow) {
-        Swal.fire(
-          ERROR,
-          INVALID_INVESTIGATION_ERROR,
-          "error",
-        )
-        setIsLoading(false)
-        return
+        Swal.fire(ERROR, INVALID_INVESTIGATION_ERROR, "error");
+        setIsLoading(false);
+        return;
       }
 
-      const billingData = selectedPatient?.fullData
-      const isArray = Array.isArray(billingData)
-      const data = isArray ? billingData[0] : billingData
+      const billingData = selectedPatient?.fullData;
+      const isArray = Array.isArray(billingData);
+      const data = isArray ? billingData[0] : billingData;
 
-      console.log("=== SAVE - BILLING DATA ===")
-      console.log("Original billing data:", data)
-      console.log("Existing billinghdid:", data?.billinghdid)
-      console.log("orderhdid:", data?.orderhdid)
+      console.log("=== SAVE - BILLING DATA ===");
+      console.log("Original billing data:", data);
+      console.log("Existing billinghdid:", data?.billinghdid);
+      console.log("orderhdid:", data?.orderhdid);
 
-      const patientId = formData.patientId || data?.patientid || data?.patientId
+      const patientId =
+        formData.patientId || data?.patientid || data?.patientId;
 
       if (!patientId) {
         Swal.fire({
@@ -499,19 +501,26 @@ const LabBillingDetails = () => {
           text: INVALID_PATIENT_ID,
           icon: "error",
           confirmButtonText: "Go Back",
-        })
-        setIsLoading(false)
-        return
+        });
+        setIsLoading(false);
+        return;
       }
 
-      let billingHeaderId = data?.billinghdid
+      let billingHeaderId =
+        data?.billinghdid || data?.billingHeaderId || data?.billHeaderId;
 
       if (!billingHeaderId) {
-        console.log("❌ No existing billing header found. Checking if registration is needed...")
+        console.log(
+          "❌ No existing billing header found. Checking if registration is needed...",
+        );
 
-        const itemsWithValidIds = formData.rows.filter(row =>
-          row.itemId && row.itemId !== null && row.itemId !== undefined && row.itemId !== 0
-        )
+        const itemsWithValidIds = formData.rows.filter(
+          (row) =>
+            row.itemId &&
+            row.itemId !== null &&
+            row.itemId !== undefined &&
+            row.itemId !== 0,
+        );
 
         if (itemsWithValidIds.length === 0) {
           Swal.fire({
@@ -519,104 +528,120 @@ const LabBillingDetails = () => {
             text: INVALID_INVESTIGATION_ID,
             icon: "error",
             confirmButtonText: "OK",
-          })
-          setIsLoading(false)
-          return
+          });
+          setIsLoading(false);
+          return;
         }
 
         try {
           const allItemsForRegistration = itemsWithValidIds.map((row) => {
-            console.log(`Registration - Row: ${row.name}, ItemId: ${row.itemId}, Type: ${row.type}`)
+            console.log(
+              `Registration - Row: ${row.name}, ItemId: ${row.itemId}, Type: ${row.type}`,
+            );
 
             return {
               id: Number(row.itemId),
-              appointmentDate: row.date || new Date().toISOString().split("T")[0],
+              appointmentDate:
+                row.date || new Date().toISOString().split("T")[0],
               checkStatus: true,
               actualAmount: Number.parseFloat(row.originalAmount) || 0,
               discountedAmount: Number.parseFloat(row.discountAmount) || 0,
               type: row.type === "investigation" ? "i" : "p",
-            }
-          })
+            };
+          });
 
-          console.log("=== REGISTERING NEW BILLING HEADER ===")
-          console.log("Items for registration:", allItemsForRegistration)
+          console.log("=== REGISTERING NEW BILLING HEADER ===");
+          console.log("Items for registration:", allItemsForRegistration);
 
           let registrationResponse;
 
           if (data?.orderhdid) {
-            console.log("=== USING EXISTING ORDER API ===")
+            console.log("=== USING EXISTING ORDER API ===");
             const labBillingData = {
               patientId: Number(patientId),
               orderhdid: data.orderhdid,
               labInvestigationReq: allItemsForRegistration,
-            }
+            };
 
-            registrationResponse = await postRequest("/lab/registration/billing", labBillingData)
+            registrationResponse = await postRequest(
+              "/lab/registration/billing",
+              labBillingData,
+            );
           } else {
-            console.log("=== USING FRESH REGISTRATION API ===")
+            console.log("=== USING FRESH REGISTRATION API ===");
             const labRegistrationData = {
               patientId: Number(patientId),
               labInvestigationReq: allItemsForRegistration,
-            }
+            };
 
-            registrationResponse = await postRequest("/lab/registration", labRegistrationData)
+            registrationResponse = await postRequest(
+              "/lab/registration",
+              labRegistrationData,
+            );
           }
 
-          console.log("=== REGISTRATION RESPONSE ===")
-          console.log("Response:", registrationResponse)
+          console.log("=== REGISTRATION RESPONSE ===");
+          console.log("Response:", registrationResponse);
 
           if (!registrationResponse || registrationResponse.status !== 200) {
-            throw new Error(registrationResponse?.message || "Registration failed.")
+            throw new Error(
+              registrationResponse?.message || "Registration failed.",
+            );
           }
 
           billingHeaderId =
             registrationResponse?.response?.billinghdId ||
             registrationResponse?.response?.billinghdid ||
             registrationResponse?.response?.billHeaderId ||
-            registrationResponse?.response?.id
+            registrationResponse?.response?.id;
 
           if (!billingHeaderId) {
-            throw new Error("Billing Header ID not returned from registration")
+            throw new Error("Billing Header ID not returned from registration");
           }
 
-          console.log("✓ NEW Registration successful. Billing Header ID:", billingHeaderId)
+          console.log(
+            "✓ NEW Registration successful. Billing Header ID:",
+            billingHeaderId,
+          );
 
           await Swal.fire({
             title: REGISTRATION,
             text: `${REGISTRATION_SUCCESS_MSG} ${billingHeaderId}`,
             icon: "success",
             confirmButtonText: "Continue to Payment",
-          })
-
+          });
         } catch (registrationError) {
-          console.error("❌ Registration error:", registrationError)
-          Swal.fire(REGISTRATION_ERR_MSG, registrationError.message, "error")
-          setIsLoading(false)
-          return
+          console.error("❌ Registration error:", registrationError);
+          Swal.fire(REGISTRATION_ERR_MSG, registrationError.message, "error");
+          setIsLoading(false);
+          return;
         }
       } else {
-        console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId)
-        console.log("🚫 SKIPPING REGISTRATION - Using existing billing header")
+        console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId);
+        console.log("🚫 SKIPPING REGISTRATION - Using existing billing header");
       }
 
-      const paymentBreakdown = calculatePaymentBreakdown()
-      const totalFinalAmount = Number.parseFloat(paymentBreakdown.finalAmount)
+      const totalFinalAmount = formData.rows
+        .filter((row, index) => checkedRows[index])
+        .reduce((total, row) => {
+          return total + Number(row.netAmount || 0);
+        }, 0);
 
       const selectedItemsForPayment = formData.rows
         .filter((row, index) => checkedRows[index] && row.itemId)
         .map((row) => ({
           id: Number(row.itemId),
           type: row.type === "investigation" ? "i" : "p",
-        }))
+        }));
 
-      console.log("=== PAYMENT ITEMS ===")
-      console.log("Selected items for payment:", selectedItemsForPayment)
-      console.log("Total selected items:", selectedItemsForPayment.length)
+      console.log("=== PAYMENT ITEMS ===");
+      console.log("Selected items for payment:", selectedItemsForPayment);
+      console.log("Total selected items:", selectedItemsForPayment.length);
 
       if (selectedItemsForPayment.length === 0) {
-        Swal.fire(ERROR, PAYMENT_ERROR, "error")
-        setIsLoading(false)
-        return
+        Swal.fire(ERROR, PAYMENT_ERROR, "error");
+        setIsLoading(false);
+        return;
       }
 
       // ✅ Prepare payment data - ONLY payment update, no registration
@@ -626,16 +651,18 @@ const LabBillingDetails = () => {
         mode: "cash",
         paymentReferenceNo: `PAY${Date.now()}`,
         investigationandPackegBillStatus: selectedItemsForPayment,
-        // ✅ CRITICAL: Add flags to prevent duplicate registration in payment API
         isPaymentUpdate: true,
         shouldNotCreateNewBilling: true,
         useExistingBillingHeader: true,
-        operationType: "payment_update_only"
-      }
+        operationType: "payment_update_only",
+      };
 
-      console.log("=== PAYMENT DATA ===")
-      console.log("Payment data to send:", paymentData)
-      console.log("Billing Header Source:", data?.billinghdid ? "EXISTING" : "NEW")
+      console.log("=== PAYMENT DATA ===");
+      console.log("Payment data to send:", paymentData);
+      console.log(
+        "Billing Header Source:",
+        data?.billinghdid ? "EXISTING" : "NEW",
+      );
 
       // ✅ Prepare labData for payment page
       const labData = {
@@ -646,7 +673,7 @@ const LabBillingDetails = () => {
           patientId: patientId,
           totalAmount: totalFinalAmount,
         },
-      }
+      };
 
       // ✅ Final confirmation with clear billing header info
       Swal.fire({
@@ -657,10 +684,10 @@ const LabBillingDetails = () => {
         cancelButtonText: "Cancel",
       }).then((result) => {
         if (result.isConfirmed) {
-          console.log("=== NAVIGATING TO PAYMENT ===")
-          console.log("Billing Header ID:", billingHeaderId)
-          console.log("Was Registered:", !data?.billinghdid)
-          
+          console.log("=== NAVIGATING TO PAYMENT ===");
+          console.log("Billing Header ID:", billingHeaderId);
+          console.log("Was Registered:", !data?.billinghdid);
+
           navigate("/payment", {
             state: {
               amount: totalFinalAmount,
@@ -674,30 +701,32 @@ const LabBillingDetails = () => {
               wasRegistered: !data?.billinghdid,
               originalOrderHdId: data?.orderhdid,
               originalBillingData: data,
-              billingHeaderSource: data?.billinghdid ? 'pending_api' : 'new_registration'
+              billingHeaderSource: data?.billinghdid
+                ? "pending_api"
+                : "new_registration",
             },
-          })
+          });
         }
-      })
+      });
     } catch (error) {
-      console.error("❌ Error:", error)
-      Swal.fire("Error!", error.message || UNEXPECTED_ERROR, "error")
+      console.error("❌ Error:", error);
+      Swal.fire("Error!", error.message || UNEXPECTED_ERROR, "error");
     } finally {
-      setIsLoading(false)
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleBack = () => {
-    navigate("/PendingForBilling")
-  }
+    navigate("/PendingForBilling");
+  };
 
-  const paymentBreakdown = calculatePaymentBreakdown()
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast)
+  const paymentBreakdown = useMemo(() => {
+    return calculatePaymentBreakdown();
+  }, [formData.rows, checkedRows, gstConfig]);
+  const currentItems = filteredPatientList;
 
   if (isLoading && !showPatientDetails) {
-    return <LoadingScreen />
+    return <LoadingScreen />;
   }
 
   return (
@@ -707,17 +736,13 @@ const LabBillingDetails = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Lab Billing</h4>
-              {showPatientDetails ? (
-                <button 
-                  type="button" 
+              {showPatientDetails && (
+                <button
+                  type="button"
                   className="btn btn-outline-secondary"
                   onClick={handleBackToList}
                 >
                   <i className="mdi mdi-arrow-left"></i> Back to List
-                </button>
-              ) : (
-                <button type="button" className="btn btn-secondary" onClick={handleBack}>
-                  <i className="mdi mdi-arrow-left"></i> Back to Pending List
                 </button>
               )}
             </div>
@@ -730,7 +755,9 @@ const LabBillingDetails = () => {
                     <div className="card-body">
                       <div className="row g-4 align-items-end">
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Patient Name</label>
+                          <label className="form-label fw-semibold">
+                            Patient Name
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -741,18 +768,22 @@ const LabBillingDetails = () => {
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Mobile No.</label>
+                          <label className="form-label fw-semibold">
+                            Mobile No.
+                          </label>
                           <input
                             type="text"
                             className="form-control"
                             id="mobileNo"
-                            placeholder="Enter mobile number"
+                            placeholder="Enter Mobile number"
                             value={searchData.mobileNo}
                             onChange={handleSearchChange}
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Registration No.</label>
+                          <label className="form-label fw-semibold">
+                            Registration No.
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -764,15 +795,19 @@ const LabBillingDetails = () => {
                         </div>
                         <div className="col-md-3">
                           <div className="d-flex gap-2">
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
-                              disabled={isLoading}
+                              disabled={isSearching}
                             >
-                              {isLoading ? (
+                              {isSearching ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
                                   Searching...
                                 </>
                               ) : (
@@ -786,7 +821,7 @@ const LabBillingDetails = () => {
                               className="btn btn-secondary flex-fill"
                               onClick={handleReset}
                             >
-                              Reset
+                              Show All
                             </button>
                           </div>
                         </div>
@@ -797,7 +832,11 @@ const LabBillingDetails = () => {
                   {error && (
                     <div className="alert alert-danger" role="alert">
                       <strong>Error:</strong> {error}
-                      <button type="button" className="btn btn-sm btn-outline-danger ms-2" onClick={fetchPendingLabBilling}>
+                      <button
+                        type="button"
+                        className="btn btn-sm btn-outline-danger ms-2"
+                        onClick={fetchPendingLabBilling}
+                      >
                         Retry
                       </button>
                     </div>
@@ -805,7 +844,8 @@ const LabBillingDetails = () => {
 
                   {!error && filteredPatientList.length === 0 && (
                     <div className="alert alert-info" role="alert">
-                      <i className="mdi mdi-information"></i> No pending lab billing records found.
+                      <i className="mdi mdi-information"></i> No pending lab
+                      billing records found.
                     </div>
                   )}
 
@@ -814,14 +854,13 @@ const LabBillingDetails = () => {
                       <table className="table table-bordered table-hover align-middle">
                         <thead className="table-light">
                           <tr>
+                            <th>Registration No</th>
                             <th>Patient Name</th>
                             <th>Mobile No.</th>
                             <th>Age</th>
-                            <th>Sex</th>
-                            <th>Relation</th>
+                            <th>Gender</th>
                             <th>Billing Type</th>
-                            <th>Consulted Doctor</th>
-                            <th>Department</th>
+                            <th>Appointment Date</th>
                             <th>Amount</th>
                             <th>Billing Status</th>
                           </tr>
@@ -832,24 +871,37 @@ const LabBillingDetails = () => {
                               key={item.id}
                               onClick={() => handleRowClick(item)}
                               role="button"
-                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(item) }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ")
+                                  handleRowClick(item);
+                              }}
                               style={{ cursor: "pointer" }}
                             >
+                              <td>{item.registrationNo}</td>
                               <td>{item.patientName}</td>
                               <td>{item.mobileNo}</td>
                               <td>{item.age}</td>
-                              <td>{item.sex}</td>
-                              <td>{item.relation}</td>
+                              <td>{item.gender}</td>
                               <td>
-                                <span className="badge bg-info">{item.billingType}</span>
+                                <span className="badge bg-info">
+                                  {item.billingType}
+                                </span>
                               </td>
-                              <td>{item.consultedDoctor}</td>
-                              <td>{item.department}</td>
-                              <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
+                              <td>{formatDateTime(item.appointmentDate)}</td>
+                              <td>
+                                ₹
+                                {typeof item.amount === "number"
+                                  ? item.amount.toFixed(2)
+                                  : item.amount}
+                              </td>
                               <td>
                                 <button
+                                  type="button"
                                   className="btn btn-warning btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRowClick(item);
+                                  }}
                                   style={{
                                     cursor: "pointer",
                                     border: "none",
@@ -857,7 +909,6 @@ const LabBillingDetails = () => {
                                     color: "#ff6b35",
                                     textDecoration: "underline",
                                   }}
-                                  aria-label={`Open ${item.patientName} billing details`}
                                 >
                                   {item.billingStatus}
                                 </button>
@@ -871,7 +922,11 @@ const LabBillingDetails = () => {
 
                   {filteredPatientList.length > 0 && (
                     <Pagination
-                      totalItems={filteredPatientList.length}
+                      totalItems={
+                        isSearchMode
+                          ? filteredPatientList.length
+                          : totalElements
+                      }
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={setCurrentPage}
@@ -895,7 +950,8 @@ const LabBillingDetails = () => {
                         <div className="row">
                           <div className="form-group col-md-4 mt-3">
                             <label>
-                              Patient Name <span className="text-danger">*</span>
+                              Patient Name{" "}
+                              <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
@@ -940,15 +996,15 @@ const LabBillingDetails = () => {
                           </div>
                           <div className="form-group col-md-4 mt-3">
                             <label>
-                              Sex <span className="text-danger">*</span>
+                              Gender <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
                               className="form-control"
-                              id="sex"
-                              placeholder="Sex"
+                              id="gender"
+                              placeholder="gender"
                               onChange={handleInputChange}
-                              value={formData.sex}
+                              value={formData.gender}
                               required
                               readOnly
                             />
@@ -1000,14 +1056,20 @@ const LabBillingDetails = () => {
                       <div className="card-header">
                         <h5 className="mb-0">
                           <i className="mdi mdi-test-tube"></i>{" "}
-                          {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                          {formData.type === "investigation"
+                            ? "Investigation Details"
+                            : "Package Details"}
                         </h5>
                       </div>
                       <div className="card-body">
                         <table className="table table-bordered">
                           <thead>
                             <tr>
-                              <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"}</th>
+                              <th>
+                                {formData.type === "investigation"
+                                  ? "Investigation Name"
+                                  : "Package Name"}
+                              </th>
                               <th>Date</th>
                               <th>Original Amount</th>
                               <th>Discount Amount</th>
@@ -1022,13 +1084,17 @@ const LabBillingDetails = () => {
                                   <div className="d-flex align-items-center gap-2">
                                     <input
                                       type="checkbox"
-                                      style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                      style={{
+                                        width: "20px",
+                                        height: "20px",
+                                        border: "2px solid black",
+                                      }}
                                       className="form-check-input"
                                       checked={checkedRows[index] || false}
                                       onChange={(e) => {
-                                        const updated = [...checkedRows]
-                                        updated[index] = e.target.checked
-                                        setCheckedRows(updated)
+                                        const updated = [...checkedRows];
+                                        updated[index] = e.target.checked;
+                                        setCheckedRows(updated);
                                       }}
                                     />
                                     <div className="dropdown-search-container position-relative flex-grow-1">
@@ -1038,7 +1104,9 @@ const LabBillingDetails = () => {
                                         value={row.name}
                                         autoComplete="off"
                                         placeholder={
-                                          formData.type === "investigation" ? "Investigation Name" : "Package Name"
+                                          formData.type === "investigation"
+                                            ? "Investigation Name"
+                                            : "Package Name"
                                         }
                                         readOnly
                                       />
@@ -1050,7 +1118,13 @@ const LabBillingDetails = () => {
                                     type="date"
                                     className="form-control"
                                     value={row.date}
-                                    onChange={(e) => handleRowChange(index, "date", e.target.value)}
+                                    onChange={(e) =>
+                                      handleRowChange(
+                                        index,
+                                        "date",
+                                        e.target.value,
+                                      )
+                                    }
                                   />
                                 </td>
                                 <td>
@@ -1058,7 +1132,13 @@ const LabBillingDetails = () => {
                                     type="number"
                                     className="form-control"
                                     value={row.originalAmount}
-                                    onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                                    onChange={(e) =>
+                                      handleRowChange(
+                                        index,
+                                        "originalAmount",
+                                        e.target.value,
+                                      )
+                                    }
                                     min="0"
                                     step="0.01"
                                   />
@@ -1068,13 +1148,21 @@ const LabBillingDetails = () => {
                                     type="number"
                                     className="form-control"
                                     value={row.discountAmount}
-                                    onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                                    onChange={(e) =>
+                                      handleRowChange(
+                                        index,
+                                        "discountAmount",
+                                        e.target.value,
+                                      )
+                                    }
                                     min="0"
                                     step="0.01"
                                   />
                                 </td>
                                 <td>
-                                  <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                                  <div className="font-weight-bold text-success">
+                                    ₹{row.netAmount || "0.00"}
+                                  </div>
                                 </td>
                                 <td>
                                   <div className="d-flex align-item-center gap-2">
@@ -1101,20 +1189,39 @@ const LabBillingDetails = () => {
                     <div className="col-12 mt-4">
                       <div
                         className="card shadow mb-3"
-                        style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          border: "none",
+                        }}
                       >
                         <div
                           className="card-header py-3 text-white"
-                          style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
+                          style={{
+                            background: "rgba(255,255,255,0.1)",
+                            border: "none",
+                          }}
                         >
                           <div className="d-flex align-items-center gap-3">
-                            <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
+                            <div
+                              className="p-2 bg-white rounded"
+                              style={{ opacity: 0.9 }}
+                            >
                               <i className="fa fa-calculator text-primary"></i>
                             </div>
                             <div>
-                              <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
-                              <small className="text-white" style={{ opacity: 0.8 }}>
-                                {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
+                              <h5 className="mb-0 fw-bold text-white">
+                                Payment Summary
+                              </h5>
+                              <small
+                                className="text-white"
+                                style={{ opacity: 0.8 }}
+                              >
+                                {paymentBreakdown.itemCount} item
+                                {paymentBreakdown.itemCount !== 1
+                                  ? "s"
+                                  : ""}{" "}
+                                selected
                               </small>
                             </div>
                           </div>
@@ -1133,10 +1240,17 @@ const LabBillingDetails = () => {
                               >
                                 <div className="card-body text-center">
                                   <div className="mb-2">
-                                    <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
+                                    <i
+                                      className="fa fa-receipt fa-2x text-white"
+                                      style={{ opacity: 0.8 }}
+                                    ></i>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">Total Amount</h6>
-                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
+                                  <h6 className="card-title text-white mb-1">
+                                    Total Amount
+                                  </h6>
+                                  <h4 className="text-white fw-bold">
+                                    ₹{paymentBreakdown.totalOriginalAmount}
+                                  </h4>
                                 </div>
                               </div>
                             </div>
@@ -1144,14 +1258,21 @@ const LabBillingDetails = () => {
                             <div className="col-md-3">
                               <div
                                 className="card h-100"
-                                style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
+                                style={{
+                                  background: "rgba(40,167,69,0.2)",
+                                  border: "1px solid rgba(40,167,69,0.3)",
+                                }}
                               >
                                 <div className="card-body text-center">
                                   <div className="mb-2">
                                     <i className="fa fa-percent fa-2x text-success"></i>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">Total Discount</h6>
-                                  <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
+                                  <h6 className="card-title text-white mb-1">
+                                    Total Discount
+                                  </h6>
+                                  <h4 className="text-success fw-bold">
+                                    ₹{paymentBreakdown.totalDiscountAmount}
+                                  </h4>
                                 </div>
                               </div>
                             </div>
@@ -1160,7 +1281,10 @@ const LabBillingDetails = () => {
                               <div className="col-md-3">
                                 <div
                                   className="card h-100"
-                                  style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
+                                  style={{
+                                    background: "rgba(255,193,7,0.2)",
+                                    border: "1px solid rgba(255,193,7,0.3)",
+                                  }}
                                 >
                                   <div className="card-body text-center">
                                     <div className="mb-2">
@@ -1169,7 +1293,9 @@ const LabBillingDetails = () => {
                                     <h6 className="card-title text-white mb-1">
                                       Tax ({paymentBreakdown.gstPercent}% GST)
                                     </h6>
-                                    <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
+                                    <h4 className="text-warning fw-bold">
+                                      ₹{paymentBreakdown.totalGstAmount}
+                                    </h4>
                                   </div>
                                 </div>
                               </div>
@@ -1179,7 +1305,8 @@ const LabBillingDetails = () => {
                               <div
                                 className="card h-100"
                                 style={{
-                                  background: "linear-gradient(45deg, #28a745, #20c997)",
+                                  background:
+                                    "linear-gradient(45deg, #28a745, #20c997)",
                                   border: "none",
                                   boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
                                 }}
@@ -1188,14 +1315,24 @@ const LabBillingDetails = () => {
                                   <div className="mb-2">
                                     <i className="fa fa-credit-card fa-2x text-white"></i>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">Final Amount</h6>
-                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
+                                  <h6 className="card-title text-white mb-1">
+                                    Final Amount
+                                  </h6>
+                                  <h4 className="text-white fw-bold">
+                                    ₹{paymentBreakdown.finalAmount}
+                                  </h4>
                                 </div>
                               </div>
                             </div>
                           </div>
                           {/* Detailed Breakdown */}
-                          <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
+                          <div
+                            className="card"
+                            style={{
+                              background: "rgba(255,255,255,0.95)",
+                              border: "none",
+                            }}
+                          >
                             <div className="card-body">
                               <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
                                 <i className="fa fa-list-alt text-primary"></i>
@@ -1204,42 +1341,70 @@ const LabBillingDetails = () => {
                               <div className="row">
                                 <div className="col-md-8">
                                   <div className="d-flex justify-content-between py-2 border-bottom">
-                                    <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
+                                    <span className="text-muted">
+                                      Subtotal ({paymentBreakdown.itemCount}{" "}
+                                      items)
+                                    </span>
+                                    <span className="fw-medium text-dark">
+                                      ₹{paymentBreakdown.totalOriginalAmount}
+                                    </span>
                                   </div>
-                                  {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                                  {Number(
+                                    paymentBreakdown.totalDiscountAmount,
+                                  ) > 0 && (
                                     <div className="d-flex justify-content-between py-2 border-bottom">
-                                      <span className="text-success">Discount Applied</span>
+                                      <span className="text-success">
+                                        Discount Applied
+                                      </span>
                                       <span className="fw-medium text-success">
                                         -₹{paymentBreakdown.totalDiscountAmount}
                                       </span>
                                     </div>
                                   )}
                                   <div className="d-flex justify-content-between py-2 border-bottom">
-                                    <span className="text-muted">Amount after Discount</span>
-                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
+                                    <span className="text-muted">
+                                      Amount after Discount
+                                    </span>
+                                    <span className="fw-medium text-dark">
+                                      ₹{paymentBreakdown.totalNetAmount}
+                                    </span>
                                   </div>
                                   {paymentBreakdown.gstApplicable && (
                                     <div className="d-flex justify-content-between py-2 border-bottom">
-                                      <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                                      <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                                      <span className="text-muted">
+                                        GST ({paymentBreakdown.gstPercent}%)
+                                      </span>
+                                      <span className="fw-medium text-warning">
+                                        +₹{paymentBreakdown.totalGstAmount}
+                                      </span>
                                     </div>
                                   )}
                                   <div className="d-flex justify-content-between py-3 border-top">
-                                    <span className="h5 fw-bold text-dark">Total Payable</span>
-                                    <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                                    <span className="h5 fw-bold text-dark">
+                                      Total Payable
+                                    </span>
+                                    <span className="h4 fw-bold text-primary">
+                                      ₹{paymentBreakdown.finalAmount}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="col-md-4">
                                   <div className="d-flex flex-wrap gap-2">
                                     <span className="badge bg-secondary px-3 py-2">
-                                      {paymentBreakdown.itemCount} Items Selected
+                                      {paymentBreakdown.itemCount} Items
+                                      Selected
                                     </span>
-                                    {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                                      <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                                    {Number(
+                                      paymentBreakdown.totalDiscountAmount,
+                                    ) > 0 && (
+                                      <span className="badge bg-success px-3 py-2">
+                                        Discount Applied
+                                      </span>
                                     )}
                                     {paymentBreakdown.gstApplicable && (
-                                      <span className="badge bg-info px-3 py-2">GST Included</span>
+                                      <span className="badge bg-info px-3 py-2">
+                                        GST Included
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -1259,7 +1424,10 @@ const LabBillingDetails = () => {
                     >
                       {isLoading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status"></span>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                          ></span>
                           Processing...
                         </>
                       ) : (
@@ -1269,7 +1437,11 @@ const LabBillingDetails = () => {
                         </>
                       )}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={handleBackToList}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleBackToList}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -1280,7 +1452,7 @@ const LabBillingDetails = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default LabBillingDetails
+export default LabBillingDetails;

@@ -1,12 +1,12 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
-import axios from "axios"
-import { API_HOST, INVESTIGATION_PRICE_DETAILS, ALL_INVESTIGATION, ALL_INVESTIGATION_PRICE_DETAILS } from "../../../config/apiConfig"
+import {INVESTIGATION_PRICE_DETAILS, ALL_INVESTIGATION, ALL_INVESTIGATION_PRICE_DETAILS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import {
     FETCH_INV_PRICING_ERR_MSG, FAIL_TO_LOAD_INV_OPTION, FILL_ALL_REQUIRED_FIELDS, TO_DATE_AFTER_FROM_DATE,
-    UPDATE_INV_PRICING_SUCC_MSG, ADD_INV_PRICING_SUCC_MSG, FAIL_TO_UPDATE_STS, FAIL_TO_SAVE_CHANGES
+    UPDATE_INV_PRICING_SUCC_MSG, ADD_INV_PRICING_SUCC_MSG, FAIL_TO_UPDATE_STS, FAIL_TO_SAVE_CHANGES,
+    SEARCH_CRITERIA_MANDATORY_WARN_MSG
 } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
@@ -21,33 +21,70 @@ const Investigationpricing = () => {
         toDate: "",
         price: "",
     })
-    const [searchQuery, setSearchQuery] = useState("")
     const [showForm, setShowForm] = useState(false)
     const [isFormValid, setIsFormValid] = useState(false)
     const [editingInvestigation, setEditingInvestigation] = useState(null)
     const [popupMessage, setPopupMessage] = useState(null)
-    const [currentPage, setCurrentPage] = useState(1)
+
+    // Pagination and search states
+    const [currentPage, setCurrentPage] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
+    const [totalElements, setTotalElements] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [isSearching, setIsSearching] = useState(false)
+    const [isShowAllLoading, setIsShowAllLoading] = useState(false)
     const [searchText, setSearchText] = useState("")
+    const [paginationLoading,setPaginationLoading]= useState(false)
+
+    // Search criteria
+    const [investigationName, setInvestigationName] = useState("")
+
+    const isMounted = useRef(true)
 
     useEffect(() => {
-        fetchInvestigationPriceDetails()
         fetchInvestigationOptions()
+        fetchInvestigationPriceDetails(0, true)
+        return () => {
+            isMounted.current = false
+        }
     }, [])
 
-    // Fetch all investigation price details
-    const fetchInvestigationPriceDetails = async () => {
+    // Fetch all investigation price details with server-side pagination
+    const fetchInvestigationPriceDetails = async (page = 0, isInitialLoad = false) => {
         try {
-            setLoading(true)
-            const response = await getRequest(`${ALL_INVESTIGATION_PRICE_DETAILS}/0`)
-            if (response && response.response) {
-                setInvestigationList(response.response)
+            if (isInitialLoad) {
+                setLoading(true)
+            }
+
+            const params = new URLSearchParams({
+                page: page,
+                size: DEFAULT_ITEMS_PER_PAGE
+            })
+
+            // Add search parameter if exists
+            if (investigationName?.trim()) {
+                params.append('investigationName', investigationName.trim())
+            }
+
+            const response = await getRequest(`${ALL_INVESTIGATION_PRICE_DETAILS}/0?${params.toString()}`)
+
+            if (response && response.status === 200 && response.response) {
+                setInvestigationList(response.response.content || [])
+                setTotalPages(response.response.totalPages || 0)
+                setTotalElements(response.response.totalElements || 0)
             }
         } catch (err) {
             console.error("Error fetching investigation price details:", err)
             showPopup(FETCH_INV_PRICING_ERR_MSG, "error")
+            setInvestigationList([])
+            setTotalPages(0)
+            setTotalElements(0)
         } finally {
-            setLoading(false)
+            if (isInitialLoad) {
+                setLoading(false)
+            } 
+            setIsSearching(false)
+            setIsShowAllLoading(false)
         }
     }
 
@@ -64,20 +101,65 @@ const Investigationpricing = () => {
         }
     }
 
-    const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value)
+    // Check if search is enabled
+    const isSearchEnabled = () => {
+        return investigationName?.trim() !== ""
     }
 
+    // Handle search button click
+    const handleSearch = () => {
+        if (!isSearchEnabled()) {
+            showPopup(SEARCH_CRITERIA_MANDATORY_WARN_MSG, "warning")
+            return
+        }
+        setIsSearching(true)
+        setCurrentPage(0)
+        fetchInvestigationPriceDetails(0, false)
+    }
 
-    const filteredInvestigationList = investigationList.filter(
-        (item) =>
-            (item.investigationId && item.investigationId.toString().toLowerCase().includes(searchQuery.toLowerCase())) ||
-            (item.price && item.price.toString().toLowerCase().includes(searchQuery.toLowerCase()))
-    )
+    // Handle show all button click
+const handleShowAll = async () => {
+    setIsShowAllLoading(true);
+    
+    // Clear search field
+    setInvestigationName("");
+    setCurrentPage(0);
+    
+    // Fetch all data without any search criteria from page 0
+    try {
+        const params = new URLSearchParams({
+            page: 0,
+            size: DEFAULT_ITEMS_PER_PAGE
+        });
+        
+        const response = await getRequest(`${ALL_INVESTIGATION_PRICE_DETAILS}/0?${params.toString()}`);
+        
+        if (response && response.status === 200 && response.response) {
+            setInvestigationList(response.response.content || []);
+            setTotalPages(response.response.totalPages || 0);
+            setTotalElements(response.response.totalElements || 0);
+        } else {
+            setInvestigationList([]);
+            setTotalPages(0);
+            setTotalElements(0);
+        }
+    } catch (error) {
+        console.error("Error fetching investigation price details:", error);
+        showPopup(FETCH_INV_PRICING_ERR_MSG, "error");
+        setInvestigationList([]);
+        setTotalPages(0);
+        setTotalElements(0);
+    } finally {
+        setIsShowAllLoading(false);
+    }
+};
 
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredInvestigationList.slice(indexOfFirst, indexOfLast);
+    // Handle pagination page change
+    const handlePageChange = (page) => {
+        const newPage = page - 1
+        setCurrentPage(newPage)
+        fetchInvestigationPriceDetails(newPage, false)
+    }
 
     const handleEdit = (item) => {
         setEditingInvestigation(item)
@@ -94,25 +176,38 @@ const Investigationpricing = () => {
     // Format date for input field (YYYY-MM-DD)
     const formatDateForInput = (dateString) => {
         if (!dateString || dateString === "-") return ""
-
         try {
             const date = new Date(dateString)
-            return date.toISOString().split('T')[0] // Format as YYYY-MM-DD
+            return date.toISOString().split('T')[0]
         } catch (e) {
             return dateString
         }
     }
 
+    const formatDateForDisplay = (dateString) => {
+    if (!dateString || dateString === "-") return "";
+
+    try {
+        const date = new Date(dateString);
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-based
+        const year = date.getFullYear();
+
+        return `${day}/${month}/${year}`;
+    } catch (e) {
+        return "";
+    }
+};
+
     const handleSave = async (e) => {
         e.preventDefault()
 
-        // Check form validation again just to be safe
         if (!formData.investigationId || !formData.fromDate || !formData.toDate || !formData.price) {
             showPopup(FILL_ALL_REQUIRED_FIELDS, "error")
             return
         }
 
-        // Check date validation
         if (new Date(formData.toDate) < new Date(formData.fromDate)) {
             showPopup(TO_DATE_AFTER_FROM_DATE, "error")
             return
@@ -129,12 +224,11 @@ const Investigationpricing = () => {
             }
 
             if (editingInvestigation) {
-                // Update existing price details
                 putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
                     .then(response => {
                         if (response && response.status === 200) {
                             showPopup(UPDATE_INV_PRICING_SUCC_MSG, "success")
-                            fetchInvestigationPriceDetails() // Refresh the list
+                            fetchInvestigationPriceDetails(currentPage, false)
                             resetForm()
                         } else {
                             showPopup(response.message || FAIL_TO_SAVE_CHANGES, "error")
@@ -142,8 +236,6 @@ const Investigationpricing = () => {
                     })
                     .catch(error => {
                         console.error("Error updating investigation price:", error)
-
-                        // Extract error message from response
                         const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
                         showPopup(errorMessage, "error")
                     })
@@ -151,12 +243,11 @@ const Investigationpricing = () => {
                         setLoading(false)
                     })
             } else {
-                // Add new price details
                 postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
                     .then(response => {
                         if (response && response.status === 200) {
                             showPopup(ADD_INV_PRICING_SUCC_MSG, "success")
-                            fetchInvestigationPriceDetails() // Refresh the list
+                            fetchInvestigationPriceDetails(0, false)
                             resetForm()
                         } else {
                             showPopup(FAIL_TO_SAVE_CHANGES, "error")
@@ -164,8 +255,6 @@ const Investigationpricing = () => {
                     })
                     .catch(error => {
                         console.error("Error adding investigation price:", error)
-
-                        // Extract error message from response
                         const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
                         showPopup(errorMessage, "error")
                     })
@@ -180,7 +269,6 @@ const Investigationpricing = () => {
         }
     }
 
-    // Helper function to reset form state
     const resetForm = () => {
         setEditingInvestigation(null)
         setShowForm(false)
@@ -220,7 +308,7 @@ const Investigationpricing = () => {
                         `Investigation price details ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
                     )
-                    fetchInvestigationPriceDetails()
+                    fetchInvestigationPriceDetails(currentPage, false)
                 }
             } catch (err) {
                 console.error("Error updating investigation price details status:", err)
@@ -235,18 +323,15 @@ const Investigationpricing = () => {
     const handleInputChange = (e) => {
         const { id, value } = e.target
 
-        // Validate the price input to allow only numbers and decimal points
         if (id === "price") {
-            // Check if the value is a valid number (including empty string)
             if (value === "" || /^\d*\.?\d*$/.test(value)) {
                 setFormData((prevData) => ({ ...prevData, [id]: value }))
             }
-            return // Exit the function after validation
+            return
         }
 
         setFormData((prevData) => ({ ...prevData, [id]: value }))
 
-        // Check for form validity after input changes
         setTimeout(() => {
             const updatedFormData = { ...formData, [id]: value }
             const isValid = !!updatedFormData.investigationId &&
@@ -254,14 +339,7 @@ const Investigationpricing = () => {
                 !!updatedFormData.fromDate &&
                 !!updatedFormData.toDate
             setIsFormValid(isValid)
-            console.log("Form validity after input change:", isValid, updatedFormData)
         }, 0)
-    }
-
-    const handleRefresh = () => {
-        setSearchQuery("")
-        setCurrentPage(1)
-        fetchInvestigationPriceDetails()
     }
 
     const handleAddClick = () => {
@@ -286,7 +364,6 @@ const Investigationpricing = () => {
         setSearchText(investigation.investigationName || investigation.investigationId.toString())
         setDropdownOpen(false)
 
-
         setTimeout(() => {
             const updatedFormData = {
                 ...formData,
@@ -297,7 +374,6 @@ const Investigationpricing = () => {
                 !!updatedFormData.fromDate &&
                 !!updatedFormData.toDate
             setIsFormValid(isValid)
-            console.log("Form validity after investigation selection:", isValid, updatedFormData)
         }, 0)
     }
 
@@ -314,38 +390,38 @@ const Investigationpricing = () => {
         }
     }, [dropdownOpen])
 
-
     useEffect(() => {
         const isValid = !!formData.investigationId &&
             !!formData.price &&
             !!formData.fromDate &&
             !!formData.toDate
         setIsFormValid(isValid)
-        console.log("Form validity in useEffect:", isValid, formData)
     }, [formData])
 
     const formatDate = (dateString) => {
-        if (!dateString || dateString === "-") return "-"
+    if (!dateString || dateString === "-") return "";
 
-        try {
-            const date = new Date(dateString)
-            return date.toISOString().split('T')[0]
-        } catch (e) {
-            return dateString
-        }
+    try {
+        const date = new Date(dateString);
+
+        const day = String(date.getDate()).padStart(2, '0');
+        const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-based
+        const year = date.getFullYear();
+
+        return `${day}/${month}/${year}`;
+    } catch (e) {
+        return dateString;
     }
-
+};
 
     const getInvestigationName = (id) => {
         const investigation = investigationOptions.find(item => item.investigationId?.toString() === id?.toString())
         return investigation ? investigation.investigationName : id
     }
 
-
     const debugFormState = () => {
         console.log("Current form state:", formData)
         console.log("Is form valid?", isFormValid)
-        console.log("Are dates valid?", !(formData.fromDate && formData.toDate && new Date(formData.toDate) < new Date(formData.fromDate)))
     }
 
     return (
@@ -356,58 +432,82 @@ const Investigationpricing = () => {
                         <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title">Investigation Pricing Master</h4>
 
-                            <div className="d-flex justify-content-between align-items-center">
-                                {!showForm ? (
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search "
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearchChange}
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <></>
+                            <div className="d-flex align-items-center">
+                                {!showForm && (
+                                    <div className="d-flex align-items-center gap-2">
+                                        {/* Search Input */}
+
+                                        <button
+                                            type="button"
+                                            className="btn btn-success me-2"
+                                            onClick={handleAddClick}
+                                        >
+                                            <i className="mdi mdi-plus"></i> Add
+                                        </button>
+                                    </div>
                                 )}
 
-                                <div className="d-flex align-items-center">
-                                    {!showForm ? (
-                                        <>
-                                            <button
-                                                type="button"
-                                                className="btn btn-success me-2"
-                                                onClick={handleAddClick}
-                                            >
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button
-                                                type="button"
-                                                className="btn btn-success me-2 flex-shrink-0"
-                                                onClick={handleRefresh}
-                                            >
-                                                <i className="mdi mdi-refresh"></i> Show All
-                                            </button>
-                                        </>
-                                    ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    )}
-                                </div>
+                                {showForm && (
+                                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                        <i className="mdi mdi-arrow-left"></i> Back
+                                    </button>
+                                )}
                             </div>
                         </div>
+
                         <div className="card-body">
                             {loading ? (
                                 <LoadingScreen />
                             ) : !showForm ? (
                                 <>
+                                    <div className="d-flex align-items-center gap-2 mb-4">
+                                        <div className="col-md-4 align-items-center">
+                                            <label className="mb-1"><b>Investigation name</b></label>
+                                            <input
+                                                type="text"
+                                                className="form-control me-2"
+                                                placeholder="Search by investigation name..."
+                                                value={investigationName}
+                                                onChange={(e) => setInvestigationName(e.target.value)}
+                                                style={{ width: '250px' }}
+                                            />
+                                        </div>
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary "
+                                            onClick={handleSearch}
+                                            disabled={isSearching || !isSearchEnabled()}
+                                        >
+                                            {isSearching ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" />
+                                                    Searching...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Search
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={handleShowAll}
+                                            disabled={ isShowAllLoading}
+                                        >
+                                            {isShowAllLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" />
+                                                    Showing All...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    Show All
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
+
                                     <div className="table-responsive packagelist">
                                         <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
@@ -421,51 +521,70 @@ const Investigationpricing = () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {currentItems.map((item) => (
-                                                    <tr key={item.id}>
-                                                        <td>{getInvestigationName(item.investigationId)}</td>
-                                                        <td>{formatDate(item.fromDt)}</td>
-                                                        <td>{formatDate(item.toDt)}</td>
-                                                        <td>₹{item.price}</td>
-                                                        <td>
-                                                            <div className="form-check form-switch">
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    checked={item.status === "y"}
-                                                                    onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                                                    id={`switch-${item.id}`}
-                                                                />
-                                                                <label
-                                                                    className="form-check-label px-0"
-                                                                    htmlFor={`switch-${item.id}`}
-                                                                    onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                                                >
-                                                                    {item.status === "y" ? "Active" : "Deactivated"}
-                                                                </label>
+                                                {paginationLoading ? (
+                                                    <tr>
+                                                        <td colSpan="6" className="text-center py-4">
+                                                            <div className="spinner-border text-primary spinner-sm" role="status">
+                                                                <span className="visually-hidden">Loading...</span>
                                                             </div>
-                                                        </td>
-                                                        <td>
-                                                            <button
-                                                                className="btn btn-sm btn-success me-2"
-                                                                onClick={() => handleEdit(item)}
-                                                                disabled={item.status !== "y"}
-                                                            >
-                                                                <i className="fa fa-pencil"></i>
-                                                            </button>
+                                                            <span className="ms-2">Loading page...</span>
                                                         </td>
                                                     </tr>
-                                                ))}
+                                                ) : investigationList.length > 0 ? (
+                                                    investigationList.map((item) => (
+                                                        <tr key={item.id}>
+                                                            <td>{item.investigationName || getInvestigationName(item.investigationId)}</td>
+                                                            <td>{formatDate(item.fromDt)}</td>
+                                                            <td>{formatDate(item.toDt)}</td>
+                                                            <td>₹{item.price}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={item.status === "y"}
+                                                                        onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                        id={`switch-${item.id}`}
+                                                                    />
+                                                                    <label
+                                                                        className="form-check-label px-0"
+                                                                        htmlFor={`switch-${item.id}`}
+                                                                        onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                    >
+                                                                        {item.status === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(item)}
+                                                                    disabled={item.status !== "y"}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
+                                                            </td>
+                                                        </tr>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="6" className="text-center py-4">
+                                                            No records found
+                                                        </td>
+                                                    </tr>
+                                                )}
                                             </tbody>
                                         </table>
                                     </div>
-                                    {/* PAGINATION USING REUSABLE COMPONENT */}
-                                    {filteredInvestigationList.length > 0 && (
+
+                                    {/* Server-side Pagination */}
+                                    {investigationList.length > 0 && totalPages > 0 && (
                                         <Pagination
-                                            totalItems={filteredInvestigationList.length}
+                                            totalItems={totalElements}
                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
+                                            currentPage={currentPage + 1}
+                                            onPageChange={handlePageChange}
+                                            totalPages={totalPages}
                                         />
                                     )}
                                 </>
@@ -487,7 +606,7 @@ const Investigationpricing = () => {
                                                     type="text"
                                                     className="form-control"
                                                     id="investigationId"
-                                                    placeholder="Search Investigation ID"
+                                                    placeholder="Search Investigation"
                                                     autoComplete="off"
                                                     required
                                                     value={searchText || getInvestigationName(formData.investigationId) || ""}
@@ -529,7 +648,6 @@ const Investigationpricing = () => {
                                                 )}
                                             </div>
                                         </div>
-
 
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
@@ -584,7 +702,7 @@ const Investigationpricing = () => {
                                             type="button"
                                             className="btn btn-primary me-2"
                                             onClick={(e) => {
-                                                debugFormState(); // Debug info in console
+                                                debugFormState();
                                                 handleSave(e);
                                             }}
                                         >
@@ -596,9 +714,11 @@ const Investigationpricing = () => {
                                     </div>
                                 </form>
                             )}
+
                             {popupMessage && (
                                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
                             )}
+
                             {confirmDialog.isOpen && (
                                 <div className="modal d-block" tabIndex="-1" role="dialog">
                                     <div className="modal-dialog" role="document">

@@ -5,6 +5,8 @@ import {
   MAS_OPD_SESSION,
   APPOINTMENT,
   FILTER_OPD_DEPT,
+  GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
+  REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
 } from "../../../../config/apiConfig";
 import {
   getRequest,
@@ -118,11 +120,9 @@ const AppointmentSetup = () => {
   const fetchDepartmentData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        const filteredDepartments = data.response.filter(
-          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`,
-        );
+        const filteredDepartments = data.response;
         setDepartmentData(data.response);
         setFilterDepartment(filteredDepartments);
       } else {
@@ -138,7 +138,7 @@ const AppointmentSetup = () => {
   };
 
   const fetchDoctorData = async () => {
-    setLoading(true);
+    // setLoading(true);
     try {
       const data = await getRequest(
         `${DOCTOR}/doctorBySpeciality/${department}`,
@@ -151,9 +151,7 @@ const AppointmentSetup = () => {
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
-    } finally {
-      setLoading(false);
-    }
+    } 
   };
 
   const fetchSessionData = async () => {

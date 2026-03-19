@@ -6,17 +6,37 @@ import Pagination, {
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import {
-  ALL_DEPARTMENT,
+  DAILY_CANCELLATION_REPORT_END_URL,
   DOCTOR_BY_SPECIALITY,
+  FILTER_OPD_DEPT,
+  GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
   GET_ALL_REASONS,
   GET_CANCELLED_APPOINTMENTS,
+  REQUEST_PARAM_CANCELLATION_ID,
+  REQUEST_PARAM_CANCELLATION_REASON_ID,
+  REQUEST_PARAM_DEPARTMENT_ID,
+  REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
+  REQUEST_PARAM_DOCTOR_ID,
+  REQUEST_PARAM_FLAG,
+  REQUEST_PARAM_FROM_DATE,
+  REQUEST_PARAM_HOSPITAL_ID,
+  REQUEST_PARAM_TO_DATE,
+  STATUS_D,
+  STATUS_P,
 } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
 import {
-  DEPARTMENT_CODE_OPD,
   FETCH_CANCELLATION_REASONS_ERROR_LOG,
   FETCH_DATA_ERROR,
   UNEXPECTED_API_RESPONSE_ERR,
+  SELECT_DATE_WARN_MSG,
+  FROM_DATE_FUTURE_ERR_MSG,
+  TO_DATE_FUTURE_ERR_MSG,
+  PAST_DATE_PICK_WARN_MSG,
+  REPORT_GENERATION_ERR_MSG,
+  DAY_RANGE_FOR_OPD_CANCELLTION_REPORT,
+  EXCEDED_DAY_SELECTION_WARN,
+  DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG,
 } from "../../../config/constants";
 
 const DailyCancellationReport = () => {
@@ -31,11 +51,10 @@ const DailyCancellationReport = () => {
   const [departmentData, setDepartmentData] = useState([]);
 
   // State for dropdowns
-  const [filteredDoctorOptions, setFilteredDoctorOptions] = useState([]);
   const [reasonOptions, setReasonOptions] = useState([]);
 
   // UI states
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false); // New state for search spinner
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -46,34 +65,48 @@ const DailyCancellationReport = () => {
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
 
-const formatDateTimeWithoutTZ = (isoString) => {
-  if (!isoString) return "-";
-  const [datePart, timePart] = isoString.split("T");
-  if (!datePart || !timePart) return isoString;
-  const cleanTime = timePart.split(".")[0];
-  return `${datePart} ${cleanTime.substring(0, 5)}`;
-};
+  const formatDateTimeWithoutTZ = (isoString) => {
+    if (!isoString) return "-";
+    const date = new Date(isoString);
+    const day = String(date.getDate()).padStart(2, '0');
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const year = date.getFullYear();
+    const hours = String(date.getHours()).padStart(2, '0');
+    const minutes = String(date.getMinutes()).padStart(2, '0');
+    return `${day}/${month}/${year} ${hours}:${minutes}`;
+  };
+
+  const formatAppointmentDateTime = (appointmentDate, appointmentTime) => {
+    if (!appointmentDate || !appointmentTime) return "-";
+    
+    // Parse the date (assuming format YYYY-MM-DD)
+    const [year, month, day] = appointmentDate.split('-');
+    
+    // Parse time range (format: HH:MM - HH:MM)
+    const timeRange = appointmentTime;
+    
+    return `${day}/${month}/${year} ${timeRange}`;
+  };
 
   useEffect(() => {
     fetchDepartment();
     fetchCancellationReasons();
   }, []);
+  
   // Initialize dates on component mount
   useEffect(() => {
     const today = new Date();
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    const daysAgo = new Date(today);
+    daysAgo.setDate(today.getDate() - DAY_RANGE_FOR_OPD_CANCELLTION_REPORT);
 
-    const formatDate = (date) => {
-      const year = date.getFullYear();
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const day = String(date.getDate()).padStart(2, "0");
-      return `${year}-${month}-${day}`;
-    };
-
-    // setFromDate(formatDate(sixMonthsAgo));
-    // setToDate(formatDate(today));
+    setToDate(formatDateForInput(today));
+    setFromDate(formatDateForInput(daysAgo));
   }, []);
+
+  // Format date to YYYY-MM-DD for input fields
+  const formatDateForInput = (date) => {
+    return date.toISOString().split('T')[0];
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -87,11 +120,10 @@ const formatDateTimeWithoutTZ = (isoString) => {
 
   async function fetchDepartment() {
     try {
-      const data = await getRequest(`${ALL_DEPARTMENT}/1`);
+      setLoading(true);
+      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        const filteredDepartments = data.response.filter(
-          (dept) => dept.departmentTypeId === DEPARTMENT_CODE_OPD,
-        );
+        const filteredDepartments = data.response;
         console.log(filteredDepartments);
         setDepartmentData(filteredDepartments);
       } else {
@@ -107,76 +139,99 @@ const formatDateTimeWithoutTZ = (isoString) => {
 
   const fetchCancellationReasons = async () => {
     try {
+      setLoading(true);
       const data = await getRequest(`${GET_ALL_REASONS}/1`);
 
       if (data.status === 200 && Array.isArray(data.response)) {
-        const activeReasons = data.response.filter(
-          (reason) =>
-            reason &&
-            (reason.status === "Y" ||
-              reason.status === true ||
-              reason.status === 1),
-        );
-
+        const activeReasons = data.response;
         setReasonOptions(activeReasons);
       } else {
         console.error("Unexpected API response:", data);
         setReasonOptions([]);
       }
     } catch (error) {
+      setLoading(false);
       console.error(FETCH_CANCELLATION_REASONS_ERROR_LOG, error);
       setReasonOptions([]);
     }
   };
 
   const handleFromDateChange = (e) => {
-    const newFromDate = e.target.value;
-    setFromDate(newFromDate);
+    const selectedDate = e.target.value;
+    const today = formatDateForInput(new Date());
 
-    // Validate date range doesn't exceed 6 months
+    if (selectedDate > today) {
+      showPopup(FROM_DATE_FUTURE_ERR_MSG, "warning");
+      return;
+    }
+
+    setFromDate(selectedDate);
+
+    // Validate date range doesn't exceed 30 days
     if (toDate) {
-      const from = new Date(newFromDate);
-      const to = new Date(toDate);
-      const monthsDiff =
-        (to.getFullYear() - from.getFullYear()) * 12 +
-        (to.getMonth() - from.getMonth());
+      const fromDateTime = new Date(selectedDate).getTime();
+      const toDateTime = new Date(toDate).getTime();
+      const diffDays = Math.ceil(Math.abs(toDateTime - fromDateTime) / (1000 * 60 * 60 * 24));
 
-      if (monthsDiff > 6) {
-        showPopup("Date range cannot exceed 6 months", "warning");
-        // Adjust to date to be exactly 6 months from from date
-        const maxToDate = new Date(from);
-        maxToDate.setMonth(from.getMonth() + 6);
-        const year = maxToDate.getFullYear();
-        const month = String(maxToDate.getMonth() + 1).padStart(2, "0");
-        const day = String(maxToDate.getDate()).padStart(2, "0");
-        setToDate(`${year}-${month}-${day}`);
+      if (diffDays > DAY_RANGE_FOR_OPD_CANCELLTION_REPORT) {
+        showPopup(EXCEDED_DAY_SELECTION_WARN(DAY_RANGE_FOR_OPD_CANCELLTION_REPORT), "warning");
+        // Adjust to date to be exactly 30 days from from date
+        const newToDate = new Date(selectedDate);
+        newToDate.setDate(newToDate.getDate() + DAY_RANGE_FOR_OPD_CANCELLTION_REPORT);
+        setToDate(formatDateForInput(newToDate));
       }
     }
   };
 
   const handleToDateChange = (e) => {
-    const newToDate = e.target.value;
-    setToDate(newToDate);
+    const selectedDate = e.target.value;
+    const today = formatDateForInput(new Date());
 
-    // Validate date range doesn't exceed 6 months
+    if (selectedDate > today) {
+      showPopup(TO_DATE_FUTURE_ERR_MSG, "warning");
+      return;
+    }
+
     if (fromDate) {
-      const from = new Date(fromDate);
-      const to = new Date(newToDate);
-      const monthsDiff =
-        (to.getFullYear() - from.getFullYear()) * 12 +
-        (to.getMonth() - from.getMonth());
+      const fromDateTime = new Date(fromDate).getTime();
+      const toDateTime = new Date(selectedDate).getTime();
+      const diffDays = Math.ceil(Math.abs(toDateTime - fromDateTime) / (1000 * 60 * 60 * 24));
 
-      if (monthsDiff > 6) {
-        showPopup("Date range cannot exceed 6 months", "warning");
-        // Adjust from date to be exactly 6 months before to date
-        const minFromDate = new Date(to);
-        minFromDate.setMonth(to.getMonth() - 6);
-        const year = minFromDate.getFullYear();
-        const month = String(minFromDate.getMonth() + 1).padStart(2, "0");
-        const day = String(minFromDate.getDate()).padStart(2, "0");
-        setFromDate(`${year}-${month}-${day}`);
+      if (diffDays > DAY_RANGE_FOR_OPD_CANCELLTION_REPORT) {
+        showPopup(EXCEDED_DAY_SELECTION_WARN(DAY_RANGE_FOR_OPD_CANCELLTION_REPORT), "warning");
+        return;
+      }
+
+      if (selectedDate < fromDate) {
+        showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
+        return;
       }
     }
+
+    setToDate(selectedDate);
+  };
+
+  const validateDates = () => {
+    if (!fromDate || !toDate) {
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
+      return false;
+    }
+
+    const fromDateTime = new Date(fromDate).getTime();
+    const toDateTime = new Date(toDate).getTime();
+    const diffDays = Math.ceil(Math.abs(toDateTime - fromDateTime) / (1000 * 60 * 60 * 24));
+
+    if (diffDays > DAY_RANGE_FOR_OPD_CANCELLTION_REPORT) {
+      showPopup(EXCEDED_DAY_SELECTION_WARN(DAY_RANGE_FOR_OPD_CANCELLTION_REPORT), "warning");
+      return false;
+    }
+
+    if (fromDate > toDate) {
+      showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
+      return false;
+    }
+
+    return true;
   };
 
   const handleDepartmentChange = async (e) => {
@@ -190,7 +245,7 @@ const formatDateTimeWithoutTZ = (isoString) => {
     }
 
     try {
-      setLoading(true);
+     
       const { status, response } = await getRequest(
         `${DOCTOR_BY_SPECIALITY}${deptId}`,
       );
@@ -201,9 +256,7 @@ const formatDateTimeWithoutTZ = (isoString) => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
       setDoctorOptions([]);
-    } finally {
-      setLoading(false);
-    }
+    } 
   };
 
   const handleDoctorChange = (e) => {
@@ -216,98 +269,77 @@ const formatDateTimeWithoutTZ = (isoString) => {
     setSelectedReason(reasonId);
   };
 
-  const validateFilters = () => {
-
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-
-    if (from > to) {
-      showPopup("From date cannot be after to date", "warning");
-      return false;
-    }
-
-    const monthsDiff =
-      (to.getFullYear() - from.getFullYear()) * 12 +
-      (to.getMonth() - from.getMonth());
-
-    if (monthsDiff > 6) {
-      showPopup("Date range cannot exceed 6 months", "warning");
-      return false;
-    }
-
-    return true;
-  };
-
   const fetchCancellationReport = async () => {
+    if (!validateDates()) return;
+
     try {
-      setIsGenerating(true);
+      setIsSearching(true); // Set searching state to true
       const hospitalId = sessionStorage.getItem("hospitalId");
 
       const params = new URLSearchParams({
-        hospitalId: hospitalId,
-        ...(selectedDepartment && { departmentId: selectedDepartment }),
-        ...(selectedDoctor && { doctorId: selectedDoctor }),
-        ...(fromDate && { fromDate }),
-        ...(toDate && { toDate }),
-        ...(selectedReason && { cancellationReasonId: selectedReason }),
+        [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+        [REQUEST_PARAM_FROM_DATE]: fromDate,
+        [REQUEST_PARAM_TO_DATE]: toDate,
+        ...(selectedDepartment && { [REQUEST_PARAM_DEPARTMENT_ID]: selectedDepartment }),
+        ...(selectedDoctor && { [REQUEST_PARAM_DOCTOR_ID]: selectedDoctor }),
+        ...(selectedReason && { [REQUEST_PARAM_CANCELLATION_REASON_ID]: selectedReason }),
       });
 
-      const { status, response, message } = await getRequest(
+      const { status, response } = await getRequest(
         `${GET_CANCELLED_APPOINTMENTS}?${params.toString()}`,
       );
       if (status === 200) {
         const data = Array.isArray(response) ? response : [];
         setReportData(data);
-
-        if (data.length === 0) {
-          showPopup("No cancellation records found", "info");
-        }
       } else {
-        showPopup(message || "Failed to fetch report", "error");
         setReportData([]);
       }
 
       setShowReport(true);
     } catch (error) {
       console.error("Cancellation report error:", error);
-      showPopup("Something went wrong while fetching report", "error");
+      showPopup(DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG, "error");
       setReportData([]);
       setShowReport(true);
     } finally {
-      setIsGenerating(false);
+      setIsSearching(false); // Set searching state to false
     }
   };
 
-  const generatePdfReport = async (flag = "D") => {
-    //if (!validateFilters()) return;
-
-    if (flag === "D") {
-      setIsViewLoading(true);
-    } else if (flag === "P") {
-      setIsPrintLoading(true);
-    }
-
-    setPdfUrl(null);
+  const generatePdfReport = async (flag) => {
+    if (!validateDates()) return;
 
     try {
-      const params = new URLSearchParams();
-      params.append("flag", flag);
-      params.append("fromDate", fromDate);
-      params.append("toDate", toDate);
+      if (flag === STATUS_D) {
+        setIsViewLoading(true);
+      } else {
+        setIsPrintLoading(true);
+      }
+
+      setPdfUrl(null);
+
+      const hospitalId = sessionStorage.getItem("hospitalId");
+
+      const params = new URLSearchParams({
+        [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+        [REQUEST_PARAM_FROM_DATE]: fromDate,
+        [REQUEST_PARAM_TO_DATE]: toDate,
+        [REQUEST_PARAM_FLAG]: flag
+      });
 
       if (selectedDepartment) {
-        params.append("departmentId", selectedDepartment);
+        params.append(REQUEST_PARAM_DEPARTMENT_ID, selectedDepartment);
       }
       if (selectedDoctor) {
-        params.append("doctorId", selectedDoctor);
+        params.append(REQUEST_PARAM_DOCTOR_ID, selectedDoctor);
       }
       if (selectedReason) {
-        params.append("reasonId", selectedReason);
+        params.append(REQUEST_PARAM_CANCELLATION_ID, selectedReason);
       }
 
-      const url = `/reports/dailyCancellationReport?${params.toString()}`;
+      const reportUrl = `${DAILY_CANCELLATION_REPORT_END_URL}?${params.toString()}`;
 
-      const response = await fetch(url, {
+      const response = await fetch(reportUrl, {
         method: "GET",
         headers: {
           Accept: "application/pdf",
@@ -318,13 +350,12 @@ const formatDateTimeWithoutTZ = (isoString) => {
         throw new Error(`Failed to generate PDF: ${response.statusText}`);
       }
 
-      if (flag === "D") {
-        const blob = await response.blob();
-        const fileURL = window.URL.createObjectURL(blob);
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      if (flag === STATUS_D) {
         setPdfUrl(fileURL);
-      } else if (flag === "P") {
-        const blob = await response.blob();
-        const fileURL = window.URL.createObjectURL(blob);
+      } else if (flag === STATUS_P) {
         const printWindow = window.open(fileURL);
         printWindow.onload = () => {
           printWindow.print();
@@ -332,41 +363,36 @@ const formatDateTimeWithoutTZ = (isoString) => {
       }
     } catch (error) {
       console.error("Error generating PDF", error);
-      showPopup("Failed to generate report", "error");
+      showPopup(REPORT_GENERATION_ERR_MSG, "error");
     } finally {
-      if (flag === "D") {
+      if (flag === STATUS_D) {
         setIsViewLoading(false);
-      } else if (flag === "P") {
+      } else {
         setIsPrintLoading(false);
       }
     }
   };
 
   const handleSearch = () => {
-    console.log("Search clicked");
-    // console.log("Validation result:", validateFilters());
-    // if (!validateFilters()) return;
     setCurrentPage(1);
     fetchCancellationReport();
   };
 
   const handleViewReport = () => {
-    generatePdfReport("D");
+    generatePdfReport(STATUS_D);
   };
 
   const handlePrintReport = () => {
-    generatePdfReport("P");
+    generatePdfReport(STATUS_P);
   };
 
   const handleReset = () => {
     const today = new Date();
-    const sixMonthsAgo = new Date();
-    sixMonthsAgo.setMonth(today.getMonth() - 6);
+    const daysAgo = new Date(today);
+    daysAgo.setDate(today.getDate() - DAY_RANGE_FOR_OPD_CANCELLTION_REPORT);
 
-    const formatDate = (date) => date.toISOString().split("T")[0];
-
-    setFromDate(formatDate(sixMonthsAgo));
-    setToDate(formatDate(today));
+    setFromDate(formatDateForInput(daysAgo));
+    setToDate(formatDateForInput(today));
     setSelectedDepartment("");
     setSelectedDoctor("");
     setSelectedReason("");
@@ -424,20 +450,20 @@ const formatDateTimeWithoutTZ = (isoString) => {
                 {/* Date Range */}
                 <div className="col-md-3 mb-3">
                   <label className="form-label fw-bold">
-                    From Date <span className="text-danger"></span>
+                    From Date <span className="text-danger">*</span>
                   </label>
                   <input
                     type="date"
                     className="form-control mt-1"
                     value={fromDate}
                     onChange={handleFromDateChange}
-                    max={toDate}
+                    max={formatDateForInput(new Date())}
                   />
                 </div>
 
                 <div className="col-md-3 mb-3">
                   <label className="form-label fw-bold">
-                    To Date <span className="text-danger"></span>
+                    To Date <span className="text-danger">*</span>
                   </label>
                   <input
                     type="date"
@@ -445,6 +471,7 @@ const formatDateTimeWithoutTZ = (isoString) => {
                     value={toDate}
                     onChange={handleToDateChange}
                     min={fromDate}
+                    max={formatDateForInput(new Date())}
                   />
                 </div>
 
@@ -508,16 +535,27 @@ const formatDateTimeWithoutTZ = (isoString) => {
                       type="button"
                       className="btn btn-primary"
                       onClick={handleSearch}
-                      disabled={isGenerating}
+                      disabled={isSearching || isViewLoading || isPrintLoading}
                     >
-                      Search
+                      {isSearching ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
+                          Searching...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
                     </button>
 
                     <button
                       type="button"
                       className="btn btn-secondary"
                       onClick={handleReset}
-                      disabled={isGenerating}
+                      disabled={isSearching || isViewLoading || isPrintLoading}
                     >
                       Reset
                     </button>
@@ -526,11 +564,9 @@ const formatDateTimeWithoutTZ = (isoString) => {
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-success"
+                      className="btn btn-success btn-sm"
                       onClick={handleViewReport}
-                      disabled={
-                        isGenerating || isViewLoading 
-                      }
+                      disabled={isSearching || isViewLoading || isPrintLoading}
                     >
                       {isViewLoading ? (
                         <>
@@ -542,16 +578,17 @@ const formatDateTimeWithoutTZ = (isoString) => {
                           Generating...
                         </>
                       ) : (
-                        "View Report"
+                        <>
+                          <i className="fa fa-eye me-2"></i>
+                          VIEW/DOWNLOAD
+                        </>
                       )}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-warning btn-sm"
                       onClick={handlePrintReport}
-                      disabled={
-                        isGenerating || isPrintLoading
-                      }
+                      disabled={isSearching || isViewLoading || isPrintLoading}
                     >
                       {isPrintLoading ? (
                         <>
@@ -563,20 +600,23 @@ const formatDateTimeWithoutTZ = (isoString) => {
                           Printing...
                         </>
                       ) : (
-                        "Print Report"
+                        <>
+                          <i className="fa fa-print me-2"></i>
+                          PRINT
+                        </>
                       )}
                     </button>
                   </div>
                 </div>
               </div>
 
-              {isGenerating && (
+              {loading && (
                 <div className="text-center py-4">
                   <LoadingScreen />
                 </div>
               )}
 
-              {!isGenerating && showReport && (
+              {!isSearching && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
@@ -604,7 +644,7 @@ const formatDateTimeWithoutTZ = (isoString) => {
                                     <td>{row.age}</td>
                                     <td>{row.doctorName}</td>
                                     <td>{row.departmentName}</td>
-                                    <td>{row.appointmentDate} {row.appointmentTime}</td>
+                                    <td>{formatAppointmentDateTime(row.appointmentDate, row.appointmentTime)}</td>
                                     <td>{formatDateTimeWithoutTZ(row.cancellationDateTime)}</td>
                                     <td>{row.cancelledBy}</td>
                                     <td>{row.cancellationReason}</td>

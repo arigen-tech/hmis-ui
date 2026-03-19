@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { API_HOST, MAS_TEMPLATE, ASSIGN_TEMPLATES, MAS_APPLICATION } from "../../../config/apiConfig";
+import { API_HOST, MAS_TEMPLATE, ASSIGN_TEMPLATES, MAS_APPLICATION,GET_APPS_BY_TEMPLATE_ID } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 
 const Assignapplication = () => {
@@ -199,7 +199,7 @@ const Assignapplication = () => {
         setLoading(true);
 
         try {
-            const response = await getRequest(`${ASSIGN_TEMPLATES}/getTemplateApplicationsByTemplate/${selectedTemplateId}`);
+            const response = await getRequest(`${GET_APPS_BY_TEMPLATE_ID}/${selectedTemplateId}`);
 
             if (response && response.response) {
                 console.log("Template response:", response.response);

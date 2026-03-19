@@ -230,18 +230,13 @@ const PatientListForAdmission = () => {
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
                             <h4 className="card-title p-2 mb-0">Patient List for Admission</h4>
-                            <button
-                                className="btn btn-primary"
-                                onClick={handleNewAdmission}
-                            >
-                                <i className="mdi mdi-plus me-1"></i> New Admission
-                            </button>
+
                         </div>
 
                         <div className="card-body">
                             {error && (
                                 <div className="alert alert-danger" role="alert">
-                                    <i className="mdi mdi-alert-circle"></i> {error}
+{error}
                                     <button
                                         type="button"
                                         className="btn btn-sm btn-outline-danger ms-2"
@@ -280,30 +275,35 @@ const PatientListForAdmission = () => {
                                             />
                                         </div>
 
-                                        <div className="col-md-3">
-                                            <label className="form-label fw-bold">Admission Advise Date</label>
-                                            <input
-                                                type="date"
-                                                className="form-control"
-                                                name="admissionAdviseDate"
-                                                value={searchParams.admissionAdviseDate}
-                                                onChange={handleSearchChange}
-                                            />
-                                        </div>
+
+
 
                                         <div className="col-md-3 d-flex align-items-end gap-2">
                                             <button
                                                 type="submit"
                                                 className="btn btn-primary"
                                             >
-                                                <i className="mdi mdi-magnify me-1"></i> Search
+Search
                                             </button>
                                             <button
                                                 type="button"
                                                 className="btn btn-secondary"
                                                 onClick={handleResetSearch}
                                             >
-                                                <i className="mdi mdi-refresh me-1"></i> Reset
+ Reset
+                                            </button>
+                                        </div>
+                                        <div className="col-md-3 d-flex align-items-center gap-2">
+                                            <button
+                                                className="btn"
+                                                onClick={handleNewAdmission}
+                                                style={{
+                                                    backgroundColor: "#0d6efd",
+                                                    color: "white"
+                                                }}
+                                              
+                                            >
+                                               + New Admission
                                             </button>
                                         </div>
                                     </div>
@@ -312,7 +312,7 @@ const PatientListForAdmission = () => {
 
                             {filteredPatients.length === 0 ? (
                                 <div className="alert alert-info" role="alert">
-                                    <i className="mdi mdi-information-outline"></i> No patients found matching your search criteria.
+ No patients found matching your search criteria.
                                 </div>
                             ) : (
                                 <div className="table-responsive">
@@ -367,7 +367,7 @@ const PatientListForAdmission = () => {
                                                         </span>
                                                     </td>
                                                     <td>
-                                                            {patient.careLevel}
+                                                        {patient.careLevel}
                                                     </td>
                                                     <td>
                                                         <div className="d-flex gap-2">
@@ -376,14 +376,14 @@ const PatientListForAdmission = () => {
                                                                 onClick={() => handleAdmitPatient(patient.id)}
                                                                 title="Admit Patient"
                                                             >
-                                                                <i className="mdi mdi-hospital-building me-1"></i> Admit
+ Admit
                                                             </button>
                                                             <button
                                                                 className="btn btn-danger btn-sm"
                                                                 onClick={() => handleCancelAdmission(patient.id)}
                                                                 title="Cancel Admission"
                                                             >
-                                                                <i className="mdi mdi-cancel me-1"></i> Cancel
+ Cancel
                                                             </button>
                                                         </div>
                                                     </td>
