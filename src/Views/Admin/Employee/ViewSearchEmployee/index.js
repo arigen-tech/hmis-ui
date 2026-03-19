@@ -2671,6 +2671,32 @@ const ViewSearchEmployee = () => {
                       onChange={handleInputChange}
                     />
                   </div>
+
+                  <div className="col-md-4">
+                            <label className="form-label">
+                              Registration Number <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              className="form-control"
+                              placeholder="Registration Number"
+                              maxLength={mlenght}
+                            />
+                          </div>
+
+                          <div className="col-md-4">
+                            <label className="form-label">
+                              Qualification <span className="text-danger">*</span>
+                            </label>
+                            <input
+                              type="text"
+                              required
+                              className="form-control"
+                              placeholder="Quailification"
+                              maxLength={mlenght}
+                            />
+                          </div>
                   <div className="col-md-4">
                     <label className="form-label">Type of Employee *</label>
                     <select

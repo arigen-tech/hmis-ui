@@ -1106,7 +1106,7 @@ const RadiologyBookingRegisteredPatient  = () => {
           }
         })
 
-        const labResult = await postRequest("/lab/registration", labData)
+        const labResult = await postRequest("/radiology/registerWithInv", labData)
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Lab registration failed.")
         }
@@ -1253,7 +1253,7 @@ const RadiologyBookingRegisteredPatient  = () => {
           />
         )}
 
-        <div className="container-xxl">
+        <div className="container-fluid">
           <div className="row align-items-center">
             <div className="border-0 mb-4">
               <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
@@ -2382,7 +2382,7 @@ const RadiologyBookingRegisteredPatient  = () => {
         />
       )}
 
-      <div className="container-xxl">
+      <div className="container-fluid">
         <div className="row align-items-center">
           <div className="border-0 mb-4">
             <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">

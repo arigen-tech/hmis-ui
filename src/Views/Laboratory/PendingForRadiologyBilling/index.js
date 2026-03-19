@@ -1,10 +1,12 @@
-import { useState, useRef, useEffect } from "react"
-import placeholderImage from "../../../assets/images/placeholder.jpg"
-import { useNavigate } from "react-router-dom"
-import Popup from "../../../Components/popup"
-import LoadingScreen from "../../../Components/Loading"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
-import { getRequest } from "../../../service/apiService"
+import { useState, useRef, useEffect, useMemo } from "react";
+import placeholderImage from "../../../assets/images/placeholder.jpg";
+import { useNavigate } from "react-router-dom";
+import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
+import { getRequest, postRequest } from "../../../service/apiService";
 
 import {
   ADD_ROW_WARNING,
@@ -19,280 +21,273 @@ import {
   DUPLICATE_INV_PACKAGE_WARN_MSG,
   COMMON_INV_IN_PACKAGES,
   DUPLICATE_PACKAGE_WRT_INV,
-} from "../../../config/constants"
-import { CATAGORY_WISE_BILLING, RADIOLOGY_SERVICE_CATAGORY } from "../../../config/apiConfig"
+} from "../../../config/constants";
+import {
+  CATAGORY_WISE_BILLING,
+  LAB_RADIO_BILLING_DATA,
+  LAB_SERVICE_CATAGORY,
+  RADIOLOGY_SERVICE_CATAGORY,
+  MAS_SERVICE_CATEGORY,
+} from "../../../config/apiConfig";
+import Swal from "sweetalert2";
+
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return "";
+
+  const date = new Date(dateStr);
+
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const yyyy = date.getFullYear();
+
+  return `${dd}/${mm}/${yyyy}`;
+};
 
 const PendingForRadiologyBilling = () => {
-  const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [genderData, setGenderData] = useState([])
-  const [imageURL, setImageURL] = useState("")
-  const [relationData, setRelationData] = useState([])
-  const [countryData, setCountryData] = useState([])
-  const [stateData, setStateData] = useState([])
-  const [nokStateData, setNokStateData] = useState([])
-  const [districtData, setDistrictData] = useState([])
-  const [nokDistrictData, setNokDistrictData] = useState([])
-  const [activeRowIndex, setActiveRowIndex] = useState(null)
-  const [investigationItems, setInvestigationItems] = useState([])
-  const [packageItems, setPackageItems] = useState([])
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
-  const [patientList, setPatientList] = useState([])
-  const [filteredPatientList, setFilteredPatientList] = useState([])
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState(null)
-  
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [imageURL, setImageURL] = useState("");
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [investigationItems, setInvestigationItems] = useState([]);
+  const [packageItems, setPackageItems] = useState([]);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [patientList, setPatientList] = useState([]);
+  const [filteredPatientList, setFilteredPatientList] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [totalElements, setTotalElements] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
-    RegistrationNo: ""
-  })
-  const [currentPage, setCurrentPage] = useState(1)
-  const [showPatientDetails, setShowPatientDetails] = useState(false)
-  const [selectedPatient, setSelectedPatient] = useState(null)
+    registrationNo: "",
+  });
+  const [currentPage, setCurrentPage] = useState(0);
+  const [showPatientDetails, setShowPatientDetails] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [gstConfigLoaded, setGstConfigLoaded] = useState(false);
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 18,
-  })
+  });
 
   const [formData, setFormData] = useState({
-    imageurl: undefined,
-    firstName: undefined,
-    middleName: undefined,
-    lastName: undefined,
-    mobileNo: undefined,
-    gender: undefined,
-    relation: undefined,
-    dob: undefined,
-    age: undefined,
-    email: undefined,
-    address1: undefined,
-    address2: undefined,
-    country: undefined,
-    state: undefined,
-    district: undefined,
-    city: undefined,
-    pinCode: undefined,
-    nokFirstName: undefined,
-    nokMiddleName: undefined,
-    nokLastName: undefined,
-    nokEmail: undefined,
-    nokMobile: undefined,
-    nokAddress1: undefined,
-    nokAddress2: undefined,
-    nokCountry: undefined,
-    nokState: undefined,
-    nokDistrict: undefined,
-    nokCity: undefined,
-    nokPinCode: undefined,
-    emergencyFirstName: undefined,
-    emergencyLastName: undefined,
-    emergencyMobile: undefined,
+    billingType: "",
+    patientName: "",
+    mobileNo: "",
+    age: "",
+    gender: "",
+    relation: "",
+    patientId: "",
+    address: "",
     type: "investigation",
-    rows: [
-      {
-        id: 1,
-        name: "",
-        date: new Date().toISOString().split('T')[0],
-        originalAmount: 0,
-        discountAmount: 0,
-        netAmount: 0,
-        type: "investigation",
-      },
-    ],
-    paymentMode: "",
-  })
+    rows: [],
+  });
 
-  const [image, setImage] = useState(placeholderImage)
-  const [isCameraOn, setIsCameraOn] = useState(false)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
-  let stream = null
+  const [image, setImage] = useState(placeholderImage);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  let stream = null;
 
-  const [checkedRows, setCheckedRows] = useState([true])
+  const [checkedRows, setCheckedRows] = useState([true]);
 
   useEffect(() => {
-    fetchPendingBilling();
-  }, [])
+    fetchPendingRadiologyBilling(currentPage);
+  }, [currentPage]);
 
-    const fetchPendingBilling = async () => {
-      try {
-        setIsLoading(true)
-        setError(null)
-  
+  const fetchPendingRadiologyBilling = async (page = 0) => {
+    try {
+      setIsLoading(true);
+
+      const params = new URLSearchParams({
+        page,
+        size: DEFAULT_ITEMS_PER_PAGE,
+        patientName: searchData.patientName,
+        mobileNo: searchData.mobileNo,
+        registrationNo: searchData.registrationNo,
+      });
+
       const response = await getRequest(
-        `${CATAGORY_WISE_BILLING}/${RADIOLOGY_SERVICE_CATAGORY}`,
+        `${CATAGORY_WISE_BILLING}/${RADIOLOGY_SERVICE_CATAGORY}?${params}`,
       );
-        if (response && response.response) {
-          const mappedData = response.response.map((item) => {
-            // Determine billing type and source
-            const isConsultation = item.billinghdid !== null && item.billingType === "Consultation Services"
-            const isLabRadiology = item.orderhdid !== null && item.billinghdid === null
-  
-            // Get first appointment data if available
-            const firstAppointment = item.appointments?.[0] || {}
-  
-            // Normalize visit type
-            const getVisitTypeLabel = (visitType) => {
-              if (!visitType) return "New"
-              if (visitType === "N") return "New"
-              if (visitType === "F") return "Follow-up"
-              return visitType
-            }
-  
-            return {
-              id: item.billinghdid || item.orderhdid,
-              patientId: item.patientid,
-              patientName: item.patientName || "N/A",
-              mobileNo: item.mobileNo || "N/A",
-              age: item.age || "N/A",
-              sex: item.sex || "N/A",
-              relation: item.relation || "N/A",
-              address: item.address || "",
-  
-              // Billing type handling
-              billingType: isLabRadiology
-                ? "Laboratory Services"
-                : (item.billingType || "N/A"),
-  
-              // Doctor and department - prioritize appointment data
-              consultedDoctor: firstAppointment.consultedDoctor || item.consultedDoctor || "N/A",
-              department: firstAppointment.department || item.department || "N/A",
-  
-              // Amount and status
-              amount: item.amount || 0,
-              billingStatus: item.billingStatus === "n" || item.orderhdPaymentStatus === "n"
-                ? "Pending"
-                : "Completed",
-  
-              // Visit information
-              visitType: getVisitTypeLabel(firstAppointment.visitType || item.visitType),
-              tokenNo: firstAppointment.tokenNo || item.tokenNo || null,
-              visitDate: firstAppointment.visitDate || item.visitDate || null,
-              sessionName: firstAppointment.sessionName || item.sessionName || null,
-  
-              // Registration cost - use top-level value
-              registrationCost: Number(item.registrationCost || 0),
-  
-              // Original data
-              appointments: item.appointments || [],
-              details: item.details || [],
-              flag: item.flag,
-              source: item.source,
-              billinghdid: item.billinghdid,
-              orderhdid: item.orderhdid,
-  
-              // Store complete original data
-              fullData: item
-            }
-          })
-  
-          setPatientList(mappedData)
-          setFilteredPatientList(mappedData)
-        }
-      } catch (error) {
-        console.error("Error fetching pending billing data:", error)
-        setError(error.message)
-      } finally {
-        setIsLoading(false)
+
+      if (response && response.response) {
+        const mappedData = response.response.content.map((item) => ({
+          id: item.billingHeaderId,
+          patientId: item.patientId,
+          registrationNo: item.registrationNo,
+          patientName: item.patientName || "N/A",
+          mobileNo: item.mobileNo || "N/A",
+          age: item.age || "N/A",
+          gender: item.gender || "N/A",
+          appointmentDate: item.appointmentDate,
+          billingType: item.billingType || "Radiology Services",
+          amount: item.billAmount || 0,
+          billingStatus: "Pending",
+          fullData: item,
+        }));
+
+        setPatientList(mappedData);
+        setFilteredPatientList(mappedData);
+        setTotalElements(response.response.totalElements);
       }
+    } catch (error) {
+      console.error("Error fetching pending billing data:", error);
+    } finally {
+      setIsLoading(false);
     }
+  };
+
+  useEffect(() => {
+    fetchGstConfiguration();
+  }, []);
+
+  async function fetchGstConfiguration() {
+    try {
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+
+      if (data?.status === 200 && data?.response) {
+        setGstConfig({
+          gstApplicable: !!data.response.gstApplicable,
+          gstPercent: Number(data.response.gstPercent) || 0,
+        });
+      } else {
+        setGstConfig({ gstApplicable: false, gstPercent: 0 });
+      }
+    } catch {
+      setGstConfig({ gstApplicable: false, gstPercent: 0 });
+    } finally {
+      setGstConfigLoaded(true);
+    }
+  }
 
   const handleSearchChange = (e) => {
-    const { id, value } = e.target
-    setSearchData(prev => ({ ...prev, [id]: value }))
-    setCurrentPage(1)
-  }
+    const { id, value } = e.target;
 
-  const handleSearch = () => {
-    setLoading(true)
-    setTimeout(() => {
-      const filtered = patientList.filter((item) => {
-        const patientNameMatch = searchData.patientName === "" || 
-          item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
-        
-        const mobileNoMatch = searchData.mobileNo === "" || 
-          item.mobileNo.includes(searchData.mobileNo)
+    setSearchData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
+  };
 
-        const sessionNoMatch = searchData.sessionNo === "" || 
-          (item.sessionNo && item.sessionNo.toLowerCase().includes(searchData.sessionNo.toLowerCase()))
-        
-        return patientNameMatch && mobileNoMatch && sessionNoMatch
-      })
-      setFilteredPatientList(filtered)
-      setCurrentPage(1)
-      setLoading(false)
-    }, 500)
-  }
+  const handleSearch = async () => {
+    setIsSearching(true);
 
-  
+    try {
+      setCurrentPage(0);
+      await fetchPendingRadiologyBilling(0);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   const handlePageChange = (page) => {
-    setCurrentPage(page)
-  }
+    setCurrentPage(page);
+  };
 
-  const handleRowClick = (patient) => {
-    setSelectedPatient(patient)
-    setShowPatientDetails(true)
-    
-    // Populate form data with selected patient details
-    setFormData({
-      ...formData,
-      firstName: patient.firstName,
-      middleName: patient.middleName,
-      lastName: patient.lastName,
-      mobileNo: patient.mobileNo,
-      gender: patient.gender === "Male" ? 1 : patient.gender === "Female" ? 2 : 3,
-      relation: patient.relationId || 1,
-      dob: patient.dob,
-      age: patient.age,
-      email: patient.email,
-      address1: patient.address1,
-      city: patient.city,
-      pinCode: patient.pinCode,
-      country: patient.country,
-      state: patient.state,
-      district: patient.district,
-      rows: patient.investigations || formData.rows
-    })
-    
-    // Update checked rows based on investigations
-    if (patient.investigations && patient.investigations.length > 0) {
-      setCheckedRows(new Array(patient.investigations.length).fill(true))
+  const handleRowClick = async (patient) => {
+    try {
+      setIsLoading(true);
+
+      const billingHeaderId = patient.id;
+
+      const response = await getRequest(
+        `${LAB_RADIO_BILLING_DATA}/${billingHeaderId}?serviceCategoryCode=${RADIOLOGY_SERVICE_CATAGORY}`,
+      );
+
+      if (!response || !response.response) return;
+
+      const billingData = Array.isArray(response.response)
+        ? response.response[0]
+        : response.response;
+
+      const details = billingData?.details || [];
+
+      const formattedRows = details.map((item, index) => {
+        const isPackage = item.packageId != null;
+
+        return {
+          id: item.id || index + 1,
+          name:
+            item.itemName || item.packageName || item.investigationName || "",
+          date: new Date().toISOString().split("T")[0],
+          originalAmount: item.basePrice || item.tariff || 0,
+          discountAmount: item.discount || 0,
+          netAmount: item.amountAfterDiscount || item.netAmount || 0,
+          type: isPackage ? "package" : "investigation",
+          investigationId: item.investigationId,
+          packageId: item.packageId,
+          itemId: isPackage ? item.packageId : item.investigationId,
+        };
+      });
+
+      const defaultType = formattedRows.some(
+        (row) => row.investigationId != null,
+      )
+        ? "investigation"
+        : formattedRows.some((row) => row.packageId != null)
+          ? "package"
+          : "investigation";
+
+      setSelectedPatient({ fullData: billingData });
+
+      setFormData({
+        billingType: billingData.billingType || "",
+        patientName: billingData.patientName || "",
+        mobileNo: billingData.mobileNo || "",
+        age: billingData.age || "",
+        gender: billingData.gender || "",
+        relation: billingData.relation || "",
+        patientId: billingData.patientid || billingData.patientId,
+        address: billingData.address || "",
+        rows: formattedRows,
+        type: defaultType,
+      });
+
+      setCheckedRows(new Array(formattedRows.length).fill(true));
+      setShowPatientDetails(true);
+    } catch (error) {
+      console.error("Error:", error);
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleBackToList = () => {
-    setShowPatientDetails(false)
-    setSelectedPatient(null)
-    handleReset()
-  }
+    setShowPatientDetails(false);
+    setSelectedPatient(null);
+    handleReset();
+  };
 
-  const showPopup = (message, type = "info", shouldRefreshData = false, onCloseCallback = null) => {
+  const showPopup = (
+    message,
+    type = "info",
+    shouldRefreshData = false,
+    onCloseCallback = null,
+  ) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
         if (shouldRefreshData) {
-          // Handle any refresh logic if needed
         }
         if (onCloseCallback) {
-          onCloseCallback()
+          onCloseCallback();
         }
-      }
-    })
-  }
+      },
+    });
+  };
 
   const showConfirmationPopup = (title, text, imageUrl, onConfirm) => {
     const confirmUpload = () => {
-      onConfirm()
-      setPopupMessage(null)
-    }
+      onConfirm();
+      setPopupMessage(null);
+    };
 
     setPopupMessage({
       message: (
@@ -304,7 +299,11 @@ const PendingForRadiologyBilling = () => {
               <img
                 src={imageUrl}
                 alt="Preview"
-                style={{ maxWidth: "200px", maxHeight: "150px", border: "1px solid #ddd" }}
+                style={{
+                  maxWidth: "200px",
+                  maxHeight: "150px",
+                  border: "1px solid #ddd",
+                }}
               />
             </div>
           )}
@@ -312,411 +311,389 @@ const PendingForRadiologyBilling = () => {
             <button className="btn btn-primary" onClick={confirmUpload}>
               Yes, Upload
             </button>
-            <button className="btn btn-secondary" onClick={() => setPopupMessage(null)}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setPopupMessage(null)}
+            >
               Cancel
             </button>
           </div>
         </div>
       ),
       type: "custom",
-      onClose: () => setPopupMessage(null)
-    })
-  }
+      onClose: () => setPopupMessage(null),
+    });
+  };
 
   const isInvestigationInSelectedPackages = (investigationId, date) => {
     return formData.rows.some((row, index) => {
-      if (!checkedRows[index]) return false
+      if (!checkedRows[index]) return false;
       if (row.type === "package" && row.investigationIds && row.date === date) {
-        return row.investigationIds.includes(investigationId)
+        return row.investigationIds.includes(investigationId);
       }
-      return false
-    })
-  }
+      return false;
+    });
+  };
 
   const isPackageAlreadySelected = (packageId, date) => {
     return formData.rows.some((row, index) => {
-      if (!checkedRows[index]) return false
-      return row.type === "package" && 
-             row.itemId === packageId && 
-             row.date === date
-    })
-  }
+      if (!checkedRows[index]) return false;
+      return (
+        row.type === "package" && row.itemId === packageId && row.date === date
+      );
+    });
+  };
 
   const isInvestigationAlreadySelected = (investigationId, date) => {
     return formData.rows.some((row, index) => {
-      if (!checkedRows[index]) return false
-      return row.type === "investigation" &&
+      if (!checkedRows[index]) return false;
+      return (
+        row.type === "investigation" &&
         row.itemId === investigationId &&
         row.date === date
-    })
-  }
+      );
+    });
+  };
 
   const getInvestigationIdsFromPackage = async (packageId, packageName) => {
-    const packageData = packageItems.find(pkg =>
-      pkg.packageId === packageId || pkg.packName === packageName
-    )
-    return packageData?.investigationIds || []
-  }
-
-  const calculatePaymentBreakdown = () => {
-    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
-    console.log("Current GST Config:", gstConfig)
-
-    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
-    console.log("Checked Items:", checkedItems)
-
-    const totalOriginalAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.originalAmount) || 0)
-    }, 0)
-
-    const totalDiscountAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.discountAmount) || 0)
-    }, 0)
-
-    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
-
-    const totalGstAmount = checkedItems.reduce((total, item) => {
-      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
-      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
-      const itemNetAmount = itemOriginalAmount - itemDiscountAmount
-
-      const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
-      console.log(
-        `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
-      )
-      return total + itemGstAmount
-    }, 0)
-
-    const finalAmount = totalNetAmount + totalGstAmount
-
-    const breakdown = {
-      totalOriginalAmount: totalOriginalAmount.toFixed(2),
-      totalDiscountAmount: totalDiscountAmount.toFixed(2),
-      totalNetAmount: totalNetAmount.toFixed(2),
-      totalGstAmount: totalGstAmount.toFixed(2),
-      finalAmount: finalAmount.toFixed(2),
-      gstPercent: gstConfig.gstPercent,
-      gstApplicable: gstConfig.gstApplicable,
-      itemCount: checkedItems.length,
-      totalAmount: totalOriginalAmount.toFixed(2),
-      baseAmountAfterDiscount: totalNetAmount.toFixed(2),
-      taxAmount: totalGstAmount.toFixed(2),
-      finalPaymentAmount: finalAmount.toFixed(2),
-    }
-
-    console.log("Final Payment Breakdown:", breakdown)
-    console.log("=== END PAYMENT BREAKDOWN ===")
-
-    return breakdown
-  }
+    const packageData = packageItems.find(
+      (pkg) => pkg.packageId === packageId || pkg.packName === packageName,
+    );
+    return packageData?.investigationIds || [];
+  };
 
   const startCamera = async () => {
     try {
-      setIsCameraOn(true)
+      setIsCameraOn(true);
       setTimeout(async () => {
         try {
-          stream = await navigator.mediaDevices.getUserMedia({ video: true })
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
           if (videoRef.current) {
-            videoRef.current.srcObject = stream
+            videoRef.current.srcObject = stream;
           }
         } catch (error) {
-          console.error("Error accessing camera:", error)
-          showPopup("Could not access camera. Please check permissions.", "error")
-          setIsCameraOn(false)
+          console.error("Error accessing camera:", error);
+          showPopup(
+            "Could not access camera. Please check permissions.",
+            "error",
+          );
+          setIsCameraOn(false);
         }
-      }, 100)
+      }, 100);
     } catch (error) {
-      console.error("Error starting camera:", error)
+      console.error("Error starting camera:", error);
     }
-  }
+  };
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current
-      const canvas = canvasRef.current
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      const context = canvas.getContext("2d")
-      context.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const imageData = canvas.toDataURL("image/png")
-      setImage(imageData)
-      stopCamera()
-      confirmUpload(imageData)
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL("image/png");
+      setImage(imageData);
+      stopCamera();
+      confirmUpload(imageData);
     }
-  }
+  };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((track) => track.stop())
-      setIsCameraOn(false)
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      setIsCameraOn(false);
     }
-  }
+  };
 
   const clearPhoto = () => {
-    setImage(placeholderImage)
-  }
+    setImage(placeholderImage);
+  };
 
   const confirmUpload = (imageData) => {
     showConfirmationPopup(IMAGE_TITLE, IMAGE_TEXT, imageData, () => {
-      uploadImage(imageData)
-    })
-  }
+      uploadImage(imageData);
+    });
+  };
 
   const uploadImage = async (base64Image) => {
-    setLoading(true)
+    setLoading(true);
     try {
       // Mock successful upload
       setTimeout(() => {
-        const mockPath = "/uploads/patient-photo.png"
-        setImageURL(mockPath)
-        console.log("Uploaded Image URL:", mockPath)
-        showPopup(IMAGE_UPLOAD_SUCC_MSG, "success")
-        setLoading(false)
-      }, 1500)
+        const mockPath = "/uploads/patient-photo.png";
+        setImageURL(mockPath);
+        console.log("Uploaded Image URL:", mockPath);
+        showPopup(IMAGE_UPLOAD_SUCC_MSG, "success");
+        setLoading(false);
+      }, 1500);
     } catch (error) {
-      console.error("Upload error:", error)
-      showPopup(UNEXPECTED_ERROR, "error")
-      setLoading(false)
+      console.error("Upload error:", error);
+      showPopup(UNEXPECTED_ERROR, "error");
+      setLoading(false);
     }
-  }
+  };
 
   function calculateDOBFromAge(age) {
-    const today = new Date()
-    const birthYear = today.getFullYear() - age
-    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split("T")[0]
+    const today = new Date();
+    const birthYear = today.getFullYear() - age;
+    return new Date(birthYear, today.getMonth(), today.getDate())
+      .toISOString()
+      .split("T")[0];
   }
 
   function calculateAgeFromDOB(dob) {
-    const birthDate = new Date(dob)
-    const today = new Date()
+    const birthDate = new Date(dob);
+    const today = new Date();
 
-    let years = today.getFullYear() - birthDate.getFullYear()
-    let months = today.getMonth() - birthDate.getMonth()
-    let days = today.getDate() - birthDate.getDate()
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
 
     if (days < 0) {
-      months--
-      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
-      days += prevMonth.getDate()
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
     }
 
     if (months < 0) {
-      years--
-      months += 12
+      years--;
+      months += 12;
     }
 
-    return `${years}Y ${months}M ${days}D`
+    return `${years}Y ${months}M ${days}D`;
   }
 
   const handleChange = async (e) => {
-    const { name, value } = e.target
-    const updatedFormData = { ...formData, [name]: value }
+    const { name, value } = e.target;
+    const updatedFormData = { ...formData, [name]: value };
 
     if (name === "dob") {
-      updatedFormData.age = calculateAgeFromDOB(value)
+      updatedFormData.age = calculateAgeFromDOB(value);
     } else if (name === "age") {
-      updatedFormData.dob = calculateDOBFromAge(value)
+      updatedFormData.dob = calculateDOBFromAge(value);
     }
 
-    setFormData(updatedFormData)
+    setFormData(updatedFormData);
 
-    let error = ""
+    let error = "";
     if (name === "firstName" && !value.trim()) {
-      error = "First Name is required."
+      error = "First Name is required.";
     }
     if (name === "gender" && !value) {
-      error = "Gender is required."
+      error = "Gender is required.";
     }
     if (name === "relation" && !value) {
-      error = "Relation is required."
+      error = "Relation is required.";
     }
     if (name === "dob" && !value) {
-      error = "Date of Birth is required."
+      error = "Date of Birth is required.";
     }
     if (name === "email") {
       if (!value.trim()) {
-        error = "Email is required."
+        error = "Email is required.";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error = "Invalid email format."
+        error = "Invalid email format.";
       }
     }
     if (name === "mobileNo") {
       if (!value.trim()) {
-        error = "Mobile number is required."
+        error = "Mobile number is required.";
       } else if (!/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits."
+        error = "Mobile number must be exactly 10 digits.";
       }
     }
     if (name === "pinCode") {
       if (value && !/^\d{6}$/.test(value)) {
-        error = "Pin Code must be exactly 6 digits."
+        error = "Pin Code must be exactly 6 digits.";
       }
     }
     if (name === "nokPinCode") {
       if (value && !/^\d{6}$/.test(value)) {
-        error = "Pin Code must be exactly 6 digits."
+        error = "Pin Code must be exactly 6 digits.";
       }
     }
     if (name === "nokMobile") {
       if (value && !/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits."
+        error = "Mobile number must be exactly 10 digits.";
       }
     }
     if (name === "emergencyMobile") {
       if (value && !/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits."
+        error = "Mobile number must be exactly 10 digits.";
       }
     }
     if (name === "age") {
       if (value !== "" && (isNaN(value) || Number(value) < 0)) {
-        error = "Age can not be negative."
+        error = "Age can not be negative.";
       }
     }
 
     setErrors((prevErrors) => {
-      const newErrors = { ...prevErrors }
+      const newErrors = { ...prevErrors };
       if (error) {
-        newErrors[name] = error
+        newErrors[name] = error;
       } else {
-        delete newErrors[name]
+        delete newErrors[name];
       }
-      return newErrors
-    })
-  }
+      return newErrors;
+    });
+  };
 
   const handleAddChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleTypeChange = (type) => {
     setFormData((prev) => ({
       ...prev,
-      type: type
-    }))
-  }
+      type: type,
+    }));
+  };
 
   const handleDateChange = (index, selectedDate) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split("T")[0];
 
     if (selectedDate < today) {
-      showPopup(INVALID_DATE_TEXT, "warning")
-      return
+      showPopup(INVALID_DATE_TEXT, "warning");
+      return;
     }
 
-    const currentRow = formData.rows[index]
-    let hasDuplicate = false
+    const currentRow = formData.rows[index];
+    let hasDuplicate = false;
 
     if (currentRow.itemId) {
       if (currentRow.type === "package") {
         hasDuplicate = formData.rows.some((row, i) => {
-          if (i === index || !checkedRows[i]) return false
-          return row.type === "package" &&
+          if (i === index || !checkedRows[i]) return false;
+          return (
+            row.type === "package" &&
             row.itemId === currentRow.itemId &&
             row.date === selectedDate
-        })
+          );
+        });
       } else if (currentRow.type === "investigation") {
         hasDuplicate = formData.rows.some((row, i) => {
-          if (i === index || !checkedRows[i]) return false
+          if (i === index || !checkedRows[i]) return false;
           if (row.type === "package" && row.investigationIds) {
-            return row.investigationIds.includes(currentRow.itemId) &&
+            return (
+              row.investigationIds.includes(currentRow.itemId) &&
               row.date === selectedDate
+            );
           }
-          return row.type === "investigation" &&
+          return (
+            row.type === "investigation" &&
             row.itemId === currentRow.itemId &&
             row.date === selectedDate
-        })
+          );
+        });
       }
     }
 
     if (hasDuplicate) {
-      showPopup("Duplicate item found for this date!", "warning")
-      return
+      showPopup("Duplicate item found for this date!", "warning");
+      return;
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       rows: prev.rows.map((row, i) => {
         if (i === index) {
-          return { ...row, date: selectedDate }
+          return { ...row, date: selectedDate };
         }
-        return row
-      })
-    }))
-  }
+        return row;
+      }),
+    }));
+  };
 
   const handleRowChange = (index, field, value) => {
     setFormData((prev) => {
       const updatedRows = prev.rows.map((item, i) => {
-        if (i !== index) return item
+        if (i !== index) return item;
 
-        const updatedItem = { ...item, [field]: value }
+        const updatedItem = { ...item, [field]: value };
 
         if (field === "originalAmount" || field === "discountAmount") {
-          const original = Number(updatedItem.originalAmount) || 0
-          const discount = Number(updatedItem.discountAmount) || 0
-          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2)
+          const original = Number(updatedItem.originalAmount) || 0;
+          const discount = Number(updatedItem.discountAmount) || 0;
+          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2);
         }
 
-        return updatedItem
-      })
+        return updatedItem;
+      });
 
-      return { ...prev, rows: updatedRows }
-    })
-  }
+      return { ...prev, rows: updatedRows };
+    });
+  };
 
   const addRow = (e, type) => {
-    e.preventDefault()
-    const lastRow = formData.rows[formData.rows.length - 1]
+    e.preventDefault();
+    const lastRow = formData.rows[formData.rows.length - 1];
 
     if (!lastRow.name) {
-      showPopup(ADD_ROW_WARNING, "warning")
-      return
+      showPopup(ADD_ROW_WARNING, "warning");
+      return;
     }
 
     if (lastRow.type === "package" && lastRow.itemId && lastRow.date) {
       const isDuplicatePackage = formData.rows.slice(0, -1).some((row, i) => {
-        if (!checkedRows[i]) return false
-        return row.type === "package" &&
+        if (!checkedRows[i]) return false;
+        return (
+          row.type === "package" &&
           row.itemId === lastRow.itemId &&
           row.date === lastRow.date
-      })
+        );
+      });
 
       if (isDuplicatePackage) {
-        showPopup(
-          DUPLICATE_PACKAGE_WARN_MSG,
-          "warning"
-        )
-        handleRowChange(formData.rows.length - 1, "name", "")
-        handleRowChange(formData.rows.length - 1, "itemId", undefined)
-        handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0])
-        return
+        showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+        handleRowChange(formData.rows.length - 1, "name", "");
+        handleRowChange(formData.rows.length - 1, "itemId", undefined);
+        handleRowChange(
+          formData.rows.length - 1,
+          "date",
+          new Date().toISOString().split("T")[0],
+        );
+        return;
       }
-    } else if (lastRow.type === "investigation" && lastRow.itemId && lastRow.date) {
-      const isDuplicateInvestigation = formData.rows.slice(0, -1).some((row, i) => {
-        if (!checkedRows[i]) return false
-        if (row.type === "package" && row.investigationIds) {
-          return row.investigationIds.includes(lastRow.itemId) &&
+    } else if (
+      lastRow.type === "investigation" &&
+      lastRow.itemId &&
+      lastRow.date
+    ) {
+      const isDuplicateInvestigation = formData.rows
+        .slice(0, -1)
+        .some((row, i) => {
+          if (!checkedRows[i]) return false;
+          if (row.type === "package" && row.investigationIds) {
+            return (
+              row.investigationIds.includes(lastRow.itemId) &&
+              row.date === lastRow.date
+            );
+          }
+          return (
+            row.type === "investigation" &&
+            row.itemId === lastRow.itemId &&
             row.date === lastRow.date
-        }
-        return row.type === "investigation" &&
-          row.itemId === lastRow.itemId &&
-          row.date === lastRow.date
-      })
+          );
+        });
 
       if (isDuplicateInvestigation) {
-        showPopup(
-          DUPLICATE_INV_INCLUDE_PACKAGE,
-          "warning"
-        )
-        handleRowChange(formData.rows.length - 1, "name", "")
-        handleRowChange(formData.rows.length - 1, "itemId", undefined)
-        handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0])
-        return
+        showPopup(DUPLICATE_INV_INCLUDE_PACKAGE, "warning");
+        handleRowChange(formData.rows.length - 1, "name", "");
+        handleRowChange(formData.rows.length - 1, "itemId", undefined);
+        handleRowChange(
+          formData.rows.length - 1,
+          "date",
+          new Date().toISOString().split("T")[0],
+        );
+        return;
       }
     }
 
-    const defaultDate = new Date().toISOString().split('T')[0]
+    const defaultDate = new Date().toISOString().split("T")[0];
 
     setFormData((prev) => ({
       ...prev,
@@ -730,293 +707,261 @@ const PendingForRadiologyBilling = () => {
           discountAmount: 0,
           netAmount: 0,
           type: type,
-          investigationIds: type === "package" ? [] : undefined
-        }
-      ]
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
+          investigationIds: type === "package" ? [] : undefined,
+        },
+      ],
+    }));
+    setCheckedRows((prev) => [...prev, true]);
+  };
 
   const removeRow = (index) => {
     setFormData((prev) => ({
       ...prev,
       rows: prev.rows.filter((_, i) => i !== index),
-    }))
-    setCheckedRows((prev) => prev.filter((_, i) => i !== index))
-  }
-
-  async function fetchStates(value) {
-    // Mock state data based on country
-    if (value === 1) { // India
-      setStateData([
-        { id: 1, stateName: "Maharashtra" },
-        { id: 2, stateName: "Delhi" },
-        { id: 3, stateName: "Karnataka" }
-      ])
-    } else {
-      setStateData([])
-    }
-  }
-
-  async function fetchDistrict(value) {
-    // Mock district data based on state
-    if (value === 1) { // Maharashtra
-      setDistrictData([
-        { id: 1, districtName: "Mumbai" },
-        { id: 2, districtName: "Pune" },
-        { id: 3, districtName: "Nagpur" }
-      ])
-    } else {
-      setDistrictData([])
-    }
-  }
-
-  async function fetchNokStates(value) {
-    // Mock state data based on country
-    if (value === 1) { // India
-      setNokStateData([
-        { id: 1, stateName: "Maharashtra" },
-        { id: 2, stateName: "Delhi" },
-        { id: 3, stateName: "Karnataka" }
-      ])
-    } else {
-      setNokStateData([])
-    }
-  }
-
-  async function fetchNokDistrict(value) {
-    // Mock district data based on state
-    if (value === 1) { // Maharashtra
-      setNokDistrictData([
-        { id: 1, districtName: "Mumbai" },
-        { id: 2, districtName: "Pune" },
-        { id: 3, districtName: "Nagpur" }
-      ])
-    } else {
-      setNokDistrictData([])
-    }
-  }
+    }));
+    setCheckedRows((prev) => prev.filter((_, i) => i !== index));
+  };
 
   async function fetchPackagePrice(packName) {
-    const packageData = packageItems.find(pkg => pkg.packName === packName)
-    return packageData || null
+    const packageData = packageItems.find((pkg) => pkg.packName === packName);
+    return packageData || null;
   }
 
   const validateForm = () => {
-    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
-    let valid = true
-    const newErrors = {}
+    const requiredFields = [
+      "firstName",
+      "gender",
+      "relation",
+      "dob",
+      "email",
+      "mobileNo",
+    ];
+    let valid = true;
+    const newErrors = {};
 
     requiredFields.forEach((field) => {
       if (!formData[field] || formData[field].toString().trim() === "") {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`
-        valid = false
+        newErrors[field] =
+          `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
+        valid = false;
       }
-    })
+    });
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format."
-      valid = false
+      newErrors.email = "Invalid email format.";
+      valid = false;
     }
 
     if (formData.mobileNo && !/^\d{10}$/.test(formData.mobileNo)) {
-      newErrors.mobileNo = "Mobile number must be exactly 10 digits."
-      valid = false
+      newErrors.mobileNo = "Mobile number must be exactly 10 digits.";
+      valid = false;
     }
 
     if (formData.pinCode && !/^\d{6}$/.test(formData.pinCode)) {
-      newErrors.pinCode = "Pin Code must be exactly 6 digits."
-      valid = false
+      newErrors.pinCode = "Pin Code must be exactly 6 digits.";
+      valid = false;
     }
 
     if (formData.nokPinCode && !/^\d{6}$/.test(formData.nokPinCode)) {
-      newErrors.nokPinCode = "Pin Code must be exactly 6 digits."
-      valid = false
+      newErrors.nokPinCode = "Pin Code must be exactly 6 digits.";
+      valid = false;
     }
 
     if (formData.rows.length === 0) {
-      newErrors.rows = `At least one ${formData.type} is required.`
-      valid = false
+      newErrors.rows = `At least one ${formData.type} is required.`;
+      valid = false;
     }
 
     formData.rows.forEach((row, index) => {
       if (!row.name || row.name.trim() === "") {
-        newErrors[`row_${index}_name`] = `Row ${index + 1}: Investigation/Package name is required.`
-        valid = false
+        newErrors[`row_${index}_name`] =
+          `Row ${index + 1}: Investigation/Package name is required.`;
+        valid = false;
       }
       if (!row.date || row.date.trim() === "") {
-        newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`
-        valid = false
+        newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`;
+        valid = false;
       }
-    })
+    });
 
     if (!formData.paymentMode) {
-      newErrors.paymentMode = "Payment mode is required."
-      valid = false
+      newErrors.paymentMode = "Payment mode is required.";
+      valid = false;
     }
 
-    setErrors(newErrors)
-    return valid
-  }
+    setErrors(newErrors);
+    return valid;
+  };
 
-  const handleSubmit = async (shouldNavigateToPayment = false) => {
-    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment)
-    const isFormValid = shouldNavigateToPayment ? true : validateForm()
-    console.log("Form validation result:", isFormValid)
+  const handleSave = async (e) => {
+    e.preventDefault();
 
-    if (isDuplicatePatient) {
-      showPopup("Duplicate patient found!", "warning")
-      return
-    }
+    try {
+      setIsLoading(true);
 
-    if (isFormValid) {
-      console.log("Form validation passed, proceeding with registration...")
-      setLoading(true)
+      const hasChecked = formData.rows.some((_, i) => checkedRows[i]);
+      if (!hasChecked) {
+        Swal.fire("Error", "Select at least one item", "error");
+        return;
+      }
 
-      setTimeout(() => {
-        const selectedRows = formData.rows.filter((row, index) => checkedRows[index])
-        const duplicateCheck = new Map()
+      const billingData = selectedPatient?.fullData;
+      const data = Array.isArray(billingData) ? billingData[0] : billingData;
 
-        for (const row of selectedRows) {
-          const key = `${row.type}_${row.itemId}_${row.date}`
+      const patientId = formData.patientId;
 
-          if (row.type === "package" && row.investigationIds) {
-            for (const invId of row.investigationIds) {
-              const invKey = `investigation_${invId}_${row.date}`
-              if (duplicateCheck.has(invKey)) {
-                showPopup(
-                  DUPLICATE_INV_PACKAGE_WARN_MSG,
-                  "Warning"
-                )
-                setLoading(false)
-                return
-              }
-              duplicateCheck.set(invKey, row)
-            }
-          }
+      if (!patientId) {
+        Swal.fire("Error", "Invalid Patient ID", "error");
+        return;
+      }
 
-          if (duplicateCheck.has(key)) {
-            showPopup(
-              DUPLICATE_INV_PACKAGE_WARN_MSG,
-              "Warning"
-            )
-            setLoading(false)
-            return
-          }
-          duplicateCheck.set(key, row)
+      let billingHeaderId = data?.billinghdid || data?.billingHeaderId;
+
+      // 👉 Registration if not exists
+      if (!billingHeaderId) {
+        const items = formData.rows
+          .filter((_, i) => checkedRows[i])
+          .map((row) => ({
+            id: Number(row.itemId),
+            appointmentDate: row.date,
+            actualAmount: Number(row.originalAmount),
+            discountedAmount: Number(row.discountAmount),
+            type: row.type === "investigation" ? "i" : "p",
+          }));
+
+        const res = await postRequest("/lab/registration", {
+          patientId,
+          labInvestigationReq: items,
+        });
+
+        billingHeaderId = res?.response?.billinghdId || res?.response?.id;
+      }
+
+      const totalFinalAmount = Number(paymentBreakdown.finalAmount);
+
+      const selectedItems = formData.rows
+        .filter((_, i) => checkedRows[i])
+        .map((row) => ({
+          id: Number(row.itemId),
+          type: row.type === "investigation" ? "i" : "p",
+        }));
+
+      const paymentData = {
+        billHeaderId: billingHeaderId,
+        amount: totalFinalAmount,
+        mode: "cash",
+        paymentReferenceNo: `PAY${Date.now()}`,
+        investigationandPackegBillStatus: selectedItems,
+      };
+
+      Swal.fire({
+        title: "Confirm Payment",
+        icon: "question",
+        showCancelButton: true,
+      }).then((result) => {
+        if (result.isConfirmed) {
+          navigate("/payment", {
+            state: {
+              amount: totalFinalAmount,
+              patientId,
+              billingHeaderId,
+              paymentData,
+              paymentBreakdown,
+              billingType: RADIOLOGY_SERVICE_CATAGORY,
+            },
+          });
         }
-
-        const paymentBreakdown = calculatePaymentBreakdown()
-        const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount)
-
-        const patientId = Math.floor(Math.random() * 1000)
-
-        if (shouldNavigateToPayment) {
-          showPopup("Registration successful!", "success", false, () => {
-            navigate("/payment", {
-              state: {
-                billingType: "Radiology Services",
-                amount: totalFinalAmount,
-                patientId,
-                labData: { response: { patientId } },
-                selectedItems: {
-                  investigations: formData.rows.filter((i, idx) => i.type === "investigation" && i.itemId && checkedRows[idx]),
-                  packages: formData.rows.filter((i, idx) => i.type === "package" && i.itemId && checkedRows[idx]),
-                },
-                paymentBreakdown,
-              },
-            })
-          })
-        } else {
-          showPopup("Registration successful!", "success", false, () => handleReset())
-        }
-        setLoading(false)
-      }, 1500)
+      });
+    } catch (err) {
+      Swal.fire("Error", err.message, "error");
+    } finally {
+      setIsLoading(false);
     }
-  }
+  };
 
   const handleReset = () => {
-    setFormData({
-      imageurl: undefined,
-      firstName: undefined,
-      middleName: undefined,
-      lastName: undefined,
-      mobileNo: undefined,
-      gender: undefined,
-      relation: undefined,
-      dob: undefined,
-      age: undefined,
-      email: undefined,
-      address1: undefined,
-      address2: undefined,
-      country: undefined,
-      state: undefined,
-      district: undefined,
-      city: undefined,
-      pinCode: undefined,
-      nokFirstName: undefined,
-      nokMiddleName: undefined,
-      nokLastName: undefined,
-      nokEmail: undefined,
-      nokMobile: undefined,
-      nokAddress1: undefined,
-      nokAddress2: undefined,
-      nokCountry: undefined,
-      nokState: undefined,
-      nokDistrict: undefined,
-      nokCity: undefined,
-      nokPinCode: undefined,
-      emergencyFirstName: undefined,
-      emergencyLastName: undefined,
-      emergencyMobile: undefined,
-      type: "investigation",
-      rows: [
-        {
-          id: 1,
-          name: "",
-          date: new Date().toISOString().split('T')[0],
-          originalAmount: 0,
-          discountAmount: 0,
-          netAmount: 0,
-          type: "investigation",
-        },
-      ],
-      paymentMode: "",
-    })
-    setErrors({})
-    setImage(placeholderImage)
-    setImageURL("")
-    setCheckedRows([true])
-  }
+    setSearchData({
+      patientName: "",
+      mobileNo: "",
+      registrationNo: "",
+    });
+
+    setCurrentPage(0);
+    fetchPendingRadiologyBilling(0);
+  };
 
   const handleDetailsReset = () => {
-    handleReset()
-    setShowPatientDetails(false)
-    setSelectedPatient(null)
-  }
+    handleReset();
+    setShowPatientDetails(false);
+    setSelectedPatient(null);
+  };
 
   const getMissingMandatoryFields = () => {
-    const missing = []
+    const missing = [];
     if (!formData.mobileNo || formData.mobileNo.trim() === "") {
-      missing.push("Mobile Number")
+      missing.push("Mobile Number");
     }
     formData.rows.forEach((row, idx) => {
-      if (!row.name || row.name.trim() === "") missing.push(`Row ${idx + 1}: Name`)
-      if (!row.date || row.date.trim() === "") missing.push(`Row ${idx + 1}: Date`)
-      if (row.originalAmount === undefined || row.originalAmount === "" || isNaN(row.originalAmount)) missing.push(`Row ${idx + 1}: Original Amount`)
-    })
-    return missing
+      if (!row.name || row.name.trim() === "")
+        missing.push(`Row ${idx + 1}: Name`);
+      if (!row.date || row.date.trim() === "")
+        missing.push(`Row ${idx + 1}: Date`);
+      if (
+        row.originalAmount === undefined ||
+        row.originalAmount === "" ||
+        isNaN(row.originalAmount)
+      )
+        missing.push(`Row ${idx + 1}: Original Amount`);
+    });
+    return missing;
+  };
+
+  const paymentBreakdown = useMemo(() => {
+    const checkedItems = formData.rows.filter((_, i) => checkedRows[i]);
+
+    const totalOriginalAmount = checkedItems.reduce(
+      (sum, item) => sum + Number(item.originalAmount || 0),
+      0,
+    );
+
+    const totalDiscountAmount = checkedItems.reduce(
+      (sum, item) => sum + Number(item.discountAmount || 0),
+      0,
+    );
+
+    const totalNetAmount = totalOriginalAmount - totalDiscountAmount;
+
+    const totalGstAmount =
+      gstConfig.gstApplicable && gstConfig.gstPercent > 0
+        ? checkedItems.reduce((sum, item) => {
+            const net =
+              Number(item.originalAmount || 0) -
+              Number(item.discountAmount || 0);
+            return sum + (net * gstConfig.gstPercent) / 100;
+          }, 0)
+        : 0;
+
+    const finalAmount = totalNetAmount + totalGstAmount;
+
+    return {
+      totalOriginalAmount: totalOriginalAmount.toFixed(2),
+      totalDiscountAmount: totalDiscountAmount.toFixed(2),
+      totalNetAmount: totalNetAmount.toFixed(2),
+      totalGstAmount: totalGstAmount.toFixed(2),
+      finalAmount: finalAmount.toFixed(2),
+      gstPercent: gstConfig.gstPercent,
+      gstApplicable: gstConfig.gstApplicable,
+      itemCount: checkedItems.length,
+    };
+  }, [formData.rows, checkedRows, gstConfig]);
+
+  const isAnyRowSelected = checkedRows.some((val) => val === true);
+
+  const currentItems = filteredPatientList;
+
+  if (isLoading && !showPatientDetails) {
+    return <LoadingScreen />;
   }
-
-  if (loading) {
-    return <LoadingScreen />
-  }
-
-  const paymentBreakdown = calculatePaymentBreakdown()
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast)
-
   return (
     <div className="content-wrapper">
       {popupMessage && (
@@ -1031,10 +976,10 @@ const PendingForRadiologyBilling = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Pending for Radiology Billing</h4>
+              <h4 className="card-title p-2">Radiology Billing</h4>
               {showPatientDetails && (
-                <button 
-                  type="button" 
+                <button
+                  type="button"
                   className="btn btn-outline-secondary"
                   onClick={handleBackToList}
                 >
@@ -1051,7 +996,9 @@ const PendingForRadiologyBilling = () => {
                     <div className="card-body">
                       <div className="row g-4 align-items-end">
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Patient Name</label>
+                          <label className="form-label fw-semibold">
+                            Patient Name
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -1062,18 +1009,22 @@ const PendingForRadiologyBilling = () => {
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Mobile No.</label>
+                          <label className="form-label fw-semibold">
+                            Mobile No.
+                          </label>
                           <input
                             type="text"
                             className="form-control"
                             id="mobileNo"
-                            placeholder="Enter mobile number"
+                            placeholder="Enter Mobile number"
                             value={searchData.mobileNo}
                             onChange={handleSearchChange}
                           />
                         </div>
                         <div className="col-md-3">
-                          <label className="form-label fw-semibold">Registration No.</label>
+                          <label className="form-label fw-semibold">
+                            Registration No.
+                          </label>
                           <input
                             type="text"
                             className="form-control"
@@ -1085,15 +1036,19 @@ const PendingForRadiologyBilling = () => {
                         </div>
                         <div className="col-md-3">
                           <div className="d-flex gap-2">
-                            <button 
-                              type="button" 
+                            <button
+                              type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
-                              disabled={loading}
+                              disabled={isSearching}
                             >
-                              {loading ? (
+                              {isSearching ? (
                                 <>
-                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
                                   Searching...
                                 </>
                               ) : (
@@ -1107,7 +1062,7 @@ const PendingForRadiologyBilling = () => {
                               className="btn btn-secondary flex-fill"
                               onClick={handleReset}
                             >
-                              Reset
+                              Show All
                             </button>
                           </div>
                         </div>
@@ -1116,19 +1071,18 @@ const PendingForRadiologyBilling = () => {
                   </div>
 
                   {/* Pending List Table */}
-                  {filteredPatientList.length > 0 ? (
+                  {patientList.length > 0 ? (
                     <div className="table-responsive packagelist">
                       <table className="table table-bordered table-hover align-middle">
                         <thead className="table-light">
                           <tr>
+                            <th>Registration No</th>
                             <th>Patient Name</th>
                             <th>Mobile No.</th>
                             <th>Age</th>
                             <th>Gender</th>
-                            <th>Relation</th>
                             <th>Billing Type</th>
-                            <th>Consulted Doctor</th>
-                            <th>Department</th>
+                            <th>Appointment Date</th>
                             <th>Amount</th>
                             <th>Billing Status</th>
                           </tr>
@@ -1139,24 +1093,36 @@ const PendingForRadiologyBilling = () => {
                               key={item.id}
                               onClick={() => handleRowClick(item)}
                               role="button"
-                              onKeyDown={(e) => { if (e.key === "Enter" || e.key === " ") handleRowClick(item) }}
+                              onKeyDown={(e) => {
+                                if (e.key === "Enter" || e.key === " ")
+                                  handleRowClick(item);
+                              }}
                               style={{ cursor: "pointer" }}
                             >
+                              <td>{item.registrationNo}</td>
                               <td>{item.patientName}</td>
                               <td>{item.mobileNo}</td>
                               <td>{item.age}</td>
-                              <td>{item.sex}</td>
-                              <td>{item.relation}</td>
+                              <td>{item.gender}</td>
                               <td>
-                                <span className="badge bg-info">{item.billingType}</span>
+                                <span className="badge bg-info">
+                                  {item.billingType}
+                                </span>
                               </td>
-                              <td>{item.consultedDoctor}</td>
-                              <td>{item.department}</td>
-                              <td>₹{typeof item.amount === "number" ? item.amount.toFixed(2) : item.amount}</td>
+                              <td>{formatDateTime(item.appointmentDate)}</td>
+                              <td>
+                                ₹
+                                {typeof item.amount === "number"
+                                  ? item.amount.toFixed(2)
+                                  : item.amount}
+                              </td>
                               <td>
                                 <button
                                   className="btn btn-warning btn-sm"
-                                  onClick={(e) => { e.stopPropagation(); handleRowClick(item); }}
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    handleRowClick(item);
+                                  }}
                                   style={{
                                     cursor: "pointer",
                                     border: "none",
@@ -1176,17 +1142,18 @@ const PendingForRadiologyBilling = () => {
                     </div>
                   ) : (
                     <div className="alert alert-info" role="alert">
-                      <i className="mdi mdi-information"></i> No pending radiology billing records found.
+                      <i className="mdi mdi-information"></i> No pending
+                      radiology billing records found.
                     </div>
                   )}
 
                   {/* Pagination */}
                   {filteredPatientList.length > 0 && (
                     <Pagination
-                      totalItems={filteredPatientList.length}
+                      totalItems={totalElements}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
-                      onPageChange={handlePageChange}
+                      onPageChange={setCurrentPage}
                     />
                   )}
                 </>
@@ -1206,164 +1173,74 @@ const PendingForRadiologyBilling = () => {
                           <form>
                             <div className="row g-3">
                               <div className="col-md-12">
-                                <div className="row g-3">
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="firstName">
-                                      First Name <span className="text-danger">*</span>
-                                    </label>
+                                <div className="row">
+                                  <div className="form-group col-md-4 mt-3">
+                                    <label>Patient Name</label>
                                     <input
                                       type="text"
-                                      className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
-                                      id="firstName"
-                                      name="firstName"
-                                      value={formData.firstName || ""}
-                                      onChange={handleChange}
-                                      placeholder="Enter First Name"
-                                      readOnly
-                                    />
-                                    {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
-                                  </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="middleName">
-                                      Middle Name
-                                    </label>
-                                    <input
-                                      type="text"
-                                      id="middleName"
-                                      value={formData.middleName || ""}
-                                      name="middleName"
-                                      onChange={handleChange}
                                       className="form-control"
-                                      placeholder="Enter Middle Name"
+                                      value={formData.patientName}
                                       readOnly
                                     />
                                   </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="lastName">
-                                      Last Name
-                                    </label>
+
+                                  <div className="form-group col-md-4 mt-3">
+                                    <label>Age</label>
                                     <input
                                       type="text"
-                                      id="lastName"
-                                      value={formData.lastName || ""}
-                                      name="lastName"
-                                      onChange={handleChange}
                                       className="form-control"
-                                      placeholder="Enter Last Name"
+                                      value={formData.age}
                                       readOnly
                                     />
                                   </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="mobileNo">
-                                      Mobile No.<span className="text-danger">*</span>
-                                    </label>
+
+                                  <div className="form-group col-md-4 mt-3">
+                                    <label>Mobile No.</label>
                                     <input
                                       type="text"
-                                      id="mobileNo"
-                                      className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
-                                      name="mobileNo"
-                                      value={formData.mobileNo || ""}
-                                      maxLength={10}
-                                      onChange={(e) => {
-                                        if (/^\d*$/.test(e.target.value)) {
-                                          handleChange(e)
-                                        }
-                                      }}
-                                      placeholder="Enter Mobile Number"
+                                      className="form-control"
+                                      value={formData.mobileNo}
                                       readOnly
                                     />
-                                    {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
                                   </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="gender">
-                                      Gender <span className="text-danger">*</span>
-                                    </label>
-                                    <select
-                                      className={`form-select ${errors.gender ? "is-invalid" : ""}`}
-                                      id="gender"
-                                      name="gender"
-                                      value={formData.gender || ""}
-                                      onChange={handleChange}
-                                      disabled
-                                    >
-                                      <option value="">Select</option>
-                                      {genderData.map((gender) => (
-                                        <option key={gender.id} value={gender.id}>
-                                          {gender.genderName}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
-                                  </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="relation">
-                                      Relation <span className="text-danger">*</span>
-                                    </label>
-                                    <select
-                                      className={`form-select ${errors.relation ? "is-invalid" : ""}`}
-                                      id="relation"
-                                      name="relation"
-                                      value={formData.relation || ""}
-                                      onChange={handleChange}
-                                      disabled
-                                    >
-                                      <option value="">Select</option>
-                                      {relationData.map((relation) => (
-                                        <option key={relation.id} value={relation.id}>
-                                          {relation.relationName}
-                                        </option>
-                                      ))}
-                                    </select>
-                                    {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
-                                  </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="dob">
-                                      DOB <span className="text-danger">*</span>
-                                    </label>
-                                    <input
-                                      type="date"
-                                      id="dob"
-                                      name="dob"
-                                      className={`form-control ${errors.dob ? "is-invalid" : ""}`}
-                                      value={formData.dob || ""}
-                                      max={new Date().toISOString().split("T")[0]}
-                                      onChange={handleChange}
-                                      placeholder="Select Date of Birth"
-                                      readOnly
-                                    />
-                                    {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
-                                  </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="age">
-                                      Age
-                                    </label>
+
+                                  <div className="form-group col-md-4 mt-3">
+                                    <label>Gender</label>
                                     <input
                                       type="text"
-                                      id="age"
-                                      name="age"
-                                      className={`form-control ${errors.age ? "is-invalid" : ""}`}
-                                      value={formData.age || ""}
-                                      onChange={handleChange}
-                                      placeholder="Enter Age"
+                                      className="form-control"
+                                      value={formData.gender}
                                       readOnly
                                     />
-                                    {errors.age && <div className="invalid-feedback">{errors.age}</div>}
                                   </div>
-                                  <div className="col-md-4">
-                                    <label className="form-label" htmlFor="email">
-                                      Email <span className="text-danger">*</span>
-                                    </label>
+
+                                  <div className="form-group col-md-4 mt-3">
+                                    <label>Relation</label>
                                     <input
-                                      type="email"
-                                      id="email"
-                                      name="email"
-                                      className={`form-control ${errors.email ? "is-invalid" : ""}`}
-                                      value={formData.email || ""}
-                                      onChange={handleChange}
-                                      placeholder="Enter Email Address"
+                                      type="text"
+                                      className="form-control"
+                                      value={formData.relation}
                                       readOnly
                                     />
-                                    {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                                  </div>
+
+                                  <div className="form-group col-md-4 mt-3">
+                                    <label>Patient ID</label>
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      value={formData.patientId}
+                                      readOnly
+                                    />
+                                  </div>
+
+                                  <div className="form-group col-md-12 mt-3">
+                                    <label>Address</label>
+                                    <textarea
+                                      className="form-control"
+                                      value={formData.address}
+                                      readOnly
+                                    />
                                   </div>
                                 </div>
                               </div>
@@ -1380,7 +1257,9 @@ const PendingForRadiologyBilling = () => {
                       <div className="card shadow mb-3">
                         <div className="card-header border-bottom-1 py-3">
                           <h6 className="fw-bold mb-0">
-                            {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                            {formData.type === "investigation"
+                              ? "Investigation Details"
+                              : "Package Details"}
                           </h6>
                         </div>
                         <div className="card-body">
@@ -1393,9 +1272,14 @@ const PendingForRadiologyBilling = () => {
                                 id="investigation"
                                 value="investigation"
                                 checked={formData.type === "investigation"}
-                                onChange={() => handleTypeChange("investigation")}
+                                onChange={() =>
+                                  handleTypeChange("investigation")
+                                }
                               />
-                              <label className="form-check-label" htmlFor="investigation">
+                              <label
+                                className="form-check-label"
+                                htmlFor="investigation"
+                              >
                                 Investigation
                               </label>
                             </div>
@@ -1409,7 +1293,10 @@ const PendingForRadiologyBilling = () => {
                                 checked={formData.type === "package"}
                                 onChange={() => handleTypeChange("package")}
                               />
-                              <label className="form-check-label" htmlFor="package">
+                              <label
+                                className="form-check-label"
+                                htmlFor="package"
+                              >
                                 Package
                               </label>
                             </div>
@@ -1418,9 +1305,19 @@ const PendingForRadiologyBilling = () => {
                           <table className="table table-bordered">
                             <thead>
                               <tr>
-                                <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"} <span className="text-danger">*</span></th>
-                                <th>Date  <span className="text-danger">*</span></th>
-                                <th>Original Amount  <span className="text-danger">*</span></th>
+                                <th>
+                                  {formData.type === "investigation"
+                                    ? "Investigation Name"
+                                    : "Package Name"}{" "}
+                                  <span className="text-danger">*</span>
+                                </th>
+                                <th>
+                                  Date <span className="text-danger">*</span>
+                                </th>
+                                <th>
+                                  Original Amount{" "}
+                                  <span className="text-danger">*</span>
+                                </th>
                                 <th>Discount Amount</th>
                                 <th>Net Amount</th>
                                 <th>Action</th>
@@ -1433,13 +1330,17 @@ const PendingForRadiologyBilling = () => {
                                     <div className="d-flex align-items-center gap-2">
                                       <input
                                         type="checkbox"
-                                        style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                                        style={{
+                                          width: "20px",
+                                          height: "20px",
+                                          border: "2px solid black",
+                                        }}
                                         className="form-check-input"
                                         checked={checkedRows[index] || false}
                                         onChange={(e) => {
-                                          const updated = [...checkedRows]
-                                          updated[index] = e.target.checked
-                                          setCheckedRows(updated)
+                                          const updated = [...checkedRows];
+                                          updated[index] = e.target.checked;
+                                          setCheckedRows(updated);
                                         }}
                                       />
                                       <div className="dropdown-search-container position-relative flex-grow-1">
@@ -1448,199 +1349,426 @@ const PendingForRadiologyBilling = () => {
                                           className="form-control"
                                           value={row.name}
                                           autoComplete="on"
-                                          placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
+                                          placeholder={
+                                            formData.type === "investigation"
+                                              ? "Investigation Name"
+                                              : "Package Name"
+                                          }
                                           onChange={(e) => {
-                                            handleRowChange(index, "name", e.target.value)
+                                            handleRowChange(
+                                              index,
+                                              "name",
+                                              e.target.value,
+                                            );
                                             if (e.target.value.trim() !== "") {
-                                              setActiveRowIndex(index)
+                                              setActiveRowIndex(index);
                                             } else {
-                                              setActiveRowIndex(null)
+                                              setActiveRowIndex(null);
                                             }
                                           }}
                                           onFocus={() => {
                                             if (row.name.trim() !== "") {
-                                              setActiveRowIndex(index)
+                                              setActiveRowIndex(index);
                                             }
                                           }}
-                                          onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                                          onBlur={() =>
+                                            setTimeout(
+                                              () => setActiveRowIndex(null),
+                                              200,
+                                            )
+                                          }
                                         />
-                                        {activeRowIndex === index && row.name.trim() !== "" && (
-                                          <ul
-                                            className="list-group position-absolute w-100 mt-1"
-                                            style={{
-                                              zIndex: 1000,
-                                              maxHeight: "200px",
-                                              overflowY: "auto",
-                                              backgroundColor: "#fff",
-                                              border: "1px solid #ccc",
-                                            }}
-                                          >
-                                            {formData.type === "investigation"
-                                              ? investigationItems
-                                                .filter((item) =>
-                                                  item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                                )
-                                                .map((item, i) => {
-                                                  const hasDiscount = item.disc && item.disc > 0
-                                                  const displayPrice = item.price || 0
-                                                  const discountAmount = hasDiscount ? item.disc : 0
-                                                  const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+                                        {activeRowIndex === index &&
+                                          row.name.trim() !== "" && (
+                                            <ul
+                                              className="list-group position-absolute w-100 mt-1"
+                                              style={{
+                                                zIndex: 1000,
+                                                maxHeight: "200px",
+                                                overflowY: "auto",
+                                                backgroundColor: "#fff",
+                                                border: "1px solid #ccc",
+                                              }}
+                                            >
+                                              {formData.type === "investigation"
+                                                ? investigationItems
+                                                    .filter((item) =>
+                                                      item.investigationName
+                                                        .toLowerCase()
+                                                        .includes(
+                                                          row.name.toLowerCase(),
+                                                        ),
+                                                    )
+                                                    .map((item, i) => {
+                                                      const hasDiscount =
+                                                        item.disc &&
+                                                        item.disc > 0;
+                                                      const displayPrice =
+                                                        item.price || 0;
+                                                      const discountAmount =
+                                                        hasDiscount
+                                                          ? item.disc
+                                                          : 0;
+                                                      const finalPrice =
+                                                        hasDiscount
+                                                          ? displayPrice -
+                                                            discountAmount
+                                                          : displayPrice;
 
-                                                  return (
-                                                    <li
-                                                      key={i}
-                                                      className="list-group-item list-group-item-action"
-                                                      style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                      onClick={() => {
-                                                        const currentRowDate = row.date || new Date().toISOString().split('T')[0]
-                                                        
-                                                        if (isInvestigationInSelectedPackages(item.investigationId, currentRowDate)) {
-                                                          showPopup(
-                                                            DUPLICATE_INV_INCLUDE_PACKAGE,
-                                                            "warning"
-                                                          )
-                                                          return
-                                                        }
-                                                        
-                                                        if (isInvestigationAlreadySelected(item.investigationId, currentRowDate)) {
-                                                          showPopup(
-                                                            DUPLICATE_INV_INCLUDE_PACKAGE,
-                                                            "warning"
-                                                          )
-                                                          return
-                                                        }
-                                                        if (item.price === null || item.price === 0 || item.price === "0") {
-                                                          showPopup("Price not configured for this investigation", "warning")
-                                                        } else {
-                                                          const hasDiscount = item.disc && item.disc > 0
-                                                          const displayPrice = item.price || 0
-                                                          const discountAmount = hasDiscount ? item.disc : 0
-                                                          const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+                                                      return (
+                                                        <li
+                                                          key={i}
+                                                          className="list-group-item list-group-item-action"
+                                                          style={{
+                                                            backgroundColor:
+                                                              "#e3e8e6",
+                                                            cursor: "pointer",
+                                                          }}
+                                                          onClick={() => {
+                                                            const currentRowDate =
+                                                              row.date ||
+                                                              new Date()
+                                                                .toISOString()
+                                                                .split("T")[0];
 
-                                                          handleRowChange(index, "name", item.investigationName)
-                                                          handleRowChange(index, "itemId", item.investigationId)
-                                                          handleRowChange(index, "originalAmount", displayPrice)
-                                                          handleRowChange(index, "discountAmount", discountAmount)
-                                                          handleRowChange(index, "netAmount", finalPrice)
-                                                          handleRowChange(index, "type", formData.type)
-                                                          setActiveRowIndex(null)
-                                                        }
-                                                      }}
-                                                    >
-                                                      <div>
-                                                        <strong>{item.investigationName}</strong>
-                                                        <div className="d-flex justify-content-between">
-                                                          <span>
-                                                            {item.price === null
-                                                              ? "Price not configured"
-                                                              : `₹${finalPrice.toFixed(2)}`}
-                                                          </span>
-                                                          {hasDiscount && (
-                                                            <span className="text-success">
-                                                              (Discount: ₹{discountAmount.toFixed(2)})
-                                                            </span>
-                                                          )}
-                                                        </div>
-                                                        {item.investigationType && (
-                                                          <small className="text-muted">
-                                                            Type: {item.investigationType}
-                                                          </small>
-                                                        )}
-                                                      </div>
-                                                    </li>
-                                                  )
-                                                })
-                                              : packageItems
-                                                .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                                .map((item, i) => (
-                                                  <li
-                                                    key={i}
-                                                    className="list-group-item list-group-item-action"
-                                                    style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                                    onClick={async () => {
-                                                      const currentRowDate = row.date || new Date().toISOString().split('T')[0];
-                                                      
-                                                      // Check for duplicate package
-                                                      if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
-                                                        showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
-                                                        return;
-                                                      }
-
-                                                      const priceDetails = await fetchPackagePrice(item.packName);
-                                                      if (!priceDetails || !priceDetails.actualCost) {
-                                                        showPopup("Price not configured for this package", "warning");
-                                                        return;
-                                                      }
-
-                                                      const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName);
-
-                                                      // Check if investigations in this package are already selected individually FOR THE SAME DATE
-                                                      const alreadySelectedInvestigations = [];
-                                                      investigationIds.forEach(invId => {
-                                                        if (isInvestigationAlreadySelected(invId, currentRowDate)) {
-                                                          const invItem = investigationItems.find(inv => inv.investigationId === invId);
-                                                          if (invItem) {
-                                                            alreadySelectedInvestigations.push(invItem.investigationName);
-                                                          }
-                                                        }
-                                                      });
-
-                                                      if (alreadySelectedInvestigations.length > 0) {
-                                                        showPopup(
-                                                          `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(', ')}`,
-                                                          "warning"
-                                                        );
-                                                        return;
-                                                      }
-
-                                                      // Check if investigations in this package are already in other packages FOR THE SAME DATE
-                                                      const alreadyInOtherPackage = [];
-                                                      investigationIds.forEach(invId => {
-                                                        if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
-                                                          const containingPackage = formData.rows.find((row, idx) =>
-                                                            checkedRows[idx] &&
-                                                            row.type === "package" &&
-                                                            row.investigationIds &&
-                                                            row.investigationIds.includes(invId) &&
-                                                            row.date === currentRowDate
-                                                          );
-                                                          if (containingPackage) {
-                                                            const invItem = investigationItems.find(inv => inv.investigationId === invId);
-                                                            if (invItem) {
-                                                              alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`);
+                                                            if (
+                                                              isInvestigationInSelectedPackages(
+                                                                item.investigationId,
+                                                                currentRowDate,
+                                                              )
+                                                            ) {
+                                                              showPopup(
+                                                                DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                                "warning",
+                                                              );
+                                                              return;
                                                             }
+
+                                                            if (
+                                                              isInvestigationAlreadySelected(
+                                                                item.investigationId,
+                                                                currentRowDate,
+                                                              )
+                                                            ) {
+                                                              showPopup(
+                                                                DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                                "warning",
+                                                              );
+                                                              return;
+                                                            }
+                                                            if (
+                                                              item.price ===
+                                                                null ||
+                                                              item.price ===
+                                                                0 ||
+                                                              item.price === "0"
+                                                            ) {
+                                                              showPopup(
+                                                                "Price not configured for this investigation",
+                                                                "warning",
+                                                              );
+                                                            } else {
+                                                              const hasDiscount =
+                                                                item.disc &&
+                                                                item.disc > 0;
+                                                              const displayPrice =
+                                                                item.price || 0;
+                                                              const discountAmount =
+                                                                hasDiscount
+                                                                  ? item.disc
+                                                                  : 0;
+                                                              const finalPrice =
+                                                                hasDiscount
+                                                                  ? displayPrice -
+                                                                    discountAmount
+                                                                  : displayPrice;
+
+                                                              handleRowChange(
+                                                                index,
+                                                                "name",
+                                                                item.investigationName,
+                                                              );
+                                                              handleRowChange(
+                                                                index,
+                                                                "itemId",
+                                                                item.investigationId,
+                                                              );
+                                                              handleRowChange(
+                                                                index,
+                                                                "originalAmount",
+                                                                displayPrice,
+                                                              );
+                                                              handleRowChange(
+                                                                index,
+                                                                "discountAmount",
+                                                                discountAmount,
+                                                              );
+                                                              handleRowChange(
+                                                                index,
+                                                                "netAmount",
+                                                                finalPrice,
+                                                              );
+                                                              handleRowChange(
+                                                                index,
+                                                                "type",
+                                                                formData.type,
+                                                              );
+                                                              setActiveRowIndex(
+                                                                null,
+                                                              );
+                                                            }
+                                                          }}
+                                                        >
+                                                          <div>
+                                                            <strong>
+                                                              {
+                                                                item.investigationName
+                                                              }
+                                                            </strong>
+                                                            <div className="d-flex justify-content-between">
+                                                              <span>
+                                                                {item.price ===
+                                                                null
+                                                                  ? "Price not configured"
+                                                                  : `₹${finalPrice.toFixed(2)}`}
+                                                              </span>
+                                                              {hasDiscount && (
+                                                                <span className="text-success">
+                                                                  (Discount: ₹
+                                                                  {discountAmount.toFixed(
+                                                                    2,
+                                                                  )}
+                                                                  )
+                                                                </span>
+                                                              )}
+                                                            </div>
+                                                            {item.investigationType && (
+                                                              <small className="text-muted">
+                                                                Type:{" "}
+                                                                {
+                                                                  item.investigationType
+                                                                }
+                                                              </small>
+                                                            )}
+                                                          </div>
+                                                        </li>
+                                                      );
+                                                    })
+                                                : packageItems
+                                                    .filter((item) =>
+                                                      item.packName
+                                                        .toLowerCase()
+                                                        .includes(
+                                                          row.name.toLowerCase(),
+                                                        ),
+                                                    )
+                                                    .map((item, i) => (
+                                                      <li
+                                                        key={i}
+                                                        className="list-group-item list-group-item-action"
+                                                        style={{
+                                                          backgroundColor:
+                                                            "#e3e8e6",
+                                                          cursor: "pointer",
+                                                        }}
+                                                        onClick={async () => {
+                                                          const currentRowDate =
+                                                            row.date ||
+                                                            new Date()
+                                                              .toISOString()
+                                                              .split("T")[0];
+
+                                                          // Check for duplicate package
+                                                          if (
+                                                            isPackageAlreadySelected(
+                                                              item.packageId,
+                                                              currentRowDate,
+                                                            )
+                                                          ) {
+                                                            showPopup(
+                                                              DUPLICATE_PACKAGE_WARN_MSG,
+                                                              "warning",
+                                                            );
+                                                            return;
                                                           }
-                                                        }
-                                                      });
 
-                                                      if (alreadyInOtherPackage.length > 0) {
-                                                        showPopup(
-                                                          `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(', ')}`,
-                                                          "warning"
-                                                        );
-                                                        return;
-                                                      }
+                                                          const priceDetails =
+                                                            await fetchPackagePrice(
+                                                              item.packName,
+                                                            );
+                                                          if (
+                                                            !priceDetails ||
+                                                            !priceDetails.actualCost
+                                                          ) {
+                                                            showPopup(
+                                                              "Price not configured for this package",
+                                                              "warning",
+                                                            );
+                                                            return;
+                                                          }
 
-                                                      handleRowChange(index, "name", item.packName);
-                                                      handleRowChange(index, "itemId", item.packageId || priceDetails.packId);
-                                                      handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
-                                                      handleRowChange(index, "discountAmount", priceDetails.disc || 0);
-                                                      handleRowChange(index, "netAmount", priceDetails.actualCost);
-                                                      handleRowChange(index, "type", formData.type);
-                                                      handleRowChange(index, "investigationIds", investigationIds);
-                                                      setActiveRowIndex(null);
-                                                    }}
-                                                  >
-                                                    <div>
-                                                      <strong>{item.packName}</strong>
-                                                      <div className="d-flex justify-content-between">
-                                                        <span>₹{item.actualCost.toFixed(2)}</span>
-                                                      </div>
-                                                    </div>
-                                                  </li>
-                                                ))}
-                                          </ul>
-                                        )}
+                                                          const investigationIds =
+                                                            await getInvestigationIdsFromPackage(
+                                                              item.packageId,
+                                                              item.packName,
+                                                            );
+
+                                                          // Check if investigations in this package are already selected individually FOR THE SAME DATE
+                                                          const alreadySelectedInvestigations =
+                                                            [];
+                                                          investigationIds.forEach(
+                                                            (invId) => {
+                                                              if (
+                                                                isInvestigationAlreadySelected(
+                                                                  invId,
+                                                                  currentRowDate,
+                                                                )
+                                                              ) {
+                                                                const invItem =
+                                                                  investigationItems.find(
+                                                                    (inv) =>
+                                                                      inv.investigationId ===
+                                                                      invId,
+                                                                  );
+                                                                if (invItem) {
+                                                                  alreadySelectedInvestigations.push(
+                                                                    invItem.investigationName,
+                                                                  );
+                                                                }
+                                                              }
+                                                            },
+                                                          );
+
+                                                          if (
+                                                            alreadySelectedInvestigations.length >
+                                                            0
+                                                          ) {
+                                                            showPopup(
+                                                              `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(", ")}`,
+                                                              "warning",
+                                                            );
+                                                            return;
+                                                          }
+
+                                                          // Check if investigations in this package are already in other packages FOR THE SAME DATE
+                                                          const alreadyInOtherPackage =
+                                                            [];
+                                                          investigationIds.forEach(
+                                                            (invId) => {
+                                                              if (
+                                                                isInvestigationInSelectedPackages(
+                                                                  invId,
+                                                                  currentRowDate,
+                                                                )
+                                                              ) {
+                                                                const containingPackage =
+                                                                  formData.rows.find(
+                                                                    (
+                                                                      row,
+                                                                      idx,
+                                                                    ) =>
+                                                                      checkedRows[
+                                                                        idx
+                                                                      ] &&
+                                                                      row.type ===
+                                                                        "package" &&
+                                                                      row.investigationIds &&
+                                                                      row.investigationIds.includes(
+                                                                        invId,
+                                                                      ) &&
+                                                                      row.date ===
+                                                                        currentRowDate,
+                                                                  );
+                                                                if (
+                                                                  containingPackage
+                                                                ) {
+                                                                  const invItem =
+                                                                    investigationItems.find(
+                                                                      (inv) =>
+                                                                        inv.investigationId ===
+                                                                        invId,
+                                                                    );
+                                                                  if (invItem) {
+                                                                    alreadyInOtherPackage.push(
+                                                                      `${invItem.investigationName} (in package: ${containingPackage.name})`,
+                                                                    );
+                                                                  }
+                                                                }
+                                                              }
+                                                            },
+                                                          );
+
+                                                          if (
+                                                            alreadyInOtherPackage.length >
+                                                            0
+                                                          ) {
+                                                            showPopup(
+                                                              `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(", ")}`,
+                                                              "warning",
+                                                            );
+                                                            return;
+                                                          }
+
+                                                          handleRowChange(
+                                                            index,
+                                                            "name",
+                                                            item.packName,
+                                                          );
+                                                          handleRowChange(
+                                                            index,
+                                                            "itemId",
+                                                            item.packageId ||
+                                                              priceDetails.packId,
+                                                          );
+                                                          handleRowChange(
+                                                            index,
+                                                            "originalAmount",
+                                                            priceDetails.baseCost ||
+                                                              priceDetails.actualCost,
+                                                          );
+                                                          handleRowChange(
+                                                            index,
+                                                            "discountAmount",
+                                                            priceDetails.disc ||
+                                                              0,
+                                                          );
+                                                          handleRowChange(
+                                                            index,
+                                                            "netAmount",
+                                                            priceDetails.actualCost,
+                                                          );
+                                                          handleRowChange(
+                                                            index,
+                                                            "type",
+                                                            formData.type,
+                                                          );
+                                                          handleRowChange(
+                                                            index,
+                                                            "investigationIds",
+                                                            investigationIds,
+                                                          );
+                                                          setActiveRowIndex(
+                                                            null,
+                                                          );
+                                                        }}
+                                                      >
+                                                        <div>
+                                                          <strong>
+                                                            {item.packName}
+                                                          </strong>
+                                                          <div className="d-flex justify-content-between">
+                                                            <span>
+                                                              ₹
+                                                              {item.actualCost.toFixed(
+                                                                2,
+                                                              )}
+                                                            </span>
+                                                          </div>
+                                                        </div>
+                                                      </li>
+                                                    ))}
+                                            </ul>
+                                          )}
                                       </div>
                                     </div>
                                   </td>
@@ -1648,9 +1776,16 @@ const PendingForRadiologyBilling = () => {
                                     <input
                                       type="date"
                                       className="form-control"
-                                      value={row.date || new Date().toISOString().split('T')[0]}
-                                      onChange={(e) => handleDateChange(index, e.target.value)}
-                                      min={new Date().toISOString().split('T')[0]}
+                                      value={
+                                        row.date ||
+                                        new Date().toISOString().split("T")[0]
+                                      }
+                                      onChange={(e) =>
+                                        handleDateChange(index, e.target.value)
+                                      }
+                                      min={
+                                        new Date().toISOString().split("T")[0]
+                                      }
                                     />
                                   </td>
                                   <td>
@@ -1658,7 +1793,13 @@ const PendingForRadiologyBilling = () => {
                                       type="number"
                                       className="form-control"
                                       value={row.originalAmount}
-                                      onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                                      onChange={(e) =>
+                                        handleRowChange(
+                                          index,
+                                          "originalAmount",
+                                          e.target.value,
+                                        )
+                                      }
                                       min="0"
                                       step="0.01"
                                     />
@@ -1668,13 +1809,21 @@ const PendingForRadiologyBilling = () => {
                                       type="number"
                                       className="form-control"
                                       value={row.discountAmount}
-                                      onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                                      onChange={(e) =>
+                                        handleRowChange(
+                                          index,
+                                          "discountAmount",
+                                          e.target.value,
+                                        )
+                                      }
                                       min="0"
                                       step="0.01"
                                     />
                                   </td>
                                   <td>
-                                    <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                                    <div className="font-weight-bold text-success">
+                                      ₹{row.netAmount || "0.00"}
+                                    </div>
                                   </td>
                                   <td>
                                     <div className="d-flex align-item-center gap-2">
@@ -1695,8 +1844,16 @@ const PendingForRadiologyBilling = () => {
                           </table>
 
                           <div className="d-flex justify-content-between align-items-center">
-                            <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
-                              Add {formData.type === "investigation" ? "Investigation" : "Package"} +
+                            <button
+                              type="button"
+                              className="btn btn-success"
+                              onClick={(e) => addRow(e, formData.type)}
+                            >
+                              Add{" "}
+                              {formData.type === "investigation"
+                                ? "Investigation"
+                                : "Package"}{" "}
+                              +
                             </button>
 
                             <div className="d-flex">
@@ -1706,8 +1863,12 @@ const PendingForRadiologyBilling = () => {
                                 placeholder="Enter Coupon Code"
                                 style={{ width: "200px" }}
                               />
-                              <button type="button" className="btn btn-primary me-2">
-                                <i className="icofont-ticket me-1"></i> Apply Coupon
+                              <button
+                                type="button"
+                                className="btn btn-primary me-2"
+                              >
+                                <i className="icofont-ticket me-1"></i> Apply
+                                Coupon
                               </button>
                             </div>
                           </div>
@@ -1721,20 +1882,39 @@ const PendingForRadiologyBilling = () => {
                     <div className="col-sm-12">
                       <div
                         className="card shadow mb-3"
-                        style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
+                        style={{
+                          background:
+                            "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                          border: "none",
+                        }}
                       >
                         <div
                           className="card-header py-3 text-white"
-                          style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
+                          style={{
+                            background: "rgba(255,255,255,0.1)",
+                            border: "none",
+                          }}
                         >
                           <div className="d-flex align-items-center gap-3">
-                            <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
+                            <div
+                              className="p-2 bg-white rounded"
+                              style={{ opacity: 0.9 }}
+                            >
                               <i className="fa fa-calculator text-primary"></i>
                             </div>
                             <div>
-                              <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
-                              <small className="text-white" style={{ opacity: 0.8 }}>
-                                {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
+                              <h5 className="mb-0 fw-bold text-white">
+                                Payment Summary
+                              </h5>
+                              <small
+                                className="text-white"
+                                style={{ opacity: 0.8 }}
+                              >
+                                {paymentBreakdown.itemCount} item
+                                {paymentBreakdown.itemCount !== 1
+                                  ? "s"
+                                  : ""}{" "}
+                                selected
                               </small>
                             </div>
                           </div>
@@ -1744,14 +1924,24 @@ const PendingForRadiologyBilling = () => {
                             <div className="col-md-3">
                               <div
                                 className="card h-100"
-                                style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+                                style={{
+                                  background: "rgba(255,255,255,0.15)",
+                                  border: "1px solid rgba(255,255,255,0.2)",
+                                }}
                               >
                                 <div className="card-body text-center">
                                   <div className="mb-2">
-                                    <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
+                                    <i
+                                      className="fa fa-receipt fa-2x text-white"
+                                      style={{ opacity: 0.8 }}
+                                    ></i>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">Total Amount</h6>
-                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
+                                  <h6 className="card-title text-white mb-1">
+                                    Total Amount
+                                  </h6>
+                                  <h4 className="text-white fw-bold">
+                                    ₹{paymentBreakdown.totalOriginalAmount}
+                                  </h4>
                                 </div>
                               </div>
                             </div>
@@ -1759,14 +1949,21 @@ const PendingForRadiologyBilling = () => {
                             <div className="col-md-3">
                               <div
                                 className="card h-100"
-                                style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
+                                style={{
+                                  background: "rgba(40,167,69,0.2)",
+                                  border: "1px solid rgba(40,167,69,0.3)",
+                                }}
                               >
                                 <div className="card-body text-center">
                                   <div className="mb-2">
                                     <i className="fa fa-percent fa-2x text-success"></i>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">Total Discount</h6>
-                                  <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
+                                  <h6 className="card-title text-white mb-1">
+                                    Total Discount
+                                  </h6>
+                                  <h4 className="text-success fw-bold">
+                                    ₹{paymentBreakdown.totalDiscountAmount}
+                                  </h4>
                                 </div>
                               </div>
                             </div>
@@ -1775,14 +1972,21 @@ const PendingForRadiologyBilling = () => {
                               <div className="col-md-3">
                                 <div
                                   className="card h-100"
-                                  style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
+                                  style={{
+                                    background: "rgba(255,193,7,0.2)",
+                                    border: "1px solid rgba(255,193,7,0.3)",
+                                  }}
                                 >
                                   <div className="card-body text-center">
                                     <div className="mb-2">
                                       <i className="fa fa-file-invoice fa-2x text-warning"></i>
                                     </div>
-                                    <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
-                                    <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
+                                    <h6 className="card-title text-white mb-1">
+                                      Tax ({paymentBreakdown.gstPercent}% GST)
+                                    </h6>
+                                    <h4 className="text-warning fw-bold">
+                                      ₹{paymentBreakdown.totalGstAmount}
+                                    </h4>
                                   </div>
                                 </div>
                               </div>
@@ -1792,7 +1996,8 @@ const PendingForRadiologyBilling = () => {
                               <div
                                 className="card h-100"
                                 style={{
-                                  background: "linear-gradient(45deg, #28a745, #20c997)",
+                                  background:
+                                    "linear-gradient(45deg, #28a745, #20c997)",
                                   border: "none",
                                   boxShadow: "0 4px 15px rgba(0,0,0,0.2)",
                                 }}
@@ -1801,14 +2006,24 @@ const PendingForRadiologyBilling = () => {
                                   <div className="mb-2">
                                     <i className="fa fa-credit-card fa-2x text-white"></i>
                                   </div>
-                                  <h6 className="card-title text-white mb-1">Final Amount</h6>
-                                  <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
+                                  <h6 className="card-title text-white mb-1">
+                                    Final Amount
+                                  </h6>
+                                  <h4 className="text-white fw-bold">
+                                    ₹{paymentBreakdown.finalAmount}
+                                  </h4>
                                 </div>
                               </div>
                             </div>
                           </div>
 
-                          <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
+                          <div
+                            className="card"
+                            style={{
+                              background: "rgba(255,255,255,0.95)",
+                              border: "none",
+                            }}
+                          >
                             <div className="card-body">
                               <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
                                 <i className="fa fa-list-alt text-primary"></i>
@@ -1817,40 +2032,70 @@ const PendingForRadiologyBilling = () => {
                               <div className="row">
                                 <div className="col-md-8">
                                   <div className="d-flex justify-content-between py-2 border-bottom">
-                                    <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
+                                    <span className="text-muted">
+                                      Subtotal ({paymentBreakdown.itemCount}{" "}
+                                      items)
+                                    </span>
+                                    <span className="fw-medium text-dark">
+                                      ₹{paymentBreakdown.totalOriginalAmount}
+                                    </span>
                                   </div>
-                                  {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
+                                  {Number(
+                                    paymentBreakdown.totalDiscountAmount,
+                                  ) > 0 && (
                                     <div className="d-flex justify-content-between py-2 border-bottom">
-                                      <span className="text-success">Discount Applied</span>
-                                      <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
+                                      <span className="text-success">
+                                        Discount Applied
+                                      </span>
+                                      <span className="fw-medium text-success">
+                                        -₹{paymentBreakdown.totalDiscountAmount}
+                                      </span>
                                     </div>
                                   )}
                                   <div className="d-flex justify-content-between py-2 border-bottom">
-                                    <span className="text-muted">Amount after Discount</span>
-                                    <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
+                                    <span className="text-muted">
+                                      Amount after Discount
+                                    </span>
+                                    <span className="fw-medium text-dark">
+                                      ₹{paymentBreakdown.totalNetAmount}
+                                    </span>
                                   </div>
                                   {paymentBreakdown.gstApplicable && (
                                     <div className="d-flex justify-content-between py-2 border-bottom">
-                                      <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                                      <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                                      <span className="text-muted">
+                                        GST ({paymentBreakdown.gstPercent}%)
+                                      </span>
+                                      <span className="fw-medium text-warning">
+                                        +₹{paymentBreakdown.totalGstAmount}
+                                      </span>
                                     </div>
                                   )}
                                   <div className="d-flex justify-content-between py-3 border-top">
-                                    <span className="h5 fw-bold text-dark">Total Payable</span>
-                                    <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                                    <span className="h5 fw-bold text-dark">
+                                      Total Payable
+                                    </span>
+                                    <span className="h4 fw-bold text-primary">
+                                      ₹{paymentBreakdown.finalAmount}
+                                    </span>
                                   </div>
                                 </div>
                                 <div className="col-md-4">
                                   <div className="d-flex flex-wrap gap-2">
                                     <span className="badge bg-secondary px-3 py-2">
-                                      {paymentBreakdown.itemCount} Items Selected
+                                      {paymentBreakdown.itemCount} Items
+                                      Selected
                                     </span>
-                                    {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                                      <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                                    {Number(
+                                      paymentBreakdown.totalDiscountAmount,
+                                    ) > 0 && (
+                                      <span className="badge bg-success px-3 py-2">
+                                        Discount Applied
+                                      </span>
                                     )}
                                     {paymentBreakdown.gstApplicable && (
-                                      <span className="badge bg-info px-3 py-2">GST Included</span>
+                                      <span className="badge bg-info px-3 py-2">
+                                        GST Included
+                                      </span>
                                     )}
                                   </div>
                                 </div>
@@ -1868,30 +2113,29 @@ const PendingForRadiologyBilling = () => {
                       <div className="card shadow mb-3">
                         <div className="card-body">
                           <div className="row g-3">
-                            <div className="mt-4">
+                            <div className="d-flex justify-content-between align-items-center mt-4 flex-wrap gap-2">
+                              {/* Right side */}
                               <button
                                 type="button"
-                                className="btn btn-primary me-2"
-                                onClick={async () => {
-                                  const missingFields = getMissingMandatoryFields()
-                                  if (loading) return
-                                  if (missingFields.length > 0) {
-                                    showPopup("Please fill all mandatory fields", "warning")
-                                    return
-                                  }
-                                  try {
-                                    console.log("Pay Now button clicked")
-                                    await handleSubmit(true)
-                                  } catch (error) {
-                                    console.error("Error in payment flow:", error)
-                                  }
-                                }}
+                                className="btn btn-primary"
+                                onClick={handleSave}
+                                disabled={!isAnyRowSelected}
+                                title={
+                                  !isAnyRowSelected
+                                    ? "Select at least one item"
+                                    : ""
+                                }
                               >
-                                <i className="fa fa-credit-card me-1"></i>
-                                {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                                Pay Now - ₹{paymentBreakdown.finalAmount}
                               </button>
-                              <button type="button" className="btn btn-secondary" onClick={handleDetailsReset}>
-                                Reset
+
+                              {/* Left side */}
+                              <button
+                                type="button"
+                                className="btn btn-secondary"
+                                onClick={handleDetailsReset}
+                              >
+                                Show All
                               </button>
                             </div>
                           </div>
@@ -1906,7 +2150,7 @@ const PendingForRadiologyBilling = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default PendingForRadiologyBilling
+export default PendingForRadiologyBilling;

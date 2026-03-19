@@ -8,19 +8,27 @@ import {
 } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 
 const PatientwiseBilldatails = () => {
   const [patientList, setPatientList] = useState([]);
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
+    registrationNo: "",
   });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [totalPages, setTotalPages] = useState(0);
+  const [currentPage, setCurrentPage] = useState(0);
   const [pageInput, setPageInput] = useState("");
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false); // Add this line
   const [error, setError] = useState(null);
-  const itemsPerPage = 5;
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   // Add state variables for PDF handling
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -49,10 +57,11 @@ const PatientwiseBilldatails = () => {
       const response = await getRequest(`${BILLING}`);
 
       if (response && response.response) {
-        const mappedData = response.response.map((item) => ({
+        const pageData = response.response;
+
+        const mappedData = pageData.content.map((item) => ({
           id: item.headerId,
           visitId: item.visitId,
-          patientId: item.headerId,
           patientName: item.patientName || "",
           mobileNo: item.phoneNo || "",
           age: item.age || "",
@@ -66,10 +75,11 @@ const PatientwiseBilldatails = () => {
           billDate: item.billDate || "",
           serviceCategoryId: item.serviceCategoryId || null,
           registrationNo: item.registrationNo || null,
-          fullData: item,
         }));
 
         setPatientList(mappedData);
+        setTotalElements(pageData.totalElements);
+        setTotalPages(pageData.totalPages);
       }
     } catch (error) {
       console.error("Error fetching billing status data:", error);
@@ -81,12 +91,14 @@ const PatientwiseBilldatails = () => {
   };
 
   useEffect(() => {
-    fetchBillingStatus();
-  }, []);
+    setCurrentPage(0);
+  }, [searchData.patientName, searchData.mobileNo, searchData.registrationNo]);
 
   useEffect(() => {
-    setCurrentPage(1);
-  }, [searchData.patientName, searchData.mobileNo]);
+    if (hasSearched) {
+      handleSearch(currentPage);
+    }
+  }, [currentPage]);
 
   // Helper function to check if a record is generating PDF
   const isGeneratingPdf = (recordId) => {
@@ -175,12 +187,66 @@ const PatientwiseBilldatails = () => {
     }
   };
 
-  const handleSearch = () => {
-    setSearchLoading(true);
-    setTimeout(() => {
+  const handleSearch = async (page = currentPage) => {
+    if (
+      !searchData.patientName &&
+      !searchData.mobileNo &&
+      !searchData.registrationNo
+    ) {
+      showPopup("Please enter at least one search field", "info");
+      return;
+    }
+    setHasSearched(true);
+
+    try {
+      setIsLoading(true);
+      setSearchLoading(true);
+
+      const params = {};
+
+      if (searchData.patientName) params.patientName = searchData.patientName;
+      if (searchData.mobileNo) params.phoneNo = searchData.mobileNo;
+      if (searchData.registrationNo)
+        params.registrationNo = searchData.registrationNo;
+
+      const queryParams = new URLSearchParams(params);
+
+      const response = await getRequest(
+        `${BILLING}/search?${queryParams.toString()}&page=${page}&size=${itemsPerPage}`,
+      );
+
+      if (response && response.response) {
+        const pageData = response.response;
+
+        const mappedData = pageData.content.map((item) => ({
+          id: item.headerId,
+          visitId: item.visitId,
+          patientName: item.patientName || "",
+          mobileNo: item.phoneNo || "",
+          age: item.age || "",
+          sex: item.sex || "",
+          relation: item.relation || "",
+          billingType: item.serviceCategoryName || "",
+          department: item.department || "",
+          amount: item.netAmount,
+          billingStatus: item.paymentStatus,
+          billNo: item.billNo,
+          billDate: item.billDate || "",
+          serviceCategoryId: item.serviceCategoryId || null,
+          registrationNo: item.registrationNo || null,
+        }));
+
+        setPatientList(mappedData);
+        setTotalElements(pageData.totalElements);
+        setTotalPages(pageData.totalPages);
+      }
+    } catch (error) {
+      console.error("Search error:", error);
+      showPopup("Search failed", "error");
+    } finally {
+      setIsLoading(false);
       setSearchLoading(false);
-      setCurrentPage(1);
-    }, 300);
+    }
   };
 
   // View report handler
@@ -197,34 +263,32 @@ const PatientwiseBilldatails = () => {
 
   const handleSearchChange = (e) => {
     const { id, value } = e.target;
-    setSearchData((prevData) => ({ ...prevData, [id]: value }));
+
+    setSearchData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
   };
 
   const handleSearchReset = () => {
     setSearchData({
       patientName: "",
       mobileNo: "",
+      registrationNo: "",
     });
+
+    setPatientList([]);
+    setHasSearched(false);
+    setCurrentPage(0); 
+    setTotalElements(0); 
+    setTotalPages(0); 
   };
 
-  const filteredPatientList = patientList.filter(
-    (item) =>
-      (searchData.patientName === "" ||
-        item.patientName
-          .toLowerCase()
-          .includes(searchData.patientName.toLowerCase())) &&
-      (searchData.mobileNo === "" ||
-        (item.mobileNo && item.mobileNo.includes(searchData.mobileNo))),
-  );
+  const currentItems = patientList;
 
-  const filteredTotalPages = Math.ceil(
-    filteredPatientList.length / itemsPerPage,
-  );
-  const currentItems = filteredPatientList.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
-
+  const handlePageChange = (page) => {
+    setCurrentPage(page - 1);
+  };
   // Format date for better display
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -299,78 +363,88 @@ const PatientwiseBilldatails = () => {
             </div>
 
             <div className="card-body">
-           
-
               {/* Patient Search Section - Similar to SampleValidation */}
-            
-                <div className="card-body">
-                  <form>
-                    <div className="row g-4 align-items-end">
-                      <div className="col-md-3">
-                        <label className="form-label">Patient Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="patientName"
-                          placeholder="Enter patient name"
-                          value={searchData.patientName}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-3">
-                        <label className="form-label">Mobile No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          id="mobileNo"
-                          placeholder="Enter mobile number"
-                          value={searchData.mobileNo}
-                          onChange={handleSearchChange}
-                        />
-                      </div>
-                      <div className="col-md-3 d-flex">
-                        <button
-                          type="button"
-                          className="btn btn-primary me-2"
-                          onClick={handleSearch}
-                          disabled={searchLoading}
-                        >
-                          {searchLoading ? (
-                            <>
-                              <span
-                                className="spinner-border spinner-border-sm me-2"
-                                role="status"
-                                aria-hidden="true"
-                              ></span>
-                              Searching...
-                            </>
-                          ) : (
-                            <>
-Search
-                            </>
-                          )}
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={handleSearchReset}
-                          disabled={searchLoading}
-                        >
-                          <i className="mdi mdi-refresh"></i> Reset
-                        </button>
-                      </div>
-                    </div>
-                  </form>
-                </div>
 
-              {!error && filteredPatientList.length === 0 && (
+              <div className="card-body">
+                <form>
+                  <div className="row g-4 align-items-end">
+                    <div className="col-md-3">
+                      <label className="form-label">Patient Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="patientName"
+                        placeholder="Enter patient name"
+                        value={searchData.patientName}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Mobile No.</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="mobileNo"
+                        placeholder="Enter Mobile number"
+                        value={searchData.mobileNo}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label">Registration No</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="registrationNo"
+                        placeholder="Enter registration number"
+                        value={searchData.registrationNo}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-3 d-flex">
+                      <button
+                        type="button"
+                        className="btn btn-primary me-2"
+                        onClick={() => {
+                          setCurrentPage(0);
+                          handleSearch(0);
+                        }}
+                        disabled={searchLoading}
+                      >
+                        {searchLoading ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            Searching...
+                          </>
+                        ) : (
+                          <>Search</>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleSearchReset}
+                        disabled={searchLoading}
+                      >
+                        <i className="mdi mdi-refresh"></i> Reset
+                      </button>
+                    </div>
+                  </div>
+                </form>
+              </div>
+
+              {!error && hasSearched && currentItems.length === 0 && (
                 <div className="alert alert-info" role="alert">
                   <i className="mdi mdi-information"></i> No billing records
                   found.
                 </div>
               )}
 
-              {filteredPatientList.length > 0 && (
+              {currentItems.length > 0 && (
                 <div className="table-responsive packagelist">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
@@ -378,8 +452,8 @@ Search
                         <th>Registration No</th>
                         <th>Bill No</th>
                         <th>Patient Name</th>
-                        <th>Contact No.</th>
-                        <th>Age/Sex</th>
+                        <th>Mobile No.</th>
+                        <th>Age/Gender</th>
                         <th>Relation</th>
                         <th>Department</th>
                         <th>Bill Date</th>
@@ -471,6 +545,15 @@ Search
                       ))}
                     </tbody>
                   </table>
+                  {patientList.length > 0 && (
+                    <Pagination
+                      totalItems={totalElements}
+                      itemsPerPage={itemsPerPage}
+                      currentPage={currentPage + 1}
+                      totalPages={totalPages} // if supported
+                      onPageChange={handlePageChange}
+                    />
+                  )}
                 </div>
               )}
             </div>

@@ -3,12 +3,10 @@ import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
   CATAGORY_WISE_BILLING,
-  MAS_SERVICE_CATEGORY,
   OPD_SERVICE_CATAGORY,
   PATIENT_VISIT_DETAILS,
-  PENDING_BILLING_PATIENTS,
   POLICY_API,
-  UPDATE_LAB_PAYMENT_STATUS,
+  UPDATE_OPD_PAYMENT_STATUS,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -62,12 +60,15 @@ const OPDBillingDetails = () => {
   const [patientList, setPatientList] = useState([]);
   const [filteredPatientList, setFilteredPatientList] = useState([]);
   const [error, setError] = useState(null);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
     registrationNo: "",
   });
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, setCurrentPage] = useState(0);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -93,85 +94,51 @@ const OPDBillingDetails = () => {
     return `${dd}/${mm}/${yyyy} ${hh}:${min}`;
   };
 
-  async function fetchGstConfiguration(optionalCategoryId) {
-    try {
-      optionalCategoryId = 1;
-      const url =
-        `${MAS_SERVICE_CATEGORY}/getGstConfig/1` +
-        (optionalCategoryId ? `?categoryId=${optionalCategoryId}` : "");
+  const getVisitTypeLabel = (visitType) => {
+    if (!visitType) return "New";
+    if (visitType === "N") return "New";
+    if (visitType === "F") return "Follow-up";
+    return visitType;
+  };
 
-      const data = await getRequest(url);
-      if (
-        data &&
-        data.status === 200 &&
-        data.response &&
-        typeof data.response.gstApplicable !== "undefined"
-      ) {
-        setGstConfig({
-          gstApplicable: !!data.response.gstApplicable,
-          gstPercent: Number(data.response.gstPercent) || 0,
-        });
-      } else {
-        setGstConfig({ gstApplicable: false, gstPercent: 0 });
-      }
-    } catch (error) {
-      console.error("GST Fetch Error:", error);
-      setGstConfig({ gstApplicable: false, gstPercent: 0 });
-    }
-  }
-
-  const fetchPendingOPDBilling = async () => {
+  const fetchPendingOPDBilling = async (
+    page = 0,
+    showLoader = true,
+    searchParams = searchData,
+  ) => {
     try {
-      setIsLoading(true);
-      setError(null);
+      if (showLoader) setIsLoading(true);
 
       const response = await getRequest(
-        `${CATAGORY_WISE_BILLING}/${OPD_SERVICE_CATAGORY}`,
+        `${CATAGORY_WISE_BILLING}/${OPD_SERVICE_CATAGORY}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&patientName=${searchParams.patientName}&mobileNo=${searchParams.mobileNo}&registrationNo=${searchParams.registrationNo}`,
       );
-      if (response && response.response) {
-        console.log(response);
-        const mappedData = response.response.map((item) => {
-          const firstAppointment = item.appointments?.[0] || {};
 
-          const getVisitTypeLabel = (visitType) => {
-            if (!visitType) return "New";
-            if (visitType === "N") return "New";
-            if (visitType === "F") return "Follow-up";
-            return visitType;
-          };
-
-          return {
-            registrationNo: item.registrationNo,
-            id: item.billinghdid || item.orderhdid,
-            patientId: item.patientId,
-            patientName: item.patientName || "N/A",
-            mobileNo: item.mobileNo || "N/A",
-            age: item.age || "N/A",
-            gender: item.gender || "N/A",
-            relation: item.relation || "N/A",
-            address: item.address || "",
-            consultingDoctorName:
-              firstAppointment.consultingDoctorName ||
-              item.consultingDoctorName ||
-              "N/A",
-            departmentName:
-              firstAppointment.departmentName || item.departmentName || "N/A",
-            amount: item.amount || 0,
-            billingStatus: "Pending",
-            billingType: item.billingType,
-            appointmentDate: item.appointmentDate,
-            netAmount: item.netAmount,
-          };
-        });
+      if (response?.response?.content) {
+        const mappedData = response.response.content.map((item) => ({
+          registrationNo: item.registrationNo,
+          patientId: item.patientId,
+          patientName: item.patientName,
+          mobileNo: item.mobileNo,
+          age: item.age,
+          gender: item.gender,
+          relation: item.relation,
+          departmentName: item.departmentName,
+          consultingDoctorName: item.consultingDoctorName,
+          billingType: item.billingType,
+          appointmentDate: item.appointmentDate,
+          netAmount: item.netAmount,
+          billingStatus: "Pending",
+        }));
 
         setPatientList(mappedData);
+        setTotalPages(response.response.totalPages);
+        setTotalElements(response.response.totalElements);
         setFilteredPatientList(mappedData);
       }
     } catch (error) {
-      console.error("Error fetching pending billing data:", error);
-      setError(error.message);
+      console.error("Error fetching billing:", error);
     } finally {
-      setIsLoading(false);
+      if (showLoader) setIsLoading(false);
     }
   };
 
@@ -203,7 +170,7 @@ const OPDBillingDetails = () => {
         consultedDoctor: appt.consultedDoctor,
         visitDate: appt.visitDate,
         sessionName: appt.sessionName,
-        visitType: appt.visitType,
+        visitType: getVisitTypeLabel(appt.visitType),
 
         basePrice,
         discount,
@@ -211,13 +178,14 @@ const OPDBillingDetails = () => {
         totalAmount,
         registrationCost: appt.registrationCost || 0,
         netAmount,
+        taxPercent: appt.taxPercent,
 
         policyInfo: {
           policyName: appt.policyCode || "N/A",
           policyType: appt.policyType || "N/A",
           eligibility: appt.policyEligibilityDays ?? "N/A",
           discountApplied: `${appt.policyDiscountPercent || 0}%`,
-          remarks:appt.policyDescription||"N/A",
+          remarks: appt.policyDescription || "N/A",
         },
       };
     });
@@ -226,52 +194,40 @@ const OPDBillingDetails = () => {
   };
 
   useEffect(() => {
-    fetchPendingOPDBilling();
-  }, []);
+    fetchPendingOPDBilling(currentPage);
+  }, [currentPage]);
 
   const handleSearchChange = (e) => {
     const { id, value } = e.target;
-    setSearchData((prev) => ({ ...prev, [id]: value }));
-    setCurrentPage(1);
+
+    setSearchData((prev) => ({
+      ...prev,
+      [id]: value,
+    }));
   };
 
-  const handleSearch = () => {
-    setIsLoading(true);
-    setTimeout(() => {
-      const filtered = patientList.filter((item) => {
-        const patientNameMatch =
-          searchData.patientName === "" ||
-          item.patientName
-            .toLowerCase()
-            .includes(searchData.patientName.toLowerCase());
+  const handleSearch = async () => {
+    setIsSearching(true);
 
-        const mobileNoMatch =
-          searchData.mobileNo === "" ||
-          item.mobileNo.includes(searchData.mobileNo);
-
-        const sessionNoMatch =
-          searchData.sessionNo === "" ||
-          (item.sessionNo &&
-            item.sessionNo
-              .toLowerCase()
-              .includes(searchData.sessionNo.toLowerCase()));
-
-        return patientNameMatch && mobileNoMatch && sessionNoMatch;
-      });
-      setFilteredPatientList(filtered);
-      setCurrentPage(1);
-      setIsLoading(false);
-    }, 500);
+    try {
+      setCurrentPage(0);
+      await fetchPendingOPDBilling(0, false, searchData);
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleReset = () => {
-    setSearchData({
+    const resetFilters = {
       patientName: "",
       mobileNo: "",
-      sessionNo: "",
-    });
-    setFilteredPatientList(patientList);
-    setCurrentPage(1);
+      registrationNo: "",
+    };
+
+    setSearchData(resetFilters);
+    setCurrentPage(0);
+
+    fetchPendingOPDBilling(0, false, resetFilters);
   };
 
   const handlePageChange = (page) => {
@@ -536,7 +492,7 @@ const OPDBillingDetails = () => {
       if (result.isConfirmed) {
         navigate("/payment", {
           state: {
-            billingType: formData.billingType,
+            billingType: OPD_SERVICE_CATAGORY,
             amount: netTotal,
             patientId: formData.patientId,
             billingHeaderIds: billingHeaderIds,
@@ -553,7 +509,7 @@ const OPDBillingDetails = () => {
   };
 
   const navigateToSuccessPage = (response, request) => {
-    navigate("/opd-payment-success", {
+    navigate("/opd_payment_success", {
       state: {
         billingType: "Consultation Services",
         amount: request.amount,
@@ -600,7 +556,7 @@ const OPDBillingDetails = () => {
       };
 
       const response = await postRequest(
-        `${UPDATE_LAB_PAYMENT_STATUS}`,
+        `${UPDATE_OPD_PAYMENT_STATUS}`,
         paymentRequest,
       );
 
@@ -688,10 +644,6 @@ const OPDBillingDetails = () => {
     0,
   );
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredPatientList.slice(indexOfFirst, indexOfLast);
-
   if (isLoading) {
     return <LoadingScreen />;
   }
@@ -703,21 +655,13 @@ const OPDBillingDetails = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">OPD Billing</h4>
-              {showPatientDetails ? (
+              {showPatientDetails && (
                 <button
                   type="button"
                   className="btn btn-outline-secondary"
                   onClick={handleBackToList}
                 >
                   <i className="mdi mdi-arrow-left"></i> Back to List
-                </button>
-              ) : (
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={handleBack}
-                >
-                  <i className="mdi mdi-arrow-left"></i> Back to Pending List
                 </button>
               )}
             </div>
@@ -740,6 +684,12 @@ const OPDBillingDetails = () => {
                             placeholder="Enter patient name"
                             value={searchData.patientName}
                             onChange={handleSearchChange}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSearch();
+                              }
+                            }}
                           />
                         </div>
                         <div className="col-md-3">
@@ -750,9 +700,15 @@ const OPDBillingDetails = () => {
                             type="text"
                             className="form-control"
                             id="mobileNo"
-                            placeholder="Enter mobile number"
+                            placeholder="Enter Mobile number"
                             value={searchData.mobileNo}
                             onChange={handleSearchChange}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSearch();
+                              }
+                            }}
                           />
                         </div>
                         <div className="col-md-3">
@@ -762,10 +718,16 @@ const OPDBillingDetails = () => {
                           <input
                             type="text"
                             className="form-control"
-                            id="sessionNo"
+                            id="registrationNo"
                             placeholder="Enter Registration number"
-                            value={searchData.sessionNo}
+                            value={searchData.registrationNo}
                             onChange={handleSearchChange}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") {
+                                e.preventDefault();
+                                handleSearch();
+                              }
+                            }}
                           />
                         </div>
                         <div className="col-md-3">
@@ -774,9 +736,9 @@ const OPDBillingDetails = () => {
                               type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
-                              disabled={isLoading}
+                              disabled={isSearching}
                             >
-                              {isLoading ? (
+                              {isSearching ? (
                                 <>
                                   <span
                                     className="spinner-border spinner-border-sm me-2"
@@ -796,7 +758,7 @@ const OPDBillingDetails = () => {
                               className="btn btn-secondary flex-fill"
                               onClick={handleReset}
                             >
-                              Reset
+                              Show All
                             </button>
                           </div>
                         </div>
@@ -805,7 +767,7 @@ const OPDBillingDetails = () => {
                   </div>
 
                   {/* Pending List Table */}
-                  {filteredPatientList.length > 0 ? (
+                  {patientList.length > 0 ? (
                     <div className="table-responsive">
                       <table className="table table-bordered table-hover align-middle">
                         <thead className="table-light">
@@ -818,15 +780,15 @@ const OPDBillingDetails = () => {
                             <th>Department</th>
                             <th>Consulted Doctor</th>
                             <th>Billing Type</th>
-                            <th>Appointment Date </th>
+                            <th>Appointment Date/Time </th>
                             <th>Bill Amount</th>
                             <th>Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {currentItems.map((item) => (
+                          {patientList.map((item) => (
                             <tr
-                              key={item.id}
+                              key={item.patientId}
                               onClick={() => handleRowClick(item.patientId)}
                               role="button"
                               onKeyDown={(e) => {
@@ -886,12 +848,12 @@ const OPDBillingDetails = () => {
                   )}
 
                   {/* Pagination */}
-                  {filteredPatientList.length > 0 && (
+                  {patientList.length > 0 && (
                     <Pagination
-                      totalItems={filteredPatientList.length}
+                      totalItems={totalElements}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage}
-                      onPageChange={handlePageChange}
+                      currentPage={currentPage + 1}
+                      onPageChange={(page) => handlePageChange(page - 1)}
                     />
                   )}
                 </>

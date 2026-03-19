@@ -367,95 +367,130 @@ const DoctorRoaster = () => {
     });
 
     return (
-      <div className="table-responsive">
-        <table className="table table-bordered">
-          <thead>
-            <tr>
-              <th>Doctor</th>
-              {allDates.map(date => (
-                <th key={date} className="text-center">
-                  {formatDisplayDate(date)}
-                  <div className="small text-muted">
-                    {formatDateToLocal(date).toLocaleDateString('en-US', { weekday: 'short' })}
-                  </div>
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {[...doctorRosterMap.entries()].map(([doctorId, doctorDates]) => {
-              const doctor = doctorData.find(d => d.userId === doctorId);
-              const doctorName = doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Unknown Doctor';
-
-              return (
-                <tr key={doctorId}>
-                  <td>{doctorName}</td>
-                  {allDates.map(date => {
-                    const dateItem = doctorDates.find(d => d.dates === date);
-                    
-                    if (!dateItem) {
-                      return (
-                        <td key={date} className="text-center text-muted">
-                          N/A
-                        </td>
-                      );
-                    }
-
-                    const isDisabled = isDateDisabled(date);
-                    const rosterValue = dateItem.rosterVale;
+      <div className="col-12 mt-4">
+        <div className="card shadow">
+          <div className="card-header py-3 d-flex align-items-center">
+            <h6 className="mb-0 fw-bold">DOCTOR ROSTER SCHEDULE</h6>
+          </div>
+          <div className="card-body">
+            <div className="table-responsive">
+              <table className="table table-bordered table-hover align-middle">
+                <thead className="table-light">
+                  <tr>
+                    <th style={{ minWidth: "200px" }}>Doctor</th>
+                    {allDates.map(date => (
+                      <th key={date} className="text-center" style={{ minWidth: "120px" }}>
+                        {formatDisplayDate(date)}
+                        <div className="small text-muted">
+                          {formatDateToLocal(date).toLocaleDateString('en-US', { weekday: 'short' })}
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {[...doctorRosterMap.entries()].map(([doctorId, doctorDates]) => {
+                    const doctor = doctorData.find(d => d.userId === doctorId);
+                    const doctorName = doctor ? `${doctor.firstName} ${doctor.lastName}` : 'Unknown Doctor';
 
                     return (
-                      <td key={date} className="text-center">
-                        <div className="form-check form-check-inline">
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={rosterValue === "YY" || rosterValue === "YN"}
-                            onChange={() => handleCheckboxChange(doctorId, date, 'morning')}
-                            disabled={isDisabled}
-                            style={getMorningCheckboxStyle(dateItem)}
-                          />
-                          <label
-                            className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
-                          >
-                            M
-                          </label>
-                        </div>
-                        <div className="form-check form-check-inline">
-                          <input
-                            type="checkbox"
-                            className="form-check-input"
-                            checked={rosterValue === "YY" || rosterValue === "NY"}
-                            onChange={() => handleCheckboxChange(doctorId, date, 'evening')}
-                            disabled={isDisabled}
-                            style={getEveningCheckboxStyle(dateItem)}
-                          />
-                          <label
-                            className={`form-check-label ${isDisabled ? 'text-muted' : ''}`}
-                          >
-                            E
-                          </label>
-                        </div>
-                      </td>
+                      <tr key={doctorId}>
+                        <td className="fw-bold">{doctorName}</td>
+                        {allDates.map(date => {
+                          const dateItem = doctorDates.find(d => d.dates === date);
+                          
+                          if (!dateItem) {
+                            return (
+                              <td key={date} className="text-center text-muted">
+                                N/A
+                              </td>
+                            );
+                          }
+
+                          const isDisabled = isDateDisabled(date);
+                          const rosterValue = dateItem.rosterVale;
+
+                          return (
+                            <td key={date} className="text-center">
+                              <div className="d-flex justify-content-center align-items-center gap-3">
+                                <div className="form-check">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    id={`morning-${doctorId}-${date}`}
+                                    checked={rosterValue === "YY" || rosterValue === "YN"}
+                                    onChange={() => handleCheckboxChange(doctorId, date, 'morning')}
+                                    disabled={isDisabled}
+                                    style={{
+                                      ...getMorningCheckboxStyle(dateItem),
+                                      width: "15px",
+                                      height: "15px",
+                                      cursor: isDisabled ? "not-allowed" : "pointer"
+                                    }}
+                                  />
+                                  <label 
+                                    className={`form-check-label ms-1 ${isDisabled ? 'text-muted' : ''}`}
+                                    htmlFor={`morning-${doctorId}-${date}`}
+                                  >
+                                    M
+                                  </label>
+                                </div>
+                                <div className="form-check">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    id={`evening-${doctorId}-${date}`}
+                                    checked={rosterValue === "YY" || rosterValue === "NY"}
+                                    onChange={() => handleCheckboxChange(doctorId, date, 'evening')}
+                                    disabled={isDisabled}
+                                    style={{
+                                      ...getEveningCheckboxStyle(dateItem),
+                                      width: "15px",
+                                      height: "15px",
+                                      cursor: isDisabled ? "not-allowed" : "pointer"
+                                    }}
+                                  />
+                                  <label 
+                                    className={`form-check-label ms-1 ${isDisabled ? 'text-muted' : ''}`}
+                                    htmlFor={`evening-${doctorId}-${date}`}
+                                  >
+                                    E
+                                  </label>
+                                </div>
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
                     );
                   })}
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
-        <div className="mt-2">
-          <div className="d-flex align-items-center mb-2">
-            <div style={{width: '20px', height: '20px', backgroundColor: '#55bf70', marginRight: '10px'}}></div>
-            <span>Data from database</span>
-          </div>
-          <div className="d-flex align-items-center mb-2">
-            <div style={{width: '20px', height: '20px', backgroundColor: '#ffd24d', marginRight: '10px'}}></div>
-            <span>Modified database data</span>
-          </div>
-          <div className="d-flex align-items-center">
-            <div style={{width: '20px', height: '20px', backgroundColor: '#0d6efd', marginRight: '10px'}}></div>
-            <span>New data</span>
+                </tbody>
+              </table>
+            </div>
+            
+            {/* Legend */}
+            <div className="mt-3 p-3 bg-light rounded">
+              <div className="row">
+                <div className="col-md-4">
+                  <div className="d-flex align-items-center mb-2">
+                    <div style={{width: '24px', height: '24px', backgroundColor: '#55bf70', marginRight: '10px', borderRadius: '4px'}}></div>
+                    <span className="fw-bold">Data from database</span>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="d-flex align-items-center mb-2">
+                    <div style={{width: '24px', height: '24px', backgroundColor: '#ffd24d', marginRight: '10px', borderRadius: '4px'}}></div>
+                    <span className="fw-bold">Modified database data</span>
+                  </div>
+                </div>
+                <div className="col-md-4">
+                  <div className="d-flex align-items-center">
+                    <div style={{width: '24px', height: '24px', backgroundColor: '#0d6efd', marginRight: '10px', borderRadius: '4px'}}></div>
+                    <span className="fw-bold">New data</span>
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
       </div>
@@ -463,98 +498,111 @@ const DoctorRoaster = () => {
   };
 
   return (
-    <div className="body d-flex py-3">
-      <div className="container-xxl">
-        <div className="row align-items-center">
-          <div className="border-0 mb-4">
-            <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0">Doctor Roster</h3>
+    <div className="content-wrapper">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+      {loading && <LoadingScreen />}
+
+      <div className="body d-flex py-3">
+        <div className="container-fluid">
+          <div className="row align-items-center">
+            <div className="border-0 mb-4">
+              <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
+                <h3 className="fw-bold mb-0">Doctor Roster</h3>
+              </div>
             </div>
           </div>
-        </div>
-        {popupMessage && (
-          <Popup
-            message={popupMessage.message}
-            type={popupMessage.type}
-            onClose={popupMessage.onClose}
-          />
-        )}
-        {loading && (
-          <LoadingScreen />
-        )}
 
-        <div className="row mb-3">
-          <div className="col-sm-12">
-            <div className="card shadow mb-3">
-              <div className="card-body">
-                <form onSubmit={handleSubmit}>
-                  <div className="row g-3">
-                    <div className="col-md-4">
-                      <label className="form-label">Department *</label>
-                      <select
-                        className="form-select"
-                        value={department}
-                        onChange={(e) => setDepartment(parseInt(e.target.value))}
-                        required
-                      >
-                        <option value="" disabled>Select</option>
-                        {departmentData.map((dept) => (
-                          <option key={dept.id} value={dept.id}>
-                            {dept.departmentName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow">
+                <div className="card-header py-3 d-flex align-items-center">
+                  <h6 className="mb-0 fw-bold">ROSTER DETAILS</h6>
+                </div>
+                <div className="card-body">
+                  <form onSubmit={handleSubmit}>
+                    <div className="row g-4">
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Department <span className="text-danger">*</span></label>
+                        <select
+                          className="form-select"
+                          value={department}
+                          onChange={(e) => setDepartment(parseInt(e.target.value))}
+                          required
+                        >
+                          <option value="" disabled>Select Department</option>
+                          {departmentData.map((dept) => (
+                            <option key={dept.id} value={dept.id}>
+                              {dept.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div className="col-md-4">
-                      <label className="form-label">Doctor (Optional)</label>
-                      <select
-                        className="form-select"
-                        value={doctor}
-                        onChange={(e) => setDoctor(e.target.value)}
-                        disabled={!department}
-                      >
-                        <option value="">All Doctors</option>
-                        {doctorData.map((doc) => (
-                          <option key={doc.userId} value={doc.userId}>
-                            {doc.firstName} {doc.middleName} {doc.lastName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Doctor <span className="text-muted">(Optional)</span></label>
+                        <select
+                          className="form-select"
+                          value={doctor}
+                          onChange={(e) => setDoctor(e.target.value)}
+                          disabled={!department}
+                        >
+                          <option value="">All Doctors</option>
+                          {doctorData.map((doc) => (
+                            <option key={doc.userId} value={doc.userId}>
+                              {doc.firstName} {doc.middleName} {doc.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
 
-                    <div className="col-md-4">
-                      <label className="form-label">From Date *</label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        value={fromDate}
-                        onChange={(e) => setFromDate(e.target.value)}
-                        required
-                      />
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">From Date <span className="text-danger">*</span></label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          value={fromDate}
+                          onChange={(e) => setFromDate(e.target.value)}
+                          required
+                        />
+                      </div>
                     </div>
 
                     {rosterDoctorData && renderRosterTable()}
-                  </div>
 
-                  <div className="mt-4">
-                    <button
-                      type="submit"
-                      className="btn btn-primary me-2"
-                      disabled={loading || !rosterDoctorData}
-                    >
-                      {loading ? 'Processing...' : 'Save Roster'}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={handleReset}
-                      disabled={loading}
-                    >
-                      Reset
-                    </button>
-                  </div>
-                </form>
+                    <div className="mt-4 d-flex justify-content-end gap-2">
+                      <button
+                        type="submit"
+                        className="btn btn-primary"
+                        disabled={loading || !rosterDoctorData}
+                      >
+                        {loading ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                            Processing...
+                          </>
+                        ) : (
+                          <>
+                            <i className="mdi mdi-content-save me-2"></i>Save Roster
+                          </>
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleReset}
+                        disabled={loading}
+                      >
+                        <i className="mdi mdi-refresh me-2"></i>Reset
+                      </button>
+                    </div>
+                  </form>
+                </div>
               </div>
             </div>
           </div>

@@ -75,6 +75,7 @@ import OpdRRecallPatient from './Views/OPD/OpdRecallPatient';
 // import OpdWaitingList from './Views/OPD/OpdWaitingList';
 import LabPaymentSuccess from './Views/Payment/LabPaymentSuccess';
 import OpdPaymentSuccess from './Views/Payment/OpdPaymentSuccess';
+import RadiologyPaymentSuccess from './Views/Payment/RadiologyPaymentSuccess';
 import PaymentPage from './Views/Payment/payment';
 import UpdatePatientRegistration from './Views/Reception/updatePatientRegistration';
 import DrugExpiry from './Views/Stores/DrugExpiryReport';
@@ -211,6 +212,7 @@ import RequestForBlood from './Views/BloodBank/RequestForBlood';
 import PendingBloodRequests from './Views/BloodBank/PendingBloodRequests';
 import BloodRequestTracking from './Views/BloodBank/BloodRequestTracking';
 import OPDRegister from './Views/OPD/OpdRegister';
+import PendingForCrossMatch from './Views/BloodBank/PendingForCrossMatch';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -241,8 +243,9 @@ function App() {
             <Route path="/" element={<Login />} />
             <Route path="investigation-multiple-results" element={<InvestigationMasterResult />} />
             <Route path="payment" element={<PaymentPage />} />
-            <Route path="lab-payment-success" element={<LabPaymentSuccess />} />
-            <Route path="opd-payment-success" element={<OpdPaymentSuccess />} />
+            <Route path="lab_payment_success" element={<LabPaymentSuccess />} />
+            <Route path="opd_payment_success" element={<OpdPaymentSuccess />} />
+            <Route path="radiology_payment_success" element={<RadiologyPaymentSuccess  />} />
             <Route path="ViewDownwload" element={<ViewDownwload />} />
             <Route path="ViewDownloadReport" element={<ViewDownloadReport />} />
 
@@ -457,6 +460,7 @@ function App() {
                 <Route path="/PendingBloodRequests" element={<PendingBloodRequests/>} />
                 <Route path="/BloodRequestTracking" element={<BloodRequestTracking/>} />
                 <Route path="/OpdRegister" element={<OPDRegister/>} />
+                <Route path="/PendingForCrossMatch" element={<PendingForCrossMatch/>} />
               </Route>
             </Route>
 

@@ -85,7 +85,7 @@ const LabPaymentSuccess = () => {
   };
 
   const handleBackToRegistration = () => {
-    navigate("/labregistration");
+    navigate("/LabBillingDetails");
   };
 
   return (
@@ -165,7 +165,7 @@ const LabPaymentSuccess = () => {
                     className="btn btn-secondary d-flex align-items-center gap-2"
                     onClick={handleBackToRegistration}
                   >
-                    Back to Lab Registration
+                    Back to Lab Pending Billing
                   </button>
                 </div>
               </div>
