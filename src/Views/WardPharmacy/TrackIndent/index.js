@@ -806,7 +806,7 @@ const isSearchEnabled = () => {
   }
 
   // Check if report buttons should be enabled
-  const canShowIssueReport = (indent) => indent.issuedDate !== null
+  const canShowIssueReport = (indent) => indent.statusCode === "FI"
   // Updated condition for receiving report - show when status is RC
   const canShowReceivingReport = (indent) => {
     return indent.statusCode === 'RC';

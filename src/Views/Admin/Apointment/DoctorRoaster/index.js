@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { MAS_DEPARTMENT, DOCTOR, DOCTOR_ROSTER, APPOINTMENT , FILTER_OPD_DEPT} from "../../../../config/apiConfig";
+import { MAS_DEPARTMENT, DOCTOR, DOCTOR_ROSTER, APPOINTMENT , FILTER_OPD_DEPT, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE} from "../../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../../service/apiService";
 import LoadingScreen from "../../../../Components/Loading";
 import Popup from "../../../../Components/popup";
@@ -52,11 +52,9 @@ const DoctorRoaster = () => {
    const fetchDepartmentData = async () => {
       setLoading(true);
       try {
-        const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+        const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
         if (data.status === 200 && Array.isArray(data.response)) {
-          const filteredDepartments = data.response.filter(
-            (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`
-          );
+          const filteredDepartments = data.response;
           setRowDepartmentData(data.response);
           setDepartmentData(filteredDepartments);
         } else {
@@ -72,7 +70,6 @@ const DoctorRoaster = () => {
     };
 
   const fetchDoctorData = async () => {
-    setLoading(true);
     try {
       const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${department}`);
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -83,9 +80,7 @@ const DoctorRoaster = () => {
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
-    } finally {
-      setLoading(false);
-    }
+    } 
   };
 
   const generateDatesFromSelectedDate = () => {

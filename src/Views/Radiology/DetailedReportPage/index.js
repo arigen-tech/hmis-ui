@@ -1,17 +1,23 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import { getRequest, postRequest } from "../../../service/apiService";
+import { RADIOLOGY_REPORT_SAVE_URL, RADIOLOGY_TEMPLATE_LIST_GET_BY_ID, REQUEST_PARAM_STATUS, STATUS_Y ,STATUS_S} from "../../../config/apiConfig";
+import { FETCH_RADIOLOGY_TEMPLATE_ERR_MSG,REPORT_SAVE_FAILED_ERR_MSG,REPORT_SAVED_SUCC_MSG, REPORT_SUBMIT_FAILED_ERR_MSG, REPORT_SUBMITTED_SUCC_MSG } from "../../../config/constants";
 
 const DetailedRadiologyReportPage = () => {
   const location = useLocation();
   const navigate = useNavigate();
-  const investigationData = location.state?.investigationData;
+  const reportData = location.state; // Data passed from PendingListRadiologyReport
 
   // State for loading
   const [loading, setLoading] = useState(false);
+  const [templateLoading, setTemplateLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [showTemplateSearch, setShowTemplateSearch] = useState(false);
 
@@ -19,95 +25,84 @@ const DetailedRadiologyReportPage = () => {
   const reportEditorRef = useRef(null);
   const reportInclusionRef = useRef(null);
 
-  // Form data state
+  // Form data state - populated from passed data
   const [formData, setFormData] = useState({
-    // Patient Details (simplified)
-    uhid: investigationData?.uhid || "UHID12345",
-    patientName: investigationData?.patientName || "John Doe",
-    age: investigationData?.age?.replace(" Y", "") || "45",
-    gender: investigationData?.gender || "Male",
-    mobileNo: investigationData?.contactNo || "9876543210",
+    // Patient Details
+    uhid: reportData?.uhid || "",
+    patientName: reportData?.patientName || "",
+    age: reportData?.age?.replace("Y", "").trim() || "",
+    gender: reportData?.gender || "",
+    mobileNo: reportData?.contactNo || "",
     // Report Content
-    reportContent: "<p>Heart size is within normal limits. Lungs are clear with no evidence of consolidation, effusion, or pneumothorax. Bony structures are intact. Impression: Normal chest X-ray.</p>"
+    reportContent: "",
+    // Template Details
+    templateCode: "",
+    templateName: "",
+    modalityType: reportData?.modality || "",
+    // IDs
+    radOrderDtId: reportData?.radOrderDtId || "",
+    modalityId: reportData?.modalityId || ""
   });
 
-  // Investigation Details
+  // Investigation Details from passed data
   const investigationDetails = {
-    accessionNo: investigationData?.accessionNo || "ACC001234",
-    modality: investigationData?.modality || "X-Ray",
-    investigationName: investigationData?.investigationName || "Chest X-Ray PA View",
-    orderDate: investigationData?.orderDate || "20/02/2026",
-    orderTime: investigationData?.orderTime || "10:30",
-    studyDate: investigationData?.studyDate || "20/02/2026",
-    studyTime: investigationData?.studyTime || "11:15"
+    accessionNo: reportData?.accessionNo || "",
+    modality: reportData?.modality || "",
+    investigationName: reportData?.investigationName || "",
+    orderDate: reportData?.orderDate || "",
+    orderTime: reportData?.orderTime || "",
+    studyDate: reportData?.studyDate || "",
+    studyTime: reportData?.studyTime || ""
   };
 
-  // Template data for auto-search
+  // Template data state
+  const [templateData, setTemplateData] = useState([]);
   const [templateSearchQuery, setTemplateSearchQuery] = useState("");
-  
-  const templateData = [
-    {
-      id: 1,
-      templateCode: "XRC001",
-      templateName: "X-Ray Chest Template",
-      modalityType: "X-Ray",
-      reportContent: "<p>Heart size is within normal limits. Lungs are clear with no evidence of consolidation, effusion, or pneumothorax. Bony structures are intact. Impression: Normal chest X-ray.</p>"
-    },
-    {
-      id: 2,
-      templateCode: "MRIB002",
-      templateName: "MRI Brain Template",
-      modalityType: "MRI",
-      reportContent: "<p>Brain parenchyma appears normal. No evidence of acute infarct, hemorrhage, or mass effect. Ventricles and sulci are within normal limits for age. Impression: Normal MRI brain.</p>"
-    },
-    {
-      id: 3,
-      templateCode: "CTA003",
-      templateName: "CT Abdomen Template",
-      modalityType: "CT",
-      reportContent: "<p>Liver, spleen, pancreas, and kidneys appear normal. No evidence of masses, fluid collections, or lymphadenopathy. Bowel loops are unremarkable. Impression: Normal CT abdomen.</p>"
-    },
-    {
-      id: 4,
-      templateCode: "USP004",
-      templateName: "Ultrasound Pelvis Template",
-      modalityType: "Ultrasound",
-      reportContent: "<p>Uterus is normal in size and contour. Endometrial stripe is normal. Ovaries are unremarkable. No free fluid or masses noted. Impression: Normal pelvic ultrasound.</p>"
-    },
-    {
-      id: 5,
-      templateCode: "MAM005",
-      templateName: "Mammography Template",
-      modalityType: "Mammography",
-      reportContent: "<p>Breast tissue is heterogeneously dense. No suspicious masses, calcifications, or architectural distortion. Skin and nipples are normal. Impression: Normal mammogram (BI-RADS 1).</p>"
+
+  // Fetch template data based on modalityId
+  const fetchTemplateData = async () => {
+    if (!formData.modalityId) return;
+    
+    try {
+      setTemplateLoading(true);
+      const response = await getRequest(`${RADIOLOGY_TEMPLATE_LIST_GET_BY_ID}/${formData.modalityId}`);
+      
+      if (response?.status === 200 && response?.response) {
+        setTemplateData(response.response);
+      } else {
+        setTemplateData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching template data:", error);
+      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, "error");
+      setTemplateData([]);
+    } finally {
+      setTemplateLoading(false);
     }
-  ];
+  };
+
+  // Fetch templates when component mounts
+  useEffect(() => {
+    if (formData.modalityId) {
+      fetchTemplateData();
+    }
+  }, [formData.modalityId]);
 
   // Filter templates based on search query
   const filteredTemplates = templateData.filter(template =>
-    template.templateName.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
-    template.templateCode.toLowerCase().includes(templateSearchQuery.toLowerCase())
+    template.templateName?.toLowerCase().includes(templateSearchQuery.toLowerCase()) ||
+    template.templateCode?.toLowerCase().includes(templateSearchQuery.toLowerCase())
   );
-
-  // Template Details state (auto-populated from search)
-  const [templateDetails, setTemplateDetails] = useState({
-    templateCode: "",
-    templateName: "",
-    modalityType: "",
-  });
 
   // Handle template selection
   const handleTemplateSelect = (template) => {
-    setTemplateDetails({
-      templateCode: template.templateCode,
-      templateName: template.templateName,
-      modalityType: template.modalityType,
-    });
     setFormData(prev => ({
       ...prev,
-      reportContent: template.reportContent
+      reportContent: template.templateText || "",
+      templateCode: template.templateCode || "",
+      templateName: template.templateName || ""
     }));
-    setTemplateSearchQuery(template.templateName);
+    setTemplateSearchQuery(template.templateName || "");
     setShowTemplateSearch(false);
   };
 
@@ -129,14 +124,58 @@ const DetailedRadiologyReportPage = () => {
     setFormData(prev => ({ ...prev, reportContent: data }));
   };
 
-  // Handle save
-  const handleSave = () => {
-    showPopup("Report saved successfully!", "success");
+  // Prepare payload for API - Updated to match RadiologyReportRequest
+  const preparePayload = () => {
+    return {
+      radOrderDtId: formData.radOrderDtId,
+      reportDesc: formData.reportContent
+    };
   };
 
-  // Handle submit
-  const handleSubmit = () => {
-    showPopup("Report submitted successfully!", "success");
+  // Handle save (status = 's')
+  const handleSave = async () => {
+    try {
+      setSaving(true);
+      const payload = preparePayload();
+      
+      // Call API to save report with status 's'
+      const response = await postRequest(`${RADIOLOGY_REPORT_SAVE_URL}?${REQUEST_PARAM_STATUS}=${STATUS_S.toLowerCase()}`, payload);
+      
+      if (response?.status === 200 || response?.status === 201) {
+        showPopup(REPORT_SAVED_SUCC_MSG, "success");
+      } else {
+        showPopup(REPORT_SAVE_FAILED_ERR_MSG, "error");
+      }
+    } catch (error) {
+      console.error("Error saving report:", error);
+      showPopup(REPORT_SAVE_FAILED_ERR_MSG, "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Handle submit (status = 'y')
+  const handleSubmit = async () => {
+    try {
+      setSubmitting(true);
+      const payload = preparePayload();
+      
+      // Call API to submit report with status 'y'
+      const response = await postRequest(`${RADIOLOGY_REPORT_SAVE_URL}?${REQUEST_PARAM_STATUS}=${STATUS_Y.toLowerCase()}`, payload);
+      
+      if (response?.status === 200 || response?.status === 201) {
+        showPopup(REPORT_SUBMITTED_SUCC_MSG, "success");
+        // Optionally navigate back after successful submit
+        setTimeout(() => navigate(-1), 2000);
+      } else {
+        showPopup(REPORT_SUBMIT_FAILED_ERR_MSG, "error");
+      }
+    } catch (error) {
+      console.error("Error submitting report:", error);
+      showPopup(REPORT_SUBMIT_FAILED_ERR_MSG, "error");
+    } finally {
+      setSubmitting(false);
+    }
   };
 
   // Handle back
@@ -196,7 +235,7 @@ const DetailedRadiologyReportPage = () => {
                                 </tr>
                                 <tr>
                                   <td className="fw-bold">Age/Gender</td>
-                                  <td>{formData.age} Y / {formData.gender}</td>
+                                  <td>{formData.age} / {formData.gender}</td>
                                   <td className="fw-bold">Mobile No</td>
                                   <td>{formData.mobileNo}</td>
                                 </tr>
@@ -267,20 +306,30 @@ const DetailedRadiologyReportPage = () => {
                           <div className="row mb-4">
                             <div className="col-md-6 position-relative">
                               <label className="form-label fw-bold">Search Template</label>
-                              <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Type template name..."
-                                value={templateSearchQuery}
-                                onChange={handleTemplateSearch}
-                                onFocus={() => setShowTemplateSearch(true)}
-                              />
-                              {showTemplateSearch && templateSearchQuery && (
+                              {templateLoading ? (
+                                <div className="text-center py-2">
+                                  <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                    <span className="visually-hidden">Loading templates...</span>
+                                  </div>
+                                  <span className="ms-2">Loading templates...</span>
+                                </div>
+                              ) : (
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  placeholder="Type template name..."
+                                  value={templateSearchQuery}
+                                  onChange={handleTemplateSearch}
+                                  onFocus={() => setShowTemplateSearch(true)}
+                                  disabled={templateData.length === 0}
+                                />
+                              )}
+                              {showTemplateSearch && templateSearchQuery && templateData.length > 0 && (
                                 <div className="position-absolute w-100 mt-1 bg-white border rounded shadow-sm" style={{ zIndex: 1000, maxHeight: '200px', overflowY: 'auto' }}>
                                   {filteredTemplates.length > 0 ? (
                                     filteredTemplates.map(template => (
                                       <div
-                                        key={template.id}
+                                        key={template.pacsTemplateId || template.id}
                                         className="p-2 border-bottom hover-bg-light"
                                         onClick={() => handleTemplateSelect(template)}
                                         style={{ cursor: 'pointer' }}
@@ -298,44 +347,45 @@ const DetailedRadiologyReportPage = () => {
                           </div>
 
                           {/* Template Details */}
-                          <div className="table-responsive mb-4">
-                            <table className="table table-borderless">
-                              <tbody>
-                                <tr>
-                                  <td className="fw-bold" style={{ width: '15%' }}>Template Code</td>
-                                  <td style={{ width: '35%' }}>
-                                    <input
-                                      type="text"
-                                      className="form-control "
-                                      value={templateDetails.templateCode}
-                                      readOnly
-                                    />
-                                  </td>
-                                  <td className="fw-bold" style={{ width: '15%' }}>Template Name</td>
-                                  <td style={{ width: '35%' }}>
-                                    <input
-                                      type="text"
-                                      className="form-control "
-                                      value={templateDetails.templateName}
-                                      readOnly
-                                    />
-                                  </td>
-                                </tr>
-                                <tr>
-                                  <td className="fw-bold">Modality Type</td>
-                                      <td style={{ width: '35%' }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={templateDetails.modalityType}
-                                      readOnly
-                                    />
-                                  </td>
-                                </tr>
-                              </tbody>
-                            </table>
-                          </div>
-
+<div className="row mb-4">
+  <div className="col-md-4">
+    <div className="mb-3">
+      <label className="form-label fw-bold">Template Code</label>
+      <input
+        type="text"
+        className="form-control"
+        name="templateCode"
+        value={formData.templateCode}
+        onChange={handleChange}
+        readOnly
+      />
+    </div>
+  </div>
+  <div className="col-md-4">
+    <div className="mb-3">
+      <label className="form-label fw-bold">Template Name</label>
+      <input
+        type="text"
+        className="form-control"
+        name="templateName"
+        value={formData.templateName}
+        onChange={handleChange}
+        readOnly
+      />
+    </div>
+  </div>
+  <div className="col-4">
+    <div className="mb-3">
+      <label className="form-label fw-bold">Modality Type</label>
+      <input
+        type="text"
+        className="form-control"
+        value={investigationDetails.modality}
+        readOnly
+      />
+    </div>
+  </div>
+</div>
                           {/* Report Content - CKEditor */}
                           <div className="mb-4">
                             <label className="form-label fw-bold">Report Content</label>
@@ -345,7 +395,7 @@ const DetailedRadiologyReportPage = () => {
                                 borderRadius: "6px",
                                 padding: "8px",
                                 backgroundColor: "#fff",
-                                minHeight:"350px"
+                                minHeight: "350px"
                               }}
                             >
                               <div ref={reportInclusionRef}></div>
@@ -379,20 +429,41 @@ const DetailedRadiologyReportPage = () => {
                               type="button"
                               className="btn btn-success me-2"
                               onClick={handleSave}
+                              disabled={saving || submitting || templateLoading}
                             >
-                              <i className="mdi mdi-content-save"></i> Save
+                              {saving ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" />
+                                  Saving...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="mdi mdi-content-save"></i> Save
+                                </>
+                              )}
                             </button>
                             <button
                               type="button"
                               className="btn btn-primary me-2"
                               onClick={handleSubmit}
+                              disabled={saving || submitting || templateLoading}
                             >
-                              <i className="mdi mdi-check"></i> Submit
+                              {submitting ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" />
+                                  Submitting...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="mdi mdi-check"></i> Submit
+                                </>
+                              )}
                             </button>
                             <button
                               type="button"
                               className="btn btn-secondary"
                               onClick={handleBack}
+                              disabled={saving || submitting}
                             >
                               <i className="mdi mdi-cancel"></i> Cancel
                             </button>
@@ -416,8 +487,6 @@ const DetailedRadiologyReportPage = () => {
           </div>
         </div>
       </div>
-
-   
     </div>
   );
 };

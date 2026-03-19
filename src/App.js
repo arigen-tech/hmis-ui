@@ -251,7 +251,7 @@ function App() {
             <Route path="radiology_payment_success" element={<RadiologyPaymentSuccess  />} />
             <Route path="ViewDownwload" element={<ViewDownwload />} />
             <Route path="ViewDownloadReport" element={<ViewDownloadReport />} />
-
+            <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
 
 
             {/* Protected Routes */}
@@ -454,7 +454,6 @@ function App() {
                 <Route path="/RadiologyPACSStudyList" element={<RadiologyPACSStudyList/>} />
                 <Route path="/RadiologyTemplateMaster" element={<RadiologyTemplateMaster/>} />
                 <Route path="/PendingListRadiologyReport" element={<PendignListRadiologyReport/>} />
-                <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
                 <Route path="/BloodComponentMaster" element={<BloodComponentMaster/>}/>
                 <Route path='/BloodFailureReasonMaster' element={<BloodFailureReasonMaster/>}/>
                 <Route path="/OPDReports" element={<OPDReports/>} />

@@ -53,6 +53,8 @@ const EmployeeRegistration = () => {
     departmentId: "",
     designationId: "",
     totalExperience: "",
+    qualifications: "",
+    medicalRegistrationNo: "",
     languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
 
     qualification: [
@@ -937,6 +939,8 @@ const EmployeeRegistration = () => {
       { field: "roleId", message: "Role is required" },
       { field: "designationId", message: "Designation is required" },
       { field: "totalExperience", message: "Total Experience is required" },
+      { field: "qualifications", message: "Qualifications is required" },
+      { field: "medicalRegistrationNo", message: "Medical Registration Number is required" },
     ];
 
     basicFields.forEach(({ field, message }) => {
@@ -1274,6 +1278,8 @@ const EmployeeRegistration = () => {
       "employmentTypeId",
       "roleId",
       "totalExperience",
+      "qualifications",
+      "medicalRegistrationNo",
     ];
 
     if (viewDept) {
@@ -1398,6 +1404,8 @@ const EmployeeRegistration = () => {
       ? parseInt(formData.totalExperience, 10)
       : 0;
     formDataToSend.append("yearOfExperience", yearExp.toString());
+    formDataToSend.append("qualifications", formData.qualifications || "");
+    formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo || "");
 
     formDataToSend.append(
       "masDesignationId",
@@ -2304,32 +2312,39 @@ const EmployeeRegistration = () => {
                               max={maxDateStr}
                             />
                           </div>
-
                           <div className="col-md-4">
                             <label className="form-label">
-                              Registration Number <span className="text-danger">*</span>
+                              Medical Registration Number <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
                               required
                               className="form-control"
-                              placeholder="Registration Number"
+                              id="medicalRegistrationNo"
+                              placeholder="Medical Registration Number"
+                              onChange={handleInputChange}
+                              value={formData.medicalRegistrationNo}
                               maxLength={mlenght}
                             />
                           </div>
-
                           <div className="col-md-4">
                             <label className="form-label">
-                              Qualification <span className="text-danger">*</span>
+                              Qualifications <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
                               required
                               className="form-control"
-                              placeholder="Quailification"
+                              id="qualifications"
+                              placeholder="Enter qualifications"
+                              onChange={handleInputChange}
+                              value={formData.qualifications}
                               maxLength={mlenght}
                             />
                           </div>
+
+
+
                         </div>
                       </div>
                       <div className="col-md-3 d-flex flex-column">

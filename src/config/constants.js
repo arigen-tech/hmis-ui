@@ -3,6 +3,11 @@
 export const DEPARTMENT_CODE_OPD = 5;
 
 
+//Debounce constants for auto complete search fields
+
+export const DEBOUNCE_SEARCH_IN_MILLIS=700;
+
+
 
 //Common
 
@@ -1188,6 +1193,41 @@ export const OPENING_BALANCE_REGISTER_PDF_NAME = "Opening Balance Register Repor
 
 //Stock Status Report
 export const GENERATE_REPORT_FIRST_ERR_MSG = "Please generate report first";
+
+//DetailedRadiologyReportPage
+
+export const REPORT_SAVED_SUCC_MSG = "Report saved successfully!";
+export const REPORT_SUBMITTED_SUCC_MSG = "Report submitted successfully!";
+export const REPORT_SAVE_FAILED_ERR_MSG = "Failed to save report. Please try again.";
+export const REPORT_SUBMIT_FAILED_ERR_MSG = "Failed to submit report. Please try again.";
+
+//PendingListRadiologyReportPage
+
+export const FETCH_PENDING_LIST_ERR_MSG = "Failed to fetch pending list. Please try again.";
+export const FAIL_TO_LOAD_DOCTORS_ERR_MSG = "Failed to load doctors. Please try again.";
+export const EXCEDED_MONTH_SELECTION_WARN = (month) => `Selected date range exceeds ${month} months.`;
+export const MONTH_RANGE_FOR_APPOINTMENT_SUMMARY_REPORT = 6;
+export const SELECT_REPORT_TYPE_WARN_MSG = "Please select a report type";
+export const DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG = "No data found for the selected criteria.";
+export const FAIL_TO_LOAD_APPOINTMENT_SUMMARY_ERR_MSG = "Failed to fetch appointment summary";
+export const REPORT_GENERATION_ERR_MSG = "Failed to generate report. Please try again.";
+
+//RadiologyPACSStudyList
+
+export const FETCH_MODALITY_OPTION_ERR_MSG="Failed to load modality options";
+export const FETCH_STUDY_LIST_ERR_MSG="Failed to load study list"
+export const SEARCH_CRITERIA_MANDATORY_WARN_MSG="Please enter at least one search criteria"
+
+//OpdRegister
+export const DAY_RANGE_FOR_OPD_REGISTER = 7;
+export const DAY_RANGE_FOR_OPD_CANCELLTION_REPORT = 7;
+export const EXCEDED_DAY_SELECTION_WARN = (day) => `Selected date range exceeds ${day} days.`;
+
+
+
+
+
+
 
 //blood inventory status
 export const FETCH_BLOOD_INVENTORY_STATUS = "Failed to load Blood Inventory Status";

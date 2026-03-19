@@ -4,6 +4,8 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest } from "../../../service/apiService";
+import { GET_MODALITY_DROPDOWN_WRT_DEPARTMENT, REQUEST_PARAM_CODE, RADIOLOGY_DEPARTMENT_CODE } from "../../../config/apiConfig";
+import { FETCH_PENDING_LIST_ERR_MSG, FETCH_RADIOLOGY_TEMPLATE_ERR_MSG } from "../../../config/constants";
 
 const PendingListRadiologyReport = () => {
   const navigate = useNavigate();
@@ -17,26 +19,29 @@ const PendingListRadiologyReport = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
+  const [modalityOptions, setModalityOptions] = useState([]);
+  const [loadingModality, setLoadingModality] = useState(false);
 
   // Search states
   const [searchPatientName, setSearchPatientName] = useState("");
   const [searchMobileNo, setSearchMobileNo] = useState("");
-  const [searchModality, setSearchModality] = useState("");
+  const [searchModalityId, setSearchModalityId] = useState("");
 
-  // Modality options for filter
-  const modalityOptions = [
-    "All Modalities",
-    "X-Ray",
-    "MRI",
-    "CT",
-    "Ultrasound",
-    "Mammography",
-    "Fluoroscopy",
-    "Angiography",
-    "Nuclear Medicine",
-    "PET-CT",
-    "DEXA"
-  ];
+  // Fetch modality options from API (same as PACS list)
+  const fetchModalityOptions = async () => {
+    try {
+      setLoadingModality(true);
+      const response = await getRequest(`${GET_MODALITY_DROPDOWN_WRT_DEPARTMENT}?${REQUEST_PARAM_CODE}=${RADIOLOGY_DEPARTMENT_CODE}`);
+      
+      if (response?.status === 200 && response?.response) {
+        setModalityOptions(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching modality options:", error);
+    } finally {
+      setLoadingModality(false);
+    }
+  };
 
   // Format date as dd/MM/yyyy
   const formatDate = (dateString) => {
@@ -78,7 +83,7 @@ const PendingListRadiologyReport = () => {
   };
 
   // Fetch pending radiology reports with server-side pagination
-  const fetchPendingReports = async (page = 0, patientName = "", phoneNumber = "", modality = "", isSearch = false) => {
+  const fetchPendingReports = async (page = 0, patientName = "", phoneNumber = "", modalityId = "", isSearch = false) => {
     try {
       if (isSearch) {
         setSearchLoading(true);
@@ -95,7 +100,8 @@ const PendingListRadiologyReport = () => {
 
       if (patientName?.trim()) params.append('patientName', patientName.trim());
       if (phoneNumber?.trim()) params.append('phoneNumber', phoneNumber.trim());
-      if (modality?.trim() && modality !== "All Modalities") params.append('modality', modality.trim());
+      // Send modality ID for search
+      if (modalityId?.trim()) params.append('modality', modalityId.trim());
 
       const response = await getRequest(`/radiology/pendingListForRadiologyReport?${params.toString()}`);
 
@@ -130,7 +136,7 @@ const PendingListRadiologyReport = () => {
       }
     } catch (error) {
       console.error("Error fetching pending reports:", error);
-      showPopup("Failed to fetch pending reports", "error");
+      showPopup(FETCH_PENDING_LIST_ERR_MSG, "error");
       setReportData([]);
       setTotalPages(0);
       setTotalElements(0);
@@ -139,6 +145,11 @@ const PendingListRadiologyReport = () => {
       setSearchLoading(false);
     }
   };
+
+  // Fetch modality options on component mount
+  useEffect(() => {
+    fetchModalityOptions();
+  }, []);
 
   // Initial load
   useEffect(() => {
@@ -149,14 +160,14 @@ const PendingListRadiologyReport = () => {
   const handleSearch = () => {
     setCurrentPage(0);
     setIsSearchMode(true);
-    fetchPendingReports(0, searchPatientName, searchMobileNo, searchModality, true);
+    fetchPendingReports(0, searchPatientName, searchMobileNo, searchModalityId, true);
   };
 
   // Handle reset
   const handleReset = () => {
     setSearchPatientName("");
     setSearchMobileNo("");
-    setSearchModality("");
+    setSearchModalityId("");
     setCurrentPage(0);
     setIsSearchMode(false);
     fetchPendingReports(0, "", "", "", false);
@@ -168,23 +179,40 @@ const PendingListRadiologyReport = () => {
     setCurrentPage(newPage);
     
     if (isSearchMode) {
-      fetchPendingReports(newPage, searchPatientName, searchMobileNo, searchModality, true);
+      fetchPendingReports(newPage, searchPatientName, searchMobileNo, searchModalityId, true);
     } else {
       fetchPendingReports(newPage, "", "", "", false);
     }
   };
 
-  // Navigate to detailed report page
+  // Navigate to detailed report page with modalityId
   const handleRowClick = (item) => {
-    // You can pass data via state if needed
-    navigate('/DetailedRadiologyReportPage', { 
-      state: { 
-        radOrderDtId: item.id,
-        accessionNo: item.accessionNo,
-        patientName: item.patientName,
-        uhid: item.uhid
-      } 
-    });
+    try {
+      // Navigate to detailed report page with all required data
+      navigate('/DetailedRadiologyReportPage', { 
+        state: { 
+          radOrderDtId: item.id,
+          accessionNo: item.accessionNo,
+          patientName: item.patientName,
+          uhid: item.uhid,
+          modalityId: item.modalityId, // Pass modalityId to fetch templates on the next page
+          modality: item.modality,
+          investigationName: item.investigationName,
+          // Pass any other required fields from the row
+          age: item.age,
+          gender: item.gender,
+          contactNo: item.contactNo,
+          orderDate: item.orderDate,
+          orderTime: item.orderTime,
+          studyDate: item.studyDate,
+          studyTime: item.studyTime,
+          department: item.department
+        } 
+      });
+    } catch (error) {
+      console.error("Error navigating to detailed report:", error);
+      showPopup(FETCH_RADIOLOGY_TEMPLATE_ERR_MSG, "error");
+    }
   };
 
   // Show popup
@@ -237,19 +265,20 @@ const PendingListRadiologyReport = () => {
                         </div>
                       </div>
 
-                      {/* Modality Filter */}
+                      {/* Modality Filter - Using options from API with ID as value */}
                       <div className="col-md-3">
                         <div className="form-group">
                           <label className="form-label fw-bold">Modality</label>
                           <select
                             className="form-select"
-                            value={searchModality}
-                            onChange={(e) => setSearchModality(e.target.value)}
+                            value={searchModalityId}
+                            onChange={(e) => setSearchModalityId(e.target.value)}
+                            disabled={loadingModality}
                           >
                             <option value="">All Modalities</option>
-                            {modalityOptions.slice(1).map((modality, index) => (
-                              <option key={index} value={modality}>
-                                {modality}
+                            {modalityOptions.map((option) => (
+                              <option key={option.id} value={option.id}>
+                                {option.modalityName}
                               </option>
                             ))}
                           </select>
@@ -257,12 +286,12 @@ const PendingListRadiologyReport = () => {
                       </div>
 
                       {/* Search and Reset Buttons */}
-                      <div className="col-md-3">
+                      <div className="col-md-2">
                         <div className="d-flex gap-2">
                           <button
                             className="btn btn-primary flex-grow-1"
                             onClick={handleSearch}
-                            disabled={loading || searchLoading}
+                            disabled={loading || searchLoading || loadingModality}
                           >
                             {searchLoading ? (
                               <>
@@ -283,15 +312,6 @@ const PendingListRadiologyReport = () => {
                             <i className="mdi mdi-refresh"></i> Reset
                           </button>
                         </div>
-                      </div>
-                    </div>
-
-                    {/* Record count */}
-                    <div className="row mt-3">
-                      <div className="col-md-12 text-end">
-                        <span className="text-muted">
-                          Showing {reportData.length} of {totalElements} records
-                        </span>
                       </div>
                     </div>
                   </div>
@@ -347,17 +367,7 @@ const PendingListRadiologyReport = () => {
                         ) : (
                           <tr>
                             <td colSpan="9" className="text-center py-4">
-                              <i className="mdi mdi-alert-circle-outline" style={{ fontSize: '48px', color: '#ccc' }}></i>
                               <p className="mt-2 text-muted">No investigations found matching your criteria</p>
-                              {(searchPatientName || searchMobileNo || searchModality) && (
-                                <button
-                                  className="btn btn-sm btn-outline-secondary mt-2"
-                                  onClick={handleReset}
-                                  disabled={loading || searchLoading}
-                                >
-                                  Clear Filters
-                                </button>
-                              )}
                             </td>
                           </tr>
                         )}
@@ -390,8 +400,6 @@ const PendingListRadiologyReport = () => {
           </div>
         </div>
       </div>
-
-     
     </div>
   );
 };
