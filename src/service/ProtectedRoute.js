@@ -216,6 +216,7 @@ const validRoutes = [
   "/BloodRequestTracking",
   "/OpdRegister",
   "/PendingForCrossMatch",
+  "/PendingForIssue",
   
 ];
 
