@@ -25,6 +25,7 @@ const CrossMatchType = () => {
     turnaround: "",
     cost: "",
     emergencyAllowed: "",
+    description:"",
   });
 
   const [loading, setLoading] = useState(true);
@@ -41,6 +42,7 @@ const CrossMatchType = () => {
           turnaround: "10",
           cost: "100",
           emergencyAllowed: "Yes",
+          description: "Immediate spin crossmatch description",
           status: "y",
         },
         {
@@ -50,6 +52,7 @@ const CrossMatchType = () => {
           turnaround: "15",
           cost: "150",
           emergencyAllowed: "Yes",
+          description: "Electronic crossmatch description",
           status: "y",
         },
         {
@@ -59,6 +62,7 @@ const CrossMatchType = () => {
           turnaround: "20",
           cost: "200",
           emergencyAllowed: "No",
+          description: "Antiglobulin crossmatch description",
           status: "y",
         },
         {
@@ -68,6 +72,7 @@ const CrossMatchType = () => {
           turnaround: "30",
           cost: "300",
           emergencyAllowed: "No",
+          description: "Full crossmatch description",
           status: "n",
         },
         {
@@ -77,6 +82,7 @@ const CrossMatchType = () => {
           turnaround: "5",
           cost: "500",
           emergencyAllowed: "Yes",
+          description: "Emergency crossmatch description",
           status: "y",
         },
       ]);
@@ -111,7 +117,8 @@ const CrossMatchType = () => {
       name: record.name,
       turnaround: record.turnaround,
       cost: record.cost,
-      emergencyAllowed: record.emergencyAllowed || "",
+      emergencyAllowed: record.emergencyAllowed,
+      description: record.description || "",
     });
     setIsFormValid(true);
     setShowForm(true);
@@ -132,6 +139,7 @@ const CrossMatchType = () => {
                 turnaround: formData.turnaround,
                 cost: formData.cost,
                 emergencyAllowed: formData.emergencyAllowed,
+                description: formData.description,
               }
             : item,
         ),
@@ -147,6 +155,7 @@ const CrossMatchType = () => {
           turnaround: formData.turnaround,
           cost: formData.cost,
           emergencyAllowed: formData.emergencyAllowed,
+          description: formData.description,
           status: "y",
         },
       ]);
@@ -193,7 +202,8 @@ const CrossMatchType = () => {
         updatedForm.name.trim() &&
         updatedForm.turnaround.trim() &&
         updatedForm.cost.trim() &&
-        updatedForm.emergencyAllowed,
+        updatedForm.emergencyAllowed &&
+        updatedForm.description.trim(),
     );
   };
 
@@ -206,6 +216,8 @@ const CrossMatchType = () => {
       turnaround: "",
       cost: "",
       emergencyAllowed: "",
+      description:"",
+
     });
     setIsFormValid(false);
   };
@@ -264,6 +276,7 @@ const CrossMatchType = () => {
                     <th>Turnaround (min)</th>
                     <th>cost</th>
                     <th>Emergency Allowed</th>
+                    <th>Description</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
@@ -276,6 +289,7 @@ const CrossMatchType = () => {
                       <td>{item.turnaround}</td>
                       <td>{item.cost}</td>
                       <td>{item.emergencyAllowed}</td>
+                      <td>{item.description}</td>
                       <td>
                         <div className="form-check form-switch">
                           <input
@@ -380,6 +394,16 @@ const CrossMatchType = () => {
                     <option value="Yes">Yes</option>
                     <option value="No">No</option>
                   </select>
+                </div>
+                <div className="form-group col-md-4 mt-3">
+                  <label>Description</label>
+                  <textarea
+                    name="description"
+                    className="form-control"
+                    value={formData.description}
+                    onChange={handleInputChange}
+                    placeholder="description"
+                  />
                 </div>
               </div>
               <div className="mt-3 text-end">
