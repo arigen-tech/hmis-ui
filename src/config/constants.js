@@ -1235,3 +1235,14 @@ export const UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS = "Blood Inventory Status upd
 export const ADD_BLOOD_INVENTORY_STATUS_SUCCESS = "Blood Inventory Status added successfully";
 export const OPERATION_FAILED = "Operation failed";
 export const UPDATE_STATUS_FAILED = "Failed to update status";
+
+
+//blood failure reason
+  export const FETCH_FAILURE_REASON = "Failed to fetch Failure Reasons";
+ export const DUPLICATE_FAILURE_REASON = "Failure Reason Code or Name already exists";
+  export const UPDATE_FAILURE_REASON = "Failure Reason updated successfully";
+ export const CREATE_FAILURE_REASON = "Failure Reason created successfully";
+ export const SAVE_FAILURE_REASON = "Failed to save Failure Reason";
+  export const STATUS_UPDATED = "Status updated successfully";
+ export const UPDATE_STATUS= "Failed to update status";
+

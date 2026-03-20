@@ -1,346 +1,435 @@
-import { useState, useEffect } from "react"
-import Popup from "../../../Components/popup";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
+import { useState, useEffect } from "react";
+import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
+import { MAS_COMPONENT_FAILURE_REASON } from "../../../config/apiConfig";
+import {
+  getRequest,
+  putRequest,
+  postRequest,
+} from "../../../service/apiService";
+import{
+  FETCH_FAILURE_REASON,
+  DUPLICATE_FAILURE_REASON,
+  UPDATE_FAILURE_REASON,
+  CREATE_FAILURE_REASON,
+  SAVE_FAILURE_REASON,
+  STATUS_UPDATED,
+  UPDATE_STATUS,
+}from "../../../config/constants";
 
 const BloodFailureReasonMaster = () => {
-    const [formData, setFormData] = useState({failureReasonName: "", description: ""});
-    const [showForm, setShowForm] = useState(false);
-    const [isFormValid, setIsFormValid] = useState(false);
-    const [showModal, setShowModal] = useState(false);
-    const [editingFailureReason, setEditingFailureReason] = useState(null);
-    const [popupMessage, setPopupMessage] = useState(null);
-    const [searchQuery, setSearchQuery] = useState("");
-    const [pageInput, setPageInput] = useState("");
-    const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    failureReasonCode: "",
+    failureReasonName: "",
+    description: "",
+  });
 
-    const [failureReasonData, setFailureReasonData] = useState([
-        { id: 1, failureReasonName: "Hemolysis", description: "Blood sample hemolyzed during collection", status: "y" },
-        { id: 2, failureReasonName: "Clotted", description: "Blood sample clotted", status: "y" },
-        { id: 3, failureReasonName: "Insufficient Volume", description: "Insufficient blood volume", status: "y" },
-        { id: 4, failureReasonName: "Wrong Container", description: "Wrong collection container used", status: "y" },
-        { id: 5, failureReasonName: "Expired", description: "Sample collected beyond validity", status: "y" },
-        { id: 6, failureReasonName: "Improper Labeling", description: "Sample not properly labeled", status: "y" },
-    ]);
+  const [showForm, setShowForm] = useState(false);
+    const [editingRecord, setEditingRecord] = useState(null);
+  const [isFormValid, setIsFormValid] = useState(false);
+  const [data, setData] = useState([]);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [searchQuery, setSearchQuery] = useState("");
 
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, failureReasonId: null, newStatus: false });
+  const [currentPage, setCurrentPage] = useState(1);
 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
 
-    const filteredFailureReasons = failureReasonData.filter(failureReason =>
-        failureReason.failureReasonName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        failureReason.description.toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const handleSearch = (e) => {
-        setSearchQuery(e.target.value);
-        setCurrentPage(1);
-    };
-
-    const handleEdit = (failureReason) => {
-        setEditingFailureReason(failureReason);
-        setFormData({failureReasonName: failureReason.failureReasonName, description: failureReason.description || "" });
-        setShowForm(true);
-    };
-
-    useEffect(() => {
-        setCurrentPage(1);
-    }, [searchQuery]);
+  // Format date utility
+  const formatDate = (dateString) => {
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
 
-    const handleSave = (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
 
-        const updatedFailureReasonName = e.target.elements.failureReasonName.value;
-        const updatedDescription = e.target.elements.description.value;
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(
+        `${MAS_COMPONENT_FAILURE_REASON}/getAll/${flag}`,
+      );
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_FAILURE_REASON, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-        if (editingFailureReason) {
-            setFailureReasonData(failureReasonData.map(failureReason =>
-                failureReason.id === editingFailureReason.id
-                    ? { ...failureReason, failureReasonName: updatedFailureReasonName, description: updatedDescription }
-                    : failureReason
-            ));
-        } else {
-            const newFailureReason = {
-                id: failureReasonData.length + 1,
-                failureReasonName: updatedFailureReasonName,
-                description: updatedDescription,
-                status: "y"
-            };
-            setFailureReasonData([...failureReasonData, newFailureReason]);
+  useEffect(() => {
+    fetchData();
+  }, []);
+
+  const filteredData = data.filter((rec) =>
+  rec.failureReasonName
+    ?.toLowerCase()
+    .includes(searchQuery.toLowerCase())
+);
+
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE,
+  );
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  // Popup helper
+  const showPopup = (message, type) => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+  // Form reset
+ const resetForm = () => {
+  setFormData({
+    failureReasonCode: "",
+    failureReasonName: "",
+    description: "",
+  });
+  setIsFormValid(false);
+  setEditingRecord(null);
+};
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+   setIsFormValid(
+  (updated.failureReasonCode || "").trim() !== "" &&
+  (updated.failureReasonName || "").trim() !== ""
+);
+  };
+
+ const handleSave = async (e) => {
+  e.preventDefault();
+  if (!isFormValid) return;
+
+  const newCode = formData.failureReasonCode.trim().toLowerCase();
+  const newName = formData.failureReasonName.trim().toLowerCase();
+
+  const duplicate = data.find(
+    (rec) =>
+      (rec.failureReasonCode?.trim().toLowerCase() === newCode ||
+        rec.failureReasonName?.trim().toLowerCase() === newName) &&
+      (!editingRecord ||
+        rec.failureReasonId !== editingRecord.failureReasonId)
+  );
+
+  if (duplicate) {
+    showPopup(DUPLICATE_FAILURE_REASON, "error");
+    return;
+  }
+
+  try {
+    if (editingRecord) {
+
+      await putRequest(
+        `${MAS_COMPONENT_FAILURE_REASON}/update/${editingRecord.failureReasonId}`,
+        {
+          failureReasonCode: formData.failureReasonCode.trim(),
+          failureReasonName: formData.failureReasonName.trim(),
+          description: formData.description.trim(),
         }
+      );
 
-        setEditingFailureReason(null);
-        setShowForm(false);
-        setFormData({ failureReasonName: "", description: "" });
-        setIsFormValid(false);
-        showPopup("Changes saved successfully!", "success");
-    };
+      showPopup(UPDATE_FAILURE_REASON, "success");
 
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
-            }
-        });
-    };
+    } else {
 
-    const handleInputChange = (e) => {
-        const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
+      await postRequest(`${MAS_COMPONENT_FAILURE_REASON}/create`, {
+        failureReasonCode: formData.failureReasonCode.trim(),
+        failureReasonName: formData.failureReasonName.trim(),
+        description: formData.description.trim(),
+        status: "Y",
+      });
 
-        const isFailureReasonNameValid = id === "failureReasonName" ? value.trim() !== "" : formData.failureReasonName.trim() !== "";
-        const isDescriptionValid = true; 
-
-        setIsFormValid(isFailureReasonNameValid && isDescriptionValid);
-    };
-
-    const handleCreateFormSubmit = (e) => {
-        e.preventDefault()
-        if (formData.failureReasonName) {
-            setFailureReasonData([...failureReasonData, { ...formData, id: Date.now(), status: "y" }])
-            setFormData({ failureReasonName: "", description: "" })
-            setShowForm(false)
-        } else {
-            alert("Please fill out all required fields.")
-        }
+      showPopup(CREATE_FAILURE_REASON, "success");
     }
 
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, failureReasonId: id, newStatus });
-    };
+    fetchData();
+    handleCancel();
 
-    const handleConfirm = (confirmed) => {
-        if (confirmed && confirmDialog.failureReasonId !== null) {
-            setFailureReasonData((prevData) =>
-                prevData.map((failureReason) =>
-                    failureReason.id === confirmDialog.failureReasonId ? { ...failureReason, status: confirmDialog.newStatus } : failureReason
-                )
-            );
-        }
-        setConfirmDialog({ isOpen: false, failureReasonId: null, newStatus: null });
-    };
+  } catch {
+    showPopup(SAVE_FAILURE_REASON, "error");
+  }
+};
 
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+      failureReasonCode: rec.failureReasonCode,
+      failureReasonName: rec.failureReasonName,
+      description: rec.description || "",
+    });
 
+    setIsFormValid(true);
+    setShowForm(true);
+  };
 
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredFailureReasons.slice(indexOfFirst, indexOfLast);
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
 
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({
+        isOpen: false,
+        record: null,
+        newStatus: "",
+      });
 
-    return (
-        <div className="content-wrapper">
-            <div className="row">
-                <div className="col-12 grid-margin stretch-card">
-                    <div className="card form-card">
-                        <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title">Blood Failure Reason Master</h4>
-                            <div className="d-flex justify-content-between align-items-center">
+      return;
+    }
 
-                                {!showForm ? (
-                                    <form className="d-inline-block searchform me-4" role="search">
-                                        <div className="input-group searchinput">
-                                            <input
-                                                type="search"
-                                                className="form-control"
-                                                placeholder="Search Failure Reasons"
-                                                aria-label="Search"
-                                                value={searchQuery}
-                                                onChange={handleSearch}
+    try {
+      await putRequest(
+        `${MAS_COMPONENT_FAILURE_REASON}/status/${confirmDialog.record.failureReasonId}?status=${confirmDialog.newStatus}`,
+      );
 
-                                            />
-                                            <span className="input-group-text" id="search-icon">
-                                                <i className="fa fa-search"></i>
-                                            </span>
-                                        </div>
-                                    </form>
-                                ) : (
-                                    <></>
-                                )}
+      showPopup(STATUS_UPDATED, "success");
 
+      fetchData();
+    } catch {
+      showPopup(UPDATE_STATUS, "error");
+    } finally {
+      setConfirmDialog({
+        isOpen: false,
+        record: null,
+        newStatus: "",
+      });
+    }
+  };
 
-                                <div className="d-flex align-items-center">
-                                    {!showForm ? (
-                                        <>
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData();
+  };
 
-                                            <button type="button" className="btn btn-success me-2" onClick={() => { 
-                                                setShowForm(true); 
-                                                setFormData({ failureReasonName: "", description: "" }); 
-                                                setEditingFailureReason(null);
-                                            }}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button type="button" className="btn btn-success me-2 flex-shrink-0">
-                                                <i className="mdi mdi-plus"></i> Show All
-                                            </button>
-        
-                                        </>
-                                    ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => {
-                                            setShowForm(false);
-                                            setEditingFailureReason(null);
-                                            setFormData({ failureReasonName: "", description: "" });
-                                        }}>
-                                            <i className="mdi mdi-arrow-left"></i> Back
-                                        </button>
-                                    )}
-                                </div>
-                            </div>
-                        </div>
-                        <div className="card-body">
-                            {!showForm ? (
-                                <div className="table-responsive packagelist">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead className="table-light">
-                                            <tr>
-                                                <th>Failure Reason Name</th>
-                                                <th>Description</th>
-                                                <th>Status</th>
-                                                <th>Edit</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentItems.map((failureReason) => (
-                                                <tr key={failureReason.id}>
-                                                    <td>{failureReason.failureReasonName}</td>
-                                                    <td>{failureReason.description}</td>
-                                                    <td>
-                                                        <div className="form-check form-switch">
-                                                            <input
-                                                                className="form-check-input"
-                                                                type="checkbox"
-                                                                checked={failureReason.status === "y"}
-                                                                onChange={() => handleSwitchChange(failureReason.id, failureReason.status === "y" ? "n" : "y")}
-                                                                id={`switch-${failureReason.id}`}
-                                                            />
-                                                            <label
-                                                                className="form-check-label px-0"
-                                                                htmlFor={`switch-${failureReason.id}`}
-                                                            >
-                                                                {failureReason.status === "y" ? 'Active' : 'Inactive'}
-                                                            </label>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <button
-                                                            className="btn btn-sm btn-success me-2"
-                                                            onClick={() => handleEdit(failureReason)}
-                                                            disabled={failureReason.status !== "y"}
-                                                        >
-                                                            <i className="fa fa-pencil"></i>
-                                                        </button>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
+  return (
+    <div className="content-wrapper">
+      <div className="card form-card">
+        <div className="card-header d-flex justify-content-between align-items-center">
+          <h4>Blood Failure Reason Master</h4>
 
-                                    {filteredFailureReasons.length > 0 && (
-                                        <Pagination
-                                            totalItems={filteredFailureReasons.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-                                    )}
-                                 
-                                </div>
-                            ) : (
-                                <form className="forms row" onSubmit={handleSave}>
-                                    <div className="form-group col-md-4">
-                                        <label>Failure Reason Name <span className="text-danger">*</span></label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="failureReasonName"
-                                            placeholder="Enter failure reason name"
-                                            value={formData.failureReasonName}
-                                            onChange={handleInputChange}
-                                            required
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-4">
-                                        <label>Description</label>
-                                        <input
-                                            type="text"
-                                            className="form-control"
-                                            id="description"
-                                            placeholder="Enter description"
-                                            value={formData.description}
-                                            onChange={handleInputChange}
-                                        />
-                                    </div>
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            {editingFailureReason ? 'Update' : 'Save'}
-                                        </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => {
-                                            setShowForm(false);
-                                            setEditingFailureReason(null);
-                                            setFormData({ failureReasonName: "", description: "" });
-                                        }}>
-                                            Cancel
-                                        </button>
-                                    </div>
-                                </form>
-                            )}
-                            {showModal && (
-                                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-labelledby="staticBackdropLabel" aria-hidden="true">
-                                    <div className="modal-dialog">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h1 className="modal-title fs-5" id="staticBackdropLabel">Reports</h1>
-                                                <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
-                                            </div>
-                                            <div className="modal-body">
-                                                ...
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                                                <button type="button" className="btn btn-primary">Generate</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                            {popupMessage && (
-                                <Popup
-                                    message={popupMessage.message}
-                                    type={popupMessage.type}
-                                    onClose={popupMessage.onClose}
-                                />
-                            )}
-                            {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
-                                        <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
-                                            <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{failureReasonData.find(failureReason => failureReason.id === confirmDialog.failureReasonId)?.failureReasonName}</strong>?
-                                                </p>
-                                            </div>
-                                            <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            </div>
+          <div className="d-flex">
+            {!showForm && (
+              <input
+                style={{ width: "220px" }}
+                className="form-control me-2"
+                placeholder="Search"
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+            )}
+
+            {!showForm ? (
+              <>
+                <button
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
+                >
+                  Add
+                </button>
+
+                <button className="btn btn-success" onClick={handleRefresh}>
+                  Show All
+                </button>
+              </>
+            ) : (
+              <button className="btn btn-secondary" onClick={handleCancel}>
+                Back
+              </button>
+            )}
+          </div>
         </div>
-    )
-}
+
+        <div className="card-body">
+          {loading ? (
+            <LoadingScreen />
+          ) : !showForm ? (
+            <>
+              <table className="table table-bordered table-hover">
+                <thead className="table-light">
+                  <tr>
+                    <th>Failure Reason Code</th>
+                    <th>Failure Reason Name</th>
+                    <th>Description</th>
+                    <th>Last Update Date</th>
+                    <th>Status</th>
+                    <th>Edit</th>
+                  </tr>
+                </thead>
+
+                <tbody>
+                  {currentItems.map((rec) => (
+                    <tr key={rec.failureReasonId}>
+                      <td>{rec.failureReasonCode}</td>
+                      <td>{rec.failureReasonName}</td>
+                      <td>{rec.description}</td>
+                      <td>{formatDate(rec.lastUpdateDate)}</td>
+
+                      <td>
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={rec.status?.toLowerCase() === "y"}
+                            onChange={() => handleSwitchChange(rec)}
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status?.toLowerCase() === "y"
+                              ? "Active"
+                              : "Inactive"}
+                          </label>
+                        </div>
+                      </td>
+
+                      <td>
+                        <button
+                          className="btn btn-success btn-sm"
+                          onClick={() => handleEdit(rec)}
+                        >
+                          <i className="fa fa-pencil"></i>
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+
+              <Pagination
+                totalItems={filteredData.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
+            </>
+          ) : (
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-3">
+                <label>Failure Reason Code <span className="text-danger">*</span></label>
+
+                <input
+                  name="failureReasonCode"
+                  className="form-control"
+                  value={formData.failureReasonCode}
+                  onChange={handleInputChange}
+                  placeholder="failure reason code"
+                />
+              </div>
+
+              <div className="col-md-3">
+                <label>Failure Reason Name <span className="text-danger">*</span></label>
+
+                <input
+                  name="failureReasonName"
+                  className="form-control"
+                  value={formData.failureReasonName}
+                  onChange={handleInputChange}
+                  placeholder="failure reason name"
+                />
+              </div>
+
+              <div className="col-md-5">
+                <label>Description</label>
+
+                <textarea
+                  name="description"
+                  className="form-control"
+                  value={formData.description}
+                  onChange={handleInputChange}
+                  placeholder="description"
+                />
+              </div>
+
+              <div className="col-12 text-end">
+                <button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid}
+                >
+                  {editingRecord ? "Update" : "Save"}
+                </button>
+
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={handleCancel}
+                >
+                  Cancel
+                </button>
+              </div>
+            </form>
+          )}
+
+          {popupMessage && <Popup {...popupMessage} />}
+
+          {confirmDialog.isOpen && (
+            <div className="modal d-block">
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-body">
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === "y"
+                      ? "activate"
+                      : "deactivate"}
+                    <strong> {confirmDialog.record?.failureReasonName}</strong>?
+                  </div>
+
+                  <div className="modal-footer">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
+                      No
+                    </button>
+
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
+                      Yes
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
 
 export default BloodFailureReasonMaster;
