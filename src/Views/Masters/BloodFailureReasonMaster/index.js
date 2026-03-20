@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -11,7 +10,7 @@ import {
   putRequest,
   postRequest,
 } from "../../../service/apiService";
-import{
+import {
   FETCH_FAILURE_REASON,
   DUPLICATE_FAILURE_REASON,
   UPDATE_FAILURE_REASON,
@@ -19,7 +18,7 @@ import{
   SAVE_FAILURE_REASON,
   STATUS_UPDATED,
   UPDATE_STATUS,
-}from "../../../config/constants";
+} from "../../../config/constants";
 
 const BloodFailureReasonMaster = () => {
   const [loading, setLoading] = useState(false);
@@ -30,7 +29,7 @@ const BloodFailureReasonMaster = () => {
   });
 
   const [showForm, setShowForm] = useState(false);
-    const [editingRecord, setEditingRecord] = useState(null);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [data, setData] = useState([]);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -55,8 +54,6 @@ const BloodFailureReasonMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-
-
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -77,10 +74,8 @@ const BloodFailureReasonMaster = () => {
   }, []);
 
   const filteredData = data.filter((rec) =>
-  rec.failureReasonName
-    ?.toLowerCase()
-    .includes(searchQuery.toLowerCase())
-);
+    rec.failureReasonName?.toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
   const currentItems = filteredData.slice(
     (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
@@ -98,15 +93,15 @@ const BloodFailureReasonMaster = () => {
   };
 
   // Form reset
- const resetForm = () => {
-  setFormData({
-    failureReasonCode: "",
-    failureReasonName: "",
-    description: "",
-  });
-  setIsFormValid(false);
-  setEditingRecord(null);
-};
+  const resetForm = () => {
+    setFormData({
+      failureReasonCode: "",
+      failureReasonName: "",
+      description: "",
+    });
+    setIsFormValid(false);
+    setEditingRecord(null);
+  };
 
   const handleCancel = () => {
     resetForm();
@@ -117,65 +112,61 @@ const BloodFailureReasonMaster = () => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
     setFormData(updated);
-   setIsFormValid(
-  (updated.failureReasonCode || "").trim() !== "" &&
-  (updated.failureReasonName || "").trim() !== ""
-);
+    setIsFormValid(
+      (updated.failureReasonCode || "").trim() !== "" &&
+        (updated.failureReasonName || "").trim() !== "",
+    );
   };
 
- const handleSave = async (e) => {
-  e.preventDefault();
-  if (!isFormValid) return;
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
 
-  const newCode = formData.failureReasonCode.trim().toLowerCase();
-  const newName = formData.failureReasonName.trim().toLowerCase();
+    const newCode = formData.failureReasonCode.trim().toLowerCase();
+    const newName = formData.failureReasonName.trim().toLowerCase();
 
-  const duplicate = data.find(
-    (rec) =>
-      (rec.failureReasonCode?.trim().toLowerCase() === newCode ||
-        rec.failureReasonName?.trim().toLowerCase() === newName) &&
-      (!editingRecord ||
-        rec.failureReasonId !== editingRecord.failureReasonId)
-  );
+    const duplicate = data.find(
+      (rec) =>
+        (rec.failureReasonCode?.trim().toLowerCase() === newCode ||
+          rec.failureReasonName?.trim().toLowerCase() === newName) &&
+        (!editingRecord ||
+          rec.failureReasonId !== editingRecord.failureReasonId),
+    );
 
-  if (duplicate) {
-    showPopup(DUPLICATE_FAILURE_REASON, "error");
-    return;
-  }
+    if (duplicate) {
+      showPopup(DUPLICATE_FAILURE_REASON, "error");
+      return;
+    }
 
-  try {
-    if (editingRecord) {
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_COMPONENT_FAILURE_REASON}/update/${editingRecord.failureReasonId}`,
+          {
+            failureReasonCode: formData.failureReasonCode.trim(),
+            failureReasonName: formData.failureReasonName.trim(),
+            description: formData.description.trim(),
+          },
+        );
 
-      await putRequest(
-        `${MAS_COMPONENT_FAILURE_REASON}/update/${editingRecord.failureReasonId}`,
-        {
+        showPopup(UPDATE_FAILURE_REASON, "success");
+      } else {
+        await postRequest(`${MAS_COMPONENT_FAILURE_REASON}/create`, {
           failureReasonCode: formData.failureReasonCode.trim(),
           failureReasonName: formData.failureReasonName.trim(),
           description: formData.description.trim(),
-        }
-      );
+          status: "Y",
+        });
 
-      showPopup(UPDATE_FAILURE_REASON, "success");
+        showPopup(CREATE_FAILURE_REASON, "success");
+      }
 
-    } else {
-
-      await postRequest(`${MAS_COMPONENT_FAILURE_REASON}/create`, {
-        failureReasonCode: formData.failureReasonCode.trim(),
-        failureReasonName: formData.failureReasonName.trim(),
-        description: formData.description.trim(),
-        status: "Y",
-      });
-
-      showPopup(CREATE_FAILURE_REASON, "success");
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(SAVE_FAILURE_REASON, "error");
     }
-
-    fetchData();
-    handleCancel();
-
-  } catch {
-    showPopup(SAVE_FAILURE_REASON, "error");
-  }
-};
+  };
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
@@ -338,7 +329,9 @@ const BloodFailureReasonMaster = () => {
           ) : (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-3">
-                <label>Failure Reason Code <span className="text-danger">*</span></label>
+                <label>
+                  Failure Reason Code <span className="text-danger">*</span>
+                </label>
 
                 <input
                   name="failureReasonCode"
@@ -350,7 +343,9 @@ const BloodFailureReasonMaster = () => {
               </div>
 
               <div className="col-md-3">
-                <label>Failure Reason Name <span className="text-danger">*</span></label>
+                <label>
+                  Failure Reason Name <span className="text-danger">*</span>
+                </label>
 
                 <input
                   name="failureReasonName"
