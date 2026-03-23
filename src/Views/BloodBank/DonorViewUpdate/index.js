@@ -38,7 +38,37 @@ const DonorRegistrationViewUpdate = () => {
       regDate: "2024-01-15T10:30:00",
       createdBy: "Admin",
       donorStatus: "Active",
-      status: "a"
+      status: "a",
+      previousScreenings: [
+        {
+          id: 1,
+          screeningDate: "2024-01-15",
+          hemoglobin: "14.2",
+          weight: "65.0",
+          height: "175",
+          bloodPressure: "118/78",
+          pulse: "70",
+          temperature: "36.6",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "rakesh"
+        },
+        {
+          id: 2,
+          screeningDate: "2024-06-20",
+          hemoglobin: "14.8",
+          weight: "66.0",
+          height: "175",
+          bloodPressure: "122/82",
+          pulse: "72",
+          temperature: "36.7",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "Rajesh"
+        }
+      ]
     },
     {
       id: 2,
@@ -70,7 +100,53 @@ const DonorRegistrationViewUpdate = () => {
       regDate: "2024-01-16T14:20:00",
       createdBy: "Admin",
       donorStatus: "Active",
-      status: "s"
+      status: "s",
+      previousScreenings: [
+        {
+          id: 1,
+          screeningDate: "2024-01-16",
+          hemoglobin: "13.0",
+          weight: "58.0",
+          height: "162",
+          bloodPressure: "118/76",
+          pulse: "68",
+          temperature: "36.5",
+          screenResult: "fail",
+          deferralType: "temporary",
+          deferralReason: "Low hemoglobin level",
+          conductedBy: "Abrar"
+        }
+      ],
+       previousScreenings: [
+        {
+          id: 1,
+          screeningDate: "2024-01-15",
+          hemoglobin: "14.2",
+          weight: "65.0",
+          height: "175",
+          bloodPressure: "118/78",
+          pulse: "70",
+          temperature: "36.6",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "rakesh"
+        },
+        {
+          id: 2,
+          screeningDate: "2024-06-20",
+          hemoglobin: "14.8",
+          weight: "66.0",
+          height: "175",
+          bloodPressure: "122/82",
+          pulse: "72",
+          temperature: "36.7",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "Dr. Raju"
+        }
+      ]
     },
     {
       id: 3,
@@ -102,7 +178,51 @@ const DonorRegistrationViewUpdate = () => {
       regDate: "2024-01-17T09:15:00",
       createdBy: "Admin",
       donorStatus: "Active",
-      status: "a"
+      status: "a",
+      previousScreenings: [
+        {
+          id: 1,
+          screeningDate: "2024-01-17",
+          hemoglobin: "14.9",
+          weight: "69.5",
+          height: "180",
+          bloodPressure: "124/84",
+          pulse: "74",
+          temperature: "36.9",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "ramesh"
+        },
+        {
+          id: 2,
+          screeningDate: "2024-07-10",
+          hemoglobin: "15.2",
+          weight: "70.5",
+          height: "180",
+          bloodPressure: "126/86",
+          pulse: "76",
+          temperature: "37.0",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "Nikita"
+        },
+        {
+          id: 3,
+          screeningDate: "2024-12-05",
+          hemoglobin: "14.7",
+          weight: "71.0",
+          height: "180",
+          bloodPressure: "124/82",
+          pulse: "74",
+          temperature: "36.8",
+          screenResult: "pass",
+          deferralType: "",
+          deferralReason: "",
+          conductedBy: "rajesh"
+        }
+      ]
     }
   ])
 
@@ -168,7 +288,22 @@ const DonorRegistrationViewUpdate = () => {
     deferralReason: ""
   })
 
+  const [newScreening, setNewScreening] = useState({
+    screeningDate: "",
+    hemoglobin: "",
+    weight: "",
+    height: "",
+    bloodPressure: "",
+    pulse: "",
+    temperature: "",
+    screenResult: "",
+    deferralType: "",
+    deferralReason: "",
+    conductedBy: ""
+  })
+
   const [errors, setErrors] = useState({})
+  const [newScreeningErrors, setNewScreeningErrors] = useState({})
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -181,18 +316,14 @@ const DonorRegistrationViewUpdate = () => {
   }
 
   useEffect(() => {
-    // Reset to first page whenever search query changes
     setCurrentPage(1);
 
     if (!searchQuery.trim()) {
-      // If search is empty, show all donors
       setFilteredDonorList(donorList);
       return;
     }
 
     const query = searchQuery.trim();
-
-    // Filter by phone number only (case insensitive)
     const filtered = donorList.filter(item =>
       item.donorMobileNumber?.toLowerCase().includes(query.toLowerCase())
     );
@@ -201,17 +332,13 @@ const DonorRegistrationViewUpdate = () => {
   }, [searchQuery, donorList]);
 
   const handleSearch = () => {
-    // Only search if there's input in searchQuery
     if (!searchQuery.trim()) {
-      // If search is empty, show all donors
       setFilteredDonorList(donorList);
       setCurrentPage(1);
       return;
     }
 
     const query = searchQuery.trim();
-
-    // Filter by phone number only
     const filtered = donorList.filter(item =>
       item.donorMobileNumber?.includes(query)
     );
@@ -221,16 +348,15 @@ const DonorRegistrationViewUpdate = () => {
   }
 
   const handleShowAll = () => {
-    setSearchQuery(""); // Clear search input
-    setFilteredDonorList(donorList); // Reset to show all donors
-    setCurrentPage(1); // Reset to first page
+    setSearchQuery("");
+    setFilteredDonorList(donorList);
+    setCurrentPage(1);
   }
 
   const handleEditClick = (record, e) => {
     e.stopPropagation()
     setSelectedRecord(record)
 
-    // Set states based on country
     if (record.donorCountryId === "1") {
       setStateData([
         { id: "1", stateName: "Maharashtra" },
@@ -243,7 +369,6 @@ const DonorRegistrationViewUpdate = () => {
       setStateData([])
     }
 
-    // Set districts based on state
     if (record.donorStateId === "1") {
       setDistrictData([
         { id: "1", districtName: "Mumbai" },
@@ -265,7 +390,6 @@ const DonorRegistrationViewUpdate = () => {
       setDistrictData([])
     }
 
-    // Map record data to formData
     setFormData({
       firstName: record.donorFn || "",
       middleName: record.donorMn || "",
@@ -291,6 +415,20 @@ const DonorRegistrationViewUpdate = () => {
       screenResult: record.screenResult || "",
       deferralType: record.deferralType || "",
       deferralReason: record.deferralReason || ""
+    })
+
+    setNewScreening({
+      screeningDate: new Date().toISOString().split("T")[0],
+      hemoglobin: "",
+      weight: "",
+      height: "",
+      bloodPressure: "",
+      pulse: "",
+      temperature: "",
+      screenResult: "",
+      deferralType: "",
+      deferralReason: "",
+      conductedBy: ""
     })
 
     setCurrentView("detail")
@@ -325,7 +463,21 @@ const DonorRegistrationViewUpdate = () => {
       deferralType: "",
       deferralReason: ""
     })
+    setNewScreening({
+      screeningDate: "",
+      hemoglobin: "",
+      weight: "",
+      height: "",
+      bloodPressure: "",
+      pulse: "",
+      temperature: "",
+      screenResult: "",
+      deferralType: "",
+      deferralReason: "",
+      conductedBy: ""
+    })
     setErrors({})
+    setNewScreeningErrors({})
     setStateData([])
     setDistrictData([])
   }
@@ -334,7 +486,6 @@ const DonorRegistrationViewUpdate = () => {
     const { name, value } = e.target
     const updatedForm = { ...formData, [name]: value }
 
-    // If screen result changes to "pass", clear deferral fields
     if (name === "screenResult") {
       if (value === "pass") {
         updatedForm.deferralType = ""
@@ -342,7 +493,6 @@ const DonorRegistrationViewUpdate = () => {
       }
     }
 
-    // If country changes, set states
     if (name === "country") {
       if (value === "1") {
         setStateData([
@@ -360,7 +510,6 @@ const DonorRegistrationViewUpdate = () => {
       setDistrictData([])
     }
 
-    // If state changes, set districts
     if (name === "state") {
       if (value === "1") {
         setDistrictData([
@@ -386,9 +535,22 @@ const DonorRegistrationViewUpdate = () => {
     }
 
     setFormData(updatedForm)
-
-    // Clear error for this field
     setErrors(prev => ({ ...prev, [name]: "" }))
+  }
+
+  const handleNewScreeningChange = (e) => {
+    const { name, value } = e.target
+    const updatedScreening = { ...newScreening, [name]: value }
+
+    if (name === "screenResult") {
+      if (value === "pass") {
+        updatedScreening.deferralType = ""
+        updatedScreening.deferralReason = ""
+      }
+    }
+
+    setNewScreening(updatedScreening)
+    setNewScreeningErrors(prev => ({ ...prev, [name]: "" }))
   }
 
   const validateForm = () => {
@@ -420,12 +582,10 @@ const DonorRegistrationViewUpdate = () => {
     if (!formData.pulse.trim()) newErrors.pulse = "Pulse is required"
     if (!formData.temperature.trim()) newErrors.temperature = "Temperature is required"
 
-    // Screen Result validation
     if (!formData.screenResult) {
       newErrors.screenResult = "Screen Result is required"
     }
 
-    // Deferral fields validation when screen fails
     if (formData.screenResult === "fail") {
       if (!formData.deferralType.trim()) {
         newErrors.deferralType = "Deferral Type is required when screen fails"
@@ -439,10 +599,108 @@ const DonorRegistrationViewUpdate = () => {
     return Object.keys(newErrors).length === 0
   }
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    // Don't set currentPage here - let the useEffect handle it
-  };
+  const validateNewScreening = () => {
+    const newErrors = {}
+
+    if (!newScreening.screeningDate) newErrors.screeningDate = "Screening Date is required"
+    if (!newScreening.hemoglobin) newErrors.hemoglobin = "Hemoglobin is required"
+    if (!newScreening.weight) newErrors.weight = "Weight is required"
+    if (!newScreening.height) newErrors.height = "Height is required"
+    if (!newScreening.bloodPressure) newErrors.bloodPressure = "Blood Pressure is required"
+    else if (!/^\d{2,3}\/\d{2,3}$/.test(newScreening.bloodPressure)) newErrors.bloodPressure = "Format: 120/80"
+    if (!newScreening.pulse) newErrors.pulse = "Pulse is required"
+    if (!newScreening.temperature) newErrors.temperature = "Temperature is required"
+    if (!newScreening.screenResult) newErrors.screenResult = "Screen Result is required"
+    if (!newScreening.conductedBy) newErrors.conductedBy = "Conducted By is required"
+
+    if (newScreening.screenResult === "fail") {
+      if (!newScreening.deferralType) {
+        newErrors.deferralType = "Deferral Type is required when screen fails"
+      }
+      if (!newScreening.deferralReason) {
+        newErrors.deferralReason = "Deferral Reason is required when screen fails"
+      }
+    }
+
+    setNewScreeningErrors(newErrors)
+    return Object.keys(newErrors).length === 0
+  }
+
+  const handleAddNewScreening = () => {
+    if (!validateNewScreening()) {
+      showPopup("Please fill all mandatory fields for new screening", "warning")
+      return
+    }
+
+    const updatedDonorList = donorList.map(donor => {
+      if (donor.id === selectedRecord.id) {
+        const updatedScreenings = [...(donor.previousScreenings || []), {
+          id: Date.now(),
+          screeningDate: newScreening.screeningDate,
+          hemoglobin: newScreening.hemoglobin,
+          weight: newScreening.weight,
+          height: newScreening.height,
+          bloodPressure: newScreening.bloodPressure,
+          pulse: newScreening.pulse,
+          temperature: newScreening.temperature,
+          screenResult: newScreening.screenResult,
+          deferralType: newScreening.deferralType,
+          deferralReason: newScreening.deferralReason,
+          conductedBy: newScreening.conductedBy
+        }]
+
+        return {
+          ...donor,
+          previousScreenings: updatedScreenings,
+          hemoglobin: newScreening.hemoglobin,
+          weight: newScreening.weight,
+          height: newScreening.height,
+          bloodPressure: newScreening.bloodPressure,
+          pulse: newScreening.pulse,
+          temperature: newScreening.temperature,
+          screenResult: newScreening.screenResult,
+          deferralType: newScreening.deferralType,
+          deferralReason: newScreening.deferralReason
+        }
+      }
+      return donor
+    })
+
+    setDonorList(updatedDonorList)
+    setFilteredDonorList(updatedDonorList)
+
+    const updatedSelectedRecord = updatedDonorList.find(d => d.id === selectedRecord.id)
+    setSelectedRecord(updatedSelectedRecord)
+
+    setFormData({
+      ...formData,
+      hemoglobin: newScreening.hemoglobin,
+      weight: newScreening.weight,
+      height: newScreening.height,
+      bloodPressure: newScreening.bloodPressure,
+      pulse: newScreening.pulse,
+      temperature: newScreening.temperature,
+      screenResult: newScreening.screenResult,
+      deferralType: newScreening.deferralType,
+      deferralReason: newScreening.deferralReason
+    })
+
+    setNewScreening({
+      screeningDate: new Date().toISOString().split("T")[0],
+      hemoglobin: "",
+      weight: "",
+      height: "",
+      bloodPressure: "",
+      pulse: "",
+      temperature: "",
+      screenResult: "",
+      deferralType: "",
+      deferralReason: "",
+      conductedBy: ""
+    })
+
+    showPopup("New screening added successfully!", "success")
+  }
 
   const handleUpdate = async () => {
     if (!validateForm()) {
@@ -453,7 +711,6 @@ const DonorRegistrationViewUpdate = () => {
     try {
       setLoading(true)
 
-      // Update donor in local list
       const updatedDonorList = donorList.map(donor => {
         if (donor.id === selectedRecord.id) {
           return {
@@ -535,6 +792,8 @@ const DonorRegistrationViewUpdate = () => {
   }
 
   if (currentView === "detail") {
+    const allScreenings = selectedRecord?.previousScreenings || []
+
     return (
       <div className="content-wrapper">
         {popupMessage && (
@@ -548,7 +807,6 @@ const DonorRegistrationViewUpdate = () => {
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
-              {/* Header Section */}
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">View And Edit Donor Registration</h4>
                 <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
@@ -566,7 +824,6 @@ const DonorRegistrationViewUpdate = () => {
                       className="form-control"
                       value={selectedRecord?.donorUhid || "N/A"}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
                     />
                   </div>
                   <div className="col-md-3">
@@ -576,12 +833,11 @@ const DonorRegistrationViewUpdate = () => {
                       className="form-control"
                       value={formatDate(selectedRecord?.regDate) || "N/A"}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
                     />
                   </div>
                   <div className="col-md-3">
                     <label className="form-label fw-bold">Screening Result</label>
-                    <div className="form-control" style={{ backgroundColor: "#e9ecef" }}>
+                    <div className="form-control" >
                       {getStatusBadge(selectedRecord?.screenResult)}
                     </div>
                   </div>
@@ -592,12 +848,11 @@ const DonorRegistrationViewUpdate = () => {
                       className="form-control"
                       value={selectedRecord?.createdBy || "N/A"}
                       readOnly
-                      style={{ backgroundColor: "#e9ecef" }}
                     />
                   </div>
                   <div className="col-md-3 mt-3">
                     <label className="form-label fw-bold">Status</label>
-                    <div className="form-control" style={{ backgroundColor: "#e9ecef" }}>
+                    <div className="form-control" >
                       {getApprovalStatusBadge(selectedRecord?.status)}
                     </div>
                   </div>
@@ -838,106 +1093,173 @@ const DonorRegistrationViewUpdate = () => {
                   </div>
                 </div>
 
-                {/* Screening Details Card */}
+                {/* Previous Screenings Table */}
                 <div className="card shadow mb-3">
                   <div className="card-header py-3 border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Screening Details</h6>
+                    <h6 className="mb-0 fw-bold">Previous Screenings</h6>
                   </div>
                   <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-md-4">
-                        <label className="form-label">Hemoglobin (g/dL) <span className="text-danger">*</span></label>
-                        <input
-                          type="number"
-                          className={`form-control ${errors.hemoglobin ? "is-invalid" : ""}`}
-                          name="hemoglobin"
-                          value={formData.hemoglobin}
-                          onChange={handleChange}
-                          placeholder="Enter Hemoglobin"
-                          step="0.1"
-                          readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                        />
-                        {errors.hemoglobin && <div className="invalid-feedback">{errors.hemoglobin}</div>}
+                    {allScreenings.length > 0 ? (
+                      <div className="table-responsive">
+                        <table className="table table-bordered table-hover">
+                          <thead >
+                            <tr>
+                              <th>Screening Date</th>
+                              <th>Hb (g/dL)</th>
+                              <th>Weight (kg)</th>
+                              <th>Height (cm)</th>
+                              <th>BP</th>
+                              <th>Pulse</th>
+                              <th>Temp (°C)</th>
+                              <th>Result</th>
+                              <th>Deferral Type</th>
+                              <th>Deferral Reason</th>
+                              <th>Conducted By</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {allScreenings.map((screening, index) => (
+                              <tr key={screening.id || index}>
+                                <td>{screening.screeningDate}</td>
+                                <td>{screening.hemoglobin}</td>
+                                <td>{screening.weight}</td>
+                                <td>{screening.height}</td>
+                                <td>{screening.bloodPressure}</td>
+                                <td>{screening.pulse}</td>
+                                <td>{screening.temperature}</td>
+                                <td>{getStatusBadge(screening.screenResult)}</td>
+                                <td>{screening.deferralType || "—"}</td>
+                                <td>{screening.deferralReason || "—"}</td>
+                                <td>{screening.conductedBy}</td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Weight (kg) <span className="text-danger">*</span></label>
-                        <input
-                          type="number"
-                          className={`form-control ${errors.weight ? "is-invalid" : ""}`}
-                          name="weight"
-                          value={formData.weight}
-                          onChange={handleChange}
-                          placeholder="Enter Weight"
-                          step="0.1"
-                          readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                        />
-                        {errors.weight && <div className="invalid-feedback">{errors.weight}</div>}
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Height (cm) <span className="text-danger">*</span></label>
-                        <input
-                          type="number"
-                          className={`form-control ${errors.height ? "is-invalid" : ""}`}
-                          name="height"
-                          value={formData.height}
-                          onChange={handleChange}
-                          placeholder="Enter Height"
-                          step="0.1"
-                          readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                        />
-                        {errors.height && <div className="invalid-feedback">{errors.height}</div>}
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Blood Pressure <span className="text-danger">*</span></label>
-                        <input
-                          type="text"
-                          className={`form-control ${errors.bloodPressure ? "is-invalid" : ""}`}
-                          name="bloodPressure"
-                          value={formData.bloodPressure}
-                          onChange={handleChange}
-                          placeholder="120/80"
-                          readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                        />
-                        {errors.bloodPressure && <div className="invalid-feedback">{errors.bloodPressure}</div>}
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Pulse Rate (bpm) <span className="text-danger">*</span></label>
-                        <input
-                          type="number"
-                          className={`form-control ${errors.pulse ? "is-invalid" : ""}`}
-                          name="pulse"
-                          value={formData.pulse}
-                          onChange={handleChange}
-                          placeholder="Enter Pulse Rate"
-                          readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                        />
-                        {errors.pulse && <div className="invalid-feedback">{errors.pulse}</div>}
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Temperature (°C) <span className="text-danger">*</span></label>
-                        <input
-                          type="number"
-                          className={`form-control ${errors.temperature ? "is-invalid" : ""}`}
-                          name="temperature"
-                          value={formData.temperature}
-                          onChange={handleChange}
-                          placeholder="Enter Temperature"
-                          step="0.1"
-                          readOnly={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
-                        />
-                        {errors.temperature && <div className="invalid-feedback">{errors.temperature}</div>}
-                      </div>
-                    </div>
+                    ) : (
+                      <div className="text-muted text-center py-3">No previous screenings found</div>
+                    )}
                   </div>
                 </div>
 
-                {/* Screening Result Card */}
+                {/* Add New Screening Section */}
                 <div className="card shadow mb-3">
                   <div className="card-header py-3 border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Screening Result</h6>
+                    <h6 className="mb-0 fw-bold">Add New Screening</h6>
                   </div>
                   <div className="card-body">
                     <div className="row g-3">
+                      <div className="col-md-3">
+                        <label className="form-label">Screening Date <span className="text-danger">*</span></label>
+                        <input
+                          type="date"
+                          name="screeningDate"
+                          className={`form-control ${newScreeningErrors.screeningDate ? "is-invalid" : ""}`}
+                          value={newScreening.screeningDate}
+                          onChange={handleNewScreeningChange}
+                          max={new Date().toISOString().split("T")[0]}
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.screeningDate && <div className="invalid-feedback">{newScreeningErrors.screeningDate}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Hemoglobin (g/dL) <span className="text-danger">*</span></label>
+                        <input
+                          type="number"
+                          name="hemoglobin"
+                          className={`form-control ${newScreeningErrors.hemoglobin ? "is-invalid" : ""}`}
+                          value={newScreening.hemoglobin}
+                          onChange={handleNewScreeningChange}
+                          placeholder="Enter Hemoglobin"
+                          step="0.1"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.hemoglobin && <div className="invalid-feedback">{newScreeningErrors.hemoglobin}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Weight (kg) <span className="text-danger">*</span></label>
+                        <input
+                          type="number"
+                          name="weight"
+                          className={`form-control ${newScreeningErrors.weight ? "is-invalid" : ""}`}
+                          value={newScreening.weight}
+                          onChange={handleNewScreeningChange}
+                          placeholder="Enter Weight"
+                          step="0.1"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.weight && <div className="invalid-feedback">{newScreeningErrors.weight}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Height (cm) <span className="text-danger">*</span></label>
+                        <input
+                          type="number"
+                          name="height"
+                          className={`form-control ${newScreeningErrors.height ? "is-invalid" : ""}`}
+                          value={newScreening.height}
+                          onChange={handleNewScreeningChange}
+                          placeholder="Enter Height"
+                          step="0.1"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.height && <div className="invalid-feedback">{newScreeningErrors.height}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Blood Pressure <span className="text-danger">*</span></label>
+                        <input
+                          type="text"
+                          name="bloodPressure"
+                          className={`form-control ${newScreeningErrors.bloodPressure ? "is-invalid" : ""}`}
+                          value={newScreening.bloodPressure}
+                          onChange={handleNewScreeningChange}
+                          placeholder="120/80"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.bloodPressure && <div className="invalid-feedback">{newScreeningErrors.bloodPressure}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Pulse Rate (bpm) <span className="text-danger">*</span></label>
+                        <input
+                          type="number"
+                          name="pulse"
+                          className={`form-control ${newScreeningErrors.pulse ? "is-invalid" : ""}`}
+                          value={newScreening.pulse}
+                          onChange={handleNewScreeningChange}
+                          placeholder="Enter Pulse Rate"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.pulse && <div className="invalid-feedback">{newScreeningErrors.pulse}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Temperature (°C) <span className="text-danger">*</span></label>
+                        <input
+                          type="number"
+                          name="temperature"
+                          className={`form-control ${newScreeningErrors.temperature ? "is-invalid" : ""}`}
+                          value={newScreening.temperature}
+                          onChange={handleNewScreeningChange}
+                          placeholder="Enter Temperature"
+                          step="0.1"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.temperature && <div className="invalid-feedback">{newScreeningErrors.temperature}</div>}
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label">Conducted By <span className="text-danger">*</span></label>
+                        <input
+                          type="text"
+                          name="conductedBy"
+                          className={`form-control ${newScreeningErrors.conductedBy ? "is-invalid" : ""}`}
+                          value={newScreening.conductedBy}
+                          onChange={handleNewScreeningChange}
+                          placeholder="Enter name"
+                          disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                        />
+                        {newScreeningErrors.conductedBy && <div className="invalid-feedback">{newScreeningErrors.conductedBy}</div>}
+                      </div>
+                    </div>
+
+                    <div className="row g-3 mt-2">
                       <div className="col-md-4">
                         <label className="form-label">Screen Result <span className="text-danger">*</span></label>
                         <div>
@@ -946,13 +1268,13 @@ const DonorRegistrationViewUpdate = () => {
                               className="form-check-input"
                               type="radio"
                               name="screenResult"
-                              id="screenPass"
+                              id="newScreenPass"
                               value="pass"
-                              checked={formData.screenResult === "pass"}
-                              onChange={handleChange}
+                              checked={newScreening.screenResult === "pass"}
+                              onChange={handleNewScreeningChange}
                               disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            <label className="form-check-label" htmlFor="screenPass">
+                            <label className="form-check-label" htmlFor="newScreenPass">
                               Pass
                             </label>
                           </div>
@@ -961,18 +1283,18 @@ const DonorRegistrationViewUpdate = () => {
                               className="form-check-input"
                               type="radio"
                               name="screenResult"
-                              id="screenFail"
+                              id="newScreenFail"
                               value="fail"
-                              checked={formData.screenResult === "fail"}
-                              onChange={handleChange}
+                              checked={newScreening.screenResult === "fail"}
+                              onChange={handleNewScreeningChange}
                               disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            <label className="form-check-label" htmlFor="screenFail">
+                            <label className="form-check-label" htmlFor="newScreenFail">
                               Fail
                             </label>
                           </div>
                         </div>
-                        {errors.screenResult && <div className="text-danger small mt-1">{errors.screenResult}</div>}
+                        {newScreeningErrors.screenResult && <div className="text-danger small mt-1">{newScreeningErrors.screenResult}</div>}
                       </div>
 
                       <div className="col-md-4">
@@ -983,13 +1305,13 @@ const DonorRegistrationViewUpdate = () => {
                               className="form-check-input"
                               type="radio"
                               name="deferralType"
-                              id="deferralTemporary"
+                              id="newDeferralTemporary"
                               value="temporary"
-                              checked={formData.deferralType === "temporary"}
-                              onChange={handleChange}
-                              disabled={formData.screenResult === "pass" || selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                              checked={newScreening.deferralType === "temporary"}
+                              onChange={handleNewScreeningChange}
+                              disabled={newScreening.screenResult === "pass" || selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            <label className="form-check-label" htmlFor="deferralTemporary">
+                            <label className="form-check-label" htmlFor="newDeferralTemporary">
                               Temporary
                             </label>
                           </div>
@@ -998,33 +1320,45 @@ const DonorRegistrationViewUpdate = () => {
                               className="form-check-input"
                               type="radio"
                               name="deferralType"
-                              id="deferralPermanent"
+                              id="newDeferralPermanent"
                               value="permanent"
-                              checked={formData.deferralType === "permanent"}
-                              onChange={handleChange}
-                              disabled={formData.screenResult === "pass" || selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                              checked={newScreening.deferralType === "permanent"}
+                              onChange={handleNewScreeningChange}
+                              disabled={newScreening.screenResult === "pass" || selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                             />
-                            <label className="form-check-label" htmlFor="deferralPermanent">
+                            <label className="form-check-label" htmlFor="newDeferralPermanent">
                               Permanent
                             </label>
                           </div>
                         </div>
-                        {errors.deferralType && <div className="text-danger small mt-1">{errors.deferralType}</div>}
+                        {newScreeningErrors.deferralType && <div className="text-danger small mt-1">{newScreeningErrors.deferralType}</div>}
                       </div>
 
                       <div className="col-md-4">
                         <label className="form-label">Deferral Reason</label>
                         <textarea
-                          className={`form-control ${errors.deferralReason ? "is-invalid" : ""}`}
+                          className={`form-control ${newScreeningErrors.deferralReason ? "is-invalid" : ""}`}
                           name="deferralReason"
-                          value={formData.deferralReason}
-                          onChange={handleChange}
+                          value={newScreening.deferralReason}
+                          onChange={handleNewScreeningChange}
                           placeholder="Enter deferral reason"
                           rows="2"
-                          disabled={formData.screenResult === "pass" || selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                          disabled={newScreening.screenResult === "pass" || selectedRecord?.status === "a" || selectedRecord?.status === "p"}
                         />
-                        {errors.deferralReason && <div className="invalid-feedback">{errors.deferralReason}</div>}
+                        {newScreeningErrors.deferralReason && <div className="invalid-feedback">{newScreeningErrors.deferralReason}</div>}
                       </div>
+                    </div>
+
+                    <div className="mt-3 d-flex justify-content-end">
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={handleAddNewScreening}
+                        disabled={selectedRecord?.status === "a" || selectedRecord?.status === "p"}
+                      >
+                        <i className="fa fa-plus me-2"></i>
+                        Add Screening
+                      </button>
                     </div>
                   </div>
                 </div>
@@ -1088,12 +1422,9 @@ const DonorRegistrationViewUpdate = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            {/* Header Section */}
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2 mb-0">Donor Registration View & Update</h4>
               <div className="d-flex justify-content-between align-items-center">
-
-
                   <>
                     <form className="d-inline-block searchform me-4" role="search">
                       <div className="input-group searchinput">
@@ -1103,15 +1434,13 @@ const DonorRegistrationViewUpdate = () => {
                           placeholder="Search by Phone Number"
                           aria-label="Search"
                           value={searchQuery}
-                          onChange={handleSearchChange}
+                          onChange={(e) => setSearchQuery(e.target.value)}
                         />
                         <span className="input-group-text" id="search-icon">
                           <i className="fa fa-search"></i>
                         </span>
                       </div>
                     </form>
-                   
-
                   </>
               </div>
             </div>
@@ -1119,7 +1448,7 @@ const DonorRegistrationViewUpdate = () => {
             <div className="card-body">
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
-                  <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                  <thead >
                     <tr>
                       <th>Donor ID</th>
                       <th>Name</th>
@@ -1159,8 +1488,7 @@ const DonorRegistrationViewUpdate = () => {
                               onClick={(e) => handleEditClick(donor, e)} 
                               title={donor.status === "s" || donor.status === "r" ? "Edit Donor" : "View Donor"}
                             >
-                              
-                              <i   className={donor.status === "s" || donor.status === "r" ? "fa fa-pencil" : "fa fa-eye"}></i>
+                              <i className={donor.status === "s" || donor.status === "r" ? "fa fa-pencil" : "fa fa-eye"}></i>
                             </button>
                           </td>
                         </tr>
