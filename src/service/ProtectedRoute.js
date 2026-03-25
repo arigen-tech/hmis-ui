@@ -219,6 +219,9 @@ const validRoutes = [
   "/PendingForIssue",
   "/BloodInventoryStockReport",
   "/ComponentWiseStockReport",
+  "/ComponentExpiryReport",
+  "/DiscardAnalysisReport",
+  "/UsageByWardOTReport",
   
 ];
 
