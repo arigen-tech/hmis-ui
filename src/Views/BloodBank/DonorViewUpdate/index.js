@@ -1,7 +1,54 @@
 import { useState, useEffect, useRef } from "react"
+import { createPortal } from "react-dom"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+
+// Mock data for patient suggestions (for search dropdown)
+const mockDonorSuggestions = [
+  { donorName: "John Doe", donorUhid: "DON001", mobileNo: "9876543210", bloodGroup: "A+" },
+  { donorName: "Jane Smith", donorUhid: "DON002", mobileNo: "9876543211", bloodGroup: "B+" },
+  { donorName: "Robert Johnson", donorUhid: "DON003", mobileNo: "9876543212", bloodGroup: "O+" },
+  { donorName: "Mary Williams", donorUhid: "DON004", mobileNo: "9876543213", bloodGroup: "AB+" },
+  { donorName: "James Brown", donorUhid: "DON005", mobileNo: "9876543214", bloodGroup: "A-" },
+]
+
+// PortalDropdown Component - Fixed positioning
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4,
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "250px",
+        overflowY: "auto",
+        background: "#fff",
+        border: "1px solid #dee2e6",
+        borderRadius: "4px",
+        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
+      });
+    };
+
+    updatePosition();
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(<div style={style}>{children}</div>, document.body);
+};
 
 const DonorRegistrationViewUpdate = () => {
   const [currentView, setCurrentView] = useState("list")
@@ -116,36 +163,6 @@ const DonorRegistrationViewUpdate = () => {
           deferralReason: "Low hemoglobin level",
           conductedBy: "Abrar"
         }
-      ],
-       previousScreenings: [
-        {
-          id: 1,
-          screeningDate: "2024-01-15",
-          hemoglobin: "14.2",
-          weight: "65.0",
-          height: "175",
-          bloodPressure: "118/78",
-          pulse: "70",
-          temperature: "36.6",
-          screenResult: "pass",
-          deferralType: "",
-          deferralReason: "",
-          conductedBy: "rakesh"
-        },
-        {
-          id: 2,
-          screeningDate: "2024-06-20",
-          hemoglobin: "14.8",
-          weight: "66.0",
-          height: "175",
-          bloodPressure: "122/82",
-          pulse: "72",
-          temperature: "36.7",
-          screenResult: "pass",
-          deferralType: "",
-          deferralReason: "",
-          conductedBy: "Dr. Raju"
-        }
       ]
     },
     {
@@ -259,7 +276,19 @@ const DonorRegistrationViewUpdate = () => {
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [searchQuery, setSearchQuery] = useState("")
+  
+  // Search state
+  const [searchFilters, setSearchFilters] = useState({
+    donorName: "",
+    mobileNo: ""
+  })
+  
+  // Dropdown search for donor name
+  const [donorDropdown, setDonorDropdown] = useState([])
+  const [showDonorDropdown, setShowDonorDropdown] = useState(false)
+  const [isDonorLoading, setIsDonorLoading] = useState(false)
+  const debounceDonorRef = useRef(null)
+  const donorInputRef = useRef(null)
 
   const [formData, setFormData] = useState({
     firstName: "",
@@ -315,43 +344,86 @@ const DonorRegistrationViewUpdate = () => {
     })
   }
 
+  // Close dropdown on outside click
   useEffect(() => {
-    setCurrentPage(1);
-
-    if (!searchQuery.trim()) {
-      setFilteredDonorList(donorList);
-      return;
+    const handleClickOutside = (e) => {
+      if (donorInputRef.current && !donorInputRef.current.contains(e.target)) {
+        setShowDonorDropdown(false)
+      }
     }
+    document.addEventListener("mousedown", handleClickOutside)
+    return () => document.removeEventListener("mousedown", handleClickOutside)
+  }, [])
 
-    const query = searchQuery.trim();
-    const filtered = donorList.filter(item =>
-      item.donorMobileNumber?.toLowerCase().includes(query.toLowerCase())
-    );
+  // Load initial data
+  useEffect(() => {
+    setFilteredDonorList(donorList)
+  }, [donorList])
 
-    setFilteredDonorList(filtered);
-  }, [searchQuery, donorList]);
-
-  const handleSearch = () => {
-    if (!searchQuery.trim()) {
-      setFilteredDonorList(donorList);
-      setCurrentPage(1);
-      return;
+  // Filter donors based on search
+  useEffect(() => {
+    let filtered = [...donorList];
+    
+    if (searchFilters.donorName.trim()) {
+      filtered = filtered.filter(donor =>
+        `${donor.donorFn} ${donor.donorMn} ${donor.donorLn}`.toLowerCase().includes(searchFilters.donorName.toLowerCase())
+      );
     }
-
-    const query = searchQuery.trim();
-    const filtered = donorList.filter(item =>
-      item.donorMobileNumber?.includes(query)
-    );
-
+    
+    if (searchFilters.mobileNo.trim()) {
+      filtered = filtered.filter(donor =>
+        donor.donorMobileNumber.includes(searchFilters.mobileNo)
+      );
+    }
+    
     setFilteredDonorList(filtered);
     setCurrentPage(1);
+  }, [searchFilters, donorList]);
+
+  const handleDonorNameSearch = (value) => {
+    setSearchFilters(prev => ({ ...prev, donorName: value }))
+    
+    if (debounceDonorRef.current) clearTimeout(debounceDonorRef.current)
+    
+    debounceDonorRef.current = setTimeout(async () => {
+      if (!value.trim()) {
+        setDonorDropdown([])
+        setShowDonorDropdown(false)
+        return
+      }
+      
+      setIsDonorLoading(true)
+      // Simulate API call
+      setTimeout(() => {
+        const filtered = mockDonorSuggestions.filter(donor =>
+          donor.donorName.toLowerCase().includes(value.toLowerCase())
+        )
+        setDonorDropdown(filtered)
+        setShowDonorDropdown(true)
+        setIsDonorLoading(false)
+      }, 500)
+    }, 500)
   }
 
-  const handleShowAll = () => {
-    setSearchQuery("");
-    setFilteredDonorList(donorList);
-    setCurrentPage(1);
+  const handleDonorSelect = (donor) => {
+    setSearchFilters(prev => ({ ...prev, donorName: donor.donorName }))
+    setShowDonorDropdown(false)
   }
+
+  const handleSearchChange = (e) => {
+    const { name, value } = e.target;
+    setSearchFilters(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  const handleReset = () => {
+    setSearchFilters({
+      donorName: "",
+      mobileNo: ""
+    });
+  };
 
   const handleEditClick = (record, e) => {
     e.stopPropagation()
@@ -1115,7 +1187,7 @@ const DonorRegistrationViewUpdate = () => {
                               <th>Deferral Type</th>
                               <th>Deferral Reason</th>
                               <th>Conducted By</th>
-                            </tr>
+                             </tr>
                           </thead>
                           <tbody>
                             {allScreenings.map((screening, index) => (
@@ -1402,108 +1474,185 @@ const DonorRegistrationViewUpdate = () => {
     )
   }
 
-  // List View
-  const filteredDonors = filteredDonorList.filter(donor => {
-    if (!fromDate || !toDate) return true;
-    const donorDate = new Date(donor.regDate);
-    const from = new Date(fromDate);
-    const to = new Date(toDate);
-    return donorDate >= from && donorDate <= to;
-  });
-
-  const totalPages = Math.ceil(filteredDonors.length / DEFAULT_ITEMS_PER_PAGE);
-  const currentItems = filteredDonors.slice(
-    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
-    currentPage * DEFAULT_ITEMS_PER_PAGE
-  );
+  // List View with Search similar to PendingForCrossMatch
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredDonorList.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="content-wrapper">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header d-flex justify-content-between align-items-center">
+            <div className="card-header">
               <h4 className="card-title p-2 mb-0">Donor Registration View & Update</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                  <>
-                    <form className="d-inline-block searchform me-4" role="search">
-                      <div className="input-group searchinput">
-                        <input
-                          type="search"
-                          className="form-control"
-                          placeholder="Search by Phone Number"
-                          aria-label="Search"
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                        <span className="input-group-text" id="search-icon">
-                          <i className="fa fa-search"></i>
-                        </span>
-                      </div>
-                    </form>
-                  </>
-              </div>
             </div>
 
             <div className="card-body">
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead >
-                    <tr>
-                      <th>Donor ID</th>
-                      <th>Name</th>
-                      <th>Mobile</th>
-                      <th>Gender</th>
-                      <th>Blood Group</th>
-                      <th>Registration Date</th>
-                      <th>Screening Result</th>
-                      <th>Status</th>
-                      <th className="text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {currentItems.length === 0 ? (
-                      <tr>
-                        <td colSpan={9} className="text-center">No donors found.</td>
-                      </tr>
-                    ) : (
-                      currentItems.map((donor) => (
-                        <tr key={donor.id}>
-                          <td>{donor.donorUhid || "N/A"}</td>
-                          <td>{`${donor.donorFn || ""} ${donor.donorMn || ""} ${donor.donorLn || ""}`.trim()}</td>
-                          <td>{donor.donorMobileNumber || "N/A"}</td>
-                          <td>
-                            {genderData.find(g => g.id === donor.donorGenderId)?.genderName || "N/A"}
-                          </td>
-                          <td>
-                            {bloodGroupData.find(bg => bg.id === donor.donorBloodGroupId)?.bloodGroupName || "N/A"}
-                          </td>
-                          <td>{formatDate(donor.regDate)}</td>
-                          <td>{getStatusBadge(donor.screenResult)}</td>
-                          <td>{getApprovalStatusBadge(donor.status)}</td>
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-primary"
-                              onClick={(e) => handleEditClick(donor, e)} 
-                              title={donor.status === "s" || donor.status === "r" ? "Edit Donor" : "View Donor"}
-                            >
-                              <i className={donor.status === "s" || donor.status === "r" ? "fa fa-pencil" : "fa fa-eye"}></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
+              {/* Search Section - Similar to PendingForCrossMatch layout */}
+              <div className="row g-3 align-items-end">
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Donor Name</label>
+                  <div className="dropdown-search-container">
+                    <input
+                      ref={donorInputRef}
+                      type="text"
+                      className="form-control"
+                      name="donorName"
+                      value={searchFilters.donorName}
+                      autoComplete="off"
+                      onChange={(e) => handleDonorNameSearch(e.target.value)}
+                      placeholder="Type donor name..."
+                    />
+                    
+                    <PortalDropdown
+                      anchorRef={donorInputRef}
+                      show={showDonorDropdown}
+                    >
+                      {isDonorLoading && donorDropdown.length === 0 ? (
+                        <div className="text-center p-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                        </div>
+                      ) : donorDropdown.length > 0 ? (
+                        donorDropdown.map((donor, idx) => (
+                          <div
+                            key={idx}
+                            className="p-2"
+                            onMouseDown={(e) => {
+                              e.preventDefault()
+                              handleDonorSelect(donor)
+                            }}
+                            style={{
+                              cursor: "pointer",
+                              borderBottom: "1px solid #f0f0f0",
+                            }}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor = "#f8f9fa")
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor = "transparent")
+                            }
+                          >
+                            <div className="fw-bold">{donor.donorName}</div>
+                            <small className="text-muted">
+                              {donor.donorUhid} | {donor.mobileNo} | {donor.bloodGroup}
+                            </small>
+                          </div>
+                        ))
+                      ) : (
+                        <div className="p-2 text-muted text-center">No donors found</div>
+                      )}
+                    </PortalDropdown>
+                  </div>
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Mobile No</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="mobileNo"
+                    value={searchFilters.mobileNo}
+                    onChange={handleSearchChange}
+                    placeholder="Enter mobile number"
+                    maxLength="10"
+                  />
+                </div>
+
+                <div className="col-md-4 gap-2 d-flex">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={() => setCurrentPage(1)}
+                  >
+                    Search
+                  </button>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleReset}
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
 
-              <Pagination
-                totalItems={filteredDonors.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+              {/* Donor List Table */}
+              <div className="mt-4">
+                <div className="table-responsive">
+                  <table className="table table-bordered table-hover align-middle">
+                    <thead>
+                      <tr>
+                        <th>Donor ID</th>
+                        <th>Name</th>
+                        <th>Mobile No.</th>
+                        <th>Gender</th>
+                        <th>Blood Group</th>
+                        <th>Registration Date</th>
+                        <th>Screening Result</th>
+                        <th>Status</th>
+                        <th className="text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.length === 0 ? (
+                        <tr>
+                          <td colSpan={9} className="text-center">No donors found.</td>
+                        </tr>
+                      ) : (
+                        currentItems.map((donor) => (
+                          <tr key={donor.id}>
+                            <td>{donor.donorUhid || "N/A"}</td>
+                            <td>{`${donor.donorFn || ""} ${donor.donorMn || ""} ${donor.donorLn || ""}`.trim()}</td>
+                            <td>{donor.donorMobileNumber || "N/A"}</td>
+                            <td>
+                              {genderData.find(g => g.id === donor.donorGenderId)?.genderName || "N/A"}
+                            </td>
+                            <td>
+                              {bloodGroupData.find(bg => bg.id === donor.donorBloodGroupId)?.bloodGroupName || "N/A"}
+                            </td>
+                            <td>{formatDate(donor.regDate)}</td>
+                            <td>{getStatusBadge(donor.screenResult)}</td>
+                            <td>{getApprovalStatusBadge(donor.status)}</td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-primary"
+                                onClick={(e) => handleEditClick(donor, e)} 
+                                title={donor.status === "s" || donor.status === "r" ? "Edit Donor" : "View Donor"}
+                              >
+                                <i className={donor.status === "s" || donor.status === "r" ? "fa fa-pencil" : "fa fa-eye"}></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+
+                {/* Pagination */}
+                {filteredDonorList.length > 0 && (
+                  <div className="mt-3">
+                    <Pagination
+                      totalItems={filteredDonorList.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
