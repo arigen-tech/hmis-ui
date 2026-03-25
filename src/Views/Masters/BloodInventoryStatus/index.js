@@ -1,9 +1,15 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 import { MAS_BLOOD_INVENTORY_STATUS } from "../../../config/apiConfig";
-import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import {
+  getRequest,
+  putRequest,
+  postRequest,
+} from "../../../service/apiService";
 import {
   FETCH_BLOOD_INVENTORY_STATUS,
   STATUS,
@@ -51,7 +57,9 @@ const BloodInventoryStatus = () => {
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_BLOOD_INVENTORY_STATUS}/getAll/${flag}`);
+      const { response } = await getRequest(
+        `${MAS_BLOOD_INVENTORY_STATUS}/getAll/${flag}`,
+      );
       setData(response || []);
     } catch {
       showPopup(FETCH_BLOOD_INVENTORY_STATUS, "error");
@@ -66,12 +74,12 @@ const BloodInventoryStatus = () => {
   }, []);
 
   const filteredData = data.filter((rec) =>
-    rec.statusCode?.toLowerCase().includes(searchQuery.toLowerCase())
+    rec.statusCode?.toLowerCase().includes(searchQuery.toLowerCase()),
   );
 
   const currentItems = filteredData.slice(
     (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
-    currentPage * DEFAULT_ITEMS_PER_PAGE
+    currentPage * DEFAULT_ITEMS_PER_PAGE,
   );
 
   const handleSearchChange = (e) => {
@@ -94,7 +102,9 @@ const BloodInventoryStatus = () => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
     setFormData(updated);
-    setIsFormValid(updated.statusCode.trim() !== "" && updated.description.trim() !== "");
+    setIsFormValid(
+      updated.statusCode.trim() !== "" && updated.description.trim() !== "",
+    );
   };
 
   const handleSave = async (e) => {
@@ -108,7 +118,7 @@ const BloodInventoryStatus = () => {
           {
             statusCode: formData.statusCode.trim(),
             description: formData.description.trim(),
-          }
+          },
         );
 
         showPopup(UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
@@ -143,7 +153,10 @@ const BloodInventoryStatus = () => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status?.toLowerCase() === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE,
+      newStatus:
+        rec.status?.toLowerCase() === STATUS.ACTIVE
+          ? STATUS.INACTIVE
+          : STATUS.ACTIVE,
     });
   };
 
@@ -157,7 +170,7 @@ const BloodInventoryStatus = () => {
       setLoading(true);
 
       await putRequest(
-        `${MAS_BLOOD_INVENTORY_STATUS}/status/${confirmDialog.record.inventoryStatusId}?status=${confirmDialog.newStatus}`
+        `${MAS_BLOOD_INVENTORY_STATUS}/status/${confirmDialog.record.inventoryStatusId}?status=${confirmDialog.newStatus}`,
       );
 
       showPopup(UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
@@ -245,7 +258,9 @@ const BloodInventoryStatus = () => {
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status?.toLowerCase() === STATUS.ACTIVE}
+                            checked={
+                              rec.status?.toLowerCase() === STATUS.ACTIVE
+                            }
                             onChange={() => handleSwitchChange(rec)}
                           />
 
@@ -261,6 +276,7 @@ const BloodInventoryStatus = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
+                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>

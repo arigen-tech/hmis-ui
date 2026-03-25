@@ -310,6 +310,7 @@ const BloodFailureReasonMaster = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
+                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
