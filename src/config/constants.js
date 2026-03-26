@@ -883,6 +883,17 @@ export const FAIL_UPDATE_STATUS = "Failed to update status";
 
 
 
+//OPDQuestionnaireMater
+export const FETCH_OPD_QUESTION = "Failed to fetch records";
+export const DUPLICATE_OPD_QUESTION = "Question already exists under this heading";
+export const UPDATE_OPD_QUESTION ="Record updated successfully";
+export const ADD_OPD_QUESTION = "Record added successfully";
+export const STATUS_OPD_QUESTION = "Status updated successfully";
+export const STATUS_UPDATE_OPD_QUESTION= "Status update failed";
+
+
+
+
 
 //updatepatientragistration
 export const UNEXPECTED_API_RESPONSE_ERR = "Unexpected API response format:";
