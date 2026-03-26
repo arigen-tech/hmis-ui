@@ -222,6 +222,7 @@ const validRoutes = [
   "/ComponentExpiryReport",
   "/DiscardAnalysisReport",
   "/UsageByWardOTReport",
+  "/printBarcode",
   
 ];
 
