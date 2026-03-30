@@ -892,6 +892,14 @@ export const STATUS_OPD_QUESTION = "Status updated successfully";
 export const STATUS_UPDATE_OPD_QUESTION= "Status update failed";
 
 
+//Designation
+export const FETCH_DESIGNATION = "Failed to fetch records";
+export const DUPLICATE_DESIGNATION = "Designation name already exists";
+export const ADD_DESIGNATION =  "Added successfully";
+ export const UPDATE_DESIGNATION = "Updated successfully";
+ export const STATUS_UPDATE_DESIGNATION = "Status update failed";
+ 
+
 
 
 
