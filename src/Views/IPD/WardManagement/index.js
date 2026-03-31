@@ -1,25 +1,27 @@
 import { useState } from "react"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
+import ClinicalDashboard from "../ClinicalDashboard"
+import BedTransfer from "../BedTransfer"
+import VitalsandMonitoring from "../VitalsandMonitoring"
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
-  const [activeTab, setActiveTab] = useState("Doctor Visit / Case Notes")
+  const [activeTab, setActiveTab] = useState("Clinical Dashboard")
   const [showPatientList, setShowPatientList] = useState(true)
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false)
 
   const caseSheetTabs = [
-   
-  "Clinical Dashboard",
-  "Doctor Visit / Case Notes",
-  "Investigations / Orders",
-  "Medication & Treatment (MAR)",
-  "Vitals & Monitoring",
-  "Nursing Care / Procedures",
-  "Diet",
-  "Bed Transfer",
-  "Shift Handover",
-  "Discharge"
-]
+    "Clinical Dashboard",
+    "Doctor Visit / Case Notes",
+    "Investigations / Orders",
+    "Medication & Treatment (MAR)",
+    "Vitals & Monitoring",
+    "Nursing Care / Procedures",
+    "Diet",
+    "Bed Transfer",
+    "Shift Handover",
+    "Discharge"
+  ]
 
   // Patient data
   const patientData = [
@@ -58,7 +60,7 @@ const WardManagement = () => {
 
   const handlePatientSelect = (patient) => {
     setSelectedPatient(patient)
-    setActiveTab("Doctor Visit / Case Notes")
+    setActiveTab("Clinical Dashboard")
   }
 
   const handleBackToCards = () => {
@@ -296,7 +298,6 @@ const WardManagement = () => {
                                     )}
                                   </div>
                                 </div>
-                               
                               </button>
                             ))}
                           </div>
@@ -387,14 +388,25 @@ const WardManagement = () => {
                             <h6 className="mb-0">{activeTab}</h6>
                           </div>
                           <div className="card-body">
+                            {activeTab === "Clinical Dashboard" && (
+                              <ClinicalDashboard selectedPatient={selectedPatient} />
+                            )}
+
                             {activeTab === "Doctor Visit / Case Notes" && (
                               <DoctorVisitCaseNotes selectedPatient={selectedPatient} />
                             )}
 
-                            {activeTab !== "Doctor Visit / Case Notes" && (
+                            {activeTab === "Bed Transfer" && (
+  <BedTransfer selectedPatient={selectedPatient} />
+)}
+
+{activeTab ==="Vitals & Monitoring" && (
+  <VitalsandMonitoring selectedPatient={selectedPatient}/>
+)}
+
+                            {activeTab !== "Clinical Dashboard" && activeTab !== "Doctor Visit / Case Notes" && (
                               <div>
-                                <h6>{activeTab} for {selectedPatient.patientName}</h6>
-                                <p>Content for {activeTab} will be displayed here.</p>
+                               
                                 <div className="mt-3">
                                   <button className="btn btn-primary me-2">Save Changes</button>
                                   <button className="btn btn-secondary">Cancel</button>
