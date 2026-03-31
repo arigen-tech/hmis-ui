@@ -236,7 +236,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                     {vitalsHistory.map((vitals, index) => {
                       const isEditable = isLastRow(index, vitalsHistory)
                       return (
-                        <tr key={vitals.id}>
+                        <tr key={vitals.id}className={isEditable ? "" : "table-secondary"}>
                           <td className="">
                             {isEditable ? (
                               <input
@@ -409,9 +409,12 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                 </table>
               </div>
             </div>
-            <div className="d-flex justify-content-end py-2 px-2 ">
+            <div className="d-flex gap-2 justify-content-end py-2 px-2 ">
               <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
-                Submit Vitals
+                Save
+              </button>
+               <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
+                Print
               </button>
             </div>
           </div>
@@ -459,7 +462,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                       {intakeEntries.map((entry, index) => {
                         const isEditable = isLastRow(index, intakeEntries)
                         return (
-                          <tr key={entry.id}>
+                          <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
                             <td className="">
                               {isEditable ? (
                                 <input
@@ -560,7 +563,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                                 <span>{entry.ivQty || 0} ml</span>
                               )}
                             </td>
-                            <td className="bg-light">{entry.total} ml</td>
+                            <td className="">{entry.total} ml</td>
                             <td className="">
                               {isEditable ? (
                                 <input
@@ -581,9 +584,12 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                   </table>
                 </div>
               </div>
-              <div className="d-flex justify-content-end px-2 py-2">
+              <div className="d-flex gap-2 justify-content-end px-2 py-2">
                 <button className="btn btn-success btn-sm" onClick={handleIntakeSubmit}>
-                  Submit Intake
+                  Save
+                </button>
+                <button className="btn btn-success btn-sm" >
+                  Print
                 </button>
               </div>
             </div>
@@ -612,7 +618,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                       {outputEntries.map((entry, index) => {
                         const isEditable = isLastRow(index, outputEntries)
                         return (
-                          <tr key={entry.id}>
+                          <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
                             <td className="">
                               {isEditable ? (
                                 <input
@@ -689,7 +695,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                                 <span>{entry.as} ml</span>
                               )}
                             </td>
-                            <td className="bg-light">{entry.total} ml</td>
+                            <td className="">{entry.total} ml</td>
                             <td className="">
                               {isEditable ? (
                                 <input
@@ -710,9 +716,12 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                   </table>
                 </div>
               </div>
-              <div className="card-footer bg-light d-flex justify-content-end py-2 px-2">
+              <div className="card-footer gap-2 bg-light d-flex justify-content-end py-2 px-2">
                 <button className="btn btn-success btn-sm " onClick={handleOutputSubmit}>
-                  Submit Output
+                  Save
+                </button>
+                 <button className="btn btn-success btn-sm">
+                  Print
                 </button>
               </div>
             </div>
