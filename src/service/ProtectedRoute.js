@@ -223,6 +223,7 @@ const validRoutes = [
   "/DiscardAnalysisReport",
   "/UsageByWardOTReport",
   "/printBarcode",
+  "/BloodBankStockAndAvailability",
   
 ];
 

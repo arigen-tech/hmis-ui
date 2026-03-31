@@ -220,6 +220,7 @@ import ComponentWiseStockReport from './Views/BloodBank/ComponentWiseStockReport
 import DiscardAnalysisReport from './Views/BloodBank/DiscardAnalysisReport';
 import UsageByWardOTReport from './Views/BloodBank/UsageByWardOTReport';
 import PrintBarcode from './Views/Laboratory/PrintBarcode';
+import BloodBankStockAndAvailability from './Views/BloodBank/BloodBankStockAndAvailability';
 
 
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
@@ -474,6 +475,7 @@ function App() {
                 <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />
+                <Route path="/BloodBankStockAndAvailability" element={<BloodBankStockAndAvailability/>} />
               </Route>
             </Route>
 
