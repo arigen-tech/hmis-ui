@@ -224,6 +224,10 @@ const validRoutes = [
   "/UsageByWardOTReport",
   "/printBarcode",
   "/BloodBankStockAndAvailability",
+  "/OPDBillingRegister",
+  "/LabBillingRegister",
+  "/RadiologyBillingRegister",
+  "/CollectionReportServiceCategory",
   
 ];
 
