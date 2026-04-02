@@ -221,9 +221,9 @@ import DiscardAnalysisReport from './Views/BloodBank/DiscardAnalysisReport';
 import UsageByWardOTReport from './Views/BloodBank/UsageByWardOTReport';
 import PrintBarcode from './Views/Laboratory/PrintBarcode';
 import BloodBankStockAndAvailability from './Views/BloodBank/BloodBankStockAndAvailability';
-import OPDBillingRegister from './Views/Laboratory/OPDBillingRegister';
-import LabBillingRegister from './Views/Laboratory/LabBillingRegister';
-import RadiologyBillingRegister from './Views/Laboratory/RadiologyBillingRegister';
+// import OPDBillingRegister from './Views/Laboratory/OPDBillingRegister';
+// import LabBillingRegister from './Views/Laboratory/LabBillingRegister';
+// import RadiologyBillingRegister from './Views/Laboratory/RadiologyBillingRegister';
 import CollectionReportServiceCategory from './Views/Laboratory/CollectionReportServiceCategory';
 
 
@@ -481,9 +481,9 @@ function App() {
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />
                 <Route path="/BloodBankStockAndAvailability" element={<BloodBankStockAndAvailability/>} />
-                <Route path="/OPDBillingRegister" element={<OPDBillingRegister/>} />
-                <Route path="/LabBillingRegister" element={<LabBillingRegister/>} />
-                <Route path="RadiologyBillingRegister" element={<RadiologyBillingRegister/>} />
+                {/* <Route path="/OPDBillingRegister" element={<OPDBillingRegister/>} /> */}
+                {/* <Route path="/LabBillingRegister" element={<LabBillingRegister/>} /> */}
+                {/* <Route path="RadiologyBillingRegister" element={<RadiologyBillingRegister/>} /> */}
                 <Route path="/CollectionReportServiceCategory" element={<CollectionReportServiceCategory/>} />
               </Route>
             </Route>
