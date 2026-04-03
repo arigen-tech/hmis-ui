@@ -1,19 +1,46 @@
 import { useState, useEffect } from "react";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading"
-
+import LoadingScreen from "../../../Components/Loading";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest } from "../../../service/apiService";
+import { 
+    DOCTOR_BY_SPECIALITY, 
+    FILTER_OPD_DEPT, 
+    GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, 
+    REQUEST_PARAM_DEPARTMENT_ID, 
+    REQUEST_PARAM_DEPARTMENT_TYPE_CODE, 
+    REQUEST_PARAM_FLAG, 
+    REQUEST_PARAM_FROM_DATE, 
+    REQUEST_PARAM_HOSPITAL_ID, 
+    REQUEST_PARAM_TO_DATE, 
+    STATUS_D, 
+    STATUS_P,
+    OPD_BILLING_REGISTER_END_URL
+} from "../../../config/apiConfig";
+import { 
+    FAIL_TO_LOAD_DOCTORS_ERR_MSG, 
+    FROM_DATE_FUTURE_ERR_MSG, 
+    PAST_DATE_PICK_WARN_MSG, 
+    REPORT_GENERATION_ERR_MSG, 
+    SELECT_DATE_WARN_MSG, 
+    TO_DATE_FUTURE_ERR_MSG 
+} from "../../../config/constants";
 
 const OPDBillingRegister = () => {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
-    const [department, setDepartment] = useState("");
-    const [doctor, setDoctor] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [showReport, setShowReport] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedDepartment, setSelectedDepartment] = useState(null);
+    const [selectedDoctor, setSelectedDoctor] = useState(null);
+    
+    const [isViewLoading, setIsViewLoading] = useState(false);
+    const [isPrintLoading, setIsPrintLoading] = useState(false);
     const [popupMessage, setPopupMessage] = useState(null);
-    const [reportData, setReportData] = useState([]);
+    const [pdfUrl, setPdfUrl] = useState(null);
+    
+    const [departmentOptions, setDepartmentOptions] = useState([]);
+    const [doctorOptions, setDoctorOptions] = useState([]);
+
+    const hospitalId = sessionStorage.getItem("hospitalId");
 
     const getTodayDate = () => {
         return new Date().toISOString().split('T')[0];
@@ -33,151 +60,194 @@ const OPDBillingRegister = () => {
         });
     };
 
+    const fetchDepartments = async () => {
+        try {
+            const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+            if (response?.response) {
+                setDepartmentOptions(response.response);
+            }
+        } catch (error) {
+            console.error("Error fetching departments:", error);
+        }
+    };
+
+    const fetchDoctorsByDepartment = async (departmentId) => {
+        try {
+            setDoctorOptions([]);
+            setSelectedDoctor(null);
+            if (!departmentId) return;
+
+            const response = await getRequest(`${DOCTOR_BY_SPECIALITY}${departmentId}`);
+            if (response?.status === 200 && response?.response) {
+                const mappedDoctors = response.response.map(doc => ({
+                    id: doc.userId,
+                    name: `${doc.firstName} ${doc.middleName ? doc.middleName + ' ' : ''}${doc.lastName}`.trim()
+                }));
+                setDoctorOptions(mappedDoctors);
+            }
+        } catch (error) {
+            console.error("Error fetching doctors:", error);
+            showPopup(FAIL_TO_LOAD_DOCTORS_ERR_MSG, "error");
+        }
+    };
+
+    const handleDepartmentChange = (e) => {
+        const selectedDeptId = e.target.value;
+        const selectedDept = departmentOptions.find(dept => dept.id.toString() === selectedDeptId);
+        setSelectedDepartment(selectedDept || null);
+        setSelectedDoctor(null);
+        setDoctorOptions([]);
+        if (selectedDeptId) {
+            fetchDoctorsByDepartment(selectedDeptId);
+        }
+    };
+
+    const handleDoctorChange = (e) => {
+        const selectedDoctorId = e.target.value;
+        const doctor = doctorOptions.find(doc => doc.id.toString() === selectedDoctorId);
+        setSelectedDoctor(doctor || null);
+    };
+
     const handleFromDateChange = (e) => {
         const selectedDate = e.target.value;
         const today = getTodayDate();
-
         if (selectedDate > today) {
-            showPopup("From date cannot be in the future", "error");
+            showPopup(FROM_DATE_FUTURE_ERR_MSG, "warning");
             setFromDate(today);
             return;
         }
-
         if (toDate && selectedDate > toDate) {
-            showPopup("From date cannot be later than To date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setFromDate(toDate);
             return;
         }
-
         setFromDate(selectedDate);
     };
 
     const handleToDateChange = (e) => {
         const selectedDate = e.target.value;
         const today = getTodayDate();
-
         if (selectedDate > today) {
-            showPopup("To date cannot be in the future", "error");
+            showPopup(TO_DATE_FUTURE_ERR_MSG, "warning");
             setToDate(today);
             return;
         }
-
         if (fromDate && selectedDate < fromDate) {
-            showPopup("To date cannot be earlier than From date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setToDate(fromDate);
             return;
         }
-
         setToDate(selectedDate);
     };
 
-    const handleReport = () => {
+    const validateDates = () => {
         if (!fromDate || !toDate) {
-            showPopup("Please select both From Date and To Date", "error");
-            return;
+            showPopup(SELECT_DATE_WARN_MSG, "warning");
+            return false;
+        }
+        if (fromDate > toDate) {
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
+            return false;
+        }
+        return true;
+    };
+
+    // Helper function to fetch PDF (same as ViewDownLoadReport)
+    const fetchPdf = async (flag) => {
+        const params = new URLSearchParams({
+            [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+            [REQUEST_PARAM_FROM_DATE]: fromDate,
+            [REQUEST_PARAM_TO_DATE]: toDate
+        });
+
+        if (selectedDepartment?.id) {
+            params.append(REQUEST_PARAM_DEPARTMENT_ID, selectedDepartment.id);
         }
 
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup("From Date cannot be later than To Date", "error");
-            return;
+        params.append(REQUEST_PARAM_FLAG, flag);
+
+        const reportUrl = `${OPD_BILLING_REGISTER_END_URL}?${params.toString()}`;
+
+        const response = await fetch(reportUrl, {
+            method: "GET",
+            headers: {
+                Accept: "application/pdf",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch report");
         }
 
-        setIsGenerating(true);
+        return await response.blob();
+    };
 
-        setTimeout(() => {
-            const mockData = generateReportData();
-            setReportData(mockData);
-            setShowReport(true);
-            setIsGenerating(false);
-        }, 1000);
+    const handleViewReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsViewLoading(true);
+            const blob = await fetchPdf(STATUS_D);
+            const fileURL = window.URL.createObjectURL(blob);
+            setPdfUrl(fileURL);
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            showPopup(`${REPORT_GENERATION_ERR_MSG}: ${err.message}`, "error");
+        } finally {
+            setIsViewLoading(false);
+        }
+    };
+
+    // Print functionality exactly like ViewDownLoadReport
+    const handlePrintReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsPrintLoading(true);
+            await fetchPdf(STATUS_P);
+            // Just fetch the PDF with flag "p" - backend handles the printing
+        } catch (err) {
+            console.error("Error printing PDF:", err);
+            showPopup("Unable to print report", "error");
+        } finally {
+            setIsPrintLoading(false);
+        }
     };
 
     const handleReset = () => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
-        setDepartment("");
-        setDoctor("");
-        setShowReport(false);
-        setReportData([]);
-        setCurrentPage(1);
-    };
-
-    const generateReportData = () => {
-        return [
-            {
-                billNo: "OPD-2025-001",
-                billDate: "10-Apr-2025",
-                patientName: "Ramesh Kumar",
-                uhid: "UHID001",
-                department: "General Medicine",
-                doctor: "Dr. Sharma",
-                amount: 500,
-                discount: 50,
-                netAmount: 450,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "OPD-2025-002",
-                billDate: "10-Apr-2025",
-                patientName: "Sunita Devi",
-                uhid: "UHID002",
-                department: "Cardiology",
-                doctor: "Dr. Verma",
-                amount: 800,
-                discount: 0,
-                netAmount: 800,
-                paymentMode: "Card"
-            },
-            {
-                billNo: "OPD-2025-003",
-                billDate: "11-Apr-2025",
-                patientName: "Amit Singh",
-                uhid: "UHID003",
-                department: "Orthopedics",
-                doctor: "Dr. Gupta",
-                amount: 600,
-                discount: 30,
-                netAmount: 570,
-                paymentMode: "UPI"
-            },
-            {
-                billNo: "OPD-2025-004",
-                billDate: "12-Apr-2025",
-                patientName: "Priya Patel",
-                uhid: "UHID004",
-                department: "Pediatrics",
-                doctor: "Dr. Mehta",
-                amount: 400,
-                discount: 20,
-                netAmount: 380,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "OPD-2025-005",
-                billDate: "12-Apr-2025",
-                patientName: "Rajesh Khanna",
-                uhid: "UHID005",
-                department: "General Medicine",
-                doctor: "Dr. Sharma",
-                amount: 750,
-                discount: 75,
-                netAmount: 675,
-                paymentMode: "Card"
-            },
-        ];
+        setSelectedDepartment(null);
+        setSelectedDoctor(null);
+        setDoctorOptions([]);
     };
 
     useEffect(() => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
+        fetchDepartments();
     }, []);
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
+            {popupMessage && (
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
+            )}
+
+            {pdfUrl && (
+                <PdfViewer
+                    pdfUrl={pdfUrl}
+                    onClose={() => {
+                        setPdfUrl(null);
+                    }}
+                    name={`OPD Billing Register Report`}
+                />
+            )}
+
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -221,15 +291,15 @@ const OPDBillingRegister = () => {
                                     </label>
                                     <select
                                         className="form-select"
-                                        value={department}
-                                        onChange={(e) => setDepartment(e.target.value)}
+                                        value={selectedDepartment?.id || ""}
+                                        onChange={handleDepartmentChange}
                                     >
-                                        <option value="">All</option>
-                                        <option value="General Medicine">General Medicine</option>
-                                        <option value="Cardiology">Cardiology</option>
-                                        <option value="Orthopedics">Orthopedics</option>
-                                        <option value="Pediatrics">Pediatrics</option>
-                                        <option value="Gynecology">Gynecology</option>
+                                        <option value="">Select Department</option>
+                                        {departmentOptions.map((dept) => (
+                                            <option key={dept.id} value={dept.id}>
+                                                {dept.departmentName}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -239,14 +309,16 @@ const OPDBillingRegister = () => {
                                     </label>
                                     <select
                                         className="form-select"
-                                        value={doctor}
-                                        onChange={(e) => setDoctor(e.target.value)}
+                                        value={selectedDoctor?.id || ""}
+                                        onChange={handleDoctorChange}
+                                        disabled={!selectedDepartment || doctorOptions.length === 0}
                                     >
-                                        <option value="">All</option>
-                                        <option value="Dr. Sharma">Dr. Sharma</option>
-                                        <option value="Dr. Verma">Dr. Verma</option>
-                                        <option value="Dr. Gupta">Dr. Gupta</option>
-                                        <option value="Dr. Mehta">Dr. Mehta</option>
+                                        <option value="">{!selectedDepartment ? "Select department first" : "Select Doctor"}</option>
+                                        {doctorOptions.map((doctor) => (
+                                            <option key={doctor.id} value={doctor.id}>
+                                                {doctor.name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
                             </div>
@@ -254,50 +326,56 @@ const OPDBillingRegister = () => {
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-end gap-2">
                                     <button
-                                        className="btn btn-success"
-                                        onClick={handleReport}
-                                        disabled={isGenerating}
+                                        className="btn btn-success btn-sm"
+                                        onClick={handleViewReport}
+                                        disabled={isViewLoading || isPrintLoading}
                                     >
-                                        {isGenerating ? (
+                                        {isViewLoading ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                 Generating...
                                             </>
                                         ) : (
-                                            "Report"
+                                            <>
+                                                <i className="fa fa-eye me-2"></i>
+                                                VIEW/DOWNLOAD
+                                            </>
                                         )}
                                     </button>
 
                                     <button
                                         type="button"
-                                        className="btn btn-warning"
+                                        className="btn btn-warning btn-sm"
+                                        onClick={handlePrintReport}
+                                        disabled={isViewLoading || isPrintLoading}
                                     >
-                                        Print 
+                                        {isPrintLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Printing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa fa-print me-2"></i>
+                                                PRINT
+                                            </>
+                                        )}
                                     </button>
 
-                                    
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={handleReset}
+                                        disabled={isViewLoading || isPrintLoading}
+                                    >
+                                        RESET
+                                    </button>
                                 </div>
                             </div>
-
-                            {isGenerating && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen/>
-                                </div>
-                            )}
-
-                           
                         </div>
                     </div>
                 </div>
             </div>
-
-            {popupMessage && (
-                <Popup
-                    message={popupMessage.message}
-                    type={popupMessage.type}
-                    onClose={popupMessage.onClose}
-                />
-            )}
         </div>
     );
 };

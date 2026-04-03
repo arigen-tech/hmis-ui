@@ -1,4 +1,4 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+  export const API_HOST = 'http://103.133.215.182:8081/hims';
 
   // export const API_HOST = 'http://localhost:8080';
 //export const API_HOST = 'http://localhost:8080';
@@ -395,7 +395,7 @@ export const DAILY_CANCELLATION_REPORT_END_URL=`${ALL_REPORTS}/dailyCancellation
 export const OPD_REGISTER_END_URL=`${ALL_REPORTS}/opdRegister`;
 export const MAS_GENDER_GET_ALL_END_URL=`${MASTERS}/gender/getAll`;
 export const MAS_ICD_GET_ALL_END_URL=`${MASTERS}/masIcd/all`;
-
+export const OPD_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/opdBillingRegister`;
 
 
 export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
