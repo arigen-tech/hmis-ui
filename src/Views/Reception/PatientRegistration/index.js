@@ -23,16 +23,49 @@ import {
   PATIENT_REGISTRATION,
   STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
-import { DEPARTMENT_CODE_OPD,NO_TIME_SLOTS_AVAILABLE_MSG,FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
-FETCH_TOKEN_AVAILABILITY_ERROR,CAMERA_ACCESS_ERROR_LOG,UNEXPECTED_API_RESPONSE_ERR,FETCH_DATA_ERROR,
-IMAGE_TEXT,IMAGE_TITLE,IMAGE_UPLOAD_FAIL_MSG,IMAGE_UPLOAD_SUCC_MSG,UNEXPECTED_ERROR,UNEXPECTED_RESPONSE_MSG,
-FILE_UPLOAD_ERROR_LOG,PAST_DATE_WARNING,DUPLICATE_PATIENT,DUPLICATE_CHECK_FAILED_LOG,SELECT_TOKEN_ERROR_TEXT,
-SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,INCOMPLETE_FORM_TITLE,INCOMPLETE_FORM_MSG,PATIENT_REGISTERED_SUCCESS_TITLE,
-PATIENT_REGISTRATION_FAILED_MSG,NO_TOKENS_SELECTED_SESSION_MSG,NO_TOKENS_AVAILABLE,SELECT_TOKEN_ERROR_LOG,
-INVALID_EMAIL_FORMAT_MSG,INVALID_MOBILE_NUMBER_MSG,PIN_CODE_INVALID_MSG,MOBILE_NUMBER_INVALID_MSG,UPLOADED_IMAGE_URL_LOG,
-DOB_REQUIRED_ERROR,AGE_FORMAT_ERROR,FIRST_NAME_REQUIRED_ERROR,GENDER_REQUIRED_ERROR,INVALID_DATE_TITLE,
-RELATION_REQUIRED_ERROR,MOBILE_REQUIRED_ERROR,AGE_NEGATIVE_ERROR,MISSING_TIME_SLOTS_TITLE,NOT_AVAILABLE_TITLE,
-  } from "../../../config/constants";
+import {
+  DEPARTMENT_CODE_OPD,
+  NO_TIME_SLOTS_AVAILABLE_MSG,
+  FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
+  FETCH_TOKEN_AVAILABILITY_ERROR,
+  CAMERA_ACCESS_ERROR_LOG,
+  UNEXPECTED_API_RESPONSE_ERR,
+  FETCH_DATA_ERROR,
+  IMAGE_TEXT,
+  IMAGE_TITLE,
+  IMAGE_UPLOAD_FAIL_MSG,
+  IMAGE_UPLOAD_SUCC_MSG,
+  UNEXPECTED_ERROR,
+  UNEXPECTED_RESPONSE_MSG,
+  FILE_UPLOAD_ERROR_LOG,
+  PAST_DATE_WARNING,
+  DUPLICATE_PATIENT,
+  DUPLICATE_CHECK_FAILED_LOG,
+  SELECT_TOKEN_ERROR_TEXT,
+  SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,
+  INCOMPLETE_FORM_TITLE,
+  INCOMPLETE_FORM_MSG,
+  PATIENT_REGISTERED_SUCCESS_TITLE,
+  PATIENT_REGISTRATION_FAILED_MSG,
+  NO_TOKENS_SELECTED_SESSION_MSG,
+  NO_TOKENS_AVAILABLE,
+  SELECT_TOKEN_ERROR_LOG,
+  INVALID_EMAIL_FORMAT_MSG,
+  INVALID_MOBILE_NUMBER_MSG,
+  PIN_CODE_INVALID_MSG,
+  MOBILE_NUMBER_INVALID_MSG,
+  UPLOADED_IMAGE_URL_LOG,
+  DOB_REQUIRED_ERROR,
+  AGE_FORMAT_ERROR,
+  FIRST_NAME_REQUIRED_ERROR,
+  GENDER_REQUIRED_ERROR,
+  INVALID_DATE_TITLE,
+  RELATION_REQUIRED_ERROR,
+  MOBILE_REQUIRED_ERROR,
+  AGE_NEGATIVE_ERROR,
+  MISSING_TIME_SLOTS_TITLE,
+  NOT_AVAILABLE_TITLE,
+} from "../../../config/constants";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -51,7 +84,7 @@ const PatientRegistration = () => {
   const [registrationMode, setRegistrationMode] = useState("withAppointment"); // "registerOnly" or "withAppointment"
 
   const [errors, setErrors] = useState({});
-  const [loading, setLoading] = useState(false);
+  const [loading,setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
   const [imageURL, setImageURL] = useState("");
   const [relationData, setRelationData] = useState([]);
@@ -64,10 +97,6 @@ const PatientRegistration = () => {
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [session, setSession] = useState([]);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
-  const [availableTokens, setAvailableTokens] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
   const [dateResetKey, setDateResetKey] = useState(0);
   const [appointments, setAppointments] = useState([
     {
@@ -192,7 +221,8 @@ const PatientRegistration = () => {
 
       if (appointmentsWithDetails.length > 0) {
         const allHaveTimeSlots = appointmentsWithDetails.every(
-          (appt) => appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== "",
+          (appt) =>
+            appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== "",
         );
 
         if (!allHaveTimeSlots) {
@@ -200,14 +230,14 @@ const PatientRegistration = () => {
         }
       }
     }
-    
+
     return true;
   };
 
   // Handle registration mode change
   const handleRegistrationModeChange = (mode) => {
     setRegistrationMode(mode);
-    
+
     // If switching to "registerOnly", clear any appointment data if needed
     if (mode === "registerOnly") {
       // Optional: Reset appointments to empty state
@@ -279,8 +309,7 @@ const PatientRegistration = () => {
           Swal.fire({
             icon: "warning",
             title: NOT_AVAILABLE_TITLE,
-            text:
-              data.message,
+            text: data.message,
             timer: 4000,
           });
         }
@@ -443,13 +472,13 @@ const PatientRegistration = () => {
         setImageURL(extractedPath);
         console.log(UPLOADED_IMAGE_URL_LOG, extractedPath);
 
-        Swal.fire("Success!",IMAGE_UPLOAD_SUCC_MSG, "success");
+        Swal.fire("Success!", IMAGE_UPLOAD_SUCC_MSG, "success");
       } else {
-        Swal.fire("Error!",IMAGE_UPLOAD_FAIL_MSG, "error");
+        Swal.fire("Error!", IMAGE_UPLOAD_FAIL_MSG, "error");
       }
     } catch (error) {
       console.error(FILE_UPLOAD_ERROR_LOG, error);
-      Swal.fire("Error!",UNEXPECTED_ERROR, "error");
+      Swal.fire("Error!", UNEXPECTED_ERROR, "error");
     }
   };
 
@@ -774,7 +803,7 @@ const PatientRegistration = () => {
       ),
     );
 
- //   checkSessionValid(id, doctorId, specialityId, value);
+    //   checkSessionValid(id, doctorId, specialityId, value);
   };
 
   async function checkDoctorValid(rowId, doctorId, deptId) {
@@ -862,11 +891,7 @@ const PatientRegistration = () => {
             relation,
           );
           if (isDuplicate) {
-            Swal.fire(
-              "Duplicate Found!",
-               DUPLICATE_PATIENT,
-              "warning",
-            );
+            Swal.fire("Duplicate Found!", DUPLICATE_PATIENT, "warning");
             setIsDuplicatePatient(true);
           } else {
             setIsDuplicatePatient(false);
@@ -1032,7 +1057,8 @@ const PatientRegistration = () => {
         );
 
         const missingTimeSlots = appointmentsWithDetails.filter(
-          (appt) => !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === "",
+          (appt) =>
+            !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === "",
         );
 
         if (missingTimeSlots.length > 0) {
@@ -1048,7 +1074,7 @@ const PatientRegistration = () => {
 
       Swal.fire({
         icon: "warning",
-        title:INCOMPLETE_FORM_TITLE,
+        title: INCOMPLETE_FORM_TITLE,
         text: INCOMPLETE_FORM_MSG,
         timer: 3000,
       });
@@ -1128,7 +1154,7 @@ const PatientRegistration = () => {
     }
 
     if (formData.pinCode && !/^\d{6}$/.test(formData.pinCode)) {
-      newErrors.pinCode =  PIN_CODE_INVALID_MSG;
+      newErrors.pinCode = PIN_CODE_INVALID_MSG;
       valid = false;
     }
 
@@ -1175,45 +1201,48 @@ const PatientRegistration = () => {
       return `${day}/${month}/${year}`;
     }
   };
-  
+
   // Only create visitList for appointments with valid data
-  const visitList = registrationMode === "withAppointment" 
-    ? appointments
-        .filter(
-          (appt) =>
-            appt.speciality &&
-            appt.selDoctorId &&
-            appt.selSession &&
-            appt.tokenStartTime,
-        )
-        .map((appt) => {
-          const dateStr = appt.selDate;
-          const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
+  const visitList =
+    registrationMode === "withAppointment"
+      ? appointments
+          .filter(
+            (appt) =>
+              appt.speciality &&
+              appt.selDoctorId &&
+              appt.selSession &&
+              appt.tokenStartTime,
+          )
+          .map((appt) => {
+            const dateStr = appt.selDate;
+            const dateOnly = dateStr.includes("T")
+              ? dateStr.split("T")[0]
+              : dateStr;
 
-          const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
-          const startTime = createInstant(dateOnly, appt.tokenStartTime);
-          const endTime = createInstant(dateOnly, appt.tokenEndTime);
+            const visitDateTime = createInstant(dateOnly, appt.tokenStartTime);
+            const startTime = createInstant(dateOnly, appt.tokenStartTime);
+            const endTime = createInstant(dateOnly, appt.tokenEndTime);
 
-          return {
-            id: 0,
-            tokenNo: appt.tokenNo || 0,
-            tokenStartTime: startTime,
-            tokenEndTime: endTime,
-            visitStatus: "NEW",
-            visitDate: visitDateTime,
-            departmentId: Number(appt.speciality),
-            doctorId: Number(appt.selDoctorId),
-            doctorName: appt.doctorName || "",
-            sessionId: Number(appt.selSession),
-            hospitalId: Number(sessionStorage.getItem("hospitalId")),
-            priority: 0,
-            billingStatus: "Pending",
-            patientId: 0,
-            iniDoctorId: 0,
-            billingPolicyId: "",
-          };
-        })
-    : [];
+            return {
+              id: 0,
+              tokenNo: appt.tokenNo || 0,
+              tokenStartTime: startTime,
+              tokenEndTime: endTime,
+              visitStatus: "NEW",
+              visitDate: visitDateTime,
+              departmentId: Number(appt.speciality),
+              doctorId: Number(appt.selDoctorId),
+              doctorName: appt.doctorName || "",
+              sessionId: Number(appt.selSession),
+              hospitalId: Number(sessionStorage.getItem("hospitalId")),
+              priority: 0,
+              billingStatus: "Pending",
+              patientId: 0,
+              iniDoctorId: 0,
+              billingPolicyId: "",
+            };
+          })
+      : [];
 
   useEffect(() => {
     // Only run this effect in "withAppointment" mode
@@ -1358,7 +1387,7 @@ const PatientRegistration = () => {
 
         visits: visitList,
       };
-      
+
       // Filter out invalid visits (doctor/session empty) only if in "withAppointment" mode
       if (registrationMode === "withAppointment") {
         requestData.visits = visitList.filter(
@@ -1397,7 +1426,7 @@ const PatientRegistration = () => {
               timer: 1000,
               allowOutsideClick: false,
             }).then(() => {
-              navigate("/PendingForBilling");
+              navigate("/OPDBillingDetails");
               window.location.reload();
             });
           } else if (resp) {
@@ -1416,22 +1445,8 @@ const PatientRegistration = () => {
               if (result.isConfirmed) {
                 navigate("/OPDBillingDetails", {
                   state: {
-                    billingData: {
-                      patientUhid: patientResp.uhidNo,
-                      patientId: resp.patientid,
-                      patientName: resp.patientName,
-                      mobileNo: resp.mobileNo,
-                      age: resp.age,
-                      sex: resp.sex,
-                      relation: resp.relation,
-                      address: resp.address,
-                      appointments: resp.appointments,
-                      details: resp.details,
-                      billingHeaderIds: (resp.appointments || []).map(
-                        (a) => a.billingHdId,
-                      ),
-                      registrationCost: resp.registrationCost,
-                    },
+                    source:"registration",
+                    patientId: resp.patientid,
                   },
                 });
               } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -1446,7 +1461,7 @@ const PatientRegistration = () => {
               `${formData.firstName} ${formData.lastName}`.trim();
 
             Swal.fire({
-              title:PATIENT_REGISTERED_SUCCESS_TITLE,
+              title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p><strong>${
                 displayName || "Patient"
               }</strong> has been registered successfully.</p>`,
@@ -1468,8 +1483,7 @@ const PatientRegistration = () => {
           Swal.fire({
             icon: "error",
             title: "Registration Failed",
-            text:
-              data.message || UNEXPECTED_RESPONSE_MSG,
+            text: data.message || UNEXPECTED_RESPONSE_MSG,
           });
         }
       } catch (error) {
@@ -1753,53 +1767,63 @@ const PatientRegistration = () => {
         </div>
 
         {/* Registration Mode Selection */}
-<div className="row mb-3">
-  <div className="col-sm-12">
-    <div className="card shadow mb-3">
-      <div className="card-header py-3 border-bottom-1">
-        <h6 className="mb-0 fw-bold">Registration Mode</h6>
-      </div>
-      <div className="card-body">
-        <form>
-          <div className="row g-3">
-            <div className="col-12">
-              <div className="d-flex gap-4">
-                <div className="form-check">
-                  <input
-                    className="form-check-input"
-                    type="radio"
-                    name="registrationMode"
-                    id="registerOnly"
-                    value="registerOnly"
-                    checked={registrationMode === "registerOnly"}
-                    onChange={() => handleRegistrationModeChange("registerOnly")}
-                  />
-                  <label className="form-check-label" htmlFor="registerOnly">
-                    Register Only
-                  </label>
-                </div>
-                <div className="form-check">
-                  <input
-                    className="form-check-input"
-                    type="radio"
-                    name="registrationMode"
-                    id="withAppointment"
-                    value="withAppointment"
-                    checked={registrationMode === "withAppointment"}
-                    onChange={() => handleRegistrationModeChange("withAppointment")}
-                  />
-                  <label className="form-check-label" htmlFor="withAppointment">
-                    Register with Appointment
-                  </label>
-                </div>
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow mb-3">
+              <div className="card-header py-3 border-bottom-1">
+                <h6 className="mb-0 fw-bold">Registration Mode</h6>
+              </div>
+              <div className="card-body">
+                <form>
+                  <div className="row g-3">
+                    <div className="col-12">
+                      <div className="d-flex gap-4">
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="registrationMode"
+                            id="registerOnly"
+                            value="registerOnly"
+                            checked={registrationMode === "registerOnly"}
+                            onChange={() =>
+                              handleRegistrationModeChange("registerOnly")
+                            }
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="registerOnly"
+                          >
+                            Register Only
+                          </label>
+                        </div>
+                        <div className="form-check">
+                          <input
+                            className="form-check-input"
+                            type="radio"
+                            name="registrationMode"
+                            id="withAppointment"
+                            value="withAppointment"
+                            checked={registrationMode === "withAppointment"}
+                            onChange={() =>
+                              handleRegistrationModeChange("withAppointment")
+                            }
+                          />
+                          <label
+                            className="form-check-label"
+                            htmlFor="withAppointment"
+                          >
+                            Register with Appointment
+                          </label>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </form>
               </div>
             </div>
           </div>
-        </form>
-      </div>
-    </div>
-  </div>
-</div>
+        </div>
         {/* Patient Personal Details */}
         <div className="row mb-3">
           <div className="col-sm-12">
@@ -2685,7 +2709,10 @@ const PatientRegistration = () => {
                             >
                               <option value="">Select Speciality</option>
                               {departmentData.map((department) => (
-                                <option key={department.id} value={department.id}>
+                                <option
+                                  key={department.id}
+                                  value={department.id}
+                                >
                                   {department.departmentName}
                                 </option>
                               ))}

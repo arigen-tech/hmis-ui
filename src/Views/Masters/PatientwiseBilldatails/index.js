@@ -3,8 +3,10 @@ import LoadingScreen from "../../../Components/Loading";
 import { getRequest } from "../../../service/apiService";
 import {
   BILLING,
-  LAB_REPORT_API,
-  OPD_REPORT_API,
+  INVOICE_REPORTS,
+  LAB_INVOICE_API,
+  OPD_INVOICE_API,
+  RADIOLOGY_INVOICE_API,
 } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
@@ -49,46 +51,6 @@ const PatientwiseBilldatails = () => {
     });
   };
 
-  const fetchBillingStatus = async () => {
-    try {
-      setIsLoading(true);
-      setError(null);
-
-      const response = await getRequest(`${BILLING}`);
-
-      if (response && response.response) {
-        const pageData = response.response;
-
-        const mappedData = pageData.content.map((item) => ({
-          id: item.headerId,
-          visitId: item.visitId,
-          patientName: item.patientName || "",
-          mobileNo: item.phoneNo || "",
-          age: item.age || "",
-          sex: item.sex || "",
-          relation: item.relation || "",
-          billingType: item.serviceCategoryName || "",
-          department: item.department || "",
-          amount: item.netAmount,
-          billingStatus: item.paymentStatus,
-          billNo: item.billNo,
-          billDate: item.billDate || "",
-          serviceCategoryId: item.serviceCategoryId || null,
-          registrationNo: item.registrationNo || null,
-        }));
-
-        setPatientList(mappedData);
-        setTotalElements(pageData.totalElements);
-        setTotalPages(pageData.totalPages);
-      }
-    } catch (error) {
-      console.error("Error fetching billing status data:", error);
-      setError(error.message);
-      showPopup("Failed to fetch billing data", "error");
-    } finally {
-      setIsLoading(false);
-    }
-  };
 
   useEffect(() => {
     setCurrentPage(0);
@@ -130,11 +92,14 @@ const PatientwiseBilldatails = () => {
       // Determine API endpoint based on serviceCategoryId
       if (record.serviceCategoryId === 1) {
         // OPD Report
-        apiUrl = `${OPD_REPORT_API}?visit=${record.visitId}&flag=${flag}`;
+        apiUrl = `${OPD_INVOICE_API}?visit=${record.visitId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 2) {
         // Lab Report
-        apiUrl = `${LAB_REPORT_API}?billNo=${record.billNo}&paymentStatus=${record.billingStatus}&flag=${flag}`;
-      } else {
+        apiUrl = `${LAB_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
+      } else if(record.serviceCategoryId === 4){
+        apiUrl = `${RADIOLOGY_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
+      }
+      else{
         showPopup(
           "Report type not supported for this service category",
           "error",
@@ -199,7 +164,6 @@ const PatientwiseBilldatails = () => {
     setHasSearched(true);
 
     try {
-      setIsLoading(true);
       setSearchLoading(true);
 
       const params = {};
@@ -212,7 +176,7 @@ const PatientwiseBilldatails = () => {
       const queryParams = new URLSearchParams(params);
 
       const response = await getRequest(
-        `${BILLING}/search?${queryParams.toString()}&page=${page}&size=${itemsPerPage}`,
+        `${INVOICE_REPORTS}?${queryParams.toString()}&page=${page}&size=${itemsPerPage}`,
       );
 
       if (response && response.response) {
@@ -244,7 +208,6 @@ const PatientwiseBilldatails = () => {
       console.error("Search error:", error);
       showPopup("Search failed", "error");
     } finally {
-      setIsLoading(false);
       setSearchLoading(false);
     }
   };
@@ -491,7 +454,7 @@ const PatientwiseBilldatails = () => {
                           <td>
                             <div className="d-flex gap-2">
                               <button
-                                className="btn btn-success btn-sm"
+                                className="btn btn-primary btn-sm"
                                 onClick={() => handleViewReport(item)}
                                 disabled={
                                   isGeneratingPdf(item.id) ||

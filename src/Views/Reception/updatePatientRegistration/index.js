@@ -22,18 +22,49 @@ import {
   PATIENT_IMAGE_UPLOAD,
   PATIENT_SEARCH,
   SEARCH_PATIENT,
-  SEARCH_PATIENT_OPD,
+  FOLLOWUP_PATIENTS_LIST,
   STATE_BY_COUNTRY,
 } from "../../../config/apiConfig";
-import { DEPARTMENT_CODE_OPD,IMAGE_TITLE,IMAGE_TEXT,IMAGE_UPLOAD_SUCC_MSG,IMAGE_UPLOAD_FAIL_MSG,
-  PAST_DATE_WARNING,INVALID_PAGE_NO_WARN_MSG,UNEXPECTED_API_RESPONSE_ERR,FETCH_DATA_ERROR,
-  AT_LEAST_ONE_APPOINTMENT_REQUIRED,INVALID_MOBILE_NUMBER_MSG,INVALID_EMAIL_FORMAT_MSG,NO_PATIENTS_FOUND_MSG,
-  SEARCH_PATIENTS_ERROR_LOG,SEARCH_PATIENTS_FAILED_MSG,CAMERA_ACCESS_ERROR_LOG,SOMETHING_WENT_WRONG_MSG,FILE_UPLOAD_ERROR_LOG,
-UPLOADED_IMAGE_URL_LOG,UNABLE_TO_LOAD_PATIENT_DETAILS,SELECT_PATIENT_TO_UPDATE_ERROR,ADD_AT_LEAST_ONE_APPOINTMENT_ERROR,
-CHECK_REQUIRED_FIELDS_ERROR,FINAL_REQUEST_READY_LOG,PATIENT_UPDATE_SUCCESS,PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS,
-PATIENT_UPDATED_SUCCESS_TITLE,BACKEND_ERROR_RESPONSE_LOG,MAX_LENGTH_EXCEEDED_ERROR_TEXT,FAILED_TO_UPDATE_PATIENT_ERROR,
-FETCH_TOKEN_AVAILABILITY_ERROR,SELECT_TOKEN_ERROR_LOG,NO_TOKENS_AVAILABLE,SELECT_SPECIALITY_DOCTOR_SESSION_MSG,
-SELECT_TOKEN_ERROR_TEXT,FETCH_TOKEN_AVAILABILITY_ERROR_LOG,NO_TOKENS_AVAILABLE_TEXT,NO_TOKENS_AVAILABLE_INFO,} from "../../../config/constants";
+import {
+  DEPARTMENT_CODE_OPD,
+  IMAGE_TITLE,
+  IMAGE_TEXT,
+  IMAGE_UPLOAD_SUCC_MSG,
+  IMAGE_UPLOAD_FAIL_MSG,
+  PAST_DATE_WARNING,
+  INVALID_PAGE_NO_WARN_MSG,
+  UNEXPECTED_API_RESPONSE_ERR,
+  FETCH_DATA_ERROR,
+  AT_LEAST_ONE_APPOINTMENT_REQUIRED,
+  INVALID_MOBILE_NUMBER_MSG,
+  INVALID_EMAIL_FORMAT_MSG,
+  NO_PATIENTS_FOUND_MSG,
+  SEARCH_PATIENTS_ERROR_LOG,
+  SEARCH_PATIENTS_FAILED_MSG,
+  CAMERA_ACCESS_ERROR_LOG,
+  SOMETHING_WENT_WRONG_MSG,
+  FILE_UPLOAD_ERROR_LOG,
+  UPLOADED_IMAGE_URL_LOG,
+  UNABLE_TO_LOAD_PATIENT_DETAILS,
+  SELECT_PATIENT_TO_UPDATE_ERROR,
+  ADD_AT_LEAST_ONE_APPOINTMENT_ERROR,
+  CHECK_REQUIRED_FIELDS_ERROR,
+  FINAL_REQUEST_READY_LOG,
+  PATIENT_UPDATE_SUCCESS,
+  PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS,
+  PATIENT_UPDATED_SUCCESS_TITLE,
+  BACKEND_ERROR_RESPONSE_LOG,
+  MAX_LENGTH_EXCEEDED_ERROR_TEXT,
+  FAILED_TO_UPDATE_PATIENT_ERROR,
+  FETCH_TOKEN_AVAILABILITY_ERROR,
+  SELECT_TOKEN_ERROR_LOG,
+  NO_TOKENS_AVAILABLE,
+  SELECT_SPECIALITY_DOCTOR_SESSION_MSG,
+  SELECT_TOKEN_ERROR_TEXT,
+  FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
+  NO_TOKENS_AVAILABLE_TEXT,
+  NO_TOKENS_AVAILABLE_INFO,
+} from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
 
 const UpdatePatientRegistration = () => {
@@ -92,48 +123,40 @@ const UpdatePatientRegistration = () => {
     }
   }
 
-  // useEffect(() => {
-  //   fetchGenderData();
-  //   fetchAllStateData();
-  //   fetchRelationData();
-  //   fetchCountryData();
-  //   fetchAllNokDistrict();
-  //   fetchNokAllStates();
-  //   fetchDepartment();
-  //   fetchSesion();
-  //   fetchAllDistrictData();
-  //   fetchHospitalDetails();
-  // }, []);
-
   const loadMasterData = async () => {
-  setLoading(true);
-  try {
-    await Promise.all([
-      fetchGenderData(),
-      fetchAllStateData(),
-      fetchRelationData(),
-      fetchCountryData(),
-      // fetchAllNokDistrict(),
-      fetchNokAllStates(),
-      fetchDepartment(),
-      fetchSesion(),
-      fetchAllDistrictData(),
-      fetchHospitalDetails(),
-    ]);
-  } catch (err) {
-    console.error("Error loading master data", err);
-  } finally {
-    setLoading(false);
-  }
-};
-  const [masterLoaded, setMasterLoaded] = useState(false);  
+    setLoading(true);
+    try {
+      // Fetch all master data in parallel with proper error handling
+      await Promise.allSettled([
+        fetchGenderData(),
+        fetchRelationData(),
+        fetchCountryData(),
+        fetchDepartment(),
+        fetchAllSessions(),
+        fetchHospitalDetails(),
+      ]);
+
+      // Fetch state and district data after country is loaded
+      // Note: These will be called again when country selection changes
+      await Promise.allSettled([
+        fetchAllStateData(),
+        fetchAllDistrictData(),
+        fetchNokAllStates(),
+      ]);
+    } catch (err) {
+      console.error("Error loading master data", err);
+      Swal.fire({
+        icon: "warning",
+        title: "Partial Data Load",
+        text: "Some master data could not be loaded. You may need to refresh the page.",
+        confirmButtonText: "OK",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   const [availableTokens, setAvailableTokens] = useState([]);
-  const [selectedDate, setSelectedDate] = useState(
-    new Date().toISOString().split("T")[0],
-  );
   const [dateResetKey, setDateResetKey] = useState(0);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [hospitalId, setHospitalId] = useState(12);
   const [errors, setErrors] = useState({});
   const [imageURL, setImageURL] = useState("");
   const [loading, setLoading] = useState(false);
@@ -155,6 +178,9 @@ const UpdatePatientRegistration = () => {
   const canvasRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
   const [preConsultationFlag, setPreConsultationFlag] = useState(false);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [searchLoading, setSearchLoading] = useState(false);
   const [formData, setFormData] = useState({
     mobileNo: "",
     patientName: "",
@@ -320,7 +346,7 @@ const UpdatePatientRegistration = () => {
       ),
     );
 
-    checkDoctorValid(id, value, specialityId);
+    //checkDoctorValid(id, value, specialityId);
   };
 
   const handleSessionChange = (id, value, specialityId, doctorId) => {
@@ -342,7 +368,7 @@ const UpdatePatientRegistration = () => {
           : a,
       ),
     );
-    checkSessionValid(id, doctorId, specialityId, value);
+    //checkSessionValid(id, doctorId, specialityId, value);
   };
 
   const handleAppointmentChange = (index, field, value) => {
@@ -493,7 +519,6 @@ const UpdatePatientRegistration = () => {
       const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
       if (!emailRegex.test(value)) {
         error = INVALID_EMAIL_FORMAT_MSG;
-
       }
     }
 
@@ -517,37 +542,44 @@ const UpdatePatientRegistration = () => {
     setPatientDetailForm(next);
   };
 
-  const handleSearch = async () => {
-    setLoading(true);
+  const handleSearch= async (page = 0) => {
+    setCurrentPage(page + 1);
+
+    if (typeof page !== "number") {
+      page = 0;
+    }
+    setSearchLoading(true);
     try {
-      const searchPayload = {
+      const payload = {
         mobileNo: formData.mobileNo || null,
         patientName: formData.patientName || null,
       };
 
-      Object.keys(searchPayload).forEach((key) => {
-        if (searchPayload[key] === "" || searchPayload[key] === undefined) {
-          searchPayload[key] = null;
-        }
-      });
+      const response = await postRequest(
+        `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
+        payload,
+      );
 
-      const response = await postRequest(`${SEARCH_PATIENT_OPD}`, searchPayload);
+      if (response?.response) {
+        const pageData = response.response;
 
-      if (Array.isArray(response.response)) {
-        setPatients(response.response);
+        setPatients(pageData.content || []);
+        setTotalPages(Number(response.response.totalPages) || 1);
+        setTotalElements(
+          response.response?.totalElements ||
+            response.response?.total_elements ||
+            0,
+        );
         setSearchPerformed(true);
       } else {
         setPatients([]);
-        setSearchPerformed(false);
-        Swal.fire("Info",NO_PATIENTS_FOUND_MSG, "info");
+        Swal.fire("Info", NO_PATIENTS_FOUND_MSG, "info");
       }
     } catch (error) {
-      console.error(SEARCH_PATIENTS_ERROR_LOG, error);
-      Swal.fire("Error",SEARCH_PATIENTS_FAILED_MSG, "error");
-      setSearchPerformed(false);
+      console.error(error);
+      Swal.fire("Error", SEARCH_PATIENTS_FAILED_MSG, "error");
     } finally {
-      setLoading(false);
-      setCurrentPage(1);
+      setSearchLoading(false);
     }
   };
 
@@ -667,7 +699,7 @@ const UpdatePatientRegistration = () => {
 
         Swal.fire("Success!", IMAGE_UPLOAD_SUCC_MSG, "success");
       } else {
-        Swal.fire("Error!",IMAGE_UPLOAD_FAIL_MSG, "error");
+        Swal.fire("Error!", IMAGE_UPLOAD_FAIL_MSG, "error");
       }
     } catch (error) {
       console.error(FILE_UPLOAD_ERROR_LOG, error);
@@ -686,9 +718,11 @@ const UpdatePatientRegistration = () => {
     setImage(placeholderImage);
   };
 
-  const handleEdit = async (patient) => {
+  useEffect(() => {
+    loadMasterData();
+  }, []); 
 
-    await loadMasterData();
+  const handleEdit = async (patient) => {
 
     try {
       const patientId = patient.id;
@@ -713,15 +747,25 @@ const UpdatePatientRegistration = () => {
           patientEmailId: personal.email || "",
           patientDob: personal.dob || "",
           patientAge: personal.age || "",
-          patientGender: personal.gender ? { id: personal.gender } : "",
-          patientRelation: personal.relation ? { id: personal.relation } : "",
+          patientGender: personal.gender
+            ? { id: personal.gender, name: personal.genderName }
+            : "",
+          patientRelation: personal.relation
+            ? { id: personal.relation, name: personal.relationName }
+            : "",
           patientAddress1: address.address1 || "",
           patientAddress2: address.address2 || "",
           patientCity: address.city || "",
           patientPincode: address.pinCode || "",
-          patientDistrict: address.district ? { id: address.district } : "",
-          patientState: address.state ? { id: address.state } : "",
-          patientCountry: address.country ? { id: address.country } : "",
+          patientDistrict: address.district
+            ? { id: address.district, name: address.districtName }
+            : "",
+          patientState: address.state
+            ? { id: address.state, name: address.stateName }
+            : "",
+          patientCountry: address.country
+            ? { id: address.country, name: address.countryName }
+            : "",
           nokFn: nok.firstName || "",
           nokMn: nok.middleName || "",
           nokLn: nok.lastName || "",
@@ -731,15 +775,36 @@ const UpdatePatientRegistration = () => {
           nokAddress2: nok.address2 || "",
           nokCity: nok.city || "",
           nokPincode: nok.pinCode || "",
-          nokDistrict: nok.district ? { id: nok.district } : "",
-          nokState: nok.state ? { id: nok.state } : "",
-          nokCountry: nok.country ? { id: nok.country } : "",
+          nokDistrict: nok.district
+            ? { id: nok.district, name: nok.districtName }
+            : "",
+          nokState: nok.state ? { id: nok.state, name: nok.stateName } : "",
+          nokCountry: nok.country
+            ? { id: nok.country, name: nok.countryName }
+            : "",
           emerFn: emergency.firstName || "",
           emerLn: emergency.lastName || "",
           emerMobile: emergency.mobileNo || "",
         };
 
         setPatientDetailForm(mappedPatientData);
+
+        if (address.country) {
+          await fetchStates(address.country);
+          if (address.state) {
+            const selectedState = stateData.find((s) => s.id === address.state);
+            if (selectedState) {
+              await fetchDistrict(address.state);
+            }
+          }
+        }
+
+        if (nok.country) {
+          await fetchNokStates(nok.country);
+          if (nok.state) {
+            await fetchNokDistrict(nok.state);
+          }
+        }
 
         if (data.appointments && data.appointments.length > 0) {
           const mappedAppointments = data.appointments.map((appt, index) => {
@@ -775,7 +840,7 @@ const UpdatePatientRegistration = () => {
               sessionName: appt.sessionName || "",
               visitId: appt.appointmentId || null,
               tokenNo: appt.tokenNo || null,
-              visitType:appt.visitType||null,
+              visitType: appt.visitType || null,
               tokenStartTime: startTime,
               tokenEndTime: endTime,
               selectedTimeSlot:
@@ -839,10 +904,9 @@ const UpdatePatientRegistration = () => {
       }
     } catch (err) {
       console.error(err);
-      Swal.fire("Error",UNABLE_TO_LOAD_PATIENT_DETAILS, "error");
+      Swal.fire("Error", UNABLE_TO_LOAD_PATIENT_DETAILS, "error");
     }
   };
-
   async function fetchGenderData() {
     setLoading(true);
 
@@ -913,7 +977,7 @@ const UpdatePatientRegistration = () => {
     }
   }
 
-  async function fetchSesion() {
+  async function fetchAllSessions() {
     try {
       const data = await getRequest(`${GET_SESSION}1`);
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -993,21 +1057,6 @@ const UpdatePatientRegistration = () => {
     }
   }
 
-  // async function fetchAllNokDistrict(value) {
-  //   try {
-  //     const data = await getRequest(`${ALL_DISTRICT}/1`);
-  //     if (data.status === 200 && Array.isArray(data.response)) {
-  //       setNokDistrictData(data.response);
-  //     } else {
-  //       console.error(UNEXPECTED_API_RESPONSE_ERR, data);
-  //       setNokDistrictData([]);
-  //     }
-  //   } catch (error) {
-  //     console.error(FETCH_DATA_ERROR, error);
-  //   } finally {
-  //     setLoading(false);
-  //   }
-  // }
 
   async function fetchDepartment() {
     try {
@@ -1037,7 +1086,7 @@ const UpdatePatientRegistration = () => {
     console.log("Patient Detail Form:", patientDetailForm);
 
     if (!patientDetailForm.id) {
-      Swal.fire("Error",SELECT_PATIENT_TO_UPDATE_ERROR, "error");
+      Swal.fire("Error", SELECT_PATIENT_TO_UPDATE_ERROR, "error");
       return;
     }
 
@@ -1047,11 +1096,7 @@ const UpdatePatientRegistration = () => {
       );
 
       if (validAppointments.length === 0) {
-        Swal.fire(
-          "Error",
-          ADD_AT_LEAST_ONE_APPOINTMENT_ERROR,
-          "error",
-        );
+        Swal.fire("Error", ADD_AT_LEAST_ONE_APPOINTMENT_ERROR, "error");
         return;
       }
     }
@@ -1193,11 +1238,7 @@ const UpdatePatientRegistration = () => {
 
   const sendPatientData = async () => {
     if (!validateForm()) {
-      Swal.fire(
-        "Validation Error",
-       CHECK_REQUIRED_FIELDS_ERROR,
-        "error",
-      );
+      Swal.fire("Validation Error", CHECK_REQUIRED_FIELDS_ERROR, "error");
       return;
     }
 
@@ -1327,7 +1368,9 @@ const UpdatePatientRegistration = () => {
       patientGenderId: extractId(patientDetailForm.patientGender),
       patientEmailId: patientDetailForm.patientEmailId || "",
       patientMobileNumber: patientDetailForm.patientMobileNumber || "",
-      patientImage: smartTruncate(imageURL || patientDetailForm.patientImage || "",),
+      patientImage: smartTruncate(
+        imageURL || patientDetailForm.patientImage || "",
+      ),
       fileName: "",
       patientRelationId: extractId(patientDetailForm.patientRelation),
       patientMaritalStatusId: null,
@@ -1425,7 +1468,7 @@ const UpdatePatientRegistration = () => {
               billingStatus: "Pending",
               patientId: toNumber(patientDetailForm.id),
               iniDoctorId: toNumber(appt.selDoctorId),
-              visitType: appt.visitType||"F",
+              visitType: appt.visitType || "F",
               lastChgBy: username,
             };
           })
@@ -1474,7 +1517,7 @@ const UpdatePatientRegistration = () => {
         if (hasBillingStatusY) {
           // Direct redirect to PendingForBilling
           Swal.fire({
-            title:PATIENT_UPDATED_SUCCESS_TITLE,
+            title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>
                  <p>Redirecting to pending billing...</p>`,
             icon: "success",
@@ -1482,13 +1525,12 @@ const UpdatePatientRegistration = () => {
             timer: 1000,
             allowOutsideClick: false,
           }).then(() => {
-            navigate("/PendingForBilling");
+            navigate("/OPDBillingDetails");
             window.location.reload();
           });
         } else if (resp) {
-          // Show success dialog with option to go to billing
           Swal.fire({
-            title:PATIENT_UPDATED_SUCCESS_TITLE,
+            title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `
             <p><strong>${resp.patientName}</strong> has been updated successfully.</p>
             ${appointmentFlag ? `<p>Appointments have been scheduled.</p>` : ""}
@@ -1501,50 +1543,13 @@ const UpdatePatientRegistration = () => {
             allowOutsideClick: false,
           }).then((result) => {
             if (result.isConfirmed) {
-              // Navigate to OPD billing details with patient data
               navigate("/OPDBillingDetails", {
                 state: {
-                  billingData: {
-                    patientUhid: patientResp.uhidNo || patientDetailForm.uhidNo,
-                    patientId: resp.patientid || patientDetailForm.id,
-                    patientName:
-                      resp.patientName ||
-                      `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
-                    mobileNo:
-                      resp.mobileNo || patientDetailForm.patientMobileNumber,
-                    age: resp.age || patientDetailForm.patientAge,
-                    sex:
-                      resp.sex ||
-                      genderData.find(
-                        (g) => g.id === patientDetailForm.patientGender?.id,
-                      )?.genderName ||
-                      "",
-                    relation:
-                      resp.relation ||
-                      relationData.find(
-                        (r) => r.id === patientDetailForm.patientRelation?.id,
-                      )?.relationName ||
-                      "",
-                    address: resp.address || patientDetailForm.patientAddress1,
-                    appointments:
-                      resp.appointments ||
-                      appointments.map((appt) => ({
-                        departmentName: appt.departmentName,
-                        doctorName: appt.doctorName,
-                        sessionName: appt.sessionName,
-                        visitDate: appt.selDate,
-                        timeSlot: appt.selectedTimeSlot,
-                      })),
-                    details: resp.details || {},
-                    billingHeaderIds: (resp.appointments || []).map(
-                      (a) => a.billingHdId,
-                    ),
-                    registrationCost: resp.registrationCost || "0.00",
-                  },
+                  source:"billing",
+                  patientId: resp.patientid,
                 },
               });
             } else if (result.dismiss === Swal.DismissReason.cancel) {
-              // Reset form and go back to search
               handleReset();
             }
           });
@@ -1555,7 +1560,7 @@ const UpdatePatientRegistration = () => {
             `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim();
 
           Swal.fire({
-            title:PATIENT_UPDATED_SUCCESS_TITLE,
+            title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p><strong>${displayName || "Patient"}</strong> has been updated successfully.</p>`,
             icon: "success",
             confirmButtonText: "OK",
@@ -1610,29 +1615,12 @@ const UpdatePatientRegistration = () => {
     }
   };
 
-  // Pagination calculations
-  const filteredPatients = patients.filter((patient) => {
-    const fullName = `${patient.fullName}`.toLowerCase();
-    const mobile = patient.patientMobileNumber || "";
-
-    return (
-      fullName.includes(searchQuery.toLowerCase()) ||
-      mobile.includes(mobileQuery)
-    );
-  });
-
-  const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
-  const currentItems = filteredPatients.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  const currentItems = patients;
 
   // Handle page change without refreshing
   const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) {
-      setCurrentPage(page);
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
+    setCurrentPage(page);
+    handleSearch(page - 1);
   };
 
   const handleFormSubmit = (e) => {
@@ -1748,7 +1736,7 @@ const UpdatePatientRegistration = () => {
       handlePageChange(pageNumber);
       setPageInput("");
     } else {
-      Swal.fire("Invalid Page",INVALID_PAGE_NO_WARN_MSG, "warning");
+      Swal.fire("Invalid Page", INVALID_PAGE_NO_WARN_MSG, "warning");
     }
   };
 
@@ -1812,7 +1800,7 @@ const UpdatePatientRegistration = () => {
     dateOverride = null,
   ) => {
     try {
-      setLoading(true);
+      //setLoading(true);
 
       const targetAppointment = appointments[appointmentIndex];
 
@@ -1855,8 +1843,7 @@ const UpdatePatientRegistration = () => {
         Swal.fire({
           icon: "error",
           title: NO_TOKENS_AVAILABLE,
-          text:
-            data.message || NO_TOKENS_AVAILABLE_TEXT,
+          text: data.message || NO_TOKENS_AVAILABLE_TEXT,
         });
         setAvailableTokens([]);
       }
@@ -1867,9 +1854,10 @@ const UpdatePatientRegistration = () => {
         title: "Error",
         text: FETCH_TOKEN_AVAILABILITY_ERROR,
       });
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   };
 
   const showTokenPopup = (
@@ -2423,29 +2411,24 @@ const UpdatePatientRegistration = () => {
                         <select
                           className="form-select"
                           name="patientCountry"
-                          value={
-                            patientDetailForm.patientCountry
-                              ? JSON.stringify(patientDetailForm.patientCountry)
-                              : ""
-                          }
+                          value={patientDetailForm.patientCountry?.id || ""}
                           onChange={(e) => {
-                            const selectedCountry = JSON.parse(e.target.value);
+                            const selected = countryData.find(
+                              (c) => c.id === Number(e.target.value),
+                            );
                             handleAddChange({
                               target: {
                                 name: "patientCountry",
-                                value: selectedCountry,
+                                value: selected,
                               },
                             });
-                            fetchStates(selectedCountry.id);
+                            fetchStates(selected.id);
                           }}
                         >
                           <option value="">Select Country</option>
-                          {countryData.map((country) => (
-                            <option
-                              key={country.id}
-                              value={JSON.stringify(country)}
-                            >
-                              {country.countryName}
+                          {countryData.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.countryName}
                             </option>
                           ))}
                         </select>
@@ -2636,30 +2619,25 @@ const UpdatePatientRegistration = () => {
                         <label className="form-label">Country</label>
                         <select
                           className="form-select"
-                          name="nokCountry"
-                          value={
-                            patientDetailForm.nokCountry
-                              ? JSON.stringify(patientDetailForm.nokCountry)
-                              : ""
-                          }
+                          name="patientCountry"
+                          value={patientDetailForm.patientCountry?.id || ""}
                           onChange={(e) => {
-                            const selectedCountry = JSON.parse(e.target.value);
+                            const selected = countryData.find(
+                              (c) => c.id === Number(e.target.value),
+                            );
                             handleAddChange({
                               target: {
-                                name: "nokCountry",
-                                value: selectedCountry,
+                                name: "patientCountry",
+                                value: selected,
                               },
                             });
-                            fetchNokStates(selectedCountry.id);
+                            fetchStates(selected.id);
                           }}
                         >
                           <option value="">Select Country</option>
-                          {countryData.map((country) => (
-                            <option
-                              key={country.id}
-                              value={JSON.stringify(country)}
-                            >
-                              {country.countryName}
+                          {countryData.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.countryName}
                             </option>
                           ))}
                         </select>
@@ -3349,10 +3327,20 @@ const UpdatePatientRegistration = () => {
                     <button
                       type="button"
                       className="btn btn-primary me-2"
-                      onClick={handleSearch}
-                      disabled={loading}
+                      onClick={() => {
+                        setCurrentPage(1);
+                        handleSearch(0);
+                      }}
+                      disabled={searchLoading} // Use searchLoading instead of loading
                     >
-                      {loading ? "Searching..." : "Search"}
+                      {searchLoading ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Searching...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
                     </button>
                     <button
                       type="button"
@@ -3363,7 +3351,7 @@ const UpdatePatientRegistration = () => {
                     </button>
                   </div>
 
-                  {searchPerformed && filteredPatients.length > 0 && (
+                  {searchPerformed && patients.length > 0 && (
                     <div className="col-md-12">
                       <div className="table-responsive packagelist">
                         <table className="table table-bordered table-hover align-middle">
@@ -3381,15 +3369,11 @@ const UpdatePatientRegistration = () => {
                           <tbody>
                             {currentItems.map((patient, index) => (
                               <tr key={index} className="table-row-hover">
-                                <td>
-                                  {`${patient.fullName || ""}`.trim()}
-                                </td>
+                                <td>{`${patient.fullName || ""}`.trim()}</td>
                                 <td>{patient.patientMobileNumber || ""}</td>
                                 <td>{patient.uhidNo || ""}</td>
                                 <td>{patient.patientAge || ""}</td>
-                                <td>
-                                  {patient.gender|| ""}
-                                </td>
+                                <td>{patient.gender || ""}</td>
                                 <td>{patient.patientEmailId || ""}</td>
                                 <td>
                                   <button
@@ -3413,12 +3397,12 @@ const UpdatePatientRegistration = () => {
                   )}
                 </form>
                 {/* PAGINATION SECTION - ALL BUTTONS TYPE="button" */}
-                {searchPerformed && filteredPatients.length > itemsPerPage && (
+                {searchPerformed && totalPages >= 1 && (
                   <nav className="d-flex justify-content-between align-items-center mt-3">
                     <div>
                       <span>
-                        Page {currentPage} of {totalPages} | Total Records:{" "}
-                        {filteredPatients.length}
+                        Page {currentPage} of {totalPages} | Total:{" "}
+                        {totalElements}
                       </span>
                     </div>
                     <ul className="pagination mb-0">

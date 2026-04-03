@@ -33,9 +33,11 @@ export const getRequest = async (endpoint, headers = {}) => {
   }
 };
 
-
-
-export const getImageRequest = async (endpoint, headers = {}, responseType = "json") => {
+export const getImageRequest = async (
+  endpoint,
+  headers = {},
+  responseType = "json",
+) => {
   try {
     let token;
     if (localStorage.token) {
@@ -72,7 +74,6 @@ export const getImageRequest = async (endpoint, headers = {}, responseType = "js
   }
 };
 
-
 /**
  * Function to call POST API
  * @param {string} endpoint - The API endpoint
@@ -107,8 +108,6 @@ export const postRequest = async (endpoint, data, headers = {}) => {
   }
 };
 
-
-
 /**
  * Function to call POST API with FormData
  * @param {string} endpoint - The API endpoint
@@ -117,7 +116,8 @@ export const postRequest = async (endpoint, data, headers = {}) => {
  */
 export const postRequestWithFormData = async (endpoint, formData) => {
   try {
-    let token = localStorage.getItem("token") || sessionStorage.getItem("token");
+    let token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
 
     console.log(`Sending request to: ${BASE_URL}${endpoint}`);
 
@@ -127,18 +127,19 @@ export const postRequestWithFormData = async (endpoint, formData) => {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`,  // ✅ Keep only this
+        Authorization: `Bearer ${token}`, // ✅ Keep only this
       },
-      body: formData,  // ✅ Browser sets Content-Type automatically
+      body: formData, // ✅ Browser sets Content-Type automatically
     });
-    
 
     clearTimeout(timeoutId);
 
     if (!response.ok) {
       const errorText = await response.text();
       console.error("Server response:", errorText);
-      throw new Error(`POST request failed: ${response.status} - ${errorText || response.statusText}`);
+      throw new Error(
+        `POST request failed: ${response.status} - ${errorText || response.statusText}`,
+      );
     }
 
     return await response.json();
@@ -146,16 +147,18 @@ export const postRequestWithFormData = async (endpoint, formData) => {
     console.error("POST Error:", error);
 
     if (error.name === "AbortError") {
-      throw new Error("Request timed out. Please check your network connection and try again.");
+      throw new Error(
+        "Request timed out. Please check your network connection and try again.",
+      );
     } else if (error.message.includes("Failed to fetch")) {
-      throw new Error("Network connection error. Please check if the server is running and accessible.");
+      throw new Error(
+        "Network connection error. Please check if the server is running and accessible.",
+      );
     }
 
     throw error;
   }
 };
-
-
 
 /**
  * Function to call PUT API
@@ -184,14 +187,15 @@ export const putRequest = async (endpoint, data, headers = {}) => {
     if (!response.ok) {
       throw new Error(`PUT request failed: ${response.status}`);
     }
-    return await response.json();
+    return {
+      status: response.status,
+      data: await response.json(),
+    };
   } catch (error) {
     console.error("PUT Error:", error);
     throw error;
   }
 };
-
-
 
 const uploadFileWithJson = async (endpoint, jsonData, files) => {
   if (!files || !(files instanceof FileList || files instanceof File)) {
@@ -205,7 +209,7 @@ const uploadFileWithJson = async (endpoint, jsonData, files) => {
   const formData = new FormData();
   formData.append(
     "json",
-    new Blob([JSON.stringify(jsonData)], { type: "application/json" })
+    new Blob([JSON.stringify(jsonData)], { type: "application/json" }),
   );
 
   // Add the file (only the first file if it's a FileList)
@@ -234,9 +238,7 @@ const uploadFileWithJson = async (endpoint, jsonData, files) => {
 };
 export { uploadFileWithJson };
 
-
 const updateFileWithJson = async (endpoint, jsonData, files) => {
-
   let token = localStorage.token
     ? { Authorization: `Bearer ${localStorage.getItem("token")}` }
     : { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
@@ -244,18 +246,18 @@ const updateFileWithJson = async (endpoint, jsonData, files) => {
   const formData = new FormData();
   formData.append(
     "json",
-    new Blob([JSON.stringify(jsonData)], { type: "application/json" })
+    new Blob([JSON.stringify(jsonData)], { type: "application/json" }),
   );
 
   if (files instanceof FileList) {
-    formData.append("files", files[0]); 
+    formData.append("files", files[0]);
   } else {
-    formData.append("files", files); 
+    formData.append("files", files);
   }
 
   try {
     const response = await fetch(`${BASE_URL}${endpoint}`, {
-      method: "PUT", 
+      method: "PUT",
       headers: { ...token },
       body: formData,
     });
@@ -272,8 +274,6 @@ const updateFileWithJson = async (endpoint, jsonData, files) => {
 };
 export { updateFileWithJson };
 
-
-
 async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
   let token;
   if (localStorage.token) {
@@ -285,7 +285,7 @@ async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
   const formData = new FormData();
   formData.append(
     "json",
-    new Blob([JSON.stringify(jsonData)], { type: "application/json" })
+    new Blob([JSON.stringify(jsonData)], { type: "application/json" }),
   );
   formData.append(`bannerImage`, files1);
   formData.append(`thumbImage`, files2);
@@ -311,10 +311,7 @@ async function uploadMultiFileWithJson(endpoint, jsonData, files1, files2) {
   }
 }
 
-
 export { uploadMultiFileWithJson };
-
-
 
 async function updateMultiFileWithJson(endpoint, jsonData, files1, files2) {
   let token;
@@ -327,7 +324,7 @@ async function updateMultiFileWithJson(endpoint, jsonData, files1, files2) {
   const formData = new FormData();
   formData.append(
     "json",
-    new Blob([JSON.stringify(jsonData)], { type: "application/json" })
+    new Blob([JSON.stringify(jsonData)], { type: "application/json" }),
   );
   if (files1) {
     formData.append("bannerImage", files1);

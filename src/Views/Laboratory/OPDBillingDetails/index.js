@@ -2,17 +2,14 @@ import { useEffect, useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import {
-  CATAGORY_WISE_BILLING,
+  PENDING_BILLINGS_BY_CATAGORY,
   OPD_SERVICE_CATAGORY,
-  PATIENT_VISIT_DETAILS,
+  OPD_PATIENT_BILL_DETAILS,
   POLICY_API,
-  UPDATE_OPD_PAYMENT_STATUS,
+  PROCESS_OPD_PAYMENT,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
-  APPOINTMENT_NOT_FOUND_ERR_MSG,
-  ERROR,
-  SUCCESS,
   MISSING_MANDOTORY_FIELD,
   MISSING_MANDOTORY_FIELD_MSG,
 } from "../../../config/constants";
@@ -28,14 +25,6 @@ const OPDBillingDetails = () => {
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: false,
     gstPercent: 0,
-  });
-
-  const [policyInfo, setPolicyInfo] = useState({
-    policyName: "",
-    policyType: "",
-    eligibility: "",
-    discountApplied: "",
-    remarks: "",
   });
 
   const [formData, setFormData] = useState({
@@ -81,7 +70,7 @@ const OPDBillingDetails = () => {
 
   const formatDateTime = (dateStr) => {
     if (!dateStr) return "";
-
+    debugger
     const date = new Date(dateStr);
 
     const dd = String(date.getDate()).padStart(2, "0");
@@ -110,7 +99,7 @@ const OPDBillingDetails = () => {
       if (showLoader) setIsLoading(true);
 
       const response = await getRequest(
-        `${CATAGORY_WISE_BILLING}/${OPD_SERVICE_CATAGORY}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&patientName=${searchParams.patientName}&mobileNo=${searchParams.mobileNo}&registrationNo=${searchParams.registrationNo}`,
+        `${PENDING_BILLINGS_BY_CATAGORY}/${OPD_SERVICE_CATAGORY}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&patientName=${searchParams.patientName}&mobileNo=${searchParams.mobileNo}&registrationNo=${searchParams.registrationNo}`,
       );
 
       if (response?.response?.content) {
@@ -149,7 +138,7 @@ const OPDBillingDetails = () => {
       age: data.age,
       sex: data.gender,
       relation: data.relation,
-      patientId: data.patientid,
+      patientId: data.patientId,
       address: data.address,
       patientUhid: data.patientUhid,
     });
@@ -192,6 +181,14 @@ const OPDBillingDetails = () => {
 
     setAppointments(processedAppointments);
   };
+
+  useEffect(() => {
+    if (location.state?.patientId) {
+      handleRowClick(location.state.patientId);
+    } else {
+      fetchPendingOPDBilling(currentPage);
+    }
+  }, [location.state]);
 
   useEffect(() => {
     fetchPendingOPDBilling(currentPage);
@@ -242,7 +239,7 @@ const OPDBillingDetails = () => {
       setShowPatientDetails(true);
 
       const response = await getRequest(
-        `${PATIENT_VISIT_DETAILS}/${patientId}`,
+        `${OPD_PATIENT_BILL_DETAILS}/${patientId}`,
       );
 
       if (response?.status === 200) {
@@ -502,6 +499,7 @@ const OPDBillingDetails = () => {
               appointments,
               gstConfig,
             },
+            source: location.state?.source || "billing",
           },
         });
       }
@@ -556,7 +554,7 @@ const OPDBillingDetails = () => {
       };
 
       const response = await postRequest(
-        `${UPDATE_OPD_PAYMENT_STATUS}`,
+        `${PROCESS_OPD_PAYMENT}`,
         paymentRequest,
       );
 
@@ -684,12 +682,6 @@ const OPDBillingDetails = () => {
                             placeholder="Enter patient name"
                             value={searchData.patientName}
                             onChange={handleSearchChange}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleSearch();
-                              }
-                            }}
                           />
                         </div>
                         <div className="col-md-3">
@@ -703,12 +695,6 @@ const OPDBillingDetails = () => {
                             placeholder="Enter Mobile number"
                             value={searchData.mobileNo}
                             onChange={handleSearchChange}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleSearch();
-                              }
-                            }}
                           />
                         </div>
                         <div className="col-md-3">
@@ -722,12 +708,6 @@ const OPDBillingDetails = () => {
                             placeholder="Enter Registration number"
                             value={searchData.registrationNo}
                             onChange={handleSearchChange}
-                            onKeyDown={(e) => {
-                              if (e.key === "Enter") {
-                                e.preventDefault();
-                                handleSearch();
-                              }
-                            }}
                           />
                         </div>
                         <div className="col-md-3">
@@ -809,7 +789,7 @@ const OPDBillingDetails = () => {
                                   {item.billingType}
                                 </span>
                               </td>
-                              <td>{formatDateTime(item.appointmentDate)}</td>
+                              <td>{item.appointmentDate}</td>
                               <td>
                                 ₹
                                 {typeof item.netAmount === "number"

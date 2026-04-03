@@ -1,7 +1,12 @@
 import { useState } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
-import { ALL_REPORTS } from "../../../config/apiConfig";
+import {
+  ALL_REPORTS,
+  OPD_INVOICE_API,
+  OPD_SERVICE_CATAGORY,
+  RADIOLOGY_SERVICE_CATAGORY,
+} from "../../../config/apiConfig";
 import { useEffect } from "react";
 
 const OpdPaymentSuccess = () => {
@@ -15,7 +20,12 @@ const OpdPaymentSuccess = () => {
     allBills: false, // for download all bills
   });
 
-  const { amount = 0, paymentResponse } = location.state || {};
+  const {
+    amount = 0,
+    paymentResponse,
+    source,
+    billingType,
+  } = location.state || {};
   const billPayments = paymentResponse?.response?.billPayments || [];
 
   // Helper to set loading state
@@ -26,17 +36,31 @@ const OpdPaymentSuccess = () => {
     }));
   };
 
-  useEffect(() => {
-    const handleBack = () => {
-      navigate("/OPDBillingDetails", { replace: true });
-    };
+  const BILLING_ROUTES = {
+    opd: "/OPDBillingDetails",
+    lab: "/LabBillingDetails",
+    radiology: "/RadiologyBillingDetails",
+  };
 
-    window.addEventListener("popstate", handleBack);
+  const getBackRoute = () => {
+    if (!location.state) {
+      return "/OPDBillingDetails"; // fallback
+    }
 
-    return () => {
-      window.removeEventListener("popstate", handleBack);
-    };
-  }, [navigate]);
+    if (source === "registration") {
+      return "/NewPatientAppointment";
+    }
+
+    if (billingType === OPD_SERVICE_CATAGORY) {
+      return BILLING_ROUTES.opd;
+    }
+
+    if (billingType === RADIOLOGY_SERVICE_CATAGORY) {
+      return BILLING_ROUTES.radiology;
+    }
+
+    return BILLING_ROUTES.lab;
+  };
 
   // Generic function to generate report
   const generateReport = async (visitId, receiptType = "bill", flag = "d") => {
@@ -49,7 +73,7 @@ const OpdPaymentSuccess = () => {
     setPdfUrl(null);
 
     try {
-      const endpoint = receiptType === "token" ? "opdToken" : "opdReport";
+      const endpoint = receiptType === "token" ? "opdToken" : "opdInvoice";
       const url = `${ALL_REPORTS}/${endpoint}?visit=${visitId}&flag=${flag}`;
 
       const response = await fetch(url, {
@@ -82,7 +106,7 @@ const OpdPaymentSuccess = () => {
     setLoading("printing", `${receiptType}-${visitId}`);
 
     try {
-      const endpoint = receiptType === "token" ? "opdToken" : "opdReport";
+      const endpoint = receiptType === "token" ? "opdToken" : "opdInvoice";
       const url = `${ALL_REPORTS}/${endpoint}?visit=${visitId}&flag=p`;
 
       const response = await fetch(url, {
@@ -127,7 +151,7 @@ const OpdPaymentSuccess = () => {
 
     try {
       for (const bp of billPayments) {
-        const url = `${ALL_REPORTS}/opdReport?visit=${bp.visitId}&flag=d`;
+        const url = `${OPD_INVOICE_API}?visit=${bp.visitId}&flag=d`;
         const response = await fetch(url, {
           method: "GET",
           headers: { Accept: "application/pdf" },
@@ -153,13 +177,25 @@ const OpdPaymentSuccess = () => {
     }
   };
 
+  useEffect(() => {
+    const handleBack = () => {
+      navigate(getBackRoute(), { replace: true });
+    };
+
+    window.addEventListener("popstate", handleBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, [source, billingType, navigate]);
+
   // Print all billing receipts
   const printAllBillingReceipts = async () => {
     setLoading("printing", "all-bills");
 
     try {
       for (const bp of billPayments) {
-        const url = `${ALL_REPORTS}/opdReport?visit=${bp.visitId}&flag=p`;
+        const url = `${OPD_INVOICE_API}?visit=${bp.visitId}&flag=p`;
         const response = await fetch(url, {
           method: "GET",
           headers: { Accept: "application/pdf" },
@@ -175,6 +211,22 @@ const OpdPaymentSuccess = () => {
     } finally {
       setLoading("printing", null);
     }
+  };
+
+  const getBackLabel = () => {
+    if (source === "registration") {
+      return "Back to Registration";
+    }
+
+    if (billingType === OPD_SERVICE_CATAGORY) {
+      return "Back to OPD Billing";
+    }
+
+    if (billingType === RADIOLOGY_SERVICE_CATAGORY) {
+      return "Back to Radiology Billing";
+    }
+
+    return "Back to Lab Billing";
   };
 
   // Check if a specific button is loading
@@ -458,10 +510,10 @@ const OpdPaymentSuccess = () => {
 
                   <button
                     className="btn btn-secondary d-flex align-items-center gap-2"
-                    onClick={() => navigate("/OPDBillingDetails")}
+                    onClick={() => navigate(getBackRoute())}
                   >
                     <i className="fa fa-arrow-left me-2"></i>
-                    Back to Billing
+                    {getBackLabel()}
                   </button>
                 </div>
               </div>

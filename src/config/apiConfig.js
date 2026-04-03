@@ -1,4 +1,4 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 // export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
@@ -74,9 +74,10 @@ export const OPD_PATIENT = "/patient";
 
 
 export const FILTER_OPD_DEPT = `OPD`;
-export const ALL_LAB_HISTORY_REPORT = `${ALL_REPORTS}/lab-histrory`;
-export const OPD_REPORT_API = `${ALL_REPORTS}/opdReport`;
-export const LAB_REPORT_API = `${ALL_REPORTS}/labReport`;
+export const ALL_LAB_HISTORY_REPORT=`${ALL_REPORTS}/lab-histrory`;
+export const OPD_INVOICE_API=`${ALL_REPORTS}/opdInvoice`;
+export const LAB_INVOICE_API=`${ALL_REPORTS}/labInvoice`;
+export const RADIOLOGY_INVOICE_API=`${ALL_REPORTS}/radiologyInvoice`;
 
 
 
@@ -195,6 +196,9 @@ export const Store_Internal_Indent = `/storeInternalIndent`
 
 export const RADIOLOGY = `/radiology`;
 export const REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/registerWithInv`;
+export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
+export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
+
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 
 
@@ -317,7 +321,7 @@ export const MAS_BLOOD_TEST = `${MASTERS}/masBloodTest`;
 export const PATIENT_IMAGE_UPLOAD = `/registration/uploadPatientImage`;
 export const PATIENT_REGISTRATION = `/registration/createPatient`;
 export const PATIENT_FOLLOW_UP = `/registration/updatePatient`;
-export const SEARCH_PATIENT_OPD = `/registration/searchPatient`;
+export const FOLLOWUP_PATIENTS_LIST = `/registration/searchPatient`;
 export const SEARCH_PATIENT = `/patient/search`;
 export const CHECH_DUPLICATE_PATIENT = `/registration/checkDuplicatePatient`
 export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
@@ -330,17 +334,25 @@ export const SET_VITALS = `/patient/saveVitalDetails`;
 export const GET_WAITING_LIST = `/patient/getWaitingList`;
 
 //billing
-export const UPDATE_OPD_PAYMENT_STATUS = `/billing/payment`;
-export const UPDATE_LAB_RADIO_PAYMENT_STATUS = `/billing/updatePaymentStatus`
-export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
-export const PATIENT_VISIT_DETAILS = `/billing/patientBillingDetails`
-export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
 export const OPD_SERVICE_CATAGORY = "SC001";
 export const LAB_SERVICE_CATAGORY = "SC002"
 
-export const LAB_RADIO_BILLING_DATA = "/billing/pendingBillingLabRadioDetails"
-export const INVOICE_REPORTS = `/billing/billingStatus`
+export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
+export const PROCESS_LAB_PAYMENT = `/billing/processLabPayment`
+export const PROCESS_RADIOLOGY_PAYMENT = `/billing/processRadiologyPayment`
+export const PENDING_BILLINGS_BY_CATAGORY = `/billing/pendingBillingsByCategory`
+export const LAB_RADIO_BILLING_DETAILS = "/billing/getLabRadiologyBillingDetails"
+export const OPD_PATIENT_BILL_DETAILS = `/billing/OPDPatientBillDetails`
+export const INVOICE_REPORTS = `/billing/searchInvoiceDetails`
+
+export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
+
+
+
+
+
+
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate"; export const INVENTORY = `/inventory`
 export const SECTION_ID_FOR_DRUGS = 18;

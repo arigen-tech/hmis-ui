@@ -226,7 +226,6 @@ const RadiologyInvestigationMaster = () => {
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
-    debugger;
     // For dropdowns that need to update both ID and name
     if (name.endsWith("Id")) {
       const prefix = name.replace("Id", "")
@@ -426,7 +425,6 @@ const RadiologyInvestigationMaster = () => {
 
       // Map gender to code before sending to API
       const genderCode = mapGenderToCode(formData.genderApplicable)
-      debugger;
       // Prepare the common request payload with correct API field names
       const commonPayload = {
         investigationName: formData.investigationName,
@@ -456,7 +454,6 @@ const RadiologyInvestigationMaster = () => {
             commonPayload
         )
       } else {
-        debugger;
         // Create new investigation
         response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
       }

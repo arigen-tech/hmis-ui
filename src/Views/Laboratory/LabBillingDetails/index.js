@@ -6,11 +6,9 @@ import Swal from "sweetalert2";
 import LoadingScreen from "../../../Components/Loading";
 import {
   MAS_SERVICE_CATEGORY,
-  LAB,
-  PENDING_BILLING_PATIENTS,
-  CATAGORY_WISE_BILLING,
+  PENDING_BILLINGS_BY_CATAGORY,
   LAB_SERVICE_CATAGORY,
-  LAB_RADIO_BILLING_DATA,
+  LAB_RADIO_BILLING_DETAILS,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import Pagination, {
@@ -75,9 +73,6 @@ const LabBillingDetails = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [checkedRows, setCheckedRows] = useState([]);
   const [totalElements, setTotalElements] = useState(0);
-  const [activeRowIndex, setActiveRowIndex] = useState(null);
-  const [investigationItems, setInvestigationItems] = useState([]);
-  const [packageItems, setPackageItems] = useState([]);
 
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
@@ -93,15 +88,15 @@ const LabBillingDetails = () => {
       setError(null);
 
       const params = new URLSearchParams({
-              page,
-              size: DEFAULT_ITEMS_PER_PAGE,
-              patientName: searchData.patientName,
-              mobileNo: searchData.mobileNo,
-              registrationNo: searchData.registrationNo,
-            });
+        page,
+        size: DEFAULT_ITEMS_PER_PAGE,
+        patientName: searchData.patientName,
+        mobileNo: searchData.mobileNo,
+        registrationNo: searchData.registrationNo,
+      });
 
       const response = await getRequest(
-        `${CATAGORY_WISE_BILLING}/${LAB_SERVICE_CATAGORY}?${params}`,
+        `${PENDING_BILLINGS_BY_CATAGORY}/${LAB_SERVICE_CATAGORY}?${params}`,
       );
       if (response && response.response) {
         const mappedData = response.response.content.map((item) => {
@@ -114,6 +109,7 @@ const LabBillingDetails = () => {
             age: item.age || "N/A",
             gender: item.gender || "N/A",
             appointmentDate: item.appointmentDate,
+            orderDate:item.orderDate,
 
             billingType: item.billingType || "Laboratory Services",
             amount: item.billAmount || 0,
@@ -138,7 +134,9 @@ const LabBillingDetails = () => {
   async function fetchGstConfiguration() {
     try {
       console.log("=== FETCHING GST CONFIGURATION ===");
-      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+      const data = await getRequest(
+        `${MAS_SERVICE_CATEGORY}/getGstConfig/1?categoryCode=${LAB_SERVICE_CATAGORY}`,
+      );
       console.log("GST API Response:", JSON.stringify(data, null, 2));
 
       if (
@@ -246,7 +244,7 @@ const LabBillingDetails = () => {
 
       const billingHeaderId = patient.id;
       const response = await getRequest(
-        `${LAB_RADIO_BILLING_DATA}/${billingHeaderId}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
+        `${LAB_RADIO_BILLING_DETAILS}/${billingHeaderId}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
       );
       console.log("Billing API response:", response);
 
@@ -273,7 +271,9 @@ const LabBillingDetails = () => {
           id: item.id || index + 1,
           name:
             item.itemName || item.packageName || item.investigationName || "",
-          date: new Date().toISOString().split("T")[0],
+          date: item.orderDate
+            ? item.orderDate.split("T")[0]
+            : new Date().toISOString().split("T")[0],
           originalAmount: item.basePrice || item.tariff || 0,
           discountAmount: item.discount || 0,
           netAmount: item.amountAfterDiscount || item.netAmount || 0,
@@ -293,6 +293,7 @@ const LabBillingDetails = () => {
         age: billingData.age || "",
         gender: billingData.gender || "",
         patientId: billingData.patientid || billingData.patientId,
+        relation: billingData.relation || "",
         address: billingData.address || "",
         rows: formattedRows,
         type: "investigation",
@@ -541,7 +542,7 @@ const LabBillingDetails = () => {
 
             return {
               id: Number(row.itemId),
-              appointmentDate:
+              orderDate:
                 row.date || new Date().toISOString().split("T")[0],
               checkStatus: true,
               actualAmount: Number.parseFloat(row.originalAmount) || 0,
@@ -690,14 +691,14 @@ const LabBillingDetails = () => {
 
           navigate("/payment", {
             state: {
-              amount: totalFinalAmount,
+              amount: paymentBreakdown.finalAmount,
               patientId: patientId,
               labData: labData,
               paymentData: paymentData,
               investigationandPackegBillStatus: selectedItemsForPayment,
               paymentBreakdown: paymentBreakdown,
               billingHeaderId: billingHeaderId,
-              billingType: "Laboratory Services",
+              billingType: LAB_SERVICE_CATAGORY,
               wasRegistered: !data?.billinghdid,
               originalOrderHdId: data?.orderhdid,
               originalBillingData: data,
@@ -860,6 +861,7 @@ const LabBillingDetails = () => {
                             <th>Age</th>
                             <th>Gender</th>
                             <th>Billing Type</th>
+                            <th>Order Date</th>
                             <th>Appointment Date</th>
                             <th>Amount</th>
                             <th>Billing Status</th>
@@ -887,6 +889,7 @@ const LabBillingDetails = () => {
                                   {item.billingType}
                                 </span>
                               </td>
+                              <td>{formatDateTime(item.orderDate)}</td>
                               <td>{formatDateTime(item.appointmentDate)}</td>
                               <td>
                                 ₹
@@ -1170,7 +1173,7 @@ const LabBillingDetails = () => {
                                       type="button"
                                       className="btn btn-danger"
                                       onClick={() => removeRow(index)}
-                                      disabled={formData.rows.length === 1}
+                                      disabled={formData.rows.length === 1||row.type === "investigation"||row.type === "package"}
                                     >
                                       <i className="icofont-close"></i>
                                     </button>

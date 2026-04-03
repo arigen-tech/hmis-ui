@@ -11,13 +11,13 @@ const RadiologyPaymentSuccess = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const { amount = 0, paymentResponse } = location.state || {};
+  const { amount = 0, paymentResponse, source } = location.state || {};
   const billNo = paymentResponse?.response?.billNo;
   const paymentStatus = paymentResponse?.response?.paymentStatus;
 
-  const generateRadiologyReport = async (flag = "d") => {
-    if (!billNo || !paymentStatus) {
-      alert("Missing bill number or payment status");
+  const generateRadiologyInvoice = async () => {
+    if (!billNo) {
+      alert("Missing bill number");
       return;
     }
 
@@ -25,9 +25,10 @@ const RadiologyPaymentSuccess = () => {
     setPdfUrl(null);
 
     try {
-      const radOrderDtId = paymentResponse?.response?.radOrderDtId;
+      const url = `${ALL_REPORTS}/radiologyInvoice?billNo=${encodeURIComponent(
+        billNo,
+      )}&flag=d`; 
 
-      const url = `${ALL_REPORTS}/radiologyReport?radOrderDtId=${radOrderDtId}&flag=${flag}`;
       const response = await fetch(url, {
         method: "GET",
         headers: { Accept: "application/pdf" },
@@ -37,7 +38,8 @@ const RadiologyPaymentSuccess = () => {
 
       const blob = await response.blob();
       const fileURL = window.URL.createObjectURL(blob);
-      setPdfUrl(fileURL);
+
+      setPdfUrl(fileURL); 
     } catch (err) {
       console.error(err);
       alert("Failed to generate receipt");
@@ -45,19 +47,32 @@ const RadiologyPaymentSuccess = () => {
       setIsGeneratingPDF(false);
     }
   };
+  const getBackRoute = () => {
+    if (source === "registration") {
+      return "/PatientRegistrationRadiologyBooking";
+    }
+    return "/PendingForRadiologyBilling";
+  };
+
+  const getBackLabel = () => {
+    if (source === "registration") {
+      return "Back to Registration";
+    }
+    return "Back to Radiology Billing";
+  };
 
   const handlePrint = async () => {
-    if (!billNo || !paymentStatus) {
-      alert("Missing data");
+    if (!billNo) {
+      alert("Missing bill number");
       return;
     }
 
     setIsPrinting(true);
 
     try {
-      const url = `${ALL_REPORTS}/radiologyReport?billNo=${encodeURIComponent(
+      const url = `${ALL_REPORTS}/radiologyInvoice?billNo=${encodeURIComponent(
         billNo,
-      )}&paymentStatus=${encodeURIComponent(paymentStatus)}&flag=p`;
+      )}&flag=p`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -78,7 +93,6 @@ const RadiologyPaymentSuccess = () => {
   return (
     <div className="body d-flex py-3">
       <div className="container-xxl">
-
         <div className="col-md-8 mx-auto">
           <div className="card">
             <div className="card-body text-center">
@@ -89,27 +103,28 @@ const RadiologyPaymentSuccess = () => {
 
               <h4>Payment Successful!</h4>
               <p className="text-muted">
-                Your payment of ₹{amount.toFixed(2)} has been processed successfully.
+                Your payment of ₹{amount.toFixed(2)} has been processed
+                successfully.
               </p>
 
-                <div className="p-3 rounded mb-4">
-                  <h5 className="mb-3">Payment Details</h5>
-                  <div className="row justify-content-center">
-                    <div className="col-sm-6">
-                      <p className="mb-2">
-                        <strong>Bill No:</strong> {billNo || "N/A"}
-                      </p>
-                      <p className="mb-2">
-                        <strong>Amount Paid:</strong> ₹{amount.toFixed(2)}
-                      </p>
-                    </div>
+              <div className="p-3 rounded mb-4">
+                <h5 className="mb-3">Payment Details</h5>
+                <div className="row justify-content-center">
+                  <div className="col-sm-6">
+                    <p className="mb-2">
+                      <strong>Bill No:</strong> {billNo || "N/A"}
+                    </p>
+                    <p className="mb-2">
+                      <strong>Amount Paid:</strong> ₹{amount.toFixed(2)}
+                    </p>
                   </div>
                 </div>
+              </div>
 
               <div className="d-flex justify-content-center gap-3">
                 <button
                   className="btn btn-primary"
-                  onClick={() => generateRadiologyReport("d")}
+                  onClick={() => generateRadiologyInvoice("d")}
                   disabled={isGeneratingPDF}
                 >
                   {isGeneratingPDF ? "Generating..." : "VIEW/DOWNLOAD"}
@@ -125,9 +140,9 @@ const RadiologyPaymentSuccess = () => {
 
                 <button
                   className="btn btn-secondary"
-                  onClick={() => navigate("/PendingForRadiologyBilling")}
+                  onClick={() => navigate(getBackRoute())}
                 >
-                  Back to Radiology Pending Billing
+                  {getBackLabel()}
                 </button>
               </div>
             </div>

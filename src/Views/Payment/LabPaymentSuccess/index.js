@@ -1,6 +1,6 @@
 import { useLocation, useNavigate } from "react-router-dom";
-import { ALL_REPORTS } from "../../../config/apiConfig";
-import { useState } from "react";
+import { ALL_REPORTS, LAB_INVOICE_API } from "../../../config/apiConfig";
+import { useEffect, useState } from "react";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 const LabPaymentSuccess = () => {
@@ -10,22 +10,22 @@ const LabPaymentSuccess = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
 
-  const { amount = 0, paymentResponse } = location.state || {};
+  const { amount = 0, paymentResponse, source } = location.state || {};
   const billNo = paymentResponse?.response?.billNo;
   const paymentStatus = paymentResponse?.response?.paymentStatus;
 
-  const generateLabReport = async (flag = "d") => {
+  const generateLabInvoice = async (flag = "d") => {
     if (!billNo || !paymentStatus) {
       alert("Missing bill number or payment status for generating report");
       return;
     }
-    
+
     setIsGeneratingPDF(true);
     setPdfUrl(null);
-    
+
     try {
-      const url = `${ALL_REPORTS}/labReport?billNo=${encodeURIComponent(billNo)}&paymentStatus=${encodeURIComponent(paymentStatus)}&flag=${flag}`;
-      
+      const url = `${ALL_REPORTS}/labInvoice?billNo=${encodeURIComponent(billNo)}&flag=${flag}`;
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
@@ -40,7 +40,6 @@ const LabPaymentSuccess = () => {
       const blob = await response.blob();
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
-      
     } catch (error) {
       console.error("Error generating PDF", error);
       alert("Failed to generate receipt");
@@ -49,24 +48,50 @@ const LabPaymentSuccess = () => {
     }
   };
 
+  useEffect(() => {
+    const handleBack = () => {
+      navigate(getBackRoute(), { replace: true });
+    };
+
+    window.addEventListener("popstate", handleBack);
+
+    return () => {
+      window.removeEventListener("popstate", handleBack);
+    };
+  }, [source]);
+
+  const getBackRoute = () => {
+    if (source === "registration") {
+      return "/labregistration";
+    }
+    return "/LabBillingDetails";
+  };
+
+  const getBackLabel = () => {
+    if (source === "registration") {
+      return "Back to Registration";
+    }
+    return "Back to Lab Billing";
+  };
+
   const handlePrint = async () => {
     if (!billNo || !paymentStatus) {
       alert("Missing bill number or payment status for printing");
       return;
     }
-    
+
     setIsPrinting(true);
-    
+
     try {
-      const url = `${ALL_REPORTS}/labReport?billNo=${encodeURIComponent(billNo)}&paymentStatus=${encodeURIComponent(paymentStatus)}&flag=p`;
-      
+      const url = `${LAB_INVOICE_API}?billNo=${encodeURIComponent(billNo)}&flag=p`;
+
       const response = await fetch(url, {
         method: "GET",
         headers: {
           Accept: "application/pdf",
         },
       });
-      
+
       if (response.status === 200) {
         // alert("Receipt sent to printer successfully!");
       } else {
@@ -81,7 +106,7 @@ const LabPaymentSuccess = () => {
   };
 
   const handleViewDownload = () => {
-    generateLabReport("d");
+    generateLabInvoice("d");
   };
 
   const handleBackToRegistration = () => {
@@ -104,12 +129,16 @@ const LabPaymentSuccess = () => {
             <div className="card">
               <div className="card-body text-center">
                 <div className="mb-4">
-                  <i className="fa fa-check-circle text-success" style={{ fontSize: "4rem" }}></i>
+                  <i
+                    className="fa fa-check-circle text-success"
+                    style={{ fontSize: "4rem" }}
+                  ></i>
                 </div>
 
                 <h4 className="mb-3">Payment Successful!</h4>
                 <p className="text-muted mb-4">
-                  Your payment of ₹{amount.toFixed(2)} has been processed successfully.
+                  Your payment of ₹{amount.toFixed(2)} has been processed
+                  successfully.
                 </p>
 
                 <div className="p-3 rounded mb-4">
@@ -134,7 +163,11 @@ const LabPaymentSuccess = () => {
                   >
                     {isGeneratingPDF ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
                         Generating...
                       </>
                     ) : (
@@ -151,7 +184,11 @@ const LabPaymentSuccess = () => {
                   >
                     {isPrinting ? (
                       <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        <span
+                          className="spinner-border spinner-border-sm me-2"
+                          role="status"
+                          aria-hidden="true"
+                        ></span>
                         Printing...
                       </>
                     ) : (
@@ -163,9 +200,9 @@ const LabPaymentSuccess = () => {
 
                   <button
                     className="btn btn-secondary d-flex align-items-center gap-2"
-                    onClick={handleBackToRegistration}
+                    onClick={() => navigate(getBackRoute())}
                   >
-                    Back to Lab Pending Billing
+                    {getBackLabel()}
                   </button>
                 </div>
               </div>
@@ -180,7 +217,7 @@ const LabPaymentSuccess = () => {
           onClose={() => {
             setPdfUrl(null);
           }}
-          name={`Lab Receipt - ${billNo || 'Receipt'}`}
+          name={`Lab Receipt - ${billNo || "Receipt"}`}
         />
       )}
     </div>

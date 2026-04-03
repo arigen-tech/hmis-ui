@@ -6,8 +6,9 @@ import { postRequest } from "../../../service/apiService";
 import {
   OPD_SERVICE_CATAGORY,
   RADIOLOGY_SERVICE_CATAGORY,
-  UPDATE_LAB_RADIO_PAYMENT_STATUS,
-  UPDATE_OPD_PAYMENT_STATUS,
+  PROCESS_LAB_PAYMENT,
+  PROCESS_OPD_PAYMENT,
+  PROCESS_RADIOLOGY_PAYMENT,
 } from "../../../config/apiConfig";
 
 const PaymentPage = () => {
@@ -19,7 +20,7 @@ const PaymentPage = () => {
     billingType,
     amount = 0,
     patientId,
-    labData,
+    investigationData,
     selectedItems,
     billingHeaderId,
     billingHeaderIds,
@@ -51,21 +52,16 @@ const PaymentPage = () => {
   // Get Single Bill Header (LAB + Consultation)
   const getBillHeaderId = () => {
     if (billingHeaderId) return Number(billingHeaderId);
-    if (labData?.response?.billinghdId)
-      return Number(labData.response.billinghdId);
-    if (labData?.response?.billHeaderId)
-      return Number(labData.response.billHeaderId);
+    if (billingHeaderIds?.length) return Number(billingHeaderIds[0].billingHdId);
+    if (investigationData?.response?.billinghdId)
+      return Number(investigationData.response.billinghdId);
+    if (investigationData?.response?.billHeaderId)
+      return Number(investigationData.response.billHeaderId);
     if (paymentData?.billHeaderId) return Number(paymentData.billHeaderId);
 
     return null;
   };
 
-  // normalize incoming OPD IDs to use in payload
-  const normalizedBillHeaderIds = Array.isArray(billingHeaderIds)
-    ? billingHeaderIds
-    : billingHeaderIds
-      ? [billingHeaderIds]
-      : [];
 
   // build opdBillPayments from opdData.appointments (backend expects this)
   const buildOpdBillPayments = () => {
@@ -76,10 +72,9 @@ const PaymentPage = () => {
         ),
         netAmount: Number(appt.netAmount || appt.netAmount || 0),
       }))
-      .filter((p) => p.billHeaderId); // remove entries without id
+      .filter((p) => p.billHeaderId);
   };
 
-  // Prepare items list (investigations / packages)
   const prepareInvestigationAndPackageStatus = () => {
     if (investigationandPackegBillStatus?.length)
       return investigationandPackegBillStatus;
@@ -101,6 +96,12 @@ const PaymentPage = () => {
 
     return statusList;
   };
+
+  const normalizedRadiologyIds = Array.isArray(billingHeaderIds)
+    ? billingHeaderIds.map(Number)
+    : billingHeaderIds
+      ? [Number(billingHeaderIds)]
+      : [];
 
   // Payment Handler
   const handlePayment = async () => {
@@ -127,27 +128,15 @@ const PaymentPage = () => {
 
       let paymentRequest;
 
+
       if (isConsultation) {
         const opdBillPayments = buildOpdBillPayments();
 
-        // Validate OPD payload
-        if (
-          !Array.isArray(normalizedBillHeaderIds) ||
-          normalizedBillHeaderIds.length === 0 ||
-          opdBillPayments.length === 0
-        ) {
-          Swal.fire(
-            "Error",
-            "OPD billing IDs or appointments missing",
-            "error",
-          );
-          return;
-        }
-
+        
         paymentRequest = {
           billingType,
-          billHeaderIds: normalizedBillHeaderIds, // NOTE: backend field name 'billHeaderIds'
-          opdBillPayments, // backend expects this array
+          billingHeaderIds,
+          opdBillPayments,
           amount: Number(amount),
           mode: paymentMethod,
           paymentReferenceNo,
@@ -157,7 +146,24 @@ const PaymentPage = () => {
           patientId,
           registrationCost,
         };
+      } else if (isRadiology) {
+        paymentRequest = {
+          billingType,
+          billHeaderId: billId,
+          billingHeaderIds,
+          amount: Number(amount),
+          mode: paymentMethod,
+          paymentReferenceNo,
+          investigationandPackegBillStatus:
+            prepareInvestigationAndPackageStatus(),
+
+          isPaymentUpdate: true,
+          shouldNotCreateNewBilling: true,
+          useExistingBillingHeader: true,
+          patientId,
+        };
       } else {
+        // LAB
         paymentRequest = {
           billingType,
           billHeaderId: billId,
@@ -172,7 +178,6 @@ const PaymentPage = () => {
           patientId,
         };
       }
-
       if (paymentMethod !== "cash") {
         paymentRequest.paymentDetails = paymentDetails;
       }
@@ -189,7 +194,7 @@ const PaymentPage = () => {
   const proceedWithPayment = async (paymentRequest) => {
     try {
       setLoading(true);
-
+      debugger;
       const finalData = {
         ...paymentRequest,
         timestamp: new Date().toISOString(),
@@ -199,12 +204,11 @@ const PaymentPage = () => {
       let response;
       // Always call LAB API (Consultation also handled same way)
       if (finalData.billingType === OPD_SERVICE_CATAGORY) {
-        response = await postRequest(`${UPDATE_OPD_PAYMENT_STATUS}`, finalData);
+        response = await postRequest(`${PROCESS_OPD_PAYMENT}`, finalData);
+      } else if (finalData.billingType === RADIOLOGY_SERVICE_CATAGORY) {
+        response = await postRequest(`${PROCESS_RADIOLOGY_PAYMENT}`, finalData);
       } else {
-        response = await postRequest(
-          `${UPDATE_LAB_RADIO_PAYMENT_STATUS}`,
-          finalData,
-        );
+        response = await postRequest(`${PROCESS_LAB_PAYMENT}`, finalData);
       }
 
       console.log("=== PAYMENT RESPONSE ===", response);
@@ -226,9 +230,7 @@ const PaymentPage = () => {
   const navigateToSuccessPage = (response, request) => {
     const isOpd = billingType === OPD_SERVICE_CATAGORY;
     const isRadiology = billingType === RADIOLOGY_SERVICE_CATAGORY;
-
     let successPage = "/lab_payment_success";
-
     if (isOpd) {
       successPage = "/opd_payment_success";
     } else if (isRadiology) {
@@ -240,10 +242,12 @@ const PaymentPage = () => {
         amount: request.amount,
         paymentMethod: request.mode,
         paymentReferenceNo: request.paymentReferenceNo,
+        billingHeaderIds:response.billHeaderIds||response.billHeaderIds,
         patientId,
         billNo: response?.response?.billNo,
         paymentStatus: response?.response?.paymentStatus,
         paymentResponse: response,
+        source: location.state?.source || "billing",
       },
     });
   };
@@ -330,9 +334,12 @@ const PaymentPage = () => {
                   onClick={handlePayment}
                   disabled={
                     loading ||
-                    (!isConsultation && !currentBillHeaderId) ||
                     (isConsultation &&
-                      (!billingHeaderIds || billingHeaderIds.length === 0))
+                      (!billingHeaderIds || billingHeaderIds.length === 0)) ||
+                    (isRadiology &&
+                      !normalizedRadiologyIds.length &&
+                      !currentBillHeaderId) ||
+                    (!isConsultation && !isRadiology && !currentBillHeaderId)
                   }
                 >
                   {loading ? "Processing..." : `Pay ₹${amount}`}

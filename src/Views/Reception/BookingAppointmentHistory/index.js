@@ -40,7 +40,8 @@ import {
   RESCHEDULE_SUCCESS,
   SELECT_CANCELLATION_REASON,
   SESSION_NOT_AVAILABLE,
-  SESSION_NOT_AVAILABLE_TEXT,INVALID_RESPONSE_FORMAT_LOG,
+  SESSION_NOT_AVAILABLE_TEXT,
+  INVALID_RESPONSE_FORMAT_LOG,
   FETCH_SESSIONS_ERROR_LOG,
   FETCH_CANCELLATION_REASONS_ERROR_LOG,
   FETCH_TOKEN_AVAILABILITY_ERROR_LOG,
@@ -50,7 +51,7 @@ import {
 
 const formatTimeToHHMM = (timeString) => {
   if (!timeString) return "";
-  
+
   if (timeString.includes("T")) {
     const timeMatch = timeString.match(/T(\d{2}:\d{2}):/);
     if (timeMatch && timeMatch[1]) {
@@ -60,14 +61,22 @@ const formatTimeToHHMM = (timeString) => {
   return timeString.substring(0, 5);
 };
 
-const toInstant = (dateStr, timeStr) => {
-  if (!dateStr || !timeStr) return null;
-  const dateOnly = dateStr.includes("T") ? dateStr.split("T")[0] : dateStr;
-  let timeWithSeconds = timeStr;
-  if (timeStr.split(":").length === 2) {
-    timeWithSeconds = `${timeStr}:00`;
+const formatDateToDDMMYYYY = (dateInput) => {
+  if (!dateInput) return "";
+
+  try {
+    const date = new Date(dateInput);
+
+    if (isNaN(date.getTime())) return "";
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0"); // month is 0-based
+    const year = date.getFullYear();
+
+    return `${day}/${month}/${year}`;
+  } catch (e) {
+    return "";
   }
-  return `${dateOnly}T${timeWithSeconds}Z`;
 };
 
 const formatAppointmentTime = (start, end) => {
@@ -86,8 +95,18 @@ const formatDateForDisplay = (dateString) => {
     // Use UTC methods
     const day = String(date.getUTCDate()).padStart(2, "0");
     const monthNames = [
-      "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-      "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+      "Jan",
+      "Feb",
+      "Mar",
+      "Apr",
+      "May",
+      "Jun",
+      "Jul",
+      "Aug",
+      "Sep",
+      "Oct",
+      "Nov",
+      "Dec",
     ];
     const month = monthNames[date.getUTCMonth()];
     const year = date.getUTCFullYear();
@@ -105,6 +124,7 @@ const BookingAppointmentHistory = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [popupMessage, setPopupMessage] = useState(null);
   const [reportData, setReportData] = useState([]);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Reschedule Popup States
   const [showReschedulePopup, setShowReschedulePopup] = useState(false);
@@ -216,11 +236,11 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
-    setIsGenerating(true);
+    setSearchLoading(true);
     setShowReport(false);
 
     try {
-      const hospitalId = sessionStorage.getItem('hospitalId');
+      const hospitalId = sessionStorage.getItem("hospitalId");
       const res = await getRequest(
         `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${FILTER_OPD_DEPT}&includeAllHistory=false`,
       );
@@ -239,88 +259,88 @@ const BookingAppointmentHistory = () => {
           return;
         }
 
-          const transformedData = appointments.map((appointment, index) => {
-            const sourceDateTime =
-              appointment.appointmentStartTime || appointment.appointmentDate;
+        const transformedData = appointments.map((appointment, index) => {
+          const sourceDateTime =
+            appointment.appointmentStartTime || appointment.appointmentDate;
 
-            const appointmentSlot = formatAppointmentTime(
-              appointment.appointmentStartTime,
-              appointment.appointmentEndTime,
-            );
+          const appointmentSlot = formatAppointmentTime(
+            appointment.appointmentStartTime,
+            appointment.appointmentEndTime,
+          );
 
-            let displayDate = "N/A";
-            let shortDate = "";
+          let displayDate = "N/A";
+          let shortDate = "";
 
-            if (sourceDateTime) {
-              try {
-                const date = new Date(sourceDateTime);
-                if (!isNaN(date.getTime())) {
-                  const day = String(date.getUTCDate()).padStart(2, "0");
-                  const monthNames = [
-                    "Jan",
-                    "Feb",
-                    "Mar",
-                    "Apr",
-                    "May",
-                    "Jun",
-                    "Jul",
-                    "Aug",
-                    "Sep",
-                    "Oct",
-                    "Nov",
-                    "Dec",
-                  ];
-                  const month = monthNames[date.getUTCMonth()];
-                  const year = date.getUTCFullYear();
-                  displayDate = `${day}-${month}-${year}`;
-                  shortDate = date.toISOString().split("T")[0];
-                }
-              } catch (error) {
-                console.warn("Error parsing date:", error);
+          if (sourceDateTime) {
+            try {
+              const date = new Date(sourceDateTime);
+              if (!isNaN(date.getTime())) {
+                const day = String(date.getUTCDate()).padStart(2, "0");
+                const monthNames = [
+                  "Jan",
+                  "Feb",
+                  "Mar",
+                  "Apr",
+                  "May",
+                  "Jun",
+                  "Jul",
+                  "Aug",
+                  "Sep",
+                  "Oct",
+                  "Nov",
+                  "Dec",
+                ];
+                const month = monthNames[date.getUTCMonth()];
+                const year = date.getUTCFullYear();
+                displayDate = `${day}-${month}-${year}`;
+                shortDate = date.toISOString().split("T")[0];
               }
+            } catch (error) {
+              console.warn("Error parsing date:", error);
             }
+          }
 
-            if (displayDate === "N/A" && appointment.appointmentDate) {
-              displayDate = formatDateForDisplay(appointment.appointmentDate);
-              if (appointment.appointmentDate.includes("T")) {
-                shortDate = appointment.appointmentDate.split("T")[0];
-              } else {
-                shortDate = appointment.appointmentDate;
-              }
+          if (displayDate === "N/A" && appointment.appointmentDate) {
+            displayDate = formatDateForDisplay(appointment.appointmentDate);
+            if (appointment.appointmentDate.includes("T")) {
+              shortDate = appointment.appointmentDate.split("T")[0];
+            } else {
+              shortDate = appointment.appointmentDate;
             }
+          }
 
-            return {
-              id:
-                appointment.id ||
-                appointment.appointmentId ||
-                appointment.visitId ||
-                index + 1,
-              patientName:
-                appointment.patientName || appointment.name || "Unknown",
-              mobileNumber:
-                appointment.mobileNo ||
-                appointment.mobileNumber ||
-                appointment.phone ||
-                mobileNumber.trim(),
-              patientAge: appointment.age || appointment.patientAge || "N/A",
-              appointmentDate: displayDate,
-              doctorName: appointment.doctorName || "Unknown Doctor",
-              departmentName:
-                appointment.departmentName || appointment.speciality || "N/A",
-              appointmentSlot: appointmentSlot,
-              originalDoctorId: appointment.doctorId || 0,
-              originalDepartmentId: appointment.departmentId || 0,
-              originalDate: shortDate,
-              originalSessionId: appointment.sessionId || 0,
-              visitId: appointment.visitId,
-              tokenNo: appointment.tokenNo,
-              doctorId: appointment.doctorId,
-              departmentId: appointment.departmentId,
-              displayDate: displayDate,
-              displayTime: appointmentSlot,
-              shortDate: shortDate,
-            };
-          });
+          return {
+            id:
+              appointment.id ||
+              appointment.appointmentId ||
+              appointment.visitId ||
+              index + 1,
+            patientName:
+              appointment.patientName || appointment.name || "Unknown",
+            mobileNumber:
+              appointment.mobileNo ||
+              appointment.mobileNumber ||
+              appointment.phone ||
+              mobileNumber.trim(),
+            patientAge: appointment.age || appointment.patientAge || "N/A",
+            appointmentDate: displayDate,
+            doctorName: appointment.doctorName || "Unknown Doctor",
+            departmentName:
+              appointment.departmentName || appointment.speciality || "N/A",
+            appointmentSlot: appointmentSlot,
+            originalDoctorId: appointment.doctorId || 0,
+            originalDepartmentId: appointment.departmentId || 0,
+            originalDate: shortDate,
+            originalSessionId: appointment.sessionId || 0,
+            visitId: appointment.visitId,
+            tokenNo: appointment.tokenNo,
+            doctorId: appointment.doctorId,
+            departmentId: appointment.departmentId,
+            displayDate: displayDate,
+            displayTime: appointmentSlot,
+            shortDate: shortDate,
+          };
+        });
 
         setReportData(transformedData);
         setShowReport(true);
@@ -335,7 +355,7 @@ const BookingAppointmentHistory = () => {
       setShowReport(true);
       showPopup(`${FETCH_APPOINTMENT_ERROR}`, "error");
     } finally {
-      setIsGenerating(false);
+      setSearchLoading(false);
     }
   };
 
@@ -365,9 +385,29 @@ const BookingAppointmentHistory = () => {
   const handleReschedule = (patientData) => {
     setSelectedPatient(patientData);
 
-    // Set initial data from existing appointment
-    const initialDate = patientData.shortDate || getTodayDate();
+    const formatToISODate = (dateInput) => {
+      if (!dateInput) return getTodayDate();
 
+      // If it's already in YYYY-MM-DD format
+      if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
+        return dateInput;
+      }
+
+      if (dateInput.includes(" ") && dateInput.includes("/")) {
+        const datePart = dateInput.split(" ")[0]; // Get "DD/MM/YYYY"
+        const [day, month, year] = datePart.split("/");
+        return `${year}-${month}-${day}`;
+      }
+      if (dateInput.includes("/")) {
+        const [day, month, year] = dateInput.split("/");
+        return `${year}-${month}-${day}`;
+      }
+      return getTodayDate();
+    };
+    // Set initial data from existing appointment
+    const initialDate = formatToISODate(
+      patientData.shortDate || getTodayDate(),
+    );
     setRescheduleData({
       department: patientData.departmentName,
       doctor: patientData.doctorName,
@@ -399,7 +439,15 @@ const BookingAppointmentHistory = () => {
   // Handle Date Change in Reschedule
   const handleDateChange = async (date) => {
     if (!date) return;
-    const selectedDate = new Date(date);
+
+    // date from DatePicker should be in YYYY-MM-DD format
+    // But ensure we only take the date part if it contains time
+    let cleanDate = date;
+    if (date.includes(" ")) {
+      cleanDate = date.split(" ")[0];
+    }
+
+    const selectedDate = new Date(cleanDate);
     const today = new Date();
     selectedDate.setHours(0, 0, 0, 0);
     today.setHours(0, 0, 0, 0);
@@ -414,18 +462,19 @@ const BookingAppointmentHistory = () => {
       return;
     }
 
+    // Store only the date in YYYY-MM-DD format
     setRescheduleData((prev) => ({
       ...prev,
-      date: date,
+      date: cleanDate,
     }));
 
-    setNewDate(date);
+    setNewDate(cleanDate);
     setSelectedSlot(null);
     setSelectedToken(null);
     setShowTimeSlots(false);
 
     if (newSession && selectedPatient) {
-      await fetchTokensForDate(date);
+      await fetchTokensForDate(cleanDate);
     }
   };
 
@@ -605,7 +654,7 @@ const BookingAppointmentHistory = () => {
       Swal.showLoading();
       try {
         // Correctly create ISO strings for the backend
-        const appointmentDateInstant = `${newDate}T00:00:00Z`;
+        const appointmentDateInstant = `${newDate}T${slotToUse.start}:00Z`;
         const startTimeInstant = `${newDate}T${slotToUse.start}:00Z`;
         const endTimeInstant = `${newDate}T${slotToUse.end}:00Z`;
 
@@ -758,9 +807,9 @@ const BookingAppointmentHistory = () => {
                   <button
                     className="btn btn-success"
                     onClick={handleSearch}
-                    disabled={isGenerating}
+                    disabled={searchLoading}
                   >
-                    {isGenerating ? (
+                    {searchLoading ? (
                       <>
                         <span
                           className="spinner-border spinner-border-sm me-2"
@@ -776,13 +825,8 @@ const BookingAppointmentHistory = () => {
                 </div>
               </div>
 
-              {isGenerating && (
-                <div className="text-center py-4">
-                  <LoadingScreen />
-                </div>
-              )}
 
-              {showReport && !isGenerating && reportData.length > 0 && (
+              {showReport && !searchLoading  && reportData.length > 0 && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
@@ -990,6 +1034,7 @@ const BookingAppointmentHistory = () => {
                           min={new Date().toISOString().split("T")[0]}
                           disabled={isFetchingTokens}
                         />
+                        {rescheduleData.date && <div className="mt-1"></div>}
                         {isFetchingTokens && (
                           <div className="text-info small mt-1">
                             <span className="spinner-border spinner-border-sm me-1"></span>

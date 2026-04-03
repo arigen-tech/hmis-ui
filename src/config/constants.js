@@ -108,7 +108,7 @@ export const ADD_UOM_SUCC_MSG = "New UOM added successfully!";
 export const INFO = "Info !";
 export const PATIENT_NOT_FOUND_WARN_MSG ="No patients found matching your criteria";
 export const DUPLICATE_FOUND = "Duplicate Found!";
-export const LAB_BOOKING_SUCC_MSG ="Lab booking registered successfully! Redirecting to payment.";
+export const LAB_BOOKING_SUCC_MSG = "Patient Updated and Lab booking completed successfully! Redirecting to payment.";
 export const LAB_REGISTER_SUCC_MSG = "Lab booking registered successfully!";
 export const LAB_REG_FAIL_MSG = "Registration failed";
 export const INVALID_PAGE = "Invalid page !";
@@ -588,6 +588,15 @@ export const NO_TIME_SLOTS = "No time slots available for this session and date.
 
 //appointment Setup
 export const APPOINTMENT_REQUIRED_FIELDS = "Please fill all required fields properly for selected time slots.";
+
+//Radiology Success
+export const RADIOLOGY_REG_SUCC_MSG = "Radiology booking completed successfully. Redirecting to payment...";
+export const RADIOLOGY_REGISTER_SUCC_MSG = "Radiology booking registered successfully!";
+
+
+
+
+
 
 // EntMasSeptum Master
 export const FETCH_ENT_MAS_SEPTUM = "Failed to fetch records";

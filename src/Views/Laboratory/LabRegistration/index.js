@@ -1,8 +1,8 @@
-import { useState, useRef, useEffect } from "react"
-import placeholderImage from "../../../assets/images/placeholder.jpg"
-import { getRequest, postRequest } from "../../../service/apiService"
-import { useNavigate } from "react-router-dom"
-import Popup from "../../../Components/popup" 
+import { useState, useRef, useEffect } from "react";
+import placeholderImage from "../../../assets/images/placeholder.jpg";
+import { getRequest, postRequest } from "../../../service/apiService";
+import { useNavigate } from "react-router-dom";
+import Popup from "../../../Components/popup";
 import {
   API_HOST,
   MAS_COUNTRY,
@@ -16,9 +16,10 @@ import {
   MAS_SERVICE_CATEGORY,
   MAS_PACKAGE_INVESTIGATION,
   CHECH_DUPLICATE_PATIENT,
-  PATIENT_REGISTRATION
-} from "../../../config/apiConfig"
-import LoadingScreen from "../../../Components/Loading"
+  PATIENT_REGISTRATION,
+  LAB_SERVICE_CATAGORY,
+} from "../../../config/apiConfig";
+import LoadingScreen from "../../../Components/Loading";
 import {
   ADD_ROW_WARNING,
   DUPLICATE_PATIENT,
@@ -38,32 +39,31 @@ import {
   DUPLICATE_INV_PACKAGE_WARN_MSG,
   COMMON_INV_IN_PACKAGES,
   DUPLICATE_PACKAGE_WRT_INV,
-  DUPLICATE_INV
-} from "../../../config/constants"
+} from "../../../config/constants";
 
 const LabRegistration = () => {
-  const [errors, setErrors] = useState({})
-  const [loading, setLoading] = useState(false)
-  const [genderData, setGenderData] = useState([])
-  const [imageURL, setImageURL] = useState("")
-  const [relationData, setRelationData] = useState([])
-  const [countryData, setCountryData] = useState([])
-  const [stateData, setStateData] = useState([])
-  const [nokStateData, setNokStateData] = useState([])
-  const [districtData, setDistrictData] = useState([])
-  const [nokDistrictData, setNokDistrictData] = useState([])
-  const [activeRowIndex, setActiveRowIndex] = useState(null)
-  const [investigationItems, setInvestigationItems] = useState([])
-  const [packageItems, setPackageItems] = useState([])
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false)
+  const [errors, setErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [genderData, setGenderData] = useState([]);
+  const [imageURL, setImageURL] = useState("");
+  const [relationData, setRelationData] = useState([]);
+  const [countryData, setCountryData] = useState([]);
+  const [stateData, setStateData] = useState([]);
+  const [nokStateData, setNokStateData] = useState([]);
+  const [districtData, setDistrictData] = useState([]);
+  const [nokDistrictData, setNokDistrictData] = useState([]);
+  const [activeRowIndex, setActiveRowIndex] = useState(null);
+  const [investigationItems, setInvestigationItems] = useState([]);
+  const [packageItems, setPackageItems] = useState([]);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
 
-  const navigate = useNavigate()
+  const navigate = useNavigate();
 
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 0,
-  })
+  });
 
   const [formData, setFormData] = useState({
     imageurl: undefined,
@@ -103,7 +103,7 @@ const LabRegistration = () => {
       {
         id: 1,
         name: "",
-        date: new Date().toISOString().split('T')[0],
+        date: new Date().toISOString().split("T")[0],
         originalAmount: 0,
         discountAmount: 0,
         netAmount: 0,
@@ -111,73 +111,90 @@ const LabRegistration = () => {
       },
     ],
     paymentMode: "",
-  })
+  });
 
-  const [image, setImage] = useState(placeholderImage)
-  const [isCameraOn, setIsCameraOn] = useState(false)
-  const videoRef = useRef(null)
-  const canvasRef = useRef(null)
-  let stream = null
+  const [image, setImage] = useState(placeholderImage);
+  const [isCameraOn, setIsCameraOn] = useState(false);
+  const videoRef = useRef(null);
+  const canvasRef = useRef(null);
+  let stream = null;
 
-  const [checkedRows, setCheckedRows] = useState([true])
+  const [checkedRows, setCheckedRows] = useState([true]);
 
   useEffect(() => {
-    fetchGenderData()
-    fetchRelationData()
-    fetchCountryData()
-    fetchGstConfiguration()
+    fetchGenderData();
+    fetchRelationData();
+    fetchCountryData();
+    fetchGstConfiguration();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+  }, []);
 
   useEffect(() => {
-    const { firstName, dob, gender, mobileNo, relation } = formData
+    const { firstName, dob, gender, mobileNo, relation } = formData;
 
     if (firstName && dob && gender && mobileNo && relation) {
       const timer = setTimeout(async () => {
         try {
-          const isDuplicate = await checkDuplicatePatient(firstName, dob, gender, mobileNo, relation)
+          const isDuplicate = await checkDuplicatePatient(
+            firstName,
+            dob,
+            gender,
+            mobileNo,
+            relation,
+          );
           if (isDuplicate) {
-            showPopup(DUPLICATE_PATIENT, "warning")
-            setIsDuplicatePatient(true)
+            showPopup(DUPLICATE_PATIENT, "warning");
+            setIsDuplicatePatient(true);
           } else {
-            setIsDuplicatePatient(false)
+            setIsDuplicatePatient(false);
           }
         } catch (err) {
-          console.error("Duplicate check failed:", err)
+          console.error("Duplicate check failed:", err);
         }
-      }, 800)
+      }, 800);
 
-      return () => clearTimeout(timer)
+      return () => clearTimeout(timer);
     } else {
-      setIsDuplicatePatient(false)
+      setIsDuplicatePatient(false);
     }
-  }, [formData.firstName, formData.dob, formData.gender, formData.mobileNo, formData.relation])
+  }, [
+    formData.firstName,
+    formData.dob,
+    formData.gender,
+    formData.mobileNo,
+    formData.relation,
+  ]);
 
   useEffect(() => {
-    console.log("GST Config changed:", gstConfig)
-  }, [gstConfig])
+    console.log("GST Config changed:", gstConfig);
+  }, [gstConfig]);
 
-  const showPopup = (message, type = "info", shouldRefreshData = false, onCloseCallback = null) => {
+  const showPopup = (
+    message,
+    type = "info",
+    shouldRefreshData = false,
+    onCloseCallback = null,
+  ) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
         if (shouldRefreshData) {
           // Handle any refresh logic if needed
         }
         if (onCloseCallback) {
-          onCloseCallback()
+          onCloseCallback();
         }
-      }
-    })
-  }
+      },
+    });
+  };
 
   const showConfirmationPopup = (title, text, imageUrl, onConfirm) => {
     const confirmUpload = () => {
-      onConfirm()
-      setPopupMessage(null)
-    }
+      onConfirm();
+      setPopupMessage(null);
+    };
 
     setPopupMessage({
       message: (
@@ -189,7 +206,11 @@ const LabRegistration = () => {
               <img
                 src={imageUrl}
                 alt="Preview"
-                style={{ maxWidth: "200px", maxHeight: "150px", border: "1px solid #ddd" }}
+                style={{
+                  maxWidth: "200px",
+                  maxHeight: "150px",
+                  border: "1px solid #ddd",
+                }}
               />
             </div>
           )}
@@ -197,92 +218,101 @@ const LabRegistration = () => {
             <button className="btn btn-primary" onClick={confirmUpload}>
               Yes, Upload
             </button>
-            <button className="btn btn-secondary" onClick={() => setPopupMessage(null)}>
+            <button
+              className="btn btn-secondary"
+              onClick={() => setPopupMessage(null)}
+            >
               Cancel
             </button>
           </div>
         </div>
       ),
       type: "custom",
-      onClose: () => setPopupMessage(null)
-    })
-  }
+      onClose: () => setPopupMessage(null),
+    });
+  };
 
   const isInvestigationInSelectedPackages = (investigationId, date) => {
     return formData.rows.some((row, index) => {
-      if (!checkedRows[index]) return false
+      if (!checkedRows[index]) return false;
       if (row.type === "package" && row.investigationIds && row.date === date) {
-        return row.investigationIds.includes(investigationId)
+        return row.investigationIds.includes(investigationId);
       }
-      return false
-    })
-  }
+      return false;
+    });
+  };
 
   const isPackageAlreadySelected = (packageId, date) => {
     return formData.rows.some((row, index) => {
-      if (!checkedRows[index]) return false
-      return row.type === "package" && 
-             row.itemId === packageId && 
-             row.date === date
-    })
-  }
+      if (!checkedRows[index]) return false;
+      return (
+        row.type === "package" && row.itemId === packageId && row.date === date
+      );
+    });
+  };
 
   const isInvestigationAlreadySelected = (investigationId, date) => {
     return formData.rows.some((row, index) => {
-      if (!checkedRows[index]) return false
-      return row.type === "investigation" &&
+      if (!checkedRows[index]) return false;
+      return (
+        row.type === "investigation" &&
         row.itemId === investigationId &&
         row.date === date
-    })
-  }
+      );
+    });
+  };
 
   const getInvestigationIdsFromPackage = async (packageId, packageName) => {
     try {
-      const response = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/1`)
+      const response = await getRequest(
+        `${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/1`,
+      );
       if (response.status === 200 && Array.isArray(response.response)) {
-        const packageData = response.response.find(pkg =>
-          pkg.packageId === packageId || pkg.packName === packageName
-        )
+        const packageData = response.response.find(
+          (pkg) => pkg.packageId === packageId || pkg.packName === packageName,
+        );
         if (packageData && packageData.investigations) {
-          return packageData.investigations.map(inv => inv.investigationId)
+          return packageData.investigations.map((inv) => inv.investigationId);
         }
       }
     } catch (error) {
-      console.error("Error fetching package investigation details:", error)
+      console.error("Error fetching package investigation details:", error);
     }
-    return []
-  }
+    return [];
+  };
 
   const calculatePaymentBreakdown = () => {
-    console.log("=== CALCULATING PAYMENT BREAKDOWN ===")
-    console.log("Current GST Config:", gstConfig)
+    console.log("=== CALCULATING PAYMENT BREAKDOWN ===");
+    console.log("Current GST Config:", gstConfig);
 
-    const checkedItems = formData.rows.filter((_, index) => checkedRows[index])
-    console.log("Checked Items:", checkedItems)
+    const checkedItems = formData.rows.filter((_, index) => checkedRows[index]);
+    console.log("Checked Items:", checkedItems);
 
     const totalOriginalAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.originalAmount) || 0)
-    }, 0)
+      return total + (Number.parseFloat(item.originalAmount) || 0);
+    }, 0);
 
     const totalDiscountAmount = checkedItems.reduce((total, item) => {
-      return total + (Number.parseFloat(item.discountAmount) || 0)
-    }, 0)
+      return total + (Number.parseFloat(item.discountAmount) || 0);
+    }, 0);
 
-    const totalNetAmount = totalOriginalAmount - totalDiscountAmount
+    const totalNetAmount = totalOriginalAmount - totalDiscountAmount;
 
     const totalGstAmount = checkedItems.reduce((total, item) => {
-      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0
-      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0
-      const itemNetAmount = itemOriginalAmount - itemDiscountAmount
+      const itemOriginalAmount = Number.parseFloat(item.originalAmount) || 0;
+      const itemDiscountAmount = Number.parseFloat(item.discountAmount) || 0;
+      const itemNetAmount = itemOriginalAmount - itemDiscountAmount;
 
-      const itemGstAmount = gstConfig.gstApplicable ? (itemNetAmount * gstConfig.gstPercent) / 100 : 0
+      const itemGstAmount = gstConfig.gstApplicable
+        ? (itemNetAmount * gstConfig.gstPercent) / 100
+        : 0;
       console.log(
         `Item GST Calculation - Original: ${itemOriginalAmount}, Discount: ${itemDiscountAmount}, Net: ${itemNetAmount}, GST%: ${gstConfig.gstPercent}, GST Amount: ${itemGstAmount}`,
-      )
-      return total + itemGstAmount
-    }, 0)
+      );
+      return total + itemGstAmount;
+    }, 0);
 
-    const finalAmount = totalNetAmount + totalGstAmount
+    const finalAmount = totalNetAmount + totalGstAmount;
 
     const breakdown = {
       totalOriginalAmount: totalOriginalAmount.toFixed(2),
@@ -297,329 +327,351 @@ const LabRegistration = () => {
       baseAmountAfterDiscount: totalNetAmount.toFixed(2),
       taxAmount: totalGstAmount.toFixed(2),
       finalPaymentAmount: finalAmount.toFixed(2),
-    }
+    };
 
-    console.log("Final Payment Breakdown:", breakdown)
-    console.log("=== END PAYMENT BREAKDOWN ===")
+    console.log("Final Payment Breakdown:", breakdown);
+    console.log("=== END PAYMENT BREAKDOWN ===");
 
-    return breakdown
-  }
+    return breakdown;
+  };
 
   const startCamera = async () => {
     try {
-      setIsCameraOn(true)
+      setIsCameraOn(true);
       setTimeout(async () => {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true })
+        stream = await navigator.mediaDevices.getUserMedia({ video: true });
         if (videoRef.current) {
-          videoRef.current.srcObject = stream
+          videoRef.current.srcObject = stream;
         }
-      }, 100)
+      }, 100);
     } catch (error) {
-      console.error("Error accessing camera:", error)
+      console.error("Error accessing camera:", error);
     }
-  }
+  };
 
   const capturePhoto = () => {
     if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current
-      const canvas = canvasRef.current
-      canvas.width = video.videoWidth
-      canvas.height = video.videoHeight
-      const context = canvas.getContext("2d")
-      context.drawImage(video, 0, 0, canvas.width, canvas.height)
-      const imageData = canvas.toDataURL("image/png")
-      setImage(imageData)
-      stopCamera()
-      confirmUpload(imageData)
+      const video = videoRef.current;
+      const canvas = canvasRef.current;
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+      const context = canvas.getContext("2d");
+      context.drawImage(video, 0, 0, canvas.width, canvas.height);
+      const imageData = canvas.toDataURL("image/png");
+      setImage(imageData);
+      stopCamera();
+      confirmUpload(imageData);
     }
-  }
+  };
 
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((track) => track.stop())
-      setIsCameraOn(false)
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      setIsCameraOn(false);
     }
-  }
+  };
 
   const clearPhoto = () => {
-    setImage(placeholderImage)
-  }
+    setImage(placeholderImage);
+  };
 
   const confirmUpload = (imageData) => {
     showConfirmationPopup(IMAGE_TITLE, IMAGE_TEXT, imageData, () => {
-      uploadImage(imageData)
-    })
-  }
+      uploadImage(imageData);
+    });
+  };
 
   const uploadImage = async (base64Image) => {
-    setLoading(true)
+    setLoading(true);
     try {
-      const blob = await fetch(base64Image).then((res) => res.blob())
-      const formData1 = new FormData()
-      formData1.append("file", blob, "photo.png")
+      const blob = await fetch(base64Image).then((res) => res.blob());
+      const formData1 = new FormData();
+      formData1.append("file", blob, "photo.png");
 
       const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
         method: "POST",
         body: formData1,
-      })
+      });
 
-      const data = await response.json()
+      const data = await response.json();
       if (response.status === 200 && data.response) {
-        const extractedPath = data.response
-        setImageURL(extractedPath)
-        console.log("Uploaded Image URL:", extractedPath)
-        showPopup(IMAGE_UPLOAD_SUCC_MSG, "success")
+        const extractedPath = data.response;
+        setImageURL(extractedPath);
+        console.log("Uploaded Image URL:", extractedPath);
+        showPopup(IMAGE_UPLOAD_SUCC_MSG, "success");
       } else {
-        showPopup(IMAGE_UPLOAD_FAIL_MSG, "error")
+        showPopup(IMAGE_UPLOAD_FAIL_MSG, "error");
       }
     } catch (error) {
-      console.error("Upload error:", error)
-      showPopup(UNEXPECTED_ERROR, "error")
+      console.error("Upload error:", error);
+      showPopup(UNEXPECTED_ERROR, "error");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   function calculateDOBFromAge(age) {
-    const today = new Date()
-    const birthYear = today.getFullYear() - age
-    return new Date(birthYear, today.getMonth(), today.getDate()).toISOString().split("T")[0]
+    const today = new Date();
+    const birthYear = today.getFullYear() - age;
+    return new Date(birthYear, today.getMonth(), today.getDate())
+      .toISOString()
+      .split("T")[0];
   }
 
   function calculateAgeFromDOB(dob) {
-    const birthDate = new Date(dob)
-    const today = new Date()
+    const birthDate = new Date(dob);
+    const today = new Date();
 
-    let years = today.getFullYear() - birthDate.getFullYear()
-    let months = today.getMonth() - birthDate.getMonth()
-    let days = today.getDate() - birthDate.getDate()
+    let years = today.getFullYear() - birthDate.getFullYear();
+    let months = today.getMonth() - birthDate.getMonth();
+    let days = today.getDate() - birthDate.getDate();
 
     if (days < 0) {
-      months--
-      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0)
-      days += prevMonth.getDate()
+      months--;
+      const prevMonth = new Date(today.getFullYear(), today.getMonth(), 0);
+      days += prevMonth.getDate();
     }
 
     if (months < 0) {
-      years--
-      months += 12
+      years--;
+      months += 12;
     }
 
-    return `${years}Y ${months}M ${days}D`
+    return `${years}Y ${months}M ${days}D`;
   }
 
   const handleChange = async (e) => {
-    const { name, value } = e.target
-    const updatedFormData = { ...formData, [name]: value }
+    const { name, value } = e.target;
+    const updatedFormData = { ...formData, [name]: value };
 
     if (name === "dob") {
-      updatedFormData.age = calculateAgeFromDOB(value)
+      updatedFormData.age = calculateAgeFromDOB(value);
     } else if (name === "age") {
-      updatedFormData.dob = calculateDOBFromAge(value)
+      updatedFormData.dob = calculateDOBFromAge(value);
     }
 
-    setFormData(updatedFormData)
+    setFormData(updatedFormData);
 
-    let error = ""
+    let error = "";
     if (name === "firstName" && !value.trim()) {
-      error = "First Name is required."
+      error = "First Name is required.";
     }
     if (name === "gender" && !value) {
-      error = "Gender is required."
+      error = "Gender is required.";
     }
     if (name === "relation" && !value) {
-      error = "Relation is required."
+      error = "Relation is required.";
     }
     if (name === "dob" && !value) {
-      error = "Date of Birth is required."
+      error = "Date of Birth is required.";
     }
     if (name === "email") {
       if (!value.trim()) {
-        error = "Email is required."
+        error = "Email is required.";
       } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-        error = "Invalid email format."
+        error = "Invalid email format.";
       }
     }
     if (name === "mobileNo") {
       if (!value.trim()) {
-        error = "Mobile number is required."
+        error = "Mobile number is required.";
       } else if (!/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits."
+        error = "Mobile number must be exactly 10 digits.";
       }
     }
     if (name === "pinCode") {
       if (!/^\d{6}$/.test(value)) {
-        error = "Pin Code must be exactly 6 digits."
+        error = "Pin Code must be exactly 6 digits.";
       }
     }
     if (name === "nokPinCode") {
       if (!/^\d{6}$/.test(value)) {
-        error = "Pin Code must be exactly 6 digits."
+        error = "Pin Code must be exactly 6 digits.";
       }
     }
     if (name === "nokMobile") {
       if (!/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits."
+        error = "Mobile number must be exactly 10 digits.";
       }
     }
     if (name === "emergencyMobile") {
       if (!/^\d{10}$/.test(value)) {
-        error = "Mobile number must be exactly 10 digits."
+        error = "Mobile number must be exactly 10 digits.";
       }
     }
     if (name === "age") {
       if (value !== "" && (isNaN(value) || Number(value) < 0)) {
-        error = "Age can not be negative."
+        error = "Age can not be negative.";
       }
     }
 
     if (name === "gender" && value) {
-      const investigationData = await fetchInvestigationDetails(Number(value))
-      setInvestigationItems(investigationData)
+      const investigationData = await fetchInvestigationDetails(Number(value));
+      setInvestigationItems(investigationData);
     }
 
     setErrors((prevErrors) => {
-      const newErrors = { ...prevErrors }
+      const newErrors = { ...prevErrors };
       if (error) {
-        newErrors[name] = error
+        newErrors[name] = error;
       } else {
-        delete newErrors[name]
+        delete newErrors[name];
       }
-      return newErrors
-    })
-  }
+      return newErrors;
+    });
+  };
 
   const handleAddChange = (e) => {
-    const { name, value } = e.target
-    setFormData((prev) => ({ ...prev, [name]: value }))
-  }
+    const { name, value } = e.target;
+    setFormData((prev) => ({ ...prev, [name]: value }));
+  };
 
   const handleTypeChange = (type) => {
     setFormData((prev) => ({
       ...prev,
-      type: type
-    }))
+      type: type,
+    }));
     if (type === "package") {
-      fetchPackageInvestigationDetails(1)
+      fetchPackageInvestigationDetails(1);
     }
-  }
+  };
 
   const handleDateChange = (index, selectedDate) => {
-    const today = new Date().toISOString().split('T')[0]
+    const today = new Date().toISOString().split("T")[0];
 
     if (selectedDate < today) {
-      showPopup(INVALID_DATE_TEXT, "warning")
-      return
+      showPopup(INVALID_DATE_TEXT, "warning");
+      return;
     }
 
-    const currentRow = formData.rows[index]
-    let hasDuplicate = false
+    const currentRow = formData.rows[index];
+    let hasDuplicate = false;
 
     if (currentRow.itemId) {
       if (currentRow.type === "package") {
         hasDuplicate = formData.rows.some((row, i) => {
-          if (i === index || !checkedRows[i]) return false
-          return row.type === "package" &&
+          if (i === index || !checkedRows[i]) return false;
+          return (
+            row.type === "package" &&
             row.itemId === currentRow.itemId &&
             row.date === selectedDate
-        })
+          );
+        });
       } else if (currentRow.type === "investigation") {
         hasDuplicate = formData.rows.some((row, i) => {
-          if (i === index || !checkedRows[i]) return false
+          if (i === index || !checkedRows[i]) return false;
           if (row.type === "package" && row.investigationIds) {
-            return row.investigationIds.includes(currentRow.itemId) &&
+            return (
+              row.investigationIds.includes(currentRow.itemId) &&
               row.date === selectedDate
+            );
           }
-          return row.type === "investigation" &&
+          return (
+            row.type === "investigation" &&
             row.itemId === currentRow.itemId &&
             row.date === selectedDate
-        })
+          );
+        });
       }
     }
 
-    setFormData(prev => ({
+    setFormData((prev) => ({
       ...prev,
       rows: prev.rows.map((row, i) => {
         if (i === index) {
-          return { ...row, date: selectedDate }
+          return { ...row, date: selectedDate };
         }
-        return row
-      })
-    }))
-  }
+        return row;
+      }),
+    }));
+  };
 
   const handleRowChange = (index, field, value) => {
     setFormData((prev) => {
       const updatedRows = prev.rows.map((item, i) => {
-        if (i !== index) return item
+        if (i !== index) return item;
 
-        const updatedItem = { ...item, [field]: value }
+        const updatedItem = { ...item, [field]: value };
 
         if (field === "originalAmount" || field === "discountAmount") {
-          const original = Number(updatedItem.originalAmount) || 0
-          const discount = Number(updatedItem.discountAmount) || 0
-          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2)
+          const original = Number(updatedItem.originalAmount) || 0;
+          const discount = Number(updatedItem.discountAmount) || 0;
+          updatedItem.netAmount = Math.max(0, original - discount).toFixed(2);
         }
 
-        return updatedItem
-      })
+        return updatedItem;
+      });
 
-      return { ...prev, rows: updatedRows }
-    })
-  }
+      return { ...prev, rows: updatedRows };
+    });
+  };
 
   const addRow = (e, type) => {
-    e.preventDefault()
-    const lastRow = formData.rows[formData.rows.length - 1]
+    e.preventDefault();
+    const lastRow = formData.rows[formData.rows.length - 1];
 
     if (!lastRow.name) {
-      showPopup(ADD_ROW_WARNING, "warning")
-      return
+      showPopup(ADD_ROW_WARNING, "warning");
+      return;
     }
 
     if (lastRow.type === "package" && lastRow.itemId && lastRow.date) {
       const isDuplicatePackage = formData.rows.slice(0, -1).some((row, i) => {
-        if (!checkedRows[i]) return false
-        return row.type === "package" &&
+        if (!checkedRows[i]) return false;
+        return (
+          row.type === "package" &&
           row.itemId === lastRow.itemId &&
           row.date === lastRow.date
-      })
+        );
+      });
 
       if (isDuplicatePackage) {
-        showPopup(
-         DUPLICATE_PACKAGE_WARN_MSG,
-          "warning"
-        )
-        handleRowChange(formData.rows.length - 1, "name", "")
-        handleRowChange(formData.rows.length - 1, "itemId", undefined)
-        handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0])
-        return
+        showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
+        handleRowChange(formData.rows.length - 1, "name", "");
+        handleRowChange(formData.rows.length - 1, "itemId", undefined);
+        handleRowChange(
+          formData.rows.length - 1,
+          "date",
+          new Date().toISOString().split("T")[0],
+        );
+        return;
       }
-    } else if (lastRow.type === "investigation" && lastRow.itemId && lastRow.date) {
-      const isDuplicateInvestigation = formData.rows.slice(0, -1).some((row, i) => {
-        if (!checkedRows[i]) return false
-        if (row.type === "package" && row.investigationIds) {
-          return row.investigationIds.includes(lastRow.itemId) &&
+    } else if (
+      lastRow.type === "investigation" &&
+      lastRow.itemId &&
+      lastRow.date
+    ) {
+      const isDuplicateInvestigation = formData.rows
+        .slice(0, -1)
+        .some((row, i) => {
+          if (!checkedRows[i]) return false;
+          if (row.type === "package" && row.investigationIds) {
+            return (
+              row.investigationIds.includes(lastRow.itemId) &&
+              row.date === lastRow.date
+            );
+          }
+          return (
+            row.type === "investigation" &&
+            row.itemId === lastRow.itemId &&
             row.date === lastRow.date
-        }
-        return row.type === "investigation" &&
-          row.itemId === lastRow.itemId &&
-          row.date === lastRow.date
-      })
+          );
+        });
 
       if (isDuplicateInvestigation) {
-        showPopup(
-          DUPLICATE_INV_INCLUDE_PACKAGE,
-          "warning"
-        )
-        handleRowChange(formData.rows.length - 1, "name", "")
-        handleRowChange(formData.rows.length - 1, "itemId", undefined)
-        handleRowChange(formData.rows.length - 1, "date", new Date().toISOString().split('T')[0])
-        return
+        showPopup(DUPLICATE_INV_INCLUDE_PACKAGE, "warning");
+        handleRowChange(formData.rows.length - 1, "name", "");
+        handleRowChange(formData.rows.length - 1, "itemId", undefined);
+        handleRowChange(
+          formData.rows.length - 1,
+          "date",
+          new Date().toISOString().split("T")[0],
+        );
+        return;
       }
     }
 
-    const defaultDate = new Date().toISOString().split('T')[0]
+    const defaultDate = new Date().toISOString().split("T")[0];
 
     setFormData((prev) => ({
       ...prev,
@@ -633,198 +685,206 @@ const LabRegistration = () => {
           discountAmount: 0,
           netAmount: 0,
           type: type,
-          investigationIds: type === "package" ? [] : undefined
-        }
-      ]
-    }))
-    setCheckedRows((prev) => [...prev, true])
-  }
+          investigationIds: type === "package" ? [] : undefined,
+        },
+      ],
+    }));
+    setCheckedRows((prev) => [...prev, true]);
+  };
 
   const removeRow = (index) => {
     setFormData((prev) => ({
       ...prev,
       rows: prev.rows.filter((_, i) => i !== index),
-    }))
-    setCheckedRows((prev) => prev.filter((_, i) => i !== index))
-  }
+    }));
+    setCheckedRows((prev) => prev.filter((_, i) => i !== index));
+  };
 
   async function fetchGenderData() {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest(`${MAS_GENDER}/getAll/1`)
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setGenderData(data.response)
+        setGenderData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setGenderData([])
+        console.error("Unexpected API response format:", data);
+        setGenderData([]);
       }
     } catch (error) {
-      console.error("Error fetching gender data:", error)
+      console.error("Error fetching gender data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchRelationData() {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest(`${MAS_RELATION}/getAll/1`)
+      const data = await getRequest(`${MAS_RELATION}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setRelationData(data.response)
+        setRelationData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setRelationData([])
+        console.error("Unexpected API response format:", data);
+        setRelationData([]);
       }
     } catch (error) {
-      console.error("Error fetching relation data:", error)
+      console.error("Error fetching relation data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchCountryData() {
-    setLoading(true)
+    setLoading(true);
     try {
-      const data = await getRequest(`${MAS_COUNTRY}/getAll/1`)
+      const data = await getRequest(`${MAS_COUNTRY}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setCountryData(data.response)
+        setCountryData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setCountryData([])
+        console.error("Unexpected API response format:", data);
+        setCountryData([]);
       }
     } catch (error) {
-      console.error("Error fetching country data:", error)
+      console.error("Error fetching country data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchStates(value) {
     try {
-      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`)
+      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setStateData(data.response)
+        setStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setStateData([])
+        console.error("Unexpected API response format:", data);
+        setStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching state data:", error)
+      console.error("Error fetching state data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchDistrict(value) {
     try {
-      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`)
+      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setDistrictData(data.response)
+        setDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setDistrictData([])
+        console.error("Unexpected API response format:", data);
+        setDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching district data:", error)
+      console.error("Error fetching district data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchNokStates(value) {
     try {
-      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`)
+      const data = await getRequest(`${MAS_STATE}/getByCountryId/${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setNokStateData(data.response)
+        setNokStateData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setNokStateData([])
+        console.error("Unexpected API response format:", data);
+        setNokStateData([]);
       }
     } catch (error) {
-      console.error("Error fetching NOK state data:", error)
+      console.error("Error fetching NOK state data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchNokDistrict(value) {
     try {
-      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`)
+      const data = await getRequest(`${MAS_DISTRICT}/getByState/${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        setNokDistrictData(data.response)
+        setNokDistrictData(data.response);
       } else {
-        console.error("Unexpected API response format:", data)
-        setNokDistrictData([])
+        console.error("Unexpected API response format:", data);
+        setNokDistrictData([]);
       }
     } catch (error) {
-      console.error("Error fetching NOK district data:", error)
+      console.error("Error fetching NOK district data:", error);
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
   async function fetchInvestigationDetails(genderValue) {
     try {
-      const selectedGender = genderData.find((gender) => gender.id === Number(genderValue))
+      const selectedGender = genderData.find(
+        (gender) => gender.id === Number(genderValue),
+      );
       if (!selectedGender) {
-        console.error("No gender found with ID:", genderValue)
-        return []
+        console.error("No gender found with ID:", genderValue);
+        return [];
       }
 
-      const genderApplicable = selectedGender.genderCode.toLowerCase()
-      const data = await getRequest(`${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`)
+      const genderApplicable = selectedGender.genderCode.toLowerCase();
+      const data = await getRequest(
+        `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`,
+      );
 
       if (data.status === 200 && Array.isArray(data.response)) {
-        return data.response
+        return data.response;
       } else {
-        console.error("Unexpected API response format:", data)
-        return []
+        console.error("Unexpected API response format:", data);
+        return [];
       }
     } catch (error) {
-      console.error("Error fetching investigation details:", error)
-      return []
-    } 
+      console.error("Error fetching investigation details:", error);
+      return [];
+    }
   }
 
   async function fetchPackageInvestigationDetails(flag) {
     try {
-      const data = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`)
+      const data = await getRequest(
+        `${INVESTIGATION_PACKAGE_Mapping}/getAllPackageMap/${flag}`,
+      );
       if (data.status === 200 && Array.isArray(data.response)) {
-        setPackageItems(data.response)
-        return data.response
+        setPackageItems(data.response);
+        return data.response;
       } else {
-        console.error("Unexpected API response format:", data)
-        return []
+        console.error("Unexpected API response format:", data);
+        return [];
       }
     } catch (error) {
-      console.error("Error fetching package investigation details:", error)
-      return []
+      console.error("Error fetching package investigation details:", error);
+      return [];
     }
   }
 
   async function fetchPackagePrice(packName) {
     try {
-      const data = await getRequest(`${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`)
+      const data = await getRequest(
+        `${MAS_PACKAGE_INVESTIGATION}/pricePack?packName=${packName}`,
+      );
       if (data.status === 200 && data.response) {
-        return data.response
+        return data.response;
       } else {
-        console.error("Unexpected API response format:", data)
-        return null
+        console.error("Unexpected API response format:", data);
+        return null;
       }
     } catch (error) {
-      console.error("Error fetching package price:", error)
-      return null
+      console.error("Error fetching package price:", error);
+      return null;
     }
   }
 
   async function fetchGstConfiguration() {
-    setLoading(true)
+    setLoading(true);
     try {
-      console.log("=== FETCHING GST CONFIGURATION ===")
+      console.log("=== FETCHING GST CONFIGURATION ===");
 
-      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`)
+      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1?categoryCode=${LAB_SERVICE_CATAGORY}`);
 
-      console.log("GST API Response:", JSON.stringify(data, null, 2))
+      console.log("GST API Response:", JSON.stringify(data, null, 2));
 
       if (
         data &&
@@ -835,143 +895,157 @@ const LabRegistration = () => {
         const gstConfiguration = {
           gstApplicable: !!data.response.gstApplicable,
           gstPercent: Number(data.response.gstPercent) || 0,
-        }
+        };
 
-        console.log("Setting GST Configuration:", gstConfiguration)
-        setGstConfig(gstConfiguration)
+        console.log("Setting GST Configuration:", gstConfiguration);
+        setGstConfig(gstConfiguration);
       } else {
-        console.warn("Invalid API response:", data)
+        console.warn("Invalid API response:", data);
         setGstConfig({
           gstApplicable: false,
           gstPercent: 0,
-        })
+        });
       }
     } catch (error) {
-      console.error("Error fetching GST configuration:", error)
+      console.error("Error fetching GST configuration:", error);
       setGstConfig({
         gstApplicable: false,
         gstPercent: 0,
-      })
+      });
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
   }
 
-  async function checkDuplicatePatient(firstName, dob, gender, mobile, relation) {
+  async function checkDuplicatePatient(
+    firstName,
+    dob,
+    gender,
+    mobile,
+    relation,
+  ) {
     const params = new URLSearchParams({
       firstName,
       dob,
       gender,
       mobile,
       relation,
-    }).toString()
+    }).toString();
 
-    const result = await getRequest(`${CHECH_DUPLICATE_PATIENT}?${params}`)
-    return result === true
+    const result = await getRequest(`${CHECH_DUPLICATE_PATIENT}?${params}`);
+    return result === true;
   }
 
   const validateForm = () => {
-    const requiredFields = ["firstName", "gender", "relation", "dob", "email", "mobileNo"]
-    let valid = true
-    const newErrors = {}
+    const requiredFields = [
+      "firstName",
+      "gender",
+      "relation",
+      "dob",
+      "email",
+      "mobileNo",
+    ];
+    let valid = true;
+    const newErrors = {};
 
     requiredFields.forEach((field) => {
       if (!formData[field] || formData[field].toString().trim() === "") {
-        newErrors[field] = `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`
-        valid = false
+        newErrors[field] =
+          `${field.charAt(0).toUpperCase() + field.slice(1)} is required.`;
+        valid = false;
       }
-    })
+    });
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
-      newErrors.email = "Invalid email format."
-      valid = false
+      newErrors.email = "Invalid email format.";
+      valid = false;
     }
 
     if (formData.mobileNo && !/^\d{10}$/.test(formData.mobileNo)) {
-      newErrors.mobileNo = "Mobile number must be exactly 10 digits."
-      valid = false
+      newErrors.mobileNo = "Mobile number must be exactly 10 digits.";
+      valid = false;
     }
 
     if (formData.pinCode && !/^\d{6}$/.test(formData.pinCode)) {
-      newErrors.pinCode = "Pin Code must be exactly 6 digits."
-      valid = false
+      newErrors.pinCode = "Pin Code must be exactly 6 digits.";
+      valid = false;
     }
 
     if (formData.nokPinCode && !/^\d{6}$/.test(formData.nokPinCode)) {
-      newErrors.nokPinCode = "Pin Code must be exactly 6 digits."
-      valid = false
+      newErrors.nokPinCode = "Pin Code must be exactly 6 digits.";
+      valid = false;
     }
 
     if (formData.rows.length === 0) {
-      newErrors.rows = `At least one ${formData.type} is required.`
-      valid = false
+      newErrors.rows = `At least one ${formData.type} is required.`;
+      valid = false;
     }
 
     formData.rows.forEach((row, index) => {
       if (!row.name || row.name.trim() === "") {
-        newErrors[`row_${index}_name`] = `Row ${index + 1}: Investigation/Package name is required.`
-        valid = false
+        newErrors[`row_${index}_name`] =
+          `Row ${index + 1}: Investigation/Package name is required.`;
+        valid = false;
       }
       if (!row.date || row.date.trim() === "") {
-        newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`
-        valid = false
+        newErrors[`row_${index}_date`] = `Row ${index + 1}: Date is required.`;
+        valid = false;
       }
-    })
+    });
 
     if (!formData.paymentMode) {
-      newErrors.paymentMode = "Payment mode is required."
-      valid = false
+      newErrors.paymentMode = "Payment mode is required.";
+      valid = false;
     }
 
-    setErrors(newErrors)
-    return valid
-  }
+    setErrors(newErrors);
+    return valid;
+  };
 
   const handleSubmit = async (shouldNavigateToPayment = false) => {
-    console.log("handleSubmit called with shouldNavigateToPayment:", shouldNavigateToPayment)
-    const isFormValid = shouldNavigateToPayment ? true : validateForm()
-    console.log("Form validation result:", isFormValid)
+    console.log(
+      "handleSubmit called with shouldNavigateToPayment:",
+      shouldNavigateToPayment,
+    );
+    const isFormValid = shouldNavigateToPayment ? true : validateForm();
+    console.log("Form validation result:", isFormValid);
 
     if (isDuplicatePatient) {
-      showPopup(DUPLICATE_PATIENT, "warning")
-      return
+      showPopup(DUPLICATE_PATIENT, "warning");
+      return;
     }
 
     if (isFormValid) {
-      console.log("Form validation passed, proceeding with registration...")
+      console.log("Form validation passed, proceeding with registration...");
       try {
-        setLoading(true)
+        setLoading(true);
 
-        const selectedRows = formData.rows.filter((row, index) => checkedRows[index])
-        const duplicateCheck = new Map()
+        const selectedRows = formData.rows.filter(
+          (row, index) => checkedRows[index],
+        );
+        const duplicateCheck = new Map();
 
         for (const row of selectedRows) {
-          const key = `${row.type}_${row.itemId}_${row.date}`
+          const key = `${row.type}_${row.itemId}_${row.date}`;
 
           if (row.type === "package" && row.investigationIds) {
             for (const invId of row.investigationIds) {
-              const invKey = `investigation_${invId}_${row.date}`
+              const invKey = `investigation_${invId}_${row.date}`;
               if (duplicateCheck.has(invKey)) {
-                showPopup(
-                  DUPLICATE_INV_PACKAGE_WARN_MSG,
-                  "Warning"
-                )
-                setLoading(false)
-                return
+                showPopup(DUPLICATE_INV_PACKAGE_WARN_MSG, "Warning");
+                setLoading(false);
+                return;
               }
-              duplicateCheck.set(invKey, row)
+              duplicateCheck.set(invKey, row);
             }
           }
 
           if (duplicateCheck.has(key)) {
-            showPopup(
-              DUPLICATE_INV_PACKAGE_WARN_MSG,
-              "Warning"
-            )
-            setLoading(false)
-            return
+            showPopup(DUPLICATE_INV_PACKAGE_WARN_MSG, "Warning");
+            setLoading(false);
+            return;
           }
-          duplicateCheck.set(key, row)
+          duplicateCheck.set(key, row);
         }
 
         const patientRequest = {
@@ -1012,74 +1086,89 @@ const LabRegistration = () => {
           regDate: new Date().toISOString().split("T")[0],
           lastChgBy: sessionStorage.getItem("username"),
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
-        }
+        };
 
-        const patientResult = await postRequest(`${PATIENT_REGISTRATION}`, { patient: patientRequest })
-        const patientId = patientResult?.response?.patient?.id
-        if (!patientId) throw new Error(patientResult.message || "Patient registration failed")
+        const hasCheckedItems = formData.rows.some(
+          (row, index) => checkedRows[index],
+        );
+        if (!hasCheckedItems)
+          throw new Error(
+            "Please select at least one investigation or package.",
+          );
 
-        const hasCheckedItems = formData.rows.some((row, index) => checkedRows[index])
-        if (!hasCheckedItems) throw new Error("Please select at least one investigation or package.")
+        const invalidRow = formData.rows.find(
+          (row, index) => checkedRows[index] && !row.itemId,
+        );
+        if (invalidRow)
+          throw new Error(
+            "One or more selected rows have no valid investigation/package. Please select from dropdown.",
+          );
 
-        const invalidRow = formData.rows.find((row, index) => checkedRows[index] && !row.itemId)
-        if (invalidRow) throw new Error("One or more selected rows have no valid investigation/package. Please select from dropdown.")
-
-        const paymentBreakdown = calculatePaymentBreakdown()
-        const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount)
+        const paymentBreakdown = calculatePaymentBreakdown();
+        const totalFinalAmount = parseFloat(paymentBreakdown.finalAmount);
 
         const labData = {
-          patientId: patientId,
-          labInvestigationReq: [],
-        }
+          patient: patientRequest,
+          investigationReq: [],
+        };
 
         formData.rows.forEach((row, index) => {
           if (row.itemId) {
-            labData.labInvestigationReq.push({
+            labData.investigationReq.push({
               id: row.itemId,
-              appointmentDate: row.date || new Date().toISOString().split('T')[0],
+              appointmentDate:
+                row.date || new Date().toISOString().split("T")[0],
               checkStatus: checkedRows[index] || false,
               actualAmount: parseFloat(row.originalAmount) || 0,
               discountedAmount: parseFloat(row.discountAmount) || 0,
               type: row.type === "investigation" ? "i" : "p",
-            })
+            });
           }
-        })
+        });
 
-        console.log("FINAL LAB DATA:", labData)
+        console.log("FINAL LAB DATA:", labData);
 
-        const labResult = await postRequest("/lab/registration", labData)
+        const labResult = await postRequest("/lab/laboratoryRegistration", labData);
         if (!labResult || labResult.status !== 200) {
-          throw new Error(labResult?.message || "Lab registration failed.")
+          throw new Error(labResult?.message || "Lab registration failed.");
         }
 
-        console.log("Lab registration successful:", labResult)
-
+        console.log("Lab registration successful:", labResult);
+        let patientId = labResult.response.patientId;
+        let billingHeaderId = labResult.response.billinghdId;
         if (shouldNavigateToPayment) {
           showPopup(LAB_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
+                billingType: LAB_SERVICE_CATAGORY,
                 amount: totalFinalAmount,
                 patientId,
                 labData: labResult,
+                billingHeaderId,
                 selectedItems: {
-                  investigations: labData.labInvestigationReq.filter((i) => i.type === "i" && i.checkStatus),
-                  packages: labData.labInvestigationReq.filter((i) => i.type === "p" && i.checkStatus),
+                  investigations: labData.investigationReq.filter(
+                    (i) => i.type === "i" && i.checkStatus,
+                  ),
+                  packages: labData.investigationReq.filter(
+                    (i) => i.type === "p" && i.checkStatus,
+                  ),
                 },
                 paymentBreakdown,
+                source: "registration",
               },
-            })
-          })
+            });
+          });
         } else {
-          showPopup(LAB_REG_SUCC_MSG, "success", false, () => handleReset())
+          showPopup(LAB_REG_SUCC_MSG, "success", false, () => handleReset());
         }
       } catch (error) {
-        console.error("Registration error:", error)
-        showPopup(error.message || REGISTRATION_ERR_MSG, "error")
+        console.error("Registration error:", error);
+        showPopup(error.message || REGISTRATION_ERR_MSG, "error");
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
     }
-  }
+  };
 
   const handleReset = () => {
     setFormData({
@@ -1120,7 +1209,7 @@ const LabRegistration = () => {
         {
           id: 1,
           name: "",
-          date: new Date().toISOString().split('T')[0],
+          date: new Date().toISOString().split("T")[0],
           originalAmount: 0,
           discountAmount: 0,
           netAmount: 0,
@@ -1128,31 +1217,38 @@ const LabRegistration = () => {
         },
       ],
       paymentMode: "",
-    })
-    setErrors({})
-    setImage(placeholderImage)
-    setImageURL("")
-    setCheckedRows([true])
-  }
+    });
+    setErrors({});
+    setImage(placeholderImage);
+    setImageURL("");
+    setCheckedRows([true]);
+  };
 
   const getMissingMandatoryFields = () => {
-    const missing = []
+    const missing = [];
     if (!formData.mobileNo || formData.mobileNo.trim() === "") {
-      missing.push("Mobile Number")
+      missing.push("Mobile Number");
     }
     formData.rows.forEach((row, idx) => {
-      if (!row.name || row.name.trim() === "") missing.push(`Row ${idx + 1}: Name`)
-      if (!row.date || row.date.trim() === "") missing.push(`Row ${idx + 1}: Date`)
-      if (row.originalAmount === undefined || row.originalAmount === "" || isNaN(row.originalAmount)) missing.push(`Row ${idx + 1}: Original Amount`)
-    })
-    return missing
-  }
+      if (!row.name || row.name.trim() === "")
+        missing.push(`Row ${idx + 1}: Name`);
+      if (!row.date || row.date.trim() === "")
+        missing.push(`Row ${idx + 1}: Date`);
+      if (
+        row.originalAmount === undefined ||
+        row.originalAmount === "" ||
+        isNaN(row.originalAmount)
+      )
+        missing.push(`Row ${idx + 1}: Original Amount`);
+    });
+    return missing;
+  };
 
   if (loading) {
-    return <LoadingScreen />
+    return <LoadingScreen />;
   }
 
-  const paymentBreakdown = calculatePaymentBreakdown()
+  const paymentBreakdown = calculatePaymentBreakdown();
 
   return (
     <div className="body d-flex py-3">
@@ -1198,7 +1294,11 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Enter First Name"
                           />
-                          {errors.firstName && <div className="invalid-feedback">{errors.firstName}</div>}
+                          {errors.firstName && (
+                            <div className="invalid-feedback">
+                              {errors.firstName}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="middleName">
@@ -1241,12 +1341,16 @@ const LabRegistration = () => {
                             maxLength={10}
                             onChange={(e) => {
                               if (/^\d*$/.test(e.target.value)) {
-                                handleChange(e)
+                                handleChange(e);
                               }
                             }}
                             placeholder="Enter Mobile Number"
                           />
-                          {errors.mobileNo && <div className="invalid-feedback">{errors.mobileNo}</div>}
+                          {errors.mobileNo && (
+                            <div className="invalid-feedback">
+                              {errors.mobileNo}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="gender">
@@ -1266,7 +1370,11 @@ const LabRegistration = () => {
                               </option>
                             ))}
                           </select>
-                          {errors.gender && <div className="invalid-feedback">{errors.gender}</div>}
+                          {errors.gender && (
+                            <div className="invalid-feedback">
+                              {errors.gender}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="relation">
@@ -1286,7 +1394,11 @@ const LabRegistration = () => {
                               </option>
                             ))}
                           </select>
-                          {errors.relation && <div className="invalid-feedback">{errors.relation}</div>}
+                          {errors.relation && (
+                            <div className="invalid-feedback">
+                              {errors.relation}
+                            </div>
+                          )}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="dob">
@@ -1302,7 +1414,9 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Select Date of Birth"
                           />
-                          {errors.dob && <div className="invalid-feedback">{errors.dob}</div>}
+                          {errors.dob && (
+                            <div className="invalid-feedback">{errors.dob}</div>
+                          )}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="age">
@@ -1317,7 +1431,9 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Enter Age"
                           />
-                          {errors.age && <div className="invalid-feedback">{errors.age}</div>}
+                          {errors.age && (
+                            <div className="invalid-feedback">{errors.age}</div>
+                          )}
                         </div>
                         <div className="col-md-4">
                           <label className="form-label" htmlFor="email">
@@ -1332,7 +1448,11 @@ const LabRegistration = () => {
                             onChange={handleChange}
                             placeholder="Enter Email Address"
                           />
-                          {errors.email && <div className="invalid-feedback">{errors.email}</div>}
+                          {errors.email && (
+                            <div className="invalid-feedback">
+                              {errors.email}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -1354,7 +1474,12 @@ const LabRegistration = () => {
                               style={{ width: "100%", height: "150px" }}
                             />
                           )}
-                          <canvas ref={canvasRef} width="300" height="150" style={{ display: "none" }}></canvas>
+                          <canvas
+                            ref={canvasRef}
+                            width="300"
+                            height="150"
+                            style={{ display: "none" }}
+                          ></canvas>
                           <div className="mt-2">
                             <button
                               type="button"
@@ -1365,11 +1490,19 @@ const LabRegistration = () => {
                               Start Camera
                             </button>
                             {isCameraOn && (
-                              <button type="button" className="btn btn-success me-2 mb-2" onClick={capturePhoto}>
+                              <button
+                                type="button"
+                                className="btn btn-success me-2 mb-2"
+                                onClick={capturePhoto}
+                              >
                                 Take Photo
                               </button>
                             )}
-                            <button type="button" className="btn btn-danger mb-2" onClick={clearPhoto}>
+                            <button
+                              type="button"
+                              className="btn btn-danger mb-2"
+                              onClick={clearPhoto}
+                            >
                               Clear Photo
                             </button>
                           </div>
@@ -1422,8 +1555,8 @@ const LabRegistration = () => {
                         name="country"
                         value={formData.country || ""}
                         onChange={(e) => {
-                          handleAddChange(e)
-                          fetchStates(e.target.value)
+                          handleAddChange(e);
+                          fetchStates(e.target.value);
                         }}
                       >
                         <option value="">Select Country</option>
@@ -1441,8 +1574,8 @@ const LabRegistration = () => {
                         name="state"
                         value={formData.state || ""}
                         onChange={(e) => {
-                          handleAddChange(e)
-                          fetchDistrict(e.target.value)
+                          handleAddChange(e);
+                          fetchDistrict(e.target.value);
                         }}
                       >
                         <option value="">Select State</option>
@@ -1460,7 +1593,7 @@ const LabRegistration = () => {
                         name="district"
                         value={formData.district || ""}
                         onChange={(e) => {
-                          handleAddChange(e)
+                          handleAddChange(e);
                         }}
                       >
                         <option value="">Select District</option>
@@ -1492,12 +1625,14 @@ const LabRegistration = () => {
                         maxLength={6}
                         onChange={(e) => {
                           if (/^\d*$/.test(e.target.value)) {
-                            handleChange(e)
+                            handleChange(e);
                           }
                         }}
                         placeholder="Enter Pin Code"
                       />
-                      {errors.pinCode && <div className="invalid-feedback">{errors.pinCode}</div>}
+                      {errors.pinCode && (
+                        <div className="invalid-feedback">{errors.pinCode}</div>
+                      )}
                     </div>
                   </div>
                 </form>
@@ -1570,11 +1705,15 @@ const LabRegistration = () => {
                         value={formData.nokMobile || ""}
                         onChange={(e) => {
                           if (/^\d*$/.test(e.target.value)) {
-                            handleChange(e)
+                            handleChange(e);
                           }
                         }}
                       />
-                      {errors.nokMobile && <div className="invalid-feedback">{errors.nokMobile}</div>}
+                      {errors.nokMobile && (
+                        <div className="invalid-feedback">
+                          {errors.nokMobile}
+                        </div>
+                      )}
                     </div>
                     <div className="col-md-4">
                       <label className="form-label">Address 1</label>
@@ -1605,8 +1744,8 @@ const LabRegistration = () => {
                         name="nokCountry"
                         value={formData.nokCountry || ""}
                         onChange={(e) => {
-                          handleAddChange(e)
-                          fetchNokStates(e.target.value)
+                          handleAddChange(e);
+                          fetchNokStates(e.target.value);
                         }}
                       >
                         <option value="">Select Country</option>
@@ -1624,8 +1763,8 @@ const LabRegistration = () => {
                         name="nokState"
                         value={formData.nokState || ""}
                         onChange={(e) => {
-                          handleAddChange(e)
-                          fetchNokDistrict(e.target.value)
+                          handleAddChange(e);
+                          fetchNokDistrict(e.target.value);
                         }}
                       >
                         <option value="">Select State</option>
@@ -1643,7 +1782,7 @@ const LabRegistration = () => {
                         name="nokDistrict"
                         value={formData.nokDistrict || ""}
                         onChange={(e) => {
-                          handleAddChange(e)
+                          handleAddChange(e);
                         }}
                       >
                         <option value="">Select District</option>
@@ -1675,12 +1814,16 @@ const LabRegistration = () => {
                         maxLength={6}
                         onChange={(e) => {
                           if (/^\d*$/.test(e.target.value)) {
-                            handleChange(e)
+                            handleChange(e);
                           }
                         }}
                         placeholder="Enter Pin Code"
                       />
-                      {errors.nokPinCode && <div className="invalid-feedback">{errors.nokPinCode}</div>}
+                      {errors.nokPinCode && (
+                        <div className="invalid-feedback">
+                          {errors.nokPinCode}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </form>
@@ -1732,11 +1875,15 @@ const LabRegistration = () => {
                         maxLength={10}
                         onChange={(e) => {
                           if (/^\d*$/.test(e.target.value)) {
-                            handleChange(e)
+                            handleChange(e);
                           }
                         }}
                       />
-                      {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
+                      {errors.emergencyMobile && (
+                        <div className="invalid-feedback">
+                          {errors.emergencyMobile}
+                        </div>
+                      )}
                     </div>
                   </div>
                 </form>
@@ -1751,7 +1898,9 @@ const LabRegistration = () => {
             <div className="card shadow mb-3">
               <div className="card-header border-bottom-1 py-3">
                 <h6 className="fw-bold mb-0">
-                  {formData.type === "investigation" ? "Investigation Details" : "Package Details"}
+                  {formData.type === "investigation"
+                    ? "Investigation Details"
+                    : "Package Details"}
                 </h6>
               </div>
               <div className="card-body">
@@ -1789,9 +1938,18 @@ const LabRegistration = () => {
                 <table className="table table-bordered">
                   <thead>
                     <tr>
-                      <th>{formData.type === "investigation" ? "Investigation Name" : "Package Name"} <span className="text-danger">*</span></th>
-                      <th>Date  <span className="text-danger">*</span></th>
-                      <th>Original Amount  <span className="text-danger">*</span></th>
+                      <th>
+                        {formData.type === "investigation"
+                          ? "Investigation Name"
+                          : "Package Name"}{" "}
+                        <span className="text-danger">*</span>
+                      </th>
+                      <th>
+                        Date <span className="text-danger">*</span>
+                      </th>
+                      <th>
+                        Original Amount <span className="text-danger">*</span>
+                      </th>
                       <th>Discount Amount</th>
                       <th>Net Amount</th>
                       <th>Action</th>
@@ -1804,13 +1962,17 @@ const LabRegistration = () => {
                           <div className="d-flex align-items-center gap-2">
                             <input
                               type="checkbox"
-                              style={{ width: "20px", height: "20px", border: "2px solid black" }}
+                              style={{
+                                width: "20px",
+                                height: "20px",
+                                border: "2px solid black",
+                              }}
                               className="form-check-input"
                               checked={checkedRows[index] || false}
                               onChange={(e) => {
-                                const updated = [...checkedRows]
-                                updated[index] = e.target.checked
-                                setCheckedRows(updated)
+                                const updated = [...checkedRows];
+                                updated[index] = e.target.checked;
+                                setCheckedRows(updated);
                               }}
                             />
                             <div className="dropdown-search-container position-relative flex-grow-1">
@@ -1819,199 +1981,390 @@ const LabRegistration = () => {
                                 className="form-control"
                                 value={row.name}
                                 autoComplete="off"
-                                placeholder={formData.type === "investigation" ? "Investigation Name" : "Package Name"}
+                                placeholder={
+                                  formData.type === "investigation"
+                                    ? "Investigation Name"
+                                    : "Package Name"
+                                }
                                 onChange={(e) => {
-                                  handleRowChange(index, "name", e.target.value)
+                                  handleRowChange(
+                                    index,
+                                    "name",
+                                    e.target.value,
+                                  );
                                   if (e.target.value.trim() !== "") {
-                                    setActiveRowIndex(index)
+                                    setActiveRowIndex(index);
                                   } else {
-                                    setActiveRowIndex(null)
+                                    setActiveRowIndex(null);
                                   }
                                 }}
                                 onFocus={() => {
                                   if (row.name.trim() !== "") {
-                                    setActiveRowIndex(index)
+                                    setActiveRowIndex(index);
                                   }
                                 }}
-                                onBlur={() => setTimeout(() => setActiveRowIndex(null), 200)}
+                                onBlur={() =>
+                                  setTimeout(() => setActiveRowIndex(null), 200)
+                                }
                               />
-                              {activeRowIndex === index && row.name.trim() !== "" && (
-                                <ul
-                                  className="list-group position-absolute w-100 mt-1"
-                                  style={{
-                                    zIndex: 1000,
-                                    maxHeight: "200px",
-                                    overflowY: "auto",
-                                    backgroundColor: "#fff",
-                                    border: "1px solid #ccc",
-                                  }}
-                                >
-                                  {formData.type === "investigation"
-                                    ? investigationItems
-                                      .filter((item) =>
-                                        item.investigationName.toLowerCase().includes(row.name.toLowerCase()),
-                                      )
-                                      .map((item, i) => {
-                                        const hasDiscount = item.disc && item.disc > 0
-                                        const displayPrice = item.price || 0
-                                        const discountAmount = hasDiscount ? item.disc : 0
-                                        const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+                              {activeRowIndex === index &&
+                                row.name.trim() !== "" && (
+                                  <ul
+                                    className="list-group position-absolute w-100 mt-1"
+                                    style={{
+                                      zIndex: 1000,
+                                      maxHeight: "200px",
+                                      overflowY: "auto",
+                                      backgroundColor: "#fff",
+                                      border: "1px solid #ccc",
+                                    }}
+                                  >
+                                    {formData.type === "investigation"
+                                      ? investigationItems
+                                          .filter((item) =>
+                                            item.investigationName
+                                              .toLowerCase()
+                                              .includes(row.name.toLowerCase()),
+                                          )
+                                          .map((item, i) => {
+                                            const hasDiscount =
+                                              item.disc && item.disc > 0;
+                                            const displayPrice =
+                                              item.price || 0;
+                                            const discountAmount = hasDiscount
+                                              ? item.disc
+                                              : 0;
+                                            const finalPrice = hasDiscount
+                                              ? displayPrice - discountAmount
+                                              : displayPrice;
 
-                                        return (
-                                          <li
-                                            key={i}
-                                            className="list-group-item list-group-item-action"
-                                            style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                            onClick={() => {
-                                              const currentRowDate = row.date || new Date().toISOString().split('T')[0]
-                                              
-                                              if (isInvestigationInSelectedPackages(item.investigationId, currentRowDate)) {
-                                                showPopup(
-                                                  DUPLICATE_INV_INCLUDE_PACKAGE,
-                                                  "warning"
-                                                )
-                                                return
-                                              }
-                                              
-                                              if (isInvestigationAlreadySelected(item.investigationId, currentRowDate)) {
-                                                showPopup(
-                                                  DUPLICATE_INV_INCLUDE_PACKAGE,
-                                                  "warning"
-                                                )
-                                                return
-                                              }
-                                              if (item.price === null || item.price === 0 || item.price === "0") {
-                                                showPopup(INV_PRICE_WARNING_MSG, "warning")
-                                              } else {
-                                                const hasDiscount = item.disc && item.disc > 0
-                                                const displayPrice = item.price || 0
-                                                const discountAmount = hasDiscount ? item.disc : 0
-                                                const finalPrice = hasDiscount ? displayPrice - discountAmount : displayPrice
+                                            return (
+                                              <li
+                                                key={i}
+                                                className="list-group-item list-group-item-action"
+                                                style={{
+                                                  backgroundColor: "#e3e8e6",
+                                                  cursor: "pointer",
+                                                }}
+                                                onClick={() => {
+                                                  const currentRowDate =
+                                                    row.date ||
+                                                    new Date()
+                                                      .toISOString()
+                                                      .split("T")[0];
 
-                                                handleRowChange(index, "name", item.investigationName)
-                                                handleRowChange(index, "itemId", item.investigationId)
-                                                handleRowChange(index, "originalAmount", displayPrice)
-                                                handleRowChange(index, "discountAmount", discountAmount)
-                                                handleRowChange(index, "netAmount", finalPrice)
-                                                handleRowChange(index, "type", formData.type)
-                                                setActiveRowIndex(null)
-                                              }
-                                            }}
-                                          >
-                                            <div>
-                                              <strong>{item.investigationName}</strong>
-                                              <div className="d-flex justify-content-between">
-                                                <span>
-                                                  {item.price === null
-                                                    ? "Price not configured"
-                                                    : `₹${finalPrice.toFixed(2)}`}
-                                                </span>
-                                                {hasDiscount && (
-                                                  <span className="text-success">
-                                                    (Discount: ₹{discountAmount.toFixed(2)})
+                                                  if (
+                                                    isInvestigationInSelectedPackages(
+                                                      item.investigationId,
+                                                      currentRowDate,
+                                                    )
+                                                  ) {
+                                                    showPopup(
+                                                      DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                      "warning",
+                                                    );
+                                                    return;
+                                                  }
+
+                                                  if (
+                                                    isInvestigationAlreadySelected(
+                                                      item.investigationId,
+                                                      currentRowDate,
+                                                    )
+                                                  ) {
+                                                    showPopup(
+                                                      DUPLICATE_INV_INCLUDE_PACKAGE,
+                                                      "warning",
+                                                    );
+                                                    return;
+                                                  }
+                                                  if (
+                                                    item.price === null ||
+                                                    item.price === 0 ||
+                                                    item.price === "0"
+                                                  ) {
+                                                    showPopup(
+                                                      INV_PRICE_WARNING_MSG,
+                                                      "warning",
+                                                    );
+                                                  } else {
+                                                    const hasDiscount =
+                                                      item.disc &&
+                                                      item.disc > 0;
+                                                    const displayPrice =
+                                                      item.price || 0;
+                                                    const discountAmount =
+                                                      hasDiscount
+                                                        ? item.disc
+                                                        : 0;
+                                                    const finalPrice =
+                                                      hasDiscount
+                                                        ? displayPrice -
+                                                          discountAmount
+                                                        : displayPrice;
+
+                                                    handleRowChange(
+                                                      index,
+                                                      "name",
+                                                      item.investigationName,
+                                                    );
+                                                    handleRowChange(
+                                                      index,
+                                                      "itemId",
+                                                      item.investigationId,
+                                                    );
+                                                    handleRowChange(
+                                                      index,
+                                                      "originalAmount",
+                                                      displayPrice,
+                                                    );
+                                                    handleRowChange(
+                                                      index,
+                                                      "discountAmount",
+                                                      discountAmount,
+                                                    );
+                                                    handleRowChange(
+                                                      index,
+                                                      "netAmount",
+                                                      finalPrice,
+                                                    );
+                                                    handleRowChange(
+                                                      index,
+                                                      "type",
+                                                      formData.type,
+                                                    );
+                                                    setActiveRowIndex(null);
+                                                  }
+                                                }}
+                                              >
+                                                <div>
+                                                  <strong>
+                                                    {item.investigationName}
+                                                  </strong>
+                                                  <div className="d-flex justify-content-between">
+                                                    <span>
+                                                      {item.price === null
+                                                        ? "Price not configured"
+                                                        : `₹${finalPrice.toFixed(2)}`}
+                                                    </span>
+                                                    {hasDiscount && (
+                                                      <span className="text-success">
+                                                        (Discount: ₹
+                                                        {discountAmount.toFixed(
+                                                          2,
+                                                        )}
+                                                        )
+                                                      </span>
+                                                    )}
+                                                  </div>
+                                                  {item.investigationType && (
+                                                    <small className="text-muted">
+                                                      Type:{" "}
+                                                      {item.investigationType}
+                                                    </small>
+                                                  )}
+                                                </div>
+                                              </li>
+                                            );
+                                          })
+                                      : packageItems
+                                          .filter((item) =>
+                                            item.packName
+                                              .toLowerCase()
+                                              .includes(row.name.toLowerCase()),
+                                          )
+                                          .map((item, i) => (
+                                            <li
+                                              key={i}
+                                              className="list-group-item list-group-item-action"
+                                              style={{
+                                                backgroundColor: "#e3e8e6",
+                                                cursor: "pointer",
+                                              }}
+                                              onClick={async () => {
+                                                const currentRowDate =
+                                                  row.date ||
+                                                  new Date()
+                                                    .toISOString()
+                                                    .split("T")[0];
+
+                                                // Check for duplicate package
+                                                if (
+                                                  isPackageAlreadySelected(
+                                                    item.packageId,
+                                                    currentRowDate,
+                                                  )
+                                                ) {
+                                                  showPopup(
+                                                    DUPLICATE_PACKAGE_WARN_MSG,
+                                                    "warning",
+                                                  );
+                                                  return;
+                                                }
+
+                                                const priceDetails =
+                                                  await fetchPackagePrice(
+                                                    item.packName,
+                                                  );
+                                                if (
+                                                  !priceDetails ||
+                                                  !priceDetails.actualCost
+                                                ) {
+                                                  showPopup(
+                                                    PACKAGE_PRICE_WARNING_MSG,
+                                                    "warning",
+                                                  );
+                                                  return;
+                                                }
+
+                                                const investigationIds =
+                                                  await getInvestigationIdsFromPackage(
+                                                    item.packageId,
+                                                    item.packName,
+                                                  );
+
+                                                // Check if investigations in this package are already selected individually FOR THE SAME DATE
+                                                const alreadySelectedInvestigations =
+                                                  [];
+                                                investigationIds.forEach(
+                                                  (invId) => {
+                                                    if (
+                                                      isInvestigationAlreadySelected(
+                                                        invId,
+                                                        currentRowDate,
+                                                      )
+                                                    ) {
+                                                      const invItem =
+                                                        investigationItems.find(
+                                                          (inv) =>
+                                                            inv.investigationId ===
+                                                            invId,
+                                                        );
+                                                      if (invItem) {
+                                                        alreadySelectedInvestigations.push(
+                                                          invItem.investigationName,
+                                                        );
+                                                      }
+                                                    }
+                                                  },
+                                                );
+
+                                                if (
+                                                  alreadySelectedInvestigations.length >
+                                                  0
+                                                ) {
+                                                  showPopup(
+                                                    `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(", ")}`,
+                                                    "warning",
+                                                  );
+                                                  return;
+                                                }
+
+                                                // Check if investigations in this package are already in other packages FOR THE SAME DATE
+                                                const alreadyInOtherPackage =
+                                                  [];
+                                                investigationIds.forEach(
+                                                  (invId) => {
+                                                    if (
+                                                      isInvestigationInSelectedPackages(
+                                                        invId,
+                                                        currentRowDate,
+                                                      )
+                                                    ) {
+                                                      const containingPackage =
+                                                        formData.rows.find(
+                                                          (row, idx) =>
+                                                            checkedRows[idx] &&
+                                                            row.type ===
+                                                              "package" &&
+                                                            row.investigationIds &&
+                                                            row.investigationIds.includes(
+                                                              invId,
+                                                            ) &&
+                                                            row.date ===
+                                                              currentRowDate,
+                                                        );
+                                                      if (containingPackage) {
+                                                        const invItem =
+                                                          investigationItems.find(
+                                                            (inv) =>
+                                                              inv.investigationId ===
+                                                              invId,
+                                                          );
+                                                        if (invItem) {
+                                                          alreadyInOtherPackage.push(
+                                                            `${invItem.investigationName} (in package: ${containingPackage.name})`,
+                                                          );
+                                                        }
+                                                      }
+                                                    }
+                                                  },
+                                                );
+
+                                                if (
+                                                  alreadyInOtherPackage.length >
+                                                  0
+                                                ) {
+                                                  showPopup(
+                                                    `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(", ")}`,
+                                                    "warning",
+                                                  );
+                                                  return;
+                                                }
+
+                                                handleRowChange(
+                                                  index,
+                                                  "name",
+                                                  item.packName,
+                                                );
+                                                handleRowChange(
+                                                  index,
+                                                  "itemId",
+                                                  item.packageId ||
+                                                    priceDetails.packId,
+                                                );
+                                                handleRowChange(
+                                                  index,
+                                                  "originalAmount",
+                                                  priceDetails.baseCost ||
+                                                    priceDetails.actualCost,
+                                                );
+                                                handleRowChange(
+                                                  index,
+                                                  "discountAmount",
+                                                  priceDetails.disc || 0,
+                                                );
+                                                handleRowChange(
+                                                  index,
+                                                  "netAmount",
+                                                  priceDetails.actualCost,
+                                                );
+                                                handleRowChange(
+                                                  index,
+                                                  "type",
+                                                  formData.type,
+                                                );
+                                                handleRowChange(
+                                                  index,
+                                                  "investigationIds",
+                                                  investigationIds,
+                                                );
+                                                setActiveRowIndex(null);
+                                              }}
+                                            >
+                                              <div>
+                                                <strong>{item.packName}</strong>
+                                                <div className="d-flex justify-content-between">
+                                                  <span>
+                                                    ₹
+                                                    {item.actualCost.toFixed(2)}
                                                   </span>
-                                                )}
+                                                </div>
                                               </div>
-                                              {item.investigationType && (
-                                                <small className="text-muted">
-                                                  Type: {item.investigationType}
-                                                </small>
-                                              )}
-                                            </div>
-                                          </li>
-                                        )
-                                      })
-                                    : packageItems
-                                      .filter((item) => item.packName.toLowerCase().includes(row.name.toLowerCase()))
-                                      .map((item, i) => (
-                                        <li
-                                          key={i}
-                                          className="list-group-item list-group-item-action"
-                                          style={{ backgroundColor: "#e3e8e6", cursor: "pointer" }}
-                                          onClick={async () => {
-  const currentRowDate = row.date || new Date().toISOString().split('T')[0];
-  
-  // Check for duplicate package
-  if (isPackageAlreadySelected(item.packageId, currentRowDate)) {
-    showPopup(DUPLICATE_PACKAGE_WARN_MSG, "warning");
-    return;
-  }
-
-  const priceDetails = await fetchPackagePrice(item.packName);
-  if (!priceDetails || !priceDetails.actualCost) {
-    showPopup(PACKAGE_PRICE_WARNING_MSG, "warning");
-    return;
-  }
-
-  const investigationIds = await getInvestigationIdsFromPackage(item.packageId, item.packName);
-
-  // Check if investigations in this package are already selected individually FOR THE SAME DATE
-  const alreadySelectedInvestigations = [];
-  investigationIds.forEach(invId => {
-    if (isInvestigationAlreadySelected(invId, currentRowDate)) {
-      const invItem = investigationItems.find(inv => inv.investigationId === invId);
-      if (invItem) {
-        alreadySelectedInvestigations.push(invItem.investigationName);
-      }
-    }
-  });
-
-  if (alreadySelectedInvestigations.length > 0) {
-    showPopup(
-      `${DUPLICATE_PACKAGE_WRT_INV}\n\nDuplicate investigations: ${alreadySelectedInvestigations.join(', ')}`,
-      "warning"
-    );
-    return;
-  }
-
-  // Check if investigations in this package are already in other packages FOR THE SAME DATE
-  const alreadyInOtherPackage = [];
-  investigationIds.forEach(invId => {
-    if (isInvestigationInSelectedPackages(invId, currentRowDate)) {
-      const containingPackage = formData.rows.find((row, idx) =>
-        checkedRows[idx] &&
-        row.type === "package" &&
-        row.investigationIds &&
-        row.investigationIds.includes(invId) &&
-        row.date === currentRowDate
-      );
-      if (containingPackage) {
-        const invItem = investigationItems.find(inv => inv.investigationId === invId);
-        if (invItem) {
-          alreadyInOtherPackage.push(`${invItem.investigationName} (in package: ${containingPackage.name})`);
-        }
-      }
-    }
-  });
-
-  if (alreadyInOtherPackage.length > 0) {
-    showPopup(
-      `${COMMON_INV_IN_PACKAGES}\n\nInvestigations already in packages: ${alreadyInOtherPackage.join(', ')}`,
-      "warning"
-    );
-    return;
-  }
-
-  handleRowChange(index, "name", item.packName);
-  handleRowChange(index, "itemId", item.packageId || priceDetails.packId);
-  handleRowChange(index, "originalAmount", priceDetails.baseCost || priceDetails.actualCost);
-  handleRowChange(index, "discountAmount", priceDetails.disc || 0);
-  handleRowChange(index, "netAmount", priceDetails.actualCost);
-  handleRowChange(index, "type", formData.type);
-  handleRowChange(index, "investigationIds", investigationIds);
-  setActiveRowIndex(null);
-}}
-                                        >
-                                          <div>
-                                            <strong>{item.packName}</strong>
-                                            <div className="d-flex justify-content-between">
-                                              <span>₹{item.actualCost.toFixed(2)}</span>
-                                            </div>
-                                          </div>
-                                        </li>
-                                      ))}
-                                </ul>
-                              )}
+                                            </li>
+                                          ))}
+                                  </ul>
+                                )}
                             </div>
                           </div>
                         </td>
@@ -2019,9 +2372,13 @@ const LabRegistration = () => {
                           <input
                             type="date"
                             className="form-control"
-                            value={row.date || new Date().toISOString().split('T')[0]}
-                            onChange={(e) => handleDateChange(index, e.target.value)}
-                            min={new Date().toISOString().split('T')[0]}
+                            value={
+                              row.date || new Date().toISOString().split("T")[0]
+                            }
+                            onChange={(e) =>
+                              handleDateChange(index, e.target.value)
+                            }
+                            min={new Date().toISOString().split("T")[0]}
                           />
                         </td>
                         <td>
@@ -2029,7 +2386,13 @@ const LabRegistration = () => {
                             type="number"
                             className="form-control"
                             value={row.originalAmount}
-                            onChange={(e) => handleRowChange(index, "originalAmount", e.target.value)}
+                            onChange={(e) =>
+                              handleRowChange(
+                                index,
+                                "originalAmount",
+                                e.target.value,
+                              )
+                            }
                             min="0"
                             step="0.01"
                           />
@@ -2039,13 +2402,21 @@ const LabRegistration = () => {
                             type="number"
                             className="form-control"
                             value={row.discountAmount}
-                            onChange={(e) => handleRowChange(index, "discountAmount", e.target.value)}
+                            onChange={(e) =>
+                              handleRowChange(
+                                index,
+                                "discountAmount",
+                                e.target.value,
+                              )
+                            }
                             min="0"
                             step="0.01"
                           />
                         </td>
                         <td>
-                          <div className="font-weight-bold text-success">₹{row.netAmount || "0.00"}</div>
+                          <div className="font-weight-bold text-success">
+                            ₹{row.netAmount || "0.00"}
+                          </div>
                         </td>
                         <td>
                           <div className="d-flex align-item-center gap-2">
@@ -2066,8 +2437,16 @@ const LabRegistration = () => {
                 </table>
 
                 <div className="d-flex justify-content-between align-items-center">
-                  <button type="button" className="btn btn-success" onClick={(e) => addRow(e, formData.type)}>
-                    Add {formData.type === "investigation" ? "Investigation" : "Package"} +
+                  <button
+                    type="button"
+                    className="btn btn-success"
+                    onClick={(e) => addRow(e, formData.type)}
+                  >
+                    Add{" "}
+                    {formData.type === "investigation"
+                      ? "Investigation"
+                      : "Package"}{" "}
+                    +
                   </button>
 
                   <div className="d-flex">
@@ -2092,20 +2471,27 @@ const LabRegistration = () => {
           <div className="col-sm-12">
             <div
               className="card shadow mb-3"
-              style={{ background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)", border: "none" }}
+              style={{
+                background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
+                border: "none",
+              }}
             >
               <div
                 className="card-header py-3 text-white"
                 style={{ background: "rgba(255,255,255,0.1)", border: "none" }}
               >
                 <div className="d-flex align-items-center gap-3">
-                  <div className="p-2 bg-white rounded" style={{ opacity: 0.9 }}>
+                  <div
+                    className="p-2 bg-white rounded"
+                    style={{ opacity: 0.9 }}
+                  >
                     <i className="fa fa-calculator text-primary"></i>
                   </div>
                   <div>
                     <h5 className="mb-0 fw-bold text-white">Payment Summary</h5>
                     <small className="text-white" style={{ opacity: 0.8 }}>
-                      {paymentBreakdown.itemCount} item{paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
+                      {paymentBreakdown.itemCount} item
+                      {paymentBreakdown.itemCount !== 1 ? "s" : ""} selected
                     </small>
                   </div>
                 </div>
@@ -2115,14 +2501,24 @@ const LabRegistration = () => {
                   <div className="col-md-3">
                     <div
                       className="card h-100"
-                      style={{ background: "rgba(255,255,255,0.15)", border: "1px solid rgba(255,255,255,0.2)" }}
+                      style={{
+                        background: "rgba(255,255,255,0.15)",
+                        border: "1px solid rgba(255,255,255,0.2)",
+                      }}
                     >
                       <div className="card-body text-center">
                         <div className="mb-2">
-                          <i className="fa fa-receipt fa-2x text-white" style={{ opacity: 0.8 }}></i>
+                          <i
+                            className="fa fa-receipt fa-2x text-white"
+                            style={{ opacity: 0.8 }}
+                          ></i>
                         </div>
-                        <h6 className="card-title text-white mb-1">Total Amount</h6>
-                        <h4 className="text-white fw-bold">₹{paymentBreakdown.totalOriginalAmount}</h4>
+                        <h6 className="card-title text-white mb-1">
+                          Total Amount
+                        </h6>
+                        <h4 className="text-white fw-bold">
+                          ₹{paymentBreakdown.totalOriginalAmount}
+                        </h4>
                       </div>
                     </div>
                   </div>
@@ -2130,14 +2526,21 @@ const LabRegistration = () => {
                   <div className="col-md-3">
                     <div
                       className="card h-100"
-                      style={{ background: "rgba(40,167,69,0.2)", border: "1px solid rgba(40,167,69,0.3)" }}
+                      style={{
+                        background: "rgba(40,167,69,0.2)",
+                        border: "1px solid rgba(40,167,69,0.3)",
+                      }}
                     >
                       <div className="card-body text-center">
                         <div className="mb-2">
                           <i className="fa fa-percent fa-2x text-success"></i>
                         </div>
-                        <h6 className="card-title text-white mb-1">Total Discount</h6>
-                        <h4 className="text-success fw-bold">₹{paymentBreakdown.totalDiscountAmount}</h4>
+                        <h6 className="card-title text-white mb-1">
+                          Total Discount
+                        </h6>
+                        <h4 className="text-success fw-bold">
+                          ₹{paymentBreakdown.totalDiscountAmount}
+                        </h4>
                       </div>
                     </div>
                   </div>
@@ -2146,14 +2549,21 @@ const LabRegistration = () => {
                     <div className="col-md-3">
                       <div
                         className="card h-100"
-                        style={{ background: "rgba(255,193,7,0.2)", border: "1px solid rgba(255,193,7,0.3)" }}
+                        style={{
+                          background: "rgba(255,193,7,0.2)",
+                          border: "1px solid rgba(255,193,7,0.3)",
+                        }}
                       >
                         <div className="card-body text-center">
                           <div className="mb-2">
                             <i className="fa fa-file-invoice fa-2x text-warning"></i>
                           </div>
-                          <h6 className="card-title text-white mb-1">Tax ({paymentBreakdown.gstPercent}% GST)</h6>
-                          <h4 className="text-warning fw-bold">₹{paymentBreakdown.totalGstAmount}</h4>
+                          <h6 className="card-title text-white mb-1">
+                            Tax ({paymentBreakdown.gstPercent}% GST)
+                          </h6>
+                          <h4 className="text-warning fw-bold">
+                            ₹{paymentBreakdown.totalGstAmount}
+                          </h4>
                         </div>
                       </div>
                     </div>
@@ -2172,14 +2582,24 @@ const LabRegistration = () => {
                         <div className="mb-2">
                           <i className="fa fa-credit-card fa-2x text-white"></i>
                         </div>
-                        <h6 className="card-title text-white mb-1">Final Amount</h6>
-                        <h4 className="text-white fw-bold">₹{paymentBreakdown.finalAmount}</h4>
+                        <h6 className="card-title text-white mb-1">
+                          Final Amount
+                        </h6>
+                        <h4 className="text-white fw-bold">
+                          ₹{paymentBreakdown.finalAmount}
+                        </h4>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                <div className="card" style={{ background: "rgba(255,255,255,0.95)", border: "none" }}>
+                <div
+                  className="card"
+                  style={{
+                    background: "rgba(255,255,255,0.95)",
+                    border: "none",
+                  }}
+                >
                   <div className="card-body">
                     <h6 className="fw-bold text-dark mb-3 d-flex align-items-center gap-2">
                       <i className="fa fa-list-alt text-primary"></i>
@@ -2188,28 +2608,48 @@ const LabRegistration = () => {
                     <div className="row">
                       <div className="col-md-8">
                         <div className="d-flex justify-content-between py-2 border-bottom">
-                          <span className="text-muted">Subtotal ({paymentBreakdown.itemCount} items)</span>
-                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalOriginalAmount}</span>
+                          <span className="text-muted">
+                            Subtotal ({paymentBreakdown.itemCount} items)
+                          </span>
+                          <span className="fw-medium text-dark">
+                            ₹{paymentBreakdown.totalOriginalAmount}
+                          </span>
                         </div>
                         {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
                           <div className="d-flex justify-content-between py-2 border-bottom">
-                            <span className="text-success">Discount Applied</span>
-                            <span className="fw-medium text-success">-₹{paymentBreakdown.totalDiscountAmount}</span>
+                            <span className="text-success">
+                              Discount Applied
+                            </span>
+                            <span className="fw-medium text-success">
+                              -₹{paymentBreakdown.totalDiscountAmount}
+                            </span>
                           </div>
                         )}
                         <div className="d-flex justify-content-between py-2 border-bottom">
-                          <span className="text-muted">Amount after Discount</span>
-                          <span className="fw-medium text-dark">₹{paymentBreakdown.totalNetAmount}</span>
+                          <span className="text-muted">
+                            Amount after Discount
+                          </span>
+                          <span className="fw-medium text-dark">
+                            ₹{paymentBreakdown.totalNetAmount}
+                          </span>
                         </div>
                         {paymentBreakdown.gstApplicable && (
                           <div className="d-flex justify-content-between py-2 border-bottom">
-                            <span className="text-muted">GST ({paymentBreakdown.gstPercent}%)</span>
-                            <span className="fw-medium text-warning">+₹{paymentBreakdown.totalGstAmount}</span>
+                            <span className="text-muted">
+                              GST ({paymentBreakdown.gstPercent}%)
+                            </span>
+                            <span className="fw-medium text-warning">
+                              +₹{paymentBreakdown.totalGstAmount}
+                            </span>
                           </div>
                         )}
                         <div className="d-flex justify-content-between py-3 border-top">
-                          <span className="h5 fw-bold text-dark">Total Payable</span>
-                          <span className="h4 fw-bold text-primary">₹{paymentBreakdown.finalAmount}</span>
+                          <span className="h5 fw-bold text-dark">
+                            Total Payable
+                          </span>
+                          <span className="h4 fw-bold text-primary">
+                            ₹{paymentBreakdown.finalAmount}
+                          </span>
                         </div>
                       </div>
                       <div className="col-md-4">
@@ -2218,10 +2658,14 @@ const LabRegistration = () => {
                             {paymentBreakdown.itemCount} Items Selected
                           </span>
                           {Number(paymentBreakdown.totalDiscountAmount) > 0 && (
-                            <span className="badge bg-success px-3 py-2">Discount Applied</span>
+                            <span className="badge bg-success px-3 py-2">
+                              Discount Applied
+                            </span>
                           )}
                           {paymentBreakdown.gstApplicable && (
-                            <span className="badge bg-info px-3 py-2">GST Included</span>
+                            <span className="badge bg-info px-3 py-2">
+                              GST Included
+                            </span>
                           )}
                         </div>
                       </div>
@@ -2244,24 +2688,30 @@ const LabRegistration = () => {
                       type="button"
                       className="btn btn-primary me-2"
                       onClick={async () => {
-                        const missingFields = getMissingMandatoryFields()
-                        if (loading) return
+                        const missingFields = getMissingMandatoryFields();
+                        if (loading) return;
                         if (missingFields.length > 0) {
-                          showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning")
-                          return
+                          showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning");
+                          return;
                         }
                         try {
-                          console.log("Pay Now button clicked")
-                          await handleSubmit(true)
+                          console.log("Pay Now button clicked");
+                          await handleSubmit(true);
                         } catch (error) {
-                          console.error("Error in payment flow:", error)
+                          console.error("Error in payment flow:", error);
                         }
                       }}
                     >
                       <i className="fa fa-credit-card me-1"></i>
-                      {loading ? "Processing..." : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                      {loading
+                        ? "Processing..."
+                        : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
                     </button>
-                    <button type="button" className="btn btn-secondary" onClick={handleReset}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleReset}
+                    >
                       Reset
                     </button>
                   </div>
@@ -2272,7 +2722,7 @@ const LabRegistration = () => {
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default LabRegistration
+export default LabRegistration;
