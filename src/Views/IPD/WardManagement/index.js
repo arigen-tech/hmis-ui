@@ -1,7 +1,7 @@
 import { useState } from "react"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
-// import BedTransfer from "../BedTransfer"
+import BedTransfer from "../BedTransfer"
 import VitalsandMonitoring from "../VitalsandMonitoring"
 
 const WardManagement = () => {
@@ -395,10 +395,10 @@ const WardManagement = () => {
                             {activeTab === "Doctor Visit / Case Notes" && (
                               <DoctorVisitCaseNotes selectedPatient={selectedPatient} />
                             )}
-{/* 
+
                             {activeTab === "Bed Transfer" && (
-  <BedTransfer selectedPatient={selectedPatient} />
-)} */}
+                              <BedTransfer selectedPatient={selectedPatient} />
+)} 
 
 {activeTab ==="Vitals & Monitoring" && (
   <VitalsandMonitoring selectedPatient={selectedPatient}/>
@@ -407,10 +407,7 @@ const WardManagement = () => {
                             {activeTab !== "Clinical Dashboard" && activeTab !== "Doctor Visit / Case Notes" && (
                               <div>
                                
-                                <div className="mt-3">
-                                  <button className="btn btn-primary me-2">Save Changes</button>
-                                  <button className="btn btn-secondary">Cancel</button>
-                                </div>
+                               
                               </div>
                             )}
                           </div>
