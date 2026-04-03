@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -51,7 +50,7 @@ const BloodCollectionTypeMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-  // fetch
+  // fetch data with flag: 0 = all, 1 = active only
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -65,8 +64,9 @@ const BloodCollectionTypeMaster = () => {
     }
   };
 
+  // On mount: show full data (flag = 0)
   useEffect(() => {
-    fetchData();
+    fetchData(0);
   }, []);
 
   // search filter
@@ -81,7 +81,7 @@ const BloodCollectionTypeMaster = () => {
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
-  const totalPages = Math.ceil(filteredData.length / DEFAULT_ITEMS_PER_PAGE);
+  const totalPages = Math.ceil(filteredData.length / DEFAULT_ITEMS_PER_PAGE) || 1;
 
   useEffect(() => {
     setCurrentPage(1);
@@ -218,11 +218,12 @@ const BloodCollectionTypeMaster = () => {
       } else {
         await postRequest(`${MAS_BLOOD_COLLECTION}/create`, {
           ...formData,
-          status: "Y"
+          status: "y",   // lowercase to match toggle logic
         });
         showPopup(ADD_BLOOD_COLLECTION, "success");
       }
-      fetchData();
+      // After save, refresh the current view (full data)
+      fetchData(0);
       handleCancel();
     } catch {
       showPopup(FAIL_BLOOD_COLLECTION, "error");
@@ -256,18 +257,24 @@ const BloodCollectionTypeMaster = () => {
       return;
     }
     try {
-      setLoading(true);
       await putRequest(
         `${MAS_BLOOD_COLLECTION}/status/${confirmDialog.record.collectionTypeId}?status=${confirmDialog.newStatus}`
       );
       showPopup(UPDATE_BLOOD_COLLECTION, "success");
-      fetchData();
+      // Refresh full data after status change
+      fetchData(0);
     } catch {
       showPopup(UPDATE_FAIL_BLOOD_COLLECTION, "error");
     } finally {
-      setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
+  };
+
+  // Show All button: fetch only active records (flag = 1)
+  const handleShowAll = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData(1);
   };
 
   return (
@@ -296,7 +303,7 @@ const BloodCollectionTypeMaster = () => {
                 >
                   Add
                 </button>
-                <button className="btn btn-success" onClick={fetchData}>
+                <button className="btn btn-success" onClick={handleShowAll}>
                   Show All
                 </button>
               </>

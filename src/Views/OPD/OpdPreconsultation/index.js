@@ -170,7 +170,6 @@ const OpdPreconsultation = () => {
       lastChgBy: sessionStorage.getItem("username"),
     };
     try {
-      // debugger;
       const data = await postRequest(`${SET_VITALS}`, requestData);
       if (data.status === 200) {
         fetchPendingPreconsultation();

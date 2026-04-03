@@ -219,6 +219,15 @@ const validRoutes = [
   "/PendingForIssue",
   "/BloodInventoryStockReport",
   "/ComponentWiseStockReport",
+  "/ComponentExpiryReport",
+  "/DiscardAnalysisReport",
+  "/UsageByWardOTReport",
+  "/printBarcode",
+  "/BloodBankStockAndAvailability",
+  "/OPDBillingRegister",
+  "/LabBillingRegister",
+  "/RadiologyBillingRegister",
+  "/CollectionReportServiceCategory",
   
 ];
 

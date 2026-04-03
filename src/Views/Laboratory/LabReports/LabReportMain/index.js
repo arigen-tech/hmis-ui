@@ -1,12 +1,12 @@
 import { useState, useEffect } from "react";
 import { getRequest } from "../../../../service/apiService";
-import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { MAX_MONTHS_BACK } from "../../../../config/apiConfig";
+import { LAB, MAX_MONTHS_BACK } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
 import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../../config/constants';
+import { checkInRange, getResultTextStyle } from "../../../../utils/rangeCheckService";
 
 const LabReports = () => {
   const [mobileNo, setMobileNo] = useState("")
@@ -15,8 +15,8 @@ const LabReports = () => {
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [labData, setLabData] = useState([])
-  const [filteredLabData, setFilteredLabData] = useState([])
-  const [isGenerating, setIsGenerating] = useState(false)
+  const [totalElements, setTotalElements] = useState(0)
+  const [isSearching, setIsSearching] = useState(false)  // Added: separate search loading state
   const [showReport, setShowReport] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null);
 
@@ -84,11 +84,9 @@ const LabReports = () => {
     return true;
   };
 
-  // Fetch lab reports from API
-  const fetchLabReports = async () => {
+  // Fetch lab reports from API with pagination
+  const fetchLabReports = async (page = 1) => {
     try {
-      setIsGenerating(true);
-
       // Build query parameters
       const params = new URLSearchParams();
       if (mobileNo) params.append('mobileNo', mobileNo);
@@ -99,56 +97,63 @@ const LabReports = () => {
         params.append('fromDate', fromDate);
         params.append('toDate', toDate);
       }
-      // If dates are not provided, don't send them to API
-      // The API should handle cases without dates based on its own logic
+      
+      // Add pagination parameters (using 0-based page number for API)
+      params.append('page', page - 1);
+      params.append('size', DEFAULT_ITEMS_PER_PAGE);
 
       // Make API call
-      const response = await getRequest(`/report/lab-history/all?${params.toString()}`);
+      const response = await getRequest(`${LAB}/investigationsReport/all?${params.toString()}`);
 
-      if (response && response.response) {
-        // Map API response to match frontend structure
-        const mappedData = response.response.map(item => ({
-          id: item.resultEntryDetailsId || item.orderHdId || Math.random().toString(),
-          orderHdId: item.orderHdId,
-          investigationDate: formatDateForDisplay(item.investigationDate),
-          patientName: item.patientName || "",
-          mobileNo: item.phnNum || "",
-          genderAge: getGenderAge(item.gender, item.age),
-          investigationName: item.investigationName || "",
-          unit: item.unit || "",
-          result: item.result || "",
-          range: item.range || "",
-          enteredBy: item.resultEnteredBy || "",
-          validatedBy: item.resultValidatedBy || "",
-          // Add inRange field from API response
-          inRange: item.inRange // This should be true/false/null from API
-        }));
+      console.log("API Response:", response);
+
+      if (response && response.status === 200 && response.response) {
+        const pageData = response.response;
+        const content = pageData.content || [];
+        const total = pageData.totalElements || 0;
+        
+        // Map API response to match frontend structure and calculate inRange
+        const mappedData = content.map(item => {
+          // Calculate inRange using checkInRange function
+          const inRange = checkInRange(item.result, item.range);
+          
+          return {
+            id: item.resultEntryDetailsId || item.orderHdId || Math.random().toString(),
+            orderHdId: item.orderHdId,
+            investigationDate: formatDateForDisplay(item.investigationDate),
+            patientName: item.patientName || "",
+            mobileNo: item.phnNum || "",
+            genderAge: getGenderAge(item.gender, item.age),
+            investigationName: item.investigationName || "",
+            unit: item.unit || "",
+            result: item.result || "",
+            range: item.range || "",
+            enteredBy: item.resultEnteredBy || "",
+            validatedBy: item.resultValidatedBy || "",
+            inRange: inRange
+          };
+        });
 
         setLabData(mappedData);
-        setFilteredLabData(mappedData);
+        setTotalElements(total);
         setShowReport(true);
       } else {
         // Fallback to empty array if no data
         setLabData([]);
-        setFilteredLabData([]);
+        setTotalElements(0);
         setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching lab reports:", error);
       showPopup(FETCH_LAB_HISTORY_REPORT_ERR_MSG, "error");
-      // Keep existing data or set empty arrays
-      if (labData.length === 0) {
-        setLabData([]);
-        setFilteredLabData([]);
-      }
+      setLabData([]);
+      setTotalElements(0);
       setShowReport(true);
-    } finally {
-      setIsGenerating(false);
     }
   };
 
   // Handle search (calls API)
-  const handleSearch = () => {
+  const handleSearch = async () => {
     // Check if dates are partially filled
     if ((fromDate && !toDate) || (!fromDate && toDate)) {
       showPopup(SELECT_DATE_WARN_MSG, "warning");
@@ -171,8 +176,17 @@ const LabReports = () => {
       }
     }
 
-    fetchLabReports();
+    setIsSearching(true);  // Added: set searching state to true
     setCurrentPage(1);
+    
+    try {
+      await fetchLabReports(1);
+    } catch (error) {
+      console.error("Error during search:", error);
+      showPopup(FETCH_LAB_HISTORY_REPORT_ERR_MSG, "error");
+    } finally {
+      setIsSearching(false);  // Added: set searching state to false
+    }
   }
 
   // Handle show all (reset filters)
@@ -183,6 +197,14 @@ const LabReports = () => {
     setToDate("")
     setCurrentPage(1);
     setShowReport(false);
+    setLabData([]);
+    setTotalElements(0);
+  }
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchLabReports(page);
   }
 
   // Handle from date change
@@ -214,15 +236,9 @@ const LabReports = () => {
     return printingIds.has(recordId);
   };
 
-  // Function to get result style based on inRange value
+  // Function to get result style based on inRange value using the service
   const getResultStyle = (inRange) => {
-    if (inRange === true) {
-      return { color: 'green', fontWeight: 'bold' };
-    } else if (inRange === false) {
-      return { color: 'red', fontWeight: 'bold' };
-    }
-    // Return empty style for null or undefined
-    return {};
+    return getResultTextStyle(inRange);
   };
 
   // Generate lab report for viewing/downloading
@@ -318,14 +334,6 @@ const LabReports = () => {
     generateLabReport(record);
   }
 
-  // Remove useEffect that sets default date
-  // No default initialization needed
-
-  // Calculate current items for pagination
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredLabData.slice(indexOfFirst, indexOfLast);
-
   return (
     <div className="content-wrapper">
       {popupMessage && (
@@ -410,9 +418,9 @@ const LabReports = () => {
                     type="button"
                     className="btn btn-primary me-2"
                     onClick={handleSearch}
-                    disabled={isGenerating || !isSearchButtonEnabled()}
+                    disabled={isSearching || !isSearchButtonEnabled()}  // Changed: use isSearching instead of isGenerating
                   >
-                    {isGenerating ? (
+                    {isSearching ? (  // Changed: check isSearching instead of isGenerating
                       <>
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         Searching...
@@ -426,22 +434,13 @@ const LabReports = () => {
                     className="btn btn-secondary"
                     onClick={handleShowAll}
                   >
-                    Clear
+                    Reset
                   </button>
                 </div>
               </div>
 
-              {isGenerating && (
-                <div className="text-center py-4">
-                  <LoadingScreen />
-                </div>
-              )}
-
-              {!isGenerating && showReport && (
+              {!isSearching && showReport && (  // Changed: use isSearching instead of isGenerating
                 <>
-                  <div className="mb-3">
-                    <span className="fw-bold">{filteredLabData.length} matches</span>
-                  </div>
 
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
@@ -461,8 +460,8 @@ const LabReports = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredLabData.length > 0 ? (
-                          currentItems.map((item) => (
+                        {labData.length > 0 ? (
+                          labData.map((item) => (
                             <tr key={item.id}>
                               <td>{item.investigationDate}</td>
                               <td>{item.patientName}</td>
@@ -523,13 +522,13 @@ const LabReports = () => {
                     </table>
                   </div>
 
-                  {/* PAGINATION USING REUSABLE COMPONENT */}
-                  {filteredLabData.length > 0 && (
+                  {/* PAGINATION USING REUSABLE COMPONENT WITH SERVER-SIDE PAGINATION */}
+                  {totalElements > 0 && (
                     <Pagination
-                      totalItems={filteredLabData.length}
+                      totalItems={totalElements}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
                   )}
                 </>

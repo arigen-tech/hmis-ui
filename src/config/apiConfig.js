@@ -1,4 +1,4 @@
- export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = 'http://103.133.215.182:8081/hims';
 
 // export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
@@ -74,9 +74,10 @@ export const OPD_PATIENT = "/patient";
 
 
 export const FILTER_OPD_DEPT = `OPD`;
-export const ALL_LAB_HISTORY_REPORT = `${ALL_REPORTS}/lab-histrory`;
-export const OPD_REPORT_API = `${ALL_REPORTS}/opdReport`;
-export const LAB_REPORT_API = `${ALL_REPORTS}/labReport`;
+export const ALL_LAB_HISTORY_REPORT=`${ALL_REPORTS}/lab-histrory`;
+export const OPD_INVOICE_API=`${ALL_REPORTS}/opdInvoice`;
+export const LAB_INVOICE_API=`${ALL_REPORTS}/labInvoice`;
+export const RADIOLOGY_INVOICE_API=`${ALL_REPORTS}/radiologyInvoice`;
 
 
 
@@ -195,6 +196,9 @@ export const Store_Internal_Indent = `/storeInternalIndent`
 
 export const RADIOLOGY = `/radiology`;
 export const REGISTER_AND_ADD_RADIOLOGY_INVESTIGATION = `${RADIOLOGY}/registerWithInv`;
+export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
+export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
+
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 
 
@@ -251,6 +255,7 @@ export const MAS_BLOOD_UNIT = `${MASTERS}/masBloodUnitStatus`;
 export const MAS_BLOOD_COMPONENT = `${MASTERS}/masBloodComponent`
 export const MAS_BLOOD_COMPATIBILITY = `${MASTERS}/masBloodCompatibility`;
 export const MAS_BLOOD_BAG_TYPE = `${MASTERS}/masBloodBagType`;
+export const MAS_CROSS_MATCH_TYPE   = `${MASTERS}/masCrossMatchType`;
 export const MAS_BLOOD_COLLECTION = `${MASTERS}/masBloodCollectionType`;
 export const MAS_MENSTRUAl_PATTERN = `${MASTERS}/gynMasMenstrualPattern`;
 export const MAS_CERVIX_CONSISTENCY = `${MASTERS}/ObMasCervixConsistency`;
@@ -265,6 +270,7 @@ export const MAS_PRESENTATION = `${MASTERS}/obMasPresentation`;
 export const MAS_STERILISATION = `${MASTERS}/gynMasSterilisation`;
 export const MAS_STATION_PRESENTATION = `${MASTERS}/obMasStationPresenting`;
 export const MAS_OPTH_LENSTYPE = `${MASTERS}/opthMasLensType`;
+export const MAS_OPD_QUESTION  = `${MASTERS}/opdQuestionMaster`;
 export const MAS_OPTH_DISTANCE = `${MASTERS}/opthMasDistanceVision`;
 export const MAS_MENARCHE_AGE = `${MASTERS}/gynMasMenarcheAge`;
 export const MAS_OPTH_SPECTACLE_USE = `${MASTERS}/opthMasSpectacleUse`;
@@ -315,7 +321,7 @@ export const MAS_BLOOD_TEST = `${MASTERS}/masBloodTest`;
 export const PATIENT_IMAGE_UPLOAD = `/registration/uploadPatientImage`;
 export const PATIENT_REGISTRATION = `/registration/createPatient`;
 export const PATIENT_FOLLOW_UP = `/registration/updatePatient`;
-export const SEARCH_PATIENT_OPD = `/registration/searchPatient`;
+export const FOLLOWUP_PATIENTS_LIST = `/registration/searchPatient`;
 export const SEARCH_PATIENT = `/patient/search`;
 export const CHECH_DUPLICATE_PATIENT = `/registration/checkDuplicatePatient`
 export const CANCEL_APPOINTMENT = `/registration/cancelAppointment`;
@@ -328,17 +334,25 @@ export const SET_VITALS = `/patient/saveVitalDetails`;
 export const GET_WAITING_LIST = `/patient/getWaitingList`;
 
 //billing
-export const UPDATE_OPD_PAYMENT_STATUS = `/billing/payment`;
-export const UPDATE_LAB_RADIO_PAYMENT_STATUS = `/billing/updatePaymentStatus`
-export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
-export const PATIENT_VISIT_DETAILS = `/billing/patientBillingDetails`
-export const CATAGORY_WISE_BILLING = `/billing/CatagoryWiseBilling`
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
 export const OPD_SERVICE_CATAGORY = "SC001";
 export const LAB_SERVICE_CATAGORY = "SC002"
 
-export const LAB_RADIO_BILLING_DATA = "/billing/pendingBillingLabRadioDetails"
-export const INVOICE_REPORTS = `/billing/billingStatus`
+export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
+export const PROCESS_LAB_PAYMENT = `/billing/processLabPayment`
+export const PROCESS_RADIOLOGY_PAYMENT = `/billing/processRadiologyPayment`
+export const PENDING_BILLINGS_BY_CATAGORY = `/billing/pendingBillingsByCategory`
+export const LAB_RADIO_BILLING_DETAILS = "/billing/getLabRadiologyBillingDetails"
+export const OPD_PATIENT_BILL_DETAILS = `/billing/OPDPatientBillDetails`
+export const INVOICE_REPORTS = `/billing/searchInvoiceDetails`
+
+export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
+
+
+
+
+
+
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate"; export const INVENTORY = `/inventory`
 export const SECTION_ID_FOR_DRUGS = 18;
@@ -393,11 +407,72 @@ export const DAILY_CANCELLATION_REPORT_END_URL=`${ALL_REPORTS}/dailyCancellation
 export const OPD_REGISTER_END_URL=`${ALL_REPORTS}/opdRegister`;
 export const MAS_GENDER_GET_ALL_END_URL=`${MASTERS}/gender/getAll`;
 export const MAS_ICD_GET_ALL_END_URL=`${MASTERS}/masIcd/all`;
-
+export const OPD_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/opdBillingRegister`;
 
 
 export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
 
 export const MAS_COMPONENT_FAILURE_REASON = `${MASTERS}/masComponentFailureReason`;
+
+export const SAVE_PENDING_SAMPLES_FOR_COLLECTION_END_URL=`${LAB}/savePendingSamplesForCollection`;
+export const GET_PENDING_SAMPLE_HEADERS_FOR_COLLECTION_END_URL=`${LAB}/pendingSampleForCollection/headers`;
+export const GET_PENDING_SAMPLE_DETAILS_FOR_COLLECTION_END_URL=`${LAB}/pendingSampleForCollection/details`;
+export const GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL=`${LAB}/pendingSampleForValidation/headers`;
+export const GET_PENDING_SAMPLE_DEATAILS_FOR_SAMPLE_VALIDATION_END_URL=`${LAB}/pendingSampleForValidation/details`;
+export const SAMPLE_VALIDATION_END_URL=`${LAB}/sampleValidate`;
+
+
+export const PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL=`${LAB}/pendingSampleForResultValidation/headers`;
+export const PENDING_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL=`${LAB}/investigationsForResultValidation/details`;
+export const PENDING_SUB_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL=`${LAB}/subInvestigationsForResultValidation/details`;
+export const FIXED_VALUE_DROPDOWNS_END_URL=`${LAB}/fixedValues/dropdown`;
+export const RESULT_VALIDATE_END_URL=`${LAB}/resultValidate`;
+
+
+export const PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL=`${LAB}/pendingSampleForResultEntry/headers`;
+export const PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL=`${LAB}/investigationsForResult/details`;
+export const PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL=`${LAB}/subInvestigationsForResult/details`;
+export const SAVE_RESULT_ENTRY_END_URL=`${LAB}/saveResultEntry`;
+
+
+
+export const PENDING_SAMPLE_HEADERS_FOR_RESULT_UPDATE_END_URL=`${LAB}/resultUpdate/headers`;
+export const PENDING_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL=`${LAB}/investigationsForResultUpdate/details`;
+export const PENDING_SUB_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL=`${LAB}/subInvestigationsForResultUpdate/details`;
+export const UPDATE_RESULT_END_URL=`${LAB}/updateResult`;
+
+
+
+
+
+export const REQUEST_PARAM_ORDER_HD_ID="orderHdId";
+export const REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID="sampleCollectionHeaderId";
+export const REQUEST_PARAM_RESULT_ENTRY_HD_ID="resultEntryHeaderId";
+export const REQUEST_PARAM_RESULT_ENTRY_DT_ID="resultEntryDetailId";
+export const REQUEST_PARAM_INVESTIGATION_ID="investigationId";
+export const REQUEST_PARAM_SUB_INVESTIGATION_ID="subInvestigationId";
+export const REQUEST_PARAM_PATIENT_NAME="patientName";
+export const REQUEST_PARAM_MOBILE_NO="patientMobileNumber";
+export const REQUEST_PARAM_GENDER_CODE="genderCode";
+export const REQUEST_PARAM_AGE="age";
+
+
+
+
+
+export const MAS_CONTAINER_DROPDOWN_END_URL=`${DG_MAS_COLLECTION}/getAll`;
+export const LAB_AMENDMENT_ALL_TYPE = `${MASTERS}/lab-amendment-type/all`;
+
+
+
+
+
+
+
+
+
+
+
+
 
 

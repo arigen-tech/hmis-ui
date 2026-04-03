@@ -1,461 +1,344 @@
 import React, { useState, useEffect } from "react"
 import { getRequest, putRequest } from "../../../service/apiService"
-import { LAB, LAB_AMENDMENT_TYPE_API } from "../../../config/apiConfig" // Added MASTER import
+import { ACTIVE_STATUS_FOR_DROPDOWN, FIXED_VALUE_DROPDOWNS_END_URL, LAB, LAB_AMENDMENT_ALL_TYPE, LAB_AMENDMENT_TYPE_API, PENDING_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL, PENDING_SAMPLE_HEADERS_FOR_RESULT_UPDATE_END_URL, PENDING_SUB_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL, REQUEST_PARAM_FLAG, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_INVESTIGATION_ID, REQUEST_PARAM_MOBILE_NO, REQUEST_PARAM_ORDER_HD_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_PATIENT_NAME, REQUEST_PARAM_RESULT_ENTRY_DT_ID, REQUEST_PARAM_SIZE, REQUEST_PARAM_SUB_INVESTIGATION_ID, UPDATE_RESULT_END_URL } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import {FETCH_RESULT_UPDATE_DATA_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_UPDATE_ERR_MSG, RESULT_UPDATE_SUCC_MSG, UNEXPECTED_ERROR, SELECT_ROW_TO_EDIT_WARN_MSG} from "../../../config/constants"
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import {
+  FETCH_RESULT_UPDATE_DATA_ERR_MSG,
+  RESULT_UPDATE_ERR_MSG,
+  RESULT_UPDATE_SUCC_MSG,
+  UNEXPECTED_ERROR,
+  SELECT_ROW_TO_EDIT_WARN_MSG,
+} from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { checkInRange, getResultTextStyle } from "../../../utils/rangeCheckService"
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+const formatDate = (dateString) => {
+  if (!dateString) return new Date().toLocaleDateString("en-GB")
+  try {
+    const date = new Date(dateString)
+    return isNaN(date.getTime()) ? new Date().toLocaleDateString("en-GB") : date.toLocaleDateString("en-GB")
+  } catch {
+    return new Date().toLocaleDateString("en-GB")
+  }
+}
+
+const formatTime = (timeValue) => {
+  if (!timeValue) return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  try {
+    if (typeof timeValue === "string") {
+      if (timeValue.includes("T")) {
+        const d = new Date(timeValue)
+        if (!isNaN(d.getTime())) {
+          return d.toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+        }
+      }
+      const parts = timeValue.split(":")
+      if (parts.length >= 2) return `${parts[0].padStart(2, "0")}:${parts[1].padStart(2, "0")}`
+    }
+    return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  } catch {
+    return new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Component
+// ---------------------------------------------------------------------------
 const UpdateResultValidation = () => {
-  const [resultList, setResultList] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [searchData, setSearchData] = useState({
-    patientName: "",
-    mobileNo: "",
-  })
-  const [popupMessage, setPopupMessage] = useState(null)
+  // ---- list-view state ----
+  const [headerList, setHeaderList] = useState([])
+  const [totalElements, setTotalElements] = useState(0)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const [selectedResult, setSelectedResult] = useState(null)
-  const [showDetailView, setShowDetailView] = useState(false)
-  const [editableRows, setEditableRows] = useState([]) // Array to track which rows are editable
-  const [amendmentTypes, setAmendmentTypes] = useState([]) // Array to store amendment types
-  const itemsPerPage = 5
+  const [searchData, setSearchData] = useState({ patientName: "", mobileNo: "" })
+  const [isSearching, setIsSearching] = useState(false)
+  const [hasSearched, setHasSearched] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [amendmentTypes, setAmendmentTypes] = useState([])
 
-  // Fetch update results data and amendment types
+  // ---- detail-view state ----
+  const [showDetailView, setShowDetailView] = useState(false)
+  const [selectedHeader, setSelectedHeader] = useState(null)
+  const [investigations, setInvestigations] = useState([])
+  const [editableRows, setEditableRows] = useState([])
+  const [detailLoading, setDetailLoading] = useState(false)
+
+  // fixed-value dropdown cache { subInvestigationId: [...options] }
+  const [fixedDropdownCache, setFixedDropdownCache] = useState({})
+
+  // ---- constants ----
+  const HOSPITAL_ID = sessionStorage.getItem("hospitalId")
+
+  // ---------------------------------------------------------------------------
+  // Show popup helper
+  // ---------------------------------------------------------------------------
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Fetch amendment types once on mount
+  // ---------------------------------------------------------------------------
   useEffect(() => {
-    fetchUpdateResults()
+    const fetchAmendmentTypes = async () => {
+      try {
+        const data = await getRequest(`${LAB_AMENDMENT_ALL_TYPE}?${REQUEST_PARAM_FLAG}=${ACTIVE_STATUS_FOR_DROPDOWN}`)
+        if (data.status === 200 && data.response) setAmendmentTypes(data.response)
+      } catch (e) {
+        console.error("Error fetching amendment types:", e)
+      }
+    }
     fetchAmendmentTypes()
   }, [])
 
-  const fetchUpdateResults = async () => {
+  // ---------------------------------------------------------------------------
+  // Fetch paginated header list – backend handles dedup, we just render what comes back
+  // ---------------------------------------------------------------------------
+  const fetchHeaders = async (page = 1, patientName = "", mobileNo = "") => {
     try {
-      setLoading(true);
-      const data = await getRequest(`${LAB}/getUpdate`);
+      setIsSearching(true)
+      const zeroPage = page - 1
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_UPDATE_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${HOSPITAL_ID}&${REQUEST_PARAM_PAGE}=${zeroPage}&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`
+      if (patientName) url += `&${REQUEST_PARAM_PATIENT_NAME}=${encodeURIComponent(patientName)}`
+      if (mobileNo) url += `&${REQUEST_PARAM_MOBILE_NO}=${encodeURIComponent(mobileNo)}`
 
+      const data = await getRequest(url)
       if (data.status === 200 && data.response) {
-        const formattedData = formatUpdateData(data.response);
-        setResultList(formattedData);
+        const pageData = data.response
+        setHeaderList(pageData.content || [])
+        setTotalElements(pageData.totalElements || 0)
+        setHasSearched(true)
       } else {
-        console.error('Error fetching update results:', data.message);
-        showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, 'error')
+        showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, "error")
       }
-    } catch (error) {
-      console.error('Error fetching update results:', error);
-      showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, 'error')
+    } catch (e) {
+      console.error("Error fetching headers:", e)
+      showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, "error")
     } finally {
-      setLoading(false);
+      setIsSearching(false)
     }
-  };
+  }
 
-  const fetchAmendmentTypes = async () => {
+  // Re-fetch on page change (only after first search)
+  useEffect(() => {
+    if (hasSearched) {
+      fetchHeaders(currentPage, searchData.patientName, searchData.mobileNo)
+    }
+  }, [currentPage]) // eslint-disable-line
+
+  // ---------------------------------------------------------------------------
+  // Search handlers
+  // ---------------------------------------------------------------------------
+  const handleSearchChange = (e) => {
+    const { id, value } = e.target
+    setSearchData((prev) => ({ ...prev, [id]: value }))
+  }
+
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchHeaders(1, searchData.patientName, searchData.mobileNo)
+  }
+
+  const handleSearchReset = () => {
+    setSearchData({ patientName: "", mobileNo: "" })
+    setCurrentPage(1)
+    setHasSearched(false)
+    setHeaderList([])
+    setTotalElements(0)
+  }
+
+  // ---------------------------------------------------------------------------
+  // Build flat investigation rows from details API response
+  // investigationType 's' → single row
+  // investigationType 'm' → header row + sub-investigation rows (fetched separately)
+  // ---------------------------------------------------------------------------
+  const buildInvestigationRows = async (detailsData) => {
+    const rows = []
+    let mainCounter = 1
+
+    for (const inv of detailsData) {
+      if (inv.investigationType === "s") {
+        const inRange = checkInRange(inv.result, inv.normalValue)
+        rows.push({
+          id: `${inv.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
+          si_no: String(mainCounter),
+          displayType: "single",
+          resultEntryHeaderId: inv.resultEntryHeaderId,
+          resultEntryDetailsId: inv.resultEntryDetailsId,
+          investigationId: inv.investigationId,
+          investigation: inv.investigationName || "",
+          sample: inv.sampleName || "",
+          generatedSampleId: inv.generatedSampleId || "",
+          result: inv.result || "",
+          oldResult: inv.result || "",
+          units: inv.unit || "",
+          normal_range: inv.normalValue || "",
+          remarks: "",
+          amendmentTypeId: null,
+          inRange,
+          comparisonType: inv.comparisonType || "",
+          fixedId: inv.fixedId || null,
+          fixedDropdownValues: [],
+          subInvestigationId: null,
+        })
+        mainCounter++
+      } else if (inv.investigationType === "m") {
+        rows.push({
+          id: `main-${inv.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
+          si_no: String(mainCounter),
+          displayType: "main",
+          resultEntryHeaderId: inv.resultEntryHeaderId,
+          resultEntryDetailsId: inv.resultEntryDetailsId,
+          investigationId: inv.investigationId,
+          investigation: inv.investigationName || "",
+          sample: inv.sampleName || "",
+          generatedSampleId: inv.generatedSampleId || "",
+        })
+
+        try {
+          const subData = await getRequest(
+            `${PENDING_SUB_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL}?${REQUEST_PARAM_RESULT_ENTRY_DT_ID}=${inv.resultEntryDetailsId}&${REQUEST_PARAM_INVESTIGATION_ID}=${inv.investigationId}`
+          )
+          if (subData.status === 200 && subData.response) {
+            const subList = subData.response
+            subList.forEach((sub, subIndex) => {
+              const subNo =
+                subList.length === 1 ? "" : `${mainCounter}.${String.fromCharCode(97 + subIndex)}`
+              const inRange = checkInRange(sub.result, sub.normalValue)
+              rows.push({
+                id: `${inv.resultEntryHeaderId}-${inv.resultEntryDetailsId}-${sub.subInvestigationId}`,
+                si_no: subNo,
+                displayType: "subtest",
+                parentId: `main-${inv.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
+                resultEntryHeaderId: inv.resultEntryHeaderId,
+                resultEntryDetailsId: inv.resultEntryDetailsId,
+                subInvestigationId: sub.subInvestigationId,
+                investigation: sub.subInvestigationName || "",
+                sample: inv.sampleName || "",
+                generatedSampleId: sub.generatedSampleId || "",
+                result: sub.result || "",
+                oldResult: sub.result || "",
+                units: sub.unitName || "",
+                normal_range: sub.normalValue || "",
+                remarks: "",
+                amendmentTypeId: null,
+                inRange,
+                comparisonType: sub.comparisonType || "",
+                fixedId: sub.fixedId || null,
+                fixedDropdownValues: [],
+              })
+            })
+          }
+        } catch (e) {
+          console.error("Error fetching sub-investigations:", e)
+        }
+        mainCounter++
+      }
+    }
+    return rows
+  }
+
+  // ---------------------------------------------------------------------------
+  // Row click → open detail view
+  // ---------------------------------------------------------------------------
+  const handleRowClick = async (headerRow) => {
+    setEditableRows([])
+    setFixedDropdownCache({})
+    setSelectedHeader(headerRow)
+    setShowDetailView(true)
+    setDetailLoading(true)
+
     try {
-      const data = await getRequest(`${LAB_AMENDMENT_TYPE_API}/all?flag=1`);
-      
+      const data = await getRequest(
+        `${PENDING_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL}?${REQUEST_PARAM_ORDER_HD_ID}=${headerRow.orderHdId}`
+      )
       if (data.status === 200 && data.response) {
-        setAmendmentTypes(data.response);
+        const rows = await buildInvestigationRows(data.response)
+        setInvestigations(rows)
       } else {
-        console.error('Error fetching amendment types:', data.message);
-        // Don't show popup for this - just log error
+        showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, "error")
       }
-    } catch (error) {
-      console.error('Error fetching amendment types:', error);
-      // Don't show popup for this - just log error
-    }
-  };
-
-  const formatUpdateData = (apiData) => {
-    // Group by orderHdId to merge multiple headers
-    const orderMap = new Map();
-
-    // Sort API data by orderHdId and resultEntryHeaderId to maintain order
-    const sortedApiData = [...apiData].sort((a, b) => {
-      if (a.orderHdId !== b.orderHdId) {
-        return a.orderHdId - b.orderHdId;
-      }
-      // Sort headers within the same order by resultEntryHeaderId
-      const aHeaderId = a.resultEntryUpdateHeaderResponses?.[0]?.resultEntryHeaderId || 0;
-      const bHeaderId = b.resultEntryUpdateHeaderResponses?.[0]?.resultEntryHeaderId || 0;
-      return aHeaderId - bHeaderId;
-    });
-
-    sortedApiData.forEach((order) => {
-      const orderHdId = order.orderHdId;
-      
-      if (!orderMap.has(orderHdId)) {
-        // Create base order object
-        orderMap.set(orderHdId, {
-          id: orderHdId,
-          orderHdId: orderHdId,
-          order_date: formatDate(order.orderDate),
-          order_no: order.orderNo,
-          order_time: formatTime(order.orderTime),
-          patient_name: order.patientName || '',
-          relation: order.relation || '',
-          age: order.patientAge || '',
-          gender: order.patientGender || '',
-          clinical_notes: "",
-          mobile_no: order.patientPhnNum || '',
-          patientId: order.patientId || 0,
-          doctor_name: '',
-          headers: [] // Store all headers for this order
-        });
-      }
-
-      // Add all headers for this order
-      const currentOrder = orderMap.get(orderHdId);
-      if (order.resultEntryUpdateHeaderResponses) {
-        // Sort headers by resultEntryHeaderId
-        const sortedHeaders = [...order.resultEntryUpdateHeaderResponses].sort((a, b) => 
-          a.resultEntryHeaderId - b.resultEntryHeaderId
-        );
-
-        sortedHeaders.forEach((header) => {
-          const headerWithSortedInvestigations = {
-            resultEntryHeaderId: header.resultEntryHeaderId,
-            investigations: header.resultEntryUpdateInvestigationResponseList ? 
-              // Sort investigations by resultEntryDetailsId to maintain order
-              [...header.resultEntryUpdateInvestigationResponseList]
-                .sort((a, b) => a.resultEntryDetailsId - b.resultEntryDetailsId)
-                .map((inv, invIndex) => {
-                  const hasSubTests = inv.entryUpdateSubInvestigationResponses && inv.entryUpdateSubInvestigationResponses.length > 0;
-
-                  if (hasSubTests) {
-                    // Sort sub-tests by resultEntryDetailsId
-                    const sortedSubTests = [...inv.entryUpdateSubInvestigationResponses]
-                      .sort((a, b) => a.resultEntryDetailsId - b.resultEntryDetailsId)
-                      .map((subTest, subIndex) => ({
-                        id: `${header.resultEntryHeaderId}-${inv.resultEntryDetailsId}-${subTest.resultEntryDetailsId}`,
-                        original_si_no: getSubTestNumber(invIndex + 1, subIndex, inv.entryUpdateSubInvestigationResponses.length),
-                        resultEntryDetailsId: subTest.resultEntryDetailsId,
-                        diag_no: "---",
-                        generatedSampleId: subTest.generatedSampleId || '',
-                        investigation: subTest.subInvestigationName || '',
-                        sample: subTest.sampleName || '',
-                        result: subTest.result || "",
-                        oldResult: subTest.result || "", // Store original result for amendment audit
-                        units: subTest.unit || '',
-                        normal_range: subTest.normalValue || '',
-                        remarks: "", // Initialize as empty string (not retrieved from backend)
-                        amendmentTypeId: null, // Initialize amendment type
-                        inRange: subTest.inRange !== undefined ? subTest.inRange : null,
-                        comparisonType: subTest.comparisonType || "",
-                        fixedId: subTest.fixedId || null,
-                        fixedDropdownValues: subTest.fixedDropdownValues || [],
-                        headerId: header.resultEntryHeaderId,
-                      }));
-
-                    return {
-                      id: `${header.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
-                      original_si_no: invIndex + 1,
-                      resultEntryDetailsId: inv.resultEntryDetailsId,
-                      diag_no: inv.diagNo || '',
-                      investigation: inv.investigationName || '',
-                      sample: inv.sampleName || '',
-                      result: inv.result || "",
-                      oldResult: inv.result || "", // Store original result for amendment audit
-                      units: inv.unit || '',
-                      normal_range: inv.normalValue || '',
-                      remarks: "", // Initialize as empty string (not retrieved from backend)
-                      amendmentTypeId: null, // Initialize amendment type
-                      inRange: inv.inRange !== undefined ? inv.inRange : null,
-                      comparisonType: inv.comparisonType || "",
-                      fixedId: inv.fixedId || null,
-                      fixedDropdownValues: inv.fixedDropdownValues || [],
-                      headerId: header.resultEntryHeaderId,
-                      subTests: sortedSubTests
-                    };
-                  } else {
-                    return {
-                      id: `${header.resultEntryHeaderId}-${inv.resultEntryDetailsId}`,
-                      original_si_no: invIndex + 1,
-                      resultEntryDetailsId: inv.resultEntryDetailsId,
-                      diag_no: inv.diagNo || '',
-                      generatedSampleId: inv.generatedSampleId || '',
-                      investigation: inv.investigationName || '',
-                      sample: inv.sampleName || '',
-                      result: inv.result || "",
-                      oldResult: inv.result || "", // Store original result for amendment audit
-                      units: inv.unit || '',
-                      normal_range: inv.normalValue || '',
-                      remarks: "", // Initialize as empty string (not retrieved from backend)
-                      amendmentTypeId: null, // Initialize amendment type
-                      inRange: inv.inRange !== undefined ? inv.inRange : null,
-                      comparisonType: inv.comparisonType || "",
-                      fixedId: inv.fixedId || null,
-                      fixedDropdownValues: inv.fixedDropdownValues || [],
-                      headerId: header.resultEntryHeaderId,
-                      subTests: []
-                    };
-                  }
-                }) : []
-          };
-          currentOrder.headers.push(headerWithSortedInvestigations);
-        });
-      }
-    });
-
-    // Convert map to array and flatten investigations for display
-    return Array.from(orderMap.values()).map(order => ({
-      ...order,
-      // Sort headers by resultEntryHeaderId
-      headers: order.headers.sort((a, b) => a.resultEntryHeaderId - b.resultEntryHeaderId),
-      // For list view, we just need basic info
-      investigationCount: order.headers.reduce((count, header) => 
-        count + (header.investigations ? header.investigations.length : 0), 0
-      ),
-      headerCount: order.headers.length
-    }));
-  }
-
-  // Helper functions for formatting
-  const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
-    if (totalSubTests === 1) {
-      return "";
-    } else {
-      return `${mainIndex}.${String.fromCharCode(97 + subIndex)}`;
+    } catch (e) {
+      console.error("Error fetching investigations:", e)
+      showPopup(FETCH_RESULT_UPDATE_DATA_ERR_MSG, "error")
+    } finally {
+      setDetailLoading(false)
     }
   }
 
-  // UPDATED: Generate sequential serial numbers while preserving original order based on IDs
-  const generateSequentialSerialNumbers = (investigations) => {
-    let mainCounter = 1;
-    let processedInvestigations = [];
-    
-    // Sort investigations by headerId and resultEntryDetailsId to maintain consistent order
-    const sortedInvestigations = [...investigations].sort((a, b) => {
-      // First sort by headerId
-      if (a.headerId !== b.headerId) {
-        return a.headerId - b.headerId;
-      }
-      // Then sort by resultEntryDetailsId within the same header
-      return a.resultEntryDetailsId - b.resultEntryDetailsId;
-    });
+  // ---------------------------------------------------------------------------
+  // Toggle edit row + lazy-load fixed dropdown if needed
+  // ---------------------------------------------------------------------------
+  const toggleEditRow = async (investigationId, isChecked) => {
+    if (isChecked) {
+      setEditableRows((prev) => [...prev, investigationId])
 
-    sortedInvestigations.forEach((investigation) => {
-      if (investigation.subTests && investigation.subTests.length === 0) {
-        // Single investigation without sub-tests
-        processedInvestigations.push({
-          ...investigation,
-          si_no: mainCounter.toString(),
-          displayType: 'single'
-        });
-        mainCounter++;
-      } else if (investigation.subTests && investigation.subTests.length > 0) {
-        // Investigation with sub-tests
-        // Add main investigation header row
-        processedInvestigations.push({
-          ...investigation,
-          si_no: mainCounter.toString(),
-          displayType: 'main',
-          isHeader: true
-        });
-        
-        // Sort sub-tests by resultEntryDetailsId to maintain order
-        const sortedSubTests = [...investigation.subTests].sort((a, b) => 
-          a.resultEntryDetailsId - b.resultEntryDetailsId
-        );
-        
-        // Add sub-tests with proper numbering
-        sortedSubTests.forEach((subTest, subIndex) => {
-          const subTestNumber = investigation.subTests.length === 1 ? 
-            "" : 
-            `${mainCounter}.${String.fromCharCode(97 + subIndex)}`;
-          
-          processedInvestigations.push({
-            ...subTest,
-            si_no: subTestNumber,
-            displayType: 'subtest',
-            parentId: investigation.id
-          });
-        });
-        
-        mainCounter++;
-      } else {
-        // Fallback for investigations without subTests property
-        processedInvestigations.push({
-          ...investigation,
-          si_no: mainCounter.toString(),
-          displayType: 'single'
-        });
-        mainCounter++;
-      }
-    });
-    
-    return processedInvestigations;
-  }
-
-  const formatDate = (dateString) => {
-    if (!dateString) return new Date().toLocaleDateString('en-GB');
-    try {
-      if (typeof dateString === 'string') {
-        const date = new Date(dateString);
-        return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB');
-      }
-      return new Date().toLocaleDateString('en-GB');
-    } catch (error) {
-      return new Date().toLocaleDateString('en-GB');
-    }
-  }
-
-  const formatTime = (timeValue) => {
-    if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    try {
-      if (typeof timeValue === 'string') {
-        const timeParts = timeValue.split(':');
-        if (timeParts.length >= 2) {
-          return `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
+      const row = investigations.find((inv) => inv.id === investigationId)
+      if (row && row.comparisonType === "f" && row.subInvestigationId) {
+        const cacheKey = row.subInvestigationId
+        if (!fixedDropdownCache[cacheKey]) {
+          try {
+            const data = await getRequest(`${FIXED_VALUE_DROPDOWNS_END_URL}?${REQUEST_PARAM_SUB_INVESTIGATION_ID}=${cacheKey}`)
+            if (data.status === 200 && data.response) {
+              setFixedDropdownCache((prev) => ({ ...prev, [cacheKey]: data.response }))
+              setInvestigations((prev) =>
+                prev.map((inv) =>
+                  inv.id === investigationId ? { ...inv, fixedDropdownValues: data.response } : inv
+                )
+              )
+            }
+          } catch (e) {
+            console.error("Error fetching fixed dropdown:", e)
+          }
+        } else {
+          setInvestigations((prev) =>
+            prev.map((inv) =>
+              inv.id === investigationId
+                ? { ...inv, fixedDropdownValues: fixedDropdownCache[cacheKey] }
+                : inv
+            )
+          )
         }
       }
-      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    } catch (error) {
-      return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    } else {
+      setEditableRows((prev) => prev.filter((id) => id !== investigationId))
     }
   }
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
+  const isRowEditable = (id) => editableRows.includes(id)
+
+  // ---------------------------------------------------------------------------
+  // Field change handlers
+  // ---------------------------------------------------------------------------
+  const updateInvestigation = (id, changes) => {
+    setInvestigations((prev) => prev.map((inv) => (inv.id === id ? { ...inv, ...changes } : inv)))
+  }
+
+  const handleResultChange = (id, value, selectedFixedId = null) => {
+    const row = investigations.find((inv) => inv.id === id)
+    const newInRange = row ? checkInRange(value, row.normal_range) : null
+    updateInvestigation(id, {
+      result: value,
+      ...(selectedFixedId !== undefined && selectedFixedId !== null ? { fixedId: selectedFixedId } : {}),
+      inRange: newInRange,
     })
   }
 
-  // Get result text style based on inRange value
-  const getResultTextStyle = (inRange) => {
-    if (inRange === true) {
-      return { fontWeight: 'bold', color: 'green' };
-    } else if (inRange === false) {
-      return { fontWeight: 'bold', color: 'red' };
-    }
-    return {}; // Default style for null or undefined
-  }
+  const handleRemarksChange = (id, value) => updateInvestigation(id, { remarks: value })
 
-  // Handle result change for main investigations
-  const handleResultChange = (investigationId, value, selectedFixedId = null) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.id === investigationId) {
-          return {
-            ...inv,
-            result: value,
-            fixedId: selectedFixedId !== undefined ? selectedFixedId : inv.fixedId
-          }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
+  const handleAmendmentTypeChange = (id, value) =>
+    updateInvestigation(id, { amendmentTypeId: value ? parseInt(value) : null })
 
-  // Handle result change for sub-tests
-  const handleSubTestResultChange = (subTestId, value, selectedFixedId = null) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.displayType === 'subtest' && inv.id === subTestId) {
-          return {
-            ...inv,
-            result: value,
-            fixedId: selectedFixedId !== undefined ? selectedFixedId : inv.fixedId
-          }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
-
-  // Handle remarks change for main investigations
-  const handleRemarksChange = (investigationId, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.id === investigationId) {
-          return {
-            ...inv,
-            remarks: value
-          }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
-
-  // Handle remarks change for sub-tests
-  const handleSubTestRemarksChange = (subTestId, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.displayType === 'subtest' && inv.id === subTestId) {
-          return {
-            ...inv,
-            remarks: value
-          }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
-
-  // Handle amendment type change for main investigations
-  const handleAmendmentTypeChange = (investigationId, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.id === investigationId) {
-          return {
-            ...inv,
-            amendmentTypeId: value ? parseInt(value) : null
-          }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
-
-  // Handle amendment type change for sub-tests
-  const handleSubTestAmendmentTypeChange = (subTestId, value) => {
-    if (selectedResult) {
-      const updatedInvestigations = selectedResult.investigations.map((inv) => {
-        if (inv.displayType === 'subtest' && inv.id === subTestId) {
-          return {
-            ...inv,
-            amendmentTypeId: value ? parseInt(value) : null
-          }
-        }
-        return inv
-      })
-      setSelectedResult({ ...selectedResult, investigations: updatedInvestigations })
-    }
-  }
-
-  // Toggle edit mode for a specific row
-  const toggleEditRow = (investigationId, isChecked) => {
-    if (isChecked) {
-      // Add to editable rows
-      setEditableRows(prev => [...prev, investigationId]);
-    } else {
-      // Remove from editable rows
-      setEditableRows(prev => prev.filter(id => id !== investigationId));
-    }
-  }
-
-  // Check if a row is editable
-  const isRowEditable = (investigationId) => {
-    return editableRows.includes(investigationId);
-  }
-
-  // Render edit checkbox for a row
+  // ---------------------------------------------------------------------------
+  // Render helpers
+  // ---------------------------------------------------------------------------
   const renderEditCheckbox = (test) => {
-    // Don't show checkbox for main investigation headers (they're just headers)
-    if (test.displayType === 'main') {
-      return null;
-    }
-    
-    const isChecked = isRowEditable(test.id);
-    
+    if (test.displayType === "main") return null
+    const isChecked = isRowEditable(test.id)
     return (
       <div className="form-check d-flex justify-content-center">
         <input
@@ -466,31 +349,18 @@ const UpdateResultValidation = () => {
           onChange={(e) => toggleEditRow(test.id, e.target.checked)}
           style={{ transform: "scale(1.2)", cursor: "pointer" }}
         />
-        <label className="form-check-label ms-1" htmlFor={`edit-${test.id}`} style={{ cursor: "pointer" }}>
-  
-        </label>
+        <label className="form-check-label ms-1" htmlFor={`edit-${test.id}`} style={{ cursor: "pointer" }} />
       </div>
-    );
+    )
   }
 
-  // Render amendment type dropdown
   const renderAmendmentTypeDropdown = (test) => {
-    const isEditable = isRowEditable(test.id);
-    const selectedValue = test.amendmentTypeId || "";
-    
+    const isEditable = isRowEditable(test.id)
     return (
       <select
         className="form-select"
-        value={selectedValue}
-        onChange={(e) => {
-          if (!isEditable) return;
-          const value = e.target.value;
-          if (test.displayType === 'subtest') {
-            handleSubTestAmendmentTypeChange(test.id, value);
-          } else {
-            handleAmendmentTypeChange(test.id, value);
-          }
-        }}
+        value={test.amendmentTypeId || ""}
+        onChange={(e) => { if (isEditable) handleAmendmentTypeChange(test.id, e.target.value) }}
         disabled={!isEditable}
         style={{ padding: "4px" }}
       >
@@ -501,495 +371,308 @@ const UpdateResultValidation = () => {
           </option>
         ))}
       </select>
-    );
+    )
   }
 
-  // Render result input field with proper fixedId handling, inRange styling, and edit check
   const renderResultInput = (test) => {
-    const resultStyle = getResultTextStyle(test.inRange);
-    const isEditable = isRowEditable(test.id);
+    const resultStyle = getResultTextStyle(test.inRange)
+    const isEditable = isRowEditable(test.id)
 
-    if (test.comparisonType === 'f' && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
+    if (test.comparisonType === "f" && isEditable && test.fixedDropdownValues && test.fixedDropdownValues.length > 0) {
       return (
-        <div>
-          <select
-            className="form-select"
-            value={test.fixedId || ""}
-            onChange={(e) => {
-              if (!isEditable) return;
-              const selectedFixedId = e.target.value ? parseInt(e.target.value) : null;
-              const selectedOption = test.fixedDropdownValues.find(opt => opt.fixedId === selectedFixedId);
-              const resultValue = selectedOption ? selectedOption.fixedValue : "";
-
-              if (test.displayType === 'subtest') {
-                handleSubTestResultChange(test.id, resultValue, selectedFixedId);
-              } else {
-                handleResultChange(test.id, resultValue, selectedFixedId);
-              }
-            }}
-            style={resultStyle}
-            disabled={!isEditable}
-          >
-            <option value="">Select Result</option>
-            {test.fixedDropdownValues.map((option) => (
-              <option
-                key={option.fixedId}
-                value={option.fixedId}
-              >
-                {option.fixedValue}
-              </option>
-            ))}
-          </select>
-        </div>
-      )
-    } else {
-      return (
-        <input
-          type="text"
-          className="form-control"
-          value={test.result}
+        <select
+          className="form-select"
+          value={test.fixedId || ""}
           onChange={(e) => {
-            if (!isEditable) return;
-            if (test.displayType === 'subtest') {
-              handleSubTestResultChange(test.id, e.target.value, null);
-            } else {
-              handleResultChange(test.id, e.target.value, null);
-            }
+            const selectedFixedId = e.target.value ? parseInt(e.target.value) : null
+            const selectedOption = test.fixedDropdownValues.find((opt) => opt.fixedId === selectedFixedId)
+            const resultValue = selectedOption ? selectedOption.fixedValue : ""
+            handleResultChange(test.id, resultValue, selectedFixedId)
           }}
-          placeholder="Enter result"
           style={resultStyle}
-          readOnly={!isEditable}
-        />
+        >
+          <option value="">Select Result</option>
+          {test.fixedDropdownValues.map((option) => (
+            <option key={option.fixedId} value={option.fixedId}>
+              {option.fixedValue}
+            </option>
+          ))}
+        </select>
       )
     }
-  }
 
-  // Render remarks input field with edit check - Now always empty initially
-  const renderRemarksInput = (test) => {
-    const isEditable = isRowEditable(test.id);
-    
     return (
       <input
         type="text"
         className="form-control"
-        value={test.remarks}
-        onChange={(e) => {
-          if (!isEditable) return;
-          if (test.displayType === 'subtest') {
-            handleSubTestRemarksChange(test.id, e.target.value);
-          } else {
-            handleRemarksChange(test.id, e.target.value);
-          }
-        }}
-        placeholder="Enter remarks"
-        style={{ padding: "4px"}}
+        value={test.result}
+        onChange={(e) => { if (isEditable) handleResultChange(test.id, e.target.value, null) }}
+        placeholder="Enter result"
+        style={resultStyle}
         readOnly={!isEditable}
       />
     )
   }
 
-  const handleSearchChange = (e) => {
-    const { id, value } = e.target
-    setSearchData((prevData) => ({ ...prevData, [id]: value }))
-    setCurrentPage(1)
+  const renderRemarksInput = (test) => {
+    const isEditable = isRowEditable(test.id)
+    return (
+      <input
+        type="text"
+        className="form-control"
+        value={test.remarks}
+        onChange={(e) => { if (isEditable) handleRemarksChange(test.id, e.target.value) }}
+        placeholder="Enter remarks"
+        style={{ padding: "4px" }}
+        readOnly={!isEditable}
+      />
+    )
   }
 
-  const handleRowClick = (result) => {
-    // Reset editable rows when opening a new detail view
-    setEditableRows([]);
-    
-    // When clicking a row, combine all investigations from all headers
-    const allInvestigations = result.headers.flatMap(header => header.investigations);
-    
-    // Generate sequential serial numbers for all investigations with consistent ordering based on IDs
-    const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
-    
-    setSelectedResult({
-      ...result,
-      investigations: investigationsWithSequentialNumbers
-    });
-    setShowDetailView(true);
-  }
-
+  // ---------------------------------------------------------------------------
+  // Back to list
+  // ---------------------------------------------------------------------------
   const handleBackToList = () => {
     setShowDetailView(false)
-    setSelectedResult(null)
-    setEditableRows([]);
+    setSelectedHeader(null)
+    setInvestigations([])
+    setEditableRows([])
+    setFixedDropdownCache({})
   }
 
-  // UPDATED: Handle Update based on your service implementation - Only update rows that are marked as editable
-  const handleUpdate = async () => {
-    if (!selectedResult) return;
-
-    // Check if any row is selected for editing
-    if (editableRows.length === 0) {
-      showPopup(SELECT_ROW_TO_EDIT_WARN_MSG, "warning");
-      return;
-    }
-
-    // Validate that all editable rows have amendment type selected
-    const rowsWithoutAmendmentType = selectedResult.investigations.filter(inv => 
-      isRowEditable(inv.id) && 
-      inv.displayType !== 'main' && 
-      !inv.amendmentTypeId
-    );
-
-    if (rowsWithoutAmendmentType.length > 0) {
-      showPopup("Please select Amendment Type for all editable rows", "warning");
-      return;
-    }
-
-    setLoading(true);
-
+  // ---------------------------------------------------------------------------
+  // Reset
+  // ---------------------------------------------------------------------------
+  const handleReset = async () => {
+    if (!selectedHeader) return
+    setEditableRows([])
+    setFixedDropdownCache({})
+    setDetailLoading(true)
     try {
-      // Prepare update payload for all headers, but only include editable rows
-      const updatePromises = selectedResult.headers.map(header => {
-        const headerInvestigations = selectedResult.investigations.filter(inv => 
-          inv.headerId === header.resultEntryHeaderId && inv.displayType !== 'main'
-        );
+      const data = await getRequest(
+        `${LAB}/${PENDING_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL}?${REQUEST_PARAM_ORDER_HD_ID}=${selectedHeader.orderHdId}`
+      )
+      if (data.status === 200 && data.response) {
+        const rows = await buildInvestigationRows(data.response)
+        setInvestigations(rows)
+      }
+    } catch (e) {
+      console.error("Error resetting investigations:", e)
+    } finally {
+      setDetailLoading(false)
+    }
+  }
 
-        const resultUpdateDetailRequests = [];
+  // ---------------------------------------------------------------------------
+  // Update (PUT) – payload unchanged
+  // ---------------------------------------------------------------------------
+  const handleUpdate = async () => {
+    if (!selectedHeader) return
 
-        headerInvestigations.forEach(inv => {
-          if ((inv.displayType === 'subtest' || inv.displayType === 'single') && isRowEditable(inv.id)) {
-            resultUpdateDetailRequests.push({
-              resultEntryDetailsId: inv.resultEntryDetailsId,
-              result: inv.result || "",
-              oldResult: inv.oldResult || "", // Send original result for audit
-              amendmentTypeId: inv.amendmentTypeId || null, // Send amendment type
-              remarks: inv.remarks || "", // Send remarks (empty string if not entered)
-              fixedId: inv.fixedId || null,
-              comparisonType: inv.comparisonType || ""
-            });
-          }
-        });
+    if (editableRows.length === 0) {
+      showPopup(SELECT_ROW_TO_EDIT_WARN_MSG, "warning")
+      return
+    }
 
-        // If no editable rows in this header, skip it
-        if (resultUpdateDetailRequests.length === 0) {
-          return null;
-        }
+    const rowsWithoutAmendmentType = investigations.filter(
+      (inv) => isRowEditable(inv.id) && inv.displayType !== "main" && !inv.amendmentTypeId
+    )
+    if (rowsWithoutAmendmentType.length > 0) {
+      showPopup("Please select Amendment Type for all editable rows", "warning")
+      return
+    }
 
-        // Sort detail requests by resultEntryDetailsId to maintain order
-        const sortedDetailRequests = resultUpdateDetailRequests.sort((a, b) => 
-          a.resultEntryDetailsId - b.resultEntryDetailsId
-        );
+    setLoading(true)
+    try {
+      const headerMap = new Map()
+      investigations
+        .filter((inv) => inv.displayType !== "main" && isRowEditable(inv.id))
+        .forEach((inv) => {
+          if (!headerMap.has(inv.resultEntryHeaderId)) headerMap.set(inv.resultEntryHeaderId, [])
+          headerMap.get(inv.resultEntryHeaderId).push({
+            resultEntryDetailsId: inv.resultEntryDetailsId,
+            result: inv.result || "",
+            oldResult: inv.oldResult || "",
+            amendmentTypeId: inv.amendmentTypeId || null,
+            remarks: inv.remarks || "",
+            fixedId: inv.fixedId || null,
+            comparisonType: inv.comparisonType || "",
+          })
+        })
 
-        // Create payload according to your API structure
-        const requestPayload = {
-          orderHdId: selectedResult.orderHdId,
-          resultEntryHeaderId: header.resultEntryHeaderId,
-          resultUpdateDetailRequests: sortedDetailRequests
-        };
-
-        console.log("Submitting update request for header:", header.resultEntryHeaderId, requestPayload);
-
-        // Call update API for each header
-        return putRequest(`${LAB}/update`, requestPayload);
-      });
-
-      // Filter out null promises (headers with no editable rows)
-      const validPromises = updatePromises.filter(promise => promise !== null);
-      
-      if (validPromises.length === 0) {
-        showPopup(SELECT_ROW_TO_EDIT_WARN_MSG, "warning");
-        setLoading(false);
-        return;
+      if (headerMap.size === 0) {
+        showPopup(SELECT_ROW_TO_EDIT_WARN_MSG, "warning")
+        setLoading(false)
+        return
       }
 
-      const responses = await Promise.all(validPromises);
-      const allSuccess = responses.every(response => response.status === 200);
+      const updatePromises = Array.from(headerMap.entries()).map(([headerId, detailRequests]) => {
+        const payload = {
+          orderHdId: selectedHeader.orderHdId,
+          resultEntryHeaderId: headerId,
+          resultUpdateDetailRequests: detailRequests.sort((a, b) => a.resultEntryDetailsId - b.resultEntryDetailsId),
+        }
+        console.log("Submitting update for header:", headerId, payload)
+        return putRequest(`${UPDATE_RESULT_END_URL}`, payload)
+      })
+
+      const responses = await Promise.all(updatePromises)
+      const allSuccess = responses.every((r) => r.status === 200)
 
       if (allSuccess) {
-        showPopup(RESULT_UPDATE_SUCC_MSG, "success");
-        await fetchUpdateResults();
-        setShowDetailView(false);
-        setSelectedResult(null);
-        setEditableRows([]);
+        showPopup(RESULT_UPDATE_SUCC_MSG, "success")
+        await fetchHeaders(currentPage, searchData.patientName, searchData.mobileNo)
+        setShowDetailView(false)
+        setSelectedHeader(null)
+        setInvestigations([])
+        setEditableRows([])
+        setFixedDropdownCache({})
       } else {
-        const errorMessages = responses
-          .filter(response => response.status !== 200)
-          .map(response => response.message)
-          .join(', ');
-        showPopup(RESULT_UPDATE_ERR_MSG, "error");
+        showPopup(RESULT_UPDATE_ERR_MSG, "error")
       }
-    } catch (error) {
-      console.error("Error submitting update:", error);
-      showPopup(UNEXPECTED_ERROR, "error");
+    } catch (e) {
+      console.error("Error submitting update:", e)
+      showPopup(UNEXPECTED_ERROR, "error")
     } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleReset = () => {
-    if (selectedResult) {
-      const originalResult = resultList.find((r) => r.id === selectedResult.id)
-      if (originalResult) {
-        const allInvestigations = originalResult.headers.flatMap(header => header.investigations);
-        const investigationsWithSequentialNumbers = generateSequentialSerialNumbers(allInvestigations);
-        setSelectedResult({
-          ...originalResult,
-          investigations: investigationsWithSequentialNumbers
-        });
-        // Clear editable rows on reset
-        setEditableRows([]);
-      }
+      setLoading(false)
     }
   }
 
-  const filteredResultList = resultList.filter((item) => {
-    const patientNameMatch =
-      searchData.patientName === "" || item.patient_name.toLowerCase().includes(searchData.patientName.toLowerCase())
-
-    const mobileNoMatch = searchData.mobileNo === "" || (item.mobile_no && item.mobile_no.includes(searchData.mobileNo))
-
-    return patientNameMatch && mobileNoMatch
-  })
-
-  const filteredTotalPages = Math.ceil(filteredResultList.length / DEFAULT_ITEMS_PER_PAGE) || 1
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredResultList.slice(indexOfFirst, indexOfLast);
-
-  
-  // Detail View with Edit Checkbox Column
-  if (showDetailView && selectedResult) {
+  // ---------------------------------------------------------------------------
+  // DETAIL VIEW
+  // ---------------------------------------------------------------------------
+  if (showDetailView && selectedHeader) {
     return (
       <div className="content-wrapper">
         {popupMessage && (
           <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
         )}
-        {loading && <LoadingScreen />}
+        {(loading || detailLoading) && <LoadingScreen />}
+
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
                   <h4 className="card-title p-2">UPDATE RESULT ENTRY</h4>
-                  <div className="d-flex align-items-center">
-                    <button className="btn btn-secondary" onClick={handleBackToList}>
-                      <i className="mdi mdi-arrow-left"></i> Back to List
-                    </button>
-                  </div>
+                  <button className="btn btn-secondary" onClick={handleBackToList}>
+                    <i className="mdi mdi-arrow-left"></i> Back to List
+                  </button>
                 </div>
               </div>
 
               <div className="card-body">
                 {/* Patient Details */}
                 <div className="card mb-4">
-                  <div className="card-header  ">
+                  <div className="card-header">
                     <h5 className="mb-0">PATIENT DETAILS</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Patient Name</label>
-                        <input type="text" className="form-control" value={selectedResult.patient_name} readOnly />
+                        <input type="text" className="form-control" value={selectedHeader.patientName || ""} readOnly />
                       </div>
-
-                       <div className="col-md-4">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
-                        <input type="text" className="form-control" value={selectedResult.mobile_no} readOnly />
+                        <input type="text" className="form-control" value={selectedHeader.patientPhnNum || ""} readOnly />
                       </div>
-
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Relation</label>
-                        <input type="text" className="form-control" value={selectedResult.relation} readOnly />
+                        <input type="text" className="form-control" value={selectedHeader.patientRelation || ""} readOnly />
                       </div>
-                     
                     </div>
                     <div className="row mt-3">
-
-                       <div className="col-md-4">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
-                        <input type="text" className="form-control" value={selectedResult.age} readOnly />
+                        <input type="text" className="form-control" value={selectedHeader.patientAge || ""} readOnly />
                       </div>
-
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Gender</label>
-                        <input type="text" className="form-control" value={selectedResult.gender} readOnly />
-                      </div>
-                    </div>
-                    <div className="row mt-3">
-                      <div className="col-12">
-                        <label className="form-label fw-bold">Clinical Notes</label>
-                        <textarea
-                          className="form-control"
-                          rows="2"
-                          value={selectedResult.clinical_notes}
-                          readOnly
-                        ></textarea>
+                        <input type="text" className="form-control" value={selectedHeader.patientGender || ""} readOnly />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Order Details Section - ONLY THREE FIELDS */}
+                {/* Order Details */}
                 <div className="card mb-4">
-                  <div className="card-header  ">
+                  <div className="card-header">
                     <h5 className="mb-0">ORDER DETAILS</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Order Date/Time</label>
-                        <input type="text" className="form-control" value={`${selectedResult.order_date} - ${selectedResult.order_time}`} readOnly />
+                        <input
+                          type="text"
+                          className="form-control"
+                          value={`${formatDate(selectedHeader.orderDate)} - ${formatTime(selectedHeader.orderTime)}`}
+                          readOnly
+                        />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Order Number</label>
-                        <input type="text" className="form-control" value={selectedResult.order_no} readOnly />
+                        <input type="text" className="form-control" value={selectedHeader.orderNo || ""} readOnly />
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* Investigations Table with Edit Checkbox Column */}
+                {/* Investigations Table */}
                 <div className="table-responsive" style={{ overflowX: "auto" }}>
-                  <table 
-                    className="table table-bordered table-hover" 
-                    style={{ 
-                      marginBottom: "0",
-                      tableLayout: "fixed",
-                      width: "100%",
-                      minWidth: "1000px" // Increased width for the new column
-                    }}
+                  <table
+                    className="table table-bordered table-hover"
+                    style={{ marginBottom: 0, tableLayout: "fixed", width: "100%", minWidth: "1000px" }}
                   >
                     <thead className="table-light">
                       <tr>
                         <th style={{ width: "60px" }}>SL No.</th>
-                        <th style={{ width: "150px"}}>Sample Id</th>
+                        <th style={{ width: "150px" }}>Sample Id</th>
                         <th style={{ width: "120px" }}>Investigation</th>
                         <th style={{ width: "120px" }}>Sample</th>
                         <th style={{ width: "80px" }}>Result</th>
                         <th style={{ width: "60px" }}>Units</th>
-                        <th style={{ width: "120px"}}>Normal Range</th>
+                        <th style={{ width: "120px" }}>Normal Range</th>
                         <th style={{ width: "120px" }}>Amendment Type</th>
-                        <th style={{ width: "140px"}}>Remarks</th>
+                        <th style={{ width: "140px" }}>Remarks</th>
                         <th style={{ width: "50px" }}>Edit</th>
                       </tr>
                     </thead>
                     <tbody>
-                      {selectedResult.investigations.map((investigation, index) => (
+                      {investigations.map((investigation) => (
                         <React.Fragment key={investigation.id}>
-                          {investigation.displayType === 'main' ? (
-                            // Main investigation header row
+                          {investigation.displayType === "main" ? (
                             <tr>
                               <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
-                              <td colSpan="9" style={{ padding: "4px" }}> {/* Span across all columns except SL No */}
+                              <td colSpan="9" style={{ padding: "4px" }}>
                                 <strong>{investigation.investigation}</strong>
                               </td>
                             </tr>
-                          ) : investigation.displayType === 'subtest' ? (
-                            // Sub-test row
-                            <tr className={isRowEditable(investigation.id) ? "table-warning" : ""}>
-                              <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
-                                {investigation.si_no}
-                              </td>
-                              
-                              <td style={{ padding: "4px", textAlign: "center", width: "150px" }}>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={investigation.generatedSampleId}
-                                    readOnly
-                                />
-                              </td>
-                              <td style={{ padding: "4px", width: "120px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.investigation}
-                                  readOnly
-                                />
-                              </td>
-                              <td style={{ padding: "4px", width: "120px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.sample}
-                                  readOnly
-                                />
-                              </td>
-                              <td style={{ padding: "4px", width: "80px" }}>
-                                {renderResultInput(investigation)}
-                              </td>
-                              <td style={{ padding: "4px", width: "60px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.units}
-                                  readOnly
-                                />
-                              </td>
-                              <td style={{ padding: "4px", width: "120px" }}>
-                                <textarea
-                                  className="form-control"
-                                  rows="2"
-                                  value={investigation.normal_range}
-                                  readOnly
-                                ></textarea>
-                              </td>
-                              <td style={{ padding: "4px", width: "180px" }}>
-                                {renderAmendmentTypeDropdown(investigation)}
-                              </td>
-                              <td style={{ padding: "4px", width: "140px" }}>
-                                {renderRemarksInput(investigation)}
-                              </td>
-                              
-                              <td style={{ padding: "4px", textAlign: "center", width: "50px" }}>
-                                {renderEditCheckbox(investigation)}
-                              </td>
-                            </tr>
                           ) : (
-                            // Single investigation without sub-tests
                             <tr className={isRowEditable(investigation.id) ? "table-warning" : ""}>
                               <td style={{ padding: "4px", textAlign: "center", width: "60px" }}>
                                 {investigation.si_no}
                               </td>
-                              
                               <td style={{ padding: "4px", textAlign: "center", width: "150px" }}>
-                                <input
-                                    type="text"
-                                    className="form-control"
-                                    value={investigation.generatedSampleId}
-                                    readOnly
-                                />
+                                <input type="text" className="form-control" value={investigation.generatedSampleId} readOnly />
                               </td>
                               <td style={{ padding: "4px", width: "120px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.investigation}
-                                  readOnly
-                                />
+                                <input type="text" className="form-control" value={investigation.investigation} readOnly />
                               </td>
                               <td style={{ padding: "4px", width: "120px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.sample}
-                                  readOnly
-                                />
+                                <input type="text" className="form-control" value={investigation.sample} readOnly />
                               </td>
                               <td style={{ padding: "4px", width: "80px" }}>
                                 {renderResultInput(investigation)}
                               </td>
                               <td style={{ padding: "4px", width: "60px" }}>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={investigation.units}
-                                  readOnly
-                                />
+                                <input type="text" className="form-control" value={investigation.units} readOnly />
                               </td>
                               <td style={{ padding: "4px", width: "120px" }}>
-                                <textarea
-                                  className="form-control"
-                                  rows="2"
-                                  value={investigation.normal_range}
-                                  readOnly
-                                ></textarea>
+                                <textarea className="form-control" rows="2" value={investigation.normal_range} readOnly />
                               </td>
                               <td style={{ padding: "4px", width: "180px" }}>
                                 {renderAmendmentTypeDropdown(investigation)}
@@ -997,7 +680,6 @@ const UpdateResultValidation = () => {
                               <td style={{ padding: "4px", width: "140px" }}>
                                 {renderRemarksInput(investigation)}
                               </td>
-                              
                               <td style={{ padding: "4px", textAlign: "center", width: "50px" }}>
                                 {renderEditCheckbox(investigation)}
                               </td>
@@ -1011,18 +693,22 @@ const UpdateResultValidation = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button 
-                    className="btn btn-warning me-3" 
-                    onClick={handleUpdate} 
-                    disabled={loading || editableRows.length === 0}
+                  <button
+                    className="btn btn-warning me-3"
+                    onClick={handleUpdate}
+                    disabled={loading || detailLoading || editableRows.length === 0}
                   >
-UPDATE 
+                    UPDATE
                   </button>
-                  <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
-RESET
+                  <button
+                    className="btn btn-secondary me-3"
+                    onClick={handleReset}
+                    disabled={loading || detailLoading}
+                  >
+                    RESET
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
-BACK
+                    BACK
                   </button>
                 </div>
               </div>
@@ -1033,10 +719,14 @@ BACK
     )
   }
 
-  // List View
+  // ---------------------------------------------------------------------------
+  // LIST VIEW
+  // ---------------------------------------------------------------------------
   return (
     <div className="content-wrapper">
-      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+      {popupMessage && (
+        <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+      )}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -1045,59 +735,68 @@ BACK
             </div>
 
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : (
-                <>
-                  {/* Patient Search Section */}
-                  
-                    <div className="card-body">
-                      <form>
-                        <div className="row g-4 align-items-end">
-                          <div className="col-md-3">
-                            <label className="form-label">Patient Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="patientName"
-                              placeholder="Enter patient name"
-                              value={searchData.patientName}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Mobile No.</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="mobileNo"
-                              placeholder="Enter mobile number"
-                              value={searchData.mobileNo}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3 d-flex">
-                            <button type="button" className="btn btn-primary me-2">
-Search
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setSearchData({
-                                  patientName: "",
-                                  mobileNo: "",
-                                })
-                              }}
-                            >
-                              <i className="mdi mdi-refresh"></i> Reset
-                            </button>
-                          </div>
-                        </div>
-                      </form>
-                    </div>
+              {/* Search Section – always visible */}
+              <div className="mb-3">
+                <div className="row g-4 align-items-end">
+                  <div className="col-md-3">
+                    <label className="form-label">Patient Name</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="patientName"
+                      placeholder="Enter patient name"
+                      value={searchData.patientName}
+                      onChange={handleSearchChange}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    />
+                  </div>
+                  <div className="col-md-3">
+                    <label className="form-label">Mobile No.</label>
+                    <input
+                      type="text"
+                      className="form-control"
+                      id="mobileNo"
+                      placeholder="Enter mobile number"
+                      maxLength={10}
+                      value={searchData.mobileNo}
+                      onChange={(e) => {
+                        const value = e.target.value.replace(/\D/g, "")
+                        handleSearchChange({ target: { id: "mobileNo", value } })
+                      }}
+                      onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                    />
+                  </div>
+                  <div className="col-md-3 d-flex">
+                    <button
+                      type="button"
+                      className="btn btn-primary me-2"
+                      onClick={handleSearch}
+                      disabled={isSearching}
+                    >
+                      {isSearching ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true" />
+                          Searching...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleSearchReset}
+                      disabled={isSearching}
+                    >
+                      <i className="mdi mdi-refresh"></i> Reset
+                    </button>
+                  </div>
+                </div>
+              </div>
 
-                  {/* Table */}
+              {/* Table + Pagination – only after first search */}
+              {hasSearched && (
+                <>
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -1111,20 +810,20 @@ Search
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
+                        {headerList.length > 0 ? (
+                          headerList.map((item) => (
                             <tr
-                              key={item.id}
+                              key={item.resultEntryHeaderId}
                               onClick={() => handleRowClick(item)}
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{`${item.order_date} - ${item.order_time}`}</td>
-                              <td>{item.order_no}</td>
-                              <td>{item.patient_name}</td>
-                              <td>{item.mobile_no}</td>
-                              <td>{item.relation}</td>
-                              <td>{item.doctor_name}</td>
+                              <td>{`${formatDate(item.orderDate)} - ${formatTime(item.orderTime)}`}</td>
+                              <td>{item.orderNo}</td>
+                              <td>{item.patientName}</td>
+                              <td>{item.patientPhnNum}</td>
+                              <td>{item.patientRelation}</td>
+                              <td>{item.doctorName}</td>
                             </tr>
                           ))
                         ) : (
@@ -1138,14 +837,13 @@ Search
                     </table>
                   </div>
 
-                  {/* Pagination */}
-                  {filteredResultList.length > 0 && (
-                   <Pagination
-                     totalItems={filteredResultList.length}
-                     itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                     currentPage={currentPage}
-                     onPageChange={setCurrentPage}
-                   />
+                  {totalElements > 0 && (
+                    <Pagination
+                      totalItems={totalElements}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={(page) => setCurrentPage(page)}
+                    />
                   )}
                 </>
               )}

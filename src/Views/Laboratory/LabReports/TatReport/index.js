@@ -1,9 +1,8 @@
 import { useState, useEffect } from "react";
 import { getRequest } from "../../../../service/apiService";
-import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { MAS_INVESTIGATION, MAX_MONTHS_BACK, ALL_REPORTS } from "../../../../config/apiConfig";
+import { MAS_INVESTIGATION, MAX_MONTHS_BACK, ALL_REPORTS, LAB } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 import {
   FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, 
@@ -26,15 +25,17 @@ const TATReport = () => {
   const [selectedModality, setSelectedModality] = useState(null);
   const [modalityOptions, setModalityOptions] = useState([]);
   const [reportType, setReportType] = useState("detailed");
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [popupMessage, setPopupMessage] = useState(null);
   
-  // API Data states
+  // API Data states with pagination
   const [investigationOptions, setInvestigationOptions] = useState([]);
   const [detailedReportData, setDetailedReportData] = useState([]);
   const [summaryReportData, setSummaryReportData] = useState([]);
+  const [detailedTotalElements, setDetailedTotalElements] = useState(0);
+  const [summaryTotalElements, setSummaryTotalElements] = useState(0);
   
   // Add PDF viewer state - SEPARATE LOADING STATES
   const [pdfUrl, setPdfUrl] = useState(null);
@@ -142,25 +143,33 @@ const TATReport = () => {
     }
   };
 
-  // Fetch detailed TAT report
-  const fetchDetailedReport = async () => {
+  // Fetch detailed TAT report with pagination
+  const fetchDetailedReport = async (page = 1, isSearchAction = false) => {
     try {
-      setIsGenerating(true);
+      if (isSearchAction) {
+        setIsSearching(true);
+      }
       
       const params = new URLSearchParams();
       if (selectedInvestigation?.id) {
         params.append('investigationId', selectedInvestigation.id);
       }
       if (selectedModality?.id) {
-        params.append('subchargeCodeId', selectedModality.id);
+        params.append('subChargeCodeId', selectedModality.id);
       }
       params.append('fromDate', fromDate);
       params.append('toDate', toDate);
+      params.append('page', page - 1);
+      params.append('size', DEFAULT_ITEMS_PER_PAGE);
 
-      const response = await getRequest(`/report/lab-tat/details?${params.toString()}`);
+      const response = await getRequest(`${LAB}/lab-tat/details?${params.toString()}`);
       
-      if (response && response.response) {
-        const mappedData = response.response.map(item => ({
+      if (response && response.status === 200 && response.response) {
+        const pageData = response.response;
+        const content = pageData.content || [];
+        const total = pageData.totalElements || 0;
+        
+        const mappedData = content.map(item => ({
           investigationName: item.investigationName || "",
           sampleId: item.generatedSampleId || "",
           sampleReceivedDateTime: formatDateTimeForDisplay(item.sampleReceivedDate),
@@ -173,25 +182,32 @@ const TATReport = () => {
         }));
         
         setDetailedReportData(mappedData);
+        setDetailedTotalElements(total);
         setShowReport(true);
       } else {
         setDetailedReportData([]);
+        setDetailedTotalElements(0);
         setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching detailed report:", error);
       showPopup(FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, "error");
       setDetailedReportData([]);
+      setDetailedTotalElements(0);
       setShowReport(true);
     } finally {
-      setIsGenerating(false);
+      if (isSearchAction) {
+        setIsSearching(false);
+      }
     }
   };
 
-  // Fetch summary TAT report
-  const fetchSummaryReport = async () => {
+  // Fetch summary TAT report with pagination
+  const fetchSummaryReport = async (page = 1, isSearchAction = false) => {
     try {
-      setIsGenerating(true);
+      if (isSearchAction) {
+        setIsSearching(true);
+      }
       
       const params = new URLSearchParams();
       if (selectedInvestigation?.id) {
@@ -202,11 +218,17 @@ const TATReport = () => {
       }
       params.append('fromDate', fromDate);
       params.append('toDate', toDate);
+      params.append('page', page - 1);
+      params.append('size', DEFAULT_ITEMS_PER_PAGE);
 
-      const response = await getRequest(`/report/lab-tat/summary?${params.toString()}`);
+      const response = await getRequest(`${LAB}/lab-tat/summary?${params.toString()}`);
       
-      if (response && response.response) {
-        const mappedData = response.response.map(item => ({
+      if (response && response.status === 200 && response.response) {
+        const pageData = response.response;
+        const content = pageData.content || [];
+        const total = pageData.totalElements || 0;
+        
+        const mappedData = content.map(item => ({
           investigationName: item.investigationName || "",
           expectedTAT: item.expectedTatHours || 0,
           totalTests: item.totalTests || 0,
@@ -219,18 +241,23 @@ const TATReport = () => {
         }));
         
         setSummaryReportData(mappedData);
+        setSummaryTotalElements(total);
         setShowReport(true);
       } else {
         setSummaryReportData([]);
+        setSummaryTotalElements(0);
         setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching summary report:", error);
       showPopup(FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, "error");
       setSummaryReportData([]);
+      setSummaryTotalElements(0);
       setShowReport(true);
     } finally {
-      setIsGenerating(false);
+      if (isSearchAction) {
+        setIsSearching(false);
+      }
     }
   };
 
@@ -273,6 +300,22 @@ const TATReport = () => {
     setSelectedModality(modality);
   }
 
+  // Handle reset button
+  const handleReset = () => {
+    setFromDate("");
+    setToDate(getTodayDate());
+    setInvestigation("");
+    setSelectedInvestigation(null);
+    setModality("");
+    setSelectedModality(null);
+    setCurrentPage(1);
+    setShowReport(false);
+    setDetailedReportData([]);
+    setSummaryReportData([]);
+    setDetailedTotalElements(0);
+    setSummaryTotalElements(0);
+  }
+
   // Validate date inputs
   const validateDates = () => {
     if (!fromDate || !toDate) {
@@ -296,16 +339,26 @@ const TATReport = () => {
     return true;
   };
 
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    if (reportType === "detailed") {
+      fetchDetailedReport(page, false);
+    } else {
+      fetchSummaryReport(page, false);
+    }
+  };
+
   // Handle search (grid data)
   const handleSearch = () => {
     if (!validateDates()) return;
 
-    if (reportType === "detailed") {
-      fetchDetailedReport();
-    } else {
-      fetchSummaryReport();
-    }
     setCurrentPage(1);
+    if (reportType === "detailed") {
+      fetchDetailedReport(1, true);
+    } else {
+      fetchSummaryReport(1, true);
+    }
   };
 
   // Generate PDF report for viewing/downloading
@@ -406,13 +459,16 @@ const TATReport = () => {
   // Reset page when report type changes
   useEffect(() => {
     setCurrentPage(1);
+    setShowReport(false);
+    setDetailedReportData([]);
+    setSummaryReportData([]);
+    setDetailedTotalElements(0);
+    setSummaryTotalElements(0);
   }, [reportType]);
 
-  // Calculate pagination
+  // Get current data and total elements based on report type
   const currentData = reportType === "detailed" ? detailedReportData : summaryReportData;
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = currentData.slice(indexOfFirst, indexOfLast);
+  const totalElements = reportType === "detailed" ? detailedTotalElements : summaryTotalElements;
 
   return (
     <div className="content-wrapper">
@@ -552,28 +608,38 @@ const TATReport = () => {
 
               <div className="row">
                 <div className="col-12 d-flex justify-content-between">
-                  <button
-                    type="button"
-                    className="btn btn-primary"
-                    onClick={handleSearch}
-                    disabled={isGenerating}
-                  >
-                    {isGenerating ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Searching...
-                      </>
-                    ) : (
-                      "Search"
-                    )}
-                  </button>
+                  <div className="d-flex gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={handleSearch}
+                      disabled={isSearching}
+                    >
+                      {isSearching ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Searching...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleReset}
+                      disabled={isSearching}
+                    >
+                      <i className="mdi mdi-refresh me-1"></i> Reset
+                    </button>
+                  </div>
                   
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-success"
+                      className="btn btn-success btn-sm"
                       onClick={handleViewReport}
-                      disabled={isGenerating || isViewLoading || !fromDate || !toDate}
+                      disabled={isSearching || isViewLoading || !fromDate || !toDate}
                     >
                       {isViewLoading ? (
                         <>
@@ -588,9 +654,9 @@ const TATReport = () => {
                     </button>
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-warning btn-sm"
                       onClick={handlePrintReport}
-                      disabled={isGenerating || isPrintLoading || !fromDate || !toDate}
+                      disabled={isSearching || isPrintLoading || !fromDate || !toDate}
                     >
                       {isPrintLoading ? (
                         <>
@@ -607,22 +673,15 @@ const TATReport = () => {
                 </div>
               </div>
 
-              {isGenerating && (
-                <div className="text-center py-4">
-                  <LoadingScreen />
-                </div>
-              )}
+             
 
-              {!isGenerating && showReport && (
+              {!isSearching && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
                       <div className="card-header">
                         <h5 className="card-title mb-0">
                           {reportType === "detailed" ? "Detailed TAT Report" : "TAT Summary Report"}
-                          <span className="ms-3 text-muted">
-                            ({formatDateForDisplay(fromDate)} to {formatDateForDisplay(toDate)})
-                          </span>
                         </h5>
                       </div>
                       <div className="card-body">
@@ -644,7 +703,7 @@ const TATReport = () => {
                               </thead>
                               <tbody>
                                 {currentData.length > 0 ? (
-                                  currentItems.map((row, index) => (
+                                  currentData.map((row, index) => (
                                     <tr key={index}>
                                       <td>{row.investigationName}</td>
                                       <td>{row.sampleId}</td>
@@ -683,7 +742,7 @@ const TATReport = () => {
                               </thead>
                               <tbody>
                                 {currentData.length > 0 ? (
-                                  currentItems.map((row, index) => (
+                                  currentData.map((row, index) => (
                                     <tr key={index}>
                                       <td>{row.investigationName}</td>
                                       <td>{row.expectedTAT}</td>
@@ -708,13 +767,13 @@ const TATReport = () => {
                           )}
                         </div>
                         
-                        {/* PAGINATION USING REUSABLE COMPONENT */}
-                        {currentData.length > 0 && (
+                        {/* PAGINATION USING REUSABLE COMPONENT WITH SERVER-SIDE PAGINATION */}
+                        {totalElements > 0 && (
                           <Pagination
-                            totalItems={currentData.length}
+                            totalItems={totalElements}
                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                             currentPage={currentPage}
-                            onPageChange={setCurrentPage}
+                            onPageChange={handlePageChange}
                           />
                         )}
                       </div>

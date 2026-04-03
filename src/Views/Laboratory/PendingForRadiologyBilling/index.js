@@ -23,8 +23,8 @@ import {
   DUPLICATE_PACKAGE_WRT_INV,
 } from "../../../config/constants";
 import {
-  CATAGORY_WISE_BILLING,
-  LAB_RADIO_BILLING_DATA,
+  PENDING_BILLINGS_BY_CATAGORY,
+  LAB_RADIO_BILLING_DETAILS,
   LAB_SERVICE_CATAGORY,
   RADIOLOGY_SERVICE_CATAGORY,
   MAS_SERVICE_CATEGORY,
@@ -52,10 +52,9 @@ const PendingForRadiologyBilling = () => {
   const [packageItems, setPackageItems] = useState([]);
   const [popupMessage, setPopupMessage] = useState(null);
   const [patientList, setPatientList] = useState([]);
-  const [filteredPatientList, setFilteredPatientList] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [totalElements, setTotalElements] = useState(0);
-  const [isSearching, setIsSearching] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const [searchData, setSearchData] = useState({
     patientName: "",
@@ -99,9 +98,12 @@ const PendingForRadiologyBilling = () => {
     fetchPendingRadiologyBilling(currentPage);
   }, [currentPage]);
 
-  const fetchPendingRadiologyBilling = async (page = 0) => {
+  const fetchPendingRadiologyBilling = async (
+    page = 0,
+    showFullLoader = true,
+  ) => {
     try {
-      setIsLoading(true);
+      if (showFullLoader) setIsLoading(true);
 
       const params = new URLSearchParams({
         page,
@@ -112,7 +114,7 @@ const PendingForRadiologyBilling = () => {
       });
 
       const response = await getRequest(
-        `${CATAGORY_WISE_BILLING}/${RADIOLOGY_SERVICE_CATAGORY}?${params}`,
+        `${PENDING_BILLINGS_BY_CATAGORY}/${RADIOLOGY_SERVICE_CATAGORY}?${params}`,
       );
 
       if (response && response.response) {
@@ -125,6 +127,7 @@ const PendingForRadiologyBilling = () => {
           age: item.age || "N/A",
           gender: item.gender || "N/A",
           appointmentDate: item.appointmentDate,
+          orderDate:item.orderDate,
           billingType: item.billingType || "Radiology Services",
           amount: item.billAmount || 0,
           billingStatus: "Pending",
@@ -132,7 +135,6 @@ const PendingForRadiologyBilling = () => {
         }));
 
         setPatientList(mappedData);
-        setFilteredPatientList(mappedData);
         setTotalElements(response.response.totalElements);
       }
     } catch (error) {
@@ -148,7 +150,9 @@ const PendingForRadiologyBilling = () => {
 
   async function fetchGstConfiguration() {
     try {
-      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1`);
+      const data = await getRequest(
+        `${MAS_SERVICE_CATEGORY}/getGstConfig/1?categoryCode=${RADIOLOGY_SERVICE_CATAGORY}`,
+      );
 
       if (data?.status === 200 && data?.response) {
         setGstConfig({
@@ -175,13 +179,12 @@ const PendingForRadiologyBilling = () => {
   };
 
   const handleSearch = async () => {
-    setIsSearching(true);
-
+    setSearchLoading(true);
+    setCurrentPage(0);
     try {
-      setCurrentPage(0);
-      await fetchPendingRadiologyBilling(0);
+      await fetchPendingRadiologyBilling(0, false);
     } finally {
-      setIsSearching(false);
+      setSearchLoading(false);
     }
   };
 
@@ -192,11 +195,10 @@ const PendingForRadiologyBilling = () => {
   const handleRowClick = async (patient) => {
     try {
       setIsLoading(true);
-
       const billingHeaderId = patient.id;
 
       const response = await getRequest(
-        `${LAB_RADIO_BILLING_DATA}/${billingHeaderId}?serviceCategoryCode=${RADIOLOGY_SERVICE_CATAGORY}`,
+        `${LAB_RADIO_BILLING_DETAILS}/${billingHeaderId}?serviceCategoryCode=${RADIOLOGY_SERVICE_CATAGORY}`,
       );
 
       if (!response || !response.response) return;
@@ -206,15 +208,23 @@ const PendingForRadiologyBilling = () => {
         : response.response;
 
       const details = billingData?.details || [];
+      const billingHeaderIds = billingData?.billingHeaderIds || [];
 
       const formattedRows = details.map((item, index) => {
         const isPackage = item.packageId != null;
 
+        const investigationDate = item.orderDate
+          ? item.orderDate.split("T")[0]
+          : new Date().toISOString().split("T")[0];
+
+        console.log("API Date:", item.orderDate);
+        console.log("Mapped Date:", investigationDate);
+        console.log("-------------------------- " + investigationDate);
         return {
           id: item.id || index + 1,
           name:
             item.itemName || item.packageName || item.investigationName || "",
-          date: new Date().toISOString().split("T")[0],
+          date: investigationDate,
           originalAmount: item.basePrice || item.tariff || 0,
           discountAmount: item.discount || 0,
           netAmount: item.amountAfterDiscount || item.netAmount || 0,
@@ -233,7 +243,10 @@ const PendingForRadiologyBilling = () => {
           ? "package"
           : "investigation";
 
-      setSelectedPatient({ fullData: billingData });
+      setSelectedPatient({
+        fullData: billingData,
+        billingHeaderIds: billingHeaderIds,
+      });
 
       setFormData({
         billingType: billingData.billingType || "",
@@ -816,20 +829,20 @@ const PendingForRadiologyBilling = () => {
       }
 
       let billingHeaderId = data?.billinghdid || data?.billingHeaderId;
-
+      const billingHeaderIds = selectedPatient?.billingHeaderIds || [];
       // 👉 Registration if not exists
       if (!billingHeaderId) {
         const items = formData.rows
-          .filter((_, i) => checkedRows[i])
+          .filter((row, i) => checkedRows[i] && row.itemId)
           .map((row) => ({
             id: Number(row.itemId),
-            appointmentDate: row.date,
+            orderDate: row.date,
             actualAmount: Number(row.originalAmount),
             discountedAmount: Number(row.discountAmount),
             type: row.type === "investigation" ? "i" : "p",
           }));
 
-        const res = await postRequest("/lab/registration", {
+        const res = await postRequest("/billing/processRadiologyPayment", {
           patientId,
           labInvestigationReq: items,
         });
@@ -840,7 +853,7 @@ const PendingForRadiologyBilling = () => {
       const totalFinalAmount = Number(paymentBreakdown.finalAmount);
 
       const selectedItems = formData.rows
-        .filter((_, i) => checkedRows[i])
+        .filter((row, i) => checkedRows[i] && row.itemId)
         .map((row) => ({
           id: Number(row.itemId),
           type: row.type === "investigation" ? "i" : "p",
@@ -868,6 +881,7 @@ const PendingForRadiologyBilling = () => {
               paymentData,
               paymentBreakdown,
               billingType: RADIOLOGY_SERVICE_CATAGORY,
+              billingHeaderIds,
             },
           });
         }
@@ -885,35 +899,13 @@ const PendingForRadiologyBilling = () => {
       mobileNo: "",
       registrationNo: "",
     });
-
-    setCurrentPage(0);
-    fetchPendingRadiologyBilling(0);
+    fetchPendingRadiologyBilling(currentPage);
   };
 
   const handleDetailsReset = () => {
     handleReset();
     setShowPatientDetails(false);
     setSelectedPatient(null);
-  };
-
-  const getMissingMandatoryFields = () => {
-    const missing = [];
-    if (!formData.mobileNo || formData.mobileNo.trim() === "") {
-      missing.push("Mobile Number");
-    }
-    formData.rows.forEach((row, idx) => {
-      if (!row.name || row.name.trim() === "")
-        missing.push(`Row ${idx + 1}: Name`);
-      if (!row.date || row.date.trim() === "")
-        missing.push(`Row ${idx + 1}: Date`);
-      if (
-        row.originalAmount === undefined ||
-        row.originalAmount === "" ||
-        isNaN(row.originalAmount)
-      )
-        missing.push(`Row ${idx + 1}: Original Amount`);
-    });
-    return missing;
   };
 
   const paymentBreakdown = useMemo(() => {
@@ -956,8 +948,6 @@ const PendingForRadiologyBilling = () => {
   }, [formData.rows, checkedRows, gstConfig]);
 
   const isAnyRowSelected = checkedRows.some((val) => val === true);
-
-  const currentItems = filteredPatientList;
 
   if (isLoading && !showPatientDetails) {
     return <LoadingScreen />;
@@ -1040,9 +1030,9 @@ const PendingForRadiologyBilling = () => {
                               type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
-                              disabled={isSearching}
+                              disabled={searchLoading}
                             >
-                              {isSearching ? (
+                              {searchLoading ? (
                                 <>
                                   <span
                                     className="spinner-border spinner-border-sm me-2"
@@ -1082,13 +1072,14 @@ const PendingForRadiologyBilling = () => {
                             <th>Age</th>
                             <th>Gender</th>
                             <th>Billing Type</th>
+                            <th>Order Date</th>
                             <th>Appointment Date</th>
                             <th>Amount</th>
                             <th>Billing Status</th>
                           </tr>
                         </thead>
                         <tbody>
-                          {currentItems.map((item) => (
+                          {patientList.map((item) => (
                             <tr
                               key={item.id}
                               onClick={() => handleRowClick(item)}
@@ -1109,6 +1100,7 @@ const PendingForRadiologyBilling = () => {
                                   {item.billingType}
                                 </span>
                               </td>
+                              <td>{formatDateTime(item.orderDate)}</td>
                               <td>{formatDateTime(item.appointmentDate)}</td>
                               <td>
                                 ₹
@@ -1148,12 +1140,12 @@ const PendingForRadiologyBilling = () => {
                   )}
 
                   {/* Pagination */}
-                  {filteredPatientList.length > 0 && (
+                  {patientList.length > 0 && (
                     <Pagination
                       totalItems={totalElements}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      currentPage={currentPage + 1}
+                      onPageChange={(page) => handlePageChange(page - 1)}
                     />
                   )}
                 </>
@@ -1776,10 +1768,7 @@ const PendingForRadiologyBilling = () => {
                                     <input
                                       type="date"
                                       className="form-control"
-                                      value={
-                                        row.date ||
-                                        new Date().toISOString().split("T")[0]
-                                      }
+                                      value={row.date || ""}
                                       onChange={(e) =>
                                         handleDateChange(index, e.target.value)
                                       }
@@ -1832,7 +1821,7 @@ const PendingForRadiologyBilling = () => {
                                         type="button"
                                         className="btn btn-danger"
                                         onClick={() => removeRow(index)}
-                                        disabled={formData.rows.length === 1}
+                                        disabled={formData.rows.length === 1||row.type === "investigation"||row.type === "package"}
                                       >
                                         <i className="icofont-close"></i>
                                       </button>
@@ -1844,7 +1833,7 @@ const PendingForRadiologyBilling = () => {
                           </table>
 
                           <div className="d-flex justify-content-between align-items-center">
-                            <button
+                            {/* <button
                               type="button"
                               className="btn btn-success"
                               onClick={(e) => addRow(e, formData.type)}
@@ -1854,7 +1843,7 @@ const PendingForRadiologyBilling = () => {
                                 ? "Investigation"
                                 : "Package"}{" "}
                               +
-                            </button>
+                            </button> */}
 
                             <div className="d-flex">
                               <input

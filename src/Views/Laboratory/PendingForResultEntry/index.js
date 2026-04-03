@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { LAB } from "../../../config/apiConfig"
+import { FIXED_VALUE_DROPDOWNS_END_URL, LAB, PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL, PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL, PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL, REQUEST_PARAM_AGE, REQUEST_PARAM_GENDER_CODE, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_INVESTIGATION_ID, REQUEST_PARAM_MOBILE_NO, REQUEST_PARAM_PAGE, REQUEST_PARAM_PATIENT_NAME, REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID, REQUEST_PARAM_SIZE, REQUEST_PARAM_SUB_INVESTIGATION_ID, SAVE_RESULT_ENTRY_END_URL } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import { FETCH_AUTO_FILL_ERR_MSG, FETCH_RESULT_VALIDATE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SUBMIT_ERR_MSG, RESULT_SUBMIT_SUCC_MSG } from "../../../config/constants"
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const PendingForResultEntry = () => {
   const [resultList, setResultList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isShowingAll, setIsShowingAll] = useState(true)
   const [searchData, setSearchData] = useState({
     barCodeSearch: "",
     patientName: "",
@@ -16,165 +18,198 @@ const PendingForResultEntry = () => {
   })
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [selectedResult, setSelectedResult] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
-  const itemsPerPage = 5
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
 
-  // Fetch pending result entry data
-useEffect(() => {
-  if (popupMessage === null) {
-    fetchPendingResultEntries();
-  }
-}, [popupMessage]);
+  const hospitalId = sessionStorage.getItem("hospitalId")
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE
 
+  // Fetch pending result entry headers on component mount
+  useEffect(() => {
+    fetchPendingResultHeaders()
+  }, []) // Only run once on mount
 
-  const fetchPendingResultEntries = async () => {
+  // Separate effect for page changes without loading screen
+  useEffect(() => {
+    if (!loading) { // Only fetch if initial load is complete
+      fetchPendingResultHeadersForPageChange()
+    }
+  }, [currentPage])
+
+  // API call for headers with search filters and pagination (with loading)
+  const fetchPendingResultHeaders = async (isSearchAction = false) => {
     try {
-      setLoading(true);
-      const data = await getRequest(`${LAB}/resultStatus`);
+      if (isSearchAction) {
+        setIsSearching(true)
+      } else {
+        setLoading(true)
+      }
 
-      console.log("Raw API Response:", data); // Debugging
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      if (searchData.patientName) {
+        url += `&${REQUEST_PARAM_PATIENT_NAME}=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&${REQUEST_PARAM_MOBILE_NO}=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
 
       if (data.status === 200 && data.response) {
-        console.log("First result item:", data.response[0]); // Debugging
-        const formattedData = formatResultEntryData(data.response);
+        const formattedData = formatHeaderData(data.response.content || []);
         setResultList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
       } else {
-        console.error('Error fetching pending result entries:', data.message);
+        console.error('Error fetching pending result headers:', data.message);
         showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
       }
     } catch (error) {
-      console.error('Error fetching pending result entries:', error);
+      console.error('Error fetching pending result headers:', error);
       showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
     } finally {
-      setLoading(false);
+      if (isSearchAction) {
+        setIsSearching(false)
+      } else {
+        setLoading(false)
+      }
     }
   };
 
- const formatResultEntryData = (apiData) => {
-  return apiData.map((item, index) => ({
-    id: index + 1,
-    order_date: formatDate(item.orderDate),
-    order_time:formatTime(item.orderTime),
-    order_no: item.orderNo || '',
-    collection_date: formatDate(item.collectedDate),
-    collection_time: formatTime(item.collectedTime),
-    patient_name: item.patientName || '',
-    relation: item.relation || '',
-    department: item.department || '',
-    doctor_name: item.doctorName || '',
-    modality: item.subChargeCodeName || '',
-    priority: '',
-    age: item.patientAge || '',
-    gender: item.patientGender || '',
-    clinical_notes: item.clinicalNotes || '',
-    collected_by: item.collectedBy || '',
-    validated_by: item.validatedBy || '',
-    validated_date:formatDate(item.validatedDate)||'',
-    validated_time:formatTime(item.validatedTime)||'',
-    patientId: item.patientId || 0,
-    subChargeCodeId: item.subChargeCodeId || 0,
-    mobile_no: item.patientPhoneNo || '',
+  // New function for page changes without loading screen
+  const fetchPendingResultHeadersForPageChange = async () => {
+    try {
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
 
-    visitId:item.visitId,
-    // NEW FIELDS FOR SUBMIT API
-    relationId: item.relationId || 0,
-    mainChargeCodeId: item.mainChargeCodeId || 0,
-    sampleCollectionHeaderId: item.sampleCollectionHeaderId || 0,
-    
-    investigations: item.resultInvestigationResponseList ? item.resultInvestigationResponseList.map((inv, invIndex) => {
-      const hasSubTests = inv.resultSubInvestigationResponseList && inv.resultSubInvestigationResponseList.length > 0;
-      
-      if (hasSubTests) {
-        return {
-          id: invIndex + 1,
-          si_no: invIndex + 1,
-          // generatedSampleId:inv.generatedSampleId||'',
-          diag_no: inv.diagNo || '',
-          investigation: inv.investigationName || '',
-          sample: inv.sampleName || '',
-          result: "",
-          units: inv.unitName || '',
-          normal_range: "",
-          remarks: "",
-          reject: false,
-          investigationId: inv.investigationId || 0,
-          // NEW FIELDS FOR SUBMIT API
-          sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
-          sampleId: inv.sampleId || 0,
-          resultType: inv.resultType || 's',
-          
-          subTests: inv.resultSubInvestigationResponseList.map((subTest, subIndex) => ({
-            id: `${invIndex + 1}.${subIndex + 1}`,
-            si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultSubInvestigationResponseList.length),
-            generatedSampleId:subTest.generatedSampleId||'',
-            diag_no: "",
-            investigation: subTest.subInvestigationName || '',
-            sample: subTest.sampleName || '',
-            result: "",
-            units: subTest.unit || '',
-            // UPDATED: Use fixedValueExpectedResult for comparisonType 'f', otherwise use normalValue
-            normal_range: subTest.comparisonType === 'f' ? (subTest.fixedValueExpectedResult || '') : (subTest.normalValue || ''),
-            remarks: "",
-            reject: false,
-            subInvestigationId: subTest.subInvestigationId || 0,
-            sampleId: subTest.sampleId || 0,
-            resultType: subTest.resultType || 't',
-            comparisonType: subTest.comparisonType || 't',
-            dgFixedValueResponseList: subTest.dgFixedValueResponseList || [],
-            normalId: subTest.normalId || null,
-            // Store the fixedValueExpectedResult for reference
-            fixedValueExpectedResult: subTest.fixedValueExpectedResult || null
-          }))
-        };
-      } else {
-        return {
-          id: invIndex + 1,
-          si_no: invIndex + 1,
-          diag_no: inv.diagNo || '',
-          investigation: inv.investigationName || '',
-          generatedSampleId:inv.generatedSampleId||'',
-          sample: inv.sampleName || '',
-          result: "",
-          units: inv.unitName || '',
-          normal_range: inv.normalValue || '',
-          remarks: "",
-          reject: false,
-          investigationId: inv.investigationId || 0,
-          // NEW FIELDS FOR SUBMIT API
-          sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
-          sampleId: inv.sampleId || 0,
-          resultType: inv.resultType || 's',
-          subTests: []
-        };
+      if (searchData.patientName) {
+        url += `&${REQUEST_PARAM_PATIENT_NAME}=${encodeURIComponent(searchData.patientName)}`
       }
-    }) : []
-  }))
-}
+      if (searchData.mobileNo) {
+        url += `&${REQUEST_PARAM_MOBILE_NO}=${encodeURIComponent(searchData.mobileNo)}`
+      }
 
-// Enhanced sub-test numbering function
-const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
-  if (totalSubTests === 1) {
-    return ""; // Blank for single sub-test
-  } else {
-    return `${mainIndex}.${getSubIndex(subIndex)}`; // Use a,b,c for 2-3 sub-tests
-  } 
-}
+      const data = await getRequest(url);
 
+      console.log("Headers API Response:", data);
 
-  // Function to convert number to a,b,c format
-  const getSubIndex = (index) => {
-    return String.fromCharCode(97 + index); // 97 is 'a' in ASCII
+      if (data.status === 200 && data.response) {
+        const formattedData = formatHeaderData(data.response.content || []);
+        setResultList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
+      } else {
+        console.error('Error fetching pending result headers:', data.message);
+        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending result headers:', error);
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+    }
+  };
+
+  // API call for investigations when row is clicked
+  const fetchInvestigations = async (sampleCollectionHeaderId) => {
+    try {
+      const data = await getRequest(`${PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID}=${sampleCollectionHeaderId}`);
+
+      console.log("Investigations API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching investigations:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching investigations:', error);
+      return [];
+    }
+  };
+
+  // API call for sub-investigations
+  const fetchSubInvestigations = async (investigationId, genderCode, age) => {
+    try {
+      const data = await getRequest(`${PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_INVESTIGATION_ID}=${investigationId}&${REQUEST_PARAM_GENDER_CODE}=${genderCode}&${REQUEST_PARAM_AGE}=${encodeURIComponent(age)}`);
+
+      console.log("SubInvestigations API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching sub-investigations:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching sub-investigations:', error);
+      return [];
+    }
+  };
+
+  // API call for fixed values dropdown
+  const fetchFixedValues = async (subInvestigationId) => {
+    try {
+      const data = await getRequest(`${FIXED_VALUE_DROPDOWNS_END_URL}?${REQUEST_PARAM_SUB_INVESTIGATION_ID}=${subInvestigationId}`);
+
+      console.log("Fixed Values API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching fixed values:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching fixed values:', error);
+      return [];
+    }
+  };
+
+  const formatHeaderData = (apiData) => {
+    return apiData.map((item, index) => ({
+      id: index + 1,
+      sampleCollectionHeaderId: item.sampleCollectionHeaderId,
+      patient_name: item.patientName || '',
+      mobile_no: item.mobileNumber || '',
+      relation: item.relation || '',
+      gender: item.patientGender || '',
+      age: item.patientAge || '',
+      order_date: formatDate(item.orderDate),
+      order_time: formatTime(item.orderTime),
+      collection_date: formatDate(item.collectedDate),
+      collection_time: formatTime(item.collectedTime),
+      order_no: item.orderNo || '',
+      validated_date: formatDate(item.validatedDate),
+      validated_time: formatTime(item.validatedTime),
+      department: item.department || '',
+      doctor_name: item.doctorName || '',
+      modality: item.subChargeCodeName || '',
+      collected_by: item.collectedBy || '',
+      validated_by: item.validatedBy || '',
+      clinical_notes: '',
+      relationId: item.relationId || 0,
+      mainChargeCodeId: item.mainChargeCodeId || 0,
+      subChargeCodeId: item.subChargeCodeId || 0,
+      visitId: item.visitId || 0,
+      patientId: item.patientId || 0,
+    }))
   }
 
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-GB');
-    
+
     try {
-      // Handle LocalDateTime string like "2025-10-30T12:26:04.85009"
       if (typeof dateString === 'string') {
-        // Extract just the date part if it's a full datetime string
         const datePart = dateString.split('T')[0];
         const date = new Date(datePart);
         return isNaN(date.getTime()) ? new Date().toLocaleDateString('en-GB') : date.toLocaleDateString('en-GB');
@@ -188,17 +223,14 @@ const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
 
   const formatTime = (timeValue) => {
     if (!timeValue) return new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
-    
+
     try {
-      // Handle LocalTime object or string
       if (typeof timeValue === 'string') {
-        // If it's already a time string like "12:26:04.85009"
-        const timeParts = timeValue.split(':');
+        const timeParts = timeValue.split('T')[1]?.split(':') || timeValue.split(':');
         if (timeParts.length >= 2) {
           return `${timeParts[0].padStart(2, '0')}:${timeParts[1].padStart(2, '0')}`;
         }
       } else if (timeValue && typeof timeValue === 'object') {
-        // If it's a LocalTime object from Java
         const hours = String(timeValue.hour || 0).padStart(2, '0');
         const minutes = String(timeValue.minute || 0).padStart(2, '0');
         return `${hours}:${minutes}`;
@@ -210,13 +242,15 @@ const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
     }
   }
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", shouldRefreshData = false) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {        
+      onClose: () => {
         setPopupMessage(null)
-        
+        if (shouldRefreshData) {
+          fetchPendingResultHeaders()
+        }
       },
     })
   }
@@ -224,12 +258,147 @@ const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData((prevData) => ({ ...prevData, [id]: value }))
-    setCurrentPage(1)
   }
 
-  const handleRowClick = (result) => {
-    setSelectedResult(result)
-    setShowDetailView(true)
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchPendingResultHeaders(true)
+  }
+
+  const handleShowAll = async () => {
+    setSearchData({
+      barCodeSearch: "",
+      patientName: "",
+      mobileNo: "",
+    })
+    setCurrentPage(1)
+    setIsShowingAll(true)
+
+    try {
+      setLoading(true)
+
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      const data = await getRequest(url);
+
+      console.log("All Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatHeaderData(data.response.content || []);
+        setResultList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+      } else {
+        console.error('Error fetching pending result headers:', data.message);
+        showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending result headers:', error);
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleRowClick = async (result) => {
+    try {
+      // setLoading(true)
+
+      // Fetch investigations for this sample
+      const investigations = await fetchInvestigations(result.sampleCollectionHeaderId)
+
+      // Process each investigation based on its type
+      const processedInvestigations = await Promise.all(investigations.map(async (inv, index) => {
+        if (inv.investigationType === 'm') {
+          // Fetch sub-investigations for this main investigation
+          const genderCode = result.gender ? result.gender.charAt(0).toUpperCase() : 'M';
+          const subInvestigations = await fetchSubInvestigations(inv.investigationId, genderCode, result.age)
+
+          // Process sub-investigations with fixed values if needed
+          const processedSubTests = await Promise.all(subInvestigations.map(async (subTest, subIndex) => {
+            let fixedValues = []
+
+            // If comparisonType is 'f', fetch fixed values dropdown
+            if (subTest.comparisonType === 'f') {
+              fixedValues = await fetchFixedValues(subTest.subInvestigationId)
+            }
+
+            return {
+              id: `${index + 1}.${subIndex + 1}`,
+              si_no: subInvestigations.length === 1 ? "" : `${index + 1}.${String.fromCharCode(97 + subIndex)}`,
+              subInvestigationId: subTest.subInvestigationId,
+              investigation: subTest.subInvestigationName,
+              sample: inv.sampleName,
+              result: "",
+              units: subTest.unitName || "",
+              normal_range: subTest.normalValue || "",
+              normalId: subTest.normalId || 0,
+              remarks: "",
+              reject: false,
+              resultType: subTest.resultType || 't',
+              comparisonType: subTest.comparisonType || 'n',
+              fixedValues: fixedValues,
+              generatedSampleId: inv.generatedSampleId || '',
+              sampleId: inv.sampleId,
+              fixedValueExpectedResult: subTest.fixedValueExpectedResult || null
+            }
+          }))
+
+          return {
+            id: index + 1,
+            si_no: index + 1,
+            investigationId: inv.investigationId,
+            investigation: inv.investigationName,
+            sample: inv.sampleName,
+            result: "",
+            units: inv.unitName || "",
+            normal_range: inv.normalValue || "",
+            remarks: "",
+            reject: false,
+            resultType: 'm',
+            investigationType: 'm',
+            sampleId: inv.sampleId,
+            sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+            generatedSampleId: inv.generatedSampleId || '',
+            subTests: processedSubTests
+          }
+        } else {
+          // Single investigation (type 's')
+          return {
+            id: index + 1,
+            si_no: index + 1,
+            investigationId: inv.investigationId,
+            investigation: inv.investigationName,
+            sample: inv.sampleName,
+            result: "",
+            units: inv.unitName || "",
+            normal_range: inv.normalValue || "",
+            remarks: "",
+            reject: false,
+            resultType: 's',
+            investigationType: 's',
+            sampleId: inv.sampleId,
+            sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+            generatedSampleId: inv.generatedSampleId || '',
+            subTests: []
+          }
+        }
+      }))
+
+      const completeResultData = {
+        ...result,
+        investigations: processedInvestigations
+      }
+
+      setSelectedResult(completeResultData)
+      setShowDetailView(true)
+    } catch (error) {
+      console.error('Error fetching result details:', error)
+      showPopup(FETCH_RESULT_VALIDATE_ERR_MSG, 'error')
+    }
+    // finally {
+    //   setLoading(false)
+    // }
   }
 
   const handleBackToList = () => {
@@ -261,237 +430,237 @@ const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
     }
   }
 
-  // Render result input based on result type
-const renderResultInput = (item, isSubTest = false, investigationId = null) => {
-  const resultType = isSubTest ? item.resultType : null;
-  const comparisonType = isSubTest ? item.comparisonType : null;
-
-  if (isSubTest && comparisonType === 'f') {
-    // Render dropdown for comparison type 'f' (fixed values) - use dgFixedValueResponseList
-    const fixedValues = item.dgFixedValueResponseList || [];
-    
-    return (
-      <select
-        className="form-select"
-        value={item.result || ""}
-        onChange={(e) => {
-          if (isSubTest && investigationId) {
-            handleSubTestChange(investigationId, item.id, "result", e.target.value)
-          } else if (!isSubTest) {
-            handleInvestigationChange(item.id, "result", e.target.value)
-          }
-        }}
-      >
-        <option value="">Select Result</option>
-        {fixedValues.map((fixedValue, index) => (
-          <option key={index} value={fixedValue.fixedValue}>
-            {fixedValue.fixedValue}
-          </option>
-        ))}
-      </select>
-    );
-  } else if (isSubTest && resultType === 'r') {
-    // Render dropdown for result type 'r' (radio/select)
-    return (
-      <select
-        className="form-select"
-        value={item.result || ""}
-        onChange={(e) => {
-          if (isSubTest && investigationId) {
-            handleSubTestChange(investigationId, item.id, "result", e.target.value)
-          } else if (!isSubTest) {
-            handleInvestigationChange(item.id, "result", e.target.value)
-          }
-        }}
-      >
-        <option value="">Select Result</option>
-        <option value="Positive">Positive</option>
-        <option value="Negative">Negative</option>
-        <option value="Reactive">Reactive</option>
-        <option value="Non-Reactive">Non-Reactive</option>
-        <option value="Present">Present</option>
-        <option value="Absent">Absent</option>
-      </select>
-    );
-  } else {
-    // Render text input for other types (text/numeric)
-    return (
-      <input
-        type="text"
-        className="form-control"
-        value={item.result}
-        onChange={(e) => {
-          if (isSubTest && investigationId) {
-            handleSubTestChange(investigationId, item.id, "result", e.target.value)
-          } else if (!isSubTest) {
-            handleInvestigationChange(item.id, "result", e.target.value)
-          }
-        }}
-      />
-    );
+  // Render result input based on result type and comparison type
+  const renderResultInput = (item, isSubTest = false, investigationId = null) => {
+    if (isSubTest && item.comparisonType === 'f' && item.fixedValues && item.fixedValues.length > 0) {
+      // Render dropdown for fixed values
+      return (
+        <select
+          className="form-select"
+          value={item.result || ""}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestChange(investigationId, item.id, "result", e.target.value)
+            } else if (!isSubTest) {
+              handleInvestigationChange(item.id, "result", e.target.value)
+            }
+          }}
+        >
+          <option value="">Select Result</option>
+          {item.fixedValues.map((fixedValue, index) => (
+            <option key={index} value={fixedValue.fixedValue}>
+              {fixedValue.fixedValue}
+            </option>
+          ))}
+        </select>
+      );
+    } else if (isSubTest && item.resultType === 'r') {
+      // Render dropdown for radio type results
+      return (
+        <select
+          className="form-select"
+          value={item.result || ""}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestChange(investigationId, item.id, "result", e.target.value)
+            } else if (!isSubTest) {
+              handleInvestigationChange(item.id, "result", e.target.value)
+            }
+          }}
+        >
+          <option value="">Select Result</option>
+          <option value="Positive">Positive</option>
+          <option value="Negative">Negative</option>
+          <option value="Reactive">Reactive</option>
+          <option value="Non-Reactive">Non-Reactive</option>
+          <option value="Present">Present</option>
+          <option value="Absent">Absent</option>
+        </select>
+      );
+    } else {
+      // Render text input
+      return (
+        <input
+          type="text"
+          className="form-control"
+          value={item.result}
+          onChange={(e) => {
+            if (isSubTest && investigationId) {
+              handleSubTestChange(investigationId, item.id, "result", e.target.value)
+            } else if (!isSubTest) {
+              handleInvestigationChange(item.id, "result", e.target.value)
+            }
+          }}
+        />
+      );
+    }
   }
-}
 
   const handleSubmit = async () => {
-  if (selectedResult) {
-    try {
-      setLoading(true);
+    if (selectedResult) {
+      try {
+        setLoading(true);
 
-      // Prepare the request payload according to your API structure
-      const requestPayload = {
-        relationId: selectedResult.relationId,
-        mainChargeCodeId: selectedResult.mainChargeCodeId,
-        subChargeCodeId: selectedResult.subChargeCodeId,
-        clinicalNotes: selectedResult.clinical_notes || "Clinical Notes",
-        sampleCollectionHeaderId: selectedResult.sampleCollectionHeaderId,
-        visitId:selectedResult.visitId,
-        patientId: selectedResult.patientId, // Added patientId
-        investigationList: selectedResult.investigations.map((inv) => {
+        // Prepare the request payload
+        const requestPayload = {
+          relationId: selectedResult.relationId,
+          mainChargeCodeId: selectedResult.mainChargeCodeId,
+          subChargeCodeId: selectedResult.subChargeCodeId,
+          clinicalNotes: selectedResult.clinical_notes || "Clinical Notes",
+          sampleCollectionHeaderId: selectedResult.sampleCollectionHeaderId,
+          patientId: selectedResult.patientId,
+          visitId: selectedResult.visitId,
+          investigationList: []
+        };
+
+        // Process each investigation
+        for (const inv of selectedResult.investigations) {
           const resultEntryDetails = [];
 
-          // Handle main investigation result
-          if (!inv.reject && inv.result && inv.result.trim() !== "") {
-            resultEntryDetails.push({
-              result: inv.result,
-              remarks: inv.remarks || "",
-              sampleId: inv.sampleId,
-              investigationId: inv.investigationId,
-              subInvestigationId: null,
-              resultType: inv.resultType || "s",
-              comparisonType: inv.comparisonType || "n",
-              fixedId: 0,
-              normalId: 0,
-              normalRange: inv.normal_range || "", // Added normalRange for main investigation
-              fixedRange: null // Added fixedRange as null for now
-            });
-          }
-
-          // Handle sub-investigations
-          if (inv.subTests.length > 0) {
-            const hasAnySubTestResult = inv.subTests.some(subTest => 
+          if (inv.investigationType === 's') {
+            // Single investigation - handle both accepted and rejected cases
+            if (!inv.reject && inv.result && inv.result.trim() !== "") {
+              // Accepted with result
+              resultEntryDetails.push({
+                result: inv.result,
+                remarks: inv.remarks || "",
+                sampleId: inv.sampleId,
+                investigationId: inv.investigationId,
+                subInvestigationId: null,
+                resultType: inv.resultType || "s",
+                comparisonType: "n",
+                fixedId: 0,
+                normalId: 0,
+                normalRange: inv.normal_range || "",
+                fixedValue: null
+              });
+            } else if (inv.reject) {
+              // Rejected investigation - include with null result
+              resultEntryDetails.push({
+                result: null,
+                remarks: inv.remarks || "Rejected",
+                sampleId: inv.sampleId,
+                investigationId: inv.investigationId,
+                subInvestigationId: null,
+                resultType: inv.resultType || "s",
+                comparisonType: "n",
+                fixedId: 0,
+                normalId: 0,
+                normalRange: inv.normal_range || "",
+                fixedValue: null
+              });
+            }
+          } else if (inv.investigationType === 'm') {
+            // Main investigation with sub-tests
+            const hasAnySubTestResult = inv.subTests.some(subTest =>
               !subTest.reject && subTest.result && subTest.result.trim() !== ""
             );
 
-            // If any sub-test has result, include ALL sub-tests
             if (hasAnySubTestResult) {
-              inv.subTests.forEach(subTest => {
-                // For sub-tests with results
+              for (const subTest of inv.subTests) {
                 if (!subTest.reject && subTest.result && subTest.result.trim() !== "") {
-                  // Find the selected fixed value if comparisonType is 'f'
+                  // Sub-test with result
                   let fixedId = 0;
                   let normalId = 0;
-                  
-                  if (subTest.comparisonType === 'f' && subTest.dgFixedValueResponseList) {
-                    const selectedFixedValue = subTest.dgFixedValueResponseList.find(
+
+                  if (subTest.comparisonType === 'f' && subTest.fixedValues) {
+                    const selectedFixedValue = subTest.fixedValues.find(
                       fixedValue => fixedValue.fixedValue === subTest.result
                     );
                     fixedId = selectedFixedValue ? selectedFixedValue.fixedId : 0;
                   } else if (subTest.comparisonType === 'n') {
-                    // For normal type, you might need to get normalId from somewhere
-                    // This depends on your data structure
                     normalId = subTest.normalId || 0;
                   }
 
                   resultEntryDetails.push({
                     result: subTest.result,
                     remarks: subTest.remarks || "",
-                    sampleId: subTest.sampleId,
+                    sampleId: inv.sampleId,
                     investigationId: inv.investigationId,
                     subInvestigationId: subTest.subInvestigationId,
-                    resultType: subTest.resultType || "s",
+                    resultType: subTest.resultType || "t",
                     comparisonType: subTest.comparisonType || "n",
                     fixedId: fixedId,
                     normalId: normalId,
-                    normalRange: subTest.normal_range || "", // Added normalRange for sub-tests
-                    fixedRange: null // Added fixedRange as null for now
+                    normalRange: subTest.normal_range || "",
+                    fixedValue: null
                   });
-                } 
-                // For empty sub-tests (when at least one has result)
-                else {
+                } else if (subTest.reject) {
+                  // Rejected sub-test
                   resultEntryDetails.push({
                     result: null,
-                    remarks: null,
-                    sampleId: subTest.sampleId,
+                    remarks: subTest.remarks || "Rejected",
+                    sampleId: inv.sampleId,
                     investigationId: inv.investigationId,
                     subInvestigationId: subTest.subInvestigationId,
-                    resultType: subTest.resultType || "s",
+                    resultType: subTest.resultType || "t",
                     comparisonType: subTest.comparisonType || "n",
                     fixedId: 0,
                     normalId: 0,
-                    normalRange: subTest.normal_range || "", // Added normalRange for empty sub-tests
-                    fixedRange: null // Added fixedRange as null for now
+                    normalRange: subTest.normal_range || "",
+                    fixedValue: null
+                  });
+                } else if (!subTest.reject && (!subTest.result || subTest.result.trim() === "")) {
+                  // Empty sub-test (when some sub-tests have results)
+                  resultEntryDetails.push({
+                    result: null,
+                    remarks: null,
+                    sampleId: inv.sampleId,
+                    investigationId: inv.investigationId,
+                    subInvestigationId: subTest.subInvestigationId,
+                    resultType: subTest.resultType || "t",
+                    comparisonType: subTest.comparisonType || "n",
+                    fixedId: 0,
+                    normalId: 0,
+                    normalRange: subTest.normal_range || "",
+                    fixedValue: null
                   });
                 }
-              });
-            }
-            // If no sub-tests have results but main investigation has result, still include sub-tests as null
-            else if (!inv.reject && inv.result && inv.result.trim() !== "") {
-              inv.subTests.forEach(subTest => {
-                resultEntryDetails.push({
-                  result: null,
-                  remarks: null,
-                  sampleId: subTest.sampleId,
-                  investigationId: inv.investigationId,
-                  subInvestigationId: subTest.subInvestigationId,
-                  resultType: subTest.resultType || "s",
-                  comparisonType: subTest.comparisonType || "n",
-                  fixedId: 0,
-                  normalId: 0,
-                  normalRange: subTest.normal_range || "", // Added normalRange for null sub-tests
-                  fixedRange: null // Added fixedRange as null for now
-                });
-              });
+              }
             }
           }
 
-          // Only return investigation if it has any result entries
-          return resultEntryDetails.length > 0 ? {
-            investigationId: inv.investigationId,
-            sampleCollectionDetailsId: inv.sampleCollectionDetailsId,
-            resultEntryDetailsRequestList: resultEntryDetails
-          } : null;
-        }).filter(inv => inv !== null)
-      };
+          // Only add if there are result entry details
+          if (resultEntryDetails.length > 0) {
+            requestPayload.investigationList.push({
+              investigationId: inv.investigationId,
+              sampleCollectionDetailsId: inv.sampleCollectionDetailsId || 0,
+              resultEntryDetailsRequestList: resultEntryDetails
+            });
+          }
+        }
 
-      // Check if there are any investigations with results to submit
-      if (requestPayload.investigationList.length === 0) {
-        showPopup(RESULT_ENTRY_WARN_MSG, "warning");
+        // Check if there are any investigations with results to submit
+        if (requestPayload.investigationList.length === 0) {
+          showPopup(RESULT_ENTRY_WARN_MSG, "warning");
+          setLoading(false);
+          return;
+        }
+
+        console.log("Submitting result entry payload:", JSON.stringify(requestPayload, null, 2));
+
+        const response = await postRequest(`${SAVE_RESULT_ENTRY_END_URL}`, requestPayload);
+
+        if (response.status === 200) {
+          showPopup(RESULT_SUBMIT_SUCC_MSG, "success", true);
+          setShowDetailView(false);
+          setSelectedResult(null);
+        } else {
+          throw new Error(response.message || "Failed to submit results");
+        }
+      } catch (error) {
+        console.error('Error submitting results:', error);
+        showPopup(error.message || RESULT_SUBMIT_ERR_MSG, "error");
+      } finally {
         setLoading(false);
-        return;
       }
-
-      // Validate required fields
-      if (!requestPayload.relationId || !requestPayload.mainChargeCodeId || !requestPayload.subChargeCodeId || !requestPayload.sampleCollectionHeaderId || !requestPayload.patientId) {
-        showPopup(FETCH_AUTO_FILL_ERR_MSG, "error");
-        setLoading(false);
-        return;
-      }
-
-      console.log("Submitting result entry payload:", JSON.stringify(requestPayload, null, 2));
-
-      // Use your endpoint
-      const response = await postRequest(`${LAB}/saveResultEntry`, requestPayload);
-
-      if (response.status === 200) {
-        showPopup(RESULT_SUBMIT_SUCC_MSG, "success");
-        setShowDetailView(false);
-        setSelectedResult(null);
-      } else {
-        throw new Error(response.message || "Failed to submit results");
-      }
-    } catch (error) {
-      console.error('Error submitting results:', error);
-      showPopup(error.message || RESULT_SUBMIT_ERR_MSG, "error");
-    } finally {
-      setLoading(false);
     }
-  }
-};
+  };
 
   const handleReset = () => {
     if (selectedResult) {
-      const originalResult = resultList.find((r) => r.id === selectedResult.id)
-      setSelectedResult({ ...originalResult })
+      // Refetch data to reset
+      handleRowClick(selectedResult)
     }
   }
 
@@ -508,28 +677,10 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
     }
   }
 
-  const filteredResultList = resultList.filter((item) => {
-    const barCodeMatch =
-      searchData.barCodeSearch === "" ||
-      item.order_no.toLowerCase().includes(searchData.barCodeSearch.toLowerCase()) ||
-      item.patient_name.toLowerCase().includes(searchData.barCodeSearch.toLowerCase())
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  }
 
-    const patientNameMatch =
-      searchData.patientName === "" || item.patient_name.toLowerCase().includes(searchData.patientName.toLowerCase())
-
-    const mobileNoMatch = 
-      searchData.mobileNo === "" || 
-      (item.mobile_no && item.mobile_no.includes(searchData.mobileNo))
-
-    return barCodeMatch && patientNameMatch && mobileNoMatch
-  })
-
-  const filteredTotalPages = Math.ceil(filteredResultList.length / itemsPerPage) || 1
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredResultList.slice(indexOfFirst, indexOfLast);
-
- 
   // Detail View
   if (showDetailView && selectedResult) {
     return (
@@ -555,22 +706,9 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
               </div>
 
               <div className="card-body">
-                {/* Collection Date */}
-                {/* <div className="row mb-3">
-                  <div className="col-md-3">
-                    <label className="form-label fw-bold">Collection Date</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      value={selectedResult.collection_date}
-                      readOnly
-                    />
-                  </div>
-                </div> */}
-
                 {/* Patient Details */}
                 <div className="card mb-4">
-                  <div className="card-header  ">
+                  <div className="card-header">
                     <h5 className="mb-0">PATIENT DETAILS</h5>
                   </div>
                   <div className="card-body">
@@ -602,8 +740,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           readOnly
                         />
                       </div>
-                      
-                      
+
                       <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Age</label>
                         <input
@@ -622,7 +759,6 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           readOnly
                         />
                       </div>
-                    
                     </div>
                     <div className="row mt-3">
                       <div className="col-12">
@@ -638,15 +774,15 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                   </div>
                 </div>
 
-                {/* Result Entry Details */}
+                {/* Sample Collection Details */}
                 <div className="card mb-4">
-                  <div className="card-header  ">
+                  <div className="card-header">
                     <h5 className="mb-0">SAMPLE COLLECTION DETAILS</h5>
                   </div>
                   <div className="card-body">
                     <div className="row">
                       <div className="col-md-3">
-                        <label className="form-label fw-bold"> Collection Date/Time</label>
+                        <label className="form-label fw-bold">Collection Date/Time</label>
                         <input
                           type="text"
                           className="form-control"
@@ -654,19 +790,8 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           readOnly
                         />
                       </div>
-                      {/* <div className="col-md-3">
-                        <label className="form-label fw-bold">Time</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedResult.collection_time}
-                          readOnly
-                        />
-                      </div> */}
                       <div className="col-md-3">
-                        <label className="form-label fw-bold">
-                          Collected By
-                        </label>
+                        <label className="form-label fw-bold">Collected By</label>
                         <input
                           type="text"
                           className="form-control"
@@ -675,26 +800,20 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                         />
                       </div>
                       <div className="col-md-3">
-                        <label className="form-label fw-bold">
-                          Validate Date/Time 
-                        </label>
+                        <label className="form-label fw-bold">Validate Date/Time</label>
                         <input
                           type="text"
                           className="form-control"
                           value={`${selectedResult.validated_date} - ${selectedResult.validated_time}`}
-                          // onChange={(e) => setSelectedResult({ ...selectedResult, validated_time: e.target.value })}
                           readOnly
                         />
                       </div>
                       <div className="col-md-3">
-                        <label className="form-label fw-bold">
-                          Validated By 
-                        </label>
+                        <label className="form-label fw-bold">Validated By</label>
                         <input
                           type="text"
                           className="form-control"
                           value={selectedResult.validated_by}
-                          // onChange={(e) => setSelectedResult({ ...selectedResult, validated_by: e.target.value })}
                           readOnly
                         />
                       </div>
@@ -722,17 +841,17 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                       {selectedResult.investigations.map((investigation) => (
                         <>
                           {investigation.subTests.length === 0 ? (
-                            // Main investigation without sub-tests
+                            // Single investigation without sub-tests (type 's')
                             <tr key={investigation.id}>
                               <td>{investigation.si_no}</td>
                               <td>
                                 <input
-                                      type="text"
-                                      className="form-control"
-                                      value={investigation.generatedSampleId}
-                                      style={{ width: "150px" }}
-                                      readOnly
-                                    />
+                                  type="text"
+                                  className="form-control"
+                                  value={investigation.generatedSampleId}
+                                  style={{ width: "150px" }}
+                                  readOnly
+                                />
                               </td>
                               <td>
                                 <input
@@ -796,17 +915,16 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                               </td>
                             </tr>
                           ) : (
-                            // Investigation with sub-tests
+                            // Main investigation with sub-tests (type 'm')
                             <>
-                              {/* Main investigation row (header) */}
-                              <tr key={investigation.id}>
+                              {/* Main investigation row (header) - NO generatedSampleId */}
+                              <tr key={investigation.id} className="table-secondary">
                                 <td>{investigation.si_no}</td>
-                                <td>{investigation.generatedSampleId}</td>
-                                <td colSpan="7">
+                                <td colSpan="8">
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
-                              {/* Sub-test rows */}
+                              {/* Sub-test rows - show generatedSampleId here */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
@@ -924,9 +1042,6 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">PENDING FOR RESULT ENTRY</h4>
-              {/* <button type="button" className="btn btn-success">
-                <i className="mdi mdi-plus"></i> Generate Report
-              </button> */}
             </div>
 
             <div className="card-body">
@@ -934,73 +1049,88 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                 <LoadingScreen />
               ) : (
                 <>
-                   
-                    <div className="card-body">
-                      <form>
-                        <div className="row g-4 align-items-end">
-                          <div className="col-md-3">
-                            <label className="form-label">Bar Code Search</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="barCodeSearch"
-                              placeholder="Enter bar code"
-                              value={searchData.barCodeSearch}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Patient Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="patientName"
-                              placeholder="Enter patient name"
-                              value={searchData.patientName}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Mobile No.</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="mobileNo"
-                              placeholder="Enter mobile number"
-                              value={searchData.mobileNo}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3 d-flex">
-                            <button type="button" className="btn btn-primary me-2">
- Search
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setSearchData({
-                                  barCodeSearch: "",
-                                  patientName: "",
-                                  mobileNo: "",
-                                })
-                              }}
-                            >
-                              <i className="mdi mdi-refresh"></i> Reset
-                            </button>
-                          </div>
+                  <div className="card-body">
+                    <form>
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label">Bar Code Search</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="barCodeSearch"
+                            placeholder="Enter bar code"
+                            value={searchData.barCodeSearch}
+                            onChange={handleSearchChange}
+                          />
                         </div>
-                      </form>
-                    </div>
+                        <div className="col-md-3">
+                          <label className="form-label">Patient Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="patientName"
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label">Mobile No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="mobileNo"
+                            placeholder="Enter mobile number"
+                            maxLength={10}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={searchData.mobileNo}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, "");
+                              handleSearchChange({
+                                target: {
+                                  id: "mobileNo",
+                                  value
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-3 d-flex">
+                          <button
+                            type="button"
+                            className="btn btn-primary me-2"
+                            onClick={handleSearch}
+                            disabled={isSearching}
+                          >
+                            {isSearching ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Searching...
+                              </>
+                            ) : (
+                              'Search'
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={handleShowAll}
+                            disabled={isShowingAll}
+                          >
+                            <i className="mdi mdi-refresh"></i> Show All
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
 
-                  {/* Priority Legend */}
                   <div className="d-flex mb-3">
                     <span className="badge bg-danger me-2">Priority-1</span>
                     <span className="badge bg-warning text-dark me-2">Priority-2</span>
                     <span className="badge bg-success">Priority-3</span>
                   </div>
 
-                  {/* Table */}
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -1008,19 +1138,17 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           <th>Order Date/Time</th>
                           <th>Order No.</th>
                           <th>Collection Date/Time</th>
-                          {/* <th>Collection Time</th> */}
                           <th>Patient Name</th>
                           <th>Age/Gender</th>
                           <th>Mobile No</th>
                           <th>Department Name</th>
-                          {/* <th>Doctor Name</th> */}
                           <th>Modality</th>
                           <th>Priority</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
+                        {resultList.length > 0 ? (
+                          resultList.map((item) => (
                             <tr
                               key={item.id}
                               onClick={() => handleRowClick(item)}
@@ -1029,13 +1157,11 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                             >
                               <td>{`${item.order_date} - ${item.order_time}`}</td>
                               <td>{item.order_no}</td>
-                              <td>{<td>{`${item.collection_date} - ${item.collection_time}`}</td>}</td>
-                              {/* <td>{item.collection_time}</td> */}
+                              <td>{`${item.collection_date} - ${item.collection_time}`}</td>
                               <td>{item.patient_name}</td>
-                              <td>{`${item.age}/ ${item.gender}`}</td>
+                              <td>{`${item.age}/${item.gender}`}</td>
                               <td>{item.mobile_no}</td>
                               <td>{item.department}</td>
-                              {/* <td>{item.doctor_name}</td> */}
                               <td>{item.modality}</td>
                               <td>
                                 <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
@@ -1044,7 +1170,7 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="10" className="text-center py-4">
+                            <td colSpan="9" className="text-center py-4">
                               No pending result entries found
                             </td>
                           </tr>
@@ -1053,13 +1179,12 @@ const renderResultInput = (item, isSubTest = false, investigationId = null) => {
                     </table>
                   </div>
 
-                  {/* Pagination */}
-                  {filteredResultList.length > 0 && (
+                  {totalPages > 0 && (
                     <Pagination
-                      totalItems={filteredResultList.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      totalItems={totalElements}
+                      itemsPerPage={itemsPerPage}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
                   )}
                 </>

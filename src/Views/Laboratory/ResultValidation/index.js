@@ -1,15 +1,18 @@
 import { useState, useEffect } from "react"
 import { useNavigate } from 'react-router-dom'
 import { getRequest, putRequest } from "../../../service/apiService"
-import { LAB, ALL_REPORTS } from "../../../config/apiConfig"
+import { LAB, ALL_REPORTS, PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL, REQUEST_PARAM_HOSPITAL_ID, PENDING_SUB_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL, REQUEST_PARAM_RESULT_ENTRY_DT_ID, REQUEST_PARAM_INVESTIGATION_ID, FIXED_VALUE_DROPDOWNS_END_URL, REQUEST_PARAM_SUB_INVESTIGATION_ID, RESULT_VALIDATE_END_URL, REQUEST_PARAM_RESULT_ENTRY_HD_ID, PENDING_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import {  FETCH_RESULT_ENTRY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SELECT_WARN_MSG, RESULT_VALIDATE_ERR_MSG, RESULT_VALIDATE_SUCC_MSG, RESULT_VALIDATE_WARN_MSG } from "../../../config/constants"
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import { FETCH_RESULT_ENTRY_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, RESULT_ENTRY_WARN_MSG, RESULT_SELECT_WARN_MSG, RESULT_VALIDATE_ERR_MSG, RESULT_VALIDATE_SUCC_MSG, RESULT_VALIDATE_WARN_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { checkInRange, getResultTextStyle } from "../../../utils/rangeCheckService";
 
 const ResultValidation = () => {
   const [resultList, setResultList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isShowingAll, setIsShowingAll] = useState(true)
   const [searchData, setSearchData] = useState({
     barCodeSearch: "",
     patientName: "",
@@ -18,137 +21,189 @@ const ResultValidation = () => {
   const [popupMessage, setPopupMessage] = useState(null)
   const [confirmationPopup, setConfirmationPopup] = useState(null);
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [selectedResult, setSelectedResult] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
   const [masterValidate, setMasterValidate] = useState(false)
   const [masterReject, setMasterReject] = useState(false)
-  const [isGeneratingPDF, setIsGeneratingPDF] = useState(false)
-  const [pdfUrl, setPdfUrl] = useState(null)
-  const itemsPerPage = 5
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE
   const navigate = useNavigate()
+  const hospitalId = sessionStorage.getItem("hospitalId")
 
-  // Fetch unvalidated results data
+  // Fetch pending validation headers on component mount
   useEffect(() => {
-    fetchUnvalidatedResults()
-  }, [])
+    fetchPendingValidationHeaders()
+  }, []) // Only run once on mount
 
-  const fetchUnvalidatedResults = async () => {
+  // Separate effect for page changes without loading screen
+  useEffect(() => {
+    if (!loading) { // Only fetch if initial load is complete
+      fetchPendingValidationHeadersForPageChange()
+    }
+  }, [currentPage])
+
+  // API call for headers with search filters and pagination (with loading)
+  const fetchPendingValidationHeaders = async (isSearchAction = false) => {
     try {
-      setLoading(true);
-      const data = await getRequest(`${LAB}/unvalidated`);
+      if (isSearchAction) {
+        setIsSearching(true)
+      } else {
+        setLoading(true)
+      }
+
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      if (searchData.patientName) {
+        url += `&patientName=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&patientMobileNumber=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
 
       if (data.status === 200 && data.response) {
-        const formattedData = formatValidationData(data.response);
+        const formattedData = formatHeaderData(data.response.content || []);
         setResultList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
       } else {
-        console.error('Error fetching unvalidated results:', data.message);
+        console.error('Error fetching pending validation headers:', data.message);
         showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
       }
     } catch (error) {
-      console.error('Error fetching unvalidated results:', error);
+      console.error('Error fetching pending validation headers:', error);
       showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
     } finally {
-      setLoading(false);
+      if (isSearchAction) {
+        setIsSearching(false)
+      } else {
+        setLoading(false)
+      }
     }
   };
 
-  const formatValidationData = (apiData) => {
+  // New function for page changes without loading screen
+  const fetchPendingValidationHeadersForPageChange = async () => {
+    try {
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      if (searchData.patientName) {
+        url += `&patientName=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&patientMobileNumber=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatHeaderData(data.response.content || []);
+        setResultList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
+      } else {
+        console.error('Error fetching pending validation headers:', data.message);
+        showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending validation headers:', error);
+      showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
+    }
+  };
+
+  // API call for investigations when row is clicked
+  const fetchInvestigations = async (resultEntryHeaderId) => {
+    try {
+      const data = await getRequest(`${PENDING_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL}?${REQUEST_PARAM_RESULT_ENTRY_HD_ID}=${resultEntryHeaderId}`);
+
+      console.log("Investigations API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching investigations:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching investigations:', error);
+      return [];
+    }
+  };
+
+  // API call for sub-investigations
+  const fetchSubInvestigations = async (resultEntryDetailId, investigationId) => {
+    try {
+      const data = await getRequest(`${PENDING_SUB_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL}?${REQUEST_PARAM_RESULT_ENTRY_DT_ID}=${resultEntryDetailId}&${REQUEST_PARAM_INVESTIGATION_ID}=${investigationId}`);
+
+      console.log("SubInvestigations API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching sub-investigations:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching sub-investigations:', error);
+      return [];
+    }
+  };
+
+  // API call for fixed values dropdown
+  const fetchFixedValues = async (subInvestigationId) => {
+    try {
+      const data = await getRequest(`${FIXED_VALUE_DROPDOWNS_END_URL}?${REQUEST_PARAM_SUB_INVESTIGATION_ID}=${subInvestigationId}`);
+
+      console.log("Fixed Values API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching fixed values:', data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching fixed values:', error);
+      return [];
+    }
+  };
+
+  const formatHeaderData = (apiData) => {
     return apiData.map((item, index) => ({
       id: index + 1,
-      diag_no:item.diagNo||'',
-      resultEntryHeaderId: item.resultEntryHeaderId || item.id,
+      resultEntryHeaderId: item.resultEntryHeaderId,
       result_date: formatDate(item.resultDate),
       result_time: formatTime(item.resultTime),
       patient_name: item.patientName || '',
-      relation: item.relation || '',
+      relation: item.patientRelation || '',
       department: item.mainChargeCodeName || '',
-      doctor_name: item.doctorName||'',
+      doctor_name: item.doctorName || '',
       modality: item.subChargeCodeName || '',
-      priority: item.priority||'',
+      priority: '',
       age: item.patientAge || '',
       gender: item.patientGender || '',
       clinical_notes: "",
       validated_by: item.validatedBy || '',
-      result_entered_by:item.resultEnteredBy||'',
-      patientId: item.patientId || 0,
+      result_entered_by: item.resultEnteredBy || '',
+      patientId: 0,
       mobile_no: item.patientPhnNum || '',
       orderHdId: item.orderHdId || 0,
-      orderNo: item.orderNo||'',
-
-      investigations: item.resultEntryInvestigationResponses ? item.resultEntryInvestigationResponses.map((inv, invIndex) => {
-        const hasSubTests = inv.resultEntrySubInvestigationRes && inv.resultEntrySubInvestigationRes.length > 0;
-
-        if (hasSubTests) {
-          return {
-            id: invIndex + 1,
-            si_no: invIndex + 1,
-            resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
-            diag_no: inv.diagNo || '',
-            investigation: inv.investigationName || '',
-            sample: inv.sampleName || '',
-            result: inv.result || "",
-            units: inv.unit || '',
-            normal_range: inv.normalValue || '',
-            remarks: inv.remarks || "",
-            reject: false,
-            validate: false,
-            comparisonType: inv.comparisonType || "",
-            fixedId: inv.fixedId || null,
-            fixedDropdownValues: inv.fixedDropdownValues || [],
-            inRange: inv.inRange !== undefined ? inv.inRange : null,
-            subTests: inv.resultEntrySubInvestigationRes.map((subTest, subIndex) => ({
-              id: `${invIndex + 1}.${subIndex + 1}`,
-              si_no: getSubTestNumber(invIndex + 1, subIndex, inv.resultEntrySubInvestigationRes.length),
-              resultEntryDetailsId: subTest.resultEntryDetailsId || subTest.id,
-              diag_no: "",
-              generatedSampleId:subTest.generatedSampleId||'',
-              investigation: subTest.subInvestigationName || '',
-              sample: subTest.sampleName || '',
-              result: subTest.result || "",
-              units: subTest.unit || '',
-              normal_range: subTest.normalValue || '',
-              remarks: subTest.remarks || "",
-              reject: false,
-              validate: false,
-              comparisonType: subTest.comparisonType || "",
-              fixedId: subTest.fixedId || null,
-              fixedDropdownValues: subTest.fixedDropdownValues || [],
-              inRange: subTest.inRange !== undefined ? subTest.inRange : null,
-            }))
-          };
-        } else {
-          return {
-            id: invIndex + 1,
-            si_no: invIndex + 1,
-            resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
-            diag_no: inv.diagNo || '',
-            generatedSampleId:inv.generatedSampleId||'',
-            investigation: inv.investigationName || '',
-            sample: inv.sampleName || '',
-            result: inv.result || "",
-            units: inv.unit || '',
-            normal_range: inv.normalValue || '',
-            remarks: inv.remarks || "",
-            reject: false,
-            validate: false,
-            comparisonType: inv.comparisonType || "",
-            inRange: inv.inRange !== undefined ? inv.inRange : null,
-            fixedId: inv.fixedId || null,
-            fixedDropdownValues: inv.fixedDropdownValues || [],
-            subTests: []
-          };
-        }
-      }) : []
+      orderNo: item.orderNo || '',
+      investigations: []
     }))
-  }
-
-  const getSubTestNumber = (mainIndex, subIndex, totalSubTests) => {
-    if (totalSubTests === 1) {
-      return "";
-    } else {
-      return `${mainIndex}.${String.fromCharCode(97 + subIndex)}`;
-    }
   }
 
   const formatDate = (dateString) => {
@@ -187,15 +242,6 @@ const ResultValidation = () => {
         setPopupMessage(null)
       },
     })
-  }
-
-  const getResultTextStyle = (inRange) => {
-    if (inRange === true) {
-      return { fontWeight: 'bold', color: 'green' };
-    } else if (inRange === false) {
-      return { fontWeight: 'bold', color: 'red' };
-    }
-    return {};
   }
 
   const handleResultChange = (investigationId, value, selectedFixedId = null) => {
@@ -310,14 +356,157 @@ const ResultValidation = () => {
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData((prevData) => ({ ...prevData, [id]: value }))
-    setCurrentPage(1)
   }
 
-  const handleRowClick = (result) => {
-    setSelectedResult(JSON.parse(JSON.stringify(result)))
-    setShowDetailView(true)
-    setMasterValidate(false)
-    setMasterReject(false)
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchPendingValidationHeaders(true)
+  }
+
+  const handleShowAll = async () => {
+    setSearchData({
+      barCodeSearch: "",
+      patientName: "",
+      mobileNo: "",
+    })
+    setCurrentPage(1)
+    setIsShowingAll(true)
+
+    try {
+      setLoading(true)
+
+      let url = `${PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      const data = await getRequest(url);
+
+      console.log("All Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatHeaderData(data.response.content || []);
+        setResultList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+      } else {
+        console.error('Error fetching pending validation headers:', data.message);
+        showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending validation headers:', error);
+      showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handleRowClick = async (result) => {
+    try {
+
+      // Fetch investigations for this result entry
+      const investigations = await fetchInvestigations(result.resultEntryHeaderId)
+
+      // Process each investigation based on its type
+      const processedInvestigations = await Promise.all(investigations.map(async (inv, index) => {
+        if (inv.investigationType === 'm') {
+          // Fetch sub-investigations for this main investigation
+          const subInvestigations = await fetchSubInvestigations(inv.resultEntryDetailsId, inv.investigationId)
+
+          // Process sub-investigations with fixed values if needed
+          const processedSubTests = await Promise.all(subInvestigations.map(async (subTest, subIndex) => {
+            let fixedDropdownValues = []
+
+            // If comparisonType is 'f', fetch fixed values dropdown
+            if (subTest.comparisonType === 'f') {
+              fixedDropdownValues = await fetchFixedValues(subTest.subInvestigationId)
+            }
+
+            // Calculate inRange for subTest
+            const inRange = checkInRange(subTest.result, subTest.normalValue);
+
+            return {
+              id: `${index + 1}.${subIndex + 1}`,
+              si_no: subInvestigations.length === 1 ? "" : `${index + 1}.${String.fromCharCode(97 + subIndex)}`,
+              resultEntryDetailsId: subTest.resultEntryDetailsId || inv.resultEntryDetailsId,
+              subInvestigationId: subTest.subInvestigationId,
+              investigation: subTest.subInvestigationName,
+              sample: inv.sampleName,
+              result: subTest.result || "",
+              units: subTest.unitName || "",
+              normal_range: subTest.normalValue || "",
+              remarks: subTest.remarks || "",
+              reject: false,
+              validate: true,
+              comparisonType: subTest.comparisonType || "",
+              fixedId: subTest.fixedId || null,
+              fixedDropdownValues: fixedDropdownValues,
+              generatedSampleId: subTest.generatedSampleId || inv.generatedSampleId || '',
+              inRange: inRange
+            }
+          }))
+
+          // Calculate inRange for main investigation
+          const mainInRange = checkInRange(inv.result, inv.normalValue);
+
+          return {
+            id: index + 1,
+            si_no: index + 1,
+            resultEntryDetailsId: inv.resultEntryDetailsId,
+            investigationId: inv.investigationId,
+            investigation: inv.investigationName,
+            sample: inv.sampleName,
+            result: inv.result || "",
+            units: inv.unit || '',
+            normal_range: inv.normalValue || '',
+            remarks: inv.remarks || "",
+            reject: false,
+            validate: true,
+            comparisonType: inv.comparisonType || "",
+            fixedId: inv.fixedId || null,
+            fixedDropdownValues: inv.fixedDropdownValues || [],
+            generatedSampleId: '', // Empty for main investigation (type 'm')
+            inRange: mainInRange,
+            subTests: processedSubTests
+          }
+        } else {
+          // Single investigation (type 's')
+          // Calculate inRange for single investigation
+          const inRange = checkInRange(inv.result, inv.normalValue);
+
+          return {
+            id: index + 1,
+            si_no: index + 1,
+            resultEntryDetailsId: inv.resultEntryDetailsId,
+            investigationId: inv.investigationId,
+            investigation: inv.investigationName,
+            sample: inv.sampleName,
+            result: inv.result || "",
+            units: inv.unit || '',
+            normal_range: inv.normalValue || '',
+            remarks: inv.remarks || "",
+            reject: false,
+            validate: true,
+            comparisonType: inv.comparisonType || "",
+            fixedId: inv.fixedId || null,
+            fixedDropdownValues: inv.fixedDropdownValues || [],
+            generatedSampleId: inv.generatedSampleId || '',
+            inRange: inRange,
+            subTests: []
+          }
+        }
+      }))
+
+      const completeResultData = {
+        ...result,
+        investigations: processedInvestigations
+      }
+
+      setSelectedResult(completeResultData)
+      setShowDetailView(true)
+      setMasterValidate(true)
+      setMasterReject(false)
+    } catch (error) {
+      console.error('Error fetching result details:', error)
+      showPopup(FETCH_RESULT_ENTRY_ERR_MSG, 'error')
+    }
   }
 
   const handleBackToList = () => {
@@ -466,7 +655,7 @@ const ResultValidation = () => {
           inv.subTests.forEach(subTest => {
             if (subTest.validate || subTest.reject) {
               validationList.push({
-                resultEntryDetailsId: subTest.resultEntryDetailsId || subTest.id,
+                resultEntryDetailsId: subTest.resultEntryDetailsId,
                 result: subTest.result || "",
                 remarks: subTest.remarks || "",
                 validated: subTest.validate === true,
@@ -478,7 +667,7 @@ const ResultValidation = () => {
         } else {
           if (inv.validate || inv.reject) {
             validationList.push({
-              resultEntryDetailsId: inv.resultEntryDetailsId || inv.id,
+              resultEntryDetailsId: inv.resultEntryDetailsId,
               result: inv.result || "",
               remarks: inv.remarks || "",
               validated: inv.validate === true,
@@ -496,13 +685,13 @@ const ResultValidation = () => {
       }
 
       const requestPayload = {
-        resultEntryHeaderId: selectedResult.resultEntryHeaderId || selectedResult.id,
+        resultEntryHeaderId: selectedResult.resultEntryHeaderId,
         validationList: validationList
       };
 
       console.log("Submitting validation request:", requestPayload);
 
-      const response = await putRequest(`${LAB}/validate`, requestPayload);
+      const response = await putRequest(`${RESULT_VALIDATE_END_URL}`, requestPayload);
 
       if (response.status === 200) {
         setConfirmationPopup({
@@ -528,7 +717,7 @@ const ResultValidation = () => {
   };
 
   const handleValidationSuccess = async () => {
-    await fetchUnvalidatedResults();
+    await fetchPendingValidationHeaders();
     setShowDetailView(false);
     setSelectedResult(null);
     setMasterValidate(false);
@@ -537,11 +726,11 @@ const ResultValidation = () => {
 
   const onConfirmPrint = () => {
     // Navigate to ViewDownload page with the selected result data
-    navigate('/ViewDownwload', { 
-      state: { 
+    navigate('/ViewDownwload', {
+      state: {
         resultData: selectedResult,
-        orderHdId: selectedResult.orderHdId 
-      } 
+        orderHdId: selectedResult.orderHdId
+      }
     });
     setConfirmationPopup(null);
     handleValidationSuccess(); // This will refresh the list
@@ -560,28 +749,9 @@ const ResultValidation = () => {
     }
   }
 
-  const filteredResultList = resultList.filter((item) => {
-    const barCodeMatch =
-      searchData.barCodeSearch === "" ||
-      item.id.toString().includes(searchData.barCodeSearch.toLowerCase()) ||
-      item.patient_name.toLowerCase().includes(searchData.barCodeSearch.toLowerCase())
-
-    const patientNameMatch =
-      searchData.patientName === "" || item.patient_name.toLowerCase().includes(searchData.patientName.toLowerCase())
-
-    const mobileNoMatch =
-      searchData.mobileNo === "" ||
-      (item.mobile_no && item.mobile_no.includes(searchData.mobileNo))
-
-    return barCodeMatch && patientNameMatch && mobileNoMatch
-  })
-
-  const filteredTotalPages = Math.ceil(filteredResultList.length / itemsPerPage) || 1
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredResultList.slice(indexOfFirst, indexOfLast);
-
-  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  }
 
   // Detail View
   if (showDetailView && selectedResult) {
@@ -603,9 +773,9 @@ const ResultValidation = () => {
                   <h5 className="modal-title">
                     {confirmationPopup.type === 'success' ? 'Success' : 'Confirmation'}
                   </h5>
-                  <button 
-                    type="button" 
-                    className="btn-close" 
+                  <button
+                    type="button"
+                    className="btn-close"
                     onClick={confirmationPopup.onCancel}
                   ></button>
                 </div>
@@ -625,21 +795,20 @@ const ResultValidation = () => {
                 </div>
                 <div className="modal-footer justify-content-center">
                   {confirmationPopup.cancelText && (
-                    <button 
-                      type="button" 
-                      className="btn btn-secondary" 
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
                       onClick={confirmationPopup.onCancel}
                     >
                       {confirmationPopup.cancelText}
                     </button>
                   )}
-                  <button 
-                    type="button" 
-                    className={`btn ${
-                      confirmationPopup.type === 'success' ? 'btn-success' : 
-                      confirmationPopup.type === 'warning' ? 'btn-warning' : 
-                      confirmationPopup.type === 'danger' ? 'btn-danger' : 'btn-primary'
-                    }`} 
+                  <button
+                    type="button"
+                    className={`btn ${confirmationPopup.type === 'success' ? 'btn-success' :
+                        confirmationPopup.type === 'warning' ? 'btn-warning' :
+                          confirmationPopup.type === 'danger' ? 'btn-danger' : 'btn-primary'
+                      }`}
                     onClick={() => { if (confirmationPopup.onConfirm) confirmationPopup.onConfirm(); }}
                   >
                     {confirmationPopup.confirmText || "Yes"}
@@ -651,7 +820,7 @@ const ResultValidation = () => {
         )}
 
         {loading && <LoadingScreen />}
-        
+
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -666,7 +835,7 @@ const ResultValidation = () => {
 
               <div className="card-body">
                 <div className="card mb-4">
-                  <div className="card-header  ">
+                  <div className="card-header">
                     <h5 className="mb-0">PATIENT DETAILS</h5>
                   </div>
                   <div className="card-body">
@@ -700,7 +869,7 @@ const ResultValidation = () => {
                       </div>
                     </div>
                     <div className="row mt-3">
-                       <div className="col-md-4">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Age</label>
                         <input
                           type="text"
@@ -734,7 +903,7 @@ const ResultValidation = () => {
                 </div>
 
                 <div className="card mb-4">
-                  <div className="card-header  ">
+                  <div className="card-header">
                     <h5 className="mb-0">RESULT ENTRY DETAILS</h5>
                   </div>
                   <div className="card-body">
@@ -748,7 +917,6 @@ const ResultValidation = () => {
                           readOnly
                         />
                       </div>
-                    
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Result Entered By</label>
                         <input
@@ -810,16 +978,17 @@ const ResultValidation = () => {
                       {selectedResult.investigations.map((investigation) => (
                         <>
                           {investigation.subTests.length === 0 ? (
+                            // Single investigation without sub-tests (type 's')
                             <tr key={investigation.id}>
                               <td>{investigation.si_no}</td>
                               <td>
                                 <input
-                                      type="text"
-                                      className="form-control"
-                                      value={investigation.generatedSampleId}
-                                      style={{ width: "150px" }}
-                                      readOnly
-                                    />
+                                  type="text"
+                                  className="form-control"
+                                  value={investigation.generatedSampleId}
+                                  style={{ width: "150px" }}
+                                  readOnly
+                                />
                               </td>
                               <td>
                                 <input
@@ -892,14 +1061,16 @@ const ResultValidation = () => {
                               </td>
                             </tr>
                           ) : (
+                            // Main investigation with sub-tests (type 'm')
                             <>
-                              <tr key={investigation.id}>
+                              {/* Main investigation row (header) - NO generatedSampleId */}
+                              <tr key={investigation.id} className="table-secondary">
                                 <td>{investigation.si_no}</td>
-                                <td>{investigation.diag_no}</td>
-                                <td colSpan="8">
+                                <td colSpan="9">
                                   <strong>{investigation.investigation}</strong>
                                 </td>
                               </tr>
+                              {/* Sub-test rows - show generatedSampleId here */}
                               {investigation.subTests.map((subTest) => (
                                 <tr key={subTest.id}>
                                   <td>{subTest.si_no}</td>
@@ -1038,64 +1209,81 @@ const ResultValidation = () => {
                 <LoadingScreen />
               ) : (
                 <>
-                    
-                    <div className="card-body">
-                      <form>
-                        <div className="row g-4 align-items-end">
-                          <div className="col-md-3">
-                            <label className="form-label">Bar Code Search</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="barCodeSearch"
-                              placeholder="Enter bar code"
-                              value={searchData.barCodeSearch}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Patient Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="patientName"
-                              placeholder="Enter patient name"
-                              value={searchData.patientName}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Mobile No.</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="mobileNo"
-                              placeholder="Enter mobile number"
-                              value={searchData.mobileNo}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3 d-flex">
-                            <button type="button" className="btn btn-primary me-2">
- Search
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setSearchData({
-                                  barCodeSearch: "",
-                                  patientName: "",
-                                  mobileNo: "",
-                                })
-                              }}
-                            >
-                              <i className="mdi mdi-refresh"></i> Reset
-                            </button>
-                          </div>
+                  <div className="card-body">
+                    <form>
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label">Bar Code Search</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="barCodeSearch"
+                            placeholder="Enter bar code"
+                            value={searchData.barCodeSearch}
+                            onChange={handleSearchChange}
+                          />
                         </div>
-                      </form>
-                    </div>
+                        <div className="col-md-3">
+                          <label className="form-label">Patient Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="patientName"
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label">Mobile No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="mobileNo"
+                            placeholder="Enter mobile number"
+                            maxLength={10}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={searchData.mobileNo}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, ""); // allow only digits
+                              handleSearchChange({
+                                target: {
+                                  id: "mobileNo",
+                                  value
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-3 d-flex">
+                          <button
+                            type="button"
+                            className="btn btn-primary me-2"
+                            onClick={handleSearch}
+                            disabled={isSearching}
+                          >
+                            {isSearching ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Searching...
+                              </>
+                            ) : (
+                              'Search'
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={handleShowAll}
+                            disabled={isShowingAll}
+                          >
+                            <i className="mdi mdi-refresh"></i> Show All
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
 
                   <div className="d-flex mb-3">
                     <span className="badge bg-danger me-2">Priority-1</span>
@@ -1107,7 +1295,6 @@ const ResultValidation = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          {/* <th>Diag No.</th> */}
                           <th>Result Date/Time</th>
                           <th>Patient Name</th>
                           <th>Age/Gender</th>
@@ -1119,15 +1306,14 @@ const ResultValidation = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
+                        {resultList.length > 0 ? (
+                          resultList.map((item) => (
                             <tr
                               key={item.id}
                               onClick={() => handleRowClick(item)}
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              {/* <td>{item.diag_no}</td> */}
                               <td>{`${item.result_date} - ${item.result_time}`}</td>
                               <td>{item.patient_name}</td>
                               <td>{`${item.age} / ${item.gender}`}</td>
@@ -1142,7 +1328,7 @@ const ResultValidation = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="10" className="text-center py-4">
+                            <td colSpan="8" className="text-center py-4">
                               No results pending validation found
                             </td>
                           </tr>
@@ -1151,12 +1337,12 @@ const ResultValidation = () => {
                     </table>
                   </div>
 
-                  {filteredResultList.length > 0 && (
+                  {totalPages > 0 && (
                     <Pagination
-                      totalItems={filteredResultList.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      totalItems={totalElements}
+                      itemsPerPage={itemsPerPage}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
                   )}
                 </>
