@@ -1,7 +1,7 @@
-  export const API_HOST = 'http://103.133.215.182:8081/hims';
+ export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-  // export const API_HOST = 'http://localhost:8080';
-//export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'http://localhost:8080';
+//  export const API_HOST = 'http://localhost:8080';
 //export const API_HOST = 'http://192.168.1.39:8080';
 
 // export const API_HOST = 'http://localhost:8080';
@@ -401,5 +401,66 @@ export const OPD_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/opdBillingRegister`;
 export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
 
 export const MAS_COMPONENT_FAILURE_REASON = `${MASTERS}/masComponentFailureReason`;
+
+export const SAVE_PENDING_SAMPLES_FOR_COLLECTION_END_URL=`${LAB}/savePendingSamplesForCollection`;
+export const GET_PENDING_SAMPLE_HEADERS_FOR_COLLECTION_END_URL=`${LAB}/pendingSampleForCollection/headers`;
+export const GET_PENDING_SAMPLE_DETAILS_FOR_COLLECTION_END_URL=`${LAB}/pendingSampleForCollection/details`;
+export const GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL=`${LAB}/pendingSampleForValidation/headers`;
+export const GET_PENDING_SAMPLE_DEATAILS_FOR_SAMPLE_VALIDATION_END_URL=`${LAB}/pendingSampleForValidation/details`;
+export const SAMPLE_VALIDATION_END_URL=`${LAB}/sampleValidate`;
+
+
+export const PENDING_SAMPLE_HEADERS_FOR_RESULT_VALIDATION_END_URL=`${LAB}/pendingSampleForResultValidation/headers`;
+export const PENDING_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL=`${LAB}/investigationsForResultValidation/details`;
+export const PENDING_SUB_INVESTIGATIONS_FOR_RESULT_VALIDATION_END_URL=`${LAB}/subInvestigationsForResultValidation/details`;
+export const FIXED_VALUE_DROPDOWNS_END_URL=`${LAB}/fixedValues/dropdown`;
+export const RESULT_VALIDATE_END_URL=`${LAB}/resultValidate`;
+
+
+export const PENDING_SAMPLE_HEADERS_FOR_RESULT_ENTRY_END_URL=`${LAB}/pendingSampleForResultEntry/headers`;
+export const PENDING_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL=`${LAB}/investigationsForResult/details`;
+export const PENDING_SUB_INVESTIGATIONS_FOR_RESULT_ENTRY_END_URL=`${LAB}/subInvestigationsForResult/details`;
+export const SAVE_RESULT_ENTRY_END_URL=`${LAB}/saveResultEntry`;
+
+
+
+export const PENDING_SAMPLE_HEADERS_FOR_RESULT_UPDATE_END_URL=`${LAB}/resultUpdate/headers`;
+export const PENDING_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL=`${LAB}/investigationsForResultUpdate/details`;
+export const PENDING_SUB_INVESTIGATIONS_FOR_RESULT_UPDATE_END_URL=`${LAB}/subInvestigationsForResultUpdate/details`;
+export const UPDATE_RESULT_END_URL=`${LAB}/updateResult`;
+
+
+
+
+
+export const REQUEST_PARAM_ORDER_HD_ID="orderHdId";
+export const REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID="sampleCollectionHeaderId";
+export const REQUEST_PARAM_RESULT_ENTRY_HD_ID="resultEntryHeaderId";
+export const REQUEST_PARAM_RESULT_ENTRY_DT_ID="resultEntryDetailId";
+export const REQUEST_PARAM_INVESTIGATION_ID="investigationId";
+export const REQUEST_PARAM_SUB_INVESTIGATION_ID="subInvestigationId";
+export const REQUEST_PARAM_PATIENT_NAME="patientName";
+export const REQUEST_PARAM_MOBILE_NO="patientMobileNumber";
+export const REQUEST_PARAM_GENDER_CODE="genderCode";
+export const REQUEST_PARAM_AGE="age";
+
+
+
+
+
+export const MAS_CONTAINER_DROPDOWN_END_URL=`${DG_MAS_COLLECTION}/getAll`;
+export const LAB_AMENDMENT_ALL_TYPE = `${MASTERS}/lab-amendment-type/all`;
+
+
+
+
+
+
+
+
+
+
+
+
 
 

@@ -1,27 +1,30 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { LAB, DG_MAS_COLLECTION } from "../../../config/apiConfig"
+import {  SAVE_PENDING_SAMPLES_FOR_COLLECTION_END_URL, REQUEST_PARAM_DEPARTMENT_ID, GET_PENDING_SAMPLE_HEADERS_FOR_COLLECTION_END_URL, REQUEST_PARAM_HOSPITAL_ID, GET_PENDING_SAMPLE_DETAILS_FOR_COLLECTION_END_URL, REQUEST_PARAM_ORDER_HD_ID, MAS_CONTAINER_DROPDOWN_END_URL, ACTIVE_STATUS_FOR_DROPDOWN, REQUEST_PARAM_SIZE, REQUEST_PARAM_PAGE } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import { FETCH_CONTAINER_ERR_MSG, FETCH_PENDING_SAMPLE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, SAMPLE_COLLECTION_ERR_MSG, SAMPLE_COLLECTION_SUCC_MSG } from "../../../config/constants"
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import { FETCH_CONTAINER_ERR_MSG, FETCH_PENDING_SAMPLE_ERR_MSG, SAMPLE_COLLECTION_ERR_MSG, SAMPLE_COLLECTION_SUCC_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const PendingForSampleCollection = () => {
   const [samples, setSamples] = useState([])
   const [containerOptions, setContainerOptions] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isShowingAll, setIsShowingAll] = useState(true)
   const [searchData, setSearchData] = useState({
     patientName: "",
     mobileNo: "",
   })
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
 
-  const itemsPerPage = 5
-
+  const hospitalId = sessionStorage.getItem("hospitalId")
+  const departmentId = sessionStorage.getItem("departmentId")
   const showPopup = (message, type = "info", shouldRefreshData = false) => {
     setPopupMessage({
       message,
@@ -29,35 +32,121 @@ const PendingForSampleCollection = () => {
       onClose: () => {
         setPopupMessage(null)
         if (shouldRefreshData) {
-          fetchPendingSamples()
+          fetchPendingSamplesHeaders()
         }
       }
     })
   }
 
   useEffect(() => {
-    fetchPendingSamples()
+    fetchPendingSamplesHeaders()
     fetchContainerOptions()
-  }, [])
+  }, []) // Remove currentPage dependency - only run once on mount
 
-  const fetchPendingSamples = async () => {
+  // Separate effect for page changes without loading screen
+  useEffect(() => {
+    if (!loading) { // Only fetch if initial load is complete
+      fetchPendingSamplesHeadersForPageChange()
+    }
+  }, [currentPage])
+
+  // API call for headers with search filters and pagination (with loading)
+  const fetchPendingSamplesHeaders = async (isSearchAction = false) => {
     try {
-      setLoading(true);
-      const data = await getRequest(`${LAB}/pending-samples`);
+      if (isSearchAction) {
+        setIsSearching(true)
+      } else {
+        setLoading(true)
+      }
 
-      console.log("Raw API Response:", data);
+      let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_COLLECTION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`
+
+      if (searchData.patientName) {
+        url += `&patientName=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&patientMobileNumber=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
 
       if (data.status === 200 && data.response) {
-        console.log("First sample item:", data.response[0]);
-        const groupedData = groupInvestigationsByPatient(data.response);
-        setSamples(groupedData);
+        setSamples(data.response.content || []);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
       } else {
-        console.error('Error fetching pending samples:', data.message);
+        console.error('Error fetching pending samples headers:', data.message);
         showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
       }
     } catch (error) {
-      console.error('Error fetching pending samples:', error);
+      console.error('Error fetching pending samples headers:', error);
       showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+    } finally {
+      if (isSearchAction) {
+        setIsSearching(false)
+      } else {
+        setLoading(false)
+      }
+    }
+  };
+
+  // New function for page changes without loading screen
+  const fetchPendingSamplesHeadersForPageChange = async () => {
+    try {
+      let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_COLLECTION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`
+
+      if (searchData.patientName) {
+        url += `&patientName=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&patientMobileNumber=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        setSamples(data.response.content || []);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
+      } else {
+        console.error('Error fetching pending samples headers:', data.message);
+        showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending samples headers:', error);
+      showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+    }
+  };
+
+  // API call for details when row is clicked
+  const fetchSampleDetails = async (orderHdId) => {
+    try {
+      setLoading(true);
+      const data = await getRequest(`${GET_PENDING_SAMPLE_DETAILS_FOR_COLLECTION_END_URL}?${REQUEST_PARAM_ORDER_HD_ID}=${orderHdId}`);
+
+      console.log("Details API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching sample details:', data.message);
+        showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching sample details:', error);
+      showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+      return [];
     } finally {
       setLoading(false);
     }
@@ -65,7 +154,7 @@ const PendingForSampleCollection = () => {
 
   const fetchContainerOptions = async () => {
     try {
-      const data = await getRequest(`${DG_MAS_COLLECTION}/getAll/1`);
+      const data = await getRequest(`${MAS_CONTAINER_DROPDOWN_END_URL}/${ACTIVE_STATUS_FOR_DROPDOWN}`);
 
       if (data.status === 200 && data.response) {
         setContainerOptions(data.response);
@@ -79,57 +168,6 @@ const PendingForSampleCollection = () => {
     }
   };
 
-  const groupInvestigationsByPatient = (apiData) => {
-    const grouped = {}
-    let counter = 1
-
-    apiData.forEach((item) => {
-      const patientKey = `${item.patientName}_${item.mobile}_${item.reqDate}_${item.orderNo}`
-
-      if (!grouped[patientKey]) {
-        grouped[patientKey] = {
-          id: counter++,
-          reqDate: formatDate(item.reqDate),
-          reqTime: item.orderTime,
-          ReqNo: item.orderNo || '',
-          patientName: item.patientName || '',
-          relation: item.relation || '',
-          name: item.name || '',
-          age: item.age || '',
-          gender: item.gender || '',
-          mobile: item.mobile || '',
-          department: item.department || '',
-          doctorName: item.doctorName || '',
-          priority: item.priority || '',
-          investigations: [],
-          clinicalNotes: '',
-          acceptedBy: item.doctorName || '',
-          vistId: item.vistId || 0,
-          orderhdId: item.orderhdId || 0
-        }
-      }
-
-      grouped[patientKey].investigations.push({
-        id: grouped[patientKey].investigations.length + 1,
-        siNo: grouped[patientKey].investigations.length + 1,
-        investigation: item.investigation || '',
-        sample: item.sample || '',
-        container: item.collection || '',
-        collected: true,
-        empanelled: false,
-        remarks: '',
-        appointment: false,
-        subChargeCodeId: item.subChargeCodeId || 0,
-        investigationId: item.investigationId || 0,
-        mainChargeCodeId: item.mainChargcodeId || 0,
-        sampleId: item.sampleId || 0,
-        collectionId: item.collectionId || 0
-      })
-    })
-
-    return Object.values(grouped)
-  }
-
   const formatDate = (dateString) => {
     if (!dateString) return new Date().toLocaleDateString('en-GB')
     const date = new Date(dateString)
@@ -139,12 +177,86 @@ const PendingForSampleCollection = () => {
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData((prevData) => ({ ...prevData, [id]: value }))
-    setCurrentPage(1)
   }
 
-  const handleRowClick = (sample) => {
-    setSelectedSample(sample)
-    setShowDetailView(true)
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchPendingSamplesHeaders(true)
+  }
+
+  const handleShowAll = async () => {
+    setSearchData({
+      patientName: "",
+      mobileNo: "",
+    })
+    setCurrentPage(1)
+    setIsShowingAll(true)
+
+    try {
+      setLoading(true)
+
+      // Build URL with only hospitalId, no search parameters, and pagination
+      let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_COLLECTION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`
+
+      const data = await getRequest(url);
+
+      console.log("All Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        setSamples(data.response.content || []);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+      } else {
+        console.error('Error fetching pending samples headers:', data.message);
+        showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending samples headers:', error);
+      showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  }
+
+  const handleRowClick = async (sample) => {
+    try {
+      setLoading(true)
+      // Fetch details for the selected orderHdId
+      const details = await fetchSampleDetails(sample.orderHdId)
+
+      // Combine header data with details
+      const completeSampleData = {
+        ...sample,
+        investigations: details.map((detail, index) => ({
+          id: index + 1,
+          siNo: index + 1,
+          investigation: detail.investigationName,
+          sample: detail.sampleName,
+          container: detail.collectionName,
+          collected: true,
+          empanelled: false,
+          remarks: '',
+          orderDtId: detail.orderDtId,
+          investigationId: detail.investigationId,
+          sampleId: detail.sampleId,
+          collectionId: detail.collectionId,
+          mainChargeCodeId: detail.mainChargeCodeId,
+          subChargeCodeId: detail.subChargeCodeId
+        }))
+      }
+
+      setSelectedSample(completeSampleData)
+      setShowDetailView(true)
+    } catch (error) {
+      console.error('Error fetching sample details:', error)
+      showPopup(FETCH_PENDING_SAMPLE_ERR_MSG, 'error')
+    } finally {
+      setLoading(false)
+    }
   }
 
   const handleBackToList = () => {
@@ -167,25 +279,26 @@ const PendingForSampleCollection = () => {
         setLoading(true)
 
         const requestPayload = {
-          visitId: selectedSample.vistId,
-          orderHdId: selectedSample.orderhdId,
+          visitId: selectedSample.visitId,
+          orderHdId: selectedSample.orderHdId,
           sampleCollectionReq: selectedSample.investigations
             .filter(inv => inv.collected)
             .map(inv => ({
-              subChargeCodeId: inv.subChargeCodeId,
+              orderDtId: inv.orderDtId,
               investigationId: inv.investigationId,
-              mainChargeCodeId: inv.mainChargeCodeId,
               empanelledStatus: inv.empanelled ? "y" : "n",
               sampleId: inv.sampleId,
               collectionId: inv.collectionId,
               collected: "y",
-              remarks: inv.remarks || ""
+              remarks: inv.remarks || "",
+              mainChargeCodeId: inv.mainChargeCodeId,
+              subChargeCodeId: inv.subChargeCodeId
             }))
         }
 
         console.log("Submitting payload:", JSON.stringify(requestPayload, null, 2));
 
-        const response = await postRequest(`${LAB}/savesamplecollection`, requestPayload)
+        const response = await postRequest(`${SAVE_PENDING_SAMPLES_FOR_COLLECTION_END_URL}?${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}`, requestPayload)
 
         if (response.status === 200) {
           showPopup(SAMPLE_COLLECTION_SUCC_MSG, "success", true)
@@ -203,31 +316,32 @@ const PendingForSampleCollection = () => {
     }
   }
 
-  const handleReset = () => {
+  const handleResetForm = () => {
     if (selectedSample) {
-      const originalSample = samples.find((s) => s.id === selectedSample.id)
-      setSelectedSample({ ...originalSample })
+      // Since we can't easily get the original details without refetching,
+      // we'll fetch the details again
+      fetchSampleDetails(selectedSample.orderHdId).then(details => {
+        const refreshedSampleData = {
+          ...selectedSample,
+          investigations: details.map((detail, index) => ({
+            id: index + 1,
+            siNo: index + 1,
+            investigation: detail.investigationName,
+            sample: detail.sampleName,
+            container: detail.collectionName,
+            collected: true,
+            empanelled: false,
+            remarks: '',
+            orderDtId: detail.orderDtId,
+            investigationId: detail.investigationId,
+            sampleId: detail.sampleId,
+            collectionId: detail.collectionId
+          }))
+        }
+        setSelectedSample(refreshedSampleData)
+      })
     }
   }
-
-  const filteredSamples = samples.filter((item) => {
-    const patientNameMatch =
-      searchData.patientName === "" || 
-      item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase())
-
-    const mobileNoMatch = 
-      searchData.mobileNo === "" || 
-      (item.mobile && item.mobile.includes(searchData.mobileNo))
-
-    return patientNameMatch && mobileNoMatch
-  })
-
-  const filteredTotalPages = Math.ceil(filteredSamples.length / itemsPerPage) || 1
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredSamples.slice(indexOfFirst, indexOfLast);
-
-  
 
   const getPriorityColor = (priority) => {
     switch (priority) {
@@ -239,6 +353,19 @@ const PendingForSampleCollection = () => {
         return "bg-success text-white"
       default:
         return "bg-secondary text-white"
+    }
+  }
+
+  const getPriorityBadge = (priority) => {
+    switch (priority) {
+      case "p":
+        return "Priority-1"
+      case "h":
+        return "Priority-2"
+      case "n":
+        return "Priority-3"
+      default:
+        return "Priority-3"
     }
   }
 
@@ -324,14 +451,14 @@ const PendingForSampleCollection = () => {
                           type="text"
                           className="form-control"
                           readOnly
-                          value={selectedSample.priority}
-                          style={{ 
-                            backgroundColor: getPriorityColor(selectedSample.priority).includes('danger') ? '#dc3545' : 
-                                           getPriorityColor(selectedSample.priority).includes('warning') ? '#ffc107' : 
-                                           getPriorityColor(selectedSample.priority).includes('success') ? '#28a745' : '#6c757d',
-                            color: getPriorityColor(selectedSample.priority).includes('warning') ? '#000' : '#fff',
-                            fontWeight: 'bold'
-                          }}
+                        // value={getPriorityBadge(selectedSample.priority)}
+                        // style={{ 
+                        //   backgroundColor: selectedSample.priority === 'p' ? '#dc3545' : 
+                        //                  selectedSample.priority === 'h' ? '#ffc107' : 
+                        //                  selectedSample.priority === 'n' ? '#28a745' : '#6c757d',
+                        //   color: selectedSample.priority === 'h' ? '#000' : '#fff',
+                        //   fontWeight: 'bold'
+                        // }}
                         />
                       </div>
                     </div>
@@ -430,7 +557,7 @@ const PendingForSampleCollection = () => {
                   <button className="btn btn-primary me-3" onClick={handleSubmit} disabled={loading}>
                     <i className="mdi mdi-content-save"></i> SUBMIT
                   </button>
-                  <button className="btn btn-secondary me-3" onClick={handleReset} disabled={loading}>
+                  <button className="btn btn-secondary me-3" onClick={handleResetForm} disabled={loading}>
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
                   <button className="btn btn-secondary" onClick={handleBackToList}>
@@ -466,52 +593,70 @@ const PendingForSampleCollection = () => {
                 <LoadingScreen />
               ) : (
                 <>
-                   
-                    <div className="card-body">
-                      <form>
-                        <div className="row g-4 align-items-end">
-                          <div className="col-md-4">
-                            <label className="form-label">Patient Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="patientName"
-                              placeholder="Enter patient name"
-                              value={searchData.patientName}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-4">
-                            <label className="form-label">Mobile No.</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="mobileNo"
-                              placeholder="Enter mobile number"
-                              value={searchData.mobileNo}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-4 d-flex">
-                            <button type="button" className="btn btn-primary me-2">
-Search
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setSearchData({
-                                  patientName: "",
-                                  mobileNo: "",
-                                })
-                              }}
-                            >
-                              <i className="mdi mdi-refresh"></i> Reset
-                            </button>
-                          </div>
+                  <div className="card-body">
+                    <form>
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-4">
+                          <label className="form-label">Patient Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="patientName"
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
+                          />
                         </div>
-                      </form>
-                    </div>
+                        <div className="col-md-4">
+                          <label className="form-label">Mobile No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="mobileNo"
+                            placeholder="Enter mobile number"
+                            maxLength={10}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={searchData.mobileNo}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, ""); // only digits
+                              handleSearchChange({
+                                target: {
+                                  id: "mobileNo",
+                                  value
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-4 d-flex">
+                          <button
+                            type="button"
+                            className="btn btn-primary me-2"
+                            onClick={handleSearch}
+                            disabled={isSearching}
+                          >
+                            {isSearching ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Searching...
+                              </>
+                            ) : (
+                              'Search'
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={handleShowAll}
+                            disabled={isShowingAll}
+                          >
+                            <i className="mdi mdi-refresh"></i> Show All
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
 
                   <div className="d-flex mb-3">
                     <span className="badge bg-danger me-2">Priority-1</span>
@@ -535,15 +680,15 @@ Search
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
+                        {samples.length > 0 ? (
+                          samples.map((item) => (
                             <tr
-                              key={item.id}
+                              key={item.orderHdId}
                               onClick={() => handleRowClick(item)}
                               style={{ cursor: "pointer" }}
                               className="table-row-hover"
                             >
-                              <td>{item.reqDate}</td>
+                              <td>{formatDate(item.reqDate)}</td>
                               <td>{item.patientName}</td>
                               <td>{item.relation}</td>
                               <td>{item.age}</td>
@@ -552,13 +697,15 @@ Search
                               <td>{item.department}</td>
                               <td>{item.doctorName}</td>
                               <td>
-                                <span className={`badge ${getPriorityColor(item.priority)}`}>{item.priority}</span>
+                                {/* <span className={`badge ${getPriorityColor(getPriorityBadge(item.priority))}`}>
+                                  {getPriorityBadge(item.priority)}
+                                </span> */}
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="10" className="text-center py-4">
+                            <td colSpan="9" className="text-center py-4">
                               No pending samples found
                             </td>
                           </tr>
@@ -567,12 +714,12 @@ Search
                     </table>
                   </div>
 
-                  {filteredSamples.length > 0 && (
+                  {totalPages > 0 && (
                     <Pagination
-                      totalItems={filteredSamples.length}
+                      totalItems={totalElements}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
                   )}
                 </>

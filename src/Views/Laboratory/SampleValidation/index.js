@@ -1,14 +1,16 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { LAB } from "../../../config/apiConfig"
+import { GET_PENDING_SAMPLE_DEATAILS_FOR_SAMPLE_VALIDATION_END_URL, GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID, REQUEST_PARAM_SIZE, SAMPLE_VALIDATION_END_URL } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
-import { FETCH_SAMPLE_VALIDATIONS_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, REJECT_REASON_WARN_MSG, UNEXPECTED_ERROR, VALIDATION_SUCC_MSG, VALIDATION_WARN_MSG } from "../../../config/constants"
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import { FETCH_SAMPLE_VALIDATIONS_ERR_MSG, REJECT_REASON_WARN_MSG, UNEXPECTED_ERROR, VALIDATION_SUCC_MSG, VALIDATION_WARN_MSG } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const SampleValidation = () => {
   const [sampleList, setSampleList] = useState([])
   const [loading, setLoading] = useState(true)
+  const [isSearching, setIsSearching] = useState(false)
+  const [isShowingAll, setIsShowingAll] = useState(true)
   const [searchData, setSearchData] = useState({
     barCodeSearch: "",
     patientName: "",
@@ -16,79 +18,152 @@ const SampleValidation = () => {
   })
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
   const [selectedSample, setSelectedSample] = useState(null)
   const [showDetailView, setShowDetailView] = useState(false)
-  const itemsPerPage = 5
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalElements, setTotalElements] = useState(0)
+  const [masterAccept, setMasterAccept] = useState(false)
 
-  // Fetch pending validation samples data
+  const hospitalId = sessionStorage.getItem("hospitalId")
+  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE
+
+  // Fetch pending validation samples headers on component mount
   useEffect(() => {
-    fetchPendingValidationSamples()
-  }, [])
+    fetchPendingValidationHeaders()
+  }, []) // Only run once on mount
 
-  const fetchPendingValidationSamples = async () => {
+  // Separate effect for page changes without loading screen
+  useEffect(() => {
+    if (!loading) { // Only fetch if initial load is complete
+      fetchPendingValidationHeadersForPageChange()
+    }
+  }, [currentPage])
+
+  // API call for headers with search filters and pagination (with loading)
+  const fetchPendingValidationHeaders = async (isSearchAction = false) => {
     try {
-      setLoading(true);
-      const data = await getRequest(`${LAB}/order-status`);
+      if (isSearchAction) {
+        setIsSearching(true)
+      } else {
+        setLoading(true)
+      }
 
-      console.log("Raw API Response:", data); // Debugging
+      let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      if (searchData.patientName) {
+        url += `&patientName=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&patientMobileNumber=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
 
       if (data.status === 200 && data.response) {
-        console.log("First sample item:", data.response[0]); // Debugging
-        const formattedData = formatSampleValidationData(data.response);
+        const formattedData = formatHeaderData(data.response.content || []);
         setSampleList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
       } else {
-        console.error('Error fetching pending validation samples:', data.message);
+        console.error('Error fetching pending validation headers:', data.message);
         showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
       }
     } catch (error) {
-      console.error('Error fetching pending validation samples:', error);
+      console.error('Error fetching pending validation headers:', error);
       showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
     } finally {
-      setLoading(false);
+      if (isSearchAction) {
+        setIsSearching(false)
+      } else {
+        setLoading(false)
+      }
     }
   };
 
-  const formatSampleValidationData = (apiData) => {
+  // New function for page changes without loading screen
+  const fetchPendingValidationHeadersForPageChange = async () => {
+    try {
+      let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      if (searchData.patientName) {
+        url += `&patientName=${encodeURIComponent(searchData.patientName)}`
+      }
+      if (searchData.mobileNo) {
+        url += `&patientMobileNumber=${encodeURIComponent(searchData.mobileNo)}`
+      }
+
+      const data = await getRequest(url);
+
+      console.log("Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatHeaderData(data.response.content || []);
+        setSampleList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+        // Check if any search filters are applied
+        const hasFilters = searchData.patientName || searchData.mobileNo
+        setIsShowingAll(!hasFilters)
+      } else {
+        console.error('Error fetching pending validation headers:', data.message);
+        showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending validation headers:', error);
+      showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+    }
+  };
+
+  // API call for details when row is clicked
+  const fetchSampleDetails = async (sampleCollectionHeaderId) => {
+    try {
+      // setLoading(true);
+      const data = await getRequest(`${GET_PENDING_SAMPLE_DEATAILS_FOR_SAMPLE_VALIDATION_END_URL}?${REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID}=${sampleCollectionHeaderId}`);
+
+      console.log("Details API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        return data.response;
+      } else {
+        console.error('Error fetching sample details:', data.message);
+        showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+        return [];
+      }
+    } catch (error) {
+      console.error('Error fetching sample details:', error);
+      showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+      return [];
+    }
+    // finally {
+    //   setLoading(false);
+    // }
+  };
+
+  const formatHeaderData = (apiData) => {
     return apiData.map((item, index) => ({
       id: index + 1,
+      sampleCollectionHeaderId: item.sampleCollectionHeaderId,
       sample_date_time: formatDateTime(item.collectionTime),
-      order_no: item.orderNo || '',
+      order_no: item.orderNumber || '',
       patient_name: item.patientName || '',
       mobile_no: item.mobileNo || '',
-      age: item.age || '', // Now available in API
-      gender: item.sex || '',
-      modality: item.subChargeCodeName || '', // Use subChargeCodeName for modality
-      doctor_name: '', // Add if available in API
+      age: item.age || '',
+      gender: item.gender || '',
+      modality: item.subChargeCodeName || '',
+      doctor_name: item.doctorName || '',
       order_date: formatDate(item.orderDate),
-      collection_date:formatDate(item.collectionTime),
+      collection_date: formatDate(item.collectionTime),
       collection_time: formatTime(item.collectionTime),
-      department: item.subChargeCodeName || '', // Use subChargeCodeName for department too
-      reg_no: item.patientId ? item.patientId.toString() : '',
+      department: item.subChargeCodeName || '',
+      reg_no: '',
       relation: item.patientRelation || '',
       collected_by: item.collectedBy || '',
       clinical_notes: '',
-      headerId: item.headerId || 0, // Add headerId for reference
-      investigations: item.investigations ? item.investigations.map((inv, invIndex) => ({
-        id: invIndex + 1,
-        sr_no: invIndex + 1,
-        diag_no: item.orderNo || '',
-        test_code: inv.testCode || '',
-        container_name:inv.containerName||'',
-        container_id:inv.containerId||'',
-        test_name: inv.testName || '',
-        sample: inv.sampleName || '', // Now available in API as sampleName
-        quantity: inv.quantity ||'',
-        empanelled_lab: inv.empanelledLab || 'n',
-        date_time: formatDateTime(inv.dateTime),
-        accepted: false, // Default to false
-        rejected: false, // Default to false
-        reason: inv.reason || '',
-        additional_remarks: inv.remarks || '',
-        detailsId: inv.detailsId || 0, // Keep reference for API submission
-        investigationId: inv.investigationId || 0, // Add investigationId
-        sampleId: inv.sampleId || 0 // Add sampleId
-      })) : []
     }))
   }
 
@@ -113,27 +188,95 @@ const SampleValidation = () => {
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData((prevData) => ({ ...prevData, [id]: value }))
-    setCurrentPage(1)
   }
 
-  const handleRowClick = (sample) => {
-    // Create a copy of the sample and set all investigations to accepted by default
-    const sampleWithAcceptedInvestigations = {
-      ...sample,
-      investigations: sample.investigations.map(inv => ({
-        ...inv,
-        accepted: true, // Set accepted to true by default
-        rejected: false // Ensure rejected is false
-      }))
+  const handleSearch = () => {
+    setCurrentPage(1)
+    fetchPendingValidationHeaders(true)
+  }
+
+  const handleShowAll = async () => {
+    setSearchData({
+      barCodeSearch: "",
+      patientName: "",
+      mobileNo: "",
+    })
+    setCurrentPage(1)
+    setIsShowingAll(true)
+
+    try {
+      setLoading(true)
+
+      let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
+
+      const data = await getRequest(url);
+
+      console.log("All Headers API Response:", data);
+
+      if (data.status === 200 && data.response) {
+        const formattedData = formatHeaderData(data.response.content || []);
+        setSampleList(formattedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalElements(data.response.totalElements || 0);
+      } else {
+        console.error('Error fetching pending validation headers:', data.message);
+        showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+      }
+    } catch (error) {
+      console.error('Error fetching pending validation headers:', error);
+      showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+    } finally {
+      setLoading(false);
     }
-    
-    setSelectedSample(sampleWithAcceptedInvestigations)
-    setShowDetailView(true)
+  }
+
+  const handleRowClick = async (sample) => {
+    try {
+      // setLoading(true)
+      // Fetch details for the selected sampleCollectionHeaderId
+      const details = await fetchSampleDetails(sample.sampleCollectionHeaderId)
+
+      // Combine header data with details - set accepted: true by default
+      const completeSampleData = {
+        ...sample,
+        investigations: details.map((detail, index) => ({
+          id: index + 1,
+          sr_no: index + 1,
+          diag_no: sample.order_no || '',
+          test_code: detail.generatedSampleId || '',
+          container_name: detail.containerName || '',
+          container_id: detail.containerId || '',
+          test_name: detail.investigationName || '',
+          sample: detail.sampleName || '',
+          quantity: detail.quantity || '',
+          empanelled_lab: detail.empanelledLab || 'n',
+          date_time: formatDateTime(detail.sampleCollectedDatetime),
+          accepted: true, // Changed: default to true
+          rejected: false, // Default to false
+          reason: detail.rejectedReason || '',
+          additional_remarks: detail.remarks || '',
+          detailsId: detail.sampleDetailsId || 0,
+          investigationId: detail.investigationId || 0,
+          sampleId: detail.sampleId || 0
+        }))
+      }
+
+      setSelectedSample(completeSampleData)
+      setMasterAccept(true) // Set master accept to true since all are accepted by default
+      setShowDetailView(true)
+    } catch (error) {
+      console.error('Error fetching sample details:', error)
+      showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
+    }
+    //  finally {
+    //   setLoading(false)
+    // }
   }
 
   const handleBackToList = () => {
     setShowDetailView(false)
     setSelectedSample(null)
+    setMasterAccept(false)
   }
 
   const handleInvestigationChange = (investigationId, field, value) => {
@@ -156,19 +299,22 @@ const SampleValidation = () => {
       })
 
       setSelectedSample({ ...selectedSample, investigations: updatedInvestigations })
+
+      // Update masterAccept based on all investigations' accepted status
+      const allAccepted = updatedInvestigations.every(inv => inv.accepted === true);
+      setMasterAccept(allAccepted);
     }
   }
 
-  // UPDATED FUNCTION: Check if all investigations have a decision (either accepted or rejected)
+  // Check if all investigations have a decision (either accepted or rejected)
   const areAllInvestigationsDecided = () => {
     if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
       return false;
     }
-    
+
     return selectedSample.investigations.every(inv => inv.accepted === true || inv.rejected === true);
   }
 
-  // MODIFIED: Added shouldRefreshData parameter
   const showPopup = (message, type = "info", shouldRefreshData = false) => {
     setPopupMessage({
       message,
@@ -177,7 +323,7 @@ const SampleValidation = () => {
         setPopupMessage(null)
         // Only refresh data if shouldRefreshData is true AND when popup closes
         if (shouldRefreshData) {
-          fetchPendingValidationSamples()
+          fetchPendingValidationHeaders()
         }
       },
     })
@@ -188,7 +334,7 @@ const SampleValidation = () => {
       try {
         setLoading(true)
 
-        // UPDATED VALIDATION: Check if all investigations have a decision
+        // Check if all investigations have a decision
         if (!areAllInvestigationsDecided()) {
           showPopup(VALIDATION_WARN_MSG, "warning")
           setLoading(false)
@@ -208,25 +354,23 @@ const SampleValidation = () => {
 
         // Prepare the request payload according to your API
         const requestPayload = selectedSample.investigations.map(inv => ({
-          sampleHeaderId: selectedSample.headerId, // Add headerId from the sample
-          detailId: inv.detailsId, // Using detailsId from your formatted data
-          accepted: inv.accepted, // Boolean value from checkbox
-          reason: inv.rejected ? inv.reason : "" // Include reason only if rejected
+          sampleHeaderId: selectedSample.sampleCollectionHeaderId,
+          detailId: inv.detailsId,
+          accepted: inv.accepted,
+          reason: inv.rejected ? inv.reason : ""
         }))
 
         console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
 
         // Make the API call to your validation endpoint
-        const response = await postRequest(`${LAB}/validate`, requestPayload)
+        const response = await postRequest(`${SAMPLE_VALIDATION_END_URL}`, requestPayload)
 
         // Handle both JSON and plain text responses
         if (response.status === 200 || response.ok) {
-          // MODIFIED: Show success message with refresh flag - data will refresh ONLY when popup closes
           showPopup(VALIDATION_SUCC_MSG, "success", true)
-          
-          // MODIFIED: Removed immediate refresh - only close the detail view
           setShowDetailView(false)
           setSelectedSample(null)
+          setMasterAccept(false)
         } else {
           throw new Error("Failed to validate investigations")
         }
@@ -234,12 +378,10 @@ const SampleValidation = () => {
         console.error('Error validating investigations:', error)
         // Check if it's a JSON parse error and show appropriate message
         if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
-          // This means the API returned plain text instead of JSON
-          // But since we got 200 status, we consider it success
-          // MODIFIED: Show success message with refresh flag
           showPopup(VALIDATION_SUCC_MSG, "success", true)
           setShowDetailView(false)
           setSelectedSample(null)
+          setMasterAccept(false)
         } else {
           showPopup(UNEXPECTED_ERROR, "error")
         }
@@ -251,46 +393,74 @@ const SampleValidation = () => {
 
   const handleReset = () => {
     if (selectedSample) {
-      const originalSample = sampleList.find((s) => s.id === selectedSample.id)
-      setSelectedSample({ ...originalSample })
+      // Refetch details to reset to original state
+      fetchSampleDetails(selectedSample.sampleCollectionHeaderId).then(details => {
+        const refreshedSampleData = {
+          ...selectedSample,
+          investigations: details.map((detail, index) => ({
+            id: index + 1,
+            sr_no: index + 1,
+            diag_no: selectedSample.order_no || '',
+            test_code: detail.generatedSampleId || '',
+            container_name: detail.containerName || '',
+            container_id: detail.containerId || '',
+            test_name: detail.investigationName || '',
+            sample: detail.sampleName || '',
+            quantity: detail.quantity || '',
+            empanelled_lab: detail.empanelledLab || 'n',
+            date_time: formatDateTime(detail.sampleCollectedDatetime),
+            accepted: true, // Reset to true
+            rejected: false,
+            reason: detail.rejectedReason || '',
+            additional_remarks: detail.remarks || '',
+            detailsId: detail.sampleDetailsId || 0,
+            investigationId: detail.investigationId || 0,
+            sampleId: detail.sampleId || 0
+          }))
+        }
+        setSelectedSample(refreshedSampleData)
+        setMasterAccept(true) // Reset master accept to true
+      })
     }
   }
 
-  // NEW FUNCTION: Handle "Accept All" from column header checkbox
+  // Handle "Accept All" from column header checkbox
   const handleAcceptAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
         ...inv,
         accepted: true,
         rejected: false,
-        reason: '' // Clear any existing reasons
+        reason: ''
       }))
-      
-      setSelectedSample({ 
-        ...selectedSample, 
-        investigations: updatedInvestigations 
+
+      setSelectedSample({
+        ...selectedSample,
+        investigations: updatedInvestigations
       })
+      setMasterAccept(true)
     }
   }
 
-  // NEW FUNCTION: Handle "Reject All" from column header checkbox
+  // Handle "Reject All" from column header checkbox
   const handleRejectAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
         ...inv,
         accepted: false,
         rejected: true,
-        reason: 'Sample not suitable for testing' // Default reason
+        reason: 'Sample not suitable for testing'
       }))
-      
-      setSelectedSample({ 
-        ...selectedSample, 
-        investigations: updatedInvestigations 
+
+      setSelectedSample({
+        ...selectedSample,
+        investigations: updatedInvestigations
       })
+      setMasterAccept(false)
     }
   }
 
-  // NEW FUNCTION: Check if all investigations are accepted
+  // Check if all investigations are accepted
   const areAllAccepted = () => {
     if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
       return false;
@@ -298,7 +468,7 @@ const SampleValidation = () => {
     return selectedSample.investigations.every(inv => inv.accepted === true);
   }
 
-  // NEW FUNCTION: Check if all investigations are rejected
+  // Check if all investigations are rejected
   const areAllRejected = () => {
     if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
       return false;
@@ -306,32 +476,12 @@ const SampleValidation = () => {
     return selectedSample.investigations.every(inv => inv.rejected === true);
   }
 
-  const filteredSampleList = sampleList.filter((item) => {
-    const barCodeMatch =
-      searchData.barCodeSearch === "" ||
-      item.order_no.toLowerCase().includes(searchData.barCodeSearch.toLowerCase()) ||
-      item.patient_name.toLowerCase().includes(searchData.barCodeSearch.toLowerCase())
-
-    const patientNameMatch =
-      searchData.patientName === "" || item.patient_name.toLowerCase().includes(searchData.patientName.toLowerCase())
-
-    const mobileNoMatch = searchData.mobileNo === "" || (item.mobile_no && item.mobile_no.includes(searchData.mobileNo))
-
-    return barCodeMatch && patientNameMatch && mobileNoMatch
-  })
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredSampleList.slice(indexOfFirst, indexOfLast);
-
-  
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  }
 
   // Detail View
   if (showDetailView && selectedSample) {
-    // Calculate decision status for the header
-    const totalInvestigations = selectedSample.investigations.length;
-    const acceptedCount = selectedSample.investigations.filter(inv => inv.accepted).length;
-    const rejectedCount = selectedSample.investigations.filter(inv => inv.rejected).length;
     const allDecided = areAllInvestigationsDecided();
 
     return (
@@ -375,7 +525,7 @@ const SampleValidation = () => {
                           readOnly
                         />
                       </div>
-                       <div className="col-md-4">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
                         <input
                           type="text"
@@ -393,7 +543,7 @@ const SampleValidation = () => {
                           readOnly
                         />
                       </div>
-                     
+
                       <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Age</label>
                         <input
@@ -412,7 +562,7 @@ const SampleValidation = () => {
                           readOnly
                         />
                       </div>
-                      <div className="col-md-12 mt-3" >
+                      <div className="col-md-12 mt-3">
                         <label className="form-label fw-bold">Brief Clinical Notes</label>
                         <textarea
                           className="form-control"
@@ -442,9 +592,7 @@ const SampleValidation = () => {
                         />
                       </div>
                       <div className="col-md-4">
-                        <label className="form-label fw-bold">
-                          Collected By
-                        </label>
+                        <label className="form-label fw-bold">Collected By</label>
                         <input
                           type="text"
                           className="form-control"
@@ -452,7 +600,6 @@ const SampleValidation = () => {
                           readOnly
                         />
                       </div>
-                      
                     </div>
                   </div>
                 </div>
@@ -477,11 +624,22 @@ const SampleValidation = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={areAllAccepted()}
+                                checked={masterAccept}
                                 style={{ width: "20px", height: "20px", border: "2px solid black" }}
                                 onChange={(e) => {
                                   if (e.target.checked) {
                                     handleAcceptAll();
+                                  } else {
+                                    // If unchecking master accept, uncheck all accepts
+                                    const updatedInvestigations = selectedSample.investigations.map(inv => ({
+                                      ...inv,
+                                      accepted: false
+                                    }));
+                                    setSelectedSample({
+                                      ...selectedSample,
+                                      investigations: updatedInvestigations
+                                    });
+                                    setMasterAccept(false);
                                   }
                                 }}
                               />
@@ -518,7 +676,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.test_code}
-                                  style={{ width: "160px" }}
+                              style={{ width: "160px" }}
                               readOnly
                             />
                           </td>
@@ -551,7 +709,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.quantity}
-                                  style={{ width: "40px" }}
+                              style={{ width: "40px" }}
                               readOnly
                             />
                           </td>
@@ -560,8 +718,7 @@ const SampleValidation = () => {
                               type="text"
                               className="form-control"
                               value={investigation.empanelled_lab}
-                                  style={{ width: "60px" }}
-
+                              style={{ width: "60px" }}
                               readOnly
                             />
                           </td>
@@ -575,7 +732,7 @@ const SampleValidation = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "accepted", e.target.checked)
                                 }
-                                disabled={investigation.rejected} // Disable if rejected is checked
+                                disabled={investigation.rejected}
                               />
                             </div>
                           </td>
@@ -589,7 +746,7 @@ const SampleValidation = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "rejected", e.target.checked)
                                 }
-                                disabled={investigation.accepted} // Disable if accepted is checked
+                                disabled={investigation.accepted}
                               />
                             </div>
                           </td>
@@ -599,7 +756,7 @@ const SampleValidation = () => {
                               className="form-control"
                               value={investigation.reason}
                               onChange={(e) => handleInvestigationChange(investigation.id, "reason", e.target.value)}
-                              disabled={!investigation.rejected} // Only enable reason if rejected
+                              disabled={!investigation.rejected}
                               placeholder={investigation.rejected ? "Enter rejection reason..." : ""}
                             />
                           </td>
@@ -611,9 +768,9 @@ const SampleValidation = () => {
 
                 {/* Action Buttons */}
                 <div className="text-end mt-4">
-                  <button 
-                    className="btn btn-primary me-3" 
-                    onClick={handleSubmit} 
+                  <button
+                    className="btn btn-primary me-3"
+                    onClick={handleSubmit}
                     disabled={loading || !allDecided}
                   >
                     <i className="mdi mdi-content-save"></i> SUBMIT
@@ -629,8 +786,8 @@ const SampleValidation = () => {
                 {/* Submission Requirement Notice */}
                 {!allDecided && (
                   <div className="alert alert-warning mt-3">
-                    <i className="mdi mdi-alert-circle-outline"></i> 
-                    <strong>Important:</strong> All investigations must have a decision before submission. 
+                    <i className="mdi mdi-alert-circle-outline"></i>
+                    <strong>Important:</strong> All investigations must have a decision before submission.
                     Please check either "Accepted" or "Rejected" for each row.
                   </div>
                 )}
@@ -642,7 +799,7 @@ const SampleValidation = () => {
     )
   }
 
-  // List View (unchanged)
+  // List View
   return (
     <div className="content-wrapper">
       {popupMessage && (
@@ -665,64 +822,83 @@ const SampleValidation = () => {
               ) : (
                 <>
                   {/* Patient Search Section */}
-                  
-                    <div className="card-body">
-                      <form>
-                        <div className="row g-4 align-items-end">
-                          <div className="col-md-3">
-                            <label className="form-label">Bar Code Search</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="barCodeSearch"
-                              placeholder="Enter bar code"
-                              value={searchData.barCodeSearch}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Patient Name</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="patientName"
-                              placeholder="Enter patient name"
-                              value={searchData.patientName}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3">
-                            <label className="form-label">Mobile No.</label>
-                            <input
-                              type="text"
-                              className="form-control"
-                              id="mobileNo"
-                              placeholder="Enter mobile number"
-                              value={searchData.mobileNo}
-                              onChange={handleSearchChange}
-                            />
-                          </div>
-                          <div className="col-md-3 d-flex">
-                            <button type="button" className="btn btn-primary me-2">
-                              <i className="fa fa-search"></i> Search
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary"
-                              onClick={() => {
-                                setSearchData({
-                                  barCodeSearch: "",
-                                  patientName: "",
-                                  mobileNo: "",
-                                })
-                              }}
-                            >
-                              <i className="mdi mdi-refresh"></i> Reset
-                            </button>
-                          </div>
+                  <div className="card-body">
+                    <form>
+                      <div className="row g-4 align-items-end">
+                        <div className="col-md-3">
+                          <label className="form-label">Bar Code Search</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="barCodeSearch"
+                            placeholder="Enter bar code"
+                            value={searchData.barCodeSearch}
+                            onChange={handleSearchChange}
+                          />
                         </div>
-                      </form>
-                    </div>
+                        <div className="col-md-3">
+                          <label className="form-label">Patient Name</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="patientName"
+                            placeholder="Enter patient name"
+                            value={searchData.patientName}
+                            onChange={handleSearchChange}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label">Mobile No.</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            id="mobileNo"
+                            placeholder="Enter mobile number"
+                            maxLength={10}
+                            inputMode="numeric"
+                            pattern="[0-9]*"
+                            value={searchData.mobileNo}
+                            onChange={(e) => {
+                              const value = e.target.value.replace(/\D/g, ""); // allow only digits
+                              handleSearchChange({
+                                target: {
+                                  id: "mobileNo",
+                                  value
+                                }
+                              });
+                            }}
+                          />
+                        </div>
+                        <div className="col-md-3 d-flex">
+                          <button
+                            type="button"
+                            className="btn btn-primary me-2"
+                            onClick={handleSearch}
+                            disabled={isSearching}
+                          >
+                            {isSearching ? (
+                              <>
+                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                Searching...
+                              </>
+                            ) : (
+                              <>
+                                Search
+                              </>
+                            )}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary"
+                            onClick={handleShowAll}
+                            disabled={isShowingAll}
+                          >
+                            <i className="mdi mdi-refresh"></i> Show All
+                          </button>
+                        </div>
+                      </div>
+                    </form>
+                  </div>
 
                   {/* Table */}
                   <div className="table-responsive packagelist">
@@ -740,8 +916,8 @@ const SampleValidation = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
+                        {sampleList.length > 0 ? (
+                          sampleList.map((item) => (
                             <tr
                               key={item.id}
                               onClick={() => handleRowClick(item)}
@@ -770,12 +946,12 @@ const SampleValidation = () => {
                   </div>
 
                   {/* Pagination */}
-                  {filteredSampleList.length > 0 && (
+                  {totalPages > 0 && (
                     <Pagination
-                      totalItems={filteredSampleList.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      totalItems={totalElements}
+                      itemsPerPage={itemsPerPage}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
                   )}
                 </>
