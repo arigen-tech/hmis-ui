@@ -225,6 +225,7 @@ import OPDBillingRegister from './Views/Laboratory/OPDBillingRegister';
 import LabBillingRegister from './Views/Laboratory/LabBillingRegister';
 import RadiologyBillingRegister from './Views/Laboratory/RadiologyBillingRegister';
 import CollectionReportServiceCategory from './Views/Laboratory/CollectionReportServiceCategory';
+import CashierWiseCollectionReport from './Views/Laboratory/CashierWiseCollectionReport';
 
 
 
@@ -485,6 +486,7 @@ function App() {
                 <Route path="/LabBillingRegister" element={<LabBillingRegister/>} />
                 <Route path="RadiologyBillingRegister" element={<RadiologyBillingRegister/>} />
                 <Route path="/CollectionReportServiceCategory" element={<CollectionReportServiceCategory/>} />
+                <Route path="/CashierWiseCollectionReport" element={<CashierWiseCollectionReport/>} />
               </Route>
             </Route>
 

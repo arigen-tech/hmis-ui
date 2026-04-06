@@ -228,6 +228,7 @@ const validRoutes = [
   "/LabBillingRegister",
   "/RadiologyBillingRegister",
   "/CollectionReportServiceCategory",
+  "/CashierWiseCollectionReport",
   
 ];
 
