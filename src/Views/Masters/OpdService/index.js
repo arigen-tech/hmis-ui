@@ -438,34 +438,6 @@ const handleRefresh = () => {
                   <div className="row">
                     <div className="form-group col-md-4 mt-3">
                       <label>
-                        Service Code <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="serviceCode"
-                        placeholder="Service Code"
-                        onChange={handleInputChange}
-                        value={formData.serviceCode}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Service Name <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control"
-                        id="serviceName"
-                        placeholder="Service Name"
-                        onChange={handleInputChange}
-                        value={formData.serviceName}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
                         Base Tariff <span className="text-danger">*</span>
                       </label>
                       <input

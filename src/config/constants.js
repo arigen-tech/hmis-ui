@@ -1136,3 +1136,11 @@ export const CREATE_FAILURE_REASON = "Failure Reason created successfully";
 export const SAVE_FAILURE_REASON = "Failed to save Failure Reason";
 export const STATUS_UPDATED = "Status updated successfully";
 export const UPDATE_STATUS = "Failed to update status";
+
+
+//option value master
+export const FETCH_OPTION_VALUE = "Failed to fetch option values";
+export const CREATE_OPTION_VALUE = "Option value created successfully";
+export const UPDATE_OPTION_VALUE = "Option value updated successfully";
+export const DUPLICATE_OPTION_VALUE = "Option code already exists";
+export const  SAVE_OPTION_VALUE = "Failed to save Option Value";

@@ -2,15 +2,33 @@ import { useState, useEffect } from "react";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import {
+    REQUEST_PARAM_HOSPITAL_ID,
+    REQUEST_PARAM_FROM_DATE,
+    REQUEST_PARAM_TO_DATE,
+    REQUEST_PARAM_FLAG,
+    DAILY_CASH_COLLECTION_END_URL,
+    STATUS_D,
+    STATUS_P
+} from "../../../config/apiConfig";
+import {
+    FROM_DATE_FUTURE_ERR_MSG,
+    PAST_DATE_PICK_WARN_MSG,
+    REPORT_GENERATION_ERR_MSG,
+    SELECT_DATE_WARN_MSG,
+    TO_DATE_FUTURE_ERR_MSG
+} from "../../../config/constants";
 
 const CollectionReportServiceCategory = () => {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [showReport, setShowReport] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [isViewLoading, setIsViewLoading] = useState(false);
+    const [isPrintLoading, setIsPrintLoading] = useState(false);
     const [popupMessage, setPopupMessage] = useState(null);
-    const [reportData, setReportData] = useState([]);
+    const [pdfUrl, setPdfUrl] = useState(null);
+
+    const hospitalId = sessionStorage.getItem("hospitalId");
 
     const getTodayDate = () => {
         return new Date().toISOString().split('T')[0];
@@ -35,13 +53,13 @@ const CollectionReportServiceCategory = () => {
         const today = getTodayDate();
 
         if (selectedDate > today) {
-            showPopup("From date cannot be in the future", "error");
+            showPopup(FROM_DATE_FUTURE_ERR_MSG, "warning");
             setFromDate(today);
             return;
         }
 
         if (toDate && selectedDate > toDate) {
-            showPopup("From date cannot be later than To date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setFromDate(toDate);
             return;
         }
@@ -54,13 +72,13 @@ const CollectionReportServiceCategory = () => {
         const today = getTodayDate();
 
         if (selectedDate > today) {
-            showPopup("To date cannot be in the future", "error");
+            showPopup(TO_DATE_FUTURE_ERR_MSG, "warning");
             setToDate(today);
             return;
         }
 
         if (fromDate && selectedDate < fromDate) {
-            showPopup("To date cannot be earlier than From date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setToDate(fromDate);
             return;
         }
@@ -68,105 +86,79 @@ const CollectionReportServiceCategory = () => {
         setToDate(selectedDate);
     };
 
-    const handleReport = () => {
+    const validateDates = () => {
         if (!fromDate || !toDate) {
-            showPopup("Please select both From Date and To Date", "error");
-            return;
+            showPopup(SELECT_DATE_WARN_MSG, "warning");
+            return false;
         }
-
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup("From Date cannot be later than To Date", "error");
-            return;
+        if (fromDate > toDate) {
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
+            return false;
         }
-
-        setIsGenerating(true);
-
-        setTimeout(() => {
-            const mockData = generateReportData();
-            setReportData(mockData);
-            setShowReport(true);
-            setIsGenerating(false);
-        }, 1000);
+        return true;
     };
 
-    
+    // Helper function to fetch PDF from API
+    const fetchPdf = async (flag) => {
+        const params = new URLSearchParams({
+            hospitalId: hospitalId,
+            fromDate: fromDate,
+            toDate: toDate,
+            flag: flag
+        });
+
+        const reportUrl = `${DAILY_CASH_COLLECTION_END_URL}?${params.toString()}`;
+
+        const response = await fetch(reportUrl, {
+            method: "GET",
+            headers: {
+                Accept: "application/pdf",
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "Failed to fetch report");
+        }
+
+        return await response.blob();
+    };
+
+    const handleViewReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsViewLoading(true);
+            const blob = await fetchPdf(STATUS_D);
+            const fileURL = window.URL.createObjectURL(blob);
+            setPdfUrl(fileURL);
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            showPopup(`${REPORT_GENERATION_ERR_MSG}: ${err.message}`, "error");
+        } finally {
+            setIsViewLoading(false);
+        }
+    };
+
+    const handlePrintReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsPrintLoading(true);
+            await fetchPdf(STATUS_P);
+            // Backend handles the printing when flag = "p"
+        } catch (err) {
+            console.error("Error printing PDF:", err);
+            showPopup("Unable to print report", "error");
+        } finally {
+            setIsPrintLoading(false);
+        }
+    };
+
     const handleReset = () => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
-        setShowReport(false);
-        setReportData([]);
-        setCurrentPage(1);
-    };
-
-    const generateReportData = () => {
-        return [
-            {
-                serviceCategory: "OPD Consultation",
-                totalBills: 45,
-                totalAmount: 22500,
-                totalDiscount: 2250,
-                totalNetAmount: 20250,
-                cashAmount: 8500,
-                cardAmount: 6750,
-                upiAmount: 5000,
-                otherAmount: 0
-            },
-            {
-                serviceCategory: "LAB Investigations",
-                totalBills: 38,
-                totalAmount: 28500,
-                totalDiscount: 2850,
-                totalNetAmount: 25650,
-                cashAmount: 10250,
-                cardAmount: 8900,
-                upiAmount: 6500,
-                otherAmount: 0
-            },
-            {
-                serviceCategory: "Radiology",
-                totalBills: 32,
-                totalAmount: 62500,
-                totalDiscount: 6250,
-                totalNetAmount: 56250,
-                cashAmount: 18500,
-                cardAmount: 22000,
-                upiAmount: 15750,
-                otherAmount: 0
-            },
-            {
-                serviceCategory: "Pharmacy",
-                totalBills: 52,
-                totalAmount: 38500,
-                totalDiscount: 3850,
-                totalNetAmount: 34650,
-                cashAmount: 14500,
-                cardAmount: 12150,
-                upiAmount: 8000,
-                otherAmount: 0
-            },
-            {
-                serviceCategory: "Physiotherapy",
-                totalBills: 18,
-                totalAmount: 16200,
-                totalDiscount: 1620,
-                totalNetAmount: 14580,
-                cashAmount: 5800,
-                cardAmount: 4780,
-                upiAmount: 4000,
-                otherAmount: 0
-            },
-            {
-                serviceCategory: "Dental",
-                totalBills: 15,
-                totalAmount: 22500,
-                totalDiscount: 2250,
-                totalNetAmount: 20250,
-                cashAmount: 8250,
-                cardAmount: 7000,
-                upiAmount: 5000,
-                otherAmount: 0
-            },
-        ];
+        setPdfUrl(null);
     };
 
     useEffect(() => {
@@ -174,22 +166,26 @@ const CollectionReportServiceCategory = () => {
         setToDate(getTodayDate());
     }, []);
 
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
-
-    // Calculate grand totals
-    const grandTotalBills = reportData.reduce((sum, item) => sum + item.totalBills, 0);
-    const grandTotalAmount = reportData.reduce((sum, item) => sum + item.totalAmount, 0);
-    const grandTotalDiscount = reportData.reduce((sum, item) => sum + item.totalDiscount, 0);
-    const grandTotalNetAmount = reportData.reduce((sum, item) => sum + item.totalNetAmount, 0);
-    const grandCashAmount = reportData.reduce((sum, item) => sum + item.cashAmount, 0);
-    const grandCardAmount = reportData.reduce((sum, item) => sum + item.cardAmount, 0);
-    const grandUpiAmount = reportData.reduce((sum, item) => sum + item.upiAmount, 0);
-    const grandOtherAmount = reportData.reduce((sum, item) => sum + item.otherAmount, 0);
-
     return (
         <div className="content-wrapper">
+            {popupMessage && (
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
+            )}
+
+            {pdfUrl && (
+                <PdfViewer
+                    pdfUrl={pdfUrl}
+                    onClose={() => {
+                        setPdfUrl(null);
+                    }}
+                    name={`Daily Cash Collection Report (${fromDate} to ${toDate})`}
+                />
+            )}
+
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -231,49 +227,56 @@ const CollectionReportServiceCategory = () => {
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-end gap-2">
                                     <button
-                                        className="btn btn-success"
-                                        onClick={handleReport}
-                                        disabled={isGenerating}
+                                        className="btn btn-success btn-sm"
+                                        onClick={handleViewReport}
+                                        disabled={isViewLoading || isPrintLoading}
                                     >
-                                        {isGenerating ? (
+                                        {isViewLoading ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                 Generating...
                                             </>
                                         ) : (
-                                            "Report"
+                                            <>
+                                                <i className="fa fa-eye me-2"></i>
+                                                VIEW/DOWNLOAD
+                                            </>
                                         )}
                                     </button>
 
-                                  
                                     <button
                                         type="button"
-                                        className="btn btn-warning"
-                                        onClick={handleReset}
+                                        className="btn btn-warning btn-sm"
+                                        onClick={handlePrintReport}
+                                        disabled={isViewLoading || isPrintLoading}
                                     >
-                                        Reset
+                                        {isPrintLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Printing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa fa-print me-2"></i>
+                                                PRINT
+                                            </>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={handleReset}
+                                        disabled={isViewLoading || isPrintLoading}
+                                    >
+                                        RESET
                                     </button>
                                 </div>
                             </div>
-
-                            {isGenerating && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen />
-                                </div>
-                            )}
-
                         </div>
                     </div>
                 </div>
             </div>
-
-            {popupMessage && (
-                <Popup
-                    message={popupMessage.message}
-                    type={popupMessage.type}
-                    onClose={popupMessage.onClose}
-                />
-            )}
         </div>
     );
 };

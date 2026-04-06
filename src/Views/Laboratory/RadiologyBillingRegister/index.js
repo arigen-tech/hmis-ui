@@ -1,17 +1,40 @@
 import { useState, useEffect } from "react";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest } from "../../../service/apiService";
+import {
+    REQUEST_PARAM_HOSPITAL_ID,
+    REQUEST_PARAM_FROM_DATE,
+    REQUEST_PARAM_TO_DATE,
+    REQUEST_PARAM_FLAG,
+    STATUS_D,
+    STATUS_P,
+    MAS_SUB_CHARGE_CODE,
+    RADIOLOGY_BILLING_REGISTER_END_URL
+} from "../../../config/apiConfig";
+import {
+    FROM_DATE_FUTURE_ERR_MSG,
+    PAST_DATE_PICK_WARN_MSG,
+    REPORT_GENERATION_ERR_MSG,
+    SELECT_DATE_WARN_MSG,
+    TO_DATE_FUTURE_ERR_MSG,
+    FETCH_SUB_CHARGE_CODES_ERR_MSG
+} from "../../../config/constants";
 
 const RadiologyBillingRegister = () => {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
-    const [modality, setModality] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [showReport, setShowReport] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedSubChargeCodeId, setSelectedSubChargeCodeId] = useState(null);
+    const [modalityOptions, setModalityOptions] = useState([]);
+    const [isFetchingModalities, setIsFetchingModalities] = useState(false);
+    
+    const [isViewLoading, setIsViewLoading] = useState(false);
+    const [isPrintLoading, setIsPrintLoading] = useState(false);
     const [popupMessage, setPopupMessage] = useState(null);
-    const [reportData, setReportData] = useState([]);
+    const [pdfUrl, setPdfUrl] = useState(null);
+
+    const hospitalId = sessionStorage.getItem("hospitalId");
 
     const getTodayDate = () => {
         return new Date().toISOString().split('T')[0];
@@ -31,176 +54,179 @@ const RadiologyBillingRegister = () => {
         });
     };
 
+    // Fetch modality dropdown options from API
+    const fetchModalityOptions = async () => {
+        try {
+            setIsFetchingModalities(true);
+            const response = await getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`);
+            
+            if (response && response.response) {
+                // Filter for radiology modalities (mainChargeId === 11 for radiology)
+                // Adjust this filter based on your actual mainChargeId for radiology
+                const filteredSubCharges = response.response.filter(item => item.mainChargeId === 11);
+                
+                const options = filteredSubCharges.map(item => ({
+                    id: item.subId,
+                    name: `${item.subName} (${item.subCode})`
+                }));
+                
+                setModalityOptions([
+                    { id: "", name: "All Modalities" },
+                    ...options
+                ]);
+            }
+        } catch (error) {
+            console.error("Error fetching modality options:", error);
+            showPopup(FETCH_SUB_CHARGE_CODES_ERR_MSG, "error");
+        } finally {
+            setIsFetchingModalities(false);
+        }
+    };
+
     const handleFromDateChange = (e) => {
         const selectedDate = e.target.value;
         const today = getTodayDate();
-
         if (selectedDate > today) {
-            showPopup("From date cannot be in the future", "error");
+            showPopup(FROM_DATE_FUTURE_ERR_MSG, "warning");
             setFromDate(today);
             return;
         }
-
         if (toDate && selectedDate > toDate) {
-            showPopup("From date cannot be later than To date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setFromDate(toDate);
             return;
         }
-
         setFromDate(selectedDate);
     };
 
     const handleToDateChange = (e) => {
         const selectedDate = e.target.value;
         const today = getTodayDate();
-
         if (selectedDate > today) {
-            showPopup("To date cannot be in the future", "error");
+            showPopup(TO_DATE_FUTURE_ERR_MSG, "warning");
             setToDate(today);
             return;
         }
-
         if (fromDate && selectedDate < fromDate) {
-            showPopup("To date cannot be earlier than From date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setToDate(fromDate);
             return;
         }
-
         setToDate(selectedDate);
     };
 
-    const handleReport = () => {
+    const validateDates = () => {
         if (!fromDate || !toDate) {
-            showPopup("Please select both From Date and To Date", "error");
-            return;
+            showPopup(SELECT_DATE_WARN_MSG, "warning");
+            return false;
         }
-
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup("From Date cannot be later than To Date", "error");
-            return;
+        if (fromDate > toDate) {
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
+            return false;
         }
-
-        setIsGenerating(true);
-
-        setTimeout(() => {
-            const mockData = generateReportData();
-            setReportData(mockData);
-            setShowReport(true);
-            setIsGenerating(false);
-        }, 1000);
+        return true;
     };
 
-    
+    // Helper function to fetch PDF from API
+    const fetchPdf = async (flag) => {
+        const params = new URLSearchParams({
+            [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+            [REQUEST_PARAM_FROM_DATE]: fromDate,
+            [REQUEST_PARAM_TO_DATE]: toDate
+        });
+
+        // Only add subChargeCodeId if it's not empty (backend will convert null to 0L)
+        if (selectedSubChargeCodeId && selectedSubChargeCodeId !== "") {
+            params.append("subChargeCodeId", selectedSubChargeCodeId);
+        }
+
+        params.append(REQUEST_PARAM_FLAG, flag);
+
+        const reportUrl = `${RADIOLOGY_BILLING_REGISTER_END_URL}?${params.toString()}`;
+
+        const response = await fetch(reportUrl, {
+            method: "GET",
+            headers: {
+                Accept: "application/pdf",
+            },
+        });
+
+        if (!response.ok) {
+            throw new Error("Failed to fetch report");
+        }
+
+        return await response.blob();
+    };
+
+    const handleViewReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsViewLoading(true);
+            const blob = await fetchPdf(STATUS_D);
+            const fileURL = window.URL.createObjectURL(blob);
+            setPdfUrl(fileURL);
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            showPopup(`${REPORT_GENERATION_ERR_MSG}: ${err.message}`, "error");
+        } finally {
+            setIsViewLoading(false);
+        }
+    };
+
+    const handlePrintReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsPrintLoading(true);
+            await fetchPdf(STATUS_P);
+            // Just fetch the PDF with flag "p" - backend handles the printing
+        } catch (err) {
+            console.error("Error printing PDF:", err);
+            showPopup("Unable to print report", "error");
+        } finally {
+            setIsPrintLoading(false);
+        }
+    };
 
     const handleReset = () => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
-        setModality("");
-        setShowReport(false);
-        setReportData([]);
-        setCurrentPage(1);
+        setSelectedSubChargeCodeId(null);
     };
 
-    const generateReportData = () => {
-        return [
-            {
-                billNo: "RAD-2025-001",
-                billDate: "10-Apr-2025",
-                patientName: "Ramesh Kumar",
-                uhid: "UHID001",
-                modality: "X-Ray",
-                investigation: "Chest X-Ray PA View",
-                amount: 350,
-                discount: 35,
-                netAmount: 315,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "RAD-2025-002",
-                billDate: "10-Apr-2025",
-                patientName: "Sunita Devi",
-                uhid: "UHID002",
-                modality: "Ultrasound",
-                investigation: "Abdomen Ultrasound",
-                amount: 1200,
-                discount: 0,
-                netAmount: 1200,
-                paymentMode: "Card"
-            },
-            {
-                billNo: "RAD-2025-003",
-                billDate: "11-Apr-2025",
-                patientName: "Amit Singh",
-                uhid: "UHID003",
-                modality: "CT Scan",
-                investigation: "CT Head Plain",
-                amount: 2500,
-                discount: 250,
-                netAmount: 2250,
-                paymentMode: "UPI"
-            },
-            {
-                billNo: "RAD-2025-004",
-                billDate: "11-Apr-2025",
-                patientName: "Priya Patel",
-                uhid: "UHID004",
-                modality: "MRI",
-                investigation: "MRI Knee",
-                amount: 3500,
-                discount: 350,
-                netAmount: 3150,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "RAD-2025-005",
-                billDate: "12-Apr-2025",
-                patientName: "Rajesh Khanna",
-                uhid: "UHID005",
-                modality: "X-Ray",
-                investigation: "Lumbar Spine X-Ray",
-                amount: 350,
-                discount: 0,
-                netAmount: 350,
-                paymentMode: "Card"
-            },
-            {
-                billNo: "RAD-2025-006",
-                billDate: "12-Apr-2025",
-                patientName: "Neha Gupta",
-                uhid: "UHID006",
-                modality: "Ultrasound",
-                investigation: "Pelvic Ultrasound",
-                amount: 1000,
-                discount: 100,
-                netAmount: 900,
-                paymentMode: "UPI"
-            },
-            {
-                billNo: "RAD-2025-007",
-                billDate: "13-Apr-2025",
-                patientName: "Vikram Singh",
-                uhid: "UHID007",
-                modality: "CT Scan",
-                investigation: "CT Chest",
-                amount: 3000,
-                discount: 300,
-                netAmount: 2700,
-                paymentMode: "Cash"
-            },
-        ];
+    const handleModalityChange = (e) => {
+        const value = e.target.value;
+        setSelectedSubChargeCodeId(value);
     };
 
     useEffect(() => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
+        setSelectedSubChargeCodeId(null);
+        fetchModalityOptions();
     }, []);
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
+            {popupMessage && (
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
+            )}
+
+            {pdfUrl && (
+                <PdfViewer
+                    pdfUrl={pdfUrl}
+                    onClose={() => {
+                        setPdfUrl(null);
+                    }}
+                    name={`Radiology Billing Register Report`}
+                />
+            )}
+
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -243,17 +269,20 @@ const RadiologyBillingRegister = () => {
                                         Modality
                                     </label>
                                     <select
-                                        className="form-control"
-                                        value={modality}
-                                        onChange={(e) => setModality(e.target.value)}
+                                        className="form-select"
+                                        value={selectedSubChargeCodeId || ""}
+                                        onChange={handleModalityChange}
+                                        disabled={isFetchingModalities}
                                     >
-                                        <option value="">All</option>
-                                        <option value="X-Ray">X-Ray</option>
-                                        <option value="Ultrasound">Ultrasound</option>
-                                        <option value="CT Scan">CT Scan</option>
-                                        <option value="MRI">MRI</option>
-                                        <option value="Mammography">Mammography</option>
-                                        <option value="DEXA Scan">DEXA Scan</option>
+                                        {isFetchingModalities ? (
+                                            <option>Loading modalities...</option>
+                                        ) : (
+                                            modalityOptions.map((modality) => (
+                                                <option key={modality.id} value={modality.id}>
+                                                    {modality.name}
+                                                </option>
+                                            ))
+                                        )}
                                     </select>
                                 </div>
                             </div>
@@ -261,48 +290,56 @@ const RadiologyBillingRegister = () => {
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-end gap-2">
                                     <button
-                                        className="btn btn-success"
-                                        onClick={handleReport}
-                                        disabled={isGenerating}
+                                        className="btn btn-success btn-sm"
+                                        onClick={handleViewReport}
+                                        disabled={isViewLoading || isPrintLoading || isFetchingModalities}
                                     >
-                                        {isGenerating ? (
+                                        {isViewLoading ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                 Generating...
                                             </>
                                         ) : (
-                                            "Report"
+                                            <>
+                                                <i className="fa fa-eye me-2"></i>
+                                                VIEW/DOWNLOAD
+                                            </>
                                         )}
                                     </button>
 
                                     <button
                                         type="button"
-                                        className="btn btn-warning"
+                                        className="btn btn-warning btn-sm"
+                                        onClick={handlePrintReport}
+                                        disabled={isViewLoading || isPrintLoading || isFetchingModalities}
                                     >
-                                        Print 
+                                        {isPrintLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Printing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa fa-print me-2"></i>
+                                                PRINT
+                                            </>
+                                        )}
                                     </button>
 
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={handleReset}
+                                        disabled={isViewLoading || isPrintLoading || isFetchingModalities}
+                                    >
+                                        RESET
+                                    </button>
                                 </div>
                             </div>
-
-                            {isGenerating && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen />
-                                </div>
-                            )}
-
                         </div>
                     </div>
                 </div>
-            </div>
-
-            {popupMessage && (
-                <Popup
-                    message={popupMessage.message}
-                    type={popupMessage.type}
-                    onClose={popupMessage.onClose}
-                />
-            )}
+            </div>  
         </div>
     );
 };

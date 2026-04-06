@@ -408,6 +408,9 @@ export const OPD_REGISTER_END_URL=`${ALL_REPORTS}/opdRegister`;
 export const MAS_GENDER_GET_ALL_END_URL=`${MASTERS}/gender/getAll`;
 export const MAS_ICD_GET_ALL_END_URL=`${MASTERS}/masIcd/all`;
 export const OPD_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/opdBillingRegister`;
+export const LAB_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/labBillingRegister`;
+export const RADIOLOGY_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/radiologyBillingRegister`; 
+export const DAILY_CASH_COLLECTION_END_URL = `${ALL_REPORTS}/dailyCashCollection`;// Update path as needed
 
 
 export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
@@ -474,5 +477,9 @@ export const LAB_AMENDMENT_ALL_TYPE = `${MASTERS}/lab-amendment-type/all`;
 
 
 
+export const CONFIGURATION = `/configuration`;
+
+export const GET_ALL_CHILDREN_BY_PARENT_ID_END_URL = `${CONFIGURATION}/getAllChildrenByParentId`;
 
 
+export const MAS_QUESTION_OPTION_VALUE = `${MASTERS}/masQuestionOptionValue`;

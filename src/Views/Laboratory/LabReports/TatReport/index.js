@@ -151,6 +151,7 @@ const TATReport = () => {
       }
       
       const params = new URLSearchParams();
+      params.append('hospitalId', getHospitalId());
       if (selectedInvestigation?.id) {
         params.append('investigationId', selectedInvestigation.id);
       }
@@ -210,11 +211,12 @@ const TATReport = () => {
       }
       
       const params = new URLSearchParams();
+      params.append('hospitalId', getHospitalId());
       if (selectedInvestigation?.id) {
         params.append('investigationId', selectedInvestigation.id);
       }
       if (selectedModality?.id) {
-        params.append('subchargeCodeId', selectedModality.id);
+        params.append('subChargeCodeId', selectedModality.id);
       }
       params.append('fromDate', fromDate);
       params.append('toDate', toDate);

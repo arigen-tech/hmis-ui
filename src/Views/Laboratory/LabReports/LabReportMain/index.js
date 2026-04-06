@@ -28,6 +28,8 @@ const LabReports = () => {
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
 
+  const hospitalId = sessionStorage.getItem("hospitalId");
+
   // Function to get today's date in YYYY-MM-DD format
   const getTodayDate = () => {
     return new Date().toISOString().split('T')[0];
@@ -89,6 +91,7 @@ const LabReports = () => {
     try {
       // Build query parameters
       const params = new URLSearchParams();
+      params.append('hospitalId', hospitalId);
       if (mobileNo) params.append('mobileNo', mobileNo);
       if (patientName) params.append('patientName', patientName);
 

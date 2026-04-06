@@ -4,8 +4,17 @@ import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
-import { ALL_REPORTS } from "../../../../config/apiConfig";
-import { INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG, LAB_REPORT_GENERATION_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, FUTURE_DATE_PICK_WARN_MSG, PAST_DATE_PICK_WARN_MSG, SELECT_FROM_DATE_FIRST_WARN_MSG, FETCH_ORDER_TRACKING_ERR_MSG } from "../../../../config/constants";
+import { ALL_REPORTS, LAB } from "../../../../config/apiConfig";
+import { 
+    INVALID_DATE_PICK_WARN_MSG, 
+    SELECT_DATE_WARN_MSG, 
+    LAB_REPORT_GENERATION_ERR_MSG, 
+    INVALID_ORDER_ID_ERR_MSG, 
+    FUTURE_DATE_PICK_WARN_MSG, 
+    PAST_DATE_PICK_WARN_MSG, 
+    SELECT_FROM_DATE_FIRST_WARN_MSG, 
+    FETCH_ORDER_TRACKING_ERR_MSG 
+} from "../../../../config/constants";
 
 const OrderTrackingReport = () => {
     const [fromDate, setFromDate] = useState("");
@@ -19,6 +28,7 @@ const OrderTrackingReport = () => {
     const [currentPage, setCurrentPage] = useState(1);
     const [popupMessage, setPopupMessage] = useState(null);
     const [reportData, setReportData] = useState([]);
+    const [totalElements, setTotalElements] = useState(0);
 
     // PDF viewing states
     const [pdfUrl, setPdfUrl] = useState(null);
@@ -26,6 +36,16 @@ const OrderTrackingReport = () => {
     
     // Track loading states for individual reports
     const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
+
+    // Get hospitalId from sessionStorage
+    const getHospitalId = () => {
+        try {
+            return sessionStorage.getItem('hospitalId');
+        } catch (error) {
+            console.error("Error getting hospitalId from sessionStorage:", error);
+            return null;
+        }
+    };
 
     // Get today's date in YYYY-MM-DD format
     const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -168,23 +188,38 @@ const OrderTrackingReport = () => {
     // View report handler for individual records
     const handleViewReport = (record) => generateLabReport(record);
 
-    // Fetch order tracking report
-    const fetchOrderTrackingReport = async () => {
+    // Fetch order tracking report with pagination
+    const fetchOrderTrackingReport = async (page = 1, isSearchAction = false) => {
         try {
-            setIsSearching(true);
+            if (isSearchAction) {
+                setIsSearching(true);
+            }
+            
+            const hospitalId = getHospitalId();
+            if (!hospitalId) {
+                showPopup("Hospital ID not found. Please login again.", "error");
+                return;
+            }
             
             const params = new URLSearchParams();
+            params.append('hospitalId', hospitalId);
             if (patientName.trim()) params.append('patientName', patientName.trim());
             if (mobileNo.trim()) params.append('mobileNo', mobileNo.trim());
             if (fromDate && toDate) {
                 params.append('fromDate', fromDate);
                 params.append('toDate', toDate);
             }
+            params.append('page', page - 1);
+            params.append('size', DEFAULT_ITEMS_PER_PAGE);
 
-            const response = await getRequest(`/report/order-track-report?${params.toString()}`);
+            const response = await getRequest(`${LAB}/orderTrackingReport?${params.toString()}`);
             
             if (response?.response) {
-                const mappedData = response.response.map(item => ({
+                const pageData = response.response;
+                const content = pageData.content || [];
+                const total = pageData.totalElements || 0;
+                
+                const mappedData = content.map(item => ({
                     dgOrderHdId: item.dgOrderHdId,
                     orderNo: item.orderNum || "",
                     orderDate: formatDateForDisplay(item.orderDate) || "",
@@ -198,19 +233,30 @@ const OrderTrackingReport = () => {
                 }));
                 
                 setReportData(mappedData);
+                setTotalElements(total);
                 setShowReport(true);
             } else {
                 setReportData([]);
+                setTotalElements(0);
                 setShowReport(true);
             }
         } catch (error) {
             console.error("Error fetching order tracking report:", error);
             showPopup(FETCH_ORDER_TRACKING_ERR_MSG, "error");
             setReportData([]);
+            setTotalElements(0);
             setShowReport(true);
         } finally {
-            setIsSearching(false);
+            if (isSearchAction) {
+                setIsSearching(false);
+            }
         }
+    };
+
+    // Handle page change
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        fetchOrderTrackingReport(page, false);
     };
 
     // Handle search
@@ -237,74 +283,8 @@ const OrderTrackingReport = () => {
             }
         }
 
-        fetchOrderTrackingReport();
         setCurrentPage(1);
-    };
-
-    // Handle view report (main button)
-    const handleViewReportMain = () => {
-        if ((fromDate && !toDate) || (!fromDate && toDate)) {
-            showPopup(SELECT_DATE_WARN_MSG, "warning");
-            return;
-        }
-
-        if (fromDate && toDate) {
-            if (new Date(fromDate) > new Date(toDate)) {
-                showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-                return;
-            }
-
-            const fromDateObj = new Date(fromDate);
-            const toDateObj = new Date(toDate);
-            const diffTime = Math.abs(toDateObj - fromDateObj);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays > 7) {
-                showPopup("Date range cannot exceed 7 days", "error");
-                return;
-            }
-        }
-
-        if (!showReport || reportData.length === 0) {
-            fetchOrderTrackingReport();
-        }
-        setCurrentPage(1);
-    };
-
-    // Handle print report (main button)
-    const handlePrintReportMain = async () => {
-        if ((fromDate && !toDate) || (!fromDate && toDate)) {
-            showPopup(SELECT_DATE_WARN_MSG, "warning");
-            return;
-        }
-
-        if (fromDate && toDate) {
-            if (new Date(fromDate) > new Date(toDate)) {
-                showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-                return;
-            }
-
-            const fromDateObj = new Date(fromDate);
-            const toDateObj = new Date(toDate);
-            const diffTime = Math.abs(toDateObj - fromDateObj);
-            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-            if (diffDays > 7) {
-                showPopup("Date range cannot exceed 7 days", "error");
-                return;
-            }
-        }
-
-        if (!showReport || reportData.length === 0) {
-            setIsGenerating(true);
-            await fetchOrderTrackingReport();
-        }
-
-        setIsPrinting(true);
-        setTimeout(() => {
-            showPopup("Order Tracking Report would be printed here", "info");
-            setIsPrinting(false);
-        }, 1000);
+        fetchOrderTrackingReport(1, true);
     };
 
     // Handle reset
@@ -315,6 +295,7 @@ const OrderTrackingReport = () => {
         setMobileNo("");
         setShowReport(false);
         setReportData([]);
+        setTotalElements(0);
         setCurrentPage(1);
         setPdfUrl(null);
         setSelectedRecord(null);
@@ -324,11 +305,6 @@ const OrderTrackingReport = () => {
     useEffect(() => {
         // No default dates set
     }, []);
-
-    // Calculate pagination
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
@@ -403,27 +379,11 @@ const OrderTrackingReport = () => {
 
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-between">
-                                    <button
-                                        type="button"
-                                        className="btn btn-success"
-                                        onClick={handleSearch}
-                                        disabled={isSearching || isPrinting || !isSearchButtonEnabled()}
-                                    >
-                                        {isSearching ? (
-                                            <>
-                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                Searching...
-                                            </>
-                                        ) : (
-                                            "Search"
-                                        )}
-                                    </button>
-                                    
                                     <div className="d-flex gap-2">
                                         <button
                                             type="button"
-                                            className="btn btn-warning"
-                                            onClick={handleViewReportMain}
+                                            className="btn btn-primary"
+                                            onClick={handleSearch}
                                             disabled={isSearching || isPrinting || !isSearchButtonEnabled()}
                                         >
                                             {isSearching ? (
@@ -432,43 +392,23 @@ const OrderTrackingReport = () => {
                                                     Searching...
                                                 </>
                                             ) : (
-                                                "View Report"
+                                                "Search"
                                             )}
                                         </button>
-                                        <button
-                                            type="button"
-                                            className="btn btn-warning"
-                                            onClick={handlePrintReportMain}
-                                            disabled={isPrinting || !isSearchButtonEnabled()}
-                                        >
-                                            {isPrinting ? (
-                                                <>
-                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                    Printing...
-                                                </>
-                                            ) : (
-                                                "Print Report"
-                                            )}
-                                        </button>
+
                                         <button
                                             type="button"
                                             className="btn btn-secondary"
                                             onClick={handleReset}
                                             disabled={isSearching || isPrinting}
                                         >
-                                            Reset
+                                            <i className="mdi mdi-refresh me-1"></i> Reset
                                         </button>
                                     </div>
                                 </div>
                             </div>
 
-                            {(isSearching || isGenerating) && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen />
-                                </div>
-                            )}
-
-                            {!isSearching && !isGenerating && showReport && (
+                            {!isSearching && showReport && (
                                 <div className="row mt-4">
                                     <div className="col-12">
                                         <div className="card">
@@ -493,7 +433,7 @@ const OrderTrackingReport = () => {
                                                         </thead>
                                                         <tbody>
                                                             {reportData.length > 0 ? (
-                                                                currentItems.map((row, index) => (
+                                                                reportData.map((row, index) => (
                                                                     <tr key={index}>
                                                                         <td>{row.orderNo}</td>
                                                                         <td>{row.orderDate}</td>
@@ -537,12 +477,13 @@ const OrderTrackingReport = () => {
                                                     </table>
                                                 </div>
                                                 
-                                                {reportData.length > 0 && (
+                                                {/* PAGINATION USING REUSABLE COMPONENT WITH SERVER-SIDE PAGINATION */}
+                                                {totalElements > 0 && (
                                                     <Pagination
-                                                        totalItems={reportData.length}
+                                                        totalItems={totalElements}
                                                         itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                                                         currentPage={currentPage}
-                                                        onPageChange={setCurrentPage}
+                                                        onPageChange={handlePageChange}
                                                     />
                                                 )}
                                             </div>
