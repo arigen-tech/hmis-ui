@@ -3,8 +3,18 @@ import { getRequest } from "../../../../service/apiService";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { MAS_SUB_CHARGE_CODE } from "../../../../config/apiConfig";
-import { FETCH_PENDING_INVESTIGATIONS_ERR_MSG, FETCH_SUB_CHARGE_CODES_ERR_MSG, FUTURE_DATE_PICK_WARN_MSG, INVALID_DATE_PICK_WARN_MSG, PAST_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG } from "../../../../config/constants";
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import { MAS_SUB_CHARGE_CODE, ALL_REPORTS, LAB } from "../../../../config/apiConfig";
+import { 
+  FETCH_PENDING_INVESTIGATIONS_ERR_MSG, 
+  FETCH_SUB_CHARGE_CODES_ERR_MSG, 
+  FUTURE_DATE_PICK_WARN_MSG, 
+  INVALID_DATE_PICK_WARN_MSG, 
+  PAST_DATE_PICK_WARN_MSG, 
+  SELECT_DATE_WARN_MSG,
+  LAB_REPORT_GENERATION_ERR_MSG,
+  LAB_REPORT_PRINT_ERR_MSG
+} from "../../../../config/constants";
 
 const PendingInvestigationsReport = () => {
     const [fromDate, setFromDate] = useState("");
@@ -18,9 +28,25 @@ const PendingInvestigationsReport = () => {
     const [reportData, setReportData] = useState([]);
     const [isSearching, setIsSearching] = useState(false);
     const [isFetchingModalities, setIsFetchingModalities] = useState(false);
+    const [totalElements, setTotalElements] = useState(0);
+    
+    // Add PDF viewer state - SEPARATE LOADING STATES
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [isViewLoading, setIsViewLoading] = useState(false); // For VIEW/DOWNLOAD button
+    const [isPrintLoading, setIsPrintLoading] = useState(false); // For PRINT button
 
     const getTodayDate = () => {
         return new Date().toISOString().split('T')[0];
+    };
+
+    // Get hospitalId from sessionStorage
+    const getHospitalId = () => {
+        try {
+            return sessionStorage.getItem('hospitalId');
+        } catch (error) {
+            console.error("Error getting hospitalId from sessionStorage:", error);
+            return null;
+        }
     };
 
     // Popup function
@@ -32,7 +58,7 @@ const PendingInvestigationsReport = () => {
         });
     };
 
-     const formatDateForDisplay = (dateString) => {
+    const formatDateForDisplay = (dateString) => {
         if (!dateString) return "";
         try {
             const date = new Date(dateString);
@@ -100,9 +126,7 @@ const PendingInvestigationsReport = () => {
             const response = await getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`);
             
             if (response && response.response) {
-
                 const filteredSubCharges = response.response.filter(item => item.mainChargeId === 12);
-
                 const options = filteredSubCharges.map(item => ({
                     value: item.subId,
                     label: `${item.subName} (${item.subCode})`
@@ -121,24 +145,39 @@ const PendingInvestigationsReport = () => {
         }
     };
 
-    // Fetch incomplete investigations report
-    const fetchIncompleteInvestigationsReport = async () => {
+    // Fetch incomplete investigations report with pagination
+    const fetchIncompleteInvestigationsReport = async (page = 1, isSearchAction = false) => {
         try {
-            setIsSearching(true);
+            if (isSearchAction) {
+                setIsSearching(true);
+            }
+            
+            const hospitalId = getHospitalId();
+            if (!hospitalId) {
+                showPopup("Hospital ID not found. Please login again.", "error");
+                return;
+            }
             
             const params = new URLSearchParams();
+            params.append('hospitalId', hospitalId);
             params.append('fromDate', fromDate);
             params.append('toDate', toDate);
+            params.append('page', page - 1);
+            params.append('size', DEFAULT_ITEMS_PER_PAGE);
             
             if (modality) {
                 params.append('subChargeCodeId', modality);
             }
 
-            const response = await getRequest(`/report/incomplete-investigation-report?${params.toString()}`);
+            const response = await getRequest(`${LAB}/incompleteInvestigation/report?${params.toString()}`);
             
             if (response && response.response) {
+                const pageData = response.response;
+                const content = pageData.content || [];
+                const total = pageData.totalElements || 0;
+                
                 // Map the API response to match your table structure
-                const mappedData = response.response.map(item => ({
+                const mappedData = content.map(item => ({
                     orderNo: item.orderNo || "",
                     orderDate: formatDateForDisplay(item.orderDate),
                     patientName: item.patientName,
@@ -150,19 +189,30 @@ const PendingInvestigationsReport = () => {
                 }));
                 
                 setReportData(mappedData);
+                setTotalElements(total);
                 setShowReport(true);
             } else {
                 setReportData([]);
+                setTotalElements(0);
                 setShowReport(true);
             }
         } catch (error) {
             console.error("Error fetching incomplete investigations report:", error);
             showPopup(FETCH_PENDING_INVESTIGATIONS_ERR_MSG, "error");
             setReportData([]);
+            setTotalElements(0);
             setShowReport(true);
         } finally {
-            setIsSearching(false);
+            if (isSearchAction) {
+                setIsSearching(false);
+            }
         }
+    };
+
+    // Handle page change
+    const handlePageChange = (page) => {
+        setCurrentPage(page);
+        fetchIncompleteInvestigationsReport(page, false);
     };
 
     // Handle search
@@ -179,8 +229,8 @@ const PendingInvestigationsReport = () => {
             return;
         }
 
-        fetchIncompleteInvestigationsReport();
         setCurrentPage(1);
+        fetchIncompleteInvestigationsReport(1, true);
     };
 
     // Handle reset
@@ -194,7 +244,95 @@ const PendingInvestigationsReport = () => {
         setModality("");
         setShowReport(false);
         setReportData([]);
+        setTotalElements(0);
         setCurrentPage(1);
+    };
+
+    // Generate PDF report for viewing/downloading
+    const generatePdfReport = async (flag = "D") => {
+        // Validate required fields
+        if (!fromDate || !toDate) {
+            showPopup(SELECT_DATE_WARN_MSG, "error");
+            return;
+        }
+
+        // Validate date range
+        if (new Date(fromDate) > new Date(toDate)) {
+            showPopup(INVALID_DATE_PICK_WARN_MSG, "error");
+            return;
+        }
+
+        const hospitalId = getHospitalId();
+        if (!hospitalId) {
+            showPopup("Hospital ID not found. Please login again.", "error");
+            return;
+        }
+
+        // Set loading state based on flag
+        if (flag === "D") {
+            setIsViewLoading(true);
+        } else if (flag === "P") {
+            setIsPrintLoading(true);
+        }
+        
+        setPdfUrl(null);
+
+        try {
+            const params = new URLSearchParams();
+            params.append('hospitalId', hospitalId);
+            params.append('fromDate', fromDate);
+            params.append('toDate', toDate);
+            params.append('flag', flag);
+            
+            if (modality) {
+                params.append('subChargeCodeId', modality);
+            }
+
+            const url = `${ALL_REPORTS}/pendingInvestigation?${params.toString()}`;
+
+            const response = await fetch(url, {
+                method: "GET",
+                headers: {
+                    Accept: "application/pdf",
+                },
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to generate PDF: ${response.statusText}`);
+            }
+
+            if (flag === "D") {
+                // For viewing/downloading
+                const blob = await response.blob();
+                const fileURL = window.URL.createObjectURL(blob);
+                setPdfUrl(fileURL);
+            } else if (flag === "P") {
+                // For printing - you can implement print logic here
+                // showPopup("Report sent to printer successfully!", "success");
+            }
+
+        } catch (error) {
+            console.error("Error generating PDF", error);
+            const errorMsg = flag === "D" ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
+            showPopup(errorMsg, "error");
+        } finally {
+            // Reset the specific loading state
+            if (flag === "D") {
+                setIsViewLoading(false);
+            } else if (flag === "P") {
+                setIsPrintLoading(false);
+            }
+        }
+    };
+
+    // Handle view report (opens PDF viewer)
+    const handleViewReport = () => {
+        generatePdfReport("D");
+    };
+
+    // Handle print report
+    const handlePrintReport = () => {
+        generatePdfReport("P");
     };
 
     // Initialize with default dates and fetch modalities
@@ -210,13 +348,28 @@ const PendingInvestigationsReport = () => {
         fetchModalityOptions();
     }, []);
 
-    // Calculate pagination
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
-
     return (
         <div className="content-wrapper">
+            {/* Add Popup Component */}
+            {popupMessage && (
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
+            )}
+
+            {/* Add PDF Viewer Component */}
+            {pdfUrl && (
+                <PdfViewer
+                    pdfUrl={pdfUrl}
+                    onClose={() => {
+                        setPdfUrl(null);
+                    }}
+                    name={`Pending Investigations Report - ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}`}
+                />
+            )}
+
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -278,40 +431,73 @@ const PendingInvestigationsReport = () => {
                             </div>
 
                             <div className="row mb-4">
-                                <div className="col-12 d-flex justify-content-end gap-2">
-                                    <button
-                                        className="btn btn-success"
-                                        onClick={handleSearch}
-                                        disabled={isSearching || !fromDate || !toDate}
-                                    >
-                                        {isSearching ? (
-                                            <>
-                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                                Searching...
-                                            </>
-                                        ) : (
-                                            "Search"
-                                        )}
-                                    </button>
-                                   
-                                    <button
-                                        type="button"
-                                        className="btn btn-secondary"
-                                        onClick={handleReset}
-                                        disabled={isSearching}
-                                    >
-                                        Reset
-                                    </button>
+                                <div className="col-12 d-flex justify-content-between">
+                                    <div className="d-flex gap-2">
+                                        <button
+                                            className="btn btn-primary"
+                                            onClick={handleSearch}
+                                            disabled={isSearching || !fromDate || !toDate}
+                                        >
+                                            {isSearching ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Searching...
+                                                </>
+                                            ) : (
+                                                "Search"
+                                            )}
+                                        </button>
+                                       
+                                        <button
+                                            type="button"
+                                            className="btn btn-secondary"
+                                            onClick={handleReset}
+                                            disabled={isSearching}
+                                        >
+                                            <i className="mdi mdi-refresh me-1"></i> Reset
+                                        </button>
+                                    </div>
+                                    
+                                    <div className="d-flex gap-2">
+                                        <button
+                                            type="button"
+                                            className="btn btn-success btn-sm"
+                                            onClick={handleViewReport}
+                                            disabled={isSearching || isViewLoading || !fromDate || !toDate}
+                                        >
+                                            {isViewLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Generating...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                                                </>
+                                            )}
+                                        </button>
+                                        <button
+                                            type="button"
+                                            className="btn btn-warning btn-sm"
+                                            onClick={handlePrintReport}
+                                            disabled={isSearching || isPrintLoading || !fromDate || !toDate}
+                                        >
+                                            {isPrintLoading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Printing...
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <i className="fa fa-print me-2"></i> PRINT
+                                                </>
+                                            )}
+                                        </button>
+                                    </div>
                                 </div>
                             </div>
 
-                            {isSearching && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen />
-                                </div>
-                            )}
-
-                            {showReport && !isSearching  && (
+                            {!isSearching && showReport && (
                                 <div className="row mt-4">
                                     <div className="col-12">
                                         <div className="card">
@@ -339,37 +525,37 @@ const PendingInvestigationsReport = () => {
                                                             </tr>
                                                         </thead>
                                                         <tbody>
-                                                            {reportData.length > 0 ?(
-                                                                currentItems.map((row, index) => (
-                                                                <tr key={index}>
-                                                                    <td>{row.orderNo}</td>
-                                                                    <td>{row.orderDate}</td>
-                                                                    <td>{row.patientName}</td>
-                                                                    <td>{row.mobileNo}</td>
-                                                                    <td>{row.ageGender}</td>
-                                                                    <td>{row.sampleId}</td>
-                                                                    <td>{row.investigationName}</td>
-                                                                    <td>{row.currentStatus}</td>
-                                                                </tr>
-                                                            ))
-                                                            ):(
-                                                                 <tr>
+                                                            {reportData.length > 0 ? (
+                                                                reportData.map((row, index) => (
+                                                                    <tr key={index}>
+                                                                        <td>{row.orderNo}</td>
+                                                                        <td>{row.orderDate}</td>
+                                                                        <td>{row.patientName}</td>
+                                                                        <td>{row.mobileNo}</td>
+                                                                        <td>{row.ageGender}</td>
+                                                                        <td>{row.sampleId}</td>
+                                                                        <td>{row.investigationName}</td>
+                                                                        <td>{row.currentStatus}</td>
+                                                                    </tr>
+                                                                ))
+                                                            ) : (
+                                                                <tr>
                                                                     <td colSpan="8" className="text-center py-4">
                                                                         No Record Found
                                                                     </td>
                                                                 </tr>
-                                                            )
-                                                            }
+                                                            )}
                                                         </tbody>
-                                                    </table>
+                                                     </table>
                                                 </div>
 
-                                                {reportData.length > DEFAULT_ITEMS_PER_PAGE && (
+                                                {/* PAGINATION USING REUSABLE COMPONENT WITH SERVER-SIDE PAGINATION */}
+                                                {totalElements > 0 && (
                                                     <Pagination
-                                                        totalItems={reportData.length}
+                                                        totalItems={totalElements}
                                                         itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                                                         currentPage={currentPage}
-                                                        onPageChange={setCurrentPage}
+                                                        onPageChange={handlePageChange}
                                                     />
                                                 )}
                                             </div>
@@ -377,20 +563,10 @@ const PendingInvestigationsReport = () => {
                                     </div>
                                 </div>
                             )}
-
-                            
                         </div>
                     </div>
                 </div>
             </div>
-
-            {popupMessage && (
-                <Popup
-                    message={popupMessage.message}
-                    type={popupMessage.type}
-                    onClose={popupMessage.onClose}
-                />
-            )}
         </div>
     );
 };

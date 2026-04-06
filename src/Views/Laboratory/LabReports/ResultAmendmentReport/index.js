@@ -3,8 +3,15 @@ import { getRequest } from "../../../../service/apiService";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { MAS_INVESTIGATION, MAX_MONTHS_BACK } from "../../../../config/apiConfig";
-import { FETCH_AMEND_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG, SELECT_DATE_WARN_MSG } from "../../../../config/constants";
+import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import { MAS_INVESTIGATION, MAX_MONTHS_BACK, ALL_REPORTS, LAB } from "../../../../config/apiConfig";
+import { 
+  FETCH_AMEND_REPORT_ERR_MSG, 
+  INVALID_DATE_PICK_WARN_MSG, 
+  SELECT_DATE_WARN_MSG,
+  LAB_REPORT_GENERATION_ERR_MSG,
+  LAB_REPORT_PRINT_ERR_MSG
+} from "../../../../config/constants";
 
 const ResultAmendmentReport = () => {
   const [fromDate, setFromDate] = useState("");
@@ -17,7 +24,7 @@ const ResultAmendmentReport = () => {
   const [modality, setModality] = useState("");
   const [selectedModality, setSelectedModality] = useState(null);
   const [modalityOptions, setModalityOptions] = useState([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -25,6 +32,12 @@ const ResultAmendmentReport = () => {
   // API Data states
   const [investigationOptions, setInvestigationOptions] = useState([]);
   const [reportData, setReportData] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  
+  // Add PDF viewer state - SEPARATE LOADING STATES
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [isViewLoading, setIsViewLoading] = useState(false); // For VIEW/DOWNLOAD button
+  const [isPrintLoading, setIsPrintLoading] = useState(false); // For PRINT button
   
   // Function to get today's date in YYYY-MM-DD format
   const getTodayDate = () => new Date().toISOString().split('T')[0];
@@ -38,6 +51,16 @@ const ResultAmendmentReport = () => {
     months += d2.getMonth() - d1.getMonth();
     
     return months;
+  };
+
+  // Get hospitalId from sessionStorage
+  const getHospitalId = () => {
+    try {
+      return sessionStorage.getItem('hospitalId');
+    } catch (error) {
+      console.error("Error getting hospitalId from sessionStorage:", error);
+      return null;
+    }
   };
 
   // Check if search buttons should be enabled
@@ -96,6 +119,14 @@ const ResultAmendmentReport = () => {
     }
   };
 
+  // Format result with unit
+  const formatResultWithUnit = (result, unit) => {
+    if (!result && !unit) return "";
+    if (!result) return "";
+    if (!unit) return result;
+    return `${result} ${unit}`;
+  };
+
   // Fetch investigation options
   const fetchInvestigations = async () => {
     try {
@@ -128,20 +159,21 @@ const ResultAmendmentReport = () => {
     }
   };
 
-  // Format result with unit
-  const formatResultWithUnit = (result, unit) => {
-    if (!result && !unit) return "";
-    if (!result) return "";
-    if (!unit) return result;
-    return `${result} ${unit}`;
-  };
-
-  // Fetch amendment audit report
-  const fetchAmendAuditReport = async () => {
+  // Fetch amendment audit report with pagination
+  const fetchAmendAuditReport = async (page = 1, isSearchAction = false) => {
     try {
-      setIsGenerating(true);
+      if (isSearchAction) {
+        setIsSearching(true);
+      }
+      
+      const hospitalId = getHospitalId();
+      if (!hospitalId) {
+        showPopup("Hospital ID not found. Please login again.", "error");
+        return;
+      }
       
       const params = new URLSearchParams();
+      params.append('hospitalId', hospitalId);
       if (patientMobile) params.append('phnNum', patientMobile);
       if (patientName) params.append('patientName', patientName);
       if (selectedInvestigation?.id) params.append('investigationId', selectedInvestigation.id);
@@ -150,11 +182,17 @@ const ResultAmendmentReport = () => {
         params.append('fromDate', fromDate);
         params.append('toDate', toDate);
       }
+      params.append('page', page - 1);
+      params.append('size', DEFAULT_ITEMS_PER_PAGE);
 
-      const response = await getRequest(`/report/lab-amend-audit?${params.toString()}`);
+      const response = await getRequest(`${LAB}/amendAudit/result?${params.toString()}`);
       
       if (response?.response) {
-        const mappedData = response.response.map(item => ({
+        const pageData = response.response;
+        const content = pageData.content || [];
+        const total = pageData.totalElements || 0;
+        
+        const mappedData = content.map(item => ({
           amendId: item.amendId || "",
           sampleId: item.sampleId || "",
           patientName: item.patientName || "",
@@ -168,19 +206,45 @@ const ResultAmendmentReport = () => {
         }));
         
         setReportData(mappedData);
+        setTotalElements(total);
         setShowReport(true);
       } else {
         setReportData([]);
+        setTotalElements(0);
         setShowReport(true);
       }
     } catch (error) {
       console.error("Error fetching amendment audit report:", error);
       showPopup(FETCH_AMEND_REPORT_ERR_MSG, "error");
       setReportData([]);
+      setTotalElements(0);
       setShowReport(true);
     } finally {
-      setIsGenerating(false);
+      if (isSearchAction) {
+        setIsSearching(false);
+      }
     }
+  };
+
+  // Validate date inputs
+  const validateDates = () => {
+    // If both dates are provided, validate them
+    if (fromDate && toDate) {
+      // Validate that from date is not after to date
+      if (new Date(fromDate) > new Date(toDate)) {
+        showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
+        return false;
+      }
+
+      // Validate that date range doesn't exceed MAX_MONTHS_BACK
+      const monthDiff = getMonthDifference(fromDate, toDate);
+      if (monthDiff > MAX_MONTHS_BACK) {
+        showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
+        return false;
+      }
+    }
+
+    return true;
   };
 
   // Handle from date change
@@ -214,8 +278,8 @@ const ResultAmendmentReport = () => {
     setSelectedModality(modality);
   }
 
-  // Clear all search fields
-  const handleClearAll = () => {
+  // Handle reset button
+  const handleReset = () => {
     setFromDate("");
     setToDate("");
     setPatientMobile("");
@@ -224,67 +288,111 @@ const ResultAmendmentReport = () => {
     setSelectedInvestigation(null);
     setModality("");
     setSelectedModality(null);
-    setShowReport(false);
     setCurrentPage(1);
+    setShowReport(false);
+    setReportData([]);
+    setTotalElements(0);
+  }
+
+  // Handle page change
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchAmendAuditReport(page, false);
   };
 
-  // Handle view report
-  const handleViewReport = () => {
+  // Handle search (grid data)
+  const handleSearch = () => {
     // Check if dates are partially filled
     if ((fromDate && !toDate) || (!fromDate && toDate)) {
       showPopup(SELECT_DATE_WARN_MSG, "warning");
       return;
     }
 
-    // If both dates are provided, validate them
-    if (fromDate && toDate) {
-      // Validate that from date is not after to date
-      if (new Date(fromDate) > new Date(toDate)) {
-        showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-        return;
-      }
+    if (!validateDates()) return;
 
-      // Validate that date range doesn't exceed MAX_MONTHS_BACK
-      const monthDiff = getMonthDifference(fromDate, toDate);
-      if (monthDiff > MAX_MONTHS_BACK) {
-        showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
-        return;
-      }
+    setCurrentPage(1);
+    fetchAmendAuditReport(1, true);
+  };
+
+  // Generate PDF report for viewing/downloading
+  const generatePdfReport = async (flag = "D") => {
+    // Check if dates are partially filled
+    if ((fromDate && !toDate) || (!fromDate && toDate)) {
+      showPopup(SELECT_DATE_WARN_MSG, "warning");
+      return;
     }
 
-    fetchAmendAuditReport();
-    setCurrentPage(1);
+    if (!validateDates()) return;
+
+    const hospitalId = getHospitalId();
+    if (!hospitalId) {
+      showPopup("Hospital ID not found. Please login again.", "error");
+      return;
+    }
+
+    // Set loading state based on flag
+    if (flag === "D") {
+      setIsViewLoading(true);
+    } else if (flag === "P") {
+      setIsPrintLoading(true);
+    }
+    
+    setPdfUrl(null);
+
+    try {
+      const params = new URLSearchParams();
+      params.append('hospitalId', hospitalId);
+      
+      if (fromDate) params.append('fromDate', fromDate);
+      if (toDate) params.append('toDate', toDate);
+      if (patientMobile) params.append('mobileNumber', patientMobile);
+      if (patientName) params.append('patientName', patientName);
+      if (selectedInvestigation?.id) params.append('investigationId', selectedInvestigation.id);
+      if (selectedModality?.id) params.append('subChargeCodeId', selectedModality.id);
+      params.append('flag', flag);
+
+      const url = `${ALL_REPORTS}/resultAmendment?${params.toString()}`;
+
+      const response = await fetch(url, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error(`Failed to generate PDF: ${response.statusText}`);
+      }
+
+      if (flag === "D") {
+        // For viewing/downloading
+        const blob = await response.blob();
+        const fileURL = window.URL.createObjectURL(blob);
+        setPdfUrl(fileURL);
+      } 
+
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      const errorMsg = flag === "D" ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
+      showPopup(errorMsg, "error");
+    } finally {
+      // Reset the specific loading state
+      if (flag === "D") {
+        setIsViewLoading(false);
+      } else if (flag === "P") {
+        setIsPrintLoading(false);
+      }
+    }
+  };
+
+  // Handle view report (opens PDF viewer)
+  const handleViewReport = () => {
+    generatePdfReport("D");
   };
 
   // Handle print report
   const handlePrintReport = () => {
-    // Check if dates are partially filled
-    if ((fromDate && !toDate) || (!fromDate && toDate)) {
-      showPopup(SELECT_DATE_WARN_MSG, "warning");
-      return;
-    }
-
-    // If both dates are provided, validate them
-    if (fromDate && toDate) {
-      // Validate that from date is not after to date
-      if (new Date(fromDate) > new Date(toDate)) {
-        showPopup(INVALID_DATE_PICK_WARN_MSG, "warning");
-        return;
-      }
-
-      // Validate that date range doesn't exceed MAX_MONTHS_BACK
-      const monthDiff = getMonthDifference(fromDate, toDate);
-      if (monthDiff > MAX_MONTHS_BACK) {
-        showPopup(`Date range cannot exceed ${MAX_MONTHS_BACK} months.`, "error");
-        return;
-      }
-    }
-
-    setIsGenerating(true);
-    setTimeout(() => {
-      showPopup("Result Amendment Report would be printed here", "info");
-      setIsGenerating(false);
-    }, 1000);
+    generatePdfReport("P");
   };
 
   // Initialize
@@ -293,13 +401,28 @@ const ResultAmendmentReport = () => {
     fetchModalities();
   }, []);
 
-  // Calculate pagination
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = reportData.slice(indexOfFirst, indexOfLast);
-
   return (
     <div className="content-wrapper">
+      {/* Add Popup Component */}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
+
+      {/* Add PDF Viewer Component */}
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+          }}
+          name={`Result Amendment Report - ${formatDateForDisplay(fromDate)} to ${formatDateForDisplay(toDate)}`}
+        />
+      )}
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -407,14 +530,14 @@ const ResultAmendmentReport = () => {
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-success"
-                      onClick={handleViewReport}
-                      disabled={isGenerating || !isSearchButtonEnabled()}
+                      className="btn btn-primary"
+                      onClick={handleSearch}
+                      disabled={isSearching || !isSearchButtonEnabled()}
                     >
-                      {isGenerating ? (
+                      {isSearching ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                          Generating...
+                          Searching...
                         </>
                       ) : (
                         "Search"
@@ -423,55 +546,53 @@ const ResultAmendmentReport = () => {
                     <button
                       type="button"
                       className="btn btn-secondary"
-                      onClick={handleClearAll}
-                      disabled={isGenerating}
+                      onClick={handleReset}
+                      disabled={isSearching}
                     >
-                      Clear All
+                      <i className="mdi mdi-refresh me-1"></i> Reset
                     </button>
                   </div>
                   
                   <div className="d-flex gap-2">
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-success btn-sm"
                       onClick={handleViewReport}
-                      disabled={isGenerating || !isSearchButtonEnabled()}
+                      disabled={isSearching || isViewLoading || !isSearchButtonEnabled()}
                     >
-                      {isGenerating ? (
+                      {isViewLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                           Generating...
                         </>
                       ) : (
-                        "View Report"
+                        <>
+                          <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
+                        </>
                       )}
                     </button>
                     <button
                       type="button"
-                      className="btn btn-warning"
+                      className="btn btn-warning btn-sm"
                       onClick={handlePrintReport}
-                      disabled={isGenerating || !isSearchButtonEnabled()}
+                      disabled={isSearching || isPrintLoading || !isSearchButtonEnabled()}
                     >
-                      {isGenerating ? (
+                      {isPrintLoading ? (
                         <>
                           <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                           Printing...
                         </>
                       ) : (
-                        "Print Report"
+                        <>
+                          <i className="fa fa-print me-2"></i> PRINT
+                        </>
                       )}
                     </button>
                   </div>
                 </div>
               </div>
 
-              {isGenerating && (
-                <div className="text-center py-4">
-                  <LoadingScreen />
-                </div>
-              )}
-
-              {!isGenerating && showReport && (
+              {!isSearching && showReport && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
@@ -495,7 +616,7 @@ const ResultAmendmentReport = () => {
                             </thead>
                             <tbody>
                               {reportData.length > 0 ? (
-                                currentItems.map((row, index) => (
+                                reportData.map((row, index) => (
                                   <tr key={index}>
                                     <td>{row.sampleId}</td>
                                     <td>{row.patientName}</td>
@@ -518,12 +639,13 @@ const ResultAmendmentReport = () => {
                           </table>
                         </div>
                         
-                        {reportData.length > 0 && (
+                        {/* PAGINATION USING REUSABLE COMPONENT WITH SERVER-SIDE PAGINATION */}
+                        {totalElements > 0 && (
                           <Pagination
-                            totalItems={reportData.length}
+                            totalItems={totalElements}
                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                             currentPage={currentPage}
-                            onPageChange={setCurrentPage}
+                            onPageChange={handlePageChange}
                           />
                         )}
                       </div>
@@ -535,14 +657,6 @@ const ResultAmendmentReport = () => {
           </div>
         </div>
       </div>
-      
-      {popupMessage && (
-        <Popup
-          message={popupMessage.message}
-          type={popupMessage.type}
-          onClose={popupMessage.onClose}
-        />
-      )}
     </div>
   );
 };
