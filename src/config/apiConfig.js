@@ -485,3 +485,4 @@ export const CONFIGURATION = `/configuration`;
 export const GET_ALL_CHILDREN_BY_PARENT_ID_END_URL = `${CONFIGURATION}/getAllChildrenByParentId`;
 
 
+export const MAS_QUESTION_OPTION_VALUE = `${MASTERS}/masQuestionOptionValue`;
