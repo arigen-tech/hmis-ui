@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { API_HOST, MAS_TEMPLATE, ASSIGN_TEMPLATES, MAS_APPLICATION,GET_APPS_BY_TEMPLATE_ID } from "../../../config/apiConfig";
+import { API_HOST, MAS_TEMPLATE, ASSIGN_TEMPLATES, MAS_APPLICATION,GET_APPS_BY_TEMPLATE_ID, GET_ALL_CHILDREN_BY_PARENT_ID_END_URL } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 
 const Assignapplication = () => {
@@ -159,7 +159,7 @@ const Assignapplication = () => {
 
         try {
             
-            const childResponse = await getRequest(`${MAS_APPLICATION}/getAllChildrenByParentId/${selectedParentId}?templateId=${selectedTemplate || ''}`);
+            const childResponse = await getRequest(`${GET_ALL_CHILDREN_BY_PARENT_ID_END_URL}/${selectedParentId}?templateId=${selectedTemplate || ''}`);
 
             if (!childResponse || !childResponse.response) {
                 throw new Error("Failed to fetch child applications");

@@ -1,4 +1,7 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
+ //export const API_HOST = 'http://103.133.215.182:8081/hims';
+
+export const API_HOST = 'http://localhost:8080';
+//  export const API_HOST = 'http://localhost:8080';
 
 //export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
@@ -477,5 +480,8 @@ export const LAB_AMENDMENT_ALL_TYPE = `${MASTERS}/lab-amendment-type/all`;
 
 
 
+export const CONFIGURATION = `/configuration`;
+
+export const GET_ALL_CHILDREN_BY_PARENT_ID_END_URL = `${CONFIGURATION}/getAllChildrenByParentId`;
 
 
