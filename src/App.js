@@ -227,8 +227,13 @@ import RadiologyBillingRegister from './Views/Laboratory/RadiologyBillingRegiste
 import CollectionReportServiceCategory from './Views/Laboratory/CollectionReportServiceCategory';
 import CashierWiseCollectionReport from './Views/Laboratory/CashierWiseCollectionReport';
 
-
-
+import InsuranceMaster from './Views/Masters/InsuranceMaster';
+import TPAMaster from './Views/Masters/TPAMaster';
+import IPDPackageMaster from './Views/Masters/IPDPackageMaster';
+import CorporateMaster from './Views/Masters/CorporateMaster';
+import IPDConsultationTariff from './Views/Masters/IPDConsultationTariff';
+import PackageConfiguration from './Views/Masters/PackageConfiguration';
+import InsuranceTPAMapping from './Views/Masters/InsuranceTPAMapping';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -487,6 +492,13 @@ function App() {
                 <Route path="RadiologyBillingRegister" element={<RadiologyBillingRegister/>} />
                 <Route path="/CollectionReportServiceCategory" element={<CollectionReportServiceCategory/>} />
                 <Route path="/CashierWiseCollectionReport" element={<CashierWiseCollectionReport/>} />
+                <Route path="/InsuranceMaster" element={<InsuranceMaster/>}/>
+                <Route path="/TPAMaster" element={<TPAMaster/>}/>
+                <Route path="/IPDPackage" element={<IPDPackageMaster/>}/>
+                <Route path="/CorporateMaster" element={<CorporateMaster/>}/>
+                <Route path="/IPDConsultationTariff" element={<IPDConsultationTariff/>}/>
+                <Route path="/PackageConfiguration" element={<PackageConfiguration/>}/>
+                <Route path="/InsuranceTPAMapping" element={<InsuranceTPAMapping/>}/>
               </Route>
             </Route>
 

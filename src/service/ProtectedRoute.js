@@ -229,6 +229,13 @@ const validRoutes = [
   "/RadiologyBillingRegister",
   "/CollectionReportServiceCategory",
   "/CashierWiseCollectionReport",
+  "/InsuranceMaster",
+  "/TPAMaster",
+  "/IPDPackageMaster",
+  "/CorporateMaster",
+  "/IPDConsultationTariff",
+  "/PackageConfiguration",
+  "/InsuranceTPAMapping",
   
 ];
 

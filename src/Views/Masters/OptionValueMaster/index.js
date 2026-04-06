@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -5,22 +6,31 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 
+import { MAS_QUESTION_OPTION_VALUE } from "../../../config/apiConfig";
+import {
+  getRequest,
+  postRequest,
+  putRequest,
+} from "../../../service/apiService";
+
+import {
+  FETCH_OPTION_VALUE,
+  CREATE_OPTION_VALUE,
+  UPDATE_OPTION_VALUE ,
+  SAVE_OPTION_VALUE,
+  DUPLICATE_OPTION_VALUE ,
+  STATUS_UPDATED,
+  UPDATE_STATUS,
+} from "../../../config/constants";
+
 const OptionValueMaster = () => {
+  const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
-  const [loading] = useState(false);
-
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    id: null,
-    newStatus: "",
-    Code: "",
-  });
-
   const [formData, setFormData] = useState({
-    Code: "",
-    Value: "",
-    Name: "",
-    Score: "",
+    optionCode: "",
+    optionValue: "",
+    optionName: "",
+    optionScore: "",
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -28,175 +38,206 @@ const OptionValueMaster = () => {
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
-
-  // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
-  const [goPage, setGoPage] = useState("");
-  const itemsPerPage = 5;
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
 
-  // ================= SAMPLE DATA =================
+
+  const MAX_LENGTH = 50;
+
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return "N/A";
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      return `${day}/${month}/${year}`;
+    } catch {
+      return "N/A";
+    }
+  };
+
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(
+        `${MAS_QUESTION_OPTION_VALUE}/getAll/${flag}`
+      );
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_OPTION_VALUE , "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    setData([
-  
-
-      {
-        id: 2,
-        Code: "BN",
-        Value: "Little interest or pleasure in doing things",
-        Score: 2,
-        Name: "depression Screener",
-
-        status: "Y",
-      },
-      {
-        id: 3,
-        Code: "AN",
-        Value: "Feeling nervous, anxious or on edge",
-        Score: 3,
-        Name: "Anxiety Screener",
-
-        status: "Y",
-      },
-      {
-        id: 4,
-        Code: "AN3",
-        Value: "Not being able to stop worrying",
-
-        Score: 4,
-        Name: "stress Assessment",
-        status: "Y",
-      },
-      {
-        id: 4,
-        Code: "AN3",
-        Value: "Not being able to stop worrying",
-        Score: 5,
-        Name: "Stress Assessment",
-        status: "Y",
-      },
-      
-    ]);
+    fetchData();
   }, []);
 
-  // ================= SEARCH =================
-  const filteredData = data.filter((rec) =>
-  rec.Code?.toLowerCase().includes(searchQuery.toLowerCase())
-);
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+  const filteredData = data.filter(
+    (rec) =>
+      (rec?.optionCode ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (rec?.optionValue ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
+  );
 
-  // ================= FORM =================
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
 
-    let updated = { ...formData, [id]: value };
+  const currentItems = filteredData.slice(
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
+  );
 
-    if (id === "Code") {
-      updated.Name = "";
-    }
-
-    setFormData(updated);
-
-    setIsFormValid(
-      updated.Code && updated.Value && updated.Name && updated.score !== "",
-    );
-  };
-
-  const resetForm = () => {
-    setFormData({
-      Code: "",
-      Value: "",
-      Name: "",
-      Score: "",
-    });
-    setIsFormValid(false);
-  };
-
-  // ================= SAVE =================
-  const handleSave = (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
-
-    if (editingRecord) {
-      setData(
-        data.map((rec) =>
-          rec.id === editingRecord.id ? { ...rec, ...formData } : rec,
-        ),
-      );
-      showPopup("Record updated successfully", "success");
-    } else {
-      setData([
-        ...data,
-        {
-          id: Date.now(),
-          ...formData,
-          status: "Y",
-        },
-      ]);
-      showPopup("Record added successfully", "success");
-    }
-
-    resetForm();
-    setEditingRecord(null);
-    setShowForm(false);
-  };
-
-  // ================= EDIT =================
-  const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData(rec);
-    setShowForm(true);
-    setIsFormValid(true);
-  };
-
-  // ================= STATUS =================
-  const handleSwitchChange = (id, newStatus, Code) => {
-    setConfirmDialog({ isOpen: true, id, newStatus, Code });
-  };
-  const handleRefresh = () => {
-    setSearchQuery("");
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed) {
-      setData(
-        data.map((rec) =>
-          rec.id === confirmDialog.id
-            ? { ...rec, status: confirmDialog.newStatus }
-            : rec,
-        ),
-      );
-      showPopup("Status updated successfully", "success");
-    }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", Code: "" });
-  };
-
+  // ================= POPUP =================
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+  // ================= FORM =================
+  const resetForm = () => {
+    setFormData({
+      optionCode: "",
+      optionValue: "",
+      optionName: "",
+      optionScore: "",
+    });
+    setIsFormValid(false);
+    setEditingRecord(null);
+  };
+
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(
+      updated.optionCode.trim() !== "" &&
+        updated.optionValue.trim() !== "" &&
+        updated.optionName.trim() !== "" &&
+        updated.optionScore !== ""
+    );
+  };
+
+  // ================= SAVE =================
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+    const newCode = formData.optionCode.trim().toLowerCase();
+   const duplicate = data.find(
+  (rec) =>
+    rec.optionCode?.toLowerCase() === newCode &&
+    (!editingRecord || rec.id !== editingRecord.id)
+);
+
+    if (duplicate) {
+      showPopup(DUPLICATE_OPTION_VALUE , "error");
+      return;
+    }
+
+    try {
+      if (editingRecord) {
+        await putRequest(
+          `${MAS_QUESTION_OPTION_VALUE}/update/${editingRecord.id}`,
+          formData
+        );
+
+        showPopup(UPDATE_OPTION_VALUE , "success");
+      } else {
+        await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
+          ...formData,
+          status: "Y",
+        });
+
+        showPopup(CREATE_OPTION_VALUE , "success");
+      }
+
+      fetchData();
+      handleCancel();
+    } catch {
+      showPopup(SAVE_OPTION_VALUE, "error");
+    }
+  };
+
+  // ================= EDIT =================
+ const handleEdit = (rec) => {
+  setEditingRecord(rec);
+  setFormData({
+    optionCode: rec.optionCode,
+    optionValue: rec.optionValue,
+    optionName: rec.questionName,
+    optionScore: rec.optionScore,
+  });
+
+  setIsFormValid(true);
+  setShowForm(true);
+};
+  // ================= STATUS =================
+  const handleSwitchChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+    });
+  };
+
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    try {
+      await putRequest(
+        `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
+      );
+
+      showPopup(STATUS_UPDATED, "success");
+      fetchData();
+    } catch {
+      showPopup(UPDATE_STATUS, "error");
+    } finally {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  // ================= REFRESH =================
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchData();
   };
 
   // ================= UI =================
   return (
     <div className="content-wrapper">
       <div className="card form-card">
-        {/* HEADER */}
-        <div className="card-header d-flex justify-content-between align-items-center">
+        <div className="card-header d-flex justify-content-between">
           <h4>Option Value Master</h4>
+
           <div className="d-flex">
             {!showForm && (
               <input
-                type="text"
-                style={{ width: "220px" }}
                 className="form-control me-2"
-                placeholder="Search..."
+                style={{ width: "220px" }}
+                placeholder="Search"
                 value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
+                onChange={handleSearchChange}
               />
             )}
 
@@ -204,74 +245,65 @@ const OptionValueMaster = () => {
               <>
                 <button
                   className="btn btn-success me-2"
-                  onClick={() => setShowForm(true)}
+                  onClick={() => {
+                    resetForm();
+                    setShowForm(true);
+                  }}
                 >
                   Add
                 </button>
+
                 <button className="btn btn-success" onClick={handleRefresh}>
                   Show All
                 </button>
               </>
             ) : (
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowForm(false)}
-              >
+              <button className="btn btn-secondary" onClick={handleCancel}>
                 Back
               </button>
             )}
           </div>
         </div>
+
         <div className="card-body">
-          {/* ================= LIST ================= */}
-          {!showForm && (
+          {loading ? (
+            <LoadingScreen />
+          ) : !showForm ? (
             <>
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
+              <table className="table table-bordered">
+                <thead>
                   <tr>
                     <th>Option Code</th>
                     <th>Option Value</th>
                     <th>Option Score</th>
-                    <th>Question Name</th>
+                    <th>Option Name</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
+
                 <tbody>
                   {currentItems.map((rec) => (
                     <tr key={rec.id}>
-                      <td>{rec.Code}</td>
-                      <td>{rec.Value}</td>
-                      <td>{rec.Score}</td>
-                      <td>{rec.Name}</td>
+                     <td>{rec.optionCode}</td>
+<td>{rec.optionValue}</td>
+<td>{rec.optionScore}</td>
+<td>{rec.optionName}</td>
 
                       <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={rec.status === "Y"}
-                            onChange={() =>
-                              handleSwitchChange(
-                                rec.id,
-                                rec.status === "Y" ? "N" : "Y",
-                                rec.Code,
-                              )
-                            }
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status === "Y" ? "Active" : "Inactive"}
-                          </label>
-                        </div>
+                        <input
+                          type="checkbox"
+checked={rec.status?.toLowerCase() === "y"}
+                          onChange={() => handleSwitchChange(rec)}
+                        />
                       </td>
 
                       <td>
                         <button
                           className="btn btn-success btn-sm"
-                          disabled={rec.status !== "Y"}
                           onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
+disabled={rec.status?.toLowerCase() !== "y"}                        >
+                          Edit
                         </button>
                       </td>
                     </tr>
@@ -279,7 +311,6 @@ const OptionValueMaster = () => {
                 </tbody>
               </table>
 
-              {/* PAGINATION */}
               <Pagination
                 totalItems={filteredData.length}
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
@@ -287,76 +318,36 @@ const OptionValueMaster = () => {
                 onPageChange={setCurrentPage}
               />
             </>
-          )}
+          ) : (
+            <form onSubmit={handleSave}>
+              <input
+                name="optionCode"
+                placeholder="Code"
+                value={formData.optionCode}
+                onChange={handleInputChange}
+              />
+              <input
+                name="optionValue"
+                placeholder="Value"
+                value={formData.optionValue}
+                onChange={handleInputChange}
+              />
+              <input
+                name=" optionScore"
+                placeholder="Score"
+                value={formData.optionScore}
+                onChange={handleInputChange}
+              />
+              <input
+                name="optionName"
+                placeholder="Name"
+                value={formData.optionName}
+                onChange={handleInputChange}
+              />
 
-          {/* ================= FORM ================= */}
-          {showForm && (
-            <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-4">
-                <label>
-                Option  Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="Code"
-                  className="form-control"
-                  value={formData.Code}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="col-md-4">
-                <label>
-                 Option Value<span className="text-danger">*</span>
-                </label>
-                <input
-                  id="Value"
-                  className="form-control"
-                  value={formData.Value}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="col-md-4">
-                <label>
-                 Option Score <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="Score"
-                  type="number"
-                  className="form-control"
-                  value={formData.Score}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="col-md-4">
-  <label>
-    Question Name <span className="text-danger">*</span>
-  </label>
-
-  <select
-    id="Name"
-    className="form-select"
-    value={formData.Name}
-    onChange={handleInputChange}
-  >
-    <option value="">Select Question</option>
-    <option value="Depression Screener">Depression Screener</option>
-    <option value="Anxiety Screener">Anxiety Screener</option>
-    <option value="Stress Assessment">Stress Assessment</option>
-  </select>
-</div>
-
-              <div className="col-12 text-end">
-                               <button className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
-
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => setShowForm(false)}
-                >
-                  Cancel
-                </button>
-              </div>
+              <button disabled={!isFormValid}>
+                {editingRecord ? "Update" : "Save"}
+              </button>
             </form>
           )}
 
@@ -364,30 +355,17 @@ const OptionValueMaster = () => {
 
           {confirmDialog.isOpen && (
             <div className="modal d-block">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-body">
-                    Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y"
-                      ? "activate"
-                      : "deactivate"}{" "}
-                    <strong>{confirmDialog.Code}</strong>?
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
-                      No
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
-                      Yes
-                    </button>
-                  </div>
-                </div>
+              <div className="modal-content p-3">
+                <p>
+                  Are you sure to{" "}
+                  {confirmDialog.newStatus === "y"
+                    ? "Activate"
+                    : "Deactivate"}{" "}
+                  ?
+                </p>
+
+                <button onClick={() => handleConfirm(true)}>Yes</button>
+                <button onClick={() => handleConfirm(false)}>No</button>
               </div>
             </div>
           )}
