@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { getRequest } from "../../../../service/apiService";
-import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
-import { ALL_REPORTS, LAB } from "../../../../config/apiConfig";
+import {formatDateForDisplay} from "../../../../utils/dateUtils";
+import {  LAB_REPORT_URL_WRT_ORDER_HD, ORDER_TRACKING_END_URL, REQUEST_PARAM_FLAG, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_MOBILE_NO, REQUEST_PARAM_ORDER_HD_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_PATIENT_NAME, REQUEST_PARAM_SIZE, REQUEST_PARAM_TO_DATE, STATUS_D } from "../../../../config/apiConfig";
 import { 
     INVALID_DATE_PICK_WARN_MSG, 
     SELECT_DATE_WARN_MSG, 
@@ -13,7 +13,8 @@ import {
     FUTURE_DATE_PICK_WARN_MSG, 
     PAST_DATE_PICK_WARN_MSG, 
     SELECT_FROM_DATE_FIRST_WARN_MSG, 
-    FETCH_ORDER_TRACKING_ERR_MSG 
+    FETCH_ORDER_TRACKING_ERR_MSG, 
+    HOSPITAL_ID_NOT_FOUND
 } from "../../../../config/constants";
 
 const OrderTrackingReport = () => {
@@ -21,9 +22,7 @@ const OrderTrackingReport = () => {
     const [toDate, setToDate] = useState("");
     const [patientName, setPatientName] = useState("");
     const [mobileNo, setMobileNo] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
-    const [isPrinting, setIsPrinting] = useState(false);
     const [showReport, setShowReport] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [popupMessage, setPopupMessage] = useState(null);
@@ -66,21 +65,6 @@ const OrderTrackingReport = () => {
             type,
             onClose: () => setPopupMessage(null),
         });
-    };
-
-    // Format date for display
-    const formatDateForDisplay = (dateString) => {
-        if (!dateString) return "";
-        try {
-            const date = new Date(dateString);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        } catch (error) {
-            console.error("Error formatting date:", error);
-            return "";
-        }
     };
 
     // Handle from date change
@@ -162,7 +146,7 @@ const OrderTrackingReport = () => {
         setSelectedRecord(record);
 
         try {
-            const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${dgOrderHdId}&flag=d`;
+            const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${dgOrderHdId}&${REQUEST_PARAM_FLAG}=${STATUS_D}`;
             const response = await fetch(url, {
                 method: "GET",
                 headers: { Accept: "application/pdf" },
@@ -197,22 +181,22 @@ const OrderTrackingReport = () => {
             
             const hospitalId = getHospitalId();
             if (!hospitalId) {
-                showPopup("Hospital ID not found. Please login again.", "error");
+                showPopup(HOSPITAL_ID_NOT_FOUND, "error");
                 return;
             }
             
             const params = new URLSearchParams();
-            params.append('hospitalId', hospitalId);
-            if (patientName.trim()) params.append('patientName', patientName.trim());
-            if (mobileNo.trim()) params.append('mobileNo', mobileNo.trim());
+            params.append([REQUEST_PARAM_HOSPITAL_ID], hospitalId);
+            if (patientName.trim()) params.append([REQUEST_PARAM_PATIENT_NAME], patientName.trim());
+            if (mobileNo.trim()) params.append([REQUEST_PARAM_MOBILE_NO], mobileNo.trim());
             if (fromDate && toDate) {
-                params.append('fromDate', fromDate);
-                params.append('toDate', toDate);
+                params.append([REQUEST_PARAM_FROM_DATE], fromDate);
+                params.append([REQUEST_PARAM_TO_DATE], toDate);
             }
-            params.append('page', page - 1);
-            params.append('size', DEFAULT_ITEMS_PER_PAGE);
+            params.append([REQUEST_PARAM_PAGE], page - 1);
+            params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-            const response = await getRequest(`${LAB}/orderTrackingReport?${params.toString()}`);
+            const response = await getRequest(`${ORDER_TRACKING_END_URL}?${params.toString()}`);
             
             if (response?.response) {
                 const pageData = response.response;
@@ -384,7 +368,7 @@ const OrderTrackingReport = () => {
                                             type="button"
                                             className="btn btn-primary"
                                             onClick={handleSearch}
-                                            disabled={isSearching || isPrinting || !isSearchButtonEnabled()}
+                                            disabled={isSearching || !isSearchButtonEnabled()}
                                         >
                                             {isSearching ? (
                                                 <>
@@ -400,7 +384,7 @@ const OrderTrackingReport = () => {
                                             type="button"
                                             className="btn btn-secondary"
                                             onClick={handleReset}
-                                            disabled={isSearching || isPrinting}
+                                            disabled={isSearching }
                                         >
                                             <i className="mdi mdi-refresh me-1"></i> Reset
                                         </button>

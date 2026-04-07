@@ -1,6 +1,10 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
 
+<<<<<<< Updated upstream
  //export const API_HOST = 'http://localhost:8080';
+=======
+export const API_HOST = 'http://localhost:8080';
+>>>>>>> Stashed changes
 //  export const API_HOST = 'http://localhost:8080';
 //export const API_HOST = 'http://192.168.1.39:8080';
 
@@ -459,6 +463,7 @@ export const REQUEST_PARAM_PATIENT_NAME="patientName";
 export const REQUEST_PARAM_MOBILE_NO="patientMobileNumber";
 export const REQUEST_PARAM_GENDER_CODE="genderCode";
 export const REQUEST_PARAM_AGE="age";
+export const REQUEST_PARAM_SUB_CHARGE_CODE_ID="subChargeCodeId";
 
 
 
@@ -466,6 +471,23 @@ export const REQUEST_PARAM_AGE="age";
 
 export const MAS_CONTAINER_DROPDOWN_END_URL=`${DG_MAS_COLLECTION}/getAll`;
 export const LAB_AMENDMENT_ALL_TYPE = `${MASTERS}/lab-amendment-type/all`;
+export const MAS_SUB_CHARGE_CODE_DROPDOWN_END_URL = `${MAS_SUB_CHARGE_CODE}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
+export const REJECTED_INVESTIGATIONS_END_URL = `${LAB}/rejectedInvestigations`;
+export const REJECTED_INVESTIGATIONS_REPORT_URL = `${ALL_REPORTS}/sampleRejection`;
+export const PENDING_INVESTIGATIONS_REPORT_URL = `${ALL_REPORTS}/pendingInvestigation`;
+export const PENDING_INVESTIGATIONS_END_URL = `${LAB}/incompleteInvestigations`;
+export const ORDER_TRACKING_END_URL = `${LAB}/orderTracking`;
+export const LAB_REPORT_URL_WRT_ORDER_HD = `${ALL_REPORTS}/labInvestigationReport`;
+export const AMENDMENT_REPORT_URL = `${ALL_REPORTS}/resultAmendment`;
+export const AMENDMENT_AUDIT_END_URL = `${LAB}/amendAudit/result`;
+export const MAS_INVESTIGATION_DROPDOWN = `${MAS_INVESTIGATION}/mas-investigation/all`;
+export const INVESTIGATIONS_END_URL= `${LAB}/investigationsReport/all`;
+export const TAT_DETAIL_END_URL= `${LAB}/lab-tat/details`;
+export const TAT_DETAIL_REPORT_URL= `${ALL_REPORTS}/detailTat`;
+export const TAT_SUMMARY_REPORT_URL= `${ALL_REPORTS}/summaryTat`;
+export const TAT_SUMMARY_END_URL= `${LAB}/lab-tat/summary`;
+
+
 
 
 

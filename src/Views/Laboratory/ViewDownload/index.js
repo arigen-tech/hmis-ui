@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { getRequest } from "../../../service/apiService";
-import { ALL_REPORTS, PRINT } from "../../../config/apiConfig";
+import { ALL_REPORTS, LAB_REPORT_URL_WRT_ORDER_HD, PRINT, REQUEST_PARAM_FLAG, REQUEST_PARAM_ORDER_HD_ID, STATUS_D, STATUS_P } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../Components/popup";
 import { FETCH_RESULT_DATA_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG } from '../../../config/constants';
@@ -51,7 +51,7 @@ const ViewDownload = () => {
       // const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
       const orderhd_id = resultData.orderHdId;
       
-      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&flag=d`;
+      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${orderhd_id}&${REQUEST_PARAM_FLAG}=${STATUS_D}`;
       
       const response = await fetch(url, {
         method: "GET",
@@ -88,7 +88,7 @@ const ViewDownload = () => {
     try {
       const orderhd_id = resultData.orderHdId;
       
-      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderhd_id}&flag=p`;
+      const url =  `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${orderhd_id}&${REQUEST_PARAM_FLAG}=${STATUS_P}`;
       
       const response = await fetch(url, {
         method: "GET",

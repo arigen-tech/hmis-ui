@@ -2,15 +2,17 @@ import { useState, useEffect } from "react";
 import { getRequest } from "../../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { MAS_INVESTIGATION, MAX_MONTHS_BACK, ALL_REPORTS, LAB } from "../../../../config/apiConfig";
+import { MAX_MONTHS_BACK, ALL_REPORTS, LAB, MAS_INVESTIGATION_DROPDOWN, MAS_SUB_CHARGE_CODE_DROPDOWN_END_URL, TAT_DETAIL_END_URL, TAT_SUMMARY_END_URL, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_INVESTIGATION_ID, REQUEST_PARAM_SUB_CHARGE_CODE_ID, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, STATUS_D, STATUS_P, REQUEST_PARAM_FLAG, TAT_DETAIL_REPORT_URL, TAT_SUMMARY_REPORT_URL } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
+import {formatDateTimeForDisplay} from "../../../../utils/dateUtils";
 import {
   FETCH_LAB_TAT_DETAILED_REPORT_ERR_MSG, 
   FETCH_LAB_TAT_SUMMARY_REPORT_ERR_MSG, 
   INVALID_DATE_PICK_WARN_MSG, 
   SELECT_DATE_WARN_MSG,
   LAB_REPORT_GENERATION_ERR_MSG,
-  LAB_REPORT_PRINT_ERR_MSG
+  LAB_REPORT_PRINT_ERR_MSG,
+  HOSPITAL_ID_NOT_FOUND
 } from "../../../../config/constants"
 
 const TATReport = () => {
@@ -94,27 +96,10 @@ const TATReport = () => {
     }
   };
 
-  // Format date time for display
-  const formatDateTimeForDisplay = (dateTimeString) => {
-    if (!dateTimeString) return "";
-    try {
-      const date = new Date(dateTimeString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${day}/${month}/${year} ${hours}:${minutes}`;
-    } catch (error) {
-      console.error("Error formatting date time:", error);
-      return "";
-    }
-  };
-
   // Fetch investigation options
   const fetchInvestigations = async () => {
     try {
-      const response = await getRequest(`${MAS_INVESTIGATION}/mas-investigation/all`);
+      const response = await getRequest(`${MAS_INVESTIGATION_DROPDOWN}`);
       if (response && response.response) {
         setInvestigationOptions(response.response.map(item => ({
           id: item.investigationId,
@@ -129,7 +114,7 @@ const TATReport = () => {
   // Fetch modality options (sub charge codes)
   const fetchModalities = async () => {
     try {
-      const response = await getRequest("/master/sub-charge-code/getAll/1"); // flag=1 for active only
+      const response = await getRequest(`${MAS_SUB_CHARGE_CODE_DROPDOWN_END_URL}`); // flag=1 for active only
       if (response && response.response) {
         const filterModality= response.response.filter(item => item.mainChargeId === 12);
         setModalityOptions(filterModality.map(item => ({
@@ -151,19 +136,19 @@ const TATReport = () => {
       }
       
       const params = new URLSearchParams();
-      params.append('hospitalId', getHospitalId());
+      params.append([REQUEST_PARAM_HOSPITAL_ID], getHospitalId());
       if (selectedInvestigation?.id) {
-        params.append('investigationId', selectedInvestigation.id);
+        params.append([REQUEST_PARAM_INVESTIGATION_ID], selectedInvestigation.id);
       }
       if (selectedModality?.id) {
-        params.append('subChargeCodeId', selectedModality.id);
+        params.append([REQUEST_PARAM_SUB_CHARGE_CODE_ID], selectedModality.id);
       }
-      params.append('fromDate', fromDate);
-      params.append('toDate', toDate);
-      params.append('page', page - 1);
-      params.append('size', DEFAULT_ITEMS_PER_PAGE);
+      params.append([REQUEST_PARAM_FROM_DATE], fromDate);
+      params.append([REQUEST_PARAM_TO_DATE], toDate);
+      params.append([REQUEST_PARAM_PAGE], page - 1);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-      const response = await getRequest(`${LAB}/lab-tat/details?${params.toString()}`);
+      const response = await getRequest(`${TAT_DETAIL_END_URL}?${params.toString()}`);
       
       if (response && response.status === 200 && response.response) {
         const pageData = response.response;
@@ -223,7 +208,7 @@ const TATReport = () => {
       params.append('page', page - 1);
       params.append('size', DEFAULT_ITEMS_PER_PAGE);
 
-      const response = await getRequest(`${LAB}/lab-tat/summary?${params.toString()}`);
+      const response = await getRequest(`${TAT_SUMMARY_END_URL}?${params.toString()}`);
       
       if (response && response.status === 200 && response.response) {
         const pageData = response.response;
@@ -364,19 +349,19 @@ const TATReport = () => {
   };
 
   // Generate PDF report for viewing/downloading
-  const generatePdfReport = async (flag = "D") => {
+  const generatePdfReport = async (flag = STATUS_D) => {
     if (!validateDates()) return;
 
     const hospitalId = getHospitalId();
     if (!hospitalId) {
-      showPopup("Hospital ID not found. Please login again.", "error");
+      showPopup(HOSPITAL_ID_NOT_FOUND, "error");
       return;
     }
 
     // Set loading state based on flag
-    if (flag === "D") {
+    if (flag === STATUS_D) {
       setIsViewLoading(true);
-    } else if (flag === "P") {
+    } else if (flag === STATUS_P) {
       setIsPrintLoading(true);
     }
     
@@ -384,22 +369,22 @@ const TATReport = () => {
 
     try {
       const params = new URLSearchParams();
-      params.append('fromDate', fromDate);
-      params.append('toDate', toDate);
-      params.append('hospitalId', hospitalId);
-      params.append('flag', flag);
-      
+      params.append(REQUEST_PARAM_FROM_DATE, fromDate);
+      params.append(REQUEST_PARAM_TO_DATE, toDate);
+      params.append(REQUEST_PARAM_HOSPITAL_ID, hospitalId);
+      params.append(REQUEST_PARAM_FLAG, flag);
+
       if (selectedInvestigation?.id) {
-        params.append('investigationId', selectedInvestigation.id);
+        params.append(REQUEST_PARAM_INVESTIGATION_ID, selectedInvestigation.id);
       }
       if (selectedModality?.id) {
-        params.append('subChargeCodeId', selectedModality.id);
+        params.append(REQUEST_PARAM_SUB_CHARGE_CODE_ID, selectedModality.id);
       }
 
       // Determine the endpoint based on report type
       const endpoint = reportType === "detailed" 
-        ? `${ALL_REPORTS}/detailTat`
-        : `${ALL_REPORTS}/summaryTat`;
+        ? `${TAT_DETAIL_REPORT_URL}`
+        : `${TAT_SUMMARY_REPORT_URL}`;
 
       const url = `${endpoint}?${params.toString()}`;
 
@@ -414,25 +399,25 @@ const TATReport = () => {
         throw new Error(`Failed to generate PDF: ${response.statusText}`);
       }
 
-      if (flag === "D") {
+      if (flag === STATUS_D) {
         // For viewing/downloading
         const blob = await response.blob();
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
-      } else if (flag === "P") {
+      } else if (flag === STATUS_P) {
         // For printing
         // showPopup("Report sent to printer successfully!", "success");
       }
 
     } catch (error) {
       console.error("Error generating PDF", error);
-      const errorMsg = flag === "D" ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
+      const errorMsg = flag === STATUS_D ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
       showPopup(errorMsg, "error");
     } finally {
       // Reset the specific loading state
-      if (flag === "D") {
+      if (flag === STATUS_D) {
         setIsViewLoading(false);
-      } else if (flag === "P") {
+      } else if (flag === STATUS_P) {
         setIsPrintLoading(false);
       }
     }
@@ -440,12 +425,12 @@ const TATReport = () => {
 
   // Handle view report (opens PDF viewer)
   const handleViewReport = () => {
-    generatePdfReport("D");
+    generatePdfReport(STATUS_D);
   };
 
   // Handle print report
   const handlePrintReport = () => {
-    generatePdfReport("P");
+    generatePdfReport(STATUS_P);
   };
 
   // Initialize with today's date as default for To Date
