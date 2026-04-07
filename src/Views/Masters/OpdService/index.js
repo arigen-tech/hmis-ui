@@ -3,13 +3,11 @@ import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_OPD_SERVICE, MAS_SERVICE_CATEGORY, MAS_DEPARTMENT, FILTER_OPD_DEPT, DOCTOR } from "../../../config/apiConfig";
-import {ADD_OPD_SERVICE_SUCC_MSG,UPDATE_OPD_SERVICE_SUCC_MSG,FAIL_TO_SAVE_CHANGES,FAIL_TO_UPDATE_STS} from "../../../config/constants"
+import { ADD_OPD_SERVICE_SUCC_MSG, UPDATE_OPD_SERVICE_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const OPDServiceMaster = () => {
   const [formData, setFormData] = useState({
-    serviceCode: "",
-    serviceName: "",
     baseTariff: "",
     serviceCategory: "",
     departmentId: "",
@@ -18,9 +16,11 @@ const OPDServiceMaster = () => {
     toDate: "",
   })
 
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false })
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false, serviceName: "" })
 
   const [searchQuery, setSearchQuery] = useState("")
+  const [filterDepartment, setFilterDepartment] = useState("")
+  const [filterDoctor, setFilterDoctor] = useState("")
   const [serviceOpdData, setServiceOpdData] = useState([])
   const [serviceCategoryData, setServiceCategoryData] = useState([])
   const [departmentData, setDepartmentData] = useState([]);
@@ -33,16 +33,16 @@ const OPDServiceMaster = () => {
   const [editingService, setEditingService] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
-  const hospitalId = sessionStorage.getItem("hospitalId");
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalItems, setTotalItems] = useState(0)
   const [process, setProcess] = useState(false);
+  const [filterDoctorName, setFilterDoctorName] = useState("")
 
-
-  console.log("form data:", formData);
+  const hospitalId = sessionStorage.getItem("hospitalId");
 
   useEffect(() => {
-    fetchServiceOpdData();
+    fetchServiceOpdData(0);
+    fetchAllDepartmentsForFilter();
   }, []);
 
   useEffect(() => {
@@ -50,31 +50,107 @@ const OPDServiceMaster = () => {
       fetchServicecategoryData();
       fetchDepartmentData();
       if (formData.departmentId) {
-      fetchDoctorData();
+        fetchDoctorData();
       }
     }
   }, [showForm, formData.departmentId]);
 
+  // Fetch all departments for filter dropdown
+  const fetchAllDepartmentsForFilter = async () => {
+    try {
+      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        const filteredDepartments = data.response.filter(
+          (dept) => dept.departmentTypeName === `${FILTER_OPD_DEPT}`
+        );
+        setDepartmentData(filteredDepartments);
+      }
+    } catch (error) {
+      console.error("Error fetching departments for filter:", error);
+    }
+  };
 
-  const fetchServiceOpdData = async () => {
+  // Fetch doctors based on selected department filter
+  const fetchDoctorsForFilter = async (departmentId) => {
+    if (!departmentId) {
+      setDoctorData([]);
+      return;
+    }
+    try {
+      const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${departmentId}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDoctorData(data.response);
+      } else {
+        setDoctorData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching doctors for filter:", error);
+      setDoctorData([]);
+    }
+  };
+
+  const fetchServiceOpdData = async (page = 0) => {
     setLoading(true);
     try {
-      const data = await getRequest(`${MAS_OPD_SERVICE}/getByHospitalId/${hospitalId}`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setServiceOpdData(data.response);
+      // Build URL with query parameters
+      let url = `${MAS_OPD_SERVICE}/getByHospitalId/${hospitalId}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
+      
+      if (filterDepartment) {
+        url += `&departmentId=${filterDepartment}`;
+      }
+      if (filterDoctor) {
+        url += `&doctorId=${filterDoctor}`;
+      }
+      if (filterDoctorName) {
+        url += `&doctorName=${filterDoctorName}`;
+      }
+      
+      const data = await getRequest(url);
+      
+      if (data.status === 200 && data.response) {
+        // Transform backend paginated response to match frontend expected structure
+        const transformedData = data.response.content.map(item => ({
+          id: item.id,
+          serviceName: item.serviceName,
+          baseTariff: item.baseTariff,
+          serviceCategory: {
+            id: item.serviceCategoryId,
+            serviceCatName: item.serviceCategory
+          },
+          departmentId: {
+            id: item.departmentId,
+            departmentName: item.departmentName
+          },
+          doctorId: {
+            userId: item.doctorId,
+            firstName: item.doctorFirstName,
+            middleName: item.doctorMiddleName,
+            lastName: item.doctorLastName
+          },
+          fromDt: item.fromDate,
+          toDt: item.toDate,
+          status: item.status
+        }));
+        
+        setServiceOpdData(transformedData);
+        setTotalPages(data.response.totalPages || 0);
+        setTotalItems(data.response.totalElements || 0);
+        setCurrentPage(data.response.number + 1);
       } else {
         console.error("Unexpected API response format:", data);
         setServiceOpdData([]);
+        setTotalPages(0);
+        setTotalItems(0);
       }
     } catch (error) {
-      console.error("Error fetching Service Category data:", error);
+      console.error("Error fetching OPD Service data:", error);
+      setServiceOpdData([]);
     } finally {
       setLoading(false);
     }
   };
 
   const fetchServicecategoryData = async () => {
-
     try {
       const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -89,7 +165,6 @@ const OPDServiceMaster = () => {
   };
 
   const fetchDepartmentData = async () => {
-
     try {
       const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -122,32 +197,48 @@ const OPDServiceMaster = () => {
     }
   };
 
-
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value)
-    setCurrentPage(1)
-  }
+    const value = e.target.value;
+    setSearchQuery(value);
+    setFilterDoctorName(value);
+    setCurrentPage(1);
+  };
 
-  const filteredServiceList = serviceOpdData.filter(
-    (item) =>
-      item?.serviceCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item?.serviceName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item?.serviceCategory?.serviceCatName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item?.departmentId?.departmentName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      item?.doctorId?.firstName.toLowerCase().includes(searchQuery.toLowerCase()),
-  )
+  // Debounce search to avoid too many API calls
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (showForm === false) {
+        fetchServiceOpdData(0);
+      }
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [filterDoctorName, filterDepartment, filterDoctor]);
 
- const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredServiceList.slice(indexOfFirst, indexOfLast)
+  const handleDepartmentFilterChange = (e) => {
+    const deptId = e.target.value;
+    setFilterDepartment(deptId);
+    setFilterDoctor(""); // Reset doctor filter when department changes
+    fetchDoctorsForFilter(deptId);
+    setCurrentPage(1);
+  };
 
+  const handleDoctorFilterChange = (e) => {
+    setFilterDoctor(e.target.value);
+    setCurrentPage(1);
+  };
+
+  // Client-side filtering for search (as backup, but we're using server-side now)
+  const filteredServiceList = serviceOpdData;
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+    fetchServiceOpdData(page - 1);
+  };
 
   const handleEdit = (item) => {
-    setEditingService(item)
-    setShowForm(true)
+    setEditingService(item);
+    setShowForm(true);
     setFormData({
-      serviceCode: item.serviceCode,
-      serviceName: item.serviceName,
       baseTariff: item.baseTariff?.toString() || "",
       serviceCategory: item.serviceCategory?.id?.toString() || "",
       departmentId: item.departmentId?.id?.toString() || "",
@@ -155,8 +246,8 @@ const OPDServiceMaster = () => {
       fromDate: item.fromDt?.substring(0, 10) || "",
       toDate: item.toDt?.substring(0, 10) || "",
     });
-    setIsFormValid(true)
-  }
+    setIsFormValid(true);
+  };
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -164,8 +255,6 @@ const OPDServiceMaster = () => {
     if (!isFormValid) return;
 
     const payload = {
-      serviceCode: formData.serviceCode,
-      serviceName: formData.serviceName,
       baseTariff: parseFloat(formData.baseTariff),
       serviceCategory: parseInt(formData.serviceCategory, 10),
       departmentId: parseInt(formData.departmentId, 10),
@@ -175,7 +264,6 @@ const OPDServiceMaster = () => {
       toDate: new Date(formData.toDate).toISOString()
     };
 
-
     try {
       let response;
       if (editingService) {
@@ -183,27 +271,22 @@ const OPDServiceMaster = () => {
           `${MAS_OPD_SERVICE}/update/${editingService.id}`,
           payload
         );
-        showPopup(UPDATE_OPD_SERVICE_SUCC_MSG, "success");
+        if (response.status === 200) {
+          showPopup(UPDATE_OPD_SERVICE_SUCC_MSG, "success");
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
         response = await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
-        showPopup(ADD_OPD_SERVICE_SUCC_MSG, "success");
+        if (response.status === 200) {
+          showPopup(ADD_OPD_SERVICE_SUCC_MSG, "success");
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
 
-      // Refresh or update local state if needed here
-      await fetchServiceOpdData?.();
-
-      setEditingService(null);
-      setShowForm(false);
-      setFormData({
-        serviceCode: "",
-        serviceName: "",
-        baseTariff: "",
-        serviceCategory: "",
-        departmentId: "",
-        doctorId: "",
-        fromDate: "",
-        toDate: "",
-      });
+      await fetchServiceOpdData(0);
+      resetForm();
     } catch (error) {
       console.error("Error saving OPD Service:", error);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -212,82 +295,68 @@ const OPDServiceMaster = () => {
     }
   };
 
+  const resetForm = () => {
+    setEditingService(null);
+    setShowForm(false);
+    setFormData({
+      baseTariff: "",
+      serviceCategory: "",
+      departmentId: "",
+      doctorId: "",
+      fromDate: "",
+      toDate: "",
+    });
+    setIsFormValid(false);
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null)
+        setPopupMessage(null);
       },
-    })
-  }
+    });
+  };
 
   const handleSwitchChange = (id, name, newStatus) => {
     setCurrentItem(name);
-    setConfirmDialog({ isOpen: true, serviceId: id, newStatus })
-  }
+    setConfirmDialog({ isOpen: true, serviceId: id, newStatus, serviceName: name });
+  };
 
-    const handleConfirm = async (confirmed) => {
-      if (confirmed && confirmDialog.serviceId !== null) {
-        setProcess(true);
-        try {
-          const response = await putRequest(
-            `${MAS_OPD_SERVICE}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`
+  const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.serviceId !== null) {
+      setProcess(true);
+      try {
+        const response = await putRequest(
+          `${MAS_OPD_SERVICE}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.status === 200) {
+          showPopup(
+            `Service ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+            "success"
           );
-  
-          if (response.status === 200) {
-            showPopup(
-              `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-              "success"
-            );
-            await fetchServiceOpdData();
-          } else {
-            throw new Error(response.message || "Failed to update status");
-          }
-        } catch (error) {
-          console.error("Error updating status:", error);
-          showPopup(FAIL_TO_UPDATE_STS, "error");
-        } finally {
-          setProcess(false);
+          await fetchServiceOpdData(currentPage - 1);
+        } else {
+          throw new Error(response.message || "Failed to update status");
         }
-        setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
-      } else {
-        setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setProcess(false);
       }
     }
+    setConfirmDialog({ isOpen: false, serviceId: null, newStatus: false, serviceName: "" });
+  };
 
   const handleInputChange = (e) => {
-    const { id, value } = e.target
-    setFormData((prevData) => ({ ...prevData, [id]: value }))
-
-    const updatedFormData = { ...formData, [id]: value }
-    setIsFormValid(
-      !!updatedFormData.serviceCode &&
-      !!updatedFormData.serviceName &&
-      !!updatedFormData.baseTariff &&
-      !!updatedFormData.serviceCategory &&
-      !!updatedFormData.departmentId &&
-      !!updatedFormData.doctorId &&
-      !!updatedFormData.fromDate &&
-      !!updatedFormData.toDate,
-    )
-  }
-
-  const handleSelectChange = (e) => {
     const { id, value } = e.target;
+    setFormData((prevData) => ({ ...prevData, [id]: value }));
 
-    const parsedValue = ["doctorId", "departmentId", "serviceCategory"].includes(id)
-        ? parseInt(value, 10) || ""
-        : value;
-
-    const updatedFormData = { ...formData, [id]: parsedValue };
-
-    setFormData(updatedFormData);
-
+    const updatedFormData = { ...formData, [id]: value };
     setIsFormValid(
-      !!updatedFormData.serviceCode &&
-      !!updatedFormData.serviceName &&
       !!updatedFormData.baseTariff &&
       !!updatedFormData.serviceCategory &&
       !!updatedFormData.departmentId &&
@@ -297,50 +366,73 @@ const OPDServiceMaster = () => {
     );
   };
 
-const handleRefresh = () => {
-    setSearchQuery("")
-    setCurrentPage(1)
-    fetchServiceOpdData()
-  }
-  
+  const handleSelectChange = (e) => {
+    const { id, value } = e.target;
+
+    const parsedValue = ["doctorId", "departmentId", "serviceCategory"].includes(id)
+      ? parseInt(value, 10) || ""
+      : value;
+
+    const updatedFormData = { ...formData, [id]: parsedValue };
+    setFormData(updatedFormData);
+
+    // If department changes, reset doctor selection
+    if (id === "departmentId") {
+      setFormData(prev => ({ ...prev, doctorId: "" }));
+      setIsFormValid(
+        !!updatedFormData.baseTariff &&
+        !!updatedFormData.serviceCategory &&
+        !!updatedFormData.departmentId &&
+        !!updatedFormData.fromDate &&
+        !!updatedFormData.toDate
+      );
+    } else {
+      setIsFormValid(
+        !!updatedFormData.baseTariff &&
+        !!updatedFormData.serviceCategory &&
+        !!updatedFormData.departmentId &&
+        !!updatedFormData.doctorId &&
+        !!updatedFormData.fromDate &&
+        !!updatedFormData.toDate
+      );
+    }
+  };
+
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setFilterDepartment("");
+    setFilterDoctor("");
+    setFilterDoctorName("");
+    setCurrentPage(1);
+    fetchServiceOpdData(0);
+  };
+
   return (
     <div className="content-wrapper">
       <div className="row">
-        {loading && (
-          <LoadingScreen />
-        )}
+        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">OPD Service Master</h4>
 
-              <div className="d-flex justify-content-between align-items-center">
+              <div className="d-flex justify-content-between align-items-center gap-2">
                 {!showForm && (
                   <>
-                    <form className="d-inline-block searchform me-4" role="search">
-                      <div className="input-group searchinput">
-                        <input
-                          type="search"
-                          className="form-control"
-                          placeholder="Search"
-                          aria-label="Search"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                        <span className="input-group-text" id="search-icon">
-                          <i className="fa fa-search"></i>
-                        </span>
-                      </div>
-                    </form>
                     <button
                       type="button"
-                      className="btn btn-success me-2"
+                      className="btn btn-success"
+                      onClick={handleRefresh}
+                    >
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-success"
                       onClick={() => {
-                        setEditingService(null);   // ✅ RESET EDIT MODE
+                        setEditingService(null);
                         setIsFormValid(false);
                         setFormData({
-                          serviceCode: "",
-                          serviceName: "",
                           baseTariff: "",
                           serviceCategory: "",
                           departmentId: "",
@@ -353,85 +445,149 @@ const handleRefresh = () => {
                     >
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-
-                    {/* <button type="button" className="btn btn-success me-2">
-                      <i className="mdi mdi-plus"></i> Generate Report
-                    </button> */}
                   </>
                 )}
               </div>
             </div>
             <div className="card-body">
               {!showForm ? (
-                <div className="table-responsive packagelist">
-                  <table className="table table-bordered table-hover align-middle">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Service Name</th>
-                        <th>Base Tariff</th>
-                        <th>Service Category</th>
-                        <th>Department</th>
-                        <th>Doctor</th>
-                        <th>From Date</th>
-                        <th>To Date</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.map((item) => (
-                        <tr key={item.id}>
-                          <td>{item.serviceName}</td>
-                          <td>
-                            {item.baseTariff !== undefined && item.baseTariff !== null
-                              ? `₹${Number(item.baseTariff).toFixed(2)}`
-                              : '₹0.00'
-                            }
-                          </td>
-                          <td style={{ textTransform: "capitalize" }}>{item.serviceCategory.serviceCatName}</td>
-                          <td>{item.departmentId.departmentName}</td>
-                          <td>
-                            {[item.doctorId?.firstName, item.doctorId?.middleName, item.doctorId?.lastName]
-                              .filter(Boolean)
-                              .join(" ")}
-                          </td>
-                          <td>{new Date(item.fromDt).toLocaleDateString()}</td>
-                          <td>{new Date(item.toDt).toLocaleDateString()}</td>
-                          <td>
-                            <div className="form-check form-switch">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                checked={item.status === "y"}
-                                onChange={() => handleSwitchChange(item.id, item.serviceName, item.status === "y" ? "n" : "y")}
-                                id={`switch-${item.id}`}
-                              />
-                              <label
-                                className="form-check-label px-0"
-                                htmlFor={`switch-${item.id}`}
-                              >
-                                {item.status === "y" ? "Active" : "Deactivated"}
-                              </label>
-                            </div>
-                          </td>
-                          <td>
-                            <button
-                              className="btn btn-sm btn-success me-2"
-                              onClick={() => handleEdit(item)}
-                              disabled={item.status !== "y"}
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
+                <>
+                  {/* Filter Section - Placed above the table */}
+                  <div className="row mb-3 align-items-end">
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Search by Doctor Name</label>
+                      <div className="input-group">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Search by Doctor Name"
+                          aria-label="Search"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                        />
+                        <span className="input-group-text">
+                          <i className="fa fa-search"></i>
+                        </span>
+                      </div>
+                    </div>
+
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Department</label>
+                      <select
+                        className="form-select"
+                        value={filterDepartment}
+                        onChange={handleDepartmentFilterChange}
+                      >
+                        <option value="">All Departments</option>
+                        {departmentData.map((dept) => (
+                          <option key={dept.id} value={dept.id.toString()}>
+                            {dept.departmentName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold">Doctor</label>
+                      <select
+                        className="form-select"
+                        value={filterDoctor}
+                        onChange={handleDoctorFilterChange}
+                        disabled={!filterDepartment}
+                      >
+                        <option value="">All Doctors</option>
+                        {doctorData.map((doc) => (
+                          <option key={doc.userId} value={doc.userId.toString()}>
+                            {doc.firstName} {doc.middleName} {doc.lastName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Base Tariff</th>
+                          <th>Service Category</th>
+                          <th>Department</th>
+                          <th>Doctor</th>
+                          <th>From Date</th>
+                          <th>To Date</th>
+                          <th>Status</th>
+                          <th>Edit</th>
                         </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                      </thead>
+                      <tbody>
+                        {filteredServiceList.length > 0 ? (
+                          filteredServiceList.map((item) => (
+                            <tr key={item.id}>
+                              <td>
+                                {item.baseTariff !== undefined && item.baseTariff !== null
+                                  ? `₹${Number(item.baseTariff).toFixed(2)}`
+                                  : '₹0.00'
+                                }
+                              </td>
+                              <td style={{ textTransform: "capitalize" }}>{item.serviceCategory?.serviceCatName || '-'}</td>
+                              <td>{item.departmentId?.departmentName || '-'}</td>
+                              <td>
+                                {[item.doctorId?.firstName, item.doctorId?.middleName, item.doctorId?.lastName]
+                                  .filter(Boolean)
+                                  .join(" ") || '-'}
+                              </td>
+                              <td>{item.fromDt ? new Date(item.fromDt).toLocaleDateString() : '-'}</td>
+                              <td>{item.toDt ? new Date(item.toDt).toLocaleDateString() : '-'}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={item.status === "y"}
+                                    onChange={() => handleSwitchChange(item.id, item.serviceName, item.status === "y" ? "n" : "y")}
+                                    id={`switch-${item.id}`}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${item.id}`}
+                                  >
+                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(item)}
+                                  disabled={item.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="text-center">No records found</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {totalPages > 0 && (
+                    <Pagination
+                      totalItems={totalItems}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={handlePageChange}
+                    />
+                  )}
+                </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  <div className="d-flex justify-content-end">
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                  <div className="d-flex justify-content-end mb-3">
+                    <button type="button" className="btn btn-secondary" onClick={resetForm}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   </div>
@@ -499,6 +655,7 @@ const handleRefresh = () => {
                         onChange={handleSelectChange}
                         value={formData.doctorId}
                         required
+                        disabled={!formData.departmentId}
                       >
                         <option value="">Select Doctor</option>
                         {doctorData.map((doctor) => (
@@ -537,18 +694,17 @@ const handleRefresh = () => {
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
                       disabled={process || !isFormValid}
                     >
-                      {editingService ? 'Update' : 'Save'}
+                      {process ? "Processing..." : (editingService ? 'Update' : 'Save')}
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
+                      onClick={resetForm}
                       disabled={process}
                     >
                       Cancel
@@ -560,7 +716,7 @@ const handleRefresh = () => {
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
@@ -573,7 +729,7 @@ const handleRefresh = () => {
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {currentItem}
+                            {confirmDialog.serviceName}
                           </strong>
                           ?
                         </p>
@@ -589,15 +745,6 @@ const handleRefresh = () => {
                     </div>
                   </div>
                 </div>
-              )}
-
-              {!showForm && (
-                <Pagination
-               totalItems={filteredServiceList.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
               )}
             </div>
           </div>
