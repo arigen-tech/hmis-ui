@@ -1,6 +1,6 @@
 export const API_HOST = 'http://103.133.215.182:8081/hims';
 
-// export const API_HOST = 'http://localhost:8080';
+ //export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://localhost:8080';
 //export const API_HOST = 'http://192.168.1.39:8080';
 
@@ -410,7 +410,8 @@ export const MAS_ICD_GET_ALL_END_URL=`${MASTERS}/masIcd/all`;
 export const OPD_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/opdBillingRegister`;
 export const LAB_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/labBillingRegister`;
 export const RADIOLOGY_BILLING_REGISTER_END_URL = `${ALL_REPORTS}/radiologyBillingRegister`; 
-export const DAILY_CASH_COLLECTION_END_URL = `${ALL_REPORTS}/dailyCashCollection`;// Update path as needed
+export const DAILY_CASH_COLLECTION_END_URL = `${ALL_REPORTS}/dailyCashCollection`;
+export const CASHIER_WISE_COLLECTION_END_URL = `${ALL_REPORTS}/cashierWiseCollection`;// Update path as needed
 
 
 export const MAS_BLOOD_INVENTORY_STATUS = `${MASTERS}/masBloodInventoryStatus`;
