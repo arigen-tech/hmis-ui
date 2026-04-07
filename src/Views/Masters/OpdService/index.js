@@ -18,7 +18,6 @@ const OPDServiceMaster = () => {
 
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false, serviceName: "" })
 
-  const [searchQuery, setSearchQuery] = useState("")
   const [filterDepartment, setFilterDepartment] = useState("")
   const [filterDoctor, setFilterDoctor] = useState("")
   const [serviceOpdData, setServiceOpdData] = useState([])
@@ -36,7 +35,6 @@ const OPDServiceMaster = () => {
   const [totalPages, setTotalPages] = useState(0)
   const [totalItems, setTotalItems] = useState(0)
   const [process, setProcess] = useState(false);
-  const [filterDoctorName, setFilterDoctorName] = useState("")
 
   const hospitalId = sessionStorage.getItem("hospitalId");
 
@@ -100,9 +98,6 @@ const OPDServiceMaster = () => {
       }
       if (filterDoctor) {
         url += `&doctorId=${filterDoctor}`;
-      }
-      if (filterDoctorName) {
-        url += `&doctorName=${filterDoctorName}`;
       }
       
       const data = await getRequest(url);
@@ -197,22 +192,12 @@ const OPDServiceMaster = () => {
     }
   };
 
-  const handleSearchChange = (e) => {
-    const value = e.target.value;
-    setSearchQuery(value);
-    setFilterDoctorName(value);
-    setCurrentPage(1);
-  };
-
-  // Debounce search to avoid too many API calls
+  // Reload data when filters change
   useEffect(() => {
-    const timer = setTimeout(() => {
-      if (showForm === false) {
-        fetchServiceOpdData(0);
-      }
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [filterDoctorName, filterDepartment, filterDoctor]);
+    if (showForm === false) {
+      fetchServiceOpdData(0);
+    }
+  }, [filterDepartment, filterDoctor]);
 
   const handleDepartmentFilterChange = (e) => {
     const deptId = e.target.value;
@@ -226,9 +211,6 @@ const OPDServiceMaster = () => {
     setFilterDoctor(e.target.value);
     setCurrentPage(1);
   };
-
-  // Client-side filtering for search (as backup, but we're using server-side now)
-  const filteredServiceList = serviceOpdData;
 
   const handlePageChange = (page) => {
     setCurrentPage(page);
@@ -399,10 +381,8 @@ const OPDServiceMaster = () => {
   };
 
   const handleRefresh = () => {
-    setSearchQuery("");
     setFilterDepartment("");
     setFilterDoctor("");
-    setFilterDoctorName("");
     setCurrentPage(1);
     fetchServiceOpdData(0);
   };
@@ -452,26 +432,9 @@ const OPDServiceMaster = () => {
             <div className="card-body">
               {!showForm ? (
                 <>
-                  {/* Filter Section - Placed above the table */}
+                  {/* Filter Section */}
                   <div className="row mb-3 align-items-end">
                     <div className="col-md-4">
-                      <label className="form-label fw-bold">Search by Doctor Name</label>
-                      <div className="input-group">
-                        <input
-                          type="search"
-                          className="form-control"
-                          placeholder="Search by Doctor Name"
-                          aria-label="Search"
-                          value={searchQuery}
-                          onChange={handleSearchChange}
-                        />
-                        <span className="input-group-text">
-                          <i className="fa fa-search"></i>
-                        </span>
-                      </div>
-                    </div>
-
-                    <div className="col-md-3">
                       <label className="form-label fw-bold">Department</label>
                       <select
                         className="form-select"
@@ -487,7 +450,7 @@ const OPDServiceMaster = () => {
                       </select>
                     </div>
 
-                    <div className="col-md-3">
+                    <div className="col-md-4">
                       <label className="form-label fw-bold">Doctor</label>
                       <select
                         className="form-select"
@@ -520,8 +483,8 @@ const OPDServiceMaster = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {filteredServiceList.length > 0 ? (
-                          filteredServiceList.map((item) => (
+                        {serviceOpdData.length > 0 ? (
+                          serviceOpdData.map((item) => (
                             <tr key={item.id}>
                               <td>
                                 {item.baseTariff !== undefined && item.baseTariff !== null
