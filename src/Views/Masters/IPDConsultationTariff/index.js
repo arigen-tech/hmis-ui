@@ -56,6 +56,22 @@ const IPDConsultationTariff = () => {
     { userId: 7, firstName: "Meera", middleName: "", lastName: "Joshi", departmentId: 6 },
   ];
 
+  // Static data for Service Categories and Visit Types
+  const serviceCategoryOptions = [
+    { id: 1, name: "General Consultation" },
+    { id: 2, name: "Specialist Consultation" },
+    { id: 3, name: "Pediatric Checkup" },
+    { id: 4, name: "Emergency Consultation" },
+    { id: 5, name: "Follow-up Consultation" },
+  ];
+
+  const visitTypeOptions = [
+    { id: 1, name: "First Visit" },
+    { id: 2, name: "Follow-up" },
+    { id: 3, name: "Emergency" },
+    { id: 4, name: "Regular Checkup" },
+  ];
+
   // Filter doctors based on selected department
   const getFilteredDoctors = () => {
     if (!departmentFilter) return [];
@@ -173,6 +189,38 @@ const IPDConsultationTariff = () => {
         ...formData, 
         doctor: selectedDoc ? `Dr. ${selectedDoc.firstName} ${selectedDoc.lastName}` : "",
         doctorId: value 
+      };
+      setFormData(updatedForm);
+      const valid = updatedForm.serviceCategory &&
+        updatedForm.visitType &&
+        updatedForm.doctor &&
+        updatedForm.department &&
+        updatedForm.charge &&
+        updatedForm.validFrom &&
+        updatedForm.validTo;
+      setIsFormValid(!!valid);
+    }
+    else if (name === "serviceCategory") {
+      const selectedCategory = serviceCategoryOptions.find(cat => cat.id === parseInt(value));
+      const updatedForm = { 
+        ...formData, 
+        serviceCategory: selectedCategory?.name || "",
+      };
+      setFormData(updatedForm);
+      const valid = updatedForm.serviceCategory &&
+        updatedForm.visitType &&
+        updatedForm.doctor &&
+        updatedForm.department &&
+        updatedForm.charge &&
+        updatedForm.validFrom &&
+        updatedForm.validTo;
+      setIsFormValid(!!valid);
+    }
+    else if (name === "visitType") {
+      const selectedVisitType = visitTypeOptions.find(type => type.id === parseInt(value));
+      const updatedForm = { 
+        ...formData, 
+        visitType: selectedVisitType?.name || "",
       };
       setFormData(updatedForm);
       const valid = updatedForm.serviceCategory &&
@@ -483,28 +531,40 @@ const IPDConsultationTariff = () => {
                   <label>
                     Service Category <span className="text-danger">*</span>
                   </label>
-                  <input
-                    type="text"
-                    className="form-control"
+                  <select
+                    className="form-select"
                     name="serviceCategory"
-                    value={formData.serviceCategory}
+                    value={serviceCategoryOptions.find(cat => cat.name === formData.serviceCategory)?.id || ""}
                     onChange={handleInputChange}
                     required
-                  />
+                  >
+                    <option value="">Select Service Category</option>
+                    {serviceCategoryOptions.map((category) => (
+                      <option key={category.id} value={category.id}>
+                        {category.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-group col-md-4 mt-3">
                   <label>
                     Visit Type <span className="text-danger">*</span>
                   </label>
-                  <input
-                    type="text"
-                    className="form-control"
+                  <select
+                    className="form-select"
                     name="visitType"
-                    value={formData.visitType}
+                    value={visitTypeOptions.find(type => type.name === formData.visitType)?.id || ""}
                     onChange={handleInputChange}
                     required
-                  />
+                  >
+                    <option value="">Select Visit Type</option>
+                    {visitTypeOptions.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="form-group col-md-4 mt-3">
