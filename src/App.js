@@ -494,7 +494,7 @@ function App() {
                 <Route path="/CashierWiseCollectionReport" element={<CashierWiseCollectionReport/>} />
                 <Route path="/InsuranceMaster" element={<InsuranceMaster/>}/>
                 <Route path="/TPAMaster" element={<TPAMaster/>}/>
-                <Route path="/IPDPackage" element={<IPDPackageMaster/>}/>
+                <Route path="/IPDPackageMaster" element={<IPDPackageMaster/>}/>
                 <Route path="/CorporateMaster" element={<CorporateMaster/>}/>
                 <Route path="/IPDConsultationTariff" element={<IPDConsultationTariff/>}/>
                 <Route path="/PackageConfiguration" element={<PackageConfiguration/>}/>
