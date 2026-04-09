@@ -19,18 +19,25 @@ const PackageConfiguration = () => {
     maxLimit: "",
   });
 
+  // Search filters
+  const [searchFilters, setSearchFilters] = useState({
+    packageName: "",
+    billingType: "",
+    insurance: "",
+    corporate: "",
+  });
+
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [process, setProcess] = useState(false);
 
   // PAGINATION
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  // Dummy package names for dropdown
+  // Dropdown options
   const packageNameOptions = [
     "General Surgery Package",
     "Maternity Package",
@@ -39,8 +46,36 @@ const PackageConfiguration = () => {
     "Pediatric Package",
   ];
 
-  // Room category options
+  const insuranceOptions = [
+    "ICICI Lombard",
+    "Star Health",
+    "HDFC Ergo",
+    "New India Assurance",
+    "Bajaj Allianz",
+    "Care Health Insurance",
+    "Niva Bupa",
+  ];
+
+  const tpaOptions = [
+    "MediAssist",
+    "Paramount Health",
+    "Vidal Health",
+    "MD India",
+    "Raksha TPA",
+    "Family Health Plan",
+  ];
+
+  const corporateOptions = [
+    "ABC Corp Ltd",
+    "XYZ Enterprises",
+    "Tech Mahindra",
+    "Infosys",
+    "Reliance Industries",
+    "Tata Group",
+  ];
+
   const roomCategoryOptions = ["General Ward", "Semi-Private", "Private", "Deluxe", "Suite"];
+  const billingTypeOptions = ["Cash", "Insurance", "Corporate"];
 
   // ================= DATE FORMAT =================
   const formatDate = (dateString) => {
@@ -105,22 +140,54 @@ const PackageConfiguration = () => {
     ]);
   }, []);
 
-  // ================= SEARCH =================
-  const filteredData = data.filter((rec) =>
-    rec.packageName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  // ================= MULTI‑FIELD SEARCH FILTERING =================
+  const filteredData = data.filter((rec) => {
+    const matchPackage = searchFilters.packageName
+      ? rec.packageName.toLowerCase().includes(searchFilters.packageName.toLowerCase())
+      : true;
+    const matchBilling = searchFilters.billingType
+      ? rec.billingType === searchFilters.billingType
+      : true;
+    // Exact match for dropdowns (Insurance and Corporate)
+    const matchInsurance = searchFilters.insurance
+      ? rec.insurance === searchFilters.insurance
+      : true;
+    const matchCorporate = searchFilters.corporate
+      ? rec.corporate === searchFilters.corporate
+      : true;
+    return matchPackage && matchBilling && matchInsurance && matchCorporate;
+  });
 
   const currentItems = filteredData.slice(
     (currentPage - 1) * itemsPerPage,
     currentPage * itemsPerPage
   );
 
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchFilters]);
+
+  // ================= SEARCH FILTER HANDLERS =================
+  const handleFilterChange = (e) => {
+    const { name, value } = e.target;
+    setSearchFilters((prev) => ({ ...prev, [name]: value }));
+  };
+
+  const handleClearFilters = () => {
+    setSearchFilters({
+      packageName: "",
+      billingType: "",
+      insurance: "",
+      corporate: "",
+    });
+  };
+
   // ================= FORM HANDLERS =================
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     let updatedForm = { ...formData, [name]: value };
 
-    // Reset dependent fields when billing type changes
     if (name === "billingType") {
       updatedForm.insurance = "";
       updatedForm.tpa = "";
@@ -129,7 +196,6 @@ const PackageConfiguration = () => {
 
     setFormData(updatedForm);
 
-    // Basic validation: required fields
     const valid =
       updatedForm.packageName &&
       updatedForm.billingType &&
@@ -223,11 +289,6 @@ const PackageConfiguration = () => {
     setShowForm(false);
   };
 
-  const handleShowAll = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-  };
-
   // Determine which fields to disable based on billingType
   const isInsuranceDisabled = formData.billingType !== "Insurance";
   const isTPADisabled = formData.billingType !== "Insurance";
@@ -242,18 +303,8 @@ const PackageConfiguration = () => {
 
           {!showForm && (
             <div className="d-flex gap-2">
-              <input
-                className="form-control me-2"
-                placeholder="Search by package name..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                style={{ width: "250px" }}
-              />
               <button className="btn btn-success" onClick={() => setShowForm(true)}>
                 <i className="mdi mdi-plus"></i> Add
-              </button>
-              <button className="btn btn-secondary" onClick={handleShowAll}>
-                Show All
               </button>
             </div>
           )}
@@ -269,6 +320,79 @@ const PackageConfiguration = () => {
         <div className="card-body">
           {!showForm ? (
             <>
+              {/* Search Filters Section */}
+              <div className="row col-md-10 mb-3 p-3">
+                <div className="col-md-2 fw-bold">
+                  <label>Package Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="packageName"
+                    placeholder="Search by package name"
+                    value={searchFilters.packageName}
+                    onChange={handleFilterChange}
+                  />
+                </div>
+                <div className="col-md-2 fw-bold">
+                  <label>Billing Type</label>
+                  <select
+                    className="form-select"
+                    name="billingType"
+                    value={searchFilters.billingType}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">All</option>
+                    {billingTypeOptions.map((opt) => (
+                      <option key={opt} value={opt}>
+                        {opt}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-2 fw-bold">
+                  <label>Insurance</label>
+                  <select
+                    className="form-select"
+                    name="insurance"
+                    value={searchFilters.insurance}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">All</option>
+                    {insuranceOptions.map((ins) => (
+                      <option key={ins} value={ins}>
+                        {ins}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="col-md-2 fw-bold">
+                  <label>Corporate</label>
+                  <select
+                    className="form-select"
+                    name="corporate"
+                    value={searchFilters.corporate}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">All</option>
+                    {corporateOptions.map((corp) => (
+                      <option key={corp} value={corp}>
+                        {corp}
+                      </option>
+                    ))}
+                  </select>
+                  
+                </div>
+                <div className="col-md-2 gap-1 d-flex align-items-end">
+                   <button className="btn btn-success ">
+                    Search
+                  </button>
+                  <button className="btn btn-secondary ">
+                    Reset
+                  </button>
+                </div>
+                
+              </div>
+
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
@@ -391,43 +515,61 @@ const PackageConfiguration = () => {
                   </select>
                 </div>
 
-                {/* Insurance (enabled only for Insurance) */}
+                {/* Insurance Dropdown */}
                 <div className="form-group col-md-4 mt-3">
                   <label>Insurance</label>
-                  <input
-                    className="form-control"
+                  <select
+                    className="form-select"
                     name="insurance"
                     value={formData.insurance}
                     onChange={handleInputChange}
                     disabled={isInsuranceDisabled}
-                    placeholder="e.g., ICICI Lombard"
-                  />
+                  >
+                    <option value="">Select Insurance</option>
+                    {insuranceOptions.map((ins) => (
+                      <option key={ins} value={ins}>
+                        {ins}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* TPA (enabled only for Insurance) */}
+                {/* TPA Dropdown */}
                 <div className="form-group col-md-4 mt-3">
                   <label>TPA</label>
-                  <input
-                    className="form-control"
+                  <select
+                    className="form-select"
                     name="tpa"
                     value={formData.tpa}
                     onChange={handleInputChange}
                     disabled={isTPADisabled}
-                    placeholder="e.g., MediAssist"
-                  />
+                  >
+                    <option value="">Select TPA</option>
+                    {tpaOptions.map((tpa) => (
+                      <option key={tpa} value={tpa}>
+                        {tpa}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Corporate (enabled only for Corporate) */}
+                {/* Corporate Dropdown */}
                 <div className="form-group col-md-4 mt-3">
                   <label>Corporate</label>
-                  <input
-                    className="form-control"
+                  <select
+                    className="form-select"
                     name="corporate"
                     value={formData.corporate}
                     onChange={handleInputChange}
                     disabled={isCorporateDisabled}
-                    placeholder="e.g., ABC Corp"
-                  />
+                  >
+                    <option value="">Select Corporate</option>
+                    {corporateOptions.map((corp) => (
+                      <option key={corp} value={corp}>
+                        {corp}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Room Category Dropdown */}
@@ -467,7 +609,7 @@ const PackageConfiguration = () => {
                   />
                 </div>
 
-                {/* Effective From Date */}
+                {/* Effective From */}
                 <div className="form-group col-md-4 mt-3">
                   <label>
                     Effective From <span className="text-danger">*</span>
@@ -482,7 +624,7 @@ const PackageConfiguration = () => {
                   />
                 </div>
 
-                {/* Effective To Date */}
+                {/* Effective To */}
                 <div className="form-group col-md-4 mt-3">
                   <label>
                     Effective To <span className="text-danger">*</span>
@@ -497,7 +639,7 @@ const PackageConfiguration = () => {
                   />
                 </div>
 
-                {/* PreAuth Dropdown (Yes/No) */}
+                {/* PreAuth */}
                 <div className="form-group col-md-4 mt-3">
                   <label>
                     PreAuth Required <span className="text-danger">*</span>
@@ -515,7 +657,7 @@ const PackageConfiguration = () => {
                   </select>
                 </div>
 
-                {/* Co-pay % */}
+                {/* Co-pay */}
                 <div className="form-group col-md-4 mt-3">
                   <label>
                     Co-pay (%) <span className="text-danger">*</span>
