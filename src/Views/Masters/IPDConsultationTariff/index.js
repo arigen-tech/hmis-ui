@@ -21,11 +21,11 @@ const IPDConsultationTariff = () => {
     validTo: "",
   });
 
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    recordId: null, 
-    newStatus: false, 
-    recordName: "" 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    recordId: null,
+    newStatus: false,
+    recordName: ""
   });
 
   const [serviceCategoryOptions, setServiceCategoryOptions] = useState([]);
@@ -33,7 +33,7 @@ const IPDConsultationTariff = () => {
   const [departmentData, setDepartmentData] = useState([]);
   const [doctorData, setDoctorData] = useState([]);
   const [filterDoctorData, setFilterDoctorData] = useState([]);
-  
+
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -56,26 +56,25 @@ const IPDConsultationTariff = () => {
   const hospitalId = sessionStorage.getItem("hospitalId");
 
   // ================= API CALLS =================
-  
+
   // Fetch IPD Consultation Tariff data
   const fetchIPDTariffData = async (page = 0) => {
     setLoading(true);
     try {
       let url = `/master/ipdConsultationTariff/getAll?page=${page}&size=${itemsPerPage}`;
-      
+
       if (departmentFilter) {
         url += `&departmentId=${departmentFilter}`;
       }
       if (doctorFilter) {
         url += `&doctorId=${doctorFilter}`;
       }
-      
+
       const response = await getRequest(url);
-      
+
       if (response.status === 200 && response.response) {
         const paginatedData = response.response;
-        
-        // Handle empty response
+
         if (!paginatedData.content || paginatedData.content.length === 0) {
           setData([]);
           setTotalPages(0);
@@ -83,30 +82,28 @@ const IPDConsultationTariff = () => {
           setCurrentPage(1);
           return;
         }
-        
-        // Transform data for display
+
         const transformedData = paginatedData.content.map(item => ({
-          id: item.tariffId || item.id,
-          serviceCategory: item.serviceCategoryName || item.serviceCategory,
+          id: item.tariffId,
+          serviceCategory: item.serviceCategoryName,
           serviceCategoryId: item.serviceCategoryId,
-          visitType: item.visitTypeName || item.visitType,
+          visitType: item.visitTypeName,
           visitTypeId: item.visitTypeId,
-          department: item.departmentName || item.department,
+          department: item.departmentName,
           departmentId: item.departmentId,
-          doctor: item.doctorName || item.doctor,
+          doctor: item.doctorName,
           doctorId: item.doctorId,
-          charge: item.baseTariff || item.charge,
-          validFrom: item.fromDate || item.validFrom,
-          validTo: item.toDate || item.validTo,
+          charge: item.baseTariff,
+          validFrom: item.fromDate,
+          validTo: item.toDate,
           status: item.status
         }));
-        
+
         setData(transformedData);
         setTotalPages(paginatedData.totalPages || 0);
         setTotalItems(paginatedData.totalElements || 0);
         setCurrentPage((paginatedData.number || 0) + 1);
       } else {
-        console.error("Unexpected API response format:", response);
         setData([]);
         setTotalPages(0);
         setTotalItems(0);
@@ -132,17 +129,16 @@ const IPDConsultationTariff = () => {
         } else if (response.response && Array.isArray(response.response.content)) {
           categories = response.response.content;
         }
-        
+
         const categoryOptions = categories
           .filter(cat => cat.status === "y")
           .map(cat => ({
-            id: cat.id,
-            name: cat.serviceCatName
+            id: cat.id || cat.serviceCategoryId,
+            name: cat.serviceCatName || cat.serviceCategoryName
           }));
         setServiceCategoryOptions(categoryOptions);
         return categoryOptions;
       } else {
-        console.error("Unexpected API response format:", response);
         setServiceCategoryOptions([]);
         return [];
       }
@@ -153,28 +149,27 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch Visit Types
+  // Fetch Visit Types - FIXED AND WORKING
   const fetchVisitTypes = async () => {
     try {
-      const response = await getRequest("/masVisitType/getAll/1");
-      if (response.status === 200) {
-        let visitTypes = [];
-        if (Array.isArray(response.response)) {
-          visitTypes = response.response;
-        } else if (response.response && Array.isArray(response.response.content)) {
-          visitTypes = response.response.content;
-        }
-        
-        const visitTypeOptions = visitTypes
+      console.log("Fetching visit types...");
+      const response = await getRequest("/master/masVisitType/getAll/1");
+      console.log("Visit Types API Response:", response);
+
+      // Check if response has the expected structure
+      if (response && response.status === 200 && response.response && Array.isArray(response.response)) {
+        const visitTypeOptions = response.response
           .filter(type => type.status === "y")
           .map(type => ({
-            id: type.id,
+            id: type.visitTypeId,
             name: type.visitTypeName
           }));
+
+        console.log("Processed Visit Types:", visitTypeOptions);
         setVisitTypeOptions(visitTypeOptions);
         return visitTypeOptions;
       } else {
-        console.error("Unexpected API response format:", response);
+        console.error("Invalid response structure:", response);
         setVisitTypeOptions([]);
         return [];
       }
@@ -196,7 +191,6 @@ const IPDConsultationTariff = () => {
         setDepartmentData(filteredDepartments);
         return filteredDepartments;
       } else {
-        console.error("Unexpected API response format:", response);
         setDepartmentData([]);
         return [];
       }
@@ -215,9 +209,7 @@ const IPDConsultationTariff = () => {
     }
     try {
       const response = await getRequest(`${DOCTOR}/doctorBySpeciality/${departmentId}`);
-      console.log("Filter Doctors Response:", response);
       if (response.status === 200 && Array.isArray(response.response)) {
-        // Don't filter by status since it's null in the response
         setFilterDoctorData(response.response);
       } else {
         setFilterDoctorData([]);
@@ -237,9 +229,7 @@ const IPDConsultationTariff = () => {
     setFetchingDoctors(true);
     try {
       const response = await getRequest(`${DOCTOR}/doctorBySpeciality/${departmentId}`);
-      console.log("Form Doctors Response:", response);
       if (response.status === 200 && Array.isArray(response.response)) {
-        // Don't filter by status since it's null in the response
         setDoctorData(response.response);
         return response.response;
       } else {
@@ -257,9 +247,13 @@ const IPDConsultationTariff = () => {
 
   // ================= EFFECTS =================
   useEffect(() => {
-    fetchServiceCategories();
-    fetchVisitTypes();
-    fetchDepartments();
+    const loadInitialData = async () => {
+      console.log("Loading initial data...");
+      await fetchServiceCategories();
+      await fetchVisitTypes();
+      await fetchDepartments();
+    };
+    loadInitialData();
   }, []);
 
   useEffect(() => {
@@ -296,11 +290,10 @@ const IPDConsultationTariff = () => {
   // ================= FORM HANDLERS =================
   const handleInputChange = async (e) => {
     const { name, value } = e.target;
-    
+
     if (name === "department") {
       const selectedDept = departmentData.find(dept => dept.id === parseInt(value));
-      
-      // Update form data first
+
       setFormData(prev => ({
         ...prev,
         department: selectedDept?.departmentName || "",
@@ -308,38 +301,36 @@ const IPDConsultationTariff = () => {
         doctor: "",
         doctorId: ""
       }));
-      
-      // Fetch doctors for the selected department
+
       if (value) {
         await fetchDoctorsForForm(parseInt(value));
       } else {
         setDoctorData([]);
       }
-      
-      // Validate form after state updates
+
       setTimeout(() => {
         setFormData(prev => {
           validateForm(prev);
           return prev;
         });
       }, 100);
-      
+
     } else if (name === "doctor") {
       const selectedDoc = doctorData.find(doc => doc.userId === parseInt(value));
-      
+
       setFormData(prev => {
         const updatedForm = {
           ...prev,
-          doctor: selectedDoc ? `Dr. ${selectedDoc.firstName} ${selectedDoc.middleName || ''} ${selectedDoc.lastName}`.trim().replace(/\s+/g, ' ') : "",
+          doctor: selectedDoc?.doctorName || selectedDoc ? `Dr. ${selectedDoc.firstName} ${selectedDoc.middleName || ''} ${selectedDoc.lastName}`.trim().replace(/\s+/g, ' ') : "",
           doctorId: value
         };
         validateForm(updatedForm);
         return updatedForm;
       });
-      
+
     } else if (name === "serviceCategory") {
       const selectedCategory = serviceCategoryOptions.find(cat => cat.id === parseInt(value));
-      
+
       setFormData(prev => {
         const updatedForm = {
           ...prev,
@@ -349,10 +340,10 @@ const IPDConsultationTariff = () => {
         validateForm(updatedForm);
         return updatedForm;
       });
-      
+
     } else if (name === "visitType") {
       const selectedVisitType = visitTypeOptions.find(type => type.id === parseInt(value));
-      
+
       setFormData(prev => {
         const updatedForm = {
           ...prev,
@@ -362,7 +353,7 @@ const IPDConsultationTariff = () => {
         validateForm(updatedForm);
         return updatedForm;
       });
-      
+
     } else {
       setFormData(prev => {
         const updatedForm = { ...prev, [name]: value };
@@ -380,7 +371,7 @@ const IPDConsultationTariff = () => {
       formDataToValidate.charge &&
       formDataToValidate.validFrom &&
       formDataToValidate.validTo;
-    
+
     setIsFormValid(!!isValid);
   };
 
@@ -407,12 +398,23 @@ const IPDConsultationTariff = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     setProcess(true);
-    
+
     if (!isFormValid) {
       setProcess(false);
       showPopup("Please fill all required fields", "error");
       return;
     }
+
+    // Format dates properly - send as ISO string
+    const fromDateObj = new Date(formData.validFrom);
+    const toDateObj = new Date(formData.validTo);
+
+    // Set time to start of day for fromDate and end of day for toDate
+    fromDateObj.setHours(0, 0, 0, 0);
+    toDateObj.setHours(23, 59, 59, 999);
+
+    const fromDate = fromDateObj.toISOString();
+    const toDate = toDateObj.toISOString();
 
     const payload = {
       serviceCategoryId: parseInt(formData.serviceCategoryId, 10),
@@ -421,8 +423,8 @@ const IPDConsultationTariff = () => {
       doctorId: parseInt(formData.doctorId, 10),
       hospitalId: parseInt(hospitalId, 10),
       baseTariff: parseFloat(formData.charge),
-      fromDate: new Date(formData.validFrom).toISOString(),
-      toDate: new Date(formData.validTo).toISOString()
+      fromDate: fromDate,
+      toDate: toDate
     };
 
     try {
@@ -437,7 +439,7 @@ const IPDConsultationTariff = () => {
           await fetchIPDTariffData(currentPage - 1);
           handleCancel();
         } else {
-          throw new Error(response.message || "Update failed");
+          showPopup(response.message || "Update failed", "error");
         }
       } else {
         response = await postRequest("/master/ipdConsultationTariff/create", payload);
@@ -446,12 +448,13 @@ const IPDConsultationTariff = () => {
           await fetchIPDTariffData(0);
           handleCancel();
         } else {
-          throw new Error(response.message || "Save failed");
+          showPopup(response.message || "Save failed", "error");
         }
       }
     } catch (error) {
       console.error("Error saving record:", error);
-      showPopup(error.message || "Failed to save changes", "error");
+      const errorMessage = error.response?.data?.message || error.message || "Failed to save changes";
+      showPopup(errorMessage, "error");
     } finally {
       setProcess(false);
     }
@@ -462,21 +465,22 @@ const IPDConsultationTariff = () => {
     setFormLoading(true);
     setShowForm(true);
     setEditingRecord(rec);
-    
+
     try {
-      // Ensure all dropdown data is loaded first
       await Promise.all([
         fetchServiceCategories(),
         fetchVisitTypes(),
         fetchDepartments()
       ]);
-      
-      // Fetch doctors for the department if departmentId exists
+
       if (rec.departmentId) {
         await fetchDoctorsForForm(rec.departmentId);
       }
-      
-      // Now set the form data after all dropdown data is loaded
+
+      // Extract date from ISO string (format: "2026-04-13T07:02:28.484" -> "2026-04-13")
+      const validFromDate = rec.validFrom ? rec.validFrom.split('T')[0] : "";
+      const validToDate = rec.validTo ? rec.validTo.split('T')[0] : "";
+
       const newFormData = {
         serviceCategory: rec.serviceCategory || "",
         serviceCategoryId: rec.serviceCategoryId?.toString() || "",
@@ -487,13 +491,13 @@ const IPDConsultationTariff = () => {
         doctor: rec.doctor || "",
         doctorId: rec.doctorId?.toString() || "",
         charge: rec.charge?.toString() || "",
-        validFrom: rec.validFrom ? new Date(rec.validFrom).toISOString().split('T')[0] : "",
-        validTo: rec.validTo ? new Date(rec.validTo).toISOString().split('T')[0] : "",
+        validFrom: validFromDate,
+        validTo: validToDate,
       };
-      
+
       setFormData(newFormData);
       setIsFormValid(true);
-      
+
     } catch (error) {
       console.error("Error loading edit form:", error);
       showPopup("Error loading form data", "error");
@@ -504,11 +508,11 @@ const IPDConsultationTariff = () => {
 
   // ================= STATUS SWITCH =================
   const handleSwitchChange = (id, name, newStatus) => {
-    setConfirmDialog({ 
-      isOpen: true, 
-      recordId: id, 
-      newStatus, 
-      recordName: name 
+    setConfirmDialog({
+      isOpen: true,
+      recordId: id,
+      newStatus,
+      recordName: name
     });
   };
 
@@ -527,7 +531,7 @@ const IPDConsultationTariff = () => {
           );
           await fetchIPDTariffData(currentPage - 1);
         } else {
-          throw new Error(response.message || "Failed to update status");
+          showPopup(response.message || "Failed to update status", "error");
         }
       } catch (error) {
         console.error("Error updating status:", error);
@@ -575,8 +579,8 @@ const IPDConsultationTariff = () => {
 
               {!showForm ? (
                 <div className="d-flex gap-2">
-                  <button 
-                    className="btn btn-success" 
+                  <button
+                    className="btn btn-success"
                     onClick={() => {
                       setEditingRecord(null);
                       setIsFormValid(false);
@@ -632,7 +636,7 @@ const IPDConsultationTariff = () => {
                         <option value="">All Doctors</option>
                         {filterDoctorData.map((doc) => (
                           <option key={doc.userId} value={doc.userId.toString()}>
-                            Dr. {doc.firstName} {doc.middleName || ''} {doc.lastName || ''}
+                            {doc.doctorName || `Dr. ${doc.firstName} ${doc.middleName || ''} ${doc.lastName || ''}`}
                           </option>
                         ))}
                       </select>
@@ -673,8 +677,8 @@ const IPDConsultationTariff = () => {
                                     type="checkbox"
                                     checked={rec.status === "y"}
                                     onChange={() => handleSwitchChange(
-                                      rec.id, 
-                                      rec.serviceCategory, 
+                                      rec.id,
+                                      rec.serviceCategory,
                                       rec.status === "y" ? "n" : "y"
                                     )}
                                     id={`switch-${rec.id}`}
@@ -757,12 +761,19 @@ const IPDConsultationTariff = () => {
                           disabled={formLoading}
                         >
                           <option value="">Select Visit Type</option>
-                          {visitTypeOptions.map((type) => (
-                            <option key={type.id} value={type.id}>
-                              {type.name}
-                            </option>
-                          ))}
+                          {visitTypeOptions.length > 0 ? (
+                            visitTypeOptions.map((type) => (
+                              <option key={type.id} value={type.id.toString()}>
+                                {type.name}
+                              </option>
+                            ))
+                          ) : (
+                            <option value="" disabled>Loading visit types...</option>
+                          )}
                         </select>
+                        {visitTypeOptions.length === 0 && !formLoading && (
+                          <small className="text-danger">No visit types available. Please check API connection.</small>
+                        )}
                       </div>
 
                       <div className="form-group col-md-4 mt-3">
@@ -803,7 +814,7 @@ const IPDConsultationTariff = () => {
                           </option>
                           {doctorData.map((doc) => (
                             <option key={doc.userId} value={doc.userId}>
-                              Dr. {doc.firstName} {doc.middleName || ''} {doc.lastName || ''}
+                              {doc.doctorName || `Dr. ${doc.firstName} ${doc.middleName || ''} ${doc.lastName || ''}`}
                             </option>
                           ))}
                         </select>
