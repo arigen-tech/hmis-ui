@@ -35,6 +35,7 @@ const OPDServiceMaster = () => {
   const [totalPages, setTotalPages] = useState(0)
   const [totalItems, setTotalItems] = useState(0)
   const [process, setProcess] = useState(false);
+  const [formLoading, setFormLoading] = useState(false);
 
   const hospitalId = sessionStorage.getItem("hospitalId");
 
@@ -47,9 +48,13 @@ const OPDServiceMaster = () => {
     if (showForm) {
       fetchServicecategoryData();
       fetchDepartmentData();
-      if (formData.departmentId) {
-        fetchDoctorData();
-      }
+    }
+  }, [showForm]);
+
+  // Fetch doctors when departmentId changes
+  useEffect(() => {
+    if (showForm && formData.departmentId) {
+      fetchDoctorData(formData.departmentId);
     }
   }, [showForm, formData.departmentId]);
 
@@ -103,31 +108,8 @@ const OPDServiceMaster = () => {
       const data = await getRequest(url);
       
       if (data.status === 200 && data.response) {
-        // Transform backend paginated response to match frontend expected structure
-        const transformedData = data.response.content.map(item => ({
-          id: item.id,
-          serviceName: item.serviceName,
-          baseTariff: item.baseTariff,
-          serviceCategory: {
-            id: item.serviceCategoryId,
-            serviceCatName: item.serviceCategory
-          },
-          departmentId: {
-            id: item.departmentId,
-            departmentName: item.departmentName
-          },
-          doctorId: {
-            userId: item.doctorId,
-            firstName: item.doctorFirstName,
-            middleName: item.doctorMiddleName,
-            lastName: item.doctorLastName
-          },
-          fromDt: item.fromDate,
-          toDt: item.toDate,
-          status: item.status
-        }));
-        
-        setServiceOpdData(transformedData);
+        // Keep the original data structure as it comes from the API
+        setServiceOpdData(data.response.content);
         setTotalPages(data.response.totalPages || 0);
         setTotalItems(data.response.totalElements || 0);
         setCurrentPage(data.response.number + 1);
@@ -150,12 +132,15 @@ const OPDServiceMaster = () => {
       const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setServiceCategoryData(data.response);
+        return data.response;
       } else {
         console.error("Unexpected API response format:", data);
         setServiceCategoryData([]);
+        return [];
       }
     } catch (error) {
       console.error("Error fetching Service Category data:", error);
+      return [];
     }
   };
 
@@ -168,27 +153,33 @@ const OPDServiceMaster = () => {
         );
         setRowDepartmentData(data.response);
         setDepartmentData(filteredDepartments);
+        return filteredDepartments;
       } else {
         console.error("Unexpected API response format:", data);
         setRowDepartmentData([]);
         setDepartmentData([]);
+        return [];
       }
     } catch (error) {
       console.error("Error fetching Department data:", error);
+      return [];
     }
   };
 
-  const fetchDoctorData = async () => {
+  const fetchDoctorData = async (deptId) => {
     try {
-      const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${formData.departmentId}`);
+      const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${deptId}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
+        return data.response;
       } else {
         console.error("Unexpected API response format:", data);
         setDoctorData([]);
+        return [];
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
+      return [];
     }
   };
 
@@ -217,18 +208,71 @@ const OPDServiceMaster = () => {
     fetchServiceOpdData(page - 1);
   };
 
-  const handleEdit = (item) => {
-    setEditingService(item);
+  const handleEdit = async (item) => {
+    setFormLoading(true);
     setShowForm(true);
-    setFormData({
-      baseTariff: item.baseTariff?.toString() || "",
-      serviceCategory: item.serviceCategory?.id?.toString() || "",
-      departmentId: item.departmentId?.id?.toString() || "",
-      doctorId: item.doctorId?.userId?.toString() || "",
-      fromDate: item.fromDt?.substring(0, 10) || "",
-      toDate: item.toDt?.substring(0, 10) || "",
-    });
-    setIsFormValid(true);
+    
+    try {
+      // Fetch all required data first
+      const [categories, departments] = await Promise.all([
+        fetchServicecategoryData(),
+        fetchDepartmentData()
+      ]);
+      
+      // Find the service category ID by matching the name
+      const serviceCategoryId = categories.find(
+        cat => cat.serviceCatName === item.serviceCategory
+      )?.id?.toString() || "";
+      
+      // Find the department ID by matching the name
+      const departmentId = departments.find(
+        dept => dept.departmentName === item.departmentName
+      )?.id?.toString() || "";
+      
+      // Fetch doctors for the selected department
+      let doctors = [];
+      let doctorId = "";
+      if (departmentId) {
+        doctors = await fetchDoctorData(departmentId);
+        
+        // Find doctor ID by matching the name
+        const fullName = `${item.doctorFirstName || ''} ${item.doctorMiddleName || ''} ${item.doctorLastName || ''}`.trim();
+        const doctor = doctors.find(doc => {
+          const docFullName = `${doc.firstName || ''} ${doc.middleName || ''} ${doc.lastName || ''}`.trim();
+          return docFullName === fullName;
+        });
+        doctorId = doctor?.userId?.toString() || "";
+      }
+      
+      // Now set the form data after all dropdown data is loaded
+      const newFormData = {
+        baseTariff: item.baseTariff?.toString() || "",
+        serviceCategory: serviceCategoryId,
+        departmentId: departmentId,
+        doctorId: doctorId,
+        fromDate: item.fromDate ? item.fromDate.split('T')[0] : "",
+        toDate: item.toDate ? item.toDate.split('T')[0] : "",
+      };
+      
+      setFormData(newFormData);
+      setEditingService(item);
+      
+      // Validate form
+      const isValid = !!(
+        newFormData.baseTariff &&
+        newFormData.serviceCategory &&
+        newFormData.departmentId &&
+        newFormData.doctorId &&
+        newFormData.fromDate &&
+        newFormData.toDate
+      );
+      setIsFormValid(isValid);
+      
+    } catch (error) {
+      console.error("Error loading edit form:", error);
+    } finally {
+      setFormLoading(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -255,6 +299,13 @@ const OPDServiceMaster = () => {
         );
         if (response.status === 200) {
           showPopup(UPDATE_OPD_SERVICE_SUCC_MSG, "success");
+          
+          // Close the form first
+          resetForm();
+          
+          // Reset to first page and refresh data
+          setCurrentPage(1);
+          await fetchServiceOpdData(0);
         } else {
           throw new Error(response.message || "Update failed");
         }
@@ -262,13 +313,17 @@ const OPDServiceMaster = () => {
         response = await postRequest(`${MAS_OPD_SERVICE}/save`, payload);
         if (response.status === 200) {
           showPopup(ADD_OPD_SERVICE_SUCC_MSG, "success");
+          
+          // Close the form first
+          resetForm();
+          
+          // Reset to first page and refresh data
+          setCurrentPage(1);
+          await fetchServiceOpdData(0);
         } else {
           throw new Error(response.message || "Save failed");
         }
       }
-
-      await fetchServiceOpdData(0);
-      resetForm();
     } catch (error) {
       console.error("Error saving OPD Service:", error);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -289,6 +344,8 @@ const OPDServiceMaster = () => {
       toDate: "",
     });
     setIsFormValid(false);
+    setDoctorData([]);
+    setFormLoading(false);
   };
 
   const showPopup = (message, type = "info") => {
@@ -335,17 +392,21 @@ const OPDServiceMaster = () => {
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [id]: value }));
-
-    const updatedFormData = { ...formData, [id]: value };
-    setIsFormValid(
-      !!updatedFormData.baseTariff &&
-      !!updatedFormData.serviceCategory &&
-      !!updatedFormData.departmentId &&
-      !!updatedFormData.doctorId &&
-      !!updatedFormData.fromDate &&
-      !!updatedFormData.toDate
-    );
+    setFormData((prevData) => {
+      const updatedFormData = { ...prevData, [id]: value };
+      
+      // Validate form after update
+      setIsFormValid(
+        !!updatedFormData.baseTariff &&
+        !!updatedFormData.serviceCategory &&
+        !!updatedFormData.departmentId &&
+        !!updatedFormData.doctorId &&
+        !!updatedFormData.fromDate &&
+        !!updatedFormData.toDate
+      );
+      
+      return updatedFormData;
+    });
   };
 
   const handleSelectChange = (e) => {
@@ -355,20 +416,21 @@ const OPDServiceMaster = () => {
       ? parseInt(value, 10) || ""
       : value;
 
-    const updatedFormData = { ...formData, [id]: parsedValue };
-    setFormData(updatedFormData);
-
-    // If department changes, reset doctor selection
-    if (id === "departmentId") {
-      setFormData(prev => ({ ...prev, doctorId: "" }));
-      setIsFormValid(
-        !!updatedFormData.baseTariff &&
-        !!updatedFormData.serviceCategory &&
-        !!updatedFormData.departmentId &&
-        !!updatedFormData.fromDate &&
-        !!updatedFormData.toDate
-      );
-    } else {
+    setFormData((prevData) => {
+      let updatedFormData = { ...prevData, [id]: parsedValue };
+      
+      // If department changes, reset doctor selection
+      if (id === "departmentId") {
+        updatedFormData = { ...updatedFormData, doctorId: "" };
+        // Fetch doctors for new department
+        if (parsedValue) {
+          fetchDoctorData(parsedValue);
+        } else {
+          setDoctorData([]);
+        }
+      }
+      
+      // Validate form after update
       setIsFormValid(
         !!updatedFormData.baseTariff &&
         !!updatedFormData.serviceCategory &&
@@ -377,7 +439,9 @@ const OPDServiceMaster = () => {
         !!updatedFormData.fromDate &&
         !!updatedFormData.toDate
       );
-    }
+      
+      return updatedFormData;
+    });
   };
 
   const handleRefresh = () => {
@@ -492,15 +556,15 @@ const OPDServiceMaster = () => {
                                   : '₹0.00'
                                 }
                               </td>
-                              <td style={{ textTransform: "capitalize" }}>{item.serviceCategory?.serviceCatName || '-'}</td>
-                              <td>{item.departmentId?.departmentName || '-'}</td>
+                              <td style={{ textTransform: "capitalize" }}>{item.serviceCategory || '-'}</td>
+                              <td>{item.departmentName || '-'}</td>
                               <td>
-                                {[item.doctorId?.firstName, item.doctorId?.middleName, item.doctorId?.lastName]
+                                {[item.doctorFirstName, item.doctorMiddleName, item.doctorLastName]
                                   .filter(Boolean)
                                   .join(" ") || '-'}
                               </td>
-                              <td>{item.fromDt ? new Date(item.fromDt).toLocaleDateString() : '-'}</td>
-                              <td>{item.toDt ? new Date(item.toDt).toLocaleDateString() : '-'}</td>
+                              <td>{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : '-'}</td>
+                              <td>{item.toDate ? new Date(item.toDate).toLocaleDateString() : '-'}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -548,132 +612,135 @@ const OPDServiceMaster = () => {
                   )}
                 </>
               ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                  <div className="d-flex justify-content-end mb-3">
-                    <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                      <i className="mdi mdi-arrow-left"></i> Back
-                    </button>
-                  </div>
-                  <div className="row">
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Base Tariff <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control"
-                        id="baseTariff"
-                        placeholder="Base Tariff"
-                        onChange={handleInputChange}
-                        value={formData.baseTariff}
-                        required
-                      />
+                <>
+                  {formLoading && <LoadingScreen />}
+                  <form className="forms row" onSubmit={handleSave}>
+                    <div className="d-flex justify-content-end mb-3">
+                      <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                        <i className="mdi mdi-arrow-left"></i> Back
+                      </button>
                     </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Service Category <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select"
-                        id="serviceCategory"
-                        onChange={handleSelectChange}
-                        value={formData.serviceCategory}
-                        required
-                      >
-                        <option value="">Select Service Category</option>
-                        {serviceCategoryData.map((category) => (
-                          <option key={category.id} value={category.id}>
-                            {category.serviceCatName}
-                          </option>
-                        ))}
-                      </select>
+                    <div className="row">
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Base Tariff <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          className="form-control"
+                          id="baseTariff"
+                          placeholder="Base Tariff"
+                          onChange={handleInputChange}
+                          value={formData.baseTariff}
+                          required
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Service Category <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="serviceCategory"
+                          onChange={handleSelectChange}
+                          value={formData.serviceCategory}
+                          required
+                        >
+                          <option value="">Select Service Category</option>
+                          {serviceCategoryData.map((category) => (
+                            <option key={category.id} value={category.id}>
+                              {category.serviceCatName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Department <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="departmentId"
+                          onChange={handleSelectChange}
+                          value={formData.departmentId}
+                          required
+                        >
+                          <option value="">Select Department</option>
+                          {departmentData.map((department) => (
+                            <option key={department.id} value={department.id}>
+                              {department.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Doctor <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="doctorId"
+                          onChange={handleSelectChange}
+                          value={formData.doctorId}
+                          required
+                          disabled={!formData.departmentId || formLoading}
+                        >
+                          <option value="">Select Doctor</option>
+                          {doctorData.map((doctor) => (
+                            <option key={doctor.userId} value={doctor.userId}>
+                              {doctor.firstName} {doctor.middleName} {doctor.lastName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          From Date <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          id="fromDate"
+                          onChange={handleInputChange}
+                          value={formData.fromDate}
+                          required
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          To Date <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="date"
+                          className="form-control"
+                          id="toDate"
+                          onChange={handleInputChange}
+                          value={formData.toDate}
+                          required
+                        />
+                      </div>
                     </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Department <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select"
-                        id="departmentId"
-                        onChange={handleSelectChange}
-                        value={formData.departmentId}
-                        required
-                      >
-                        <option value="">Select Department</option>
-                        {departmentData.map((department) => (
-                          <option key={department.id} value={department.id}>
-                            {department.departmentName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        Doctor <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-select"
-                        id="doctorId"
-                        onChange={handleSelectChange}
-                        value={formData.doctorId}
-                        required
-                        disabled={!formData.departmentId}
-                      >
-                        <option value="">Select Doctor</option>
-                        {doctorData.map((doctor) => (
-                          <option key={doctor.userId} value={doctor.userId}>
-                            {doctor.firstName} {doctor.middleName} {doctor.lastName}
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        From Date <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        id="fromDate"
-                        onChange={handleInputChange}
-                        value={formData.fromDate}
-                        required
-                      />
-                    </div>
-                    <div className="form-group col-md-4 mt-3">
-                      <label>
-                        To Date <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        className="form-control"
-                        id="toDate"
-                        onChange={handleInputChange}
-                        value={formData.toDate}
-                        required
-                      />
-                    </div>
-                  </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button
-                      type="submit"
-                      className="btn btn-primary me-2"
-                      disabled={process || !isFormValid}
-                    >
-                      {process ? "Processing..." : (editingService ? 'Update' : 'Save')}
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={resetForm}
-                      disabled={process}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
+                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                      <button
+                        type="submit"
+                        className="btn btn-primary me-2"
+                        disabled={process || !isFormValid}
+                      >
+                        {process ? "Processing..." : (editingService ? 'Update' : 'Save')}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={resetForm}
+                        disabled={process}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </>
               )}
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
