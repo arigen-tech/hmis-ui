@@ -1,6 +1,5 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { getRequest } from "../../../service/apiService";
 import { 
@@ -126,7 +125,7 @@ const CashierWiseCollectionReport = () => {
 
     // Fetch PDF from backend API
     const fetchPdf = async (flag) => {
-        const baseUrl = CASHIER_WISE_COLLECTION_END_URL; // Update with your actual base URL if different
+        const baseUrl = CASHIER_WISE_COLLECTION_END_URL;
         const params = new URLSearchParams({
             [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
             [REQUEST_PARAM_FROM_DATE]: fromDate,
@@ -330,12 +329,6 @@ const CashierWiseCollectionReport = () => {
                                     </button>
                                 </div>
                             </div>
-
-                            {(isViewLoading || isPrintLoading) && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen />
-                                </div>
-                            )}
                         </div>
                     </div>
                 </div>
