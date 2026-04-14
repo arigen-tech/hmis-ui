@@ -235,6 +235,7 @@ import IPDConsultationTariff from './Views/Masters/IPDConsultationTariff';
 import PackageConfiguration from './Views/Masters/PackageConfiguration';
 import InsuranceTPAMapping from './Views/Masters/InsuranceTPAMapping';
 import OPDHolidayMaster from './Views/Masters/OPDHolidayMaster';
+import ProcedurePricing from './Views/Masters/ProcedurePricing';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -500,7 +501,9 @@ function App() {
                 <Route path="/IPDConsultationTariff" element={<IPDConsultationTariff/>}/>
                 <Route path="/PackageConfiguration" element={<PackageConfiguration/>}/>
                 <Route path="/InsuranceTPAMapping" element={<InsuranceTPAMapping/>}/>
-                <Route path="/OPDHolidayMaster" element={<OPDHolidayMaster/>} />              </Route>
+                <Route path="/OPDHolidayMaster" element={<OPDHolidayMaster/>} />       
+                <Route path="/ProcedurePricing" element={<ProcedurePricing/>} />
+                </Route>
             </Route>
 
             <Route path="*" element={<PageNotFound />} />

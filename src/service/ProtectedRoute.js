@@ -237,6 +237,7 @@ const validRoutes = [
   "/PackageConfiguration",
   "/InsuranceTPAMapping",
   "/OPDHolidayMaster",
+  "/ProcedurePricing",
   
 ];
 
