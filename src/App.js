@@ -236,6 +236,7 @@ import PackageConfiguration from './Views/Masters/PackageConfiguration';
 import InsuranceTPAMapping from './Views/Masters/InsuranceTPAMapping';
 import OPDHolidayMaster from './Views/Masters/OPDHolidayMaster';
 import ProcedurePricing from './Views/Masters/ProcedurePricing';
+import SurgeryMaster from './Views/Masters/SurgeryMaster';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -503,6 +504,7 @@ function App() {
                 <Route path="/InsuranceTPAMapping" element={<InsuranceTPAMapping/>}/>
                 <Route path="/OPDHolidayMaster" element={<OPDHolidayMaster/>} />       
                 <Route path="/ProcedurePricing" element={<ProcedurePricing/>} />
+                <Route path="/SurgeryMaster" element={<SurgeryMaster/>} />
                 </Route>
             </Route>
 

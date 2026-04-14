@@ -238,6 +238,7 @@ const validRoutes = [
   "/InsuranceTPAMapping",
   "/OPDHolidayMaster",
   "/ProcedurePricing",
+  "/SurgeryMaster",
   
 ];
 
