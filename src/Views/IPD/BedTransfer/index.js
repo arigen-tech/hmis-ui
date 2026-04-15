@@ -380,7 +380,9 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
           onClick={() => {
             setActiveView("request")
             setSelectedPendingTransfer(null)
+            
           }}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
           New Transfer Request
         </button>
@@ -390,6 +392,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
             setActiveView("pendingList")
             setSelectedPendingTransfer(null)
           }}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
           Pending for Transfer ({pendingTransfers.length})
         </button>
@@ -399,6 +402,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
             setActiveView("transferredList")
             setSelectedPendingTransfer(null)
           }}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
           Transferred List ({transferredList.length})
         </button>

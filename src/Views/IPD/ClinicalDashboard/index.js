@@ -302,12 +302,14 @@ const ClinicalDashboard = ({ selectedPatient }) => {
         <button
           className={`btn btn-sm ${activeView === "vitals" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("vitals")}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
           Vital Details
         </button>
         <button
           className={`btn btn-sm ${activeView === "intakeOutput" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("intakeOutput")}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
           Intake / Output
         </button>
