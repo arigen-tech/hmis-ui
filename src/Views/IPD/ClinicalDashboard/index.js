@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState } from "react"
 
 // ─── SVG Semicircle Gauge ────────────────────────────────────
 const SemiGauge = ({ value, min, max, zones, label, unit, size = 160 }) => {
@@ -276,10 +276,11 @@ const getStatus = (zones, value) => {
   return { label: "—", cls: "bg-secondary" }
 }
 
-// ─── Main Component ──────────────────────────────────────────
+// ─── Main Component with Tabs ─────────────────────────────────
 const ClinicalDashboard = ({ selectedPatient }) => {
+  const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
 
-  const vitals       = dummyPatientData.vitals
+  const vitals = dummyPatientData.vitals
   const intakeOutput = dummyPatientData.intakeOutput
 
   // Generate previous 3 days data with different scenarios
@@ -296,180 +297,192 @@ const ClinicalDashboard = ({ selectedPatient }) => {
 
   return (
     <div className="container-fluid p-4">
-      {/* ── VITAL SIGNS ── */}
-      <div className="mb-4">
-        <div className="d-flex justify-content-between align-items-center border border-primary rounded px-3 py-2 mb-3">
-          <h6 className="mb-0 fw-semibold">Vital Details</h6>
-        </div>
+      {/* ─── TAB TOGGLE ─── */}
+      <div className="d-flex gap-2 mb-3">
+        <button
+          className={`btn btn-sm ${activeView === "vitals" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => setActiveView("vitals")}
+        >
+          Vital Details
+        </button>
+        <button
+          className={`btn btn-sm ${activeView === "intakeOutput" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => setActiveView("intakeOutput")}
+        >
+          Intake / Output
+        </button>
+      </div>
 
-        {/* Row 1: BP Systolic | BP Diastolic | Heart Rate */}
-        <div className="row g-3 mb-4">
-          <div className="col-md-4">
-            <div className="card border h-100">
-              <div className="card-body py-3">
-                <SemiGauge
-                  value={vitals.bpSystolic}
-                  min={70} max={200}
-                  zones={BP_SYS_ZONES}
-                  label="Systolic"
-                  unit="mmHg"
-                  size={160}
-                />
-                <div className="text-center mt-2">
-                  <span className={`badge ${bpSysStatus.cls}`}>{bpSysStatus.label}</span>
+      {/* ─── VITAL DETAILS SECTION ─── */}
+      {activeView === "vitals" && (
+        <div>
+          {/* Row 1: BP Systolic | BP Diastolic | Heart Rate */}
+          <div className="row g-3 mb-4">
+            <div className="col-md-4">
+              <div className="card border h-100">
+                <div className="card-body py-3">
+                  <SemiGauge
+                    value={vitals.bpSystolic}
+                    min={70} max={200}
+                    zones={BP_SYS_ZONES}
+                    label="Systolic"
+                    unit="mmHg"
+                    size={160}
+                  />
+                  <div className="text-center mt-2">
+                    <span className={`badge ${bpSysStatus.cls}`}>{bpSysStatus.label}</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="card border h-100">
+                <div className="card-body py-3">
+                  <SemiGauge
+                    value={vitals.bpDiastolic}
+                    min={50} max={120}
+                    zones={BP_DIA_ZONES}
+                    label="Diastolic"
+                    unit="mmHg"
+                    size={160}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="card border h-100">
+                <div className="card-body py-3">
+                  <SemiGauge
+                    value={vitals.heartRate}
+                    min={40} max={180}
+                    zones={HR_ZONES}
+                    label="Heart Rate"
+                    unit="bpm"
+                    size={160}
+                  />
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="col-md-4">
-            <div className="card border h-100">
-              <div className="card-body py-3">
-                <SemiGauge
-                  value={vitals.bpDiastolic}
-                  min={50} max={120}
-                  zones={BP_DIA_ZONES}
-                  label="Diastolic"
-                  unit="mmHg"
-                  size={160}
-                />
+          {/* Row 2: Temperature | SpO2 | Respiration */}
+          <div className="row g-3">
+            <div className="col-md-4">
+              <div className="card border h-100">
+                <div className="card-body py-3">
+                  <SemiGauge
+                    value={vitals.temperature}
+                    min={94} max={106}
+                    zones={TEMP_ZONES}
+                    label="Temperature"
+                    unit="°F"
+                    size={160}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="card border h-100">
+                <div className="card-body py-3">
+                  <SemiGauge
+                    value={vitals.spo2}
+                    min={80} max={100}
+                    zones={SPO2_ZONES}
+                    label="SpO₂"
+                    unit="%"
+                    size={160}
+                  />
+                </div>
+              </div>
+            </div>
+
+            <div className="col-md-4">
+              <div className="card border h-100">
+                <div className="card-body py-3">
+                  <SemiGauge
+                    value={vitals.respiration}
+                    min={8} max={35}
+                    zones={RR_ZONES}
+                    label="Respiration"
+                    unit="/min"
+                    size={160}
+                  />
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="col-md-4">
-            <div className="card border h-100">
-              <div className="card-body py-3">
-                <SemiGauge
-                  value={vitals.heartRate}
-                  min={40} max={180}
-                  zones={HR_ZONES}
-                  label="Heart Rate"
-                  unit="bpm"
-                  size={160}
-                />
-              </div>
-            </div>
+          {/* Legend */}
+          <div className="d-flex gap-3 mt-3 justify-content-center">
+            <span className="badge bg-success">Normal</span>
+            <span className="badge bg-danger">Critical</span>
           </div>
         </div>
+      )}
 
-        {/* Row 2: Temperature | SpO2 | Respiration */}
-        <div className="row g-3">
-          <div className="col-md-4">
-            <div className="card border h-100">
-              <div className="card-body py-3">
-                <SemiGauge
-                  value={vitals.temperature}
-                  min={94} max={106}
-                  zones={TEMP_ZONES}
-                  label="Temperature"
-                  unit="°F"
-                  size={160}
-                />
-              </div>
+      {/* ─── INTAKE / OUTPUT SECTION ─── */}
+      {activeView === "intakeOutput" && (
+        <div>
+          {/* Legend for fluid balance charts */}
+          <div className="d-flex gap-3 justify-content-end mb-3">
+            <div className="d-flex align-items-center gap-2">
+              <div style={{ width: "20px", height: "12px", backgroundColor: "#28a745", borderRadius: "3px" }}></div>
+              <span style={{ fontSize: "0.75rem" }}>Common (Matched)</span>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <div style={{ width: "20px", height: "12px", backgroundColor: "#90EE90", borderRadius: "3px" }}></div>
+              <span style={{ fontSize: "0.75rem" }}>Intake Extra</span>
+            </div>
+            <div className="d-flex align-items-center gap-2">
+              <div style={{ width: "20px", height: "12px", backgroundColor: "#F4A460", borderRadius: "3px" }}></div>
+              <span style={{ fontSize: "0.75rem" }}>Output Extra</span>
             </div>
           </div>
 
-          <div className="col-md-4">
-            <div className="card border h-100">
-              <div className="card-body py-3">
-                <SemiGauge
-                  value={vitals.spo2}
-                  min={80} max={100}
-                  zones={SPO2_ZONES}
-                  label="SpO₂"
-                  unit="%"
-                  size={160}
-                />
-              </div>
+          {/* Row 1: Today and 1 Day Ago */}
+          <div className="row g-4 mb-4">
+            <div className="col-md-6">
+              <FluidBalanceChart 
+                intake={intakeOutput.intake}
+                output={intakeOutput.output}
+                balance={intakeOutput.balance}
+                date={`Today (${getDateString(0)}) - Intake > Output`}
+              />
+            </div>
+            <div className="col-md-6">
+              <FluidBalanceChart 
+                intake={day1.intake}
+                output={day1.output}
+                balance={day1.balance}
+                date={`1 Day Ago (${getDateString(1)}) - Output > Intake`}
+              />
             </div>
           </div>
 
-          <div className="col-md-4">
-            <div className="card border h-100">
-              <div className="card-body py-3">
-                <SemiGauge
-                  value={vitals.respiration}
-                  min={8} max={35}
-                  zones={RR_ZONES}
-                  label="Respiration"
-                  unit="/min"
-                  size={160}
-                />
-              </div>
+          {/* Row 2: 2 Days Ago and 3 Days Ago */}
+          <div className="row g-4">
+            <div className="col-md-6">
+              <FluidBalanceChart 
+                intake={day2.intake}
+                output={day2.output}
+                balance={day2.balance}
+                date={`2 Days Ago (${getDateString(2)}) - Intake > Output`}
+              />
+            </div>
+            <div className="col-md-6">
+              <FluidBalanceChart 
+                intake={day3.intake}
+                output={day3.output}
+                balance={day3.balance}
+                date={`3 Days Ago (${getDateString(3)}) - Output > Intake`}
+              />
             </div>
           </div>
         </div>
-
-        {/* Legend */}
-        <div className="d-flex gap-3 mt-3 justify-content-center">
-          <span className="badge bg-success">Normal</span>
-          <span className="badge bg-danger">Critical</span>
-        </div>
-      </div>
-
-      {/* ── INTAKE / OUTPUT CHARTS ── */}
-      <div className="mb-4">
-        <div className="d-flex justify-content-between align-items-center border border-primary rounded px-3 py-2 mb-3">
-          <h6 className="mb-0 fw-semibold">Intake / Output</h6>
-        </div>
-        
-        {/* Legend for fluid balance charts */}
-        <div className="d-flex gap-3 justify-content-end mb-3">
-          <div className="d-flex align-items-center gap-2">
-            <div style={{ width: "20px", height: "12px", backgroundColor: "#28a745", borderRadius: "3px" }}></div>
-            <span style={{ fontSize: "0.75rem" }}>Common (Matched)</span>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <div style={{ width: "20px", height: "12px", backgroundColor: "#90EE90", borderRadius: "3px" }}></div>
-            <span style={{ fontSize: "0.75rem" }}>Intake Extra</span>
-          </div>
-          <div className="d-flex align-items-center gap-2">
-            <div style={{ width: "20px", height: "12px", backgroundColor: "#F4A460", borderRadius: "3px" }}></div>
-            <span style={{ fontSize: "0.75rem" }}>Output Extra</span>
-          </div>
-        </div>
-
-        {/* Row 1: Today and 1 Day Ago */}
-        <div className="row g-4 mb-4">
-          <div className="col-md-6">
-            <FluidBalanceChart 
-              intake={intakeOutput.intake}
-              output={intakeOutput.output}
-              balance={intakeOutput.balance}
-              date={`Today (${getDateString(0)}) - Intake > Output`}
-            />
-          </div>
-          <div className="col-md-6">
-            <FluidBalanceChart 
-              intake={day1.intake}
-              output={day1.output}
-              balance={day1.balance}
-              date={`1 Day Ago (${getDateString(1)}) - Output > Intake`}
-            />
-          </div>
-        </div>
-
-        {/* Row 2: 2 Days Ago and 3 Days Ago */}
-        <div className="row g-4">
-          <div className="col-md-6">
-            <FluidBalanceChart 
-              intake={day2.intake}
-              output={day2.output}
-              balance={day2.balance}
-              date={`2 Days Ago (${getDateString(2)}) - Intake > Output`}
-            />
-          </div>
-          <div className="col-md-6">
-            <FluidBalanceChart 
-              intake={day3.intake}
-              output={day3.output}
-              balance={day3.balance}
-              date={`3 Days Ago (${getDateString(3)}) - Output > Intake`}
-            />
-          </div>
-        </div>
-      </div>
+      )}
     </div>
   )
 }
