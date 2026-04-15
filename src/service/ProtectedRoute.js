@@ -239,7 +239,8 @@ const validRoutes = [
   "/OPDHolidayMaster",
   "/ProcedurePricing",
   "/SurgeryMaster",
-  
+  "/SurgeryPricing",
+  "/BillingTemplate",
 ];
 
 const NotAuthorized = () => {
