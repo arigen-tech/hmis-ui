@@ -175,12 +175,29 @@ const RadiologyBookingRegisteredPatient = () => {
   };
 
   // Fetching initial data
-  useEffect(() => {
-    fetchGenderData();
-    fetchRelationData();
-    fetchCountryData();
-    fetchGstConfiguration();
-  }, []);
+  // useEffect(() => {
+  //   fetchGenderData();
+  //   fetchRelationData();
+  //   fetchCountryData();
+  //   fetchGstConfiguration();
+  // }, []);
+
+  const hasFetchedInvestigations = useRef(false);
+const lastFetchedGender = useRef(null);
+
+useEffect(() => {
+  const loadInvestigations = async () => {
+    if (formData.gender && genderData.length > 0) {
+      if (lastFetchedGender.current !== formData.gender) {
+        lastFetchedGender.current = formData.gender;
+        hasFetchedInvestigations.current = true;
+        const inv = await fetchInvestigationDetails(Number(formData.gender));
+        setInvestigationItems(inv);
+      }
+    }
+  };
+  loadInvestigations();
+}, [formData.gender, genderData]);
 
   const calculatePaymentBreakdown = () => {
     const checkedItems = formData.rows.filter((_, index) => checkedRows[index]);
@@ -487,10 +504,7 @@ const RadiologyBookingRegisteredPatient = () => {
         error = "Age can not be negative.";
       }
     }
-    if (name === "gender" && value) {
-      const investigationData = await fetchInvestigationDetails(Number(value));
-      setInvestigationItems(investigationData);
-    }
+
     setErrors((prevErrors) => {
       const newErrors = { ...prevErrors };
       if (error) {
@@ -967,13 +981,36 @@ const RadiologyBookingRegisteredPatient = () => {
 
       setFormData(mappedData);
 
-      await fetchStates(mappedData.country);
-      await fetchDistrict(mappedData.state);
-      await fetchNokStates(mappedData.nokCountry);
-      await fetchNokDistrict(mappedData.nokState);
+    await Promise.all([
+      fetchGenderData(),
+      fetchRelationData(),
+      fetchCountryData(),
+      fetchGstConfiguration(),
+    ]);
 
-      const inv = await fetchInvestigationDetails(mappedData.gender);
+        if (mappedData.country) {
+      await fetchStates(mappedData.country);
+    }
+    if (mappedData.state) {
+      await fetchDistrict(mappedData.state);
+    }
+    if (mappedData.nokCountry) {
+      await fetchNokStates(mappedData.nokCountry);
+    }
+    if (mappedData.nokState) {
+      await fetchNokDistrict(mappedData.nokState);
+    }
+    
+    // Fetch investigation items based on patient's gender
+    if (mappedData.gender) {
+      const inv = await fetchInvestigationDetails(Number(mappedData.gender));
       setInvestigationItems(inv);
+    }
+    
+    // Fetch package items
+    await fetchPackageInvestigationDetails(1);
+
+
 
       setShowPatientDetails(true);
     } catch (e) {

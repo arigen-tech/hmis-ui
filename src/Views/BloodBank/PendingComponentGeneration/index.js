@@ -3,7 +3,6 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
-
 // Sample data based on the image
 const pendingComponentData = [
   {
@@ -68,6 +67,22 @@ const pendingComponentData = [
   }
 ];
 
+// Helper function to determine component names based on bag type
+const getComponentsForBagType = (bagType) => {
+  switch (bagType) {
+    case "Single":
+      return ["Red Blood Cells (RBC)"];
+    case "Double":
+      return ["Red Blood Cells (RBC)", "Plasma"];
+    case "Triple":
+      return ["Red Blood Cells (RBC)", "Plasma", "Platelets"];
+    case "Quadruple":
+      return ["Red Blood Cells (RBC)", "Plasma", "Platelets", "Cryoprecipitate"];
+    default:
+      return [];
+  }
+};
+
 const PendingComponentGeneration = () => {
   const [pendingData, setPendingData] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -81,7 +96,10 @@ const PendingComponentGeneration = () => {
   const [failureRemarks, setFailureRemarks] = useState("");
   const [showDetailView, setShowDetailView] = useState(false);
   const [generationStatus, setGenerationStatus] = useState(""); // "pass" or "fail"
-  const [componentForm, setComponentForm] = useState({});
+  
+  // State to hold component entries (array of objects)
+  const [components, setComponents] = useState([]);
+  const [componentNotes, setComponentNotes] = useState("");
 
   // Mock failure reasons from mas_component_failure_reason
   const failureReasonOptions = [
@@ -101,8 +119,7 @@ const PendingComponentGeneration = () => {
   const fetchPendingData = async () => {
     try {
       setLoading(true);
-      // Simulate API call - in real implementation, this would fetch from 
-      // blood_donation_hdr where donation_status = 'COLLECTED'
+      // Simulate API call
       setTimeout(() => {
         setPendingData(pendingComponentData);
         setLoading(false);
@@ -138,14 +155,32 @@ const PendingComponentGeneration = () => {
     setSelectedBag(record);
     setShowDetailView(true);
     setGenerationStatus("");
-    setComponentForm({});
+    setComponentNotes("");
+    
+    // Initialize components array based on bag type
+    const componentNames = getComponentsForBagType(record.bagType);
+    const initialComponents = componentNames.map(name => ({
+      componentName: name,
+      unitNo: "",
+      volume: "",
+      expiryDate: ""
+    }));
+    setComponents(initialComponents);
   };
 
   const handleBackToList = () => {
     setShowDetailView(false);
     setSelectedBag(null);
     setGenerationStatus("");
-    setComponentForm({});
+    setComponents([]);
+    setComponentNotes("");
+  };
+
+  // Update a specific component field
+  const handleComponentChange = (index, field, value) => {
+    const updatedComponents = [...components];
+    updatedComponents[index][field] = value;
+    setComponents(updatedComponents);
   };
 
   const handleFailure = (record) => {
@@ -163,16 +198,8 @@ const PendingComponentGeneration = () => {
 
     try {
       setLoading(true);
-      
-      // In real implementation, this would:
-      // 1. Update blood_donation_hdr with failure status and failure reason
-      // 2. No data saved in blood_donation_dtl
-      
-      // Simulate API call
       setTimeout(() => {
-        // Remove the failed record from pending list
         setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
-        
         showPopup(`Component generation failed for Bag ${selectedBag.bagNo}. Status updated with reason: ${failureReason}`, "warning");
         setShowFailureModal(false);
         setSelectedBag(null);
@@ -213,10 +240,81 @@ const PendingComponentGeneration = () => {
     }
   };
 
+  // Validate component entries before save
+  const validateComponents = () => {
+    if (generationStatus === "fail") {
+      return !!failureReason;
+    }
+    
+    if (generationStatus === "pass") {
+      for (let comp of components) {
+        if (!comp.unitNo.trim()) {
+          showPopup(`Please enter Unit No for ${comp.componentName}`, "error");
+          return false;
+        }
+        if (!comp.volume || parseFloat(comp.volume) <= 0) {
+          showPopup(`Please enter a valid volume for ${comp.componentName}`, "error");
+          return false;
+        }
+        if (!comp.expiryDate) {
+          showPopup(`Please select expiry date for ${comp.componentName}`, "error");
+          return false;
+        }
+      }
+      return true;
+    }
+    return false;
+  };
+
+  // Save component generation (PASS)
+  const handleSavePass = () => {
+    if (!validateComponents()) return;
+
+    setLoading(true);
+    // Simulate API call
+    setTimeout(() => {
+      // Remove from pending list
+      setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
+      
+      // In real implementation, send components array to backend
+      console.log("Saving components:", components);
+      console.log("Notes:", componentNotes);
+      
+      showPopup("Component generation completed successfully. Components saved.", "success");
+      handleBackToList();
+      setLoading(false);
+    }, 1000);
+  };
+
+  // Save component failure
+  const handleSaveFail = () => {
+    if (!failureReason) {
+      showPopup("Please select a failure reason", "error");
+      return;
+    }
+
+    setLoading(true);
+    setTimeout(() => {
+      setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
+      showPopup(`Component generation failed. Reason: ${failureReason}`, "warning");
+      handleBackToList();
+      setLoading(false);
+    }, 1000);
+  };
+
+  // Combined save handler
+  const handleSave = () => {
+    if (generationStatus === "pass") {
+      handleSavePass();
+    } else if (generationStatus === "fail") {
+      handleSaveFail();
+    }
+  };
+
   return (
     <div className="content-wrapper">
       {showDetailView && selectedBag ? (
-        // ============= COMPONENT GENERATION DETAIL VIEW (SCREEN 7) =============
+        // ============= COMPONENT GENERATION DETAIL VIEW =============
         <div className="row">
           <div className="col-12">
             <div className="card form-card">
@@ -352,8 +450,8 @@ const PendingComponentGeneration = () => {
                               </label>
                               <select
                                 className="form-select"
-                                value={componentForm.failureReason || ""}
-                                onChange={(e) => setComponentForm({...componentForm, failureReason: e.target.value})}
+                                value={failureReason}
+                                onChange={(e) => setFailureReason(e.target.value)}
                               >
                                 <option value="">Select Failure Reason</option>
                                 {failureReasonOptions.map(option => (
@@ -371,19 +469,18 @@ const PendingComponentGeneration = () => {
                                 className="form-control"
                                 rows="3"
                                 placeholder="Enter additional remarks..."
-                                value={componentForm.remarks || ""}
-                                onChange={(e) => setComponentForm({...componentForm, remarks: e.target.value})}
+                                value={failureRemarks}
+                                onChange={(e) => setFailureRemarks(e.target.value)}
                               ></textarea>
                             </div>
                           </div>
-                         
                         </div>
                       </div>
                     </div>
                   </div>
                 )}
 
-                {/* Component Generation Form - Show only if PASS is selected */}
+                {/* Component Separation Table - Show only if PASS is selected */}
                 {generationStatus === "pass" && (
                   <div className="row mb-4">
                     <div className="col-12">
@@ -395,66 +492,52 @@ const PendingComponentGeneration = () => {
                           </h6>
                         </div>
                         <div className="card-body">
-                          <div className="row g-3">
-                            <div className="col-md-6">
-                              <label className="form-label">RBC Component Volume (ml)</label>
-                              <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Enter RBC volume"
-                                value={componentForm.rbcVolume || ""}
-                                onChange={(e) => setComponentForm({...componentForm, rbcVolume: e.target.value})}
-                              />
-                            </div>
-                            <div className="col-md-6">
-                              <label className="form-label">Plasma Component Volume (ml)</label>
-                              <input
-                                type="number"
-                                className="form-control"
-                                placeholder="Enter Plasma volume"
-                                value={componentForm.plasmaVolume || ""}
-                                onChange={(e) => setComponentForm({...componentForm, plasmaVolume: e.target.value})}
-                              />
-                            </div>
-                            {(selectedBag.bagType === "Double" || selectedBag.bagType === "Triple" || selectedBag.bagType === "Quadruple") && (
-                              <>
-                                <div className="col-md-6">
-                                  <label className="form-label">Platelet Component Volume (ml)</label>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    placeholder="Enter Platelet volume"
-                                    value={componentForm.plateletVolume || ""}
-                                    onChange={(e) => setComponentForm({...componentForm, plateletVolume: e.target.value})}
-                                  />
-                                </div>
-                              </>
-                            )}
-                            {(selectedBag.bagType === "Triple" || selectedBag.bagType === "Quadruple") && (
-                              <>
-                                <div className="col-md-6">
-                                  <label className="form-label">Cryoprecipitate Component Volume (ml)</label>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    placeholder="Enter Cryo volume"
-                                    value={componentForm.cryoVolume || ""}
-                                    onChange={(e) => setComponentForm({...componentForm, cryoVolume: e.target.value})}
-                                  />
-                                </div>
-                              </>
-                            )}
-                            <div className="col-12">
-                              <label className="form-label">Notes (Optional)</label>
-                              <textarea
-                                className="form-control"
-                                rows="3"
-                                placeholder="Enter any additional notes..."
-                                value={componentForm.notes || ""}
-                                onChange={(e) => setComponentForm({...componentForm, notes: e.target.value})}
-                              ></textarea>
-                            </div>
+                          <div className="table-responsive">
+                            <table className="table table-bordered">
+                              <thead className="table-light">
+                                <tr>
+                                  <th>Component</th>
+                                  <th>Unit No</th>
+                                  <th>Volume (ml)</th>
+                                  <th>Expiry Date</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {components.map((comp, index) => (
+                                  <tr key={index}>
+                                    <td>{comp.componentName}</td>
+                                    <td>
+                                      <input
+                                        type="text"
+                                        className="form-control form-control-sm"
+                                        placeholder="Enter unit number"
+                                        value={comp.unitNo}
+                                        onChange={(e) => handleComponentChange(index, 'unitNo', e.target.value)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="number"
+                                        className="form-control form-control-sm"
+                                        placeholder="Volume in ml"
+                                        value={comp.volume}
+                                        onChange={(e) => handleComponentChange(index, 'volume', e.target.value)}
+                                      />
+                                    </td>
+                                    <td>
+                                      <input
+                                        type="date"
+                                        className="form-control form-control-sm"
+                                        value={comp.expiryDate}
+                                        onChange={(e) => handleComponentChange(index, 'expiryDate', e.target.value)}
+                                      />
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
                           </div>
+                         
                         </div>
                       </div>
                     </div>
@@ -472,25 +555,7 @@ const PendingComponentGeneration = () => {
                               <button
                                 type="button"
                                 className="btn btn-primary me-2"
-                                onClick={() => {
-                                  if (generationStatus === "fail" && !componentForm.failureReason) {
-                                    showPopup("Please select a failure reason", "error");
-                                    return;
-                                  }
-                                  // Save logic here
-                                  setLoading(true);
-                                  setTimeout(() => {
-                                    if (generationStatus === "fail") {
-                                      setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
-                                      showPopup("Component generation failed. Status updated as COMPONENT_FAILED", "warning");
-                                    } else {
-                                      setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
-                                      showPopup("Component generation completed. Status updated as COMPONENT_GENERATED", "success");
-                                    }
-                                    handleBackToList();
-                                    setLoading(false);
-                                  }, 1000);
-                                }}
+                                onClick={handleSave}
                                 disabled={loading}
                               >
                                 {loading ? (
@@ -556,7 +621,6 @@ const PendingComponentGeneration = () => {
                   >
                     <i className="mdi mdi-refresh"></i> Show All
                   </button>
-                  
                 </div>
               </div>
             </div>

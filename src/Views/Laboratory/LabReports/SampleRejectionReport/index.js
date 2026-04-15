@@ -1,10 +1,10 @@
 import { useState, useEffect } from "react";
 import { getRequest } from "../../../../service/apiService";
-import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
-import { MAS_SUB_CHARGE_CODE, ALL_REPORTS, LAB } from "../../../../config/apiConfig";
+import {  MAS_SUB_CHARGE_CODE_DROPDOWN_END_URL, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_SUB_CHARGE_CODE_ID, REJECTED_INVESTIGATIONS_END_URL, REJECTED_INVESTIGATIONS_REPORT_URL, REQUEST_PARAM_FLAG, STATUS_D, STATUS_P } from "../../../../config/apiConfig";
+import {formatDateForDisplay} from "../../../../utils/dateUtils";
 import { 
   FETCH_SAMPLE_REJECT_ERR_MSG, 
   FETCH_SUB_CHARGE_CODES_ERR_MSG, 
@@ -13,7 +13,8 @@ import {
   PAST_DATE_PICK_WARN_MSG, 
   SELECT_DATE_WARN_MSG,
   LAB_REPORT_GENERATION_ERR_MSG,
-  LAB_REPORT_PRINT_ERR_MSG
+  LAB_REPORT_PRINT_ERR_MSG,
+  HOSPITAL_ID_NOT_FOUND
 } from "../../../../config/constants";
 
 const SampleRejectionReport = () => {
@@ -21,7 +22,6 @@ const SampleRejectionReport = () => {
     const [toDate, setToDate] = useState("");
     const [modality, setModality] = useState("");
     const [modalityOptions, setModalityOptions] = useState([]);
-    const [isGenerating, setIsGenerating] = useState(false);
     const [isSearching, setIsSearching] = useState(false);
     const [showReport, setShowReport] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
@@ -56,20 +56,6 @@ const SampleRejectionReport = () => {
             type,
             onClose: () => setPopupMessage(null),
         });
-    };
-
-    const formatDateForDisplay = (dateString) => {
-        if (!dateString) return "";
-        try {
-            const date = new Date(dateString);
-            const day = String(date.getDate()).padStart(2, '0');
-            const month = String(date.getMonth() + 1).padStart(2, '0');
-            const year = date.getFullYear();
-            return `${day}/${month}/${year}`;
-        } catch (error) {
-            console.error("Error formatting date:", error);
-            return "";
-        }
     };
 
     // Handle from date change
@@ -123,7 +109,7 @@ const SampleRejectionReport = () => {
     const fetchModalityOptions = async () => {
         try {
             setIsFetchingModalities(true);
-            const response = await getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`);
+            const response = await getRequest(`${MAS_SUB_CHARGE_CODE_DROPDOWN_END_URL}`);
             
             if (response && response.response) {
                 // Filter for mainChargeId === 12 (Lab investigations)
@@ -156,22 +142,22 @@ const SampleRejectionReport = () => {
             
             const hospitalId = getHospitalId();
             if (!hospitalId) {
-                showPopup("Hospital ID not found. Please login again.", "error");
+                showPopup(HOSPITAL_ID_NOT_FOUND, "error");
                 return;
             }
             
             const params = new URLSearchParams();
-            params.append('hospitalId', hospitalId);
-            params.append('fromDate', fromDate);
-            params.append('toDate', toDate);
-            params.append('page', page - 1);
-            params.append('size', DEFAULT_ITEMS_PER_PAGE);
-            
+            params.append([REQUEST_PARAM_HOSPITAL_ID], hospitalId);
+            params.append([REQUEST_PARAM_FROM_DATE], fromDate);
+            params.append([REQUEST_PARAM_TO_DATE], toDate);
+            params.append([REQUEST_PARAM_PAGE], page - 1);
+            params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
+
             if (modality) {
-                params.append('subChargeCodeId', modality);
+                params.append([REQUEST_PARAM_SUB_CHARGE_CODE_ID], modality);
             }
 
-            const response = await getRequest(`${LAB}/rejectedInvestigation/report?${params.toString()}`);
+            const response = await getRequest(`${REJECTED_INVESTIGATIONS_END_URL}?${params.toString()}`);
             
             if (response && response.response) {
                 const pageData = response.response;
@@ -237,7 +223,7 @@ const SampleRejectionReport = () => {
     };
 
     // Generate PDF report for viewing/downloading
-    const generatePdfReport = async (flag = "D") => {
+    const generatePdfReport = async (flag = STATUS_D) => {
         // Validate required fields
         if (!fromDate || !toDate) {
             showPopup(SELECT_DATE_WARN_MSG, "Warning");
@@ -252,14 +238,14 @@ const SampleRejectionReport = () => {
 
         const hospitalId = getHospitalId();
         if (!hospitalId) {
-            showPopup("Hospital ID not found. Please login again.", "error");
+            showPopup(HOSPITAL_ID_NOT_FOUND, "error");
             return;
         }
 
         // Set loading state based on flag
-        if (flag === "D") {
+        if (flag === STATUS_D) {
             setIsViewLoading(true);
-        } else if (flag === "P") {
+        } else if (flag === STATUS_P) {
             setIsPrintLoading(true);
         }
         
@@ -267,16 +253,16 @@ const SampleRejectionReport = () => {
 
         try {
             const params = new URLSearchParams();
-            params.append('hospitalId', hospitalId);
-            params.append('fromDate', fromDate);
-            params.append('toDate', toDate);
-            params.append('flag', flag);
+            params.append([REQUEST_PARAM_HOSPITAL_ID], hospitalId);
+            params.append([REQUEST_PARAM_FROM_DATE], fromDate);
+            params.append([REQUEST_PARAM_TO_DATE], toDate);
+            params.append([REQUEST_PARAM_FLAG], flag);
             
             if (modality) {
-                params.append('subChargeCodeId', modality);
+                params.append([REQUEST_PARAM_SUB_CHARGE_CODE_ID], modality);
             }
 
-            const url = `${ALL_REPORTS}/sampleRejection?${params.toString()}`;
+            const url = `${REJECTED_INVESTIGATIONS_REPORT_URL}?${params.toString()}`;
 
             const response = await fetch(url, {
                 method: "GET",
@@ -289,7 +275,7 @@ const SampleRejectionReport = () => {
                 throw new Error(`Failed to generate report`);
             }
 
-            if (flag === "D") {
+            if (flag === STATUS_D) {
                 // For viewing/downloading
                 const blob = await response.blob();
                 const fileURL = window.URL.createObjectURL(blob);
@@ -298,13 +284,13 @@ const SampleRejectionReport = () => {
 
         } catch (error) {
             console.error("Error generating PDF", error);
-            const errorMsg = flag === "D" ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
+            const errorMsg = flag === STATUS_D ? LAB_REPORT_GENERATION_ERR_MSG : LAB_REPORT_PRINT_ERR_MSG;
             showPopup(errorMsg, "error");
         } finally {
             // Reset the specific loading state
-            if (flag === "D") {
+            if (flag === STATUS_D) {
                 setIsViewLoading(false);
-            } else if (flag === "P") {
+            } else if (flag === STATUS_P) {
                 setIsPrintLoading(false);
             }
         }
@@ -312,12 +298,12 @@ const SampleRejectionReport = () => {
 
     // Handle view report (opens PDF viewer)
     const handleViewReport = () => {
-        generatePdfReport("D");
+        generatePdfReport(STATUS_D);
     };
 
     // Handle print report
     const handlePrintReport = () => {
-        generatePdfReport("P");
+        generatePdfReport(STATUS_P);
     };
 
     // Handle reset

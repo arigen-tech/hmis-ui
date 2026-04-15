@@ -20,6 +20,12 @@ const ProcedureMaster = () => {
     procedureName: "",
     departmentId: "",
     procedureTypeId: "",
+    // New fields (UI only, not sent to API)
+    procedureCare: "",
+    opdAllowed: "No",
+    ipdAllowed: "No",
+    isNursing: "No",
+    procedureLevel: "Minor"
   });
 
   const [searchQuery, setSearchQuery] = useState("");
@@ -150,7 +156,7 @@ const ProcedureMaster = () => {
     setPageInput(currentPage.toString());
   }, [currentPage]);
 
-  // Validate form whenever formData changes
+  // Validate form whenever formData changes (only original required fields)
   useEffect(() => {
     const validateForm = () => {
       const { procedureCode, procedureName, departmentId, procedureTypeId } = formData;
@@ -175,6 +181,12 @@ const ProcedureMaster = () => {
       procedureName: procedure.procedureName || "",
       departmentId: procedure.departmentId?.toString() || "",
       procedureTypeId: procedure.procedureTypeId?.toString() || "",
+      // New fields: default values (not fetched from API)
+      procedureCare: "",
+      opdAllowed: "No",
+      ipdAllowed: "No",
+      isNursing: "No",
+      procedureLevel: "Minor"
     });
     setShowForm(true);
   };
@@ -199,7 +211,7 @@ const ProcedureMaster = () => {
         return;
       }
 
-      // Prepare request data
+      // Prepare request data – only original fields are sent to API
       const requestData = {
         procedureCode: formData.procedureCode,
         procedureName: formData.procedureName,
@@ -226,7 +238,17 @@ const ProcedureMaster = () => {
       }
 
       setEditingProcedure(null);
-      setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
+      setFormData({ 
+        procedureCode: "", 
+        procedureName: "", 
+        departmentId: "", 
+        procedureTypeId: "",
+        procedureCare: "",
+        opdAllowed: "No",
+        ipdAllowed: "No",
+        isNursing: "No",
+        procedureLevel: "Minor"
+      });
       setShowForm(false);
     } catch (err) {
       console.error("Error saving procedure data:", err);
@@ -302,13 +324,10 @@ const ProcedureMaster = () => {
     fetchDropdownData(); // Refresh dropdowns
   };
 
-  
-
   const handlePageInputChange = (e) => {
     setPageInput(e.target.value);
   };
 
-  
   // Handle activate for inactive records in edit mode
   const handleActivate = async () => {
     if (editingProcedure && editingProcedure.status === "n") {
@@ -323,7 +342,17 @@ const ProcedureMaster = () => {
           fetchProcedureData();
           showPopup(ACTIVATE_PROCEDURE_SUCC_MSG, "success");
           setEditingProcedure(null);
-          setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
+          setFormData({ 
+            procedureCode: "", 
+            procedureName: "", 
+            departmentId: "", 
+            procedureTypeId: "",
+            procedureCare: "",
+            opdAllowed: "No",
+            ipdAllowed: "No",
+            isNursing: "No",
+            procedureLevel: "Minor"
+          });
           setShowForm(false);
         }
       } catch (err) {
@@ -371,7 +400,17 @@ const ProcedureMaster = () => {
                         className="btn btn-success me-2"
                         onClick={() => {
                           setEditingProcedure(null);
-                          setFormData({ procedureCode: "", procedureName: "", departmentId: "", procedureTypeId: "" });
+                          setFormData({ 
+                            procedureCode: "", 
+                            procedureName: "", 
+                            departmentId: "", 
+                            procedureTypeId: "",
+                            procedureCare: "",
+                            opdAllowed: "No",
+                            ipdAllowed: "No",
+                            isNursing: "No",
+                            procedureLevel: "Minor"
+                          });
                           setShowForm(true);
                         }}
                       >
@@ -384,9 +423,6 @@ const ProcedureMaster = () => {
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
-                      {/* <button type="button" className="btn btn-success me-2">
-                        <i className="mdi mdi-file-document-outline"></i> Generate Report
-                      </button> */}
                     </>
                   ) : (
                     <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -460,19 +496,20 @@ const ProcedureMaster = () => {
                     </table>
                   </div>
 
-                   {/* Pagination */}
+                  {/* Pagination */}
                   <div>
-                        <Pagination
-                          totalItems={filteredProcedureData.length}
-                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                          currentPage={currentPage}
-                          onPageChange={setCurrentPage}
-                        />
-                      </div>     
+                    <Pagination
+                      totalItems={filteredProcedureData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>     
                 </>
               ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                  <div className="form-group col-md-4">
+                <form className="forms row " onSubmit={handleSave}>
+                  {/* Original Fields */} 
+                  <div className="form-group col-md-4 mb-3 ">
                     <label>Procedure Code <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -486,12 +523,9 @@ const ProcedureMaster = () => {
                       required
                       disabled={loading}
                     />
-                    {/* <small className="text-muted">
-                      {formData.procedureCode.length}/{PROCEDURE_CODE_MAX_LENGTH} characters (max)
-                    </small> */}
                   </div>
 
-                  <div className="form-group col-md-4">
+                  <div className="form-group col-md-4 mb-3">
                     <label>Procedure Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
@@ -505,13 +539,45 @@ const ProcedureMaster = () => {
                       required
                       disabled={loading}
                     />
-                    {/* <small className="text-muted">
-                      {formData.procedureName.length}/{PROCEDURE_NAME_MAX_LENGTH} characters (max)
-                    </small> */}
                   </div>
 
-                  <div className="form-group col-md-4">
-                    <label>Department <span className="text-danger">*</span></label>
+                  {/* New Field: Procedure Care */}
+                 
+                  {/* New Field: OPD Allowed */}
+                  <div className="form-group col-md-4 mb-3">
+                    <label>OPD Allowed <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="opdAllowed"
+                      name="opdAllowed"
+                      value={formData.opdAllowed}
+                      onChange={handleSelectChange}
+                      disabled={loading}
+                    >
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+
+                  {/* New Field: IPD Allowed */}
+                  <div className="form-group col-md-4 mb-3">
+                    <label>IPD Allowed <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="ipdAllowed"
+                      name="ipdAllowed"
+                      value={formData.ipdAllowed}
+                      onChange={handleSelectChange}
+                      disabled={loading}
+                    >
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
+                    </select>
+                  </div>
+
+                  {/* Department (existing) */}
+                  <div className="form-group col-md-4 mb-3">
+                    <label>Department </label>
                     <select
                       className="form-select mt-1"
                       id="departmentId"
@@ -528,28 +594,41 @@ const ProcedureMaster = () => {
                         </option>
                       ))}
                     </select>
-                    {/* <small className="text-muted">Select OPD department only</small> */}
                   </div>
 
-                  <div className="form-group col-md-4 mt-3">
-                    <label>Procedure Type <span className="text-danger">*</span></label>
+                  {/* Procedure Type (existing) */}
+                 
+
+                  {/* New Field: Is Nursing */}
+                  <div className="form-group col-md-4 mb-3">
+                    <label>Is Nursing <span className="text-danger">*</span></label>
                     <select
                       className="form-select mt-1"
-                      id="procedureTypeId"
-                      name="procedureTypeId"
-                      value={formData.procedureTypeId}
+                      id="isNursing"
+                      name="isNursing"
+                      value={formData.isNursing}
                       onChange={handleSelectChange}
-                      required
-                      disabled={loading || procedureTypeOptions.length === 0}
+                      disabled={loading}
                     >
-                      <option value="">Select Procedure Type</option>
-                      {procedureTypeOptions.map((type) => (
-                        <option key={type.id} value={type.id}>
-                          {type.name}
-                        </option>
-                      ))}
+                      <option value="Yes">Yes</option>
+                      <option value="No">No</option>
                     </select>
-                    {/* <small className="text-muted">Select type of procedure</small> */}
+                  </div>
+
+                  {/* New Field: Procedure Level */}
+                  <div className="form-group col-md-4 mb-3">
+                    <label>Procedure Level <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="procedureLevel"
+                      name="procedureLevel"
+                      value={formData.procedureLevel}
+                      onChange={handleSelectChange}
+                      disabled={loading}
+                    >
+                      <option value="Minor">Minor</option>
+                      <option value="Moderate">Moderate</option>
+                    </select>
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
@@ -611,11 +690,6 @@ const ProcedureMaster = () => {
                           Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
                           <strong> {procedureData.find(procedure => procedure.id === confirmDialog.procedureId)?.procedureName}</strong> procedure?
                         </p>
-                        {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the procedure available for use." 
-                            : "This will hide the procedure from selection."}
-                        </p> */}
                       </div>
                       <div className="modal-footer">
                         <button

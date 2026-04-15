@@ -3,6 +3,8 @@ import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
 import BedTransfer from "../BedTransfer"
 import VitalsandMonitoring from "../VitalsandMonitoring"
+import InvestigationOrderandTracking from "../Investigations"
+
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -403,6 +405,11 @@ const WardManagement = () => {
 {activeTab ==="Vitals & Monitoring" && (
   <VitalsandMonitoring selectedPatient={selectedPatient}/>
 )}
+{
+  activeTab === "Investigations / Orders" && (
+    <InvestigationOrderandTracking selectedPatient={selectedPatient}/>
+  )
+}
 
                             {activeTab !== "Clinical Dashboard" && activeTab !== "Doctor Visit / Case Notes" && (
                               <div>
@@ -410,6 +417,7 @@ const WardManagement = () => {
                                
                               </div>
                             )}
+
                           </div>
                         </div>
                       </div>

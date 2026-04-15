@@ -234,6 +234,11 @@ import CorporateMaster from './Views/Masters/CorporateMaster';
 import IPDConsultationTariff from './Views/Masters/IPDConsultationTariff';
 import PackageConfiguration from './Views/Masters/PackageConfiguration';
 import InsuranceTPAMapping from './Views/Masters/InsuranceTPAMapping';
+import OPDHolidayMaster from './Views/Masters/OPDHolidayMaster';
+import ProcedurePricing from './Views/Masters/ProcedurePricing';
+import SurgeryMaster from './Views/Masters/SurgeryMaster';
+import SurgeryPricing from './Views/Masters/SurgeryPricing';
+import BillingTemplate from './Views/Masters/BillingTemplate';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -494,12 +499,17 @@ function App() {
                 <Route path="/CashierWiseCollectionReport" element={<CashierWiseCollectionReport/>} />
                 <Route path="/InsuranceMaster" element={<InsuranceMaster/>}/>
                 <Route path="/TPAMaster" element={<TPAMaster/>}/>
-                <Route path="/IPDPackage" element={<IPDPackageMaster/>}/>
+                <Route path="/IPDPackageMaster" element={<IPDPackageMaster/>}/>
                 <Route path="/CorporateMaster" element={<CorporateMaster/>}/>
                 <Route path="/IPDConsultationTariff" element={<IPDConsultationTariff/>}/>
                 <Route path="/PackageConfiguration" element={<PackageConfiguration/>}/>
                 <Route path="/InsuranceTPAMapping" element={<InsuranceTPAMapping/>}/>
-              </Route>
+                <Route path="/OPDHolidayMaster" element={<OPDHolidayMaster/>} />       
+                <Route path="/ProcedurePricing" element={<ProcedurePricing/>} />
+                <Route path="/SurgeryMaster" element={<SurgeryMaster/>} />
+                <Route path="/SurgeryPricing" element={<SurgeryPricing/>} />
+                <Route path="/BillingTemplate" element={<BillingTemplate/>} />
+                </Route>
             </Route>
 
             <Route path="*" element={<PageNotFound />} />

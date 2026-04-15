@@ -219,13 +219,45 @@ const UpdateLabRegistration = () => {
     return [];
   };
 
-  // Fetching initial data
+  // // Fetching initial data
+  // useEffect(() => {
+  //   fetchGenderData();
+  //   fetchRelationData();
+  //   fetchCountryData();
+  //   fetchGstConfiguration();
+  // }, []);
+
+  
+
   useEffect(() => {
-    fetchGenderData();
-    fetchRelationData();
-    fetchCountryData();
-    fetchGstConfiguration();
-  }, []);
+  if (formData.country) {
+    fetchStates(formData.country);
+  }
+}, [formData.country]);
+
+useEffect(() => {
+  if (formData.state) {
+    fetchDistrict(formData.state);
+  }
+}, [formData.state]);
+
+useEffect(() => {
+  if (formData.nokCountry) {
+    fetchNokStates(formData.nokCountry);
+  }
+}, [formData.nokCountry]);
+
+useEffect(() => {
+  if (formData.nokState) {
+    fetchNokDistrict(formData.nokState);
+  }
+}, [formData.nokState]);
+
+useEffect(() => {
+  if (formData.gender && genderData.length > 0) {
+    fetchInvestigationDetails(formData.gender).then(setInvestigationItems);
+  }
+}, [formData.gender, genderData]);
 
   const calculatePaymentBreakdown = () => {
     const checkedItems = formData.rows.filter((_, index) => checkedRows[index]);
@@ -536,10 +568,7 @@ const UpdateLabRegistration = () => {
         error = "Age can not be negative.";
       }
     }
-    if (name === "gender" && value) {
-      const investigationData = await fetchInvestigationDetails(Number(value));
-      setInvestigationItems(investigationData);
-    }
+
     setErrors((prevErrors) => {
       const newErrors = { ...prevErrors };
       if (error) {
@@ -932,6 +961,7 @@ const UpdateLabRegistration = () => {
   const handleBook = async (patient) => {
     try {
       // setLoading(true);
+      
 
       const res = await getRequest(
         `${PATIENT_FOLLOW_UP_DETAILS}/${patient.id}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
@@ -995,15 +1025,14 @@ const UpdateLabRegistration = () => {
         ],
       };
 
-      setFormData(mappedData);
+    setFormData(mappedData);
 
-      await fetchStates(mappedData.country);
-      await fetchDistrict(mappedData.state);
-      await fetchNokStates(mappedData.nokCountry);
-      await fetchNokDistrict(mappedData.nokState);
-
-      const inv = await fetchInvestigationDetails(mappedData.gender);
-      setInvestigationItems(inv);
+    await Promise.all([
+      fetchGenderData(),
+      fetchRelationData(),
+      fetchCountryData(),
+      fetchGstConfiguration(),
+    ]);
 
       setShowPatientDetails(true);
     } catch (e) {
@@ -1727,7 +1756,6 @@ const UpdateLabRegistration = () => {
                           value={formData.country || ""}
                           onChange={(e) => {
                             handleAddChange(e);
-                            fetchStates(e.target.value);
                           }}
                         >
                           <option value="">Select Country</option>
@@ -1746,7 +1774,6 @@ const UpdateLabRegistration = () => {
                           value={formData.state || ""}
                           onChange={(e) => {
                             handleAddChange(e);
-                            fetchDistrict(e.target.value);
                           }}
                         >
                           <option value="">Select State</option>
@@ -1918,7 +1945,6 @@ const UpdateLabRegistration = () => {
                           value={formData.nokCountry || ""}
                           onChange={(e) => {
                             handleAddChange(e);
-                            fetchNokStates(e.target.value);
                           }}
                         >
                           <option value="">Select Country</option>
@@ -1937,7 +1963,6 @@ const UpdateLabRegistration = () => {
                           value={formData.nokState || ""}
                           onChange={(e) => {
                             handleAddChange(e);
-                            fetchNokDistrict(e.target.value);
                           }}
                         >
                           <option value="">Select State</option>

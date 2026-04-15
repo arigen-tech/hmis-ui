@@ -1,17 +1,38 @@
 import { useState, useEffect } from "react";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest } from "../../../service/apiService";
+import { 
+    REQUEST_PARAM_HOSPITAL_ID, 
+    REQUEST_PARAM_FROM_DATE, 
+    REQUEST_PARAM_TO_DATE, 
+    REQUEST_PARAM_FLAG,
+    CASHIER_WISE_COLLECTION_END_URL,
+    STATUS_D,
+    STATUS_P
+} from "../../../config/apiConfig";
+import { 
+    REPORT_GENERATION_ERR_MSG,
+    SELECT_DATE_WARN_MSG,
+    PAST_DATE_PICK_WARN_MSG,
+    FROM_DATE_FUTURE_ERR_MSG,
+    TO_DATE_FUTURE_ERR_MSG
+} from "../../../config/constants";
+
+// API endpoint - Add this to your apiConfig.js
+// export const CASHIER_WISE_COLLECTION_END_URL = "/api/reports/cashierWiseCollection";
 
 const CashierWiseCollectionReport = () => {
     const [fromDate, setFromDate] = useState("");
     const [toDate, setToDate] = useState("");
-    const [cashier, setCashier] = useState("");
-    const [isGenerating, setIsGenerating] = useState(false);
-    const [showReport, setShowReport] = useState(false);
-    const [currentPage, setCurrentPage] = useState(1);
+    const [selectedCashier, setSelectedCashier] = useState(null);
+    const [isViewLoading, setIsViewLoading] = useState(false);
+    const [isPrintLoading, setIsPrintLoading] = useState(false);
     const [popupMessage, setPopupMessage] = useState(null);
-    const [reportData, setReportData] = useState([]);
+    const [pdfUrl, setPdfUrl] = useState(null);
+    const [cashierOptions, setCashierOptions] = useState([]);
+
+    const hospitalId = sessionStorage.getItem("hospitalId");
 
     const getTodayDate = () => {
         return new Date().toISOString().split('T')[0];
@@ -31,189 +52,174 @@ const CashierWiseCollectionReport = () => {
         });
     };
 
+    // Fetch cashiers from your API - You need to implement this endpoint
+    const fetchCashiers = async () => {
+        try {
+            // TODO: Replace with your actual cashier list API endpoint
+            // Example: const response = await getRequest(`${GET_ALL_CASHIERS_END_URL}?hospitalId=${hospitalId}`);
+            // if (response?.response) {
+            //     setCashierOptions(response.response);
+            // }
+            
+            // If you don't have a cashier list API yet, you can keep the dropdown optional
+            // and just use the cashierId parameter as optional (which your backend already supports)
+            console.log("Fetch cashiers - implement your cashier list API here");
+        } catch (error) {
+            console.error("Error fetching cashiers:", error);
+        }
+    };
+
+    const handleCashierChange = (e) => {
+        const selectedCashierId = e.target.value;
+        if (!selectedCashierId) {
+            setSelectedCashier(null);
+            return;
+        }
+        const cashier = cashierOptions.find(c => c.id.toString() === selectedCashierId);
+        setSelectedCashier(cashier || null);
+    };
+
     const handleFromDateChange = (e) => {
         const selectedDate = e.target.value;
         const today = getTodayDate();
-
         if (selectedDate > today) {
-            showPopup("From date cannot be in the future", "error");
+            showPopup(FROM_DATE_FUTURE_ERR_MSG, "warning");
             setFromDate(today);
             return;
         }
-
         if (toDate && selectedDate > toDate) {
-            showPopup("From date cannot be later than To date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setFromDate(toDate);
             return;
         }
-
         setFromDate(selectedDate);
     };
 
     const handleToDateChange = (e) => {
         const selectedDate = e.target.value;
         const today = getTodayDate();
-
         if (selectedDate > today) {
-            showPopup("To date cannot be in the future", "error");
+            showPopup(TO_DATE_FUTURE_ERR_MSG, "warning");
             setToDate(today);
             return;
         }
-
         if (fromDate && selectedDate < fromDate) {
-            showPopup("To date cannot be earlier than From date", "error");
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
             setToDate(fromDate);
             return;
         }
-
         setToDate(selectedDate);
     };
 
-    const handleReport = () => {
+    const validateDates = () => {
         if (!fromDate || !toDate) {
-            showPopup("Please select both From Date and To Date", "error");
-            return;
+            showPopup(SELECT_DATE_WARN_MSG, "warning");
+            return false;
+        }
+        if (fromDate > toDate) {
+            showPopup(PAST_DATE_PICK_WARN_MSG, "warning");
+            return false;
+        }
+        return true;
+    };
+
+    // Fetch PDF from backend API
+    const fetchPdf = async (flag) => {
+        const baseUrl = CASHIER_WISE_COLLECTION_END_URL;
+        const params = new URLSearchParams({
+            [REQUEST_PARAM_HOSPITAL_ID]: hospitalId,
+            [REQUEST_PARAM_FROM_DATE]: fromDate,
+            [REQUEST_PARAM_TO_DATE]: toDate,
+            [REQUEST_PARAM_FLAG]: flag
+        });
+
+        // Add cashierId only if selected (backend handles null/0L)
+        if (selectedCashier?.id) {
+            params.append("cashierId", selectedCashier.id);
         }
 
-        if (new Date(fromDate) > new Date(toDate)) {
-            showPopup("From Date cannot be later than To Date", "error");
-            return;
+        const reportUrl = `${baseUrl}?${params.toString()}`;
+
+        const response = await fetch(reportUrl, {
+            method: "GET",
+            headers: {
+                Accept: "application/pdf",
+            },
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            throw new Error(errorText || "Failed to fetch report");
         }
 
-        setIsGenerating(true);
+        return await response.blob();
+    };
 
-        setTimeout(() => {
-            const mockData = generateReportData();
-            setReportData(mockData);
-            setShowReport(true);
-            setIsGenerating(false);
-        }, 1000);
+    const handleViewReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsViewLoading(true);
+            const blob = await fetchPdf(STATUS_D);
+            const fileURL = window.URL.createObjectURL(blob);
+            setPdfUrl(fileURL);
+        } catch (err) {
+            console.error("Error generating PDF:", err);
+            showPopup(`${REPORT_GENERATION_ERR_MSG}: ${err.message}`, "error");
+        } finally {
+            setIsViewLoading(false);
+        }
+    };
+
+    const handlePrintReport = async () => {
+        if (!validateDates()) return;
+
+        try {
+            setIsPrintLoading(true);
+            await fetchPdf(STATUS_P);
+            // Backend handles printing when flag="p"
+            showPopup("Print job sent successfully to the printer", "success");
+        } catch (err) {
+            console.error("Error printing PDF:", err);
+            showPopup("Unable to print report. Please try again.", "error");
+        } finally {
+            setIsPrintLoading(false);
+        }
     };
 
     const handleReset = () => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
-        setCashier("");
-        setShowReport(false);
-        setReportData([]);
-        setCurrentPage(1);
-    };
-
-    const handlePrint = () => {
-        if (!showReport || reportData.length === 0) {
-            showPopup("No data to print. Please generate report first.", "error");
-            return;
-        }
-        // Print functionality can be implemented here
-        showPopup("Print functionality will be implemented", "info");
-    };
-
-    const generateReportData = () => {
-        // Filter data based on selected cashier
-        let data = [
-            {
-                billNo: "CSH-2025-001",
-                billDate: "10-Apr-2025",
-                patientName: "Ramesh Kumar",
-                uhid: "UHID001",
-                cashier: "Rajesh Kumar",
-                amount: 500,
-                discount: 50,
-                netAmount: 450,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "CSH-2025-002",
-                billDate: "10-Apr-2025",
-                patientName: "Sunita Devi",
-                uhid: "UHID002",
-                cashier: "Sneha Patel",
-                amount: 800,
-                discount: 0,
-                netAmount: 800,
-                paymentMode: "Card"
-            },
-            {
-                billNo: "CSH-2025-003",
-                billDate: "11-Apr-2025",
-                patientName: "Amit Singh",
-                uhid: "UHID003",
-                cashier: "Rajesh Kumar",
-                amount: 600,
-                discount: 30,
-                netAmount: 570,
-                paymentMode: "UPI"
-            },
-            {
-                billNo: "CSH-2025-004",
-                billDate: "12-Apr-2025",
-                patientName: "Priya Patel",
-                uhid: "UHID004",
-                cashier: "Amit Verma",
-                amount: 400,
-                discount: 20,
-                netAmount: 380,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "CSH-2025-005",
-                billDate: "12-Apr-2025",
-                patientName: "Rajesh Khanna",
-                uhid: "UHID005",
-                cashier: "Sneha Patel",
-                amount: 750,
-                discount: 75,
-                netAmount: 675,
-                paymentMode: "Card"
-            },
-            {
-                billNo: "CSH-2025-006",
-                billDate: "13-Apr-2025",
-                patientName: "Neha Gupta",
-                uhid: "UHID006",
-                cashier: "Rajesh Kumar",
-                amount: 1200,
-                discount: 100,
-                netAmount: 1100,
-                paymentMode: "Cash"
-            },
-            {
-                billNo: "CSH-2025-007",
-                billDate: "13-Apr-2025",
-                patientName: "Vikram Singh",
-                uhid: "UHID007",
-                cashier: "Amit Verma",
-                amount: 950,
-                discount: 50,
-                netAmount: 900,
-                paymentMode: "Card"
-            },
-        ];
-
-        // Apply cashier filter
-        if (cashier) {
-            data = data.filter(item => item.cashier === cashier);
-        }
-
-        return data;
+        setSelectedCashier(null);
     };
 
     useEffect(() => {
         setFromDate(getDefaultFromDate());
         setToDate(getTodayDate());
+        fetchCashiers();
     }, []);
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = reportData.slice(indexOfFirst, indexOfLast);
-
-    // Calculate totals
-    const totalAmount = reportData.reduce((sum, item) => sum + item.amount, 0);
-    const totalDiscount = reportData.reduce((sum, item) => sum + item.discount, 0);
-    const totalNetAmount = reportData.reduce((sum, item) => sum + item.netAmount, 0);
 
     return (
         <div className="content-wrapper">
+            {popupMessage && (
+                <Popup
+                    message={popupMessage.message}
+                    type={popupMessage.type}
+                    onClose={popupMessage.onClose}
+                />
+            )}
+
+            {pdfUrl && (
+                <PdfViewer
+                    pdfUrl={pdfUrl}
+                    onClose={() => {
+                        window.URL.revokeObjectURL(pdfUrl);
+                        setPdfUrl(null);
+                    }}
+                    name={`Cashier Wise Collection Report`}
+                />
+            )}
+
             <div className="row">
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
@@ -253,17 +259,19 @@ const CashierWiseCollectionReport = () => {
 
                                 <div className="col-md-3">
                                     <label className="form-label fw-bold">
-                                        Cashier
+                                        Cashier (Optional)
                                     </label>
                                     <select
                                         className="form-select"
-                                        value={cashier}
-                                        onChange={(e) => setCashier(e.target.value)}
+                                        value={selectedCashier?.id || ""}
+                                        onChange={handleCashierChange}
                                     >
-                                        <option value="">All</option>
-                                        <option value="Rajesh Kumar">Rajesh Kumar</option>
-                                        <option value="Sneha Patel">Sneha Patel</option>
-                                        <option value="Amit Verma">Amit Verma</option>
+                                        <option value="">All Cashiers</option>
+                                        {cashierOptions.map((cashier) => (
+                                            <option key={cashier.id} value={cashier.id}>
+                                                {cashier.name}
+                                            </option>
+                                        ))}
                                     </select>
                                 </div>
 
@@ -275,49 +283,56 @@ const CashierWiseCollectionReport = () => {
                             <div className="row">
                                 <div className="col-12 d-flex justify-content-end gap-2">
                                     <button
-                                        className="btn btn-success"
-                                        onClick={handleReport}
-                                        disabled={isGenerating}
+                                        className="btn btn-success btn-sm"
+                                        onClick={handleViewReport}
+                                        disabled={isViewLoading || isPrintLoading}
                                     >
-                                        {isGenerating ? (
+                                        {isViewLoading ? (
                                             <>
                                                 <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                                                 Generating...
                                             </>
                                         ) : (
-                                            "Report"
+                                            <>
+                                                <i className="fa fa-eye me-2"></i>
+                                                VIEW/DOWNLOAD
+                                            </>
                                         )}
                                     </button>
 
                                     <button
                                         type="button"
-                                        className="btn btn-warning"
-                                        onClick={handlePrint}
+                                        className="btn btn-warning btn-sm"
+                                        onClick={handlePrintReport}
+                                        disabled={isViewLoading || isPrintLoading}
                                     >
-                                        Print
+                                        {isPrintLoading ? (
+                                            <>
+                                                <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                Printing...
+                                            </>
+                                        ) : (
+                                            <>
+                                                <i className="fa fa-print me-2"></i>
+                                                PRINT
+                                            </>
+                                        )}
+                                    </button>
+
+                                    <button
+                                        type="button"
+                                        className="btn btn-secondary btn-sm"
+                                        onClick={handleReset}
+                                        disabled={isViewLoading || isPrintLoading}
+                                    >
+                                        RESET
                                     </button>
                                 </div>
                             </div>
-
-                            {isGenerating && (
-                                <div className="text-center py-4">
-                                    <LoadingScreen/>
-                                </div>
-                            )}
-
-                           
                         </div>
                     </div>
                 </div>
             </div>
-
-            {popupMessage && (
-                <Popup
-                    message={popupMessage.message}
-                    type={popupMessage.type}
-                    onClose={popupMessage.onClose}
-                />
-            )}
         </div>
     );
 };

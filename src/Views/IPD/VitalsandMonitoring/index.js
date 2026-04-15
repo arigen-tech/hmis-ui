@@ -1,8 +1,7 @@
 import { useState } from "react"
 
 const VitalsandMonitoring = ({ selectedPatient }) => {
-  const [showVitalsSection, setShowVitalsSection] = useState(true)
-  const [showIntakeOutputSection, setShowIntakeOutputSection] = useState(true)
+  const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
 
   const emptyVitalsRow = () => ({
     id: Date.now(),
@@ -196,212 +195,370 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   const isLastRow = (index, array) => index === array.length - 1
 
   return (
-    <div className="">
-
-      {/* Vitals Section */}
-      <div className="mb-4">
-        <div
-          className="d-flex justify-content-between align-items-center border border-primary rounded px-1 py-2 mb-2"
-          style={{ cursor: "pointer" }}
-          onClick={() => setShowVitalsSection(!showVitalsSection)}
+    <div>
+      {/* ─── TAB TOGGLE ─── */}
+      <div className="d-flex gap-2 mb-3">
+        <button
+          className={`btn btn-sm ${activeView === "vitals" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => setActiveView("vitals")}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
-          <h6 className="mb-0 text-primary">Vitals & Monitoring</h6>
-          <button className="btn btn-sm">
-            {showVitalsSection ? "−" : "+"}
-          </button>
-        </div>
+          Vitals & Monitoring
+        </button>
+        <button
+          className={`btn btn-sm ${activeView === "intakeOutput" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => setActiveView("intakeOutput")}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+        >
+          Intake & Output
+        </button>
+      </div>
 
-        {showVitalsSection && (
-          <div className="card shadow-sm">
-            <div className="card-header bg-light d-flex justify-content-between align-items-center py-2 px-3">
-              <h6 className="mb-0">Vitals Entry</h6>
+      {/* ─── VITALS SECTION ─── */}
+      {activeView === "vitals" && (
+        <div className="card shadow-sm">
+          <div className="card-header bg-primary text-white py-2">
+            <strong>Vitals Entry</strong>
+          </div>
+          <div className="card-body p-0">
+            <div className="table-responsive">
+              <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
+                <thead className="table-light">
+                  <tr>
+                    <th style={{ maxWidth: "60px" }}>Date</th>
+                    <th style={{ minWidth: "60px" }}>Time</th>
+                    <th style={{ minWidth: "130px" }}>Temp.</th>
+                    <th style={{ minWidth: "130px" }}>Pulse</th>
+                    <th style={{ minWidth: "60px" }}>Respiration</th>
+                    <th style={{ minWidth: "60px" }}>BP</th>
+                    <th style={{ minWidth: "60px" }}>O₂ Saturation</th>
+                    <th style={{ minWidth: "60px" }}>Bowel</th>
+                    <th style={{ minWidth: "60px" }}>Pain</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {vitalsHistory.map((vitals, index) => {
+                    const isEditable = isLastRow(index, vitalsHistory)
+                    return (
+                      <tr key={vitals.id} className={isEditable ? "" : "table-secondary"}>
+                        <td>
+                          {isEditable ? (
+                            <input
+                              type="date"
+                              className="form-control form-control-sm"
+                              value={vitals.date.includes("/") ? vitals.date.split("/").reverse().join("-") : vitals.date}
+                              onChange={(e) => {
+                                const newDate = e.target.value.split("-").reverse().join("/")
+                                handleVitalsCellChange(vitals.id, "date", newDate)
+                              }}
+                            />
+                          ) : (
+                            <span>{vitals.date}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <input
+                              type="time"
+                              className="form-control form-control-sm"
+                              value={vitals.time}
+                              onChange={(e) => handleVitalsCellChange(vitals.id, "time", e.target.value)}
+                            />
+                          ) : (
+                            <span>{vitals.time}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <div className="input-group input-group-sm">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={vitals.temperature}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "temperature", e.target.value)}
+                                placeholder="Temp"
+                              />
+                              <select
+                                className="form-select form-select-sm"
+                                style={{ width: "60px" }}
+                                value={vitals.temperatureUnit}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "temperatureUnit", e.target.value)}
+                              >
+                                <option>°F</option>
+                                <option>°C</option>
+                              </select>
+                            </div>
+                          ) : (
+                            <span>{vitals.temperature} {vitals.temperatureUnit}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <div className="input-group input-group-sm">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={vitals.pulse}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "pulse", e.target.value)}
+                                placeholder="Pulse"
+                              />
+                              <select
+                                className="form-select form-select-sm"
+                                style={{ width: "70px" }}
+                                value={vitals.pulseUnit}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "pulseUnit", e.target.value)}
+                              >
+                                <option>bpm</option>
+                                <option>mmHg</option>
+                              </select>
+                            </div>
+                          ) : (
+                            <span>{vitals.pulse} {vitals.pulseUnit}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={vitals.respiration}
+                              onChange={(e) => handleVitalsCellChange(vitals.id, "respiration", e.target.value)}
+                              placeholder="breaths/min"
+                            />
+                          ) : (
+                            <span>{vitals.respiration}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <div className="input-group input-group-sm">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={vitals.bpSystolic}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "bpSystolic", e.target.value)}
+                                placeholder="Sys"
+                              />
+                              <span className="input-group-text">/</span>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={vitals.bpDiastolic}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "bpDiastolic", e.target.value)}
+                                placeholder="Dia"
+                              />
+                            </div>
+                          ) : (
+                            <span>{vitals.bpSystolic}/{vitals.bpDiastolic}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <input
+                              type="text"
+                              className="form-control form-control-sm"
+                              value={vitals.o2Saturation}
+                              onChange={(e) => handleVitalsCellChange(vitals.id, "o2Saturation", e.target.value)}
+                              placeholder="e.g. 98%"
+                            />
+                          ) : (
+                            <span>{vitals.o2Saturation}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <select
+                              className="form-select form-select-sm"
+                              value={vitals.bowel}
+                              onChange={(e) => handleVitalsCellChange(vitals.id, "bowel", e.target.value)}
+                            >
+                              <option value="">Select</option>
+                              <option value="Normal">Normal</option>
+                              <option value="Constipation">Constipation</option>
+                              <option value="Diarrhea">Diarrhea</option>
+                            </select>
+                          ) : (
+                            <span>{vitals.bowel || "—"}</span>
+                          )}
+                        </td>
+                        <td>
+                          {isEditable ? (
+                            <select
+                              className="form-select form-select-sm"
+                              value={vitals.pain}
+                              onChange={(e) => handleVitalsCellChange(vitals.id, "pain", e.target.value)}
+                            >
+                              <option value="">Select</option>
+                              <option value="0">0 - No Pain</option>
+                              <option value="1">1 - Mild</option>
+                              <option value="2">2 - Moderate</option>
+                              <option value="3">3 - Severe</option>
+                            </select>
+                          ) : (
+                            <span>{vitals.pain || "—"}</span>
+                          )}
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          </div>
+          <div className="d-flex gap-2 justify-content-end py-2 px-2">
+            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
+              Save
+            </button>
+            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
+              Print
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── INTAKE & OUTPUT SECTION ─── */}
+      {activeView === "intakeOutput" && (
+        <div>
+          {/* Intake Card */}
+          <div className="card shadow-sm mb-4">
+            <div className="card-header bg-success text-white py-2">
+              <strong>Intake Entry</strong>
             </div>
             <div className="card-body p-0">
               <div className="table-responsive">
-                <table className="table table-bordered table-hover mb-0 align-middle" >
+                <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
                   <thead className="table-light">
                     <tr>
-                      <th style={{ maxWidth: "60px" }}>Date</th>
-                      <th style={{ minWidth: "60px" }}>Time</th>
-                      <th style={{ minWidth: "130px" }}>Temp.</th>
-                      <th style={{ minWidth: "130px" }}>Pulse</th>
-                      <th style={{ minWidth: "60px" }}>Respiration</th>
-                      <th style={{ minWidth: "60px" }}>BP</th>
-                      <th style={{ minWidth: "60px" }}>O₂ Saturation</th>
-                      <th style={{ minWidth: "60px" }}>Bowel</th>
-                      <th style={{ minWidth: "60px" }}>Pain</th>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>Oral/RT</th>
+                      <th>Type</th>
+                      <th>Qty</th>
+                      <th>IV</th>
+                      <th>Qty</th>
+                      <th>Total ml</th>
+                      <th>Remarks</th>
                     </tr>
                   </thead>
                   <tbody>
-                    {vitalsHistory.map((vitals, index) => {
-                      const isEditable = isLastRow(index, vitalsHistory)
+                    {intakeEntries.map((entry, index) => {
+                      const isEditable = isLastRow(index, intakeEntries)
                       return (
-                        <tr key={vitals.id}className={isEditable ? "" : "table-secondary"}>
-                          <td className="">
+                        <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
+                          <td>
                             {isEditable ? (
                               <input
                                 type="date"
                                 className="form-control form-control-sm"
-                                value={vitals.date.includes("/") ? vitals.date.split("/").reverse().join("-") : vitals.date}
-                                onChange={(e) => {
-                                  const newDate = e.target.value.split("-").reverse().join("/")
-                                  handleVitalsCellChange(vitals.id, "date", newDate)
-                                }}
+                                value={entry.date}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "date", e.target.value)}
                               />
                             ) : (
-                              <span>{vitals.date}</span>
+                              <span>{entry.date}</span>
                             )}
                           </td>
-                          <td className="">
+                          <td>
                             {isEditable ? (
                               <input
                                 type="time"
                                 className="form-control form-control-sm"
-                                style={{ width: "100%" }}
-                                value={vitals.time}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "time", e.target.value)}
+                                value={entry.time}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "time", e.target.value)}
                               />
                             ) : (
-                              <span>{vitals.time}</span>
+                              <span>{entry.time}</span>
                             )}
                           </td>
-                          <td className="">
+                          <td>
                             {isEditable ? (
-                              <div className="input-group input-group-sm">
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                style={{ width: "30px" }}
-
-                                  value={vitals.temperature}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "temperature", e.target.value)}
-                                  placeholder="Temp"
-                                />
-                                <select
-                                  className="form-select form-select-sm"
-                                style={{ width: "40px" }}
-
-                                  value={vitals.temperatureUnit}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "temperatureUnit", e.target.value)}
-                                >
-                                  <option>°F</option>
-                                  <option>°C</option>
-                                </select>
-                              </div>
+                              <select
+                                className="form-select form-select-sm"
+                                value={entry.oralRt}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "oralRt", e.target.value)}
+                              >
+                                <option value="">Select</option>
+                                <option value="Oral">Oral</option>
+                                <option value="RT">RT</option>
+                              </select>
                             ) : (
-                              <span>{vitals.temperature} {vitals.temperatureUnit}</span>
+                              <span>{entry.oralRt || "—"}</span>
                             )}
                           </td>
-                          <td className="">
+                          <td>
                             {isEditable ? (
-                              <div className="input-group input-group-sm">
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                   style={{ width: "30px" }}
-                                  value={vitals.pulse}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "pulse", e.target.value)}
-                                  placeholder="Pulse"
-                                />
-                                <select
-                                  className="form-select"
-                                  value={vitals.pulseUnit}
-                                style={{ width: "40px" }}
-
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "pulseUnit", e.target.value)}
-                                >
-                                  <option>bpm</option>
-                                  <option>mmHg</option>
-                                </select>
-                              </div>
+                              <select
+                                className="form-select form-select-sm"
+                                value={entry.type}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "type", e.target.value)}
+                              >
+                                <option value="">Select</option>
+                                <option value="Water">Water</option>
+                                <option value="Juice">Juice</option>
+                                <option value="Milk">Milk</option>
+                                <option value="Soup">Soup</option>
+                                <option value="Feed">Feed</option>
+                              </select>
                             ) : (
-                              <span>{vitals.pulse} {vitals.pulseUnit}</span>
+                              <span>{entry.type || "—"}</span>
                             )}
                           </td>
-                          <td style={{ padding: "8px" }}>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.qty}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "qty", e.target.value)}
+                                placeholder="ml"
+                              />
+                            ) : (
+                              <span>{entry.qty || 0} ml</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <select
+                                className="form-select form-select-sm"
+                                value={entry.iv}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "iv", e.target.value)}
+                              >
+                                <option value="">Select</option>
+                                <option value="NS">NS (Normal Saline)</option>
+                                <option value="RL">RL (Ringer's Lactate)</option>
+                                <option value="DNS">DNS (Dextrose)</option>
+                                <option value="Blood">Blood</option>
+                              </select>
+                            ) : (
+                              <span>{entry.iv || "—"}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.ivQty}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "ivQty", e.target.value)}
+                                placeholder="ml"
+                              />
+                            ) : (
+                              <span>{entry.ivQty || 0} ml</span>
+                            )}
+                          </td>
+                          <td>{entry.total} ml</td>
+                          <td>
                             {isEditable ? (
                               <input
                                 type="text"
                                 className="form-control form-control-sm"
-                                style={{ width: "100%" }}
-                                value={vitals.respiration}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "respiration", e.target.value)}
-                                placeholder="breaths/min"
+                                value={entry.remarks}
+                                onChange={(e) => handleIntakeCellChange(entry.id, "remarks", e.target.value)}
+                                placeholder="Remarks"
                               />
                             ) : (
-                              <span>{vitals.respiration}</span>
+                              <span>{entry.remarks || "—"}</span>
                             )}
                           </td>
-                          <td className="">
-                            {isEditable ? (
-                              <div className="input-group input-group-sm">
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={vitals.bpSystolic}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpSystolic", e.target.value)}
-                                  placeholder="Sys"
-                                />
-                                <span className="input-group-text">/</span>
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={vitals.bpDiastolic}
-                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpDiastolic", e.target.value)}
-                                  placeholder="Dia"
-                                />
-                              </div>
-                            ) : (
-                              <span>{vitals.bpSystolic}/{vitals.bpDiastolic}</span>
-                            )}
-                          </td>
-                          <td className="">
-                            {isEditable ? (
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                value={vitals.o2Saturation}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "o2Saturation", e.target.value)}
-                                placeholder="e.g. 98%"
-                              />
-                            ) : (
-                              <span>{vitals.o2Saturation}</span>
-                            )}
-                          </td>
-                          <td className="">
-                            {isEditable ? (
-                              <select
-                                className="form-select form-select-sm"
-                                value={vitals.bowel}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "bowel", e.target.value)}
-                              >
-                                <option value="">Select</option>
-                                <option value="Normal">Normal</option>
-                                <option value="Constipation">Constipation</option>
-                                <option value="Diarrhea">Diarrhea</option>
-                              </select>
-                            ) : (
-                              <span>{vitals.bowel || "—"}</span>
-                            )}
-                          </td>
-                          <td className="">
-                            {isEditable ? (
-                              <select
-                                className="form-select form-select-sm"
-                                value={vitals.pain}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "pain", e.target.value)}
-                              >
-                                <option value="">Select</option>
-                                <option value="0">0 - No Pain</option>
-                                <option value="1">1 - Mild</option>
-                                <option value="2">2 - Moderate</option>
-                                <option value="3">3 - Severe</option>
-                              </select>
-                            ) : (
-                              <span>{vitals.pain || "—"}</span>
-                            )}
-                          </td>
-                         
                         </tr>
                       )
                     })}
@@ -409,326 +566,149 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                 </table>
               </div>
             </div>
-            <div className="d-flex gap-2 justify-content-end py-2 px-2 ">
-              <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
+            <div className="d-flex gap-2 justify-content-end px-2 py-2">
+              <button className="btn btn-success btn-sm" onClick={handleIntakeSubmit}>
                 Save
               </button>
-               <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
+              <button className="btn btn-success btn-sm">
                 Print
               </button>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Intake & Output Section */}
-      <div className="mb-4">
-        <div
-          className="d-flex justify-content-between align-items-center border border-primary rounded py-2"
-          style={{ cursor: "pointer" }}
-          onClick={() => setShowIntakeOutputSection(!showIntakeOutputSection)}
-        >
-          <h6 className="mb-0 text-primary">Intake & Output</h6>
-          <button className="btn btn-sm">
-            {showIntakeOutputSection ? "−" : "+"}
-          </button>
-        </div>
-
-        {showIntakeOutputSection && (
-          <div>
-
-            {/* Intake Section */}
-            <div className="card shadow-sm mb-4">
-              <div className="card-header bg-success text-white py-2 px-3">
-                <h6 className="mb-0">Intake Entry</h6>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
-                    <thead className="table-light">
-                      <tr>
-                        <th className="">Date</th>
-                        <th className="">Time</th>
-                        <th className="">Oral/RT</th>
-                        <th className="">Type</th>
-                        <th className="">Qty</th>
-                        <th className="">IV</th>
-                        <th className="">Qty</th>
-                        <th className="">Total ml</th>
-                        <th className="">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {intakeEntries.map((entry, index) => {
-                        const isEditable = isLastRow(index, intakeEntries)
-                        return (
-                          <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="date"
-                                  className="form-control form-control-sm"
-                                  value={entry.date}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "date", e.target.value)}
-                                />
-                              ) : (
-                                <span>{entry.date}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="time"
-                                  className="form-control form-control-sm"
-                                  value={entry.time}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "time", e.target.value)}
-                                />
-                              ) : (
-                                <span>{entry.time}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <select
-                                  className="form-select form-select-sm"
-                                  value={entry.oralRt}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "oralRt", e.target.value)}
-                                >
-                                  <option value="">Select</option>
-                                  <option value="Oral">Oral</option>
-                                  <option value="RT">RT</option>
-                                </select>
-                              ) : (
-                                <span>{entry.oralRt || "—"}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <select
-                                  className="form-select form-select-sm"
-                                  value={entry.type}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "type", e.target.value)}
-                                >
-                                  <option value="">Select</option>
-                                  <option value="Water">Water</option>
-                                  <option value="Juice">Juice</option>
-                                  <option value="Milk">Milk</option>
-                                  <option value="Soup">Soup</option>
-                                  <option value="Feed">Feed</option>
-                                </select>
-                              ) : (
-                                <span>{entry.type || "—"}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.qty}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "qty", e.target.value)}
-                                  placeholder="ml"
-                                />
-                              ) : (
-                                <span>{entry.qty || 0} ml</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <select
-                                  className="form-select form-select-sm"
-                                  value={entry.iv}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "iv", e.target.value)}
-                                >
-                                  <option value="">Select</option>
-                                  <option value="NS">NS (Normal Saline)</option>
-                                  <option value="RL">RL (Ringer's Lactate)</option>
-                                  <option value="DNS">DNS (Dextrose)</option>
-                                  <option value="Blood">Blood</option>
-                                </select>
-                              ) : (
-                                <span>{entry.iv || "—"}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.ivQty}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "ivQty", e.target.value)}
-                                  placeholder="ml"
-                                />
-                              ) : (
-                                <span>{entry.ivQty || 0} ml</span>
-                              )}
-                            </td>
-                            <td className="">{entry.total} ml</td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={entry.remarks}
-                                  onChange={(e) => handleIntakeCellChange(entry.id, "remarks", e.target.value)}
-                                  placeholder="Remarks"
-                                />
-                              ) : (
-                                <span>{entry.remarks || "—"}</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="d-flex gap-2 justify-content-end px-2 py-2">
-                <button className="btn btn-success btn-sm" onClick={handleIntakeSubmit}>
-                  Save
-                </button>
-                <button className="btn btn-success btn-sm" >
-                  Print
-                </button>
+          {/* Output Card */}
+          <div className="card shadow-sm">
+            <div className="card-header bg-warning text-dark py-2">
+              <strong>Output Entry</strong>
+            </div>
+            <div className="card-body p-0">
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th>Date</th>
+                      <th>Time</th>
+                      <th>Urine</th>
+                      <th>Stool</th>
+                      <th>Vomitus</th>
+                      <th>AS</th>
+                      <th>Total ml</th>
+                      <th>Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {outputEntries.map((entry, index) => {
+                      const isEditable = isLastRow(index, outputEntries)
+                      return (
+                        <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="date"
+                                className="form-control form-control-sm"
+                                value={entry.date}
+                                onChange={(e) => handleOutputCellChange(entry.id, "date", e.target.value)}
+                              />
+                            ) : (
+                              <span>{entry.date}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="time"
+                                className="form-control form-control-sm"
+                                value={entry.time}
+                                onChange={(e) => handleOutputCellChange(entry.id, "time", e.target.value)}
+                              />
+                            ) : (
+                              <span>{entry.time}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.urine}
+                                onChange={(e) => handleOutputCellChange(entry.id, "urine", e.target.value)}
+                                placeholder="ml"
+                              />
+                            ) : (
+                              <span>{entry.urine} ml</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.stool}
+                                onChange={(e) => handleOutputCellChange(entry.id, "stool", e.target.value)}
+                                placeholder="ml"
+                              />
+                            ) : (
+                              <span>{entry.stool} ml</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.vomit}
+                                onChange={(e) => handleOutputCellChange(entry.id, "vomit", e.target.value)}
+                                placeholder="ml"
+                              />
+                            ) : (
+                              <span>{entry.vomit} ml</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.as}
+                                onChange={(e) => handleOutputCellChange(entry.id, "as", e.target.value)}
+                                placeholder="ml"
+                              />
+                            ) : (
+                              <span>{entry.as} ml</span>
+                            )}
+                          </td>
+                          <td>{entry.total} ml</td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={entry.remarks}
+                                onChange={(e) => handleOutputCellChange(entry.id, "remarks", e.target.value)}
+                                placeholder="Remarks"
+                              />
+                            ) : (
+                              <span>{entry.remarks || "—"}</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
               </div>
             </div>
-
-            {/* Output Section */}
-            <div className="card shadow-sm mb-4">
-              <div className="card-header bg-warning text-dark py-2 px-3">
-                <h6 className="mb-0">Output Entry</h6>
-              </div>
-              <div className="card-body p-0">
-                <div className="table-responsive">
-                  <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
-                    <thead className="table-light">
-                      <tr>
-                        <th className="">Date</th>
-                        <th className="">Time</th>
-                        <th className="">Urine</th>
-                        <th className="">Stool</th>
-                        <th className="">Vomitus</th>
-                        <th className="">AS</th>
-                        <th className="">Total ml</th>
-                        <th className="">Remarks</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {outputEntries.map((entry, index) => {
-                        const isEditable = isLastRow(index, outputEntries)
-                        return (
-                          <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="date"
-                                  className="form-control form-control-sm"
-                                  value={entry.date}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "date", e.target.value)}
-                                />
-                              ) : (
-                                <span>{entry.date}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="time"
-                                  className="form-control form-control-sm"
-                                  value={entry.time}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "time", e.target.value)}
-                                />
-                              ) : (
-                                <span>{entry.time}</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.urine}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "urine", e.target.value)}
-                                  placeholder="ml"
-                                />
-                              ) : (
-                                <span>{entry.urine} ml</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.stool}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "stool", e.target.value)}
-                                  placeholder="ml"
-                                />
-                              ) : (
-                                <span>{entry.stool} ml</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.vomit}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "vomit", e.target.value)}
-                                  placeholder="ml"
-                                />
-                              ) : (
-                                <span>{entry.vomit} ml</span>
-                              )}
-                            </td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.as}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "as", e.target.value)}
-                                  placeholder="ml"
-                                />
-                              ) : (
-                                <span>{entry.as} ml</span>
-                              )}
-                            </td>
-                            <td className="">{entry.total} ml</td>
-                            <td className="">
-                              {isEditable ? (
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={entry.remarks}
-                                  onChange={(e) => handleOutputCellChange(entry.id, "remarks", e.target.value)}
-                                  placeholder="Remarks"
-                                />
-                              ) : (
-                                <span>{entry.remarks || "—"}</span>
-                              )}
-                            </td>
-                          </tr>
-                        )
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-              <div className="card-footer gap-2 bg-light d-flex justify-content-end py-2 px-2">
-                <button className="btn btn-success btn-sm " onClick={handleOutputSubmit}>
-                  Save
-                </button>
-                 <button className="btn btn-success btn-sm">
-                  Print
-                </button>
-              </div>
+            <div className="d-flex gap-2 justify-content-end px-2 py-2">
+              <button className="btn btn-success btn-sm" onClick={handleOutputSubmit}>
+                Save
+              </button>
+              <button className="btn btn-success btn-sm">
+                Print
+              </button>
             </div>
-
           </div>
-        )}
-      </div>
+        </div>
+      )}
     </div>
   )
 }

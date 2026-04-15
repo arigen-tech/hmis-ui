@@ -2,11 +2,11 @@ import { useState, useEffect } from "react";
 import { getRequest } from "../../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
-import { LAB, MAX_MONTHS_BACK } from "../../../../config/apiConfig";
+import { INVESTIGATIONS_END_URL, LAB_REPORT_URL_WRT_ORDER_HD, MAX_MONTHS_BACK, REQUEST_PARAM_FLAG, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_MOBILE_NO, REQUEST_PARAM_ORDER_HD_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_PATIENT_NAME, REQUEST_PARAM_SIZE, REQUEST_PARAM_TO_DATE, STATUS_D, STATUS_P } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
-import { ALL_REPORTS } from "../../../../config/apiConfig";
 import { LAB_REPORT_GENERATION_ERR_MSG, LAB_REPORT_PRINT_ERR_MSG, INVALID_ORDER_ID_ERR_MSG, SELECT_DATE_WARN_MSG, FETCH_LAB_HISTORY_REPORT_ERR_MSG, INVALID_DATE_PICK_WARN_MSG } from '../../../../config/constants';
 import { checkInRange, getResultTextStyle } from "../../../../utils/rangeCheckService";
+import { formatDateForDisplay } from "../../../../utils/dateUtils";
 
 const LabReports = () => {
   const [mobileNo, setMobileNo] = useState("")
@@ -54,22 +54,7 @@ const LabReports = () => {
         setPopupMessage(null);
       },
     });
-  };
-
-  // Format date from API (YYYY-MM-DD) to DD/MM/YYYY for display
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "";
-    }
-  };
+  }; 
 
   // Build gender/age string from separate fields
   const getGenderAge = (gender, age) => {
@@ -91,22 +76,22 @@ const LabReports = () => {
     try {
       // Build query parameters
       const params = new URLSearchParams();
-      params.append('hospitalId', hospitalId);
-      if (mobileNo) params.append('mobileNo', mobileNo);
-      if (patientName) params.append('patientName', patientName);
+      params.append([REQUEST_PARAM_HOSPITAL_ID], hospitalId);
+      if (mobileNo) params.append([REQUEST_PARAM_MOBILE_NO], mobileNo);
+      if (patientName) params.append([REQUEST_PARAM_PATIENT_NAME], patientName);
 
       // Only append dates if both are provided
       if (fromDate && toDate) {
-        params.append('fromDate', fromDate);
-        params.append('toDate', toDate);
+        params.append([REQUEST_PARAM_FROM_DATE], fromDate);
+        params.append([REQUEST_PARAM_TO_DATE], toDate);
       }
       
       // Add pagination parameters (using 0-based page number for API)
-      params.append('page', page - 1);
-      params.append('size', DEFAULT_ITEMS_PER_PAGE);
+      params.append([REQUEST_PARAM_PAGE], page - 1);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
       // Make API call
-      const response = await getRequest(`${LAB}/investigationsReport/all?${params.toString()}`);
+      const response = await getRequest(`${INVESTIGATIONS_END_URL}?${params.toString()}`);
 
       console.log("API Response:", response);
 
@@ -260,7 +245,7 @@ const LabReports = () => {
     setSelectedRecord(record);
 
     try {
-      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderHdId}&flag=d`;
+      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${orderHdId}&${REQUEST_PARAM_FLAG}=${STATUS_D}`;
 
       const response = await fetch(url, {
         method: "GET",
@@ -304,7 +289,7 @@ const LabReports = () => {
     setPrintingIds(prev => new Set(prev).add(recordId));
 
     try {
-      const url = `${ALL_REPORTS}/labInvestigationReport?orderhd_id=${orderHdId}&flag=p`;
+      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${orderHdId}&${REQUEST_PARAM_FLAG}=${STATUS_P}`;
 
       const response = await fetch(url, {
         method: "GET",

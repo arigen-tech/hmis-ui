@@ -1144,3 +1144,5 @@ export const CREATE_OPTION_VALUE = "Option value created successfully";
 export const UPDATE_OPTION_VALUE = "Option value updated successfully";
 export const DUPLICATE_OPTION_VALUE = "Option code already exists";
 export const  SAVE_OPTION_VALUE = "Failed to save Option Value";
+
+export const HOSPITAL_ID_NOT_FOUND = "Hospital ID not found. Please login again.";

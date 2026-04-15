@@ -20,9 +20,8 @@ const InsuranceMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: false });
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
-
-  const MAX_LENGTH = 50;
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
@@ -108,13 +107,21 @@ const InsuranceMaster = () => {
     setIsFormValid(true);
   };
 
-  const toggleStatus = (rec) => {
-    const updated = data.map((item) =>
-      item.id === rec.id
-        ? { ...item, status: item.status === "y" ? "n" : "y" }
-        : item
-    );
-    setData(updated);
+  const handleStatusChange = (recordId, newStatus) => {
+    setConfirmDialog({ isOpen: true, recordId, newStatus });
+  };
+
+  const handleConfirm = (confirmed) => {
+    if (confirmed && confirmDialog.recordId !== null) {
+      const updated = data.map((item) =>
+        item.id === confirmDialog.recordId
+          ? { ...item, status: confirmDialog.newStatus }
+          : item
+      );
+      setData(updated);
+      showPopup(`Record ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+    }
+    setConfirmDialog({ isOpen: false, recordId: null, newStatus: false });
   };
 
   const showPopup = (message, type) => {
@@ -220,7 +227,7 @@ const InsuranceMaster = () => {
                                   className="form-check-input"
                                   type="checkbox"
                                   checked={rec.status === "y"}
-                                  onChange={() => toggleStatus(rec)}
+                                  onChange={() => handleStatusChange(rec.id, rec.status === "y" ? "n" : "y")}
                                   id={`switch-${rec.id}`}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${rec.id}`}>
@@ -305,10 +312,10 @@ const InsuranceMaster = () => {
                       />
                     </div>
 
-                <div className="col-md-4">
+                    <div className="form-group col-md-4">
                       <label>Address</label>
                       <input
-                    className="form-control"
+                        className="form-control mt-1"
                         name="address"
                         value={formData.address}
                         onChange={handleInputChange}
@@ -332,6 +339,51 @@ const InsuranceMaster = () => {
           </div>
         </div>
       </div>
+
+      {confirmDialog.isOpen && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          role="dialog"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Status Change</h5>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => handleConfirm(false)}
+                >
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleConfirm(true)}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

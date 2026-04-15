@@ -1,8 +1,7 @@
 import { useState } from "react"
 
 const DoctorVisitCaseNotes = ({ selectedPatient }) => {
-  const [showDoctorVisitSection, setShowDoctorVisitSection] = useState(true)
-  const [showDiagnosisSection, setShowDiagnosisSection] = useState(true)
+  const [activeView, setActiveView] = useState("doctorVisit") // "doctorVisit" | "diagnosis"
 
   // State for Doctor Visit Form
   const [doctorVisitForm, setDoctorVisitForm] = useState({
@@ -275,24 +274,33 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   }
 
   return (
-    <>
-      {/* Doctor Visit Section */}
-      <div className="mb-2">
-        <div 
-          className="d-flex justify-content-between align-items-center  border border-primary rounded px-1"
-          style={{ cursor: "pointer" }}
-          onClick={() => setShowDoctorVisitSection(!showDoctorVisitSection)}
+    <div>
+      {/* ─── TAB TOGGLE ─── */}
+      <div className="d-flex gap-2 mb-3">
+        <button
+          className={`btn btn-sm ${activeView === "doctorVisit" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => setActiveView("doctorVisit")}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
-          <h6 className="mb-0 text-primary">
-            Doctor Visit / Case Notes
-          </h6>
-          <button className="btn btn-sm ">
-            {showDoctorVisitSection ? "−" : "+"}
-          </button>
-        </div>
+          Doctor Visit / Case Notes
+        </button>
+        <button
+          className={`btn btn-sm ${activeView === "diagnosis" ? "btn-primary" : "btn-outline-primary"}`}
+          onClick={() => setActiveView("diagnosis")}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+        >
+          Diagnosis ({diagnosisList.length})
+        </button>
+      </div>
 
-        {showDoctorVisitSection && (
-          <div>
+      {/* ─── DOCTOR VISIT SECTION ─── */}
+      {activeView === "doctorVisit" && (
+        <div className="card">
+          <div className="card-header bg-primary text-white py-2">
+            <strong>Doctor Visit / Case Notes</strong>
+          </div>
+          <div className="card-body">
+            {/* Form Fields */}
             <div className="row g-3 mb-4">
               <div className="col-md-4">
                 <label className="form-label">Doctor Name</label>
@@ -402,14 +410,15 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 />
               </div>
               <div className="col-12">
-                <button className="btn btn-primary" onClick={handleSaveDoctorVisit}>
-                  <i className="fa fa-save me-1"></i> SAVE
+                <button className="btn btn-primary btn-sm" onClick={handleSaveDoctorVisit}>
+                  <i className="fa fa-save me-1"></i> Save Visit
                 </button>
               </div>
             </div>
 
             <hr />
 
+            {/* Doctor Visit History */}
             <div>
               <h6 className="mb-3">Doctor Visit History</h6>
               {doctorVisitHistory.map((visit) => (
@@ -438,26 +447,16 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
               ))}
             </div>
           </div>
-        )}
-      </div>
-
-      <hr />
-
-      {/* Diagnosis Section */}
-      <div>
-        <div 
-          className="d-flex justify-content-between align-items-center border border-primary rounded px-1"
-          style={{ cursor: "pointer" }}
-          onClick={() => setShowDiagnosisSection(!showDiagnosisSection)}
-        >
-          <h6 className="mb-0 text-primary">Diagnosis</h6>
-          <button className="btn btn-sm ">
-            {showDiagnosisSection ? "−" : "+"}
-          </button>
         </div>
+      )}
 
-        {showDiagnosisSection && (
-          <div>
+      {/* ─── DIAGNOSIS SECTION ─── */}
+      {activeView === "diagnosis" && (
+        <div className="card">
+          <div className="card-header bg-primary text-white py-2">
+            <strong>Diagnosis List</strong>
+          </div>
+          <div className="card-body">
             <div className="table-responsive mb-3">
               <table className="table table-bordered table-sm">
                 <thead>
@@ -496,8 +495,8 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
               <i className="fa fa-plus me-1"></i> Add Diagnosis
             </button>
           </div>
-        )}
-      </div>
+        </div>
+      )}
 
       {/* View Diagnosis Modal */}
       {showViewDiagnosisModal && selectedDiagnosis && (
@@ -601,7 +600,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
           </div>
         </div>
       )}
-    </>
+    </div>
   )
 }
 

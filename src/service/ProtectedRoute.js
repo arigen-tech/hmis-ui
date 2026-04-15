@@ -236,7 +236,11 @@ const validRoutes = [
   "/IPDConsultationTariff",
   "/PackageConfiguration",
   "/InsuranceTPAMapping",
-  
+  "/OPDHolidayMaster",
+  "/ProcedurePricing",
+  "/SurgeryMaster",
+  "/SurgeryPricing",
+  "/BillingTemplate",
 ];
 
 const NotAuthorized = () => {
