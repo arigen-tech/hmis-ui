@@ -252,12 +252,17 @@ const PendingComponentGeneration = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", shouldRefresh = false) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
+      onClose: async () => {
         setPopupMessage(null);
+
+        if (shouldRefresh) {
+          handleBackToList();
+          await fetchPendingData();
+        }
       },
     });
   };
@@ -281,13 +286,8 @@ const PendingComponentGeneration = () => {
 
         await putRequest(url, {});
 
-        showPopup(
-          "Component generation failed. Status updated as COMPONENT_FAILED",
-          "warning",
-        );
+        showPopup("Component generation failed", "warning", true);
 
-        handleBackToList();
-        fetchPendingData();
       } catch (error) {
         console.error(error);
         showPopup("Failed to update failure status", "error");
@@ -323,12 +323,11 @@ const PendingComponentGeneration = () => {
         });
 
         showPopup(
-          "Component generation completed. Status updated as COMPONENT_GENERATED",
+          "Component generation completed",
           "success",
+          true,
         );
 
-        handleBackToList();
-        fetchPendingData();
       } catch (error) {
         console.error(error);
         showPopup("Failed to save component generation", "error");
@@ -377,7 +376,15 @@ const PendingComponentGeneration = () => {
 
   return (
     <div className="content-wrapper">
-      {showDetailView && selectedBag ? (
+      {popupMessage && (
+      <Popup
+        message={popupMessage.message}
+        type={popupMessage.type}
+        onClose={popupMessage.onClose}
+      />
+    )}
+
+    {showDetailView && selectedBag ? (
         // ============= COMPONENT GENERATION DETAIL VIEW =============
         <div className="row">
           <div className="col-12">
@@ -993,14 +1000,6 @@ const PendingComponentGeneration = () => {
               {/* Background overlay for modals */}
               {(showModal || showFailureModal) && (
                 <div className="modal-backdrop fade show"></div>
-              )}
-
-              {popupMessage && (
-                <Popup
-                  message={popupMessage.message}
-                  type={popupMessage.type}
-                  onClose={popupMessage.onClose}
-                />
               )}
             </div>
           </div>

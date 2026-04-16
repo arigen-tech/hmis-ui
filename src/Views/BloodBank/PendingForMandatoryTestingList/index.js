@@ -32,11 +32,18 @@ const PendingForMandatoryTestingList = () => {
     fetchPendingTestingData();
   }, []);
 
-  const showPopup = (message, type = "success") => {
+  const showPopup = (message, type = "success", shouldRefresh = false) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null),
+      onClose: async () => {
+        setPopupMessage(null);
+
+        if (shouldRefresh) {
+          handleBackToList();
+          await fetchPendingTestingData();
+        }
+      },
     });
   };
 
@@ -256,9 +263,7 @@ const PendingForMandatoryTestingList = () => {
       });
 
       if (res.status === 200) {
-        showPopup("Saved Successfully", "success");
-        handleBackToList();
-        fetchPendingTestingData();
+        showPopup("Saved Successfully", "success", true);
       } else {
         showPopup("Failed to save data", "error");
       }
