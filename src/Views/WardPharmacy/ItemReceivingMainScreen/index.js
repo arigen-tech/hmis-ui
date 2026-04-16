@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react"
 import { useNavigate } from 'react-router-dom';
 import LoadingScreen from "../../../Components/Loading"
-import { Store_Internal_Indent, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig"
+import { ALL_REPORTS, INVENTORY, GET_INDENT_HEADERS_FOR_RECEIVING, GET_INDENT_DETAILS_FOR_RECEIVING, SAVE_INDENT_RECEIVING, RECEIVING_REPORT_URL, REQUEST_PARAM_RECEIVED_M_ID } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 import DatePicker from "../../../Components/DatePicker"
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
+import { formatDateForDisplay, formatDateTimeForDisplay } from "../../../utils/dateUtils";
 import {
   ERROR_DEPARTMENT_ID_NOT_FOUND, ERROR_FETCH_INDENTS, CONFIRM_SAVE_INDENT_RECEIVING,
   SUCCESS_RECEIVING_SAVED_PRINT, ERROR_SAVE_RECEIVING_FAILED, ERROR_SAVING_RECEIVING,
-  ERROR_FETCH_INDENT_DETAILS,
+  ERROR_FETCH_INDENT_DETAILS, RECEIVED_QUANTITY_EXCEEDS_ISSUED, REJECT_QUANTITY_EXCEEDS_ISSUED,
+  VALIDATION_ERROR_HEADER, ITEM_RECEIVING_REPORT_TITLE, ITEM_RECEIVING_REPORT_FILENAME
 } from "../../../config/constants";
 
 const ItemReceivingMainScreen = () => {
@@ -70,7 +72,7 @@ const ItemReceivingMainScreen = () => {
         return;
       }
 
-      let url = `${INVENTORY}/indents/forReceiving`; // Updated API endpoint
+      let url = `${GET_INDENT_HEADERS_FOR_RECEIVING}`; // Updated API endpoint
       const params = new URLSearchParams();
 
       params.append("fromDeptId", fromDeptId);
@@ -113,7 +115,7 @@ const ItemReceivingMainScreen = () => {
     try {
       setLoadingDetails(true); // Enable loading state for details
       
-      const url = `${INVENTORY}/indentDetailsForReceive/${indentMId}`;
+      const url = `${GET_INDENT_DETAILS_FOR_RECEIVING}/${indentMId}`;
       console.log("Fetching indent details from URL:", url);
 
       const response = await getRequest(url);
@@ -166,25 +168,6 @@ const ItemReceivingMainScreen = () => {
   useEffect(() => {
     fetchIndentHeaders();
   }, []);
-
-  const formatDate = (value) => {
-    if (!value) return ""
-    const d = new Date(value)
-    return d.toLocaleDateString("en-GB")
-  }
-
-  const formatDateTime = (value) => {
-    if (!value) return ""
-    const d = new Date(value)
-    return d.toLocaleString("en-GB", {
-      day: "2-digit",
-      month: "2-digit",
-      year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
-      hour12: true,
-    })
-  }
 
   // Show popup function using your Popup component
   const showPopup = (message, type = "default") => {
@@ -245,13 +228,17 @@ const ItemReceivingMainScreen = () => {
     const qtyReceived = value === "" ? 0 : Number(value);
     const qtyIssued = updated[index].qtyIssued || 0;
 
-    // Validate received quantity - cannot exceed issued quantity
+    // Validate received quantity - cannot be less than 0
     if (qtyReceived < 0) {
       return;
     }
 
     // Ensure received quantity doesn't exceed issued quantity
-    const validQtyReceived = Math.min(qtyReceived, qtyIssued);
+    let validQtyReceived = qtyReceived;
+    if (validQtyReceived > qtyIssued) {
+      validQtyReceived = qtyIssued;
+      showPopup(`${RECEIVED_QUANTITY_EXCEEDS_ISSUED} (${qtyIssued})`, "warning");
+    }
     
     // Calculate reject quantity as issued - received
     const qtyReject = qtyIssued - validQtyReceived;
@@ -269,13 +256,17 @@ const ItemReceivingMainScreen = () => {
     const qtyReject = value === "" ? 0 : Number(value);
     const qtyIssued = updated[index].qtyIssued || 0;
 
-    // Validate reject quantity
+    // Validate reject quantity - cannot be less than 0
     if (qtyReject < 0) {
       return;
     }
 
     // Ensure reject quantity doesn't exceed issued quantity
-    const validQtyReject = Math.min(qtyReject, qtyIssued);
+    let validQtyReject = qtyReject;
+    if (validQtyReject > qtyIssued) {
+      validQtyReject = qtyIssued;
+      showPopup(`${REJECT_QUANTITY_EXCEEDS_ISSUED} (${qtyIssued})`, "warning");
+    }
     
     // Calculate received quantity as issued - reject
     const qtyReceived = qtyIssued - validQtyReject;
@@ -310,7 +301,7 @@ const ItemReceivingMainScreen = () => {
 
     if (validationErrors.length > 0) {
       showPopup(
-        `Please fix the following items:\n\n${validationErrors.join("\n\n")}`,
+        `${VALIDATION_ERROR_HEADER}\n\n${validationErrors.join("\n\n")}`,
         "warning"
       );
       return;
@@ -333,7 +324,6 @@ const ItemReceivingMainScreen = () => {
   // Confirm save receiving function
   const handleConfirmSaveReceiving = async () => {
     setIsSaving(true);
-    setLoading(true);
 
     try {
       // Prepare payload
@@ -355,7 +345,7 @@ const ItemReceivingMainScreen = () => {
 
       console.log("Saving receiving payload:", payload);
 
-      const response = await postRequest(`${INVENTORY}/indent/receive`, payload);
+      const response = await postRequest(SAVE_INDENT_RECEIVING, payload);
 
       console.log("Save response:", response);
 
@@ -367,7 +357,8 @@ const ItemReceivingMainScreen = () => {
           message += " " + (responseData.returnMessage || "Return created for rejected items.");
         }
 
-        const indentMId = selectedRecord?.indentMId;
+        console.log("Response after succesfully receive:", response);
+        const receiveMId = response.response.receiveMId;
         
         showConfirmationPopup(
           SUCCESS_RECEIVING_SAVED_PRINT,
@@ -375,9 +366,9 @@ const ItemReceivingMainScreen = () => {
           () => {
             navigate('/ViewDownloadReport', {
               state: {
-                reportUrl: `${ALL_REPORTS}/indentReceiving?indentMId=${indentMId}`,
-                title: 'Item Receiving Report',
-                fileName: 'Item Receiving Report',
+                reportUrl: `${RECEIVING_REPORT_URL}?${REQUEST_PARAM_RECEIVED_M_ID}=${receiveMId}`,
+                title: ITEM_RECEIVING_REPORT_TITLE,
+                fileName: ITEM_RECEIVING_REPORT_FILENAME,
                 returnPath: window.location.pathname
               }
             });
@@ -415,9 +406,9 @@ const ItemReceivingMainScreen = () => {
         "OK",
         "Close"
       );
-      setIsSaving(false);
+      
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -461,11 +452,11 @@ const ItemReceivingMainScreen = () => {
                   </div>
                   <div className="col-md-4">
                     <label className="form-label fw-bold">Indent Date</label>
-                    <input type="text" className="form-control" value={formatDateTime(selectedRecord?.indentDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
+                    <input type="text" className="form-control" value={formatDateTimeForDisplay(selectedRecord?.indentDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
                   </div>
                   <div className="col-md-4">
                     <label className="form-label fw-bold">Issue Date</label>
-                    <input type="text" className="form-control" value={formatDateTime(selectedRecord?.issueDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
+                    <input type="text" className="form-control" value={formatDateTimeForDisplay(selectedRecord?.issueDate)} readOnly style={{ backgroundColor: "#e9ecef" }} />
                   </div>
                   <div className="col-md-4 mt-2">
                     <label className="form-label fw-bold">Issue No.</label>
@@ -533,8 +524,8 @@ const ItemReceivingMainScreen = () => {
                               </td>
                               <td>{item.apu}</td>
                               <td>{item.batchNo}</td>
-                              <td>{formatDate(item.dom)}</td>
-                              <td>{formatDate(item.doe)}</td>
+                              <td>{formatDateForDisplay(item.dom)}</td>
+                              <td>{formatDateForDisplay(item.doe)}</td>
                               <td>{item.qtyDemanded}</td>
                               <td >{qtyIssued}</td>
                               <td>
@@ -545,19 +536,16 @@ const ItemReceivingMainScreen = () => {
                                   onChange={(e) => handleQtyReceivedChange(idx, e.target.value)}
                                   min="0"
                                   max={qtyIssued}
-                                    readOnly 
                                 />
                               </td>
                               <td>
                                 <input
                                   type="number"
                                   className="form-control form-control-sm text-center"
-                                  style={{ width: "50px" }}
                                   value={qtyReject}
                                   onChange={(e) => handleQtyRejectChange(idx, e.target.value)}
                                   min="0"
                                   max={qtyIssued}
-                                  readOnly // Make reject field read-only since it's auto-calculated
                                 />
                               </td>
                               <td>
@@ -593,7 +581,7 @@ const ItemReceivingMainScreen = () => {
                         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         Saving...
                       </>
-                    ) : "Save Receiving"}
+                    ) : "Receive"}
                   </button>
                   <button type="button" className="btn btn-secondary" onClick={handleBack} disabled={isSaving}>
                     Back
@@ -705,9 +693,9 @@ const ItemReceivingMainScreen = () => {
                           className="hover-row"
                         >
                           <td>{item.indentNo}</td>
-                          <td>{formatDate(item.indentDate)}</td>
+                          <td>{formatDateForDisplay(item.indentDate)}</td>
                           <td>{item.issueNo}</td>
-                          <td>{formatDate(item.issueDate)}</td>
+                          <td>{formatDateForDisplay(item.issueDate)}</td>
                         </tr>
                       ))
                     )}

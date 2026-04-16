@@ -1,8 +1,55 @@
 import { useState, useEffect } from "react"
-import { getRequest } from "../../../service/apiService"
+import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
-import { INVENTORY, ALL_REPORTS } from "../../../config/apiConfig"
+import { formatDateTimeForDisplay } from "../../../utils/dateUtils"
+import { 
+  INVENTORY, 
+  INDENT_TRACKING_STATUS_MAP,
+  INDENT_TRACKING,
+  INDENT_TRACKING_SEARCH,
+  INDENT_DEPARTMENT_GET_ALL,
+  BATCH_DETAILS,
+  GET_ISSUE_M_ID_FROM_INDENT_M_ID,
+  RECEIVING_REPORT_URL,
+  REQUEST_PARAM_INDENT_DEPT_STATUS,
+  REQUEST_PARAM_FROM_DEPARTMENT_ID,
+  ISSUE_REPORT_URL,
+  INDENT_GET_RETURN_MID,
+  INDENT_REPORT_URL,
+  RETURN_REPORT_URL,
+  STATUS_D,
+  REQUEST_PARAM_STATUS,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_SIZE,
+  REQUEST_PARAM_ITEM_ID,
+  REQUERST_PARAM_INDENT_M_ID,
+  REQUEST_PARAM_ISSUE_M_ID,
+  REQUEST_PARAM_RECEIVED_M_ID,
+  REQUEST_PARAM_RETURN_M_ID,
+  REQUEST_PARAM_FROM_DATE,
+  REQUEST_PARAM_TO_DATE,
+  REQUEST_PARAM_INDENT_NO,
+  GET_RECEIVE_MID_FROM_INDENT_MID
+} from "../../../config/apiConfig"
+import {
+  TRACK_INDENT_SEARCH_CRITERIA_WARN,
+  TRACK_INDENT_FROM_DATE_GREATER_WARN,
+  TRACK_INDENT_DATE_RANGE_EXCEED_WARN,
+  TRACK_INDENT_FETCH_DATA_ERR,
+  TRACK_INDENT_FETCH_DETAILS_ERR,
+  TRACK_INDENT_FETCH_ISSUE_MID_ERR,
+  TRACK_INDENT_FETCH_RECEIVE_MID_ERR,
+  TRACK_INDENT_FETCH_RETURN_MID_ERR,
+  TRACK_INDENT_SEARCH_ERR,
+  TRACK_INDENT_GENERATE_INDENT_REPORT_ERR,
+  TRACK_INDENT_GENERATE_ISSUE_REPORT_ERR,
+  TRACK_INDENT_GENERATE_RECEIVING_REPORT_ERR,
+  TRACK_INDENT_GENERATE_RETURN_REPORT_ERR,
+  TRACK_INDENT_ISSUE_REPORT_NOT_AVAILABLE,
+  TRACK_INDENT_RECEIVING_REPORT_NOT_AVAILABLE,
+  TRACK_INDENT_RETURN_REPORT_NOT_AVAILABLE
+} from "../../../config/constants"
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../Components/popup";
 
@@ -70,22 +117,6 @@ const TrackIndent = () => {
     });
   };
 
-  const formatDateTimeForDisplay = (dateTimeString) => {
-    if (!dateTimeString) return "";
-    try {
-      const date = new Date(dateTimeString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      const hours = String(date.getHours()).padStart(2, '0');
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      return `${day}/${month}/${year} ${hours}:${minutes}`;
-    } catch (error) {
-      console.error("Error formatting date time:", error);
-      return "";
-    }
-  };
-
   // Get user data from session storage
   const getUserDataFromSession = () => {
     try {
@@ -126,7 +157,7 @@ const TrackIndent = () => {
 
   const fetchStatusMap = async () => {
     try {
-      const response = await getRequest(`${INVENTORY}/indent/tracking/statusMap`);
+      const response = await getRequest(`${INDENT_TRACKING_STATUS_MAP}`);
 
       if (response?.response?.length) {
         const map = {}
@@ -149,7 +180,7 @@ const TrackIndent = () => {
   const fetchDepartments = async () => {
     try {
       // Call the new endpoint with status=y parameter
-      const response = await getRequest("/master/indent-department/getAll?status=y")
+      const response = await getRequest(`${INDENT_DEPARTMENT_GET_ALL}?${REQUEST_PARAM_STATUS}=y`)
 
       if (response && response.response && Array.isArray(response.response)) {
         // Map the response to extract department names and IDs
@@ -176,10 +207,10 @@ const TrackIndent = () => {
 
       // If user has a specific department and it's not admin (departmentId !== 1),
       // filter by their department
-      let url = `${INVENTORY}/indent/tracking?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`
+      let url = `${INDENT_TRACKING}?${REQUEST_PARAM_PAGE}=${page}&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`
 
       if (userSessionData && userSessionData.departmentId && userSessionData.departmentId !== 1) {
-        url += `&fromDepartmentId=${userSessionData.departmentId}`
+        url += `&${REQUEST_PARAM_FROM_DEPARTMENT_ID}=${userSessionData.departmentId}`
       }
 
       const response = await getRequest(url)
@@ -199,7 +230,7 @@ const TrackIndent = () => {
       setIndentData([])
       setTotalPages(0)
       setTotalElements(0)
-      showPopup("Error fetching indent data", "error");
+      showPopup(TRACK_INDENT_FETCH_DATA_ERR, "error");
     } finally {
       setLoading(false)
     }
@@ -218,17 +249,17 @@ const TrackIndent = () => {
 
       // Add fromDepartmentId if selected
       if (selectedDepartment && selectedDepartment.deptId) {
-        params.fromDepartmentId = selectedDepartment.deptId
+        params[REQUEST_PARAM_FROM_DEPARTMENT_ID] = selectedDepartment.deptId
       }
 
       // Add fromDate if provided
       if (fromDate) {
-        params.fromDate = fromDate
+        params[REQUEST_PARAM_FROM_DATE] = fromDate
       }
 
       // Add toDate if provided
       if (toDate) {
-        params.toDate = toDate
+        params[REQUEST_PARAM_TO_DATE] = toDate
       }
 
       // Build query string
@@ -238,7 +269,7 @@ const TrackIndent = () => {
         .join('&')
 
       // Call search API endpoint
-      const response = await getRequest(`${INVENTORY}/indent/tracking/search?${queryParams}`)
+      const response = await getRequest(`${INDENT_TRACKING_SEARCH}?${queryParams}`)
 
       if (response && response.response) {
         const mappedData = mapApiData(response.response.content)
@@ -256,7 +287,7 @@ const TrackIndent = () => {
       setIndentData([])
       setTotalPages(0)
       setTotalElements(0)
-      showPopup("Error searching indent data", "error");
+      showPopup(TRACK_INDENT_SEARCH_ERR, "error");
     } finally {
       setIsSearching(false)
     }
@@ -293,7 +324,8 @@ const isSearchEnabled = () => {
       issuedDate: formatDateTimeForDisplay(item.issueDate),
       status: statusMap?.[item.statusName],
       statusCode: item.statusName,
-      isReturn: item.isReturn, // Added isReturn field
+      isReturn: item.isReturn,
+      indentType: item.indentType,
       items: [] // Items will be populated when row is clicked
     }))
   }
@@ -302,7 +334,7 @@ const isSearchEnabled = () => {
   const handleSearch = () => {
     // Validate at least one search criteria is provided
     if (!isSearchEnabled()) {
-      showPopup("Please select at least one search criteria (Department or Date)", "warning");
+      showPopup(TRACK_INDENT_SEARCH_CRITERIA_WARN, "warning");
       return
     }
 
@@ -312,7 +344,7 @@ const isSearchEnabled = () => {
 
       // Validate date range
       if (from > to) {
-        showPopup("From Date cannot be greater than To Date", "warning");
+        showPopup(TRACK_INDENT_FROM_DATE_GREATER_WARN, "warning");
         return
       }
 
@@ -320,7 +352,7 @@ const isSearchEnabled = () => {
       const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
 
       if (diffDays > 365) {
-        showPopup("Date range cannot be more than 1 year", "warning");
+        showPopup(TRACK_INDENT_DATE_RANGE_EXCEED_WARN, "warning");
         return
       }
     }
@@ -370,7 +402,7 @@ const isSearchEnabled = () => {
   // Fetch indent details by indentMId
   const fetchIndentDetails = async (indentMId) => {
     try {
-      const response = await getRequest(`${INVENTORY}/indent/tracking/${indentMId}`)
+      const response = await getRequest(`${INDENT_TRACKING}/${indentMId}`)
       if (response && response.response && Array.isArray(response.response)) {
         return response.response.map(item => ({
           id: item.indentTId,
@@ -386,7 +418,7 @@ const isSearchEnabled = () => {
       return []
     } catch (error) {
       console.error("Error fetching indent details:", error)
-      showPopup("Error fetching indent details", "error");
+      showPopup(TRACK_INDENT_FETCH_DETAILS_ERR, "error");
       return []
     }
   }
@@ -395,7 +427,7 @@ const isSearchEnabled = () => {
   const fetchBatchDetails = async (itemId, indentNo) => {
     try {
       // Replace with your actual API call
-      const response = await getRequest(`/batch/details?itemId=${itemId}&indentNo=${indentNo}`)
+      const response = await getRequest(`${BATCH_DETAILS}?${REQUEST_PARAM_ITEM_ID}=${itemId}&${REQUEST_PARAM_INDENT_NO}=${indentNo}`)
       if (response && response.response) {
         return response.response
       }
@@ -409,13 +441,13 @@ const isSearchEnabled = () => {
   // Fetch Issue MId
   const fetchIssueMId = async (indentMId) => {
     try {
-      const response = await getRequest(`${INVENTORY}/indent/getIssueMId?indentMId=${indentMId}`)
+      const response = await getRequest(`${GET_ISSUE_M_ID_FROM_INDENT_M_ID}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`)
       if (response && response.response) {
         return response.response
       }
       return null
     } catch (error) {
-      console.error("Error fetching issue MId:", error)
+      console.error(TRACK_INDENT_FETCH_ISSUE_MID_ERR, error)
       return null
     }
   }
@@ -423,13 +455,13 @@ const isSearchEnabled = () => {
   // Fetch Receive MId
   const fetchReceiveMId = async (indentMId) => {
     try {
-      const response = await getRequest(`${INVENTORY}/indent/getReceiveMId?indentMId=${indentMId}`)
+      const response = await getRequest(`${GET_RECEIVE_MID_FROM_INDENT_MID}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`)
       if (response && response.response) {
         return response.response
       }
       return null
     } catch (error) {
-      console.error("Error fetching receive MId:", error)
+      console.error(TRACK_INDENT_FETCH_RECEIVE_MID_ERR, error)
       return null
     }
   }
@@ -437,13 +469,13 @@ const isSearchEnabled = () => {
   // Fetch Return MId
   const fetchReturnMId = async (indentMId) => {
     try {
-      const response = await getRequest(`${INVENTORY}/indent/getReturnMId?indentMId=${indentMId}`)
+      const response = await getRequest(`${INDENT_GET_RETURN_MID}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`)
       if (response && response.response) {
         return response.response
       }
       return null
     } catch (error) {
-      console.error("Error fetching return MId:", error)
+      console.error(TRACK_INDENT_FETCH_RETURN_MID_ERR, error)
       return null
     }
   }
@@ -505,26 +537,15 @@ const isSearchEnabled = () => {
     const buttonId = `indent-${indentMId}`;
     try {
       setReportLoading(prev => ({ ...prev, [buttonId]: true }));
-      const reportUrl = `${ALL_REPORTS}/indentReport?indentMId=${indentMId}&flag=d`
+      const reportUrl = `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`
       
-      const response = await fetch(reportUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch report");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
       setPdfFileName(`Indent_Report_${indentMId}`);
     } catch (error) {
       console.error("Error generating indent report:", error)
-      showPopup("Error generating indent report", "error");
+      showPopup(TRACK_INDENT_GENERATE_INDENT_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, [buttonId]: false }));
     }
@@ -539,29 +560,18 @@ const isSearchEnabled = () => {
       const issueMId = await fetchIssueMId(indentMId)
       if (issueMId) {
         console.log("Issue MId received:", issueMId)
-        const reportUrl = `${ALL_REPORTS}/indentIssue?issueMId=${issueMId}&flag=d`
+        const reportUrl = `${ISSUE_REPORT_URL}?${REQUEST_PARAM_ISSUE_M_ID}=${issueMId}`
         
-        const response = await fetch(reportUrl, {
-          method: "GET",
-          headers: {
-            Accept: "application/pdf",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch report");
-        }
-
-        const blob = await response.blob();
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
         setPdfFileName(`Issue_Report_${issueMId}`);
       } else {
-        showPopup("Issue report not available for this indent", "info");
+        showPopup(TRACK_INDENT_ISSUE_REPORT_NOT_AVAILABLE, "info");
       }
     } catch (error) {
       console.error("Error generating issue report:", error)
-      showPopup("Error generating issue report", "error");
+      showPopup(TRACK_INDENT_GENERATE_ISSUE_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, [buttonId]: false }));
     }
@@ -576,39 +586,25 @@ const isSearchEnabled = () => {
       let reportUrl;
       
       // If status is RC, use the direct indentReceiving endpoint
-      if (statusCode === 'RC') {
-        reportUrl = `${ALL_REPORTS}/indentReceiving?indentMId=${indentMId}&flag=d`;
-      } else {
+      
         // For other statuses, try to get receiveMId
         const receiveMId = await fetchReceiveMId(indentMId)
         if (receiveMId) {
           console.log("Receive MId received:", receiveMId)
-          reportUrl = `${ALL_REPORTS}/receivingReport?receiveMId=${receiveMId}&flag=d`;
+          reportUrl = `${RECEIVING_REPORT_URL}?${REQUEST_PARAM_RECEIVED_M_ID}=${receiveMId}`;
         } else {
-          showPopup("Receiving report not available for this indent", "info");
+          showPopup(TRACK_INDENT_RECEIVING_REPORT_NOT_AVAILABLE, "info");
           setReportLoading(prev => ({ ...prev, [buttonId]: false }));
           return;
         }
-      }
       
-      const response = await fetch(reportUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch report");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
       setPdfFileName(`Receiving_Report_${indentMId}`);
     } catch (error) {
       console.error("Error generating receiving report:", error)
-      showPopup("Error generating receiving report", "error");
+      showPopup(TRACK_INDENT_GENERATE_RECEIVING_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, [buttonId]: false }));
     }
@@ -623,29 +619,18 @@ const isSearchEnabled = () => {
       const returnMId = await fetchReturnMId(indentMId)
       if (returnMId) {
         console.log("Return MId received:", returnMId)
-        const reportUrl = `${ALL_REPORTS}/indentReturn?returnMId=${returnMId}&flag=d`
+        const reportUrl = `${RETURN_REPORT_URL}?${REQUEST_PARAM_RETURN_M_ID}=${returnMId}`
         
-        const response = await fetch(reportUrl, {
-          method: "GET",
-          headers: {
-            Accept: "application/pdf",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch report");
-        }
-
-        const blob = await response.blob();
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
         setPdfFileName(`Return_Report_${returnMId}`);
       } else {
-        showPopup("Return report not available for this indent", "info");
+        showPopup(TRACK_INDENT_RETURN_REPORT_NOT_AVAILABLE, "info");
       }
     } catch (error) {
       console.error("Error generating return report:", error)
-      showPopup("Error generating return report", "error");
+      showPopup(TRACK_INDENT_GENERATE_RETURN_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, [buttonId]: false }));
     }
@@ -656,26 +641,15 @@ const isSearchEnabled = () => {
     console.log("Generating Indent Report for indentMId:", indentMId)
     try {
       setReportLoading(prev => ({ ...prev, detailIndent: true }));
-      const reportUrl = `${ALL_REPORTS}/indentReport?indentMId=${indentMId}&flag=d`
+      const reportUrl = `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`
       
-      const response = await fetch(reportUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch report");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
       setPdfFileName(`Indent_Report_${indentMId}`);
     } catch (error) {
       console.error("Error generating indent report:", error)
-      showPopup("Error generating indent report", "error");
+      showPopup(TRACK_INDENT_GENERATE_INDENT_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, detailIndent: false }));
     }
@@ -688,29 +662,18 @@ const isSearchEnabled = () => {
       const issueMId = await fetchIssueMId(indentMId)
       if (issueMId) {
         console.log("Issue MId received:", issueMId)
-        const reportUrl = `${ALL_REPORTS}/indentIssue?issueMId=${issueMId}&flag=d`
+        const reportUrl = `${ISSUE_REPORT_URL}?${REQUEST_PARAM_ISSUE_M_ID}=${issueMId}`
         
-        const response = await fetch(reportUrl, {
-          method: "GET",
-          headers: {
-            Accept: "application/pdf",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch report");
-        }
-
-        const blob = await response.blob();
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
         setPdfFileName(`Issue_Report_${issueMId}`);
       } else {
-        showPopup("Issue report not available for this indent", "info");
+        showPopup(TRACK_INDENT_ISSUE_REPORT_NOT_AVAILABLE, "info");
       }
     } catch (error) {
       console.error("Error generating issue report:", error)
-      showPopup("Error generating issue report", "error");
+      showPopup(TRACK_INDENT_GENERATE_ISSUE_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, detailIssue: false }));
     }
@@ -722,40 +685,23 @@ const isSearchEnabled = () => {
       setReportLoading(prev => ({ ...prev, detailReceiving: true }));
       let reportUrl;
       
-      // If status is RC, use the direct indentReceiving endpoint
-      if (statusCode === 'RC') {
-        reportUrl = `${ALL_REPORTS}/indentReceiving/indentMId=${indentMId}&flag=d`;
-      } else {
-        // For other statuses, try to get receiveMId
         const receiveMId = await fetchReceiveMId(indentMId)
         if (receiveMId) {
           console.log("Receive MId received:", receiveMId)
-          reportUrl = `${ALL_REPORTS}/receivingReport?receiveMId=${receiveMId}&flag=d`;
+          reportUrl = `${RECEIVING_REPORT_URL}?${REQUEST_PARAM_RECEIVED_M_ID}=${receiveMId}`;
         } else {
-          showPopup("Receiving report not available for this indent", "info");
+          showPopup(TRACK_INDENT_RECEIVING_REPORT_NOT_AVAILABLE, "info");
           setReportLoading(prev => ({ ...prev, detailReceiving: false }));
           return;
         }
-      }
       
-      const response = await fetch(reportUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch report");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
       setPdfFileName(`Receiving_Report_${indentMId}`);
     } catch (error) {
       console.error("Error generating receiving report:", error)
-      showPopup("Error generating receiving report", "error");
+      showPopup(TRACK_INDENT_GENERATE_RECEIVING_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, detailReceiving: false }));
     }
@@ -768,29 +714,18 @@ const isSearchEnabled = () => {
       const returnMId = await fetchReturnMId(indentMId)
       if (returnMId) {
         console.log("Return MId received:", returnMId)
-        const reportUrl = `${ALL_REPORTS}/indentReturn?returnMId=${returnMId}&flag=d`
+        const reportUrl = `${RETURN_REPORT_URL}?${REQUEST_PARAM_RETURN_M_ID}=${returnMId}`
         
-        const response = await fetch(reportUrl, {
-          method: "GET",
-          headers: {
-            Accept: "application/pdf",
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error("Failed to fetch report");
-        }
-
-        const blob = await response.blob();
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
         const fileURL = window.URL.createObjectURL(blob);
         setPdfUrl(fileURL);
         setPdfFileName(`Return_Report_${returnMId}`);
       } else {
-        showPopup("Return report not available for this indent", "info");
+        showPopup(TRACK_INDENT_RETURN_REPORT_NOT_AVAILABLE, "info");
       }
     } catch (error) {
       console.error("Error generating return report:", error)
-      showPopup("Error generating return report", "error");
+      showPopup(TRACK_INDENT_GENERATE_RETURN_REPORT_ERR, "error");
     } finally {
       setReportLoading(prev => ({ ...prev, detailReturn: false }));
     }
@@ -806,10 +741,10 @@ const isSearchEnabled = () => {
   }
 
   // Check if report buttons should be enabled
-  const canShowIssueReport = (indent) => indent.statusCode === "FI"
+  const canShowIssueReport = (indent) => indent.statusCode === "FI" ||canShowReceivingReport(indent) || canShowReturnReport(indent);
   // Updated condition for receiving report - show when status is RC
   const canShowReceivingReport = (indent) => {
-    return indent.statusCode === 'RC';
+    return indent.statusCode === 'RC' ;
   }
   // UPDATED condition for return report - show when isReturn is "N"
   const canShowReturnReport = (indent) => {
@@ -861,11 +796,11 @@ const isSearchEnabled = () => {
                 {/* Detail view content */}
                 <div className="row mb-4">
                   <div className="col-md-3">
-                    <label className="form-label fw-bold">Indent No</label>
+                    <label className="form-label fw-bold">Indent No/Indent Type</label>
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedIndent?.indentNo || ""}
+                      value={selectedIndent?.indentNo }
                       readOnly
                     />
                   </div>
@@ -1284,7 +1219,7 @@ const isSearchEnabled = () => {
                   <thead>
                     <tr>
                       <th>Indent Date</th>
-                      <th>Indent No</th>
+                      <th>Indent No/Indent Type</th>
                       <th>From Department</th>
                       <th>To Department</th>
                       <th>Approved Date</th>
@@ -1310,7 +1245,7 @@ const isSearchEnabled = () => {
                             {formatDate(item.indentDate)}
                           </td>
                           <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: 'pointer' }}>
-                            {item.indentNo}
+                            {item.indentNo} / {item.indentType}
                           </td>
                           <td onClick={(e) => handleRowClick(item, e)} style={{ cursor: 'pointer' }}>
                             {item.department}

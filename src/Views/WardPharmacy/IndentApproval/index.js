@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
-import { Store_Internal_Indent, MAS_DRUG_MAS, INVENTORY } from "../../../config/apiConfig"
+import ConfirmationPopup from "../../../Components/ConfirmationPopup"
+import { APPROVE_INDENT_FOR_ISSUE, GET_INDENT_DETAILS_FOR_ISSUE_APPROVAL, GET_INDENT_HEADERS_FOR_ISSUE_APPROVAL, INVENTORY, REQUEST_PARAM_DEPARTMENT_ID } from "../../../config/apiConfig"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -15,6 +16,7 @@ const IndentApproval = () => {
   const [itemOptions, setItemOptions] = useState([])
   const [indentEntries, setIndentEntries] = useState([])
   const [popupMessage, setPopupMessage] = useState(null)
+  const [confirmationPopup, setConfirmationPopup] = useState(null)
   const [fromDate, setFromDate] = useState("")
   const [toDate, setToDate] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
@@ -22,6 +24,7 @@ const IndentApproval = () => {
   const [filteredIndentData, setFilteredIndentData] = useState([])
   const [action, setAction] = useState("")
   const [remarks, setRemarks] = useState("")
+  const [isSubmitting, setIsSubmitting] = useState(false)
 
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId")
 
@@ -29,6 +32,23 @@ const IndentApproval = () => {
   const statusMap = {
     'Approved': { label: "Pending for Issue Department", badge: "bg-success", textColor: "text-white" },
   }
+
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : () => setConfirmationPopup(null),
+      confirmText,
+      cancelText
+    });
+  };
 
   // Fetch pending indents (list view) - UPDATED to use new endpoint
   const fetchPendingIndents = async (deptId) => {
@@ -42,7 +62,7 @@ const IndentApproval = () => {
       setLoading(true);
 
       // Updated URL to use the new endpoint
-      const url = `${INVENTORY}/indents/approvedForIssueDept?deptId=${deptId}`;
+      const url = `${GET_INDENT_HEADERS_FOR_ISSUE_APPROVAL}?${REQUEST_PARAM_DEPARTMENT_ID}=${deptId}`;
 
       console.log("Fetching pending indents from URL:", url);
 
@@ -78,7 +98,7 @@ const IndentApproval = () => {
     try {
       setLoadingDetails(true)
       // Use the new endpoint with indentMId and departmentId
-      const url = `${INVENTORY}/indentDetailsForIssueWithAvailableStock/${indentMId}?departmentId=${departmentId}`
+      const url = `${GET_INDENT_DETAILS_FOR_ISSUE_APPROVAL}/${indentMId}?${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}`
 
       console.log("Fetching indent details from URL:", url)
 
@@ -126,44 +146,9 @@ const IndentApproval = () => {
     }
   }
 
-  // Fetch all drugs for dropdown with current stock
-  // const fetchAllDrugs = async () => {
-  //   try {
-  //     const response = await getRequest(`${MAS_DRUG_MAS}/getAll/1`)
-  //     console.log("Drugs API Response:", response)
-
-  //     if (response && response.response && Array.isArray(response.response)) {
-  //       const drugs = response.response.map(drug => ({
-  //         id: drug.itemId,
-  //         code: drug.pvmsNo || "",
-  //         name: drug.nomenclature || "",
-  //         unit: drug.unitAuName || drug.dispUnitName || "",
-  //         availableStock: drug.wardstocks || drug.storestocks || 0,
-  //         storesStock: drug.storestocks || 0
-  //       }))
-  //       setItemOptions(drugs)
-  //       console.log("Loaded drugs with stock:", drugs)
-  //     } else if (response && Array.isArray(response)) {
-  //       const drugs = response.map(drug => ({
-  //         id: drug.itemId,
-  //         code: drug.pvmsNo || "",
-  //         name: drug.nomenclature || "",
-  //         unit: drug.unitAuName || drug.dispUnitName || "",
-  //         availableStock: drug.wardstocks || drug.storestocks || 0,
-  //         storesStock: drug.storestocks || 0
-  //       }))
-  //       setItemOptions(drugs)
-  //       console.log("Loaded drugs with stock:", drugs)
-  //     }
-  //   } catch (err) {
-  //     console.error("Error fetching drugs:", err)
-  //   }
-  // }
-
   useEffect(() => {
     fetchPendingIndents(departmentId)
-    // fetchAllDrugs()
-  }, [departmentId]) // eslint-disable-line react-hooks/exhaustive-deps
+  }, [departmentId]) 
 
   // Handle search by date range
   const handleSearch = () => {
@@ -295,6 +280,24 @@ const IndentApproval = () => {
       }
     }
 
+    // Show confirmation popup before submitting
+    const confirmMessage = action === "approved" 
+      ? "Are you sure you want to approve this indent for issue?" 
+      : "Are you sure you want to reject this indent for issue?";
+
+    showConfirmationPopup(
+      confirmMessage,
+      "success",
+      async () => {
+        await performSubmit();
+      },
+      null,
+      "Submit",
+      "Cancel"
+    );
+  };
+
+  const performSubmit = async () => {
     // Build payload according to IssueInternalIndentApprovalRequest
     const payload = {
       indentMId: selectedRecord?.indentMId,
@@ -331,26 +334,30 @@ const IndentApproval = () => {
 
     try {
       setProcessing(true)
+      setIsSubmitting(true)
 
       // Call ISSUE approval API endpoint
       await postRequest(
-        `${INVENTORY}/indent/approvedByIssueDept`,
+        `${APPROVE_INDENT_FOR_ISSUE}`,
         payload
       )
 
-      showPopup(`Indent ${action} successfully!`, "success")
-
-      // Refresh the list and go back
-      setTimeout(() => {
-        handleBackToList()
-        fetchPendingIndents(departmentId)
-      }, 1500)
+      await showPopup(
+        `Indent has been successfully ${action === "approved" ? "approved for issue" : "rejected for issue"}.`,
+        "success"
+      )
+      await fetchPendingIndents(departmentId);
+    handleBackToList();
 
     } catch (error) {
       console.error("Error processing indent:", error)
-      showPopup("Error processing indent. Please try again.", "error")
+      showPopup(
+        "Failed to process indent. Please try again.",
+        "error"
+      )
     } finally {
       setProcessing(false)
+      setIsSubmitting(false)
     }
   }
 
@@ -381,6 +388,16 @@ const IndentApproval = () => {
     return (
       <div className="content-wrapper">
         {(loading || loadingDetails) && <LoadingScreen />}
+
+        <ConfirmationPopup
+          show={confirmationPopup !== null}
+          message={confirmationPopup?.message || ''}
+          type={confirmationPopup?.type || 'info'}
+          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onCancel={confirmationPopup?.onCancel}
+          confirmText={confirmationPopup?.confirmText || 'OK'}
+          cancelText={confirmationPopup?.cancelText}
+        />
 
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
@@ -498,14 +515,14 @@ const IndentApproval = () => {
                         <tr>
                           <td colSpan={7} className="text-center">
                             <LoadingScreen />
-                          </td>
-                        </tr>
+                           </td>
+                         </tr>
                       ) : indentEntries.length === 0 ? (
                         <tr>
                           <td colSpan={7} className="text-center text-muted">
                             No items found.
-                          </td>
-                        </tr>
+                           </td>
+                         </tr>
                       ) : (
                         indentEntries.map((entry, index) => (
                           <tr key={entry.id || index}>
@@ -615,9 +632,16 @@ const IndentApproval = () => {
                     type="button"
                     className="btn btn-primary"
                     onClick={handleSubmit}
-                    disabled={processing || !action || !remarks.trim() || loadingDetails}
+                    disabled={processing || !action || !remarks.trim() || loadingDetails || isSubmitting}
                   >
-                    {processing ? "Processing..." : "Submit"}
+                    {isSubmitting ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Submitting...
+                      </>
+                    ) : (
+                      "Submit"
+                    )}
                   </button>
                   <button type="button" className="btn btn-danger" onClick={handleBackToList}>
                     Close

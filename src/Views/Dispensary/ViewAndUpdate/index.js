@@ -3,13 +3,22 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, MAS_DRUG_MAS, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
+import { SECTION_ID_FOR_DRUGS, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, GET_OPENING_BALANCE_ENTRY_HEADERS, GET_OPENING_BALANCE_ENTRY_DETAILS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, GET_DRUG_CODE_FOR_DROPDOWN, GET_CURRENT_USER_PROFILE_BY_NAME, GET_DEPARTMENT_BY_ID, UPDATE_OPENING_BALANCE_ENTRY_BY_ID, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, STATUS_D } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
-import {WARNING_DUPLICATE_BATCH_ENTRY, CONFIRM_OPENING_BALANCE_ACTION,ERROR_UPDATE_ENTRIES_FAILED,
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {
+  WARNING_DUPLICATE_BATCH_ENTRY, CONFIRM_OPENING_BALANCE_ACTION, ERROR_UPDATE_ENTRIES_FAILED,
   CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT, WARNING_DOM_DOE_VALIDATION,
-}  from "../../../config/constants";
+  OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE,
+  OPENING_BALANCE_ENTRY_UPDATE_REPORT_TITLE,
+  OPENING_BALANCE_ENTRY_UPDATE_REPORT_FILE_NAME,
+  OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME,
+  OPENING_BALANCE_NOT_FOUND,
+} from "../../../config/constants";
+
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+import { fetchPdfReportForViewAndPrint } from "../../../service/apiService"
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -72,16 +81,16 @@ const OpeningBalanceApproval = () => {
   const [confirmationPopup, setConfirmationPopup] = useState(null);
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
-  
+
   // States for button spinners
   const [isSearching, setIsSearching] = useState(false);
   const [isShowingAll, setIsShowingAll] = useState(false);
-  
+
   // Server-side pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
-  
+
   // Drug search state with debounce - Per row
   const [itemDropdown, setItemDropdown] = useState([]);
   const [itemSearch, setItemSearch] = useState("");
@@ -90,18 +99,18 @@ const OpeningBalanceApproval = () => {
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   const [isItemLoading, setIsItemLoading] = useState(false);
   const [activeRowIndex, setActiveRowIndex] = useState(null);
-  
+
   // For drug code dropdown
   const dropdownClickedRef = useRef(false);
   const [activeDrugCodeDropdown, setActiveDrugCodeDropdown] = useState(null);
   const drugCodeInputRefs = useRef({});
-  
+
   // Refs for debounce and dropdown
   const debounceItemRef = useRef(null);
   const itemInputRefs = useRef({});
-  
+
   const navigate = useNavigate();
-  
+
   const getCurrentDateTime = () => new Date().toISOString();
 
   const [formData, setFormData] = useState({
@@ -109,6 +118,9 @@ const OpeningBalanceApproval = () => {
     enteredBy: "",
     department: "",
   });
+
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // ── close dropdown when clicking outside any tracked input ──────────────
   useEffect(() => {
@@ -120,7 +132,7 @@ const OpeningBalanceApproval = () => {
       const clickedInsideDrugCodeInput = Object.values(drugCodeInputRefs.current).some(
         (ref) => ref && ref.contains(e.target)
       );
-      
+
       if (!clickedInsideItemInput && !clickedInsideDrugCodeInput) {
         setShowItemDropdown(false);
         setActiveRowIndex(null);
@@ -154,18 +166,18 @@ const OpeningBalanceApproval = () => {
       if (showLoading) {
         setLoading(true);
       }
-      
+
       // Build URL with query parameters
-      let url = `${INVENTORY}/openingBalanceEntry/headers/${hospitalId}/${departmentId}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
-      
+      let url = `${GET_OPENING_BALANCE_ENTRY_HEADERS}/${hospitalId}/${departmentId}?${REQUEST_PARAM_PAGE}=${page}&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`;
+
       // Add date filters if they exist
       if (fromDate) {
-        url += `&fromDate=${fromDate}`;
+        url += `&${REQUEST_PARAM_FROM_DATE}=${fromDate}`;
       }
       if (toDate) {
-        url += `&toDate=${toDate}`;
+        url += `&${REQUEST_PARAM_TO_DATE}=${toDate}`;
       }
-      
+
       const response = await getRequest(url);
 
       if (response && response.response) {
@@ -194,8 +206,8 @@ const OpeningBalanceApproval = () => {
   const fetchOpeningBalanceDetails = async (balanceMId) => {
     try {
       setLoadingDetails(true);
-      const response = await getRequest(`${INVENTORY}/openingBalanceEntry/details/${balanceMId}`);
-      
+      const response = await getRequest(`${GET_OPENING_BALANCE_ENTRY_DETAILS}/${balanceMId}`);
+
       if (response && response.response && Array.isArray(response.response)) {
         // Transform the API response to match the detailEntries format
         const entriesWithId = response.response.map((entry, idx) => ({
@@ -212,7 +224,7 @@ const OpeningBalanceApproval = () => {
           manufacturerId: entry.manufacturerId,
           drugData: entry, // Store complete item data
         }));
-        
+
         setDetailEntries(entriesWithId);
       } else {
         setDetailEntries([]);
@@ -230,19 +242,19 @@ const OpeningBalanceApproval = () => {
   const fetchItems = async (page, searchText = "") => {
     try {
       setIsItemLoading(true);
-      
+
       const params = new URLSearchParams();
 
       // Use balanceType from selectedRecord to determine sectionId
       if (selectedRecord?.balanceType === "Drug") {
-        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+        params.append([REQUEST_PARAM_SECTION_ID], SECTION_ID_FOR_DRUGS);
       }
 
-      params.append("keyword", searchText);
-      params.append("page", page);
-      params.append("size", DEFAULT_ITEMS_PER_PAGE);
+      params.append([REQUEST_PARAM_KEYWORD], searchText);
+      params.append([REQUEST_PARAM_PAGE], page);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-      const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const url = `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -266,9 +278,9 @@ const OpeningBalanceApproval = () => {
   const fetchItemDetails = async (itemId) => {
     try {
       const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const url = `${GET_ITEM_DETAILS_BY_ID}/${itemId}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}`;
       const response = await getRequest(url);
-      
+
       if (response.status === 200 && response.response) {
         return response.response;
       }
@@ -276,7 +288,7 @@ const OpeningBalanceApproval = () => {
     } catch (error) {
       console.error("Error fetching item details:", error);
       return null;
-    } 
+    }
   };
 
   // Handle item search with debounce - Per row
@@ -289,7 +301,7 @@ const OpeningBalanceApproval = () => {
 
     setItemSearch(value);
     setActiveRowIndex(index);
-    
+
     // Update the itemName in the entry
     const newEntries = [...detailEntries];
     newEntries[index] = {
@@ -297,7 +309,7 @@ const OpeningBalanceApproval = () => {
       itemName: value
     };
     setDetailEntries(newEntries);
-    
+
     // Clear selections when user types
     if (!value.trim() || (newEntries[index].itemId && !value.includes(newEntries[index].itemName))) {
       newEntries[index] = {
@@ -352,7 +364,7 @@ const OpeningBalanceApproval = () => {
   // Handle item selection from dropdown
   const handleItemSelect = async (index, item) => {
     // Check if item is already selected in another row
-    const isDuplicate = detailEntries.some((entry, i) => 
+    const isDuplicate = detailEntries.some((entry, i) =>
       i !== index && entry.itemId === item.itemId
     );
 
@@ -363,10 +375,10 @@ const OpeningBalanceApproval = () => {
 
     // Fetch complete item details
     const itemDetails = await fetchItemDetails(item.itemId);
-    
+
     if (itemDetails) {
       const newEntries = [...detailEntries];
-      
+
       // Update the selected row with complete item information
       newEntries[index] = {
         ...newEntries[index],
@@ -399,7 +411,7 @@ const OpeningBalanceApproval = () => {
   const fetchBrand = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_BRAND}/getAll/1`);
+      const response = await getRequest(`${GET_ALL_BRANDS_FOR_DROPDOWN}`);
       if (response && response.response) {
         setBrandOptions(response.response);
       }
@@ -413,7 +425,7 @@ const OpeningBalanceApproval = () => {
   const fetchManufacturer = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_MANUFACTURE}/getAll/1`);
+      const response = await getRequest(`${GET_ALL_MANUFACTURER_FOR_DROPDOWN}`);
       if (response && response.response) {
         setManufacturerOptions(response.response);
       }
@@ -427,7 +439,7 @@ const OpeningBalanceApproval = () => {
   const fetchDrugCodeOptions = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
+      const response = await getRequest(`${GET_DRUG_CODE_FOR_DROPDOWN}`);
       if (response && response.response) {
         setDrugCodeOptions(response.response);
       }
@@ -441,7 +453,7 @@ const OpeningBalanceApproval = () => {
   const fetchCurrentUser = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`/authController/getUsersForProfile/${crUser}`);
+      const response = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${crUser}`);
 
       if (response && response.response) {
         const { firstName = "", middleName = "", lastName = "" } = response.response;
@@ -461,7 +473,7 @@ const OpeningBalanceApproval = () => {
   const fetchDepartment = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DEPARTMENT}/getById/${deptId}`);
+      const response = await getRequest(`${GET_DEPARTMENT_BY_ID}/${deptId}`);
       if (response && response.response) {
         setFormData((prev) => ({
           ...prev,
@@ -502,17 +514,17 @@ const OpeningBalanceApproval = () => {
 
   const handleShowAll = async () => {
     setIsShowingAll(true);
-    
+
     // Clear date filters in state
     setFromDate("");
     setToDate("");
     setCurrentPage(1);
-    
+
     // Fetch initial unfiltered data from page 0
     try {
       // Build URL without any date filters
-      let url = `${INVENTORY}/openingBalanceEntry/headers/${hospitalId}/${departmentId}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`;
-      
+      let url = `${GET_OPENING_BALANCE_ENTRY_HEADERS}/${hospitalId}/${departmentId}?${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`;
+
       const response = await getRequest(url);
 
       if (response && response.response) {
@@ -540,10 +552,10 @@ const OpeningBalanceApproval = () => {
   const handleEditClick = async (record, e) => {
     e.stopPropagation();
     setSelectedRecord(record);
-    
+
     // Fetch details when a row is clicked
     await fetchOpeningBalanceDetails(record.balanceMId);
-    
+
     setCurrentView("detail");
   }
 
@@ -694,9 +706,9 @@ const OpeningBalanceApproval = () => {
       } else if (status === "p") {
         setIsSubmitting(true);
       }
-      
+
       const response = await putRequest(
-        `${INVENTORY}/openingBalanceEntry/updateById/${selectedRecord.balanceMId}`,
+        `${UPDATE_OPENING_BALANCE_ENTRY_BY_ID}/${selectedRecord.balanceMId}`,
         requestPayload
       );
 
@@ -715,31 +727,31 @@ const OpeningBalanceApproval = () => {
 
   const handleUpdate = async (status) => {
     const actionText = status === "p" ? "submit" : "update";
-    
+
     showConfirmationPopup(
       CONFIRM_OPENING_BALANCE_ACTION(actionText),
       "info",
       async () => {
         const result = await handleUpdateLogic(status);
-        
+
         if (result?.success) {
           const balanceMId = result.balanceMId;
-          
-          showConfirmationPopup(    
-          CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT(status),
+
+          showConfirmationPopup(
+            CONFIRM_OPENING_BALANCE_SUBMIT_UPDATE_PRINT(status),
             "success",
             () => {
               if (balanceMId) {
                 navigate('/ViewDownloadReport', {
                   state: {
-                    reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
-                    title: status === "p" ? 'Opening Balance Submit Report' : 'Opening Balance Update Report',
-                    fileName: status === "p" ? 'Opening Balance Submit Report' : 'Opening Balance Update Report',
+                    reportUrl: `${OPENING_BALANCE_REPORT_URL}?${REQUEST_PARAM_BALANCE_M_ID}=${balanceMId}`,
+                    title: status === "p" ? OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE : OPENING_BALANCE_ENTRY_UPDATE_REPORT_TITLE,
+                    fileName: status === "p" ? OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME : OPENING_BALANCE_ENTRY_UPDATE_REPORT_FILE_NAME,
                     returnPath: window.location.pathname
                   }
                 });
               }
-              
+
               fetchOpenBalance(0);
               setSelectedRecord(null);
               setDetailEntries([]);
@@ -760,7 +772,7 @@ const OpeningBalanceApproval = () => {
           showConfirmationPopup(
             result?.message || ERROR_UPDATE_ENTRIES_FAILED,
             "error",
-            () => {},
+            () => { },
             null,
             "OK",
             "Close"
@@ -770,7 +782,7 @@ const OpeningBalanceApproval = () => {
       () => {
         console.log(`${actionText} cancelled by user`);
       },
-      `Yes, ${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
+      `${actionText.charAt(0).toUpperCase() + actionText.slice(1)}`,
       "Cancel"
     );
   };
@@ -795,34 +807,47 @@ const OpeningBalanceApproval = () => {
     ])
   }
 
-  // Handle Report button click
-  const handleReport = () => {
-    if (selectedRecord?.balanceMId) {
-      navigate('/ViewDownloadReport', {
-        state: {
-          reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${selectedRecord.balanceMId}`,
-          title: 'Opening Balance Report',
-          fileName: 'Opening_Balance_Report',
-          returnPath: window.location.pathname
-        }
-      });
+  const handleReportClick = async () => {
+    const balanceMId = selectedRecord?.balanceMId;
+    if (balanceMId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${OPENING_BALANCE_REPORT_URL}?${REQUEST_PARAM_BALANCE_M_ID}=${balanceMId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showPopup("Unable to generate report", "error");
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      showPopup(OPENING_BALANCE_NOT_FOUND, "error");
     }
   };
-
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
         {(loading || loadingDetails) && <LoadingScreen />}
+
+        {reportPdfUrl && (
+          <PdfViewer
+            pdfUrl={reportPdfUrl}
+            name="Opening Balance Report"
+            onClose={() => setReportPdfUrl(null)}
+          />
+        )}
         <ConfirmationPopup
           show={confirmationPopup !== null}
           message={confirmationPopup?.message || ''}
           type={confirmationPopup?.type || 'info'}
-          onConfirm={confirmationPopup?.onConfirm || (() => {})}
+          onConfirm={confirmationPopup?.onConfirm || (() => { })}
           onCancel={confirmationPopup?.onCancel}
           confirmText={confirmationPopup?.confirmText || 'OK'}
           cancelText={confirmationPopup?.cancelText}
         />
-        
+
         <div className="row">
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
@@ -835,7 +860,7 @@ const OpeningBalanceApproval = () => {
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
-              
+
               <div className="card-body">
                 <div className="row mb-4">
                   <div className="col-md-3">
@@ -882,7 +907,7 @@ const OpeningBalanceApproval = () => {
                       readOnly
                     />
                   </div>
-                   <div className="col-md-3 mt-3">
+                  <div className="col-md-3 mt-3">
                     <label className="form-label fw-bold">Balance Type</label>
                     <input
                       type="text"
@@ -996,13 +1021,13 @@ const OpeningBalanceApproval = () => {
                                             detailEntries.map((row, i) =>
                                               i === index
                                                 ? {
-                                                    ...row,
-                                                    itemCode: opt.code,
-                                                    itemName: opt.name,
-                                                    unit: opt.unit,
-                                                    itemId: opt.id,
-                                                    gstPercent: opt.hsnGstPercentage,
-                                                  }
+                                                  ...row,
+                                                  itemCode: opt.code,
+                                                  itemName: opt.name,
+                                                  unit: opt.unit,
+                                                  itemId: opt.id,
+                                                  gstPercent: opt.hsnGstPercentage,
+                                                }
                                                 : row
                                             )
                                           );
@@ -1093,7 +1118,7 @@ const OpeningBalanceApproval = () => {
                                                 handleItemSelect(index, item);
                                               }
                                             }}
-                                            style={{ 
+                                            style={{
                                               cursor: isSelectedInOtherRow ? 'not-allowed' : 'pointer',
                                               backgroundColor: isSelectedInOtherRow ? '#fff3cd' : 'transparent',
                                               borderBottom: '1px solid #f0f0f0'
@@ -1115,7 +1140,7 @@ const OpeningBalanceApproval = () => {
                                           </div>
                                         );
                                       })}
-                                      
+
                                       {/* Infinite scroll sentinel */}
                                       {!itemLastPage && (
                                         <div
@@ -1304,12 +1329,21 @@ const OpeningBalanceApproval = () => {
                     <button
                       type="button"
                       className="btn btn-info me-2"
-                      onClick={handleReport}
+                      onClick={handleReportClick}
+                      disabled={isUpdating || isSubmitting || loadingDetails || isGeneratingReport}
                       style={{ color: "white" }}
                     >
-                      Report
+                      {isGeneratingReport ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Report"
+                      )}
                     </button>
-                    
+
+
                     <button
                       type="button"
                       className="btn me-2 btn-warning"
@@ -1342,9 +1376,9 @@ const OpeningBalanceApproval = () => {
                       )}
                     </button>
 
-                    <button 
-                      type="button" 
-                      className="btn btn-danger" 
+                    <button
+                      type="button"
+                      className="btn btn-danger"
                       onClick={handleReset}
                       disabled={isUpdating || isSubmitting || loadingDetails}
                     >
@@ -1357,11 +1391,20 @@ const OpeningBalanceApproval = () => {
                     <button
                       type="button"
                       className="btn btn-info me-2"
-                      onClick={handleReport}
+                      onClick={handleReportClick}
+                      disabled={isUpdating || isSubmitting || loadingDetails || isGeneratingReport}
                       style={{ color: "white" }}
                     >
-                      Report
+                      {isGeneratingReport ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Report"
+                      )}
                     </button>
+
                     <button type="button" className="btn btn-secondary" onClick={handleBackToList}>
                       Back
                     </button>
@@ -1377,17 +1420,17 @@ const OpeningBalanceApproval = () => {
 
   return (
     <div className="content-wrapper">
-      {loading && <LoadingScreen/>}
+      {loading && <LoadingScreen />}
       <ConfirmationPopup
         show={confirmationPopup !== null}
         message={confirmationPopup?.message || ''}
         type={confirmationPopup?.type || 'info'}
-        onConfirm={confirmationPopup?.onConfirm || (() => {})}
+        onConfirm={confirmationPopup?.onConfirm || (() => { })}
         onCancel={confirmationPopup?.onCancel}
         confirmText={confirmationPopup?.confirmText || 'OK'}
         cancelText={confirmationPopup?.cancelText}
       />
-      
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -1422,9 +1465,9 @@ const OpeningBalanceApproval = () => {
                   />
                 </div>
                 <div className="col-md-3 d-flex align-items-end">
-                  <button 
-                    type="button" 
-                    className="btn btn-primary me-2" 
+                  <button
+                    type="button"
+                    className="btn btn-primary me-2"
                     onClick={handleSearch}
                     disabled={loading || isSearching || isShowingAll}
                   >
@@ -1438,9 +1481,9 @@ const OpeningBalanceApproval = () => {
                     )}
                   </button>
 
-                   <button 
-                    type="button" 
-                    className="btn btn-secondary" 
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
                     onClick={handleShowAll}
                     disabled={loading || isSearching || isShowingAll}
                   >
@@ -1454,7 +1497,7 @@ const OpeningBalanceApproval = () => {
                     )}
                   </button>
                 </div>
-                 
+
               </div>
 
               <div className="table-responsive">

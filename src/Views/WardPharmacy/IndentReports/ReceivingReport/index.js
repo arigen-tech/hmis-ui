@@ -683,17 +683,24 @@ const ReceivingReport = () => {
                                             </div>
                                         )}
                                         
+                                        {/* Selected Item Tooltip - Floating info that doesn't affect layout */}
                                         {selectedItem && (
-                                            <div className="alert alert-success mt-2 py-2">
-                                                <small className="d-block">
-                                                    <strong>Selected Item:</strong> {selectedItem.nomenclature || selectedItem.itemName}
-                                                </small>
-                                                <small className="d-block">
-                                                    <strong>PVMS No:</strong> {selectedItem.pvmsNo}
-                                                </small>
-                                                <small className="d-block">
-                                                    <strong>Category:</strong> {selectedItem.sectionName}
-                                                </small>
+                                            <div 
+                                                style={{
+                                                    position: "absolute",
+                                                    bottom: "-28px",
+                                                    left: 0,
+                                                    right: 0,
+                                                    fontSize: "11px",
+                                                    color: "#6c757d",
+                                                    backgroundColor: "transparent",
+                                                    padding: "2px 0",
+                                                    pointerEvents: "none",
+                                                    zIndex: 1
+                                                }}
+                                            >
+                                                <i className="fa fa-check-circle text-success me-1" style={{ fontSize: "10px" }}></i>
+                                                <span>PVMS :{selectedItem.pvmsNo} | TYPE :{selectedItem.sectionName}</span>
                                             </div>
                                         )}
                                     </div>

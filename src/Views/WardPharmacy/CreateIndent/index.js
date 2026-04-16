@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { Store_Internal_Indent, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
+import {  SECTION_ID_FOR_DRUGS, GET_CURRENT_DEPARTMENT, GET_INDENT_APPLICABLE_DEPARTEMENTS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_REQUESTED_DEPT_ID, REQUEST_PARAM_CURRENT_DEPT_ID, GET_ROL_ITEMS, SAVE_INDENT, SUBMIT_INDENT, INDENT_REPORT_URL, REQUERST_PARAM_INDENT_M_ID, REQUEST_PARAM_KEYWORD } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import DatePicker from "../../../Components/DatePicker";
@@ -34,10 +34,11 @@ import {
   INDENT_SUBMIT_TITLE,
   INDENT_SUBMIT_FILE_NAME,
   FETCH_DEPARTMENT_ERR_MSG,
-  FETCH_ITEM_ERR_MSG,
   FETCH_ITEM_DETAILS_ERR_MSG,
   INDENT_TYPE_CHANGE_WARN_MSG,
-  INDENT_TYPE_MANDARORY_WARN_MSG
+  SELECT_INDENT_TYPE_WARN_MSG,
+  SELECT_REQ_DEPARTMENT_TYPE_WARN_MSG,
+  SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG
 } from "../../../config/constants";
 import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
@@ -51,7 +52,7 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
       const rect = anchorRef.current.getBoundingClientRect();
       setStyle({
         position: "fixed",
-        top: rect.bottom + 4,           // 4 px gap below the input
+        top: rect.bottom + 4,
         left: rect.left,
         width: rect.width,
         zIndex: 99999,
@@ -66,7 +67,6 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 
     updatePosition();
 
-    // Re-position on scroll or resize (the table might scroll horizontally)
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
@@ -81,10 +81,11 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
     document.body
   );
 };
-// ────────────────────────────────────────────────────────────────────────────
 
 const IndentCreation = () => {
   const [loading, setLoading] = useState(false);
+  const[isSaving, setIsSaving] = useState(false);
+  const[isSubmitting, setIsSubmitting] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null)
   const [confirmationPopup, setConfirmationPopup] = useState(null);
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
@@ -110,11 +111,10 @@ const IndentCreation = () => {
 
   // Refs for debounce and per-row input anchoring
   const debounceItemRef = useRef(null);
-  // Map of row-index → input DOM ref, used to position the portal dropdown
   const inputRefs = useRef({});
 
   const [indentEntries, setIndentEntries] = useState([
-    { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null },
+    { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", requestedDeptStock: "", currentDeptStock: "", reason: "", drugId: null, drugData: null },
   ]);
 
   // Validation state
@@ -124,12 +124,16 @@ const IndentCreation = () => {
   const [showROLPopup, setShowROLPopup] = useState(false);
   const [rolItems, setRolItems] = useState([]);
 
+  // Department Change Popup State
+  const [showDepartmentPopup, setShowDepartmentPopup] = useState(false);
+  const [pendingDepartment, setPendingDepartment] = useState(null);
+  const [isRefreshingStock, setIsRefreshingStock] = useState(false);
+
   const navigate = useNavigate();
 
   // ── close dropdown when clicking outside any tracked input ──────────────
   useEffect(() => {
     const handleClickOutside = (e) => {
-      // Check if click is inside any of the row inputs
       const clickedInsideInput = Object.values(inputRefs.current).some(
         (ref) => ref && ref.contains(e.target)
       );
@@ -151,7 +155,7 @@ const IndentCreation = () => {
         return;
       }
 
-      const response = await getRequest(`${INVENTORY}/currentDepartment/${departmentId}`);
+      const response = await getRequest(`${GET_CURRENT_DEPARTMENT}/${departmentId}`);
       console.log("Current Department API Response:", response);
 
       if (response && response.data) {
@@ -172,7 +176,7 @@ const IndentCreation = () => {
   const fetchDepartments = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${INVENTORY}/indentApplicable/departments`);
+      const response = await getRequest(`${GET_INDENT_APPLICABLE_DEPARTEMENTS}`);
       console.log("Departments API Response:", response);
 
       if (response && response.response && Array.isArray(response.response)) {
@@ -198,14 +202,14 @@ const IndentCreation = () => {
       const params = new URLSearchParams();
 
       if (indentType === "drug") {
-        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+        params.append([REQUEST_PARAM_SECTION_ID], SECTION_ID_FOR_DRUGS);
       }
 
-      params.append("keyword", searchText);
-      params.append("page", page);
-      params.append("size", DEFAULT_ITEMS_PER_PAGE);
+      params.append([REQUEST_PARAM_KEYWORD], searchText);
+      params.append([REQUEST_PARAM_PAGE], page);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-      const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const url = `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -225,10 +229,10 @@ const IndentCreation = () => {
     }
   };
 
-  // Fetch item details by ID
-  const fetchItemDetails = async (itemId) => {
+  // Fetch item details by ID with department parameters
+  const fetchItemDetails = async (itemId, requestedDeptId, currentDeptId) => {
     try {
-      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const url = `${GET_ITEM_DETAILS_BY_ID}/${itemId}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_REQUESTED_DEPT_ID}=${requestedDeptId}&${REQUEST_PARAM_CURRENT_DEPT_ID}=${currentDeptId}`;
       const response = await getRequest(url);
 
       if (response.status === 200 && response.response) {
@@ -244,8 +248,9 @@ const IndentCreation = () => {
 
   // Handle item search with debounce - Now per row
   const handleItemSearch = (value, index) => {
-    if (!indentType) {
-      showPopup("Please select Indent Type first", "warning");
+    // Check if both indent type AND department are selected
+    if (!indentType || !department) {
+      showPopup(SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG, "warning");
       return;
     }
 
@@ -261,8 +266,8 @@ const IndentCreation = () => {
         drugId: null,
         drugCode: "",
         unit: "",
-        storesStock: "",
-        wardStock: "",
+        requestedDeptStock: "",
+        currentDeptStock: "",
         drugData: null
       };
     }
@@ -285,7 +290,7 @@ const IndentCreation = () => {
 
   // Load first page of items for dropdown - Now per row
   const loadFirstItemPage = (searchText) => {
-    if (!searchText.trim() || !indentType) return;
+    if (!searchText.trim() || !indentType || !department) return;
     setItemSearch(searchText);
     fetchItems(0, searchText).then(result => {
       setItemDropdown(result.list);
@@ -316,13 +321,22 @@ const IndentCreation = () => {
       return;
     }
 
-    const itemDetails = await fetchItemDetails(item.itemId);
+    // Get current department ID from session/local storage
+    const currentDeptId = departmentId;
+    
+    // Get requested department ID from selected department
+    const requestedDeptId = department;
+
+    const itemDetails = await fetchItemDetails(item.itemId, requestedDeptId, currentDeptId);
 
     if (itemDetails) {
       const newEntries = [...indentEntries];
 
-      const storesStock = itemDetails.storestocks !== null && itemDetails.storestocks !== undefined ? itemDetails.storestocks : 0;
-      const wardStock = itemDetails.wardstocks !== null && itemDetails.wardstocks !== undefined ? itemDetails.wardstocks : 0;
+      // Use requestedDeptStocks for requested department stock
+      const requestedDeptStock = itemDetails.requestedDeptStocks !== null && itemDetails.requestedDeptStocks !== undefined ? itemDetails.requestedDeptStocks : 0;
+      
+      // Use currentDeptStocks for current department stock
+      const currentDeptStock = itemDetails.currentDeptStocks !== null && itemDetails.currentDeptStocks !== undefined ? itemDetails.currentDeptStocks : 0;
 
       newEntries[index] = {
         ...newEntries[index],
@@ -330,14 +344,14 @@ const IndentCreation = () => {
         drugCode: itemDetails.pvmsNo || "",
         drugName: itemDetails.nomenclature || "",
         unit: itemDetails.unitAuName || itemDetails.dispUnitName || "",
-        storesStock: storesStock,
-        wardStock: wardStock,
+        requestedDeptStock: requestedDeptStock,
+        currentDeptStock: currentDeptStock,
         drugData: {
           reOrderLevelStore: itemDetails.reOrderLevelStore,
           reOrderLevelDispensary: itemDetails.reOrderLevelDispensary,
           adispQty: itemDetails.adispQty,
-          storestocks: itemDetails.storestocks,
-          wardstocks: itemDetails.wardstocks,
+          requestedDeptStocks: itemDetails.requestedDeptStocks,
+          currentDeptStocks: itemDetails.currentDeptStocks,
           dispstocks: itemDetails.dispstocks,
           sectionName: itemDetails.sectionName,
           itemTypeName: itemDetails.itemTypeName,
@@ -356,6 +370,55 @@ const IndentCreation = () => {
       delete newErrors[`qty_${index}`];
       delete newErrors[`stock_${index}`];
       setErrors(newErrors);
+    }
+  };
+
+  // Handle department change - refresh stock for all existing items with popup
+  const handleDepartmentChange = (deptId) => {
+    // Check if there are existing items with stock data
+    const hasItemsWithStock = indentEntries.some(entry => entry.drugId && (entry.requestedDeptStock !== "" || entry.currentDeptStock !== ""));
+    
+    if (hasItemsWithStock && deptId !== department) {
+      // Show confirmation popup before changing department
+      setPendingDepartment(deptId);
+      setShowDepartmentPopup(true);
+    } else {
+      // Directly change department if no items or no stock data
+      performDepartmentChange(deptId);
+    }
+  };
+
+  // Perform the actual department change and stock refresh
+  const performDepartmentChange = async (deptId) => {
+    setDepartment(deptId);
+    
+    if (errors.department) {
+      const newErrors = { ...errors };
+      delete newErrors.department;
+      setErrors(newErrors);
+    }
+
+    // If there are existing items, refresh their department stock
+    if (deptId && indentEntries.some(entry => entry.drugId)) {
+      setIsRefreshingStock(true);
+      const currentDeptId = departmentId;
+      const updatedEntries = await Promise.all(
+        indentEntries.map(async (entry) => {
+          if (entry.drugId) {
+            const itemDetails = await fetchItemDetails(entry.drugId, deptId, currentDeptId);
+            if (itemDetails) {
+              return { 
+                ...entry, 
+                requestedDeptStock: itemDetails.requestedDeptStocks || 0,
+                currentDeptStock: itemDetails.currentDeptStocks || 0
+              };
+            }
+          }
+          return entry;
+        })
+      );
+      setIndentEntries(updatedEntries);
+      setIsRefreshingStock(false);
     }
   };
 
@@ -392,8 +455,8 @@ const IndentCreation = () => {
               drugName: "",
               unit: "",
               requiredQty: "",
-              storesStock: "",
-              wardStock: "",
+              requestedDeptStock: "",
+              currentDeptStock: "",
               drugId: null,
               drugData: null
             }))
@@ -432,8 +495,8 @@ const IndentCreation = () => {
             drugName: "",
             unit: "",
             requiredQty: "",
-            storesStock: "",
-            wardStock: "",
+            requestedDeptStock: "",
+            currentDeptStock: "",
             drugId: null,
             drugData: null
           }))
@@ -478,7 +541,7 @@ const IndentCreation = () => {
     const newId = Math.max(...indentEntries.map(e => e.id), 0) + 1;
     setIndentEntries([
       ...indentEntries,
-      { id: newId, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null }
+      { id: newId, drugCode: "", drugName: "", unit: "", requiredQty: "", requestedDeptStock: "", currentDeptStock: "", reason: "", drugId: null, drugData: null }
     ]);
   };
 
@@ -532,7 +595,7 @@ const IndentCreation = () => {
       if (!entry.requiredQty || entry.requiredQty <= 0) {
         newErrors[`qty_${index}`] = INVALID_QUANTITY_ERROR;
       }
-      if (entry.requiredQty && entry.storesStock && parseFloat(entry.requiredQty) > parseFloat(entry.storesStock)) {
+      if (entry.requiredQty && entry.requestedDeptStock && parseFloat(entry.requiredQty) > parseFloat(entry.requestedDeptStock)) {
         newErrors[`stock_${index}`] = EXCEED_STOCK_ERROR;
       }
     });
@@ -569,7 +632,7 @@ const IndentCreation = () => {
   const fetchROLItems = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${Store_Internal_Indent}/rol-items`);
+      const response = await getRequest(`${GET_ROL_ITEMS}`);
       console.log("ROL Items API Response:", response);
 
       if (response && response.response && Array.isArray(response.response)) {
@@ -582,8 +645,8 @@ const IndentCreation = () => {
           selected: false,
           pvmsNo: item.pvmsNo,
           unit: item.unit,
-          storeStock: item.storeStock || 0,
-          wardStock: item.wardStock || 0,
+          requestedDeptStock: item.storeStock || 0,
+          currentDeptStock: item.wardStock || 0,
           dispStock: item.dispStock || 0,
           drugData: {
             itemId: item.itemId,
@@ -596,8 +659,8 @@ const IndentCreation = () => {
             storeROL: item.storeROL,
             dispROL: item.dispROL,
             wardROL: item.wardROL,
-            storestocks: item.storeStock || 0,
-            wardstocks: item.wardStock || 0,
+            requestedDeptStocks: item.storeStock || 0,
+            currentDeptStocks: item.wardStock || 0,
             dispstocks: item.dispStock || 0
           }
         }));
@@ -627,8 +690,8 @@ const IndentCreation = () => {
 
     const newEntries = selectedItems.map((item, index) => {
       const newId = index + 1;
-      const storesStock = item.storeStock !== null && item.storeStock !== undefined ? item.storeStock : 0;
-      const wardStock = item.wardStock !== null && item.wardStock !== undefined ? item.wardStock : 0;
+      const requestedDeptStock = item.requestedDeptStock !== null && item.requestedDeptStock !== undefined ? item.requestedDeptStock : 0;
+      const currentDeptStock = item.currentDeptStock !== null && item.currentDeptStock !== undefined ? item.currentDeptStock : 0;
 
       return {
         id: newId,
@@ -636,8 +699,8 @@ const IndentCreation = () => {
         drugName: item.itemName,
         unit: item.unit || "",
         requiredQty: item.rolQty,
-        storesStock: storesStock,
-        wardStock: wardStock,
+        requestedDeptStock: requestedDeptStock,
+        currentDeptStock: currentDeptStock,
         reason: "",
         drugId: item.itemId,
         drugData: {
@@ -645,8 +708,8 @@ const IndentCreation = () => {
           nomenclature: item.itemName,
           pvmsNo: item.pvmsNo,
           unitAuName: item.unit,
-          storestocks: storesStock,
-          wardstocks: wardStock
+          requestedDeptStocks: requestedDeptStock,
+          currentDeptStocks: currentDeptStock
         }
       };
     });
@@ -692,7 +755,7 @@ const IndentCreation = () => {
     setDepartment("");
     setIndentType("");
     setIndentEntries([
-      { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", storesStock: "", wardStock: "", reason: "", drugId: null, drugData: null },
+      { id: 1, drugCode: "", drugName: "", unit: "", requiredQty: "", requestedDeptStock: "", currentDeptStock: "", reason: "", drugId: null, drugData: null },
     ]);
     setErrors({});
     setShowItemDropdown(false);
@@ -745,17 +808,17 @@ const IndentCreation = () => {
         itemId: Number(entry.drugId),
         requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
         reason: entry.reason || "",
-        availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
+        availableStock: entry.currentDeptStock ? Number(entry.currentDeptStock) : 0,
       })),
     };
 
     debugPayload(payload);
 
     try {
-      setLoading(true);
+      setIsSaving(true);
       console.log("Saving indent payload:", payload);
 
-      const response = await postRequest(`${INVENTORY}/indent/save`, payload);
+      const response = await postRequest(`${SAVE_INDENT}`, payload);
       console.log("Save response:", response);
 
       setConfirmationPopup({
@@ -763,7 +826,7 @@ const IndentCreation = () => {
         onConfirm: () => {
           navigate('/ViewDownloadReport', {
             state: {
-              reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
+              reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${response.response?.indentMId}`,
               title: INDENT_SAVE_TITLE,
               fileName: INDENT_SAVE_FILE_NAME,
               returnPath: window.location.pathname
@@ -792,7 +855,7 @@ const IndentCreation = () => {
         type: "error"
       });
     } finally {
-      setLoading(false);
+      setIsSaving(false);
     }
   };
 
@@ -825,17 +888,17 @@ const IndentCreation = () => {
         itemId: Number(entry.drugId),
         requestedQty: entry.requiredQty ? Number(entry.requiredQty) : 0,
         reason: entry.reason || "",
-        availableStock: entry.wardStock ? Number(entry.wardStock) : 0,
+        availableStock: entry.currentDeptStock ? Number(entry.currentDeptStock) : 0,
       })),
     };
 
     debugPayload(payload);
 
     try {
-      setLoading(true);
+      setIsSubmitting(true);
       console.log("Submitting indent payload:", payload);
 
-      const response = await postRequest(`${INVENTORY}/indent/submit`, payload);
+      const response = await postRequest(`${SUBMIT_INDENT}`, payload);
       console.log("Submit response:", response);
 
       setConfirmationPopup({
@@ -843,7 +906,7 @@ const IndentCreation = () => {
         onConfirm: () => {
           navigate('/ViewDownloadReport', {
             state: {
-              reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${response.response?.indentMId}`,
+              reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${response.response?.indentMId}`,
               title: INDENT_SUBMIT_TITLE,
               fileName: INDENT_SUBMIT_FILE_NAME,
               returnPath: window.location.pathname
@@ -865,13 +928,41 @@ const IndentCreation = () => {
       console.error("Error submitting indent:", err);
       showPopup(INDENT_SUBMIT_ERROR, "error");
     } finally {
-      setLoading(false);
+      setIsSubmitting(false);
     }
   };
 
   return (
     <div className="content-wrapper">
       {loading && <LoadingScreen />}
+      
+      {/* Stock refresh spinner overlay */}
+      {isRefreshingStock && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          right: 0,
+          bottom: 0,
+          backgroundColor: 'rgba(0,0,0,0.5)',
+          zIndex: 10001,
+          display: 'flex',
+          justifyContent: 'center',
+          alignItems: 'center'
+        }}>
+          <div style={{
+            backgroundColor: 'white',
+            padding: '20px',
+            borderRadius: '8px',
+            textAlign: 'center'
+          }}>
+            <div className="spinner-border text-primary" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <div className="mt-2">Updating stock data for selected items...</div>
+          </div>
+        </div>
+      )}
 
       <ConfirmationPopup
         show={confirmationPopup !== null}
@@ -883,12 +974,32 @@ const IndentCreation = () => {
         cancelText={confirmationPopup?.cancelText}
       />
 
+      {/* Department Change Confirmation Popup */}
+      <ConfirmationPopup
+        show={showDepartmentPopup}
+        message="Changing department will refresh stock data for all selected items. Do you want to continue?"
+        type="info"
+        onConfirm={() => {
+          setShowDepartmentPopup(false);
+          if (pendingDepartment !== null) {
+            performDepartmentChange(pendingDepartment);
+            setPendingDepartment(null);
+          }
+        }}
+        onCancel={() => {
+          setShowDepartmentPopup(false);
+          setPendingDepartment(null);
+        }}
+        confirmText="Yes"
+        cancelText="No"
+      />
+
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             {/* Header Section */}
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Indent Creation</h4>
+              <h4 className="card-title p-2 mb-0">INDENT CREATION</h4>
             </div>
 
             <div className="card-body">
@@ -930,14 +1041,7 @@ const IndentCreation = () => {
                   <select
                     className={`form-select ${errors.department ? 'is-invalid' : ''}`}
                     value={department}
-                    onChange={(e) => {
-                      setDepartment(e.target.value);
-                      if (errors.department) {
-                        const newErrors = { ...errors };
-                        delete newErrors.department;
-                        setErrors(newErrors);
-                      }
-                    }}
+                    onChange={(e) => handleDepartmentChange(e.target.value)}
                   >
                     <option value="">Select</option>
                     {departments.map((dept) => (
@@ -963,7 +1067,6 @@ const IndentCreation = () => {
               </div>
 
               {/* Table Section */}
-             
               <div className="table-responsive">
                 <table className="table table-bordered align-middle">
                   <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
@@ -979,10 +1082,10 @@ const IndentCreation = () => {
                         <span>Quantity</span>
                       </th>
                       <th style={{ width: "150px", minWidth: "150px" }}>
-                        Stores Available Stock
+                        {department ? `${departments.find(d => d.id == department)?.departmentName || 'Requested Dept'} Available Stock` : "Requested Dept Available Stock"}
                       </th>
                       <th style={{ width: "150px", minWidth: "150px" }}>
-                        Ward Pharmacy Stock
+                        {loggedInDepartment ? `${loggedInDepartment} Available Stock` : "Current Dept Available Stock"}
                       </th>
                       <th style={{ width: "160px", minWidth: "160px" }}>
                         Reason for Indent
@@ -1001,7 +1104,6 @@ const IndentCreation = () => {
                         {/* ── Item Name cell ── */}
                         <td>
                           <div className="dropdown-search-container">
-                           
                             <input
                               ref={(el) => { inputRefs.current[index] = el; }}
                               type="text"
@@ -1010,26 +1112,27 @@ const IndentCreation = () => {
                               autoComplete="off"
                               onChange={(e) => handleItemSearch(e.target.value, index)}
                               onClick={() => {
-                                if (entry.drugName?.trim() && indentType) {
+                                if (entry.drugName?.trim() && indentType && department) {
                                   setActiveRowIndex(index);
                                   loadFirstItemPage(entry.drugName);
                                 } else if (!indentType) {
-                                  showPopup(INDENT_TYPE_MANDARORY_WARN_MSG, "warning");
+                                  showPopup(SELECT_INDENT_TYPE_WARN_MSG, "warning");
+                                } else if (!department) {
+                                  showPopup(SELECT_REQ_DEPARTMENT_TYPE_WARN_MSG, "warning");
                                 }
                               }}
                               onFocus={() => setActiveRowIndex(index)}
-                              placeholder={indentType ? "Type item name or code..." : "Select Indent Type first"}
+                              placeholder={!indentType ? "Select Indent Type first" : !department ? "Select Department first" : "Type item name or code..."}
                               style={{ borderRadius: "4px", minWidth: "280px" }}
-                              disabled={!indentType}
+                              disabled={!indentType || !department}
                             />
                             {errors[`drug_${index}`] && (
                               <div className="invalid-feedback d-block">{errors[`drug_${index}`]}</div>
                             )}
 
-                           
                             <PortalDropdown
                               anchorRef={{ current: inputRefs.current[index] }}
-                              show={showItemDropdown && activeRowIndex === index && !!indentType}
+                              show={showItemDropdown && activeRowIndex === index && !!indentType && !!department}
                             >
                               {isItemLoading && itemDropdown.length === 0 ? (
                                 <div className="text-center p-3">
@@ -1093,6 +1196,7 @@ const IndentCreation = () => {
                           </div>
                         </td>
 
+                        {/* A/U cell */}
                         <td>
                           <input
                             type="text"
@@ -1104,6 +1208,8 @@ const IndentCreation = () => {
                             readOnly
                           />
                         </td>
+
+                        {/* Required Quantity cell */}
                         <td>
                           <input
                             type="number"
@@ -1120,28 +1226,34 @@ const IndentCreation = () => {
                             <div className="invalid-feedback d-block">{errors[`stock_${index}`]}</div>
                           )}
                         </td>
+
+                        {/* Requested Dept Stock cell */}
                         <td>
                           <input
                             type="number"
                             className="form-control"
-                            placeholder="Store Stock"
-                            value={entry.storesStock}
-                            onChange={(e) => handleEntryChange(entry.id, "storesStock", e.target.value)}
+                            placeholder="Requested Dept Stock"
+                            value={entry.requestedDeptStock}
+                            onChange={(e) => handleEntryChange(entry.id, "requestedDeptStock", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
                             readOnly
                           />
                         </td>
+
+                        {/* Current Dept Stock cell */}
                         <td>
                           <input
                             type="number"
                             className="form-control"
-                            placeholder="Ward Stock"
-                            value={entry.wardStock}
-                            onChange={(e) => handleEntryChange(entry.id, "wardStock", e.target.value)}
+                            placeholder="Current Dept Stock"
+                            value={entry.currentDeptStock}
+                            onChange={(e) => handleEntryChange(entry.id, "currentDeptStock", e.target.value)}
                             style={{ backgroundColor: "#f5f5f5" }}
                             readOnly
                           />
                         </td>
+
+                        {/* Reason cell */}
                         <td>
                           <textarea
                             className="form-control"
@@ -1151,6 +1263,8 @@ const IndentCreation = () => {
                             style={{ height: "40px", resize: "none" }}
                           />
                         </td>
+
+                        {/* Add button cell */}
                         <td style={{ textAlign: "center" }}>
                           <button
                             className="btn btn-sm btn-success"
@@ -1159,6 +1273,8 @@ const IndentCreation = () => {
                             <i className="fa fa-plus"></i>
                           </button>
                         </td>
+
+                        {/* Delete button cell */}
                         <td style={{ textAlign: "center" }}>
                           <button
                             className="btn btn-sm btn-danger"
@@ -1199,17 +1315,31 @@ const IndentCreation = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={handleSave}
-                  disabled={loading}
+                  disabled={loading || isSaving || isSubmitting}
                 >
-                  {loading ? "Saving..." : "Save"}
+                  {isSaving ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Saving...
+                    </>
+                  ) : (
+                    "Save"
+                  )}
                 </button>
                 <button
                   type="button"
                   className="btn btn-success"
                   onClick={handleSubmit}
-                  disabled={loading}
+                  disabled={loading || isSaving || isSubmitting}
                 >
-                  {loading ? "Submitting..." : "Submit"}
+                  {isSubmitting ? (
+                    <>
+                      <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                      Submitting...
+                    </>
+                  ) : (
+                    "Submit"
+                  )}
                 </button>
               </div>
             </div>

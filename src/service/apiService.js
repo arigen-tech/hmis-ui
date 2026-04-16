@@ -197,6 +197,28 @@ export const putRequest = async (endpoint, data, headers = {}) => {
   }
 };
 
+/**
+ * Fetch PDF report from the server
+ * @param {string} reportUrl - The base URL for the report endpoint
+ * @param {string} flag - The flag parameter ('d' for download/view, 'p' for print)
+ * @returns {Promise<Blob>} - Returns a promise that resolves to a PDF blob
+ * @throws {Error} - Throws an error if the request fails
+ */
+export const fetchPdfReportForViewAndPrint = async (reportUrl, flag) => {
+  const response = await fetch(`${reportUrl}&flag=${flag}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/pdf",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch report: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.blob();
+};
+
 const uploadFileWithJson = async (endpoint, jsonData, files) => {
   if (!files || !(files instanceof FileList || files instanceof File)) {
     throw new Error("No valid file provided!");

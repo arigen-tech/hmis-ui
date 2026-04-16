@@ -474,6 +474,100 @@ export const TAT_SUMMARY_REPORT_URL= `${ALL_REPORTS}/summaryTat`;
 export const TAT_SUMMARY_END_URL= `${LAB}/lab-tat/summary`;
 
 
+//opening balance entry
+
+export const OPENING_BALANCE_REPORT_URL = `${ALL_REPORTS}/openingBalanceReport`;
+export const SAVE_OPENING_BALANCE_ENTRY = `${INVENTORY}/openingBalanceEntry/save`;
+export const SUBMIT_OPENING_BALANCE_ENTRY = `${INVENTORY}/openingBalanceEntry/submit`;
+export const GET_DEPARTMENT_BY_ID = `${MAS_DEPARTMENT}/getById`;
+export const GET_CURRENT_USER_PROFILE_BY_NAME = `/authController/getUsersForProfile`;
+export const GET_ALL_BRANDS_FOR_DROPDOWN = `${MAS_BRAND}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
+export const GET_ALL_MANUFACTURER_FOR_DROPDOWN = `${MAS_MANUFACTURE}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
+export const REQUEST_PARAM_SECTION_ID = "sectionId";
+export const REQUEST_PARAM_KEYWORD = "keyword";
+export const GET_ALL_ITEMS_BY_NAME = `${INVENTORY}/item/search`;
+export const GET_ITEM_DETAILS_BY_ID = `${INVENTORY}/item`;
+export const GET_DRUG_CODE_FOR_DROPDOWN = `${MAS_DRUG_MAS}/getAll2/${ACTIVE_STATUS_FOR_DROPDOWN}`;
+export const REQUEST_PARAM_BALANCE_M_ID= "balanceMId";
+
+
+//View And Update Opening Balance Entry
+
+export const GET_OPENING_BALANCE_ENTRY_HEADERS = `${INVENTORY}/openingBalanceEntry/headers`;
+export const GET_OPENING_BALANCE_ENTRY_DETAILS = `${INVENTORY}/openingBalanceEntry/details`;
+export const UPDATE_OPENING_BALANCE_ENTRY_BY_ID = `${INVENTORY}/openingBalanceEntry/updateById`;
+
+//Opening Balance Approval List
+
+
+export const GET_OPENING_BALANCE_ENTRY_HEADERS_WITHOUT_PAGINATION = `${INVENTORY}/openingBalanceEntry/headers/withoutPagination`;
+export const APPROVE_OPENING_BALANCE_ENTRY = `${INVENTORY}/openingBalanceEntry/approve`;
+
+//create indent
+
+export const GET_CURRENT_DEPARTMENT=`${INVENTORY}/currentDepartment`;
+export const GET_INDENT_APPLICABLE_DEPARTEMENTS = `${INVENTORY}/indentApplicable/departments`;
+export const REQUEST_PARAM_CURRENT_DEPT_ID = "currentDeptId";
+export const REQUEST_PARAM_REQUESTED_DEPT_ID = "requestedDeptId";
+export const GET_ROL_ITEMS=`${Store_Internal_Indent}/rol-items`;
+export const SAVE_INDENT=`${INVENTORY}/indent/save`;
+export const SUBMIT_INDENT=`${INVENTORY}/indent/submit`;
+export const INDENT_REPORT_URL = `${ALL_REPORTS}/indentReport`;
+export const REQUERST_PARAM_INDENT_M_ID = "indentMId";
+
+//view and update indent
+
+export const GET_INDENT_HEADERS_FOR_VIEW_UPDATE = `${INVENTORY}/indents/viewUpdate`;
+export const GET_INDENT_DETAILS_FOR_VIEW_UPDATE = `${INVENTORY}/indents/viewUpdate/details`;
+
+//Approve indent request department
+
+export const GET_INDENT_HEADERS_FOR_APPROVAL = `${INVENTORY}/indents/approval/pending`;
+export const GET_INDENT_DETAILS_FOR_APPROVAL = `${INVENTORY}/indents/viewUpdate/details`;
+export const APPROVE_INDENT = `${INVENTORY}/indent/approve`;
+
+
+//approve indent issue department
+
+export const GET_INDENT_HEADERS_FOR_ISSUE_APPROVAL = `${INVENTORY}/indents/approvedForIssueDept`;
+export const GET_INDENT_DETAILS_FOR_ISSUE_APPROVAL = `${INVENTORY}/indentDetailsForIssueWithAvailableStock`;
+export const APPROVE_INDENT_FOR_ISSUE = `${INVENTORY}/indent/approvedByIssueDept`;
+
+//indent issue
+
+export const GET_INDENT_HEADERS_FOR_ISSUE = `${INVENTORY}/indents/forIssue`;
+export const GET_INDENT_DETAILS_FOR_ISSUE = `${INVENTORY}/indentDetailsForIssue`;
+export const GET_STOCK_BATCHES_ITEM_WISE = `${INVENTORY}/item/batches`;
+export const GET_ISSUE_M_ID_FROM_INDENT_M_ID = `${INVENTORY}/indent/getIssueMId`;
+export const ISSUE_REPORT_URL = `${ALL_REPORTS}/indentIssue`;
+export const REQUEST_PARAM_ISSUE_M_ID = "issueMId";
+export const GET_PREVIOUS_ISSUE_DETAILS = `${INVENTORY}/indents/getPrevIssueInfos`;
+export const REQUEST_PARAM_ITEM_ID = "itemId";
+export const ISSUE_INDENT = `${INVENTORY}/indent/issue`;
+
+
+//indent receiving
+
+export const GET_INDENT_HEADERS_FOR_RECEIVING = `${INVENTORY}/indents/forReceiving`;
+export const GET_INDENT_DETAILS_FOR_RECEIVING = `${INVENTORY}/indentDetailsForReceive`;
+export const SAVE_INDENT_RECEIVING = `${INVENTORY}/indent/receive`;
+export const RECEIVING_REPORT_URL = `${ALL_REPORTS}/indentReceiving`;
+export const RETURN_REPORT_URL = `${ALL_REPORTS}/indentReturn`;
+export const REQUEST_PARAM_RECEIVED_M_ID = "receiveMId";
+
+//Track Indent
+export const INDENT_TRACKING = `${INVENTORY}/indent/tracking`;
+export const INDENT_TRACKING_STATUS_MAP = `${INVENTORY}/indent/tracking/statusMap`;
+export const INDENT_TRACKING_SEARCH = `${INVENTORY}/indent/tracking/search`;
+export const INDENT_DEPARTMENT_GET_ALL = `/master/indent-department/getAll`;
+export const BATCH_DETAILS = `/batch/details`;
+export const INDENT_GET_RETURN_MID = `${INVENTORY}/indent/getReturnMId`;
+export const REQUEST_PARAM_FROM_DEPARTMENT_ID = "fromDepartmentId";
+export const REQUEST_PARAM_INDENT_NO = "indentNo";
+export const GET_RECEIVE_MID_FROM_INDENT_MID = `${INVENTORY}/indent/getReceiveMId`;
+export const REQUEST_PARAM_RETURN_M_ID = "returnMId";
+
+
 
 
 

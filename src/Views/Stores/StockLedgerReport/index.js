@@ -4,7 +4,7 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { getRequest } from "../../../service/apiService";
-import { INVENTORY, SECTION_ID_FOR_DRUGS, ALL_REPORTS } from "../../../config/apiConfig";
+import { INVENTORY, SECTION_ID_FOR_DRUGS, ALL_REPORTS, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID } from "../../../config/apiConfig";
 
 const StoreStockLedgerReport = () => {
   // State for form inputs
@@ -129,6 +129,16 @@ const StoreStockLedgerReport = () => {
     return `${day}/${month}/${year}`;
   };
 
+  // Format date for display (YYYY-MM-DD to DD/MM/YYYY)
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "-";
+    const date = new Date(dateStr);
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
   // Fetch items from API with debounce
   const fetchItems = async (page, searchText = "") => {
     try {
@@ -154,7 +164,7 @@ const StoreStockLedgerReport = () => {
   const fetchBatches = async (itemId) => {
     try {
       setIsBatchLoading(true);
-      const url = `${INVENTORY}/item/batches/${itemId}`;
+      const url = `${INVENTORY}/item/batches/${itemId}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response) {
@@ -444,7 +454,9 @@ const StoreStockLedgerReport = () => {
                       <option value="">--Select Batch--</option>
                       {batchOptions.length > 0 ? (
                         batchOptions.map((batch, index) => (
-                          <option key={index} value={batch}>{batch}</option>
+                          <option key={index} value={batch.batchName}>
+                            {batch.batchName} (MFG: {formatDate(batch.dom)} | EXP: {formatDate(batch.doe)})
+                          </option>
                         ))
                       ) : (
                         <option value="">No batches available</option>
@@ -533,7 +545,6 @@ const StoreStockLedgerReport = () => {
                       onClick={handleReset}
                       disabled={searchLoading || isSearching}
                     >
-
                       Reset
                     </button>
                   </div>

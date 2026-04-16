@@ -12,6 +12,25 @@ export const FAIL_TO_SAVE_CHANGES = "Failed to save changes";
 export const FAIL_TO_UPDATE_STS = "Failed to update status";
 export const INVALID_PAGE_NO_WARN_MSG = "Please enter a valid page number.";
 
+//TrackIndent (Ward Pharmacy)
+export const TRACK_INDENT_SEARCH_CRITERIA_WARN = "Please select at least one search criteria (Department or Date)";
+export const TRACK_INDENT_FROM_DATE_GREATER_WARN = "From Date cannot be greater than To Date";
+export const TRACK_INDENT_DATE_RANGE_EXCEED_WARN = "Date range cannot be more than 1 year";
+export const TRACK_INDENT_FETCH_DATA_ERR = "Error fetching indent data";
+export const TRACK_INDENT_FETCH_DETAILS_ERR = "Error fetching indent details";
+export const TRACK_INDENT_FETCH_BATCH_ERR = "Error fetching batch details";
+export const TRACK_INDENT_FETCH_ISSUE_MID_ERR = "Error fetching issue MId";
+export const TRACK_INDENT_FETCH_RECEIVE_MID_ERR = "Error fetching receive MId";
+export const TRACK_INDENT_FETCH_RETURN_MID_ERR = "Error fetching return MId";
+export const TRACK_INDENT_SEARCH_ERR = "Error searching indent data";
+export const TRACK_INDENT_GENERATE_INDENT_REPORT_ERR = "Error generating indent report";
+export const TRACK_INDENT_GENERATE_ISSUE_REPORT_ERR = "Error generating issue report";
+export const TRACK_INDENT_GENERATE_RECEIVING_REPORT_ERR = "Error generating receiving report";
+export const TRACK_INDENT_GENERATE_RETURN_REPORT_ERR = "Error generating return report";
+export const TRACK_INDENT_ISSUE_REPORT_NOT_AVAILABLE = "Issue report not available for this indent";
+export const TRACK_INDENT_RECEIVING_REPORT_NOT_AVAILABLE = "Receiving report not available for this indent";
+export const TRACK_INDENT_RETURN_REPORT_NOT_AVAILABLE = "Return report not available for this indent";
+
 //Laboratory
 
 //LabBillingDetails
@@ -1040,6 +1059,11 @@ export const SUCCESS_RECEIVING_SAVED_PRINT ="Receiving saved successfully! Do yo
 export const ERROR_SAVE_RECEIVING_FAILED = "Failed to save receiving";
 export const ERROR_SAVING_RECEIVING ="Error saving receiving. Please try again.";
 export const ERROR_FETCH_INDENT_DETAILS ="Error fetching indent details. Please try again.";
+export const RECEIVED_QUANTITY_EXCEEDS_ISSUED = "Received quantity cannot exceed issued quantity";
+export const REJECT_QUANTITY_EXCEEDS_ISSUED = "Reject quantity cannot exceed issued quantity";
+export const VALIDATION_ERROR_HEADER = "Please fix the following items:";
+export const ITEM_RECEIVING_REPORT_TITLE = "Item Receiving Report";
+export const ITEM_RECEIVING_REPORT_FILENAME = "Item Receiving Report";
 
 //viewupdate
 export const WARNING_DRUG_ALREADY_ADDED ="This drug is already added in another row. Please select a different drug.";
@@ -1082,7 +1106,7 @@ export const SELECT_DATES_ERR_MSG = "Please select both From Date and To Date";
 export const FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG ="From Date cannot be later than To Date";
 export const FUTURE_DATE_ERR_MSG = "Dates cannot be in the future";
 export const HOSPITAL_DEPT_REQUIRED_ERR_MSG ="Hospital and Department must be selected.";
-export const REPORT_GEN_FAILED_ERR_MSG = "Report generation failed";
+export const REPORT_GEN_FAILED_ERR_MSG = "Report generation failed. Please try again.";
 export const PRINT_FAILED_ERR_MSG = "Report printing failed";
 export const SELECT_FROM_DATE_FIRST_ERR_MSG = "Please select From Date first";
 export const FROM_DATE_FUTURE_ERR_MSG = "From date cannot be in the future";
@@ -1146,3 +1170,23 @@ export const DUPLICATE_OPTION_VALUE = "Option code already exists";
 export const  SAVE_OPTION_VALUE = "Failed to save Option Value";
 
 export const HOSPITAL_ID_NOT_FOUND = "Hospital ID not found. Please login again.";
+
+
+//View And Update Opening Balance Entry
+
+export const OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE = "Opening Balance Submit Report";
+export const OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME = "Opening Balance Submit Report";
+export const OPENING_BALANCE_ENTRY_UPDATE_REPORT_TITLE = "Opening Balance Update Report";
+export const OPENING_BALANCE_ENTRY_UPDATE_REPORT_FILE_NAME = "Opening Balance Update Report";
+export const OPENING_BALANCE_NOT_FOUND ="Invalid Balance ID. Please try again.";
+
+//Opening balance approval
+
+export const FETCH_OPENING_BALANCE_DEATAILS_ERR_MSG = "Failed to fetch opening balance details. Please try again.";
+
+//create indent
+export const SELECT_INDENT_TYPE_WARN_MSG = "Please select indent type before creating indent";
+export const SELECT_REQ_DEPARTMENT_TYPE_WARN_MSG = "Please select requested department type before creating indent";
+export const SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG = "Please select both indent type and requested department type before creating indent";
+
+

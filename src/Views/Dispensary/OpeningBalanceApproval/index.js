@@ -2,14 +2,18 @@ import { useState, useEffect, useCallback } from "react"
 import { useNavigate } from 'react-router-dom';
 import LoadingScreen from "../../../Components/Loading"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { OPEN_BALANCE, ALL_REPORTS, INVENTORY } from "../../../config/apiConfig";
-import { getRequest, putRequest } from "../../../service/apiService"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+import { GET_OPENING_BALANCE_ENTRY_HEADERS_WITHOUT_PAGINATION, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID, GET_OPENING_BALANCE_ENTRY_DETAILS, APPROVE_OPENING_BALANCE_ENTRY, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, STATUS_D } from "../../../config/apiConfig";
+import { getRequest, putRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import {formatDateForDisplay} from "../../../utils/dateUtils";
 import {
   WARNING_SELECT_ACTION, WARNING_REMARKS_MANDATORY, CONFIRM_OPENING_BALANCE_ACTION, CONFIRM_OPENING_BALANCE_RESULT, ERROR_PROCESS_REQUEST_FAILED,
   OPENING_BALANCE_APPROVE_TITLE,
   OPENING_BALANCE_APPROVE_FILE_NAME,
-  OPENING_BALANCE_ENTRY_FILE_NAME,
+  OPENING_BALANCE_NOT_FOUND,
+  FETCH_OPENING_BALANCE_DEATAILS_ERR_MSG,
+  REPORT_GEN_FAILED_ERR_MSG,
 } from '../../../config/constants';
 
 const OpeningBalanceApproval = () => {
@@ -21,6 +25,11 @@ const OpeningBalanceApproval = () => {
   const [action, setAction] = useState("");
   const [remark, setRemark] = useState("");
   const [confirmationPopup, setConfirmationPopup] = useState(null);
+  
+  // States for PDF report viewer
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+  
   const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
 
@@ -47,7 +56,7 @@ const OpeningBalanceApproval = () => {
   const fetchOpenBalanceHeaders = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${INVENTORY}/openingBalanceEntry/headers/withoutPagination?hospitalId=${hospitalId}&departmentId=${departmentId}`);
+      const response = await getRequest(`${GET_OPENING_BALANCE_ENTRY_HEADERS_WITHOUT_PAGINATION}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}`);
 
       if (response && response.response && Array.isArray(response.response)) {
         setApprovalData(response.response);
@@ -82,19 +91,7 @@ const OpeningBalanceApproval = () => {
     return d.toISOString().split("T")[0];
   };
 
-  const formatDateForDisplay = (dateString) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0');
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "";
-    }
-  };
+  
 
   // Filtered data based on date range (only when both dates are present)
   const filteredApprovalData = approvalData.filter((item) => {
@@ -112,7 +109,7 @@ const OpeningBalanceApproval = () => {
   // Function to fetch details when editing a record
   const fetchOpeningBalanceDetails = async (balanceMId) => {
     try {
-      const response = await getRequest(`${INVENTORY}/openingBalanceEntry/details/${balanceMId}`);
+      const response = await getRequest(`${GET_OPENING_BALANCE_ENTRY_DETAILS}/${balanceMId}`);
       
       if (response && response.response && Array.isArray(response.response)) {
         setDetailEntries(response.response);
@@ -120,7 +117,7 @@ const OpeningBalanceApproval = () => {
       }
     } catch (err) {
       console.error("Error fetching opening balance details:", err);
-      showConfirmationPopup("Failed to fetch details. Please try again.", "error", () => {});
+      showConfirmationPopup(FETCH_OPENING_BALANCE_DEATAILS_ERR_MSG, "error", () => {});
     }
   };
 
@@ -136,6 +133,7 @@ const OpeningBalanceApproval = () => {
     setDetailEntries([]);
     setAction("");
     setRemark("");
+    setReportPdfUrl(null); // Close PDF viewer if open
   };
 
   const handleShowAll = () => {
@@ -163,7 +161,7 @@ const OpeningBalanceApproval = () => {
 
     try {
       setIsProcessing(true);
-      const response = await putRequest(`${INVENTORY}/openingBalanceEntry/approve/${selectedRecord.balanceMId}`, payload);
+      const response = await putRequest(`${APPROVE_OPENING_BALANCE_ENTRY}/${selectedRecord.balanceMId}`, payload);
       return { success: true, response, balanceMId: selectedRecord.balanceMId };
     } catch (error) {
       console.error("Error submitting data:", error);
@@ -194,7 +192,7 @@ const OpeningBalanceApproval = () => {
               if (balanceMId) {
                 navigate('/ViewDownloadReport', {
                   state: {
-                    reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceMId}`,
+                    reportUrl: `${OPENING_BALANCE_REPORT_URL}?${REQUEST_PARAM_BALANCE_M_ID}=${balanceMId}`,
                     title: OPENING_BALANCE_APPROVE_TITLE(action),
                     fileName: OPENING_BALANCE_APPROVE_FILE_NAME(action),
                     returnPath: window.location.pathname
@@ -232,28 +230,44 @@ const OpeningBalanceApproval = () => {
       () => {
         console.log(`${actionText} cancelled by user`);
       },
-      `Yes, ${actionDisplayText}`,
+      `${actionDisplayText}`,
       "Cancel"
     );
   };
 
-  // Handle Report button click
-  const handleReport = () => {
-    if (selectedRecord?.balanceMId) {
-      navigate('/ViewDownloadReport', {
-        state: {
-          reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${selectedRecord.balanceMId}`,
-          title: OPENING_BALANCE_ENTRY_FILE_NAME, 
-          fileName: OPENING_BALANCE_ENTRY_FILE_NAME, 
-          returnPath: window.location.pathname
-        }
-      });
+  // Handle Report button click - Same as IndentViewUpdate (inline PDF viewer)
+  const handleReportClick = async () => {
+    const balanceMId = selectedRecord?.balanceMId;
+    if (balanceMId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${OPENING_BALANCE_REPORT_URL}?${REQUEST_PARAM_BALANCE_M_ID}=${balanceMId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup(REPORT_GEN_FAILED_ERR_MSG, "error", () => {});
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      showConfirmationPopup(OPENING_BALANCE_NOT_FOUND, "error", () => {});
     }
   };
 
   if (currentView === "detail") {
     return (
       <div className="content-wrapper">
+        {/* PDF Viewer Modal - Same as IndentViewUpdate */}
+        {reportPdfUrl && (
+          <PdfViewer
+            pdfUrl={reportPdfUrl}
+            name="Opening Balance Report"
+            onClose={() => setReportPdfUrl(null)}
+          />
+        )}
+        
         <ConfirmationPopup
           show={confirmationPopup !== null}
           message={confirmationPopup?.message || ''}
@@ -360,162 +374,170 @@ const OpeningBalanceApproval = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {detailEntries.map((entry, index) => (
-                        <tr key={entry.balanceTId || index}>
-                          <td className="text-center">
-                            <input
-                              type="text"
-                              className="form-control text-center"
-                              value={index + 1}
-                              style={{ width: "50px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.itemCode}
-                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.itemName}
-                              style={{ width: "190px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.itemUnit}
-                              style={{ width: "70px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.batchNo}
-                              style={{ width: "140px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="DD/MM/YYYY"
-                              value={formatDateForDisplay(entry.manufactureDate)}
-                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              placeholder="DD/MM/YYYY"
-                              value={formatDateForDisplay(entry.expiryDate)}
-                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={entry.qty}
-                              style={{ width: "70px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={entry.unitsPerPack || ""}
-                              style={{ width: "90px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={entry.purchaseRatePerUnit || ""}
-                              style={{ width: "110px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={entry.gstPercent || ""}
-                              style={{ width: "90px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control"
-                              value={entry.mrpPerUnit || ""}
-                              style={{ width: "90px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.totalPurchaseCost || ""}
-                              readOnly
-                              disabled
-                              style={{ backgroundColor: "#e9ecef", minWidth: "90px" }}
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.brandName || ""}
-                              style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={entry.manufacturerName || ""}
-                              style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
-                              readOnly
-                              disabled
-                            />
+                      {detailEntries.length === 0 ? (
+                        <tr>
+                          <td colSpan={15} className="text-center text-muted py-4">
+                            No details found for this opening balance entry.
                           </td>
                         </tr>
-                      ))}
+                      ) : (
+                        detailEntries.map((entry, index) => (
+                          <tr key={entry.balanceTId || index}>
+                            <td className="text-center">
+                              <input
+                                type="text"
+                                className="form-control text-center"
+                                value={index + 1}
+                                style={{ width: "50px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.itemCode}
+                                style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.itemName}
+                                style={{ width: "190px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.itemUnit}
+                                style={{ width: "70px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.batchNo}
+                                style={{ width: "140px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="DD/MM/YYYY"
+                                value={formatDateForDisplay(entry.manufactureDate)}
+                                style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                placeholder="DD/MM/YYYY"
+                                value={formatDateForDisplay(entry.expiryDate)}
+                                style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={entry.qty}
+                                style={{ width: "70px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={entry.unitsPerPack || ""}
+                                style={{ width: "90px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={entry.purchaseRatePerUnit || ""}
+                                style={{ width: "110px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={entry.gstPercent || ""}
+                                style={{ width: "90px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control"
+                                value={entry.mrpPerUnit || ""}
+                                style={{ width: "90px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.totalPurchaseCost || ""}
+                                readOnly
+                                disabled
+                                style={{ backgroundColor: "#e9ecef", minWidth: "90px" }}
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.brandName || ""}
+                                style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={entry.manufacturerName || ""}
+                                style={{ minWidth: "190px", backgroundColor: "#e9ecef" }}
+                                readOnly
+                                disabled
+                              />
+                            </td>
+                          </tr>
+                        ))
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -552,11 +574,18 @@ const OpeningBalanceApproval = () => {
                   <button
                     type="button"
                     className="btn btn-info me-2"
-                    onClick={handleReport}
+                    onClick={handleReportClick}
                     style={{ color: "white" }}
-                    disabled={isProcessing}
+                    disabled={isProcessing || isGeneratingReport}
                   >
-                    Report
+                    {isGeneratingReport ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                        Generating...
+                      </>
+                    ) : (
+                      "Report"
+                    )}
                   </button>
                   
                   <button
@@ -664,49 +693,59 @@ const OpeningBalanceApproval = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {currentItems.map((item) => (
-                      <tr key={item.balanceMId}>
-                        <td>{item.balanceNo}</td>
-                        <td>{new Date(item.enteredDt).toLocaleDateString("en-GB")}</td>
-                        <td>{item.departmentName}</td>
-                        <td>{item.enteredBy}</td>
-                        <td>{item.balanceType}</td>
-                        <td>
-                          <span
-                            className="badge"
-                            style={{
-                              backgroundColor: item.status === "p" ? "#ffc107" : item.status === "a" ? "#28a745" : "#6c757d",
-                              color: item.status === "p" ? "#000" : "#fff",
-                            }}
-                          >
-                            {item.status === "p"
-                              ? "Pending for Approval"
-                              : item.status === "a"
-                                ? "Approved"
-                                : item.status}
-                          </span>
-                        </td>
-                        <td>
-                          <button
-                            className="btn btn-sm btn-success me-2"
-                            onClick={() => handleEdit(item)}
-                          >
-                            <i className="fa fa-eye"></i>
-                          </button>
+                    {filteredApprovalData.length === 0 ? (
+                      <tr>
+                        <td colSpan={7} className="text-center text-muted py-4">
+                          {loading ? "Loading..." : "No pending opening balance entry is found"}
                         </td>
                       </tr>
-                    ))}
+                    ) : (
+                      currentItems.map((item) => (
+                        <tr key={item.balanceMId}>
+                          <td>{item.balanceNo}</td>
+                          <td>{new Date(item.enteredDt).toLocaleDateString("en-GB")}</td>
+                          <td>{item.departmentName}</td>
+                          <td>{item.enteredBy}</td>
+                          <td>{item.balanceType}</td>
+                          <td>
+                            <span
+                              className="badge"
+                              style={{
+                                backgroundColor: item.status === "p" ? "#ffc107" : item.status === "a" ? "#28a745" : "#6c757d",
+                                color: item.status === "p" ? "#000" : "#fff",
+                              }}
+                            >
+                              {item.status === "p"
+                                ? "Pending for Approval"
+                                : item.status === "a"
+                                  ? "Approved"
+                                  : item.status}
+                            </span>
+                          </td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-success me-2"
+                              onClick={() => handleEdit(item)}
+                            >
+                              <i className="fa fa-eye"></i>
+                            </button>
+                          </td>
+                        </tr>
+                      ))
+                    )}
                   </tbody>
                 </table>
               </div>
 
-              {/* Pagination */}
-              <Pagination
-                totalItems={filteredApprovalData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
+              {/* Pagination - Only show if there is data */}
+              {filteredApprovalData.length > 0 && (
+                <Pagination
+                  totalItems={filteredApprovalData.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
+              )}
             </div>
           </div>
         </div>
