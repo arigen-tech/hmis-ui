@@ -22,7 +22,7 @@ const PendingBloodCollection = () => {
   const [selectedDonor, setSelectedDonor] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [errors, setErrors] = useState({});
-    const [searchLoading, setSearchLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   // Search state
   const [searchData, setSearchData] = useState({
@@ -66,18 +66,15 @@ const PendingBloodCollection = () => {
     inpatientId: "",
   });
 
-  const fetchPendingDonors = async () => {
+  const fetchPendingDonors = async (showLoader = true) => {
     try {
-      setLoading(true);
+      if (showLoader) setLoading(true);
 
-      // Build query parameters for search (if needed)
       const params = new URLSearchParams();
-      if (searchData.donorName) {
+      if (searchData.donorName)
         params.append("donorName", searchData.donorName);
-      }
-      if (searchData.donorRegNo) {
+      if (searchData.donorRegNo)
         params.append("donorRegNo", searchData.donorRegNo);
-      }
 
       const url = `${GET_PENDING_COLLECTION_LIST}${params.toString() ? `?${params.toString()}` : ""}`;
       const response = await getRequest(url);
@@ -98,13 +95,11 @@ const PendingBloodCollection = () => {
         setPendingDonors(mappedDonors);
       } else {
         setPendingDonors([]);
-        showPopup("No pending donors found", "info");
       }
     } catch (error) {
-      console.error("Error fetching pending donors:", error);
-      showPopup("Failed to fetch pending donors", "error");
+      console.error(error);
     } finally {
-      setLoading(false);
+      if (showLoader) setLoading(false);
     }
   };
 
@@ -177,6 +172,19 @@ const PendingBloodCollection = () => {
     const { id, value } = e.target;
     setSearchData((prev) => ({ ...prev, [id]: value }));
     setCurrentPage(1);
+  };
+
+  const handleSearch = async () => {
+    try {
+      setSearchLoading(true);
+      setCurrentPage(1);
+
+      await fetchPendingDonors();
+    } catch (error) {
+      console.error(error);
+    } finally {
+      setSearchLoading(false);
+    }
   };
 
   const handleRowClick = async (donor) => {
@@ -389,11 +397,6 @@ const PendingBloodCollection = () => {
 
       if (response?.status === 200) {
         showPopup("Blood collection saved successfully!", "success", true);
-
-        setTimeout(() => {
-          handleBackToList();
-          fetchPendingDonors();
-        }, 1200);
       } else {
         showPopup(response?.message || "Failed to save", "error");
       }
@@ -446,10 +449,12 @@ const PendingBloodCollection = () => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
+      onClose: async () => {
         setPopupMessage(null);
+
         if (shouldRefreshData) {
-          fetchPendingDonors();
+          handleBackToList();
+          await fetchPendingDonors();
         }
       },
     });
@@ -1060,16 +1065,8 @@ const PendingBloodCollection = () => {
                             type="button"
                             className="btn btn-primary me-2"
                             onClick={() => setCurrentPage(1)}
-                            disabled={searchLoading}
                           >
-                            {searchLoading ? (
-                              <>
-                                <span className="spinner-border spinner-border-sm me-2"></span>
-                                Searching...
-                              </>
-                            ) : (
-                              "Search"
-                            )}
+                            Search
                           </button>
                           <button
                             type="button"

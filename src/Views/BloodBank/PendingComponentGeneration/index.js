@@ -40,6 +40,8 @@ const PendingComponentGeneration = () => {
   const [componentForm, setComponentForm] = useState({});
   const [failureReasonOptions, setFailureReasonOptions] = useState([]);
   const [componentMaster, setComponentMaster] = useState([]);
+  const [components, setComponents] = useState([]);
+  const [componentNotes, setComponentNotes] = useState("");
 
   useEffect(() => {
     fetchComponentMaster();
@@ -149,16 +151,11 @@ const PendingComponentGeneration = () => {
     setShowDetailView(true);
     setGenerationStatus("");
     setComponentNotes("");
-    
-    // Initialize components array based on bag type
-    const componentNames = getComponentsForBagType(record.bagType);
-    const initialComponents = componentNames.map(name => ({
-      componentName: name,
-      unitNo: "",
-      volume: "",
-      expiryDate: ""
-    }));
-    setComponents(initialComponents);
+
+    const getComponentsForBagType = (bagType) => {
+      const key = getBagKey(bagType);
+      return BAG_COMPONENT_CONFIG[key] || [];
+    };
   };
 
   const handleBackToList = () => {
@@ -675,7 +672,6 @@ const PendingComponentGeneration = () => {
                               </tbody>
                             </table>
                           </div>
-                         
                         </div>
                       </div>
                     </div>
@@ -693,7 +689,6 @@ const PendingComponentGeneration = () => {
                               <button
                                 type="button"
                                 className="btn btn-primary me-2"
-                                onClick={handleSave}
                                 onClick={handleSave}
                                 disabled={loading}
                               >

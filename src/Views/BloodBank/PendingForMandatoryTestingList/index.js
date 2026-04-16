@@ -131,7 +131,9 @@ const PendingForMandatoryTestingList = () => {
 
   /* ---------------- FILTER ---------------- */
   const filteredData = data.filter((item) =>
-    item.donorName.toLowerCase().includes(searchDonorName.toLowerCase()),
+    (item.donorName || "")
+      .toLowerCase()
+      .includes((searchDonorName || "").toLowerCase()),
   );
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -178,6 +180,10 @@ const PendingForMandatoryTestingList = () => {
   };
 
   const handleAddDocument = () => {
+    if (!documents[documents.length - 1].file) {
+      showPopup("Please select file first", "error");
+      return;
+    }
     setDocuments([...documents, { file: null }]);
   };
 
@@ -192,7 +198,7 @@ const PendingForMandatoryTestingList = () => {
   };
 
   const handleCancel = () => {
-    console.log("Cancel clicked");
+    handleBackToList();
   };
 
   const handleSubmit = async () => {
