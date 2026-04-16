@@ -290,6 +290,22 @@ export const MAX_DAYS_BACK = MAX_MONTHS_BACK * 30;
 
 //Blood bank
 export const DONOR_REGISTER = `/bloodBank/registerDonor`
+export const DONOR_SEARCH_LIST = `/bloodBank/getAllDonorScreeningResultList`
+export const GET_DONOR_AND_SCREENING_DETAILS = `/bloodBank/getDonorAndScreeningDetails`
+export const UPDATE_DONOR_AND_SCREENING = `/bloodBank/updateDonorAndAddNewScreening`
+export const GET_PENDING_COLLECTION_LIST = `/bloodBank/pendingBloodCollectionList`
+export const GET_PENDING_COLLECTION_DETAILS = `/bloodBank/pendingBloodCollectionDetails`
+export const PENDING_COMPONENT_GENERATION_LIST = `/bloodBank/pendingComponentGenerationList`
+export const SAVE_BLOOD_COLLECTION_DATA = `/bloodBank/saveBloodCollection` 
+export const GET_FAILURE_REASONS = `${MASTERS}/masComponentFailureReason`;
+export const COMPONENT_GENERATION_FAIL = "/bloodBank/componentGenerationFail";
+export const COMPONENT_GENERATION_PASS = "/bloodBank/componentGenerationPass"; 
+export const GET_BLOOD_COMPONENTS = `${MASTERS}/masBloodComponent`;
+export const GET_BLOOD_TEST_MASTER = `${MASTERS}/masBloodTest`;
+export const PENDING_MANDATORY_TESTING_LIST = "/bloodBank/pendingForMandatoryTestingList";
+export const SAVE_MANDATORY_TESTING = "/bloodBank/mandatoryTestingTestEntry";
+export const BANK_BLOOD_STOCK_AVAILABILITY = `/bloodBank/bloodBankStockAndAvailability`;
+
 
 //Employee
 export const CREATE_EMPLOYEE = `/employee/createEmployee`;
@@ -343,7 +359,8 @@ export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`
 
 
 
-export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate"; export const INVENTORY = `/inventory`
+export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate"; 
+export const INVENTORY = `/inventory`
 export const SECTION_ID_FOR_DRUGS = 18;
 
 export const MAS_BLOOD_COLLECTION_TYPE = `${MASTERS}/masBloodCollectionType`;

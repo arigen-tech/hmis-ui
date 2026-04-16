@@ -24,6 +24,7 @@ import {
   SEARCH_PATIENT,
   FOLLOWUP_PATIENTS_LIST,
   STATE_BY_COUNTRY,
+  MAS_BLOODGROUP,
 } from "../../../config/apiConfig";
 import {
   DEPARTMENT_CODE_OPD,
@@ -911,7 +912,7 @@ const UpdatePatientRegistration = () => {
     setLoading(true);
 
     try {
-      const data = await getRequest(`${ALL_GENDER}/1`);
+      const data = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {

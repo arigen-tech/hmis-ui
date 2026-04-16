@@ -1249,49 +1249,11 @@ const PendingForRadiologyBilling = () => {
                       <div className="card shadow mb-3">
                         <div className="card-header border-bottom-1 py-3">
                           <h6 className="fw-bold mb-0">
-                            {formData.type === "investigation"
-                              ? "Investigation Details"
-                              : "Package Details"}
+                            Investigation or Package Details
                           </h6>
                         </div>
                         <div className="card-body">
                           <div className="mb-3">
-                            <div className="form-check form-check-inline">
-                              <input
-                                className="form-check-input"
-                                type="radio"
-                                name="type"
-                                id="investigation"
-                                value="investigation"
-                                checked={formData.type === "investigation"}
-                                onChange={() =>
-                                  handleTypeChange("investigation")
-                                }
-                              />
-                              <label
-                                className="form-check-label"
-                                htmlFor="investigation"
-                              >
-                                Investigation
-                              </label>
-                            </div>
-                            <div className="form-check form-check-inline">
-                              <input
-                                className="form-check-input"
-                                type="radio"
-                                name="type"
-                                id="package"
-                                value="package"
-                                checked={formData.type === "package"}
-                                onChange={() => handleTypeChange("package")}
-                              />
-                              <label
-                                className="form-check-label"
-                                htmlFor="package"
-                              >
-                                Package
-                              </label>
-                            </div>
                           </div>
 
                           <table className="table table-bordered">
@@ -1341,6 +1303,7 @@ const PendingForRadiologyBilling = () => {
                                           className="form-control"
                                           value={row.name}
                                           autoComplete="on"
+                                          disabled
                                           placeholder={
                                             formData.type === "investigation"
                                               ? "Investigation Name"
@@ -1411,6 +1374,7 @@ const PendingForRadiologyBilling = () => {
                                                         <li
                                                           key={i}
                                                           className="list-group-item list-group-item-action"
+                                                          
                                                           style={{
                                                             backgroundColor:
                                                               "#e3e8e6",
@@ -1558,6 +1522,7 @@ const PendingForRadiologyBilling = () => {
                                                       <li
                                                         key={i}
                                                         className="list-group-item list-group-item-action"
+                                                        disabled
                                                         style={{
                                                           backgroundColor:
                                                             "#e3e8e6",
@@ -1769,6 +1734,7 @@ const PendingForRadiologyBilling = () => {
                                       type="date"
                                       className="form-control"
                                       value={row.date || ""}
+                                      disabled
                                       onChange={(e) =>
                                         handleDateChange(index, e.target.value)
                                       }
@@ -1782,6 +1748,7 @@ const PendingForRadiologyBilling = () => {
                                       type="number"
                                       className="form-control"
                                       value={row.originalAmount}
+                                      disabled
                                       onChange={(e) =>
                                         handleRowChange(
                                           index,
@@ -1798,6 +1765,7 @@ const PendingForRadiologyBilling = () => {
                                       type="number"
                                       className="form-control"
                                       value={row.discountAmount}
+                                      disabled
                                       onChange={(e) =>
                                         handleRowChange(
                                           index,

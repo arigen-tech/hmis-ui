@@ -81,7 +81,7 @@ export const getImageRequest = async (
  * @param {object} headers - Optional headers
  * @returns {Promise<object>} - API response
  */
-export const postRequest = async (endpoint, data, headers = {}) => {
+export const postRequest = async (endpoint, data, options = {}) => {
   try {
     let token;
     if (localStorage.token) {
@@ -89,18 +89,22 @@ export const postRequest = async (endpoint, data, headers = {}) => {
     } else {
       token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
     }
+
+    const isMultipart = options.isMultipart;
+
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         ...token,
-        ...headers,
+        ...(isMultipart ? {} : { "Content-Type": "application/json" }),
       },
-      body: JSON.stringify(data),
+      body: isMultipart ? data : JSON.stringify(data),
     });
+
     if (!response.ok) {
       throw new Error(`POST request failed: ${response.status}`);
     }
+
     return await response.json();
   } catch (error) {
     console.error("POST Error:", error);

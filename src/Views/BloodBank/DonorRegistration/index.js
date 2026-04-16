@@ -14,9 +14,13 @@ import {
 import {
   DEFERAL_REQUIRED_MSG,
   DEFERAL_TYPE_REQUIRED_MSG,
+  DEFERRAL_TYPE_PERMANENT,
+  DEFERRAL_TYPE_TEMPORARY,
   INVALID_MOBILE_NUMBER,
   MISSING_MANDOTORY_FIELD_MSG,
   REGISTERED_DONOR,
+  SCREENING_RESULT_FAIL,
+  SCREENING_RESULT_PASS,
 } from "../../../config/constants";
 
 const DonorRegistration = () => {
@@ -184,17 +188,32 @@ const DonorRegistration = () => {
     const newErrors = {};
     const { personal, screening } = formData;
 
-    if (!personal.firstName.trim())
-      newErrors.firstName = "First Name is required";
-
+    if (!personal.firstName.trim()) newErrors.firstName = "First Name is required";
+    if (!personal.lastName.trim()) newErrors.lastName = "Last Name is required";
+    if (!personal.relation) newErrors.relation = "Relation is required";
+    if (!personal.gender) newErrors.gender = "Gender is required";
+    if (!personal.dob) newErrors.dob = "DOB is required";
+    if (!personal.bloodGroup) newErrors.bloodGroup = "Blood Group is required";
+    if (!personal.address1.trim()) newErrors.address1 = "Address is required";
+    if (!personal.country) newErrors.country = "Country is required";
+    if (!personal.state) newErrors.state = "State is required";
+    if (!personal.district) newErrors.district = "District is required";
+    if (!personal.city.trim()) newErrors.city = "City is required";
+    if (!personal.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
     if (!personal.mobileNo.trim()) newErrors.mobileNo = "Mobile is required";
-
     if (!screening.hemoglobin) newErrors.hemoglobin = "Hemoglobin is required";
-
-    if (!screening.screenResult)
-      newErrors.screenResult = "Screen Result required";
-
-    if (screening.screenResult === "fail") {
+    if (!screening.screenResult) newErrors.screenResult = "Screen Result required";
+    if (!personal.relation) newErrors.relation = "Relation is required";
+    if (!personal.gender) newErrors.gender = "Gender is required";
+    if (!personal.dob) newErrors.dob = "DOB is required";
+    if (!personal.bloodGroup) newErrors.bloodGroup = "Blood Group is required";
+    if (!personal.address1.trim()) newErrors.address1 = "Address is required";
+    if (!personal.country) newErrors.country = "Country is required";
+    if (!personal.state) newErrors.state = "State is required";
+    if (!personal.district) newErrors.district = "District is required";
+    if (!personal.city.trim()) newErrors.city = "City is required";
+    if (!personal.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
+    if (screening.screenResult === SCREENING_RESULT_FAIL) {
       if (!screening.deferralType)
         newErrors.deferralType = DEFERAL_TYPE_REQUIRED_MSG;
 
@@ -224,18 +243,14 @@ const DonorRegistration = () => {
           dateOfBirth: personal.dob,
           mobileNo: personal.mobileNo,
           bloodGroupId: personal.bloodGroup,
-          donationTypeId: null,
-          relation: personal.relation,
-          donorStatus: "ACTIVE",
-          currentDeferralReason: screening.deferralReason || "",
-          deferralUptoDate: null,
+          relationId: personal.relation,
           addressLine1: personal.address1,
           addressLine2: personal.address2,
           countryId: personal.country,
           stateId: personal.state,
           districtId: personal.district,
           city: personal.city,
-          pincode: personal.pinCode,
+          pinCode: personal.pinCode,
           remarks: "",
         },
         bloodDonorScreeningRequest: {
@@ -454,7 +469,10 @@ const DonorRegistration = () => {
                     >
                       <option value="">Select Blood Group</option>
                       {bloodGroupData.map((bloodGroup) => (
-                        <option key={bloodGroup.id} value={bloodGroup.id}>
+                        <option
+                          key={bloodGroup.bloodGroupId}
+                          value={bloodGroup.bloodGroupId}
+                        >
                           {bloodGroup.bloodGroupName}
                         </option>
                       ))}
@@ -758,8 +776,11 @@ const DonorRegistration = () => {
                           type="radio"
                           name="screenResult"
                           id="screenPass"
-                          value="pass"
-                          checked={formData.screening.screenResult === "pass"}
+                          value={SCREENING_RESULT_PASS}
+                          checked={
+                            formData.screening.screenResult ===
+                            SCREENING_RESULT_PASS
+                          }
                           onChange={handleChange}
                         />
                         <label
@@ -775,8 +796,11 @@ const DonorRegistration = () => {
                           type="radio"
                           name="screenResult"
                           id="screenFail"
-                          value="fail"
-                          checked={formData.screening.screenResult === "fail"}
+                          value={SCREENING_RESULT_FAIL}
+                          checked={
+                            formData.screening.screenResult ===
+                            SCREENING_RESULT_FAIL
+                          }
                           onChange={handleChange}
                         />
                         <label
@@ -803,10 +827,16 @@ const DonorRegistration = () => {
                           type="radio"
                           name="deferralType"
                           id="deferralTemporary"
-                          value="temporary"
-                          checked={formData.screening.deferralType === "temporary"}
+                          value={DEFERRAL_TYPE_TEMPORARY}
+                          checked={
+                            formData.screening.deferralType ===
+                            DEFERRAL_TYPE_TEMPORARY
+                          }
                           onChange={handleChange}
-                          disabled={formData.screening.screenResult === "pass"}
+                          disabled={
+                            formData.screening.screenResult ===
+                            SCREENING_RESULT_PASS
+                          }
                         />
                         <label
                           className="form-check-label"
@@ -821,10 +851,16 @@ const DonorRegistration = () => {
                           type="radio"
                           name="deferralType"
                           id="deferralPermanent"
-                          value="permanent"
-                          checked={formData.screening.deferralType === "permanent"}
+                          value={DEFERRAL_TYPE_PERMANENT}
+                          checked={
+                            formData.screening.deferralType ===
+                            DEFERRAL_TYPE_PERMANENT
+                          }
                           onChange={handleChange}
-                          disabled={formData.screening.screenResult === "pass"}
+                          disabled={
+                            formData.screening.screenResult ===
+                            SCREENING_RESULT_PASS
+                          }
                         />
                         <label
                           className="form-check-label"
@@ -849,7 +885,10 @@ const DonorRegistration = () => {
                       value={formData.screening.deferralReason}
                       onChange={handleChange}
                       rows="2"
-                      disabled={formData.screening.screenResult === "pass"}
+                      disabled={
+                        formData.screening.screenResult ===
+                        `${SCREENING_RESULT_PASS}`
+                      }
                     />
                     {errors.deferralReason && (
                       <div className="invalid-feedback">

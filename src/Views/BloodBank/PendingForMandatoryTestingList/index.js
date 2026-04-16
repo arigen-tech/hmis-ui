@@ -5,6 +5,13 @@ import LoadingScreen from "../../../Components/Loading";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import {
+  GET_BLOOD_TEST_MASTER,
+  PENDING_MANDATORY_TESTING_LIST,
+  SAVE_MANDATORY_TESTING,
+  STATUS_Y,
+} from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
 
 const PendingForMandatoryTestingList = () => {
   const [data, setData] = useState([]);
@@ -14,97 +21,113 @@ const PendingForMandatoryTestingList = () => {
   const [showDetailView, setShowDetailView] = useState(false);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [documents, setDocuments] = useState([{ file: null }]);
+  const [popupMessage, setPopupMessage] = useState(null);
+  const [errors, setErrors] = useState({});
+  const [docError, setDocError] = useState(false);
 
-  const [testList, setTestList] = useState([
-    {
-      testName: "HIV 1 & 2",
-      mandatory: true,
-      result: "",
-      testDate: "",
-      remarks: "",
-    },
-    {
-      testName: "HBsAg",
-      mandatory: true,
-      result: "",
-      testDate: "",
-      remarks: "",
-    },
-    { testName: "HCV", mandatory: true, result: "", testDate: "", remarks: "" },
-    {
-      testName: "Syphilis",
-      mandatory: true,
-      result: "",
-      testDate: "",
-      remarks: "",
-    },
-    {
-      testName: "Malaria",
-      mandatory: true,
-      result: "",
-      testDate: "",
-      remarks: "",
-    },
-    {
-      testName: "NAT",
-      mandatory: false,
-      result: "",
-      testDate: "",
-      remarks: "",
-    },
-  ]);
+  const [testList, setTestList] = useState([]);
 
-  /* ---------------- SAMPLE DATA ---------------- */
   useEffect(() => {
-    setTimeout(() => {
-      setData([
-        {
-          id: 1,
-          bagNo: "BAG-2025-001",
-          donorRegNo: "DON-001",
-          donorName: "Rakesh Sharma",
-          bloodGroup: "O+",
-          collectionType: "Whole Blood",
-          bagType: "Triple",
-          collectionDate: "18-Aug-2025 10:15",
-          componentGenDate: "18-Aug-2025 12:40",
-          components: 3,
-          status: "COMPONENT_GENERATED",
-        },
-        {
-          id: 2,
-          bagNo: "BAG-2025-002",
-          donorRegNo: "DON-002",
-          donorName: "Sunita Verma",
-          bloodGroup: "A+",
-          collectionDate: "18-Aug-2025 11:05",
-          collectionType: "Whole Blood",
-          components: 2,
-        },
-        {
-          id: 3,
-          bagNo: "BAG-2025-003",
-          donorRegNo: "DON-003",
-          donorName: "Mohan Das",
-          bloodGroup: "B+",
-          collectionDate: "18-Aug-2025 11:40",
-          collectionType: "Apheresis",
-          components: 2,
-        },
-        {
-          id: 4,
-          bagNo: "BAG-2025-004",
-          donorRegNo: "DON-004",
-          donorName: "Anjali Singh",
-          bloodGroup: "AB+",
-          collectionDate: "19-Aug-2025 09:20",
-          collectionType: "Whole Blood",
-          components: 3,
-        },
-      ]);
-      setLoading(false);
-    }, 500);
+    fetchBloodTestMaster();
+    fetchPendingTestingData();
   }, []);
+
+  const showPopup = (message, type = "success") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null),
+    });
+  };
+
+  const fetchPendingTestingData = async () => {
+    try {
+      setLoading(true);
+
+      const res = await getRequest(PENDING_MANDATORY_TESTING_LIST);
+
+      if (res.status === 200 && res.response) {
+        const mappedData = res.response.map((item) => ({
+          id: item.donationId,
+          bagNo: item.bagNumber,
+          donorRegNo: item.donorResNo,
+          donorName: item.fullName,
+          bloodGroup: item.bloodGroup,
+          collectionDate: item.collectionDateTime,
+          collectionType: item.collectionType,
+          bagType: item.bagType,
+          componentGenDate: item.componentGenerationDateTime,
+          components: item.noOfComponent,
+          status: item.currentStatus,
+        }));
+
+        setData(mappedData);
+      } else {
+        setData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching mandatory testing list:", error);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchBloodTestMaster = async () => {
+    try {
+      const res = await getRequest(`${GET_BLOOD_TEST_MASTER}/getAll/1`);
+
+      if (res.status === 200 && res.response) {
+        const mappedTests = res.response
+          .filter((item) => item.status?.toLowerCase() === "y")
+          .map((item) => ({
+            id: item.bloodTestId,
+            testCode: item.testCode,
+            testName: item.testName,
+            mandatory: item.isMandatory?.toLowerCase() === "y",
+            result: "",
+            testDate: "",
+            remarks: "",
+          }));
+
+        setTestList(mappedTests);
+      } else {
+        setTestList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching blood test master:", error);
+      setTestList([]);
+    }
+  };
+
+  const buildPayload = () => {
+    return {
+      donationId: selectedRecord.id,
+      testResults: testList.map((test) => ({
+        testId: test.id,
+        result: test.result,
+        testDate: test.testDate || null,
+        remarks: test.remarks || "",
+      })),
+      filepath: [], // backend will fill after upload
+    };
+  };
+
+  const createFormData = () => {
+    const formData = new FormData();
+
+    // JSON → string
+    formData.append("data", JSON.stringify(buildPayload()));
+
+    // files
+    documents.forEach((doc) => {
+      if (doc.file) {
+        formData.append("files", doc.file);
+      }
+    });
+
+    return formData;
+  };
 
   /* ---------------- FILTER ---------------- */
   const filteredData = data.filter((item) =>
@@ -119,6 +142,14 @@ const PendingForMandatoryTestingList = () => {
   const handleComponentClick = (record) => {
     setSelectedRecord(record);
     setShowDetailView(true);
+    setTestList((prev) =>
+      prev.map((t) => ({
+        ...t,
+        result: "",
+        testDate: "",
+        remarks: "",
+      })),
+    );
   };
 
   const handleBackToList = () => {
@@ -130,12 +161,20 @@ const PendingForMandatoryTestingList = () => {
     const updated = [...testList];
     updated[index][field] = value;
     setTestList(updated);
+
+    setErrors((prev) => {
+      const newErr = { ...prev };
+      delete newErr[`${field === "result" ? "result" : "date"}-${index}`];
+      return newErr;
+    });
   };
 
   const handleFileChange = (index, file) => {
     const updated = [...documents];
     updated[index].file = file;
     setDocuments(updated);
+
+    if (file) setDocError(false);
   };
 
   const handleAddDocument = () => {
@@ -156,17 +195,85 @@ const PendingForMandatoryTestingList = () => {
     console.log("Cancel clicked");
   };
 
-  const handleSave = () => {
-    console.log("Save clicked");
-  };
+  const handleSubmit = async () => {
+    let newErrors = {};
 
-  const handleSubmit = () => {
-    console.log("Submit clicked");
+    testList.forEach((t, index) => {
+      if (t.mandatory) {
+        if (!t.result) newErrors[`result-${index}`] = true;
+        if (!t.testDate) newErrors[`date-${index}`] = true;
+      }
+    });
+
+    setErrors(newErrors);
+
+    if (Object.keys(newErrors).length > 0) {
+      showPopup("Please fill all mandatory test fields", "error");
+      return;
+    }
+
+    const hasFile = documents.some((doc) => doc.file);
+
+    if (!hasFile) {
+      setDocError(true);
+      showPopup("Please upload at least one document", "error");
+      return;
+    } else {
+      setDocError(false);
+    }
+
+    try {
+      setLoading(true);
+
+      const formData = new FormData();
+      const payload = {
+        donationId: selectedRecord.id,
+        testResults: testList.map((test) => ({
+          testId: test.id,
+          result: test.result,
+          testDate: test.testDate || null,
+          remarks: test.remarks || "",
+        })),
+        filepath: [],
+      };
+
+      formData.append("data", JSON.stringify(payload));
+
+      documents.forEach((doc) => {
+        if (doc.file) {
+          formData.append("files", doc.file);
+        }
+      });
+
+      const res = await postRequest(`${SAVE_MANDATORY_TESTING}`, formData, {
+        isMultipart: true,
+      });
+
+      if (res.status === 200) {
+        showPopup("Saved Successfully", "success");
+        handleBackToList();
+        fetchPendingTestingData();
+      } else {
+        showPopup("Failed to save data", "error");
+      }
+    } catch (error) {
+      console.error(error);
+      showPopup("Submission failed. Please try again.", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   /* ---------------- UI ---------------- */
   return (
     <div className="content-wrapper">
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       {showDetailView && selectedRecord ? (
         <>
           {/* ================= Donation / Processing Information ================= */}
@@ -292,7 +399,9 @@ const PendingForMandatoryTestingList = () => {
                             {/* Result */}
                             <td>
                               <select
-                                className="form-select form-select-sm"
+                                className={`form-select form-select-sm ${
+                                  errors[`result-${index}`] ? "is-invalid" : ""
+                                }`}
                                 value={test.result}
                                 onChange={(e) =>
                                   handleTestChange(
@@ -314,7 +423,9 @@ const PendingForMandatoryTestingList = () => {
                             <td>
                               <input
                                 type="date"
-                                className="form-control form-control-sm"
+                                className={`form-control form-control-sm ${
+                                  errors[`date-${index}`] ? "is-invalid" : ""
+                                }`}
                                 value={test.testDate}
                                 onChange={(e) =>
                                   handleTestChange(
@@ -379,7 +490,9 @@ const PendingForMandatoryTestingList = () => {
                             <td>
                               <input
                                 type="file"
-                                className="form-control form-control-sm"
+                                className={`form-control form-control-sm ${
+                                  docError ? "is-invalid" : ""
+                                }`}
                                 onChange={(e) =>
                                   handleFileChange(index, e.target.files[0])
                                 }
@@ -390,7 +503,7 @@ const PendingForMandatoryTestingList = () => {
                               <div className="d-flex gap-2 justify-content-center">
                                 <button
                                   type="button"
-                                  className="btn btn-success btn-sm"
+                                  className="btn btn-primary btn-sm"
                                   onClick={handleAddDocument}
                                 >
                                   +
@@ -431,14 +544,6 @@ const PendingForMandatoryTestingList = () => {
                   <button
                     type="button"
                     className="btn btn-primary"
-                    onClick={handleSave}
-                  >
-                    Save
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-success"
                     onClick={handleSubmit}
                   >
                     Submit

@@ -1,86 +1,27 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
+import {
+  COMPONENT_GENERATION_FAIL,
+  COMPONENT_GENERATION_PASS,
+  GET_BLOOD_COMPONENTS,
+  GET_FAILURE_REASONS,
+  PENDING_COMPONENT_GENERATION_LIST,
+} from "../../../config/apiConfig";
+import {
+  getRequest,
+  postRequest,
+  putRequest,
+} from "../../../service/apiService";
 
-// Sample data based on the image
-const pendingComponentData = [
-  {
-    id: 1,
-    bagNo: "BAG-2025-001",
-    donorRegNo: "DON-001",
-    donorName: "Rakesh Sharma",
-    bloodGroup: "O+",
-    collectionDate: "18-Aug-2025 10:15",
-    collectionType: "Whole Blood",
-    bagType: "Triple",
-    collectedVolume: 450,
-    donationStatus: "COLLECTED"
-  },
-  {
-    id: 2,
-    bagNo: "BAG-2025-002",
-    donorRegNo: "DON-002",
-    donorName: "Sunita Verma",
-    bloodGroup: "A+",
-    collectionDate: "18-Aug-2025 11:05",
-    collectionType: "Whole Blood",
-    bagType: "Double",
-    collectedVolume: 350,
-    donationStatus: "COLLECTED"
-  },
-  {
-    id: 3,
-    bagNo: "BAG-2025-003",
-    donorRegNo: "DON-003",
-    donorName: "Mohan Das",
-    bloodGroup: "B+",
-    collectionDate: "18-Aug-2025 11:40",
-    collectionType: "Apheresis",
-    bagType: "Single",
-    collectedVolume: 300,
-    donationStatus: "COLLECTED"
-  },
-  {
-    id: 4,
-    bagNo: "BAG-2025-004",
-    donorRegNo: "DON-004",
-    donorName: "Priya Patel",
-    bloodGroup: "AB+",
-    collectionDate: "18-Aug-2025 12:20",
-    collectionType: "Whole Blood",
-    bagType: "Quadruple",
-    collectedVolume: 450,
-    donationStatus: "COLLECTED"
-  },
-  {
-    id: 5,
-    bagNo: "BAG-2025-005",
-    donorRegNo: "DON-005",
-    donorName: "Amit Kumar",
-    bloodGroup: "B-",
-    collectionDate: "18-Aug-2025 13:15",
-    collectionType: "Whole Blood",
-    bagType: "Triple",
-    collectedVolume: 450,
-    donationStatus: "COLLECTED"
-  }
-];
-
-// Helper function to determine component names based on bag type
-const getComponentsForBagType = (bagType) => {
-  switch (bagType) {
-    case "Single":
-      return ["Red Blood Cells (RBC)"];
-    case "Double":
-      return ["Red Blood Cells (RBC)", "Plasma"];
-    case "Triple":
-      return ["Red Blood Cells (RBC)", "Plasma", "Platelets"];
-    case "Quadruple":
-      return ["Red Blood Cells (RBC)", "Plasma", "Platelets", "Cryoprecipitate"];
-    default:
-      return [];
-  }
+const BAG_COMPONENT_CONFIG = {
+  SINGLE: ["WB"],
+  DOUBLE: ["PRBC", "PLASMA"],
+  TRIPLE: ["PRBC", "PLASMA", "PLT"],
+  QUAD: ["PRBC", "PLASMA", "PLT", "CRYO"],
 };
 
 const PendingComponentGeneration = () => {
@@ -95,38 +36,60 @@ const PendingComponentGeneration = () => {
   const [failureReason, setFailureReason] = useState("");
   const [failureRemarks, setFailureRemarks] = useState("");
   const [showDetailView, setShowDetailView] = useState(false);
-  const [generationStatus, setGenerationStatus] = useState(""); // "pass" or "fail"
-  
-  // State to hold component entries (array of objects)
-  const [components, setComponents] = useState([]);
-  const [componentNotes, setComponentNotes] = useState("");
-
-  // Mock failure reasons from mas_component_failure_reason
-  const failureReasonOptions = [
-    { id: 1, reason: "Hemolysis" },
-    { id: 2, reason: "Clotting" },
-    { id: 3, reason: "Insufficient Volume" },
-    { id: 4, reason: "Lipemic" },
-    { id: 5, reason: "Container Leak" },
-    { id: 6, reason: "Expired" },
-    { id: 7, reason: "Contamination" }
-  ];
+  const [generationStatus, setGenerationStatus] = useState("");
+  const [componentForm, setComponentForm] = useState({});
+  const [failureReasonOptions, setFailureReasonOptions] = useState([]);
+  const [componentMaster, setComponentMaster] = useState([]);
 
   useEffect(() => {
+    fetchComponentMaster();
     fetchPendingData();
+    fetchFailureReasons();
   }, []);
+
+  const generateAllUnitNumbers = (bagNo, components) => {
+    if (!bagNo || !components?.length) return {};
+
+    const suffix = bagNo.replace("BAG-", "");
+
+    const result = {};
+
+    components.forEach((comp) => {
+      result[comp.code] = {
+        unitNo: `${comp.code}-${suffix}`,
+      };
+    });
+
+    return result;
+  };
 
   const fetchPendingData = async () => {
     try {
       setLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setPendingData(pendingComponentData);
-        setLoading(false);
-      }, 500);
+      const response = await getRequest(PENDING_COMPONENT_GENERATION_LIST);
+
+      if (response.status === 200 && response.response) {
+        const mappedData = response.response.map((item) => ({
+          id: item.donationId,
+          bagNo: item.bagNumber,
+          donorRegNo: item.donorCode,
+          donorName: `${item.firstName} ${item.lastName}`,
+          bloodGroup: item.bloodGroup,
+          collectionDate: item.collectionDate,
+          collectionType: item.collectionType,
+          bagType: item.bagType,
+          collectedVolume: item.collectedVolumeMl,
+          status: item.currentStatus,
+        }));
+
+        setPendingData(mappedData);
+      } else {
+        setPendingData([]);
+      }
     } catch (err) {
-      console.error("Error fetching pending component data:", err);
-      showPopup("Failed to fetch pending component data", "error");
+      console.error(err);
+      setPendingData([]);
+    } finally {
       setLoading(false);
     }
   };
@@ -135,13 +98,40 @@ const PendingComponentGeneration = () => {
     setSearchQuery(e.target.value);
   };
 
-  const filteredPendingData = pendingData.filter(record =>
-    record.bagNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.donorRegNo.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.donorName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.bloodGroup.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    record.collectionType.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const fetchComponentMaster = async () => {
+    try {
+      const response = await getRequest(`${GET_BLOOD_COMPONENTS}/getAll/1`);
+
+      if (response.status === 200 && response.response) {
+        const activeComponents = response.response
+          .filter((item) => item.status?.toUpperCase() === "Y")
+          .map((item) => ({
+            id: item.componentId,
+            code: item.componentCode,
+            name: item.componentName,
+          }));
+
+        setComponentMaster(activeComponents);
+      } else {
+        setComponentMaster([]);
+      }
+    } catch (error) {
+      console.error("Error fetching components:", error);
+      setComponentMaster([]);
+    }
+  };
+
+  const filteredPendingData = pendingData.filter((record) => {
+    const query = searchQuery.toLowerCase();
+
+    return (
+      (record.bagNo || "").toLowerCase().includes(query) ||
+      (record.donorRegNo || "").toLowerCase().includes(query) ||
+      (record.donorName || "").toLowerCase().includes(query) ||
+      (record.bloodGroup || "").toLowerCase().includes(query) ||
+      (record.collectionType || "").toLowerCase().includes(query)
+    );
+  });
 
   useEffect(() => {
     setCurrentPage(1);
@@ -149,7 +139,10 @@ const PendingComponentGeneration = () => {
 
   const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredPendingData.slice(indexOfFirstItem, indexOfFirstItem + DEFAULT_ITEMS_PER_PAGE);
+  const currentItems = filteredPendingData.slice(
+    indexOfFirstItem,
+    indexOfFirstItem + DEFAULT_ITEMS_PER_PAGE,
+  );
 
   const handleRowClick = (record) => {
     setSelectedBag(record);
@@ -190,6 +183,47 @@ const PendingComponentGeneration = () => {
     setFailureRemarks("");
   };
 
+  const getBagKey = (bagType) => {
+    if (!bagType) return "";
+
+    const type = bagType.toLowerCase();
+
+    if (type.includes("single")) return "SINGLE";
+    if (type.includes("double")) return "DOUBLE";
+    if (type.includes("triple")) return "TRIPLE";
+    if (type.includes("quad")) return "QUAD";
+
+    return "";
+  };
+
+  const allowedComponentCodes =
+    BAG_COMPONENT_CONFIG[getBagKey(selectedBag?.bagType)] || [];
+
+  const allowedComponents = componentMaster.filter((comp) =>
+    allowedComponentCodes.includes(comp.code),
+  );
+  const fetchFailureReasons = async () => {
+    try {
+      const response = await getRequest(`${GET_FAILURE_REASONS}/getAll/1`);
+
+      if (response.status === 200 && response.response) {
+        const activeReasons = response.response
+          .filter((item) => item.status?.toUpperCase() === "Y")
+          .map((item) => ({
+            id: item.failureReasonId,
+            name: item.failureReasonName,
+            description: item.description,
+          }));
+        setFailureReasonOptions(activeReasons);
+      } else {
+        setFailureReasonOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching failure reasons:", error);
+      setFailureReasonOptions([]);
+    }
+  };
+
   const submitFailure = async () => {
     if (!failureReason) {
       showPopup("Please select a failure reason", "error");
@@ -198,9 +232,16 @@ const PendingComponentGeneration = () => {
 
     try {
       setLoading(true);
+
       setTimeout(() => {
-        setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
-        showPopup(`Component generation failed for Bag ${selectedBag.bagNo}. Status updated with reason: ${failureReason}`, "warning");
+        setPendingData(
+          pendingData.filter((item) => item.id !== selectedBag.id),
+        );
+
+        showPopup(
+          `Component generation failed for Bag ${selectedBag.bagNo}. Status updated with reason: ${failureReason}`,
+          "warning",
+        );
         setShowFailureModal(false);
         setSelectedBag(null);
         setFailureReason("");
@@ -214,13 +255,13 @@ const PendingComponentGeneration = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-      }
+      },
     });
   };
 
@@ -230,84 +271,110 @@ const PendingComponentGeneration = () => {
     fetchPendingData();
   };
 
-  const getBagTypeBadgeClass = (bagType) => {
-    switch(bagType) {
-      case "Single": return "badge bg-info";
-      case "Double": return "badge bg-primary";
-      case "Triple": return "badge bg-success";
-      case "Quadruple": return "badge bg-warning text-dark";
-      default: return "badge bg-secondary";
-    }
-  };
-
-  // Validate component entries before save
-  const validateComponents = () => {
+  const handleSave = async () => {
     if (generationStatus === "fail") {
-      return !!failureReason;
-    }
-    
-    if (generationStatus === "pass") {
-      for (let comp of components) {
-        if (!comp.unitNo.trim()) {
-          showPopup(`Please enter Unit No for ${comp.componentName}`, "error");
-          return false;
-        }
-        if (!comp.volume || parseFloat(comp.volume) <= 0) {
-          showPopup(`Please enter a valid volume for ${comp.componentName}`, "error");
-          return false;
-        }
-        if (!comp.expiryDate) {
-          showPopup(`Please select expiry date for ${comp.componentName}`, "error");
-          return false;
-        }
+      if (!componentForm.failureReason) {
+        showPopup("Please select a failure reason", "error");
+        return;
       }
-      return true;
+      try {
+        setLoading(true);
+
+        const url = `${COMPONENT_GENERATION_FAIL}?donationId=${selectedBag.id}&ComponentFailureReasonId=${Number(componentForm.failureReason)}`;
+
+        await putRequest(url, {});
+
+        showPopup(
+          "Component generation failed. Status updated as COMPONENT_FAILED",
+          "warning",
+        );
+
+        handleBackToList();
+        fetchPendingData();
+      } catch (error) {
+        console.error(error);
+        showPopup("Failed to update failure status", "error");
+      } finally {
+        setLoading(false);
+      }
+    } else if (generationStatus === "pass") {
+      try {
+        setLoading(true);
+
+        const components = allowedComponents.map((comp) => {
+          const formData = componentForm[comp.code] || {};
+
+          return {
+            componentId: comp.id,
+            unitNo: formData.unitNo,
+            volumeMl: Number(formData.volume),
+            expiryDate: formData.expiry,
+          };
+        });
+
+        for (let comp of components) {
+          if (!comp.volumeMl || !comp.expiryDate) {
+            showPopup("Please fill all component details", "error");
+            setLoading(false);
+            return;
+          }
+        }
+
+        await postRequest(COMPONENT_GENERATION_PASS, {
+          donationId: selectedBag.id,
+          components,
+        });
+
+        showPopup(
+          "Component generation completed. Status updated as COMPONENT_GENERATED",
+          "success",
+        );
+
+        handleBackToList();
+        fetchPendingData();
+      } catch (error) {
+        console.error(error);
+        showPopup("Failed to save component generation", "error");
+      } finally {
+        setLoading(false);
+      }
     }
-    return false;
   };
 
-  // Save component generation (PASS)
-  const handleSavePass = () => {
-    if (!validateComponents()) return;
+  const isInitialized = useRef(false);
 
-    setLoading(true);
-    // Simulate API call
-    setTimeout(() => {
-      // Remove from pending list
-      setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
-      
-      // In real implementation, send components array to backend
-      console.log("Saving components:", components);
-      console.log("Notes:", componentNotes);
-      
-      showPopup("Component generation completed successfully. Components saved.", "success");
-      handleBackToList();
-      setLoading(false);
-    }, 1000);
-  };
+  useEffect(() => {
+    if (
+      generationStatus === "pass" &&
+      selectedBag &&
+      allowedComponents.length > 0 &&
+      !isInitialized.current
+    ) {
+      const autoData = generateAllUnitNumbers(
+        selectedBag.bagNo,
+        allowedComponents,
+      );
 
-  // Save component failure
-  const handleSaveFail = () => {
-    if (!failureReason) {
-      showPopup("Please select a failure reason", "error");
-      return;
+      setComponentForm(autoData);
+      isInitialized.current = true;
     }
 
-    setLoading(true);
-    setTimeout(() => {
-      setPendingData(pendingData.filter(item => item.id !== selectedBag.id));
-      showPopup(`Component generation failed. Reason: ${failureReason}`, "warning");
-      handleBackToList();
-      setLoading(false);
-    }, 1000);
-  };
-
-  // Combined save handler
-  const handleSave = () => {
-    if (generationStatus === "pass") {
-      handleSavePass();
-    } else if (generationStatus === "fail") {
-      handleSaveFail();
+    if (generationStatus !== "pass") {
+      isInitialized.current = false;
+    }
+  }, [generationStatus, selectedBag, allowedComponents]);
+  const getBagTypeBadgeClass = (bagType) => {
+    switch (bagType) {
+      case "Single":
+        return "badge bg-info";
+      case "Double":
+        return "badge bg-primary";
+      case "Triple":
+        return "badge bg-success";
+      case "Quadruple":
+        return "badge bg-warning text-dark";
+      default:
+        return "badge bg-secondary";
     }
   };
 
@@ -323,7 +390,7 @@ const PendingComponentGeneration = () => {
                   <i className="mdi mdi-flask me-2"></i>
                   Component Generation – Details
                 </h4>
-                <button 
+                <button
                   className="btn btn-secondary"
                   onClick={handleBackToList}
                 >
@@ -333,7 +400,7 @@ const PendingComponentGeneration = () => {
               </div>
               <div className="card-body">
                 {loading && <LoadingScreen />}
-                
+
                 {/* Donation Information */}
                 <div className="row mb-4">
                   <div className="col-12">
@@ -355,13 +422,21 @@ const PendingComponentGeneration = () => {
                                 <td className="fw-bold">Donor Name</td>
                                 <td>{selectedBag.donorName}</td>
                                 <td className="fw-bold">Blood Group</td>
-                                <td><span className="badge bg-danger">{selectedBag.bloodGroup}</span></td>
+                                <td>
+                                  <span className="badge bg-danger">
+                                    {selectedBag.bloodGroup}
+                                  </span>
+                                </td>
                               </tr>
                               <tr>
                                 <td className="fw-bold">Collection Type</td>
                                 <td>{selectedBag.collectionType}</td>
                                 <td className="fw-bold">Current Status</td>
-                                <td><span className="badge bg-info">COLLECTED</span></td>
+                                <td>
+                                  <span className="badge bg-info">
+                                    COLLECTED
+                                  </span>
+                                </td>
                               </tr>
                             </tbody>
                           </table>
@@ -383,13 +458,25 @@ const PendingComponentGeneration = () => {
                           <table className="table table-borderless mb-0">
                             <tbody>
                               <tr>
-                                <td className="fw-bold w-25">Collection Date</td>
+                                <td className="fw-bold w-25">
+                                  Collection Date
+                                </td>
                                 <td>{selectedBag.collectionDate}</td>
                                 <td className="fw-bold w-25">Bag Type</td>
-                                <td><span className={getBagTypeBadgeClass(selectedBag.bagType)}>{selectedBag.bagType}</span></td>
+                                <td>
+                                  <span
+                                    className={getBagTypeBadgeClass(
+                                      selectedBag.bagType,
+                                    )}
+                                  >
+                                    {selectedBag.bagType}
+                                  </span>
+                                </td>
                               </tr>
                               <tr>
-                                <td className="fw-bold">Total Collected Volume</td>
+                                <td className="fw-bold">
+                                  Total Collected Volume
+                                </td>
                                 <td>{selectedBag.collectedVolume} ml</td>
                                 <td></td>
                                 <td></td>
@@ -407,18 +494,23 @@ const PendingComponentGeneration = () => {
                   <div className="col-12">
                     <div className="card shadow mb-3">
                       <div className="card-header py-3 border-bottom-1">
-                        <h6 className="mb-0 fw-bold">Component Generation Status</h6>
+                        <h6 className="mb-0 fw-bold">
+                          Component Generation Status
+                        </h6>
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
                           <div className="col-md-6">
                             <label className="form-label">
-                              Generation Status <span className="text-danger">*</span>
+                              Generation Status{" "}
+                              <span className="text-danger">*</span>
                             </label>
                             <select
                               className="form-select"
                               value={generationStatus}
-                              onChange={(e) => setGenerationStatus(e.target.value)}
+                              onChange={(e) =>
+                                setGenerationStatus(e.target.value)
+                              }
                             >
                               <option value="">Select Status</option>
                               <option value="pass">PASS</option>
@@ -437,7 +529,7 @@ const PendingComponentGeneration = () => {
                     <div className="col-12">
                       <div className="card shadow mb-3 ">
                         <div className="card-header py-3 bg-danger bg-opacity-10 border-bottom-1">
-                          <h6 className="mb-0 fw-bold text-danger">
+                          <h6 className="mb-0 fw-bold text-dark">
                             <i className="mdi mdi-alert-circle me-2"></i>
                             Component Generation Failure
                           </h6>
@@ -446,17 +538,23 @@ const PendingComponentGeneration = () => {
                           <div className="row g-3">
                             <div className="col-md-6">
                               <label className="form-label">
-                                Failure Reason <span className="text-danger">*</span>
+                                Failure Reason{" "}
+                                <span className="text-danger">*</span>
                               </label>
                               <select
                                 className="form-select"
-                                value={failureReason}
-                                onChange={(e) => setFailureReason(e.target.value)}
+                                value={componentForm.failureReason || ""}
+                                onChange={(e) =>
+                                  setComponentForm({
+                                    ...componentForm,
+                                    failureReason: e.target.value,
+                                  })
+                                }
                               >
                                 <option value="">Select Failure Reason</option>
-                                {failureReasonOptions.map(option => (
-                                  <option key={option.id} value={option.reason}>
-                                    {option.reason}
+                                {failureReasonOptions.map((option) => (
+                                  <option key={option.id} value={option.id}>
+                                    {option.name}
                                   </option>
                                 ))}
                               </select>
@@ -464,13 +562,20 @@ const PendingComponentGeneration = () => {
                           </div>
                           <div className="row g-3 mt-2">
                             <div className="col-12">
-                              <label className="form-label">Remarks (Optional)</label>
+                              <label className="form-label">
+                                Remarks (Optional)
+                              </label>
                               <textarea
                                 className="form-control"
                                 rows="3"
                                 placeholder="Enter additional remarks..."
-                                value={failureRemarks}
-                                onChange={(e) => setFailureRemarks(e.target.value)}
+                                value={componentForm.remarks || ""}
+                                onChange={(e) =>
+                                  setComponentForm({
+                                    ...componentForm,
+                                    remarks: e.target.value,
+                                  })
+                                }
                               ></textarea>
                             </div>
                           </div>
@@ -486,9 +591,12 @@ const PendingComponentGeneration = () => {
                     <div className="col-12">
                       <div className="card shadow mb-3 ">
                         <div className="card-header py-3 bg-success bg-opacity-10 border-bottom-1">
-                          <h6 className="mb-0 fw-bold text-success">
+                          <h6 className="mb-0 fw-bold text-dark ">
                             <i className="mdi mdi-check-circle me-2"></i>
-                            Component Separation Details ({selectedBag.bagType} Bag)
+                            Component Separation Details ({
+                              selectedBag.bagType
+                            }{" "}
+                            Bag)
                           </h6>
                         </div>
                         <div className="card-body">
@@ -503,33 +611,63 @@ const PendingComponentGeneration = () => {
                                 </tr>
                               </thead>
                               <tbody>
-                                {components.map((comp, index) => (
+                                {allowedComponents.map((comp, index) => (
                                   <tr key={index}>
-                                    <td>{comp.componentName}</td>
+                                    <td>
+                                      <input
+                                        value={comp.name}
+                                        disabled
+                                        className="form-control"
+                                      />
+                                    </td>
+
                                     <td>
                                       <input
                                         type="text"
-                                        className="form-control form-control-sm"
-                                        placeholder="Enter unit number"
-                                        value={comp.unitNo}
-                                        onChange={(e) => handleComponentChange(index, 'unitNo', e.target.value)}
+                                        className="form-control"
+                                        value={
+                                          componentForm[comp.code]?.unitNo || ""
+                                        }
+                                        readOnly
                                       />
                                     </td>
+
                                     <td>
                                       <input
                                         type="number"
-                                        className="form-control form-control-sm"
-                                        placeholder="Volume in ml"
-                                        value={comp.volume}
-                                        onChange={(e) => handleComponentChange(index, 'volume', e.target.value)}
+                                        className="form-control"
+                                        value={
+                                          componentForm[comp.code]?.volume || ""
+                                        }
+                                        onChange={(e) =>
+                                          setComponentForm({
+                                            ...componentForm,
+                                            [comp.code]: {
+                                              ...(componentForm[comp.code] ||
+                                                {}),
+                                              volume: e.target.value,
+                                            },
+                                          })
+                                        }
                                       />
                                     </td>
+
                                     <td>
                                       <input
                                         type="date"
-                                        className="form-control form-control-sm"
-                                        value={comp.expiryDate}
-                                        onChange={(e) => handleComponentChange(index, 'expiryDate', e.target.value)}
+                                        className="form-control"
+                                        value={
+                                          componentForm[comp.code]?.expiry || ""
+                                        }
+                                        onChange={(e) =>
+                                          setComponentForm({
+                                            ...componentForm,
+                                            [comp.code]: {
+                                              ...componentForm[comp.code],
+                                              expiry: e.target.value,
+                                            },
+                                          })
+                                        }
                                       />
                                     </td>
                                   </tr>
@@ -555,6 +693,7 @@ const PendingComponentGeneration = () => {
                               <button
                                 type="button"
                                 className="btn btn-primary me-2"
+                                onClick={handleSave}
                                 onClick={handleSave}
                                 disabled={loading}
                               >
@@ -646,24 +785,42 @@ const PendingComponentGeneration = () => {
                       <tbody>
                         {currentItems.length > 0 ? (
                           currentItems.map((record) => (
-                            <tr key={record.id} onClick={() => handleRowClick(record)} style={{ cursor: 'pointer' }}>
-                              <td><strong>{record.bagNo}</strong></td>
+                            <tr
+                              key={record.id}
+                              onClick={() => handleRowClick(record)}
+                              style={{ cursor: "pointer" }}
+                            >
+                              <td>
+                                <strong>{record.bagNo}</strong>
+                              </td>
                               <td>{record.donorRegNo}</td>
                               <td>{record.donorName}</td>
-                              <td><span className="badge bg-danger">{record.bloodGroup}</span></td>
+                              <td>
+                                <span className="badge bg-danger">
+                                  {record.bloodGroup}
+                                </span>
+                              </td>
                               <td>{record.collectionDate}</td>
                               <td>{record.collectionType}</td>
                               <td>
-                                <span className={getBagTypeBadgeClass(record.bagType)}>
+                                <span
+                                  className={getBagTypeBadgeClass(
+                                    record.bagType,
+                                  )}
+                                >
                                   {record.bagType}
                                 </span>
                               </td>
-                              <td className="text-end">{record.collectedVolume}</td>
+                              <td className="text-center">
+                                {record.collectedVolume}
+                              </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="8" className="text-center">No pending component generation found</td>
+                            <td colSpan="8" className="text-center">
+                              No pending component generation found
+                            </td>
                           </tr>
                         )}
                       </tbody>
@@ -682,25 +839,65 @@ const PendingComponentGeneration = () => {
 
               {/* Reports Modal */}
               {showModal && (
-                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="true">
+                <div
+                  className="modal fade show"
+                  style={{ display: "block" }}
+                  tabIndex="-1"
+                  aria-hidden="true"
+                >
                   <div className="modal-dialog">
                     <div className="modal-content">
                       <div className="modal-header">
-                        <h1 className="modal-title fs-5">Component Generation Reports</h1>
-                        <button type="button" className="btn-close" onClick={() => setShowModal(false)} aria-label="Close"></button>
+                        <h1 className="modal-title fs-5">
+                          Component Generation Reports
+                        </h1>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => setShowModal(false)}
+                          aria-label="Close"
+                        ></button>
                       </div>
                       <div className="modal-body">
                         <p>Generate reports for component generation:</p>
                         <div className="list-group">
-                          <button type="button" className="list-group-item list-group-item-action">Pending Component List</button>
-                          <button type="button" className="list-group-item list-group-item-action">Component Generation Summary</button>
-                          <button type="button" className="list-group-item list-group-item-action">Failure Analysis Report</button>
-                          <button type="button" className="list-group-item list-group-item-action">Bag Type-wise Component Yield</button>
+                          <button
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                          >
+                            Pending Component List
+                          </button>
+                          <button
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                          >
+                            Component Generation Summary
+                          </button>
+                          <button
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                          >
+                            Failure Analysis Report
+                          </button>
+                          <button
+                            type="button"
+                            className="list-group-item list-group-item-action"
+                          >
+                            Bag Type-wise Component Yield
+                          </button>
                         </div>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => setShowModal(false)}>Close</button>
-                        <button type="button" className="btn btn-primary">Generate Report</button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => setShowModal(false)}
+                        >
+                          Close
+                        </button>
+                        <button type="button" className="btn btn-primary">
+                          Generate Report
+                        </button>
                       </div>
                     </div>
                   </div>
@@ -709,30 +906,50 @@ const PendingComponentGeneration = () => {
 
               {/* Failure Reason Modal */}
               {showFailureModal && (
-                <div className="modal fade show" style={{ display: 'block' }} tabIndex="-1" aria-hidden="true">
+                <div
+                  className="modal fade show"
+                  style={{ display: "block" }}
+                  tabIndex="-1"
+                  aria-hidden="true"
+                >
                   <div className="modal-dialog">
                     <div className="modal-content">
                       <div className="modal-header">
-                        <h1 className="modal-title fs-5">Component Generation Failure</h1>
-                        <button type="button" className="btn-close" onClick={() => setShowFailureModal(false)} aria-label="Close"></button>
+                        <h1 className="modal-title fs-5">
+                          Component Generation Failure
+                        </h1>
+                        <button
+                          type="button"
+                          className="btn-close"
+                          onClick={() => setShowFailureModal(false)}
+                          aria-label="Close"
+                        ></button>
                       </div>
                       <div className="modal-body">
                         <p className="mb-3">
-                          <strong>Bag No:</strong> {selectedBag?.bagNo}<br />
-                          <strong>Donor:</strong> {selectedBag?.donorName} ({selectedBag?.donorRegNo})
+                          <strong>Bag No:</strong> {selectedBag?.bagNo}
+                          <br />
+                          <strong>Donor:</strong> {selectedBag?.donorName} (
+                          {selectedBag?.donorRegNo})
                         </p>
-                        <p>Please select the reason for component generation failure:</p>
-                        
+                        <p>
+                          Please select the reason for component generation
+                          failure:
+                        </p>
+
                         <div className="form-group mb-3">
-                          <label className="mb-2">Failure Reason <span className="text-danger">*</span></label>
-                          <select 
+                          <label className="mb-2">
+                            Failure Reason{" "}
+                            <span className="text-danger">*</span>
+                          </label>
+                          <select
                             className="form-control"
                             value={failureReason}
                             onChange={(e) => setFailureReason(e.target.value)}
                             required
                           >
                             <option value="">Select Failure Reason</option>
-                            {failureReasonOptions.map(option => (
+                            {failureReasonOptions.map((option) => (
                               <option key={option.id} value={option.reason}>
                                 {option.reason}
                               </option>
@@ -742,7 +959,7 @@ const PendingComponentGeneration = () => {
 
                         <div className="form-group">
                           <label className="mb-2">Remarks (Optional)</label>
-                          <textarea 
+                          <textarea
                             className="form-control"
                             rows="3"
                             placeholder="Enter additional remarks..."
@@ -752,15 +969,24 @@ const PendingComponentGeneration = () => {
                         </div>
 
                         <div className="alert alert-info mt-3 mb-0">
-                          <i className="mdi mdi-information"></i> 
-                          Note: No component data will be saved. Only the donation header will be updated with failure status.
+                          <i className="mdi mdi-information"></i>
+                          Note: No component data will be saved. Only the
+                          donation header will be updated with failure status.
                         </div>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => setShowFailureModal(false)}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={() => setShowFailureModal(false)}
+                        >
                           Cancel
                         </button>
-                        <button type="button" className="btn btn-danger" onClick={submitFailure}>
+                        <button
+                          type="button"
+                          className="btn btn-danger"
+                          onClick={submitFailure}
+                        >
                           Confirm Failure
                         </button>
                       </div>
@@ -786,7 +1012,7 @@ const PendingComponentGeneration = () => {
         </div>
       )}
     </div>
-  )
-}
+  );
+};
 
 export default PendingComponentGeneration;

@@ -398,7 +398,7 @@ export const FETCH_ITEM_DETAILS_ERR_MSG = "Failed to load item details";
 export const INDENT_TYPE_CHANGE_WARN_MSG ="If you switch the indent type, your entered data will be lost. Do you want to continue?";
 export const INDENT_TYPE_MANDARORY_WARN_MSG = "Please select indent type before adding items";
 
-//Blood GAROUP Master
+//Blood GROUP Master
 
 export const FETCH_BLOOD_GROUP_ERR_MSG = "Failed to load blood group data";
 export const DUPLICATE_BLOOD_GROUP ="Blood group with the same name already exists!";
@@ -807,7 +807,10 @@ export const UPDATE_BLOOD_DONATION = "Record updated successfully";
 export const ADD_BLOOD_DONATION = "Record added successfully";
 export const FAIL_BLOOD_DONATION = "Save failed";
 export const UPDATE_FAIL_BLOOD_DONATION = "Status update failed";
-
+export const SCREENING_RESULT_PASS = "P";
+export const SCREENING_RESULT_FAIL = "F";
+export const DEFERRAL_TYPE_TEMPORARY = "T";
+export const DEFERRAL_TYPE_PERMANENT = "P";
 //Bloodunitstaus
 export const FETCH_BLOOD_UNIT = "Failed to fetch Blood Unit records";
 export const DUPLICATE_BLOOD_UNIT = "Duplicate Unit Code or Status found";
@@ -1011,6 +1014,7 @@ export const OPENING_BALANCE_ENTRY_FILE_NAME = "Opening Balance Save Report";
 export const REGISTERED_DONOR = "Donor registered successfully!";
 export const DEFERAL_REQUIRED_MSG ="Deferral Reason is required when screen fails";
 export const DEFERAL_TYPE_REQUIRED_MSG ="Deferral Type is required when screen fails";
+
 
 //indentissue
 export const ERROR_MESSAGES = {DEPARTMENT_NOT_FOUND: "Department not found. Please login again.",};
