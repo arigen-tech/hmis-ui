@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
 import './StockStatusReport.css';
-import { getRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE } from "../../../config/apiConfig";
+import { getRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
+import { formatDateForDisplay } from "../../../utils/dateUtils";
+import { ALL_REPORTS, MAS_ITEM_SECTION, MAS_ITEM_CLASS, OPEN_BALANCE, INVENTORY, GET_ALL_ITEM_SECTIONS, GET_ITEM_CLASS_BY_SECTION, GET_ALL_STOCKS, STOCK_REPORT_SUMMARY_URL, STOCK_REPORT_DETAIL_URL, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_ITEM_ID, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_TYPE, REQUEST_PARAM_ITEM_CLASS_ID, STATUS_P, STATUS_D } from "../../../config/apiConfig";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import {
@@ -18,18 +19,39 @@ const StockStatusReport = () => {
   const [loading, setLoading] = useState(true)
   const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
   const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-  const token = localStorage.getItem("token") || sessionStorage.getItem("token");
   const [currentItemId, setCurrentItemId] = useState(null);
-  const [drugCodeOptions, setDrugCodeOptions] = useState([]);
-  const [activeCodeDropdown, setActiveCodeDropdown] = useState(null);
-  const [activeNameDropdown, setActiveNameDropdown] = useState(null);
+  const [itemOptions, setItemOptions] = useState([]);
+  const [activeItemDropdown, setActiveItemDropdown] = useState(false);
+  const [isSearchingItem, setIsSearchingItem] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
   const dropdownClickedRef = useRef(false);
+  const debounceTimeoutRef = useRef(null);
+  const dropdownListRef = useRef(null);
 
-  // Add these states for PDF handling - separate states for each button
+  // Infinite scroll states for dropdown
+  const [dropdownPage, setDropdownPage] = useState(0);
+  const [dropdownHasMore, setDropdownHasMore] = useState(false);
+  const [isFetchingMore, setIsFetchingMore] = useState(false);
+  const [currentSearchKeyword, setCurrentSearchKeyword] = useState("");
+  const [currentSearchSection, setCurrentSearchSection] = useState("");
+
+  // PDF handling states
   const [isGeneratingPDF, setIsGeneratingPDF] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isPrinting, setIsPrinting] = useState(false);
+
+  const [filters, setFilters] = useState({
+    class: "All",
+    section: "All",
+    itemSearch: "",
+  })
+
+  const [reportType, setReportType] = useState("summary")
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [reportGenerated, setReportGenerated] = useState(false);
+  const itemSearchInputRef = useRef(null)
 
   useEffect(() => {
     fetchItemSection();
@@ -37,7 +59,7 @@ const StockStatusReport = () => {
 
   const fetchItemSection = async () => {
     try {
-      const data = await getRequest(`${MAS_ITEM_SECTION}/getAll/1`);
+      const data = await getRequest(GET_ALL_ITEM_SECTIONS);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSections(data.response);
       } else {
@@ -50,7 +72,7 @@ const StockStatusReport = () => {
 
   const fetchItemClassData = async (sectionId) => {
     try {
-      const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${sectionId}`);
+      const data = await getRequest(`${GET_ITEM_CLASS_BY_SECTION}/${sectionId}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setClasses(data.response);
       } else {
@@ -62,19 +84,88 @@ const StockStatusReport = () => {
     }
   };
 
-  const [filters, setFilters] = useState({
-    class: "All",
-    section: "All",
-    itemCode: "",
-    itemName: "",
-  })
+  // Search items with pagination support
+  const searchItems = async (searchValue, sectionIdValue, page = 0, append = false) => {
+    if (!searchValue || searchValue.trim() === "") {
+      setItemOptions([]);
+      setDropdownHasMore(false);
+      return;
+    }
 
-  const [reportType, setReportType] = useState("summary")
-  const [popupMessage, setPopupMessage] = useState(null)
-  const [currentPage, setCurrentPage] = useState(1)
-  const [reportGenerated, setReportGenerated] = useState(false);
-  const drugCodeInputRefs = useRef({})
-  const drugNameInputRefs = useRef({})
+    if (page === 0) {
+      setIsSearchingItem(true);
+    } else {
+      setIsFetchingMore(true);
+    }
+
+    try {
+      const apiSectionId = (sectionIdValue && sectionIdValue !== "All") ? sectionIdValue : null;
+      const url = `${GET_ALL_ITEMS_BY_NAME}?${REQUEST_PARAM_SECTION_ID}=${apiSectionId || ''}&${REQUEST_PARAM_KEYWORD}=${encodeURIComponent(searchValue)}&${REQUEST_PARAM_PAGE}=${page}&${REQUEST_PARAM_SIZE}=10`;
+      const response = await getRequest(url);
+
+      if (response && response.status === 200) {
+        let items = [];
+        let isLast = true;
+
+        if (response.response && response.response.content && Array.isArray(response.response.content)) {
+          items = response.response.content;
+          isLast = response.response.last;
+        } else if (response.content && Array.isArray(response.content)) {
+          items = response.content;
+        } else if (response.response && Array.isArray(response.response)) {
+          items = response.response;
+        }
+
+        const mappedItems = items.map(item => ({
+          id: item.itemId,
+          itemId: item.itemId,
+          code: item.pvmsNo,
+          itemCode: item.pvmsNo,
+          name: item.nomenclature,
+          itemName: item.nomenclature
+        }));
+
+        // append for scroll-triggered fetch, replace for fresh search
+        setItemOptions(prev => append ? [...prev, ...mappedItems] : mappedItems);
+        setDropdownHasMore(!isLast);
+        setDropdownPage(page);
+      } else {
+        if (!append) setItemOptions([]);
+        setDropdownHasMore(false);
+      }
+    } catch (err) {
+      console.error("Error searching items:", err);
+      if (!append) setItemOptions([]);
+    } finally {
+      setIsSearchingItem(false);
+      setIsFetchingMore(false);
+    }
+  };
+
+  const handleItemSearchChange = (value, sectionIdValue) => {
+    setSearchTerm(value);
+    setCurrentItemId(null);
+    setCurrentSearchKeyword(value);
+    setCurrentSearchSection(sectionIdValue);
+
+    if (debounceTimeoutRef.current) {
+      clearTimeout(debounceTimeoutRef.current);
+    }
+
+    debounceTimeoutRef.current = setTimeout(() => {
+      searchItems(value, sectionIdValue, 0, false);
+    }, 300);
+  };
+
+  // Infinite scroll handler for dropdown
+  const handleDropdownScroll = (e) => {
+    const el = e.target;
+    const nearBottom = el.scrollHeight - el.scrollTop <= el.clientHeight + 20;
+
+    if (nearBottom && dropdownHasMore && !isFetchingMore && !isSearchingItem) {
+      searchItems(currentSearchKeyword, currentSearchSection, dropdownPage + 1, true);
+    }
+  };
 
   const handleFilterChange = (e) => {
     const { id, value } = e.target;
@@ -88,6 +179,13 @@ const StockStatusReport = () => {
     setCurrentPage(1);
 
     if (id === "section") {
+      setCurrentItemId(null);
+      setSearchTerm("");
+      setItemOptions([]);
+      setDropdownPage(0);
+      setDropdownHasMore(false);
+      setCurrentSearchKeyword("");
+      setCurrentSearchSection(value);
       fetchItemClassData(value);
     }
   };
@@ -96,39 +194,21 @@ const StockStatusReport = () => {
     setFilters({
       class: "All",
       section: "All",
-      itemCode: "",
-      itemName: "",
+      itemSearch: "",
     });
     setCurrentItemId(null);
+    setSearchTerm("");
+    setItemOptions([]);
     setStocks([]);
     setReportGenerated(false);
     setCurrentPage(1);
-    setActiveCodeDropdown(null);
-    setActiveNameDropdown(null);
+    setActiveItemDropdown(false);
+    setDropdownPage(0);
+    setDropdownHasMore(false);
+    setCurrentSearchKeyword("");
+    setCurrentSearchSection("");
   };
 
-  // Filter function for both stocks and stockDt
-  const filterItems = (items) => {
-    return items.filter((item) => {
-      const matchesSection =
-        filters.section === "All" || item.sectionId === Number(filters.section);
-      const matchesItemCode =
-        !filters.itemCode || item.itemCode.toLowerCase().includes(filters.itemCode.toLowerCase());
-      const matchesItemName =
-        !filters.itemName || item.itemName.toLowerCase().includes(filters.itemName.toLowerCase());
-      const matchesClass =
-        filters.class === "All" || item.classId === Number(filters.class);
-
-      return matchesSection && matchesItemCode && matchesItemName && matchesClass;
-    });
-  };
-
-  const filteredStockList = filterItems(stocks);
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredStockList.slice(indexOfFirst, indexOfLast)
-
-  
   const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
@@ -145,7 +225,17 @@ const StockStatusReport = () => {
 
     const fetchStoreReportData = async () => {
       try {
-        const data = await getRequest(`${OPEN_BALANCE}/getAllStock/${reportType}/${hospitalId}/${departmentId}`);
+        const sectionId = filters.section !== "All" ? filters.section : null;
+        const classId = filters.class !== "All" ? filters.class : null;
+        const itemId = currentItemId;
+
+        let url = `${GET_ALL_STOCKS}?${REQUEST_PARAM_TYPE}=${reportType}&${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}`;
+
+        if (sectionId) url += `&${REQUEST_PARAM_SECTION_ID}=${sectionId}`;
+        if (classId) url += `&${REQUEST_PARAM_ITEM_CLASS_ID}=${classId}`;
+        if (itemId) url += `&${REQUEST_PARAM_ITEM_ID}=${itemId}`;
+
+        const data = await getRequest(url);
         if (data.status === 200 && Array.isArray(data.response)) {
           setStocks(data.response);
           setReportGenerated(true);
@@ -164,114 +254,84 @@ const StockStatusReport = () => {
     fetchStoreReportData();
   };
 
-  // Function for view/download (flag="d")
+  // View/Download (flag="d")
   const handleViewDownload = async () => {
     if (stocks.length === 0) {
       showPopup(GENERATE_REPORT_FIRST_ERR_MSG, "error");
       return;
     }
-    
+
     setIsGeneratingPDF(true);
     setPdfUrl(null);
-    
+
     try {
       const sectionId = filters.section !== "All" ? filters.section : 0;
       const classId = filters.class !== "All" ? filters.class : 0;
-      const itemId = filters.itemCode || filters.itemName ? currentItemId : 0;
-      
-      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${itemId}&flag=d`;
-      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${itemId}&flag=d`;
+      const itemId = currentItemId || 0;
+
+      const summaryUrl = `${STOCK_REPORT_SUMMARY_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}&${REQUEST_PARAM_ITEM_CLASS_ID}=${classId}&${REQUEST_PARAM_SECTION_ID}=${sectionId}&${REQUEST_PARAM_ITEM_ID}=${itemId}`;
+      const detailsUrl = `${STOCK_REPORT_DETAIL_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}&${REQUEST_PARAM_ITEM_CLASS_ID}=${classId}&${REQUEST_PARAM_SECTION_ID}=${sectionId}&${REQUEST_PARAM_ITEM_ID}=${itemId}`;
 
       const url = reportType === "summary" ? summaryUrl : detailsUrl;
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-          Authorization: `Bearer ${token}`
-        },
-      });
 
-      if (!response.ok) {
-        throw new Error("Failed to generate PDF");
-      }
-
-      const blob = await response.blob();
+      const blob = await fetchPdfReportForViewAndPrint(url, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
-      
+
     } catch (error) {
       console.error("Error generating PDF", error);
-      showPopup(REPORT_GEN_FAILED_ERR_MSG, "error")
+      showPopup(REPORT_GEN_FAILED_ERR_MSG, "error");
     } finally {
       setIsGeneratingPDF(false);
     }
   };
 
-  // Function for print (flag="p") - just fetch the URL, API should handle printing
+  // Print (flag="p")
   const handlePrint = async () => {
     if (stocks.length === 0) {
       showPopup(GENERATE_REPORT_FIRST_ERR_MSG, "error");
       return;
     }
-    
+
     setIsPrinting(true);
-    
+
     try {
       const sectionId = filters.section !== "All" ? filters.section : 0;
       const classId = filters.class !== "All" ? filters.class : 0;
+      const itemId = currentItemId || 0;
 
-      const summaryUrl = `${ALL_REPORTS}/stockReportSummary?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=p`;
-      const detailsUrl = `${ALL_REPORTS}/stockReportDetail?hospitalId=${hospitalId}&departmentId=${departmentId}&itemClassId=${classId}&sectionId=${sectionId}&itemId=${currentItemId || 0}&flag=p`;
+      const summaryUrl = `${STOCK_REPORT_SUMMARY_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}&${REQUEST_PARAM_ITEM_CLASS_ID}=${classId}&${REQUEST_PARAM_SECTION_ID}=${sectionId}&${REQUEST_PARAM_ITEM_ID}=${itemId}`;
+      const detailsUrl = `${STOCK_REPORT_DETAIL_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_DEPARTMENT_ID}=${departmentId}&${REQUEST_PARAM_ITEM_CLASS_ID}=${classId}&${REQUEST_PARAM_SECTION_ID}=${sectionId}&${REQUEST_PARAM_ITEM_ID}=${itemId}`;
 
       const url = reportType === "summary" ? summaryUrl : detailsUrl;
-      
-      const response = await fetch(url, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-          Authorization: `Bearer ${token}`
-        },
-      });
 
-      if (!response.ok) {
-        throw new Error("Failed to send to printer");
-      }
-      
+      await fetchPdfReportForViewAndPrint(url, STATUS_P);
+
     } catch (error) {
       console.error("Error printing report", error);
-      showPopup(PRINT_FAILED_ERR_MSG, "error")
+      showPopup(PRINT_FAILED_ERR_MSG, "error");
     } finally {
       setIsPrinting(false);
     }
   };
 
-  const fatchDrugCodeOptions = async () => {
-    try {
-      const response = await getRequest(`${MAS_DRUG_MAS}/getAll2/1`);
-      if (response && response.response) {
-        setDrugCodeOptions(response.response);
-      }
-    } catch (err) {
-      console.error("Error fetching drug options:", err);
-    }
-  };
-
-  useEffect(() => {
-    fatchDrugCodeOptions();
-  }, []);
+  const filteredStockList = stocks;
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredStockList.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header" >
-              <h4 className="card-title mb-0" >
+            <div className="card-header">
+              <h4 className="card-title mb-0">
                 Stock Status Report
               </h4>
             </div>
             <div className="card-body">
+
               {/* Filters Section */}
               <div className="row mb-4">
                 <div className="col-md-4">
@@ -290,6 +350,7 @@ const StockStatusReport = () => {
                     ))}
                   </select>
                 </div>
+
                 <div className="col-md-4 mb-2">
                   <label className="form-label">Class</label>
                   <select
@@ -307,162 +368,112 @@ const StockStatusReport = () => {
                     ))}
                   </select>
                 </div>
+
                 <div className="col-md-4">
-                  <label className="form-label">Drug Code</label>
-                  <input
-                    ref={(el) => (drugCodeInputRefs.current[0] = el)}
-                    type="text"
-                    className="form-control"
-                    value={filters.itemCode}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFilters((prev) => ({
-                        ...prev,
-                        itemCode: value,
-                        itemName: "", // Clear name
-                      }));
-                      setActiveCodeDropdown(0);
-                    }}
-                    placeholder="Enter Drug Code"
-                    autoComplete="off"
-                    onFocus={() => setActiveCodeDropdown(0)}
-                    onBlur={() => {
-                      setTimeout(() => {
-                        if (!dropdownClickedRef.current) {
-                          setActiveCodeDropdown(null);
-                        }
-                        dropdownClickedRef.current = false;
-                      }, 150);
-                    }}
-                  />
+                  <label className="form-label">Item Code/Name</label>
+                  <div style={{ position: "relative" }}>
+                    <input
+                      ref={itemSearchInputRef}
+                      type="text"
+                      className="form-control"
+                      value={searchTerm}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        setSearchTerm(value);
+                        setFilters((prev) => ({ ...prev, itemSearch: value }));
+                        setActiveItemDropdown(true);
+                        const sectionId = filters.section;
+                        handleItemSearchChange(value, sectionId);
+                      }}
+                      placeholder="Search by Item Code or Name..."
+                      autoComplete="off"
+                      disabled={filters.section === "All"}
+                      onFocus={() => setActiveItemDropdown(true)}
+                      onBlur={() => {
+                        setTimeout(() => {
+                          if (!dropdownClickedRef.current) {
+                            setActiveItemDropdown(false);
+                          }
+                          dropdownClickedRef.current = false;
+                        }, 150);
+                      }}
+                    />
+
+                    {/* Spinner inside input while fetching first page */}
+                    {isSearchingItem && (
+                      <div style={{
+                        position: "absolute",
+                        right: "10px",
+                        top: "50%",
+                        transform: "translateY(-50%)"
+                      }}>
+                        <span className="spinner-border spinner-border-sm" role="status"></span>
+                      </div>
+                    )}
+
+                    {/* Dropdown list with infinite scroll */}
+                    {activeItemDropdown && itemOptions.length > 0 && (
+                      <ul
+                        ref={dropdownListRef}
+                        className="list-group"
+                        onScroll={handleDropdownScroll}
+                        style={{
+                          position: "absolute",
+                          zIndex: 9999,
+                          maxHeight: 200,
+                          overflowY: "auto",
+                          width: "100%",
+                          top: "100%",
+                          left: 0,
+                          backgroundColor: "white",
+                          border: "1px solid #dee2e6",
+                          borderRadius: "0.375rem",
+                          boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
+                          marginTop: "2px"
+                        }}
+                      >
+                        {itemOptions.map((opt) => (
+                          <li
+                            key={opt.itemId || opt.id}
+                            className="list-group-item list-group-item-action"
+                            style={{ cursor: "pointer" }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              dropdownClickedRef.current = true;
+                            }}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              const displayText = (opt.itemCode || opt.code)
+                                ? `${opt.itemCode || opt.code} - ${opt.itemName || opt.name}`
+                                : opt.itemName || opt.name;
+                              setSearchTerm(displayText);
+                              setCurrentItemId(opt.itemId || opt.id);
+                              setFilters((prev) => ({ ...prev, itemSearch: displayText }));
+                              setActiveItemDropdown(false);
+                              setItemOptions([]);
+                              dropdownClickedRef.current = false;
+                            }}
+                          >
+                            {opt.code || opt.itemCode} - {opt.name || opt.itemName}
+                          </li>
+                        ))}
+
+                        {/* Load-more spinner at bottom of list */}
+                        {isFetchingMore && (
+                          <li className="list-group-item text-center py-2">
+                            <span className="spinner-border spinner-border-sm" role="status"></span>
+                            <span className="ms-2 text-muted" style={{ fontSize: "0.85rem" }}>
+                              Loading more...
+                            </span>
+                          </li>
+                        )}
+                      </ul>
+                    )}
+                  </div>
                 </div>
-
-                <div className="col-md-4 mt-2">
-                  <label className="form-label">Drug Name</label>
-                  <input
-                    ref={(el) => (drugNameInputRefs.current[0] = el)}
-                    type="text"
-                    className="form-control"
-                    value={filters.itemName}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      setFilters((prev) => ({
-                        ...prev,
-                        itemName: value,
-                        itemCode: "", // Clear code
-                      }));
-                      setActiveNameDropdown(0);
-                    }}
-                    placeholder="Enter Drug Name"
-                    autoComplete="off"
-                    onFocus={() => setActiveNameDropdown(0)}
-                    onBlur={() => {
-                      setTimeout(() => {
-                        if (!dropdownClickedRef.current) {
-                          setActiveNameDropdown(null);
-                        }
-                        dropdownClickedRef.current = false;
-                      }, 150);
-                    }}
-                  />
-                </div>
-
-                {activeCodeDropdown === 0 && (
-                  <ul
-                    className="list-group position-fixed"
-                    style={{
-                      zIndex: 9999,
-                      maxHeight: 180,
-                      overflowY: "auto",
-                      width: "250px",
-                      top: `${drugCodeInputRefs.current[0]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                      left: `${drugCodeInputRefs.current[0]?.getBoundingClientRect().left + window.scrollX}px`,
-                      backgroundColor: "white",
-                      border: "1px solid #dee2e6",
-                      borderRadius: "0.375rem",
-                      boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-                    }}
-                  >
-                    {drugCodeOptions
-                      .filter((opt) =>
-                        opt.code.toLowerCase().includes(filters.itemCode.toLowerCase())
-                      )
-                      .map((opt) => (
-                        <li
-                          key={opt.id}
-                          className="list-group-item list-group-item-action"
-                          style={{ cursor: "pointer" }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            dropdownClickedRef.current = true;
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setFilters((prev) => ({
-                              ...prev,
-                              itemCode: opt.code,
-                              itemName: opt.name,
-                            }));
-                            setCurrentItemId(opt.id);
-                            setActiveCodeDropdown(null);
-                            dropdownClickedRef.current = false;
-                          }}
-                        >
-                          {opt.code} - {opt.name}
-                        </li>
-                      ))}
-                  </ul>
-                )}
-
-                {activeNameDropdown === 0 && (
-                  <ul
-                    className="list-group position-fixed"
-                    style={{
-                      zIndex: 9999,
-                      maxHeight: 180,
-                      overflowY: "auto",
-                      width: "400px",
-                      top: `${drugNameInputRefs.current[0]?.getBoundingClientRect().bottom + window.scrollY}px`,
-                      left: `${drugNameInputRefs.current[0]?.getBoundingClientRect().left + window.scrollX}px`,
-                      backgroundColor: "white",
-                      border: "1px solid #dee2e6",
-                      borderRadius: "0.375rem",
-                      boxShadow: "0 0.5rem 1rem rgba(0, 0, 0, 0.15)",
-                    }}
-                  >
-                    {drugCodeOptions
-                      .filter((opt) =>
-                        opt.name.toLowerCase().includes(filters.itemName.toLowerCase())
-                      )
-                      .map((opt) => (
-                        <li
-                          key={opt.id}
-                          className="list-group-item list-group-item-action"
-                          style={{ cursor: "pointer" }}
-                          onMouseDown={(e) => {
-                            e.preventDefault();
-                            dropdownClickedRef.current = true;
-                          }}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            setFilters((prev) => ({
-                              ...prev,
-                              itemCode: opt.code,
-                              itemName: opt.name,
-                            }));
-                            setCurrentItemId(opt.id);
-                            setActiveNameDropdown(null);
-                            dropdownClickedRef.current = false;
-                          }}
-                        >
-                          {opt.name} ({opt.code})
-                        </li>
-                      ))}
-                  </ul>
-                )}
               </div>
 
-              {/* Report Type Selection */}
+              {/* Report Type Selection + Action Buttons */}
               <div className="row mb-4">
                 <div className="col-md-6">
                   <div className="form-check form-check-inline">
@@ -475,7 +486,7 @@ const StockStatusReport = () => {
                       checked={reportType === "summary"}
                       onChange={(e) => {
                         setReportType(e.target.value);
-                        setReportGenerated(false); // Reset report on type change
+                        setReportGenerated(false);
                       }}
                     />
                     <label className="form-check-label" htmlFor="summary">
@@ -492,7 +503,7 @@ const StockStatusReport = () => {
                       checked={reportType === "details"}
                       onChange={(e) => {
                         setReportType(e.target.value);
-                        setReportGenerated(false); // Reset report on type change
+                        setReportGenerated(false);
                       }}
                     />
                     <label className="form-check-label" htmlFor="details">
@@ -500,6 +511,7 @@ const StockStatusReport = () => {
                     </label>
                   </div>
                 </div>
+
                 <div className="col-md-6 d-flex justify-content-end align-items-end">
                   <button
                     type="button"
@@ -509,17 +521,12 @@ const StockStatusReport = () => {
                   >
                     {isSearching ? (
                       <>
-                        <span
-                          className="spinner-border spinner-border-sm me-2"
-                          role="status"
-                          aria-hidden="true"
-                        ></span>
+                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
                         Searching...
                       </>
-                    ) : (
-                      "Search"
-                    )}
+                    ) : "Search"}
                   </button>
+
                   <button
                     type="button"
                     className="btn btn-secondary me-2"
@@ -527,6 +534,7 @@ const StockStatusReport = () => {
                   >
                     Reset
                   </button>
+
                   <button
                     type="button"
                     className="btn btn-success me-2"
@@ -539,11 +547,10 @@ const StockStatusReport = () => {
                         Generating...
                       </>
                     ) : (
-                      <>
-                        <i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD
-                      </>
+                      <><i className="fa fa-eye me-2"></i> VIEW/DOWNLOAD</>
                     )}
                   </button>
+
                   <button
                     type="button"
                     className="btn btn-warning"
@@ -556,9 +563,7 @@ const StockStatusReport = () => {
                         Printing...
                       </>
                     ) : (
-                      <>
-                        <i className="fa fa-print me-2"></i> PRINT
-                      </>
+                      <><i className="fa fa-print me-2"></i> PRINT</>
                     )}
                   </button>
                 </div>
@@ -623,8 +628,8 @@ const StockStatusReport = () => {
                               <td>{item.itemName}</td>
                               <td>{item.unitAu}</td>
                               <td>{item.batchNo}</td>
-                              <td>{item.dom}</td>
-                              <td>{item.doe}</td>
+                              <td>{formatDateForDisplay(item.dom)}</td>
+                              <td>{formatDateForDisplay(item.doe)}</td>
                               <td>{item.closingQty}</td>
                               <td>{item.medicineSource}</td>
                               <td>{item.manufacturerName}</td>
@@ -651,7 +656,7 @@ const StockStatusReport = () => {
                   currentPage={currentPage}
                   onPageChange={setCurrentPage}
                 />
-              )}          
+              )}
             </div>
           </div>
         </div>
@@ -661,15 +666,19 @@ const StockStatusReport = () => {
       {pdfUrl && (
         <PdfViewer
           pdfUrl={pdfUrl}
-          onClose={() => {
-            setPdfUrl(null);
-          }}
+          onClose={() => setPdfUrl(null)}
           name={`Stock Status Report - ${reportType === 'summary' ? 'Summary' : 'Detail'}`}
         />
       )}
 
       {/* Popup Message */}
-      {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
     </div>
   )
 }

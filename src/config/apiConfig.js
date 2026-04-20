@@ -1,5 +1,5 @@
-// export const API_HOST = 'http://103.133.215.182:8081/hims';
-export const API_HOST = 'http://localhost:8080'
+export const API_HOST = 'http://103.133.215.182:8081/hims';
+// export const API_HOST = 'http://localhost:8080'
 
 
 
@@ -603,6 +603,17 @@ export const GET_ALL_CHILDREN_BY_PARENT_ID_END_URL = `${CONFIGURATION}/getAllChi
 
 
 export const MAS_QUESTION_OPTION_VALUE = `${MASTERS}/masQuestionOptionValue`;
+
+// Stock Status Report Endpoints
+export const GET_ALL_ITEM_SECTIONS = `${MAS_ITEM_SECTION}/getAll/1`;
+export const GET_ITEM_CLASS_BY_SECTION = `${MAS_ITEM_CLASS}/getAllBySectionId`;
+export const GET_ALL_STOCKS = `${INVENTORY}/getAllStocks`;
+export const STOCK_REPORT_SUMMARY_URL = `${ALL_REPORTS}/stockReportSummary`;
+export const STOCK_REPORT_DETAIL_URL = `${ALL_REPORTS}/stockReportDetail`;
+
+// Stock Status Report Request Parameters
+export const REQUEST_PARAM_TYPE = "type";
+export const REQUEST_PARAM_ITEM_CLASS_ID = "itemClassId";
 
 
 // Package Configuration APIs

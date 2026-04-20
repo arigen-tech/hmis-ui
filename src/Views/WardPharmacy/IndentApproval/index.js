@@ -2,6 +2,22 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"
 import { APPROVE_INDENT_FOR_ISSUE, GET_INDENT_DETAILS_FOR_ISSUE_APPROVAL, GET_INDENT_HEADERS_FOR_ISSUE_APPROVAL, INVENTORY, REQUEST_PARAM_DEPARTMENT_ID } from "../../../config/apiConfig"
+import { 
+  INDENT_APPROVAL_DEPT_NOT_FOUND_ERR,
+  INDENT_APPROVAL_FETCH_PENDING_ERR,
+  INDENT_APPROVAL_FETCH_DETAILS_ERR,
+  INDENT_APPROVAL_EXCEED_STOCK_ERR,
+  INDENT_APPROVAL_EXCEED_REQUESTED_ERR,
+  INDENT_APPROVAL_NEGATIVE_QTY_ERR,
+  INDENT_APPROVAL_SELECT_ACTION_ERR,
+  INDENT_APPROVAL_REMARKS_MANDATORY_ERR,
+  INDENT_APPROVAL_INVALID_QUANTITIES_ERR,
+  INDENT_APPROVAL_CONFIRM_APPROVE_MSG,
+  INDENT_APPROVAL_CONFIRM_REJECT_MSG,
+  INDENT_APPROVAL_APPROVE_SUCCESS_MSG,
+  INDENT_APPROVAL_REJECT_SUCCESS_MSG,
+  INDENT_APPROVAL_PROCESS_ERR
+} from "../../../config/constants"
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import DatePicker from "../../../Components/DatePicker"
@@ -55,7 +71,7 @@ const IndentApproval = () => {
     try {
       if (!deptId) {
         console.error("deptId is missing. Cannot fetch pending indents.");
-        showPopup("Department not found. Please login again.", "error");
+        showPopup(INDENT_APPROVAL_DEPT_NOT_FOUND_ERR, "error");
         return;
       }
 
@@ -85,7 +101,7 @@ const IndentApproval = () => {
 
     } catch (err) {
       console.error("Error fetching pending indents:", err);
-      showPopup("Error fetching pending indents. Please try again.", "error");
+      showPopup(INDENT_APPROVAL_FETCH_PENDING_ERR, "error");
       setIndentData([]);
       setFilteredIndentData([]);
     } finally {
@@ -139,7 +155,7 @@ const IndentApproval = () => {
 
     } catch (err) {
       console.error("Error fetching indent details:", err)
-      showPopup("Error fetching indent details. Please try again.", "error")
+      showPopup(INDENT_APPROVAL_FETCH_DETAILS_ERR, "error")
       setIndentEntries([])
     } finally {
       setLoadingDetails(false)
@@ -209,17 +225,17 @@ const IndentApproval = () => {
       const requestedQty = Number(updatedEntries[index].requestedQty)
 
       if (approveQty > availableStock) {
-        showPopup(`Approve quantity cannot exceed available stock (${availableStock})`, "error")
+        showPopup(`${INDENT_APPROVAL_EXCEED_STOCK_ERR} (${availableStock})`, "error")
         return
       }
 
       if (approveQty > requestedQty) {
-        showPopup(`Approve quantity cannot exceed requested quantity (${requestedQty})`, "error")
+        showPopup(`${INDENT_APPROVAL_EXCEED_REQUESTED_ERR} (${requestedQty})`, "error")
         return
       }
 
       if (approveQty < 0) {
-        showPopup("Approve quantity cannot be negative", "error")
+        showPopup(INDENT_APPROVAL_NEGATIVE_QTY_ERR, "error")
         return
       }
     }
@@ -247,13 +263,13 @@ const IndentApproval = () => {
   const handleSubmit = async () => {
     // Validate action selection
     if (!action) {
-      showPopup("Please select an action (Approved or Rejected)", "error")
+      showPopup(INDENT_APPROVAL_SELECT_ACTION_ERR, "error")
       return
     }
 
     // Validate remarks
     if (!remarks.trim()) {
-      showPopup("Remarks are mandatory", "error")
+      showPopup(INDENT_APPROVAL_REMARKS_MANDATORY_ERR, "error")
       return
     }
 
@@ -273,7 +289,7 @@ const IndentApproval = () => {
 
       if (invalidEntries.length > 0) {
         showPopup(
-          "Please ensure all approve quantities are valid and do not exceed available stock or requested quantity",
+          INDENT_APPROVAL_INVALID_QUANTITIES_ERR,
           "error"
         )
         return
@@ -282,8 +298,8 @@ const IndentApproval = () => {
 
     // Show confirmation popup before submitting
     const confirmMessage = action === "approved" 
-      ? "Are you sure you want to approve this indent for issue?" 
-      : "Are you sure you want to reject this indent for issue?";
+      ? INDENT_APPROVAL_CONFIRM_APPROVE_MSG 
+      : INDENT_APPROVAL_CONFIRM_REJECT_MSG;
 
     showConfirmationPopup(
       confirmMessage,
@@ -342,17 +358,22 @@ const IndentApproval = () => {
         payload
       )
 
-      await showPopup(
-        `Indent has been successfully ${action === "approved" ? "approved for issue" : "rejected for issue"}.`,
-        "success"
-      )
-      await fetchPendingIndents(departmentId);
-    handleBackToList();
+      setPopupMessage({
+            message: action === "approved" ? INDENT_APPROVAL_APPROVE_SUCCESS_MSG : INDENT_APPROVAL_REJECT_SUCCESS_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchPendingIndents(departmentId);         
+              handleBackToList();
+            }
+          });
+
+     
 
     } catch (error) {
       console.error("Error processing indent:", error)
       showPopup(
-        "Failed to process indent. Please try again.",
+        INDENT_APPROVAL_PROCESS_ERR,
         "error"
       )
     } finally {

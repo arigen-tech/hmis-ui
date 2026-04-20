@@ -398,6 +398,38 @@ export const FETCH_ITEM_DETAILS_ERR_MSG = "Failed to load item details";
 export const INDENT_TYPE_CHANGE_WARN_MSG ="If you switch the indent type, your entered data will be lost. Do you want to continue?";
 export const INDENT_TYPE_MANDARORY_WARN_MSG = "Please select indent type before adding items";
 
+// IndentApproval Messages
+export const INDENT_APPROVAL_DEPT_NOT_FOUND_ERR = "Department not found. Please login again.";
+export const INDENT_APPROVAL_FETCH_PENDING_ERR = "Error fetching pending indents. Please try again.";
+export const INDENT_APPROVAL_FETCH_DETAILS_ERR = "Error fetching indent details. Please try again.";
+export const INDENT_APPROVAL_EXCEED_STOCK_ERR = "Approve quantity cannot exceed available stock";
+export const INDENT_APPROVAL_EXCEED_REQUESTED_ERR = "Approve quantity cannot exceed requested quantity";
+export const INDENT_APPROVAL_NEGATIVE_QTY_ERR = "Approve quantity cannot be negative";
+export const INDENT_APPROVAL_SELECT_ACTION_ERR = "Please select an action (Approved or Rejected)";
+export const INDENT_APPROVAL_REMARKS_MANDATORY_ERR = "Remarks are mandatory";
+export const INDENT_APPROVAL_INVALID_QUANTITIES_ERR = "Please ensure all approve quantities are valid and do not exceed available stock or requested quantity";
+export const INDENT_APPROVAL_CONFIRM_APPROVE_MSG = "Are you sure you want to approve this indent for issue?";
+export const INDENT_APPROVAL_CONFIRM_REJECT_MSG = "Are you sure you want to reject this indent for issue?";
+export const INDENT_APPROVAL_APPROVE_SUCCESS_MSG = "Indent has been successfully approved for issue.";
+export const INDENT_APPROVAL_REJECT_SUCCESS_MSG = "Indent has been successfully rejected for issue.";
+export const INDENT_APPROVAL_PROCESS_ERR = "Failed to process indent. Please try again.";
+
+// IndentApproval Messages
+export const INDENT_APPROVAL_DEPT_NOT_FOUND_ERR = "Department not found. Please login again.";
+export const INDENT_APPROVAL_FETCH_PENDING_ERR = "Error fetching pending indents. Please try again.";
+export const INDENT_APPROVAL_FETCH_DETAILS_ERR = "Error fetching indent details. Please try again.";
+export const INDENT_APPROVAL_EXCEED_STOCK_ERR = "Approve quantity cannot exceed available stock";
+export const INDENT_APPROVAL_EXCEED_REQUESTED_ERR = "Approve quantity cannot exceed requested quantity";
+export const INDENT_APPROVAL_NEGATIVE_QTY_ERR = "Approve quantity cannot be negative";
+export const INDENT_APPROVAL_SELECT_ACTION_ERR = "Please select an action (Approved or Rejected)";
+export const INDENT_APPROVAL_REMARKS_MANDATORY_ERR = "Remarks are mandatory";
+export const INDENT_APPROVAL_INVALID_QUANTITIES_ERR = "Please ensure all approve quantities are valid and do not exceed available stock or requested quantity";
+export const INDENT_APPROVAL_CONFIRM_APPROVE_MSG = "Are you sure you want to approve this indent for issue?";
+export const INDENT_APPROVAL_CONFIRM_REJECT_MSG = "Are you sure you want to reject this indent for issue?";
+export const INDENT_APPROVAL_APPROVE_SUCCESS_MSG = "Indent has been successfully approved for issue.";
+export const INDENT_APPROVAL_REJECT_SUCCESS_MSG = "Indent has been successfully rejected for issue.";
+export const INDENT_APPROVAL_PROCESS_ERR = "Failed to process indent. Please try again.";
+
 //Blood GROUP Master
 
 export const FETCH_BLOOD_GROUP_ERR_MSG = "Failed to load blood group data";
