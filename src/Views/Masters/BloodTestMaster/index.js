@@ -269,15 +269,16 @@ const BloodTestMaster = () => {
                 >
                   Add
                 </button>
-                <button
-                  className="btn btn-success"
-                  onClick={() => {
-                    setSearchQuery("");
-                    fetchData();
-                  }}
-                >
-                  Show All
-                </button>
+                 <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setSearchQuery("");
+                          fetchData(1);
+                        }}
+                      >
+                        <i className="mdi mdi-view-list"></i> Show All
+                      </button>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={handleCancel}>
