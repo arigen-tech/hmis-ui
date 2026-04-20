@@ -5,6 +5,7 @@ import BedTransfer from "../BedTransfer"
 import VitalsandMonitoring from "../VitalsandMonitoring"
 import InvestigationOrderandTracking from "../Investigations"
 import DietOrderHistory from "../Diet"
+import MedicationModule from "./../MAR"
 
 
 const WardManagement = () => {
@@ -393,6 +394,9 @@ const WardManagement = () => {
                           <div className="card-body">
                             {activeTab === "Clinical Dashboard" && (
                               <ClinicalDashboard selectedPatient={selectedPatient} />
+                            )}
+                            {activeTab === "Medication & Treatment (MAR)" && (
+                              <MedicationModule selectedPatient={selectedPatient} />
                             )}
 
                             {activeTab === "Doctor Visit / Case Notes" && (
