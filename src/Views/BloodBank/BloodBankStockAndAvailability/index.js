@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import {
   BANK_BLOOD_STOCK_AVAILABILITY,
   MAS_BLOOD_COLLECTION_TYPE,
@@ -20,6 +21,7 @@ const BloodBankStockAndAvailability = () => {
   const [inventoryStatusData, setInventoryStatusData] = useState([]);
   const [isTableLoading, setIsTableLoading] = useState(false);
   const debounceTimerRef = useRef(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const [filters, setFilters] = useState({
     bloodGroupId: "",
     componentId: "",
@@ -27,6 +29,9 @@ const BloodBankStockAndAvailability = () => {
     expiryFilter: "",
     collectionType: "",
   });
+
+  // Report modal state
+  const [showReportModal, setShowReportModal] = useState(false);
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -39,6 +44,7 @@ const BloodBankStockAndAvailability = () => {
   const handleFilterChange = (e) => {
     const { name, value } = e.target;
     setFilters((prev) => ({ ...prev, [name]: value }));
+    setCurrentPage(1); // reset to first page on filter change
   };
 
   useEffect(() => {
@@ -151,7 +157,7 @@ const BloodBankStockAndAvailability = () => {
       params.append("viewType", tableView);
 
       const res = await getRequest(
-        `${BANK_BLOOD_STOCK_AVAILABILITY}?${params.toString()}`,
+        `${BANK_BLOOD_STOCK_AVAILABILITY}?${params.toString()}`
       );
 
       if (res?.status === 200 && res?.response) {
@@ -166,8 +172,13 @@ const BloodBankStockAndAvailability = () => {
     }
   };
 
+  // Pagination logic
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentTableData = tableData.slice(indexOfFirst, indexOfLast);
+
   return (
-    <div className="body d-flex py-3">
+    <div className="content-wrapper">
       {popupMessage && (
         <Popup
           message={popupMessage.message}
@@ -176,324 +187,252 @@ const BloodBankStockAndAvailability = () => {
         />
       )}
 
-      <style>{`
-        .table-scroll-container {
-          max-height: 300px;
-          overflow-y: auto;
-          overflow-x: auto;
-          border: 1px solid #dee2e6;
-          border-radius: 0.25rem;
-        }
-
-        .table-scroll-container::-webkit-scrollbar {
-          width: 8px;
-          height: 8px;
-        }
-
-        .table-scroll-container::-webkit-scrollbar-track {
-          background: #f1f1f1;
-          border-radius: 10px;
-        }
-
-        .table-scroll-container::-webkit-scrollbar-thumb {
-          background: #888;
-          border-radius: 10px;
-        }
-
-        .table-scroll-container::-webkit-scrollbar-thumb:hover {
-          background: #555;
-        }
-
-        .sticky-header {
-          position: sticky;
-          top: 0;
-          background: #f8f9fa;
-          z-index: 10;
-        }
-
-        .sticky-header th {
-          background: #f8f9fa;
-          font-weight: 600;
-        }
-      `}</style>
-
-      <div className="container-fluid">
-        {/* HEADER */}
-        <div className="row mb-3">
-          <div className="col-12">
-            <h3 className="fw-bold">Blood Bank Stock And Availability</h3>
-          </div>
-        </div>
-
-        {/* TOP FILTERS */}
-        <div className="card shadow mb-4">
-          <div className="card-body">
-            <div className="row g-3">
-              <div className="col-md-4">
-                <label className="form-label fw-bold">Blood Group</label>
-                <select
-                  className="form-select"
-                  name="bloodGroupId"
-                  onChange={handleFilterChange}
-                >
-                  <option value="">Select Blood Group</option>
-                  {bloodGroups.map((bg) => (
-                    <option key={bg.id} value={bg.id}>
-                      {bg.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label fw-bold">Component Type</label>
-                <select
-                  className="form-select"
-                  name="componentId"
-                  onChange={handleFilterChange}
-                >
-                  <option value="">Select Component Type</option>
-                  {componentData.map((comp) => (
-                    <option key={comp.id} value={comp.id}>
-                      {comp.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* INVENTORY FILTER */}
-        <div className="card shadow mb-4">
-          <div className="card-header">
-            <h6 className="fw-bold mb-0">Inventory</h6>
-          </div>
-
-          <div className="card-body">
-            <div className="row g-4">
-              <div className="col-md-4">
-                <label className="form-label fw-bold">Inventory Status</label>
-                <select
-                  className="form-select"
-                  name="inventoryStatus"
-                  onChange={handleFilterChange}
-                >
-                  <option value="">Select Inventory Status</option>
-                  {inventoryStatusData.map((status) => (
-                    <option key={status.id} value={status.id}>
-                      {status.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label fw-bold">Expiry</label>
-                <select
-                  className="form-select"
-                  name="expiryFilter"
-                  onChange={handleFilterChange}
-                >
-                  <option value="">Select Expiry</option>
-                  <option value="24">Expiring in 24 hrs</option>
-                  <option value="3">Expiring in 3 days</option>
-                  <option value="7">Expiring in 7 days</option>
-                </select>
-              </div>
-
-              <div className="col-md-4">
-                <label className="form-label fw-bold">Collection Type</label>
-                <select
-                  className="form-select"
-                  name="collectionType"
-                  onChange={handleFilterChange}
-                >
-                  <option value="">Select Collection Type</option>
-                  {collectionTypeData.map((type) => (
-                    <option key={type.id} value={type.id}>
-                      {type.name}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* TABLE SELECTOR */}
-        <div className="card shadow mb-3">
-          <div className="card-body">
-            <label className="form-label fw-bold d-block mb-2">
-              Select Tables
-            </label>
-
-            <div className="form-check form-check-inline">
-              <input
-                type="radio"
-                name="tableView"
-                checked={tableView === "S"}
-                onChange={() => {
-                  setTableView("S");
-                }}
-              />
-              <label className="form-check-label">
-                Blood Bank Stock Summary
-              </label>
-            </div>
-
-            <div className="form-check form-check-inline">
-              <input
-                type="radio"
-                name="tableView"
-                checked={tableView === "SL"}
-                onChange={() => {
-                  setTableView("SL");
-                }}
-              />
-              <label className="form-check-label">
-                Detailed Blood Stock List
-              </label>
-            </div>
-          </div>
-        </div>
-
-        {/* TABLES */}
-        {tableView === "S" && (
-          <div className="card shadow mb-3">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
             <div className="card-header">
-              <h6 className="fw-bold mb-0">Blood Bank Stock Summary</h6>
+              <h4 className="card-title p-2 mb-0">
+                BLOOD BANK STOCK AND AVAILABILITY
+              </h4>
             </div>
-            <div className="card-body p-0 position-relative">
-              {isTableLoading && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: "rgba(255,255,255,0.9)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 999,
-                    borderRadius: "0.25rem",
-                  }}
-                >
-                  <div style={{ textAlign: "center" }}>
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
+            <div className="card-body">
+              {/* TOP FILTERS: Blood Group & Component Type */}
+              <div className="row mb-4">
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Blood Group</label>
+                  <select
+                    className="form-select"
+                    name="bloodGroupId"
+                    value={filters.bloodGroupId}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">Select Blood Group</option>
+                    {bloodGroups.map((bg) => (
+                      <option key={bg.id} value={bg.id}>
+                        {bg.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Component Type</label>
+                  <select
+                    className="form-select"
+                    name="componentId"
+                    value={filters.componentId}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">Select Component Type</option>
+                    {componentData.map((comp) => (
+                      <option key={comp.id} value={comp.id}>
+                        {comp.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* INVENTORY FILTERS */}
+              <div className="row mb-4">
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Inventory Status</label>
+                  <select
+                    className="form-select"
+                    name="inventoryStatus"
+                    value={filters.inventoryStatus}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">Select Inventory Status</option>
+                    {inventoryStatusData.map((status) => (
+                      <option key={status.id} value={status.id}>
+                        {status.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Expiry</label>
+                  <select
+                    className="form-select"
+                    name="expiryFilter"
+                    value={filters.expiryFilter}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">Select Expiry</option>
+                    <option value="24">Expiring in 24 hrs</option>
+                    <option value="3">Expiring in 3 days</option>
+                    <option value="7">Expiring in 7 days</option>
+                  </select>
+                </div>
+
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Collection Type</label>
+                  <select
+                    className="form-select"
+                    name="collectionType"
+                    value={filters.collectionType}
+                    onChange={handleFilterChange}
+                  >
+                    <option value="">Select Collection Type</option>
+                    {collectionTypeData.map((type) => (
+                      <option key={type.id} value={type.id}>
+                        {type.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* TABLE VIEW SELECTOR with Report Button inline */}
+              <div className="row mb-4">
+                <div className="col-12 d-flex align-items-center justify-content-between">
+                  <div>
+                    <label className="form-label fw-bold d-block mb-2">
+                      Select View
+                    </label>
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="tableView"
+                        id="viewSummary"
+                        checked={tableView === "S"}
+                        onChange={() => {
+                          setTableView("S");
+                          setCurrentPage(1);
+                        }}
+                      />
+                      <label className="form-check-label" htmlFor="viewSummary">
+                        Blood Bank Stock Summary
+                      </label>
+                    </div>
+                    <div className="form-check form-check-inline">
+                      <input
+                        className="form-check-input"
+                        type="radio"
+                        name="tableView"
+                        id="viewDetail"
+                        checked={tableView === "SL"}
+                        onChange={() => {
+                          setTableView("SL");
+                          setCurrentPage(1);
+                        }}
+                      />
+                      <label className="form-check-label" htmlFor="viewDetail">
+                        Detailed Blood Stock List
+                      </label>
+                    </div>
+                  </div>
+                  <div>
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                    >
+                      Report
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* TABLE DISPLAY */}
+              {tableView === "S" && (
+                <div className="card mb-3">
+                  <div className="card-header py-3 border-bottom-1">
+                    <h6 className="mb-0 fw-bold">Blood Bank Stock Summary</h6>
+                  </div>
+                  <div className="card-body p-0 position-relative">
+                   
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Blood Group</th>
+                            <th>PRBC</th>
+                            <th>Plasma</th>
+                            <th>Platelets</th>
+                            <th>Cryo</th>
+                            <th>Total Units</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentTableData.length === 0 ? (
+                            <tr>
+                              <td colSpan="6" className="text-center py-4">
+                                No data found
+                              </td>
+                            </tr>
+                          ) : (
+                            currentTableData.map((row, i) => (
+                              <tr key={i}>
+                                <td>{row.bloodGroup}</td>
+                                <td>{row.prbc}</td>
+                                <td>{row.plasma}</td>
+                                <td>{row.platelets}</td>
+                                <td>{row.cryo}</td>
+                                <td>{row.totalUnits}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
               )}
-              <div className={tableData.length > 10 ? "table-scroll-container" : ""}>
-                <table className="table table-bordered table-striped mb-0 text-center">
-                  <thead className="sticky-header">
-                    <tr>
-                      <th>Blood Group</th>
-                      <th>PRBC</th>
-                      <th>Plasma</th>
-                      <th>Platelets</th>
-                      <th>Cryo</th>
-                      <th>Total Units</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableData.length === 0 ? (
-                      <tr>
-                        <td colSpan="6" className="text-center text-muted">
-                          No data found
-                        </td>
-                      </tr>
-                    ) : (
-                      tableData.map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.bloodGroup}</td>
-                          <td>{row.prbc}</td>
-                          <td>{row.plasma}</td>
-                          <td>{row.platelets}</td>
-                          <td>{row.cryo}</td>
-                          <td>{row.totalUnits}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          </div>
-        )}
 
-        {tableView === "SL" && (
-          <div className="card shadow mb-3">
-            <div className="card-header">
-              <h6 className="fw-bold mb-0">Detailed Blood Stock List</h6>
-            </div>
-            <div className="card-body p-0 position-relative">
-              {isTableLoading && (
-                <div
-                  style={{
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: "rgba(255,255,255,0.9)",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    zIndex: 999,
-                    borderRadius: "0.25rem",
-                  }}
-                >
-                  <div style={{ textAlign: "center" }}>
-                    <div className="spinner-border text-primary" role="status">
-                      <span className="visually-hidden">Loading...</span>
+              {tableView === "SL" && (
+                <div className="card mb-3">
+                  <div className="card-header py-3 border-bottom-1">
+                    <h6 className="mb-0 fw-bold">Detailed Blood Stock List</h6>
+                  </div>
+                  <div className="card-body p-0 position-relative">
+                    
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle mb-0">
+                        <thead className="table-light">
+                          <tr>
+                            <th>Unit No.</th>
+                            <th>Component</th>
+                            <th>Blood Group</th>
+                            <th>Volume(ml)</th>
+                            <th>Expiry Date</th>
+                            <th>Status</th>
+                            <th>Reserved For</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {currentTableData.length === 0 ? (
+                            <tr>
+                              <td colSpan="7" className="text-center py-4">
+                                No data found
+                              </td>
+                            </tr>
+                          ) : (
+                            currentTableData.map((row, i) => (
+                              <tr key={i}>
+                                <td>{row.unitNo}</td>
+                                <td>{row.component}</td>
+                                <td>{row.bloodGroup}</td>
+                                <td>{row.volumeMl}</td>
+                                <td>{row.expiryDate}</td>
+                                <td>{row.status}</td>
+                                <td>{row.reservedFor || "-"}</td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
                     </div>
                   </div>
                 </div>
               )}
-              <div className={tableData.length > 10 ? "table-scroll-container" : ""}>
-                <table className="table table-bordered table-striped mb-0 text-center">
-                  <thead className="sticky-header">
-                    <tr>
-                      <th>Unit No.</th>
-                      <th>Component</th>
-                      <th>Blood Group</th>
-                      <th>Volume(ml)</th>
-                      <th>Expiry Date</th>
-                      <th>Status</th>
-                      <th>Reserved For</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {tableData.length === 0 ? (
-                      <tr>
-                        <td colSpan="7" className="text-center text-muted">
-                          No data found
-                        </td>
-                      </tr>
-                    ) : (
-                      tableData.map((row, i) => (
-                        <tr key={i}>
-                          <td>{row.unitNo}</td>
-                          <td>{row.component}</td>
-                          <td>{row.bloodGroup}</td>
-                          <td>{row.volumeMl}</td>
-                          <td>{row.expiryDate}</td>
-                          <td>{row.status}</td>
-                          <td>{row.reservedFor || "-"}</td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+
+             
             </div>
           </div>
-        )}
+        </div>
       </div>
     </div>
   );
