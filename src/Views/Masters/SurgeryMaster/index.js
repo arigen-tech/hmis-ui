@@ -1,81 +1,79 @@
-import { useState, useEffect } from "react";
-import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { useState, useEffect } from "react"
+import Popup from "../../../Components/popup"
+import LoadingScreen from "../../../Components/Loading/index";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_SURGERY, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { ADD_SURGERY_SUCC_MSG, UPDATE_SURGERY_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 const SurgeryMaster = () => {
-  // ---------- Mock Data State ----------
-  const [surgeryData, setSurgeryData] = useState([
-    {
-      id: 1,
-      surgeryCode: "SURG001",
-      surgeryName: "Appendectomy",
-      departmentId: "1",
-      departmentName: "General Surgery",
-      surgeryLevel: "Minor",
-      anesthesiaRequired: "Yes",
-      status: "y"
-    },
-    {
-      id: 2,
-      surgeryCode: "SURG002",
-      surgeryName: "Knee Replacement",
-      departmentId: "2",
-      departmentName: "Orthopedics",
-      surgeryLevel: "Major",
-      anesthesiaRequired: "Yes",
-      status: "y"
-    },
-    {
-      id: 3,
-      surgeryCode: "SURG003",
-      surgeryName: "Cardiac Bypass",
-      departmentId: "3",
-      departmentName: "Cardiology",
-      surgeryLevel: "Super Major",
-      anesthesiaRequired: "Yes",
-      status: "n"
-    }
-  ]);
-
-  const [loading, setLoading] = useState(false);
-  const [confirmDialog, setConfirmDialog] = useState({
-    isOpen: false,
-    surgeryId: null,
-    newStatus: false
-  });
-
   const [formData, setFormData] = useState({
     surgeryCode: "",
     surgeryName: "",
     departmentId: "",
-    surgeryLevel: "Minor",
-    anesthesiaRequired: "No"
-  });
+    surgeryLevel: "",
+    isAnesthesiaRequired: ""
+  })
 
-  const [searchQuery, setSearchQuery] = useState("");
-  const [showForm, setShowForm] = useState(false);
-  const [isFormValid, setIsFormValid] = useState(false);
-  const [editingSurgery, setEditingSurgery] = useState(null);
-  const [popupMessage, setPopupMessage] = useState(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("1");
+  const [confirmDialog, setConfirmDialog] = useState({ 
+    isOpen: false, 
+    surgeryId: null, 
+    newStatus: "", 
+    surgeryName: "" 
+  })
 
-  // Dropdown options (mock)
-  const departmentOptions = [
-    { id: "1", name: "General Surgery" },
-    { id: "2", name: "Orthopedics" },
-    { id: "3", name: "Cardiology" },
-    { id: "4", name: "Neurology" },
-    { id: "5", name: "Pediatrics" }
-  ];
+  const [searchQuery, setSearchQuery] = useState("")
+  const [surgeryData, setSurgeryData] = useState([])
+  const [departmentData, setDepartmentData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [showForm, setShowForm] = useState(false)
+  const [isFormValid, setIsFormValid] = useState(false)
+  const [editingSurgery, setEditingSurgery] = useState(null)
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [currentPage, setCurrentPage] = useState(1)
+  const [totalPages, setTotalPages] = useState(0)
+  const [totalItems, setTotalItems] = useState(0)
+  const [process, setProcess] = useState(false);
 
-  const surgeryLevelOptions = ["Minor", "Major", "Super Major"];
-  const anesthesiaOptions = ["Yes", "No"];
-
+  // Constants for validation
   const SURGERY_CODE_MAX_LENGTH = 8;
   const SURGERY_NAME_MAX_LENGTH = 30;
+  
+  // Surgery level options
+  const surgeryLevelOptions = [
+    { value: "MIN", label: "Minor" },
+    { value: "MAJ", label: "Major" },
+    { value: "SUP", label: "Super Major" }
+  ];
+
+  // Anesthesia options
+  const anesthesiaOptions = [
+    { value: "Y", label: "Yes" },
+    { value: "N", label: "No" }
+  ];
+
+  useEffect(() => {
+    fetchSurgeryData(0);
+    fetchDepartmentData();
+  }, []);
+
+  useEffect(() => {
+    if (showForm) {
+      fetchDepartmentData();
+    }
+  }, [showForm]);
+
+  // Validate form
+  useEffect(() => {
+    const { surgeryCode, surgeryName, departmentId, surgeryLevel, isAnesthesiaRequired } = formData;
+    setIsFormValid(
+      surgeryCode.trim() !== "" &&
+      surgeryName.trim() !== "" &&
+      departmentId !== "" &&
+      surgeryLevel !== "" &&
+      isAnesthesiaRequired !== ""
+    );
+  }, [formData]);
 
   // Filter data based on search query
   const filteredSurgeryData = surgeryData.filter(surgery =>
@@ -83,241 +81,319 @@ const SurgeryMaster = () => {
     surgery.surgeryName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
-  // Pagination
-  const totalPages = Math.ceil(filteredSurgeryData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredSurgeryData.slice(indexOfFirstItem, indexOfLastItem);
+  const fetchSurgeryData = async (page = 0) => {
+    setLoading(true);
+    try {
+      // Get all active records (flag=1)
+      const data = await getRequest(`${MAS_SURGERY}/getAll/0`);
+      
+      if (data.status === 200 && data.response) {
+        setSurgeryData(data.response);
+        setTotalItems(data.response.length);
+        setTotalPages(Math.ceil(data.response.length / DEFAULT_ITEMS_PER_PAGE));
+      } else {
+        console.error("Unexpected API response format:", data);
+        setSurgeryData([]);
+        setTotalItems(0);
+        setTotalPages(0);
+      }
+    } catch (error) {
+      console.error("Error fetching Surgery data:", error);
+      setSurgeryData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-  // Reset page when search changes
-  useEffect(() => {
-    setCurrentPage(1);
-    setPageInput("1");
-  }, [searchQuery]);
+  const fetchDepartmentData = async () => {
+    try {
+      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        // No filter - include all departments for Surgery
+        setDepartmentData(data.response);
+        return data.response;
+      } else {
+        console.error("Unexpected API response format:", data);
+        setDepartmentData([]);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+      return [];
+    }
+  };
 
-  useEffect(() => {
-    setPageInput(currentPage.toString());
-  }, [currentPage]);
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
-  // Validate form
-  useEffect(() => {
-    const { surgeryCode, surgeryName, departmentId } = formData;
-    setIsFormValid(
-      surgeryCode.trim() !== "" &&
-      surgeryName.trim() !== "" &&
-      departmentId.trim() !== ""
-    );
-  }, [formData]);
-
-  const handleSearchChange = (e) => setSearchQuery(e.target.value);
-
-  const handleEdit = (surgery) => {
-    setEditingSurgery(surgery);
+  const handleEdit = async (item) => {
+    setEditingSurgery(item);
+    
+    // Fetch departments first to ensure dropdown is populated
+    await fetchDepartmentData();
+    
+    // Set form data from the selected item
     setFormData({
-      surgeryCode: surgery.surgeryCode,
-      surgeryName: surgery.surgeryName,
-      departmentId: surgery.departmentId,
-      surgeryLevel: surgery.surgeryLevel,
-      anesthesiaRequired: surgery.anesthesiaRequired
+      surgeryCode: item.surgeryCode || "",
+      surgeryName: item.surgeryName || "",
+      departmentId: item.departmentId?.toString() || "",
+      surgeryLevel: item.surgeryLevel || "",
+      isAnesthesiaRequired: item.isAnesthesiaRequired || ""
     });
+    
     setShowForm(true);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    setProcess(true);
+    if (!isFormValid) {
+      setProcess(false);
+      return;
+    }
 
-    setLoading(true);
-    // Simulate API delay
-    setTimeout(() => {
-      const departmentName = departmentOptions.find(d => d.id === formData.departmentId)?.name || "";
+    const payload = {
+      surgeryCode: formData.surgeryCode,
+      surgeryName: formData.surgeryName,
+      departmentId: parseInt(formData.departmentId, 10),
+      surgeryLevel: formData.surgeryLevel,
+      isAnesthesiaRequired: formData.isAnesthesiaRequired
+    };
 
+    try {
+      let response;
       if (editingSurgery) {
-        // Update existing
-        setSurgeryData(prev =>
-          prev.map(item =>
-            item.id === editingSurgery.id
-              ? {
-                  ...item,
-                  surgeryCode: formData.surgeryCode,
-                  surgeryName: formData.surgeryName,
-                  departmentId: formData.departmentId,
-                  departmentName: departmentName,
-                  surgeryLevel: formData.surgeryLevel,
-                  anesthesiaRequired: formData.anesthesiaRequired
-                }
-              : item
-          )
+        response = await putRequest(
+          `${MAS_SURGERY}/update/${editingSurgery.surgeryId}`,
+          payload
         );
-        showPopup("Surgery updated successfully!", "success");
+        if (response.status === 200) {
+          //showPopup(UPDATE_SURGERY_SUCC_MSG || "Surgery updated successfully!", "success");
+          setPopupMessage({
+            message:  "Surgery updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+                  resetForm();
+           fetchSurgeryData();
+          setCurrentPage(1);
+            }
+          });
+        
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        // Add new
-        const newId = Math.max(...surgeryData.map(s => s.id), 0) + 1;
-        const newSurgery = {
-          id: newId,
-          surgeryCode: formData.surgeryCode,
-          surgeryName: formData.surgeryName,
-          departmentId: formData.departmentId,
-          departmentName: departmentName,
-          surgeryLevel: formData.surgeryLevel,
-          anesthesiaRequired: formData.anesthesiaRequired,
-          status: "y"
-        };
-        setSurgeryData(prev => [...prev, newSurgery]);
-        showPopup("Surgery added successfully!", "success");
+        response = await postRequest(`${MAS_SURGERY}/create`, payload);
+        if (response.status === 201 || response.status === 200) {
+          // showPopup(ADD_SURGERY_SUCC_MSG || "Surgery added successfully!", "success");
+          setPopupMessage({
+            message:  "Surgery added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+                  resetForm();
+           fetchSurgeryData();
+          setCurrentPage(1);
+            }
+          });
+          
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
+    } catch (error) {
+      console.error("Error saving Surgery:", error);
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+    } finally {
+      setProcess(false);
+    }
+  };
 
-      setEditingSurgery(null);
-      setFormData({
-        surgeryCode: "",
-        surgeryName: "",
-        departmentId: "",
-        surgeryLevel: "Minor",
-        anesthesiaRequired: "No"
-      });
-      setShowForm(false);
-      setLoading(false);
-    }, 500);
+  const resetForm = () => {
+    setEditingSurgery(null);
+    setShowForm(false);
+    setFormData({
+      surgeryCode: "",
+      surgeryName: "",
+      departmentId: "",
+      surgeryLevel: "",
+      isAnesthesiaRequired: ""
+    });
   };
 
   const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, surgeryId: id, newStatus });
+  const handleSwitchChange = (id, name, newStatus) => {
+    setConfirmDialog({ 
+      isOpen: true, 
+      surgeryId: id, 
+      newStatus, 
+      surgeryName: name 
+    });
   };
 
-  const handleConfirm = (confirmed) => {
+  const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.surgeryId !== null) {
-      setSurgeryData(prev =>
-        prev.map(surgery =>
-          surgery.id === confirmDialog.surgeryId
-            ? { ...surgery, status: confirmDialog.newStatus }
-            : surgery
-        )
-      );
-      showPopup(
-        `Surgery ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-        "success"
-      );
+      setProcess(true);
+      try {
+        const response = await putRequest(
+          `${MAS_SURGERY}/status/${confirmDialog.surgeryId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message:  "Surgery added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+                  resetForm();
+           fetchSurgeryData();
+          setCurrentPage(1);
+            }
+          });
+          
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setProcess(false);
+      }
     }
-    setConfirmDialog({ isOpen: false, surgeryId: null, newStatus: null });
+    setConfirmDialog({ 
+      isOpen: false, 
+      surgeryId: null, 
+      newStatus: "", 
+      surgeryName: "" 
+    });
   };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData((prevData) => ({
+      ...prevData,
+      [id]: value
+    }));
   };
 
   const handleSelectChange = (e) => {
     const { id, value } = e.target;
-    setFormData(prev => ({ ...prev, [id]: value }));
+    setFormData((prevData) => ({
+      ...prevData,
+      [id]: value
+    }));
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setPageInput("1");
-    // In a real app you would refetch, here we just reset search
+    fetchSurgeryData();
   };
 
-  const handleActivate = () => {
+  const handleActivate = async () => {
     if (editingSurgery && editingSurgery.status === "n") {
-      setLoading(true);
-      setTimeout(() => {
-        setSurgeryData(prev =>
-          prev.map(item =>
-            item.id === editingSurgery.id ? { ...item, status: "y" } : item
-          )
+      setProcess(true);
+      try {
+        const response = await putRequest(
+          `${MAS_SURGERY}/status/${editingSurgery.surgeryId}?status=y`
         );
-        showPopup("Surgery activated successfully!", "success");
-        setEditingSurgery(null);
-        setFormData({
-          surgeryCode: "",
-          surgeryName: "",
-          departmentId: "",
-          surgeryLevel: "Minor",
-          anesthesiaRequired: "No"
-        });
-        setShowForm(false);
-        setLoading(false);
-      }, 500);
+
+        if (response.status === 200) {
+          showPopup("Surgery activated successfully!", "success");
+          resetForm();
+          await fetchSurgeryData();
+          setCurrentPage(1);
+        } else {
+          throw new Error(response.message || "Failed to activate");
+        }
+      } catch (error) {
+        console.error("Error activating surgery:", error);
+        showPopup("Failed to activate surgery", "error");
+      } finally {
+        setProcess(false);
+      }
     }
   };
+
+  // Get current page items
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredSurgeryData.slice(indexOfFirstItem, indexOfLastItem);
 
   return (
     <div className="content-wrapper">
       <div className="row">
+        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Surgery Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search by code or name"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
-                )}
+              <h4 className="card-title p-2">Surgery Master</h4>
 
-                <div className="d-flex align-items-center">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setEditingSurgery(null);
-                          setFormData({
-                            surgeryCode: "",
-                            surgeryName: "",
-                            departmentId: "",
-                            surgeryLevel: "Minor",
-                            anesthesiaRequired: "No"
-                          });
-                          setShowForm(true);
-                        }}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                        onClick={handleRefresh}
-                      >
-                        <i className="mdi mdi-refresh"></i> Show All
-                      </button>
-                    </>
-                  ) : (
+              <div className="d-flex justify-content-between align-items-center gap-2">
+                {!showForm && (
+                  <>
+                    <form className="d-inline-block searchform me-2" role="search">
+                      <div className="input-group searchinput">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Search by code or name"
+                          aria-label="Search"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                        />
+                        <span className="input-group-text" id="search-icon">
+                          <i className="fa fa-search"></i>
+                        </span>
+                      </div>
+                    </form>
                     <button
                       type="button"
-                      className="btn btn-secondary"
-                      onClick={() => setShowForm(false)}
+                      className="btn btn-success"
+                      onClick={handleRefresh}
                     >
-                      <i className="mdi mdi-arrow-left"></i> Back
+                      <i className="mdi mdi-refresh"></i> Show All
                     </button>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      className="btn btn-success"
+                      onClick={() => {
+                        setEditingSurgery(null);
+                        setFormData({
+                          surgeryCode: "",
+                          surgeryName: "",
+                          departmentId: "",
+                          surgeryLevel: "",
+                          isAnesthesiaRequired: ""
+                        });
+                        setShowForm(true);
+                      }}
+                    >
+                      <i className="mdi mdi-plus"></i> Add
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {!showForm ? (
                 <>
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
@@ -334,247 +410,232 @@ const SurgeryMaster = () => {
                       </thead>
                       <tbody>
                         {currentItems.length > 0 ? (
-                          currentItems.map((surgery) => (
-                            <tr key={surgery.id}>
-                              <td>{surgery.surgeryCode}</td>
-                              <td>{surgery.surgeryName}</td>
-                              <td>{surgery.departmentName}</td>
-                              <td>{surgery.surgeryLevel}</td>
-                              <td>{surgery.anesthesiaRequired}</td>
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={surgery.status === "y"}
-                                    onChange={() =>
-                                      handleSwitchChange(
-                                        surgery.id,
-                                        surgery.status === "y" ? "n" : "y"
-                                      )
-                                    }
-                                    id={`switch-${surgery.id}`}
-                                  />
-                                  <label
-                                    className="form-check-label px-0"
-                                    htmlFor={`switch-${surgery.id}`}
+                          currentItems.map((item) => {
+                            const levelLabel = surgeryLevelOptions.find(
+                              opt => opt.value === item.surgeryLevel
+                            )?.label || item.surgeryLevel;
+                            
+                            const anesthesiaLabel = item.isAnesthesiaRequired === "Y" ? "Yes" : "No";
+                            
+                            return (
+                              <tr key={item.surgeryId}>
+                                <td>{item.surgeryCode || '-'}</td>
+                                <td style={{ textTransform: "capitalize" }}>{item.surgeryName || '-'}</td>
+                                <td>{item.departmentName || '-'}</td>
+                                <td>{levelLabel}</td>
+                                <td>{anesthesiaLabel}</td>
+                                <td>
+                                  <div className="form-check form-switch">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={item.status === "y"}
+                                      onChange={() => handleSwitchChange(
+                                        item.surgeryId, 
+                                        item.surgeryName, 
+                                        item.status === "y" ? "n" : "y"
+                                      )}
+                                      id={`switch-${item.surgeryId}`}
+                                    />
+                                    <label
+                                      className="form-check-label px-0"
+                                      htmlFor={`switch-${item.surgeryId}`}
+                                    >
+                                      {item.status === "y" ? "Active" : "Deactivated"}
+                                    </label>
+                                  </div>
+                                </td>
+                                <td>
+                                  <button
+                                    className="btn btn-sm btn-success me-2"
+                                    onClick={() => handleEdit(item)}
+                                    disabled={item.status !== "y"}
                                   >
-                                    {surgery.status === "y" ? "Active" : "Inactive"}
-                                  </label>
-                                </div>
-                              </td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(surgery)}
-                                  disabled={surgery.status !== "y"}
-                                >
-                                  <i className="fa fa-pencil"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                                    <i className="fa fa-pencil"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
-                            <td colSpan="7" className="text-center">
-                              No surgery data found
-                            </td>
+                            <td colSpan="7" className="text-center">No records found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Pagination */}
-                  <div>
+                  {filteredSurgeryData.length > 0 && (
                     <Pagination
                       totalItems={filteredSurgeryData.length}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
-                  </div>
+                  )}
                 </>
               ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                  <div className="form-group col-md-4">
-                    <label>
-                      Surgery Code <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control mt-1"
-                      id="surgeryCode"
-                      placeholder="Enter surgery code"
-                      value={formData.surgeryCode}
-                      onChange={handleInputChange}
-                      maxLength={SURGERY_CODE_MAX_LENGTH}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
+                <>
+                  <form className="forms row" onSubmit={handleSave}>
+                    <div className="d-flex justify-content-end mb-3">
+                      <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                        <i className="mdi mdi-arrow-left"></i> Back
+                      </button>
+                    </div>
+                    <div className="row">
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Surgery Code <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="surgeryCode"
+                          placeholder="Enter surgery code"
+                          onChange={handleInputChange}
+                          value={formData.surgeryCode}
+                          maxLength={SURGERY_CODE_MAX_LENGTH}
+                          required
+                          disabled={process}
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Surgery Name <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="surgeryName"
+                          placeholder="Enter surgery name"
+                          onChange={handleInputChange}
+                          value={formData.surgeryName}
+                          maxLength={SURGERY_NAME_MAX_LENGTH}
+                          required
+                          disabled={process}
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Department <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="departmentId"
+                          onChange={handleSelectChange}
+                          value={formData.departmentId}
+                          required
+                          disabled={process}
+                        >
+                          <option value="">Select Department</option>
+                          {departmentData.map((department) => (
+                            <option key={department.id} value={department.id}>
+                              {department.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Surgery Level <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="surgeryLevel"
+                          onChange={handleSelectChange}
+                          value={formData.surgeryLevel}
+                          required
+                          disabled={process}
+                        >
+                          <option value="">Select Surgery Level</option>
+                          {surgeryLevelOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Anesthesia Required <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="isAnesthesiaRequired"
+                          onChange={handleSelectChange}
+                          value={formData.isAnesthesiaRequired}
+                          required
+                          disabled={process}
+                        >
+                          <option value="">Select Option</option>
+                          {anesthesiaOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
 
-                  <div className="form-group col-md-4">
-                    <label>
-                      Surgery Name <span className="text-danger">*</span>
-                    </label>
-                    <input
-                      type="text"
-                      className="form-control mt-1"
-                      id="surgeryName"
-                      placeholder="Enter surgery name"
-                      value={formData.surgeryName}
-                      onChange={handleInputChange}
-                      maxLength={SURGERY_NAME_MAX_LENGTH}
-                      required
-                      disabled={loading}
-                    />
-                  </div>
-
-                  <div className="form-group col-md-4">
-                    <label>
-                      Department <span className="text-danger">*</span>
-                    </label>
-                    <select
-                      className="form-select mt-1"
-                      id="departmentId"
-                      value={formData.departmentId}
-                      onChange={handleSelectChange}
-                      required
-                      disabled={loading}
-                    >
-                      <option value="">Select Department</option>
-                      {departmentOptions.map((dept) => (
-                        <option key={dept.id} value={dept.id}>
-                          {dept.name}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group col-md-4 mt-3">
-                    <label>Surgery Level</label>
-                    <select
-                      className="form-select mt-1"
-                      id="surgeryLevel"
-                      value={formData.surgeryLevel}
-                      onChange={handleSelectChange}
-                      disabled={loading}
-                    >
-                      {surgeryLevelOptions.map((level) => (
-                        <option key={level} value={level}>
-                          {level}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group col-md-4 mt-3">
-                    <label>Anesthesia Required</label>
-                    <select
-                      className="form-select mt-1"
-                      id="anesthesiaRequired"
-                      value={formData.anesthesiaRequired}
-                      onChange={handleSelectChange}
-                      disabled={loading}
-                    >
-                      {anesthesiaOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
-                        </option>
-                      ))}
-                    </select>
-                  </div>
-
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button
-                      type="submit"
-                      className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
-                    >
-                      {loading ? "Saving..." : editingSurgery ? "Update" : "Save"}
-                    </button>
-
-                    {editingSurgery && editingSurgery.status === "n" && (
+                    <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                      <button
+                        type="submit"
+                        className="btn btn-primary me-2"
+                        disabled={process || !isFormValid}
+                      >
+                        {process ? "Processing..." : (editingSurgery ? 'Update' : 'Save')}
+                      </button>
+                      
+                      {editingSurgery && editingSurgery.status === "n" && (
+                        <button
+                          type="button"
+                          className="btn btn-success me-2"
+                          onClick={handleActivate}
+                          disabled={process}
+                        >
+                          Activate
+                        </button>
+                      )}
+                      
                       <button
                         type="button"
-                        className="btn btn-success me-2"
-                        onClick={handleActivate}
-                        disabled={loading}
+                        className="btn btn-danger"
+                        onClick={resetForm}
+                        disabled={process}
                       >
-                        Activate
+                        Cancel
                       </button>
-                    )}
-
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
-                      disabled={loading}
-                    >
-                      Cancel
-                    </button>
-                  </div>
-                </form>
+                    </div>
+                  </form>
+                </>
               )}
-
               {popupMessage && (
-                <Popup
-                  message={popupMessage.message}
-                  type={popupMessage.type}
-                  onClose={popupMessage.onClose}
-                />
+                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
-
               {confirmDialog.isOpen && (
-                <div
-                  className="modal d-block"
-                  tabIndex="-1"
-                  role="dialog"
-                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-                >
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button
-                          type="button"
-                          className="btn-close"
-                          onClick={() => handleConfirm(false)}
-                          aria-label="Close"
-                          disabled={loading}
-                        ></button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
-                            {
-                              surgeryData.find(
-                                (s) => s.id === confirmDialog.surgeryId
-                              )?.surgeryName
-                            }
-                          </strong>{" "}
-                          surgery?
+                            {confirmDialog.surgeryName}
+                          </strong>
+                          {" "}surgery?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button
-                          type="button"
-                          className="btn btn-secondary"
-                          onClick={() => handleConfirm(false)}
-                          disabled={loading}
-                        >
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={process}>
                           Cancel
                         </button>
-                        <button
-                          type="button"
-                          className="btn btn-primary"
-                          onClick={() => handleConfirm(true)}
-                          disabled={loading}
-                        >
-                          {loading ? "Processing..." : "Confirm"}
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={process}>
+                          {process ? "Processing..." : "Confirm"}
                         </button>
                       </div>
                     </div>
@@ -586,7 +647,7 @@ const SurgeryMaster = () => {
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export default SurgeryMaster;
+export default SurgeryMaster

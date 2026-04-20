@@ -149,14 +149,13 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch Visit Types - FIXED AND WORKING
+  // Fetch Visit Types
   const fetchVisitTypes = async () => {
     try {
       console.log("Fetching visit types...");
       const response = await getRequest("/master/masVisitType/getAll/1");
       console.log("Visit Types API Response:", response);
 
-      // Check if response has the expected structure
       if (response && response.status === 200 && response.response && Array.isArray(response.response)) {
         const visitTypeOptions = response.response
           .filter(type => type.status === "y")
@@ -252,39 +251,48 @@ const IPDConsultationTariff = () => {
       await fetchServiceCategories();
       await fetchVisitTypes();
       await fetchDepartments();
+      await fetchIPDTariffData(0); // Initial load
     };
     loadInitialData();
   }, []);
 
-  useEffect(() => {
-    if (!showForm) {
-      fetchIPDTariffData(0);
-    }
-  }, [departmentFilter, doctorFilter, showForm]);
+  // Remove the auto-search effect - now search only happens on button click
+  // useEffect(() => {
+  //   if (!showForm) {
+  //     fetchIPDTariffData(0);
+  //   }
+  // }, [departmentFilter, doctorFilter, showForm]);
 
   // ================= FILTER HANDLERS =================
   const handleDepartmentFilterChange = (e) => {
     const deptId = e.target.value;
     setDepartmentFilter(deptId);
-    setDoctorFilter("");
+    setDoctorFilter(""); // Reset doctor filter when department changes
     if (deptId) {
       fetchDoctorsForFilter(deptId);
     } else {
       setFilterDoctorData([]);
     }
-    setCurrentPage(1);
+    // Don't fetch data here - wait for search button click
   };
 
   const handleDoctorFilterChange = (e) => {
     setDoctorFilter(e.target.value);
-    setCurrentPage(1);
+    // Don't fetch data here - wait for search button click
   };
 
   const handleShowAll = () => {
     setDepartmentFilter("");
     setDoctorFilter("");
     setFilterDoctorData([]);
+    // Fetch data immediately when showing all
     setCurrentPage(1);
+    fetchIPDTariffData(0);
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchIPDTariffData(0);
   };
 
   // ================= FORM HANDLERS =================
@@ -641,6 +649,17 @@ const IPDConsultationTariff = () => {
                         ))}
                       </select>
                     </div>
+
+                    <div className="col-md-2">
+                      <label className="form-label fw-bold">&nbsp;</label>
+                      <button
+                        className="btn btn-primary w-100"
+                        onClick={handleSearch}
+                        disabled={loading}
+                      >
+                        <i className="mdi mdi-magnify"></i> Search
+                      </button>
+                    </div>
                   </div>
 
                   {/* Table Section */}
@@ -690,7 +709,7 @@ const IPDConsultationTariff = () => {
                                     {rec.status === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
-                              </td>
+                               </td>
                               <td>
                                 <button
                                   className="btn btn-sm btn-success me-2"
@@ -699,8 +718,8 @@ const IPDConsultationTariff = () => {
                                 >
                                   <i className="fa fa-pencil"></i> Edit
                                 </button>
-                              </td>
-                            </tr>
+                               </td>
+                             </tr>
                           ))
                         ) : (
                           <tr>

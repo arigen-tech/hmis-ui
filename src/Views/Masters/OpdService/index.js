@@ -36,6 +36,7 @@ const OPDServiceMaster = () => {
   const [totalItems, setTotalItems] = useState(0)
   const [process, setProcess] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
 
   const hospitalId = sessionStorage.getItem("hospitalId");
 
@@ -90,6 +91,12 @@ const OPDServiceMaster = () => {
       console.error("Error fetching doctors for filter:", error);
       setDoctorData([]);
     }
+  };
+
+  // Search functionality - reloads data with filters
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchServiceOpdData(0);
   };
 
   const fetchServiceOpdData = async (page = 0) => {
@@ -183,24 +190,15 @@ const OPDServiceMaster = () => {
     }
   };
 
-  // Reload data when filters change
-  useEffect(() => {
-    if (showForm === false) {
-      fetchServiceOpdData(0);
-    }
-  }, [filterDepartment, filterDoctor]);
-
   const handleDepartmentFilterChange = (e) => {
     const deptId = e.target.value;
     setFilterDepartment(deptId);
     setFilterDoctor(""); // Reset doctor filter when department changes
     fetchDoctorsForFilter(deptId);
-    setCurrentPage(1);
   };
 
   const handleDoctorFilterChange = (e) => {
     setFilterDoctor(e.target.value);
-    setCurrentPage(1);
   };
 
   const handlePageChange = (page) => {
@@ -529,6 +527,17 @@ const OPDServiceMaster = () => {
                           </option>
                         ))}
                       </select>
+                    </div>
+
+                    <div className="col-md-2">
+                      <label className="form-label fw-bold">&nbsp;</label>
+                      <button
+                        className="btn btn-primary w-100"
+                        onClick={handleSearch}
+                        disabled={loading}
+                      >
+                        <i className="mdi mdi-magnify"></i> Search
+                      </button>
                     </div>
                   </div>
 

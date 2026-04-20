@@ -603,3 +603,17 @@ export const GET_ALL_CHILDREN_BY_PARENT_ID_END_URL = `${CONFIGURATION}/getAllChi
 
 
 export const MAS_QUESTION_OPTION_VALUE = `${MASTERS}/masQuestionOptionValue`;
+
+
+// Package Configuration APIs
+export const PACKAGE_RATE_CONFIG = `${MASTERS}/packageRateConfig`;
+export const MAS_TPA = `${MASTERS}/masTpa`;
+export const MAS_CORPORATE = `${MASTERS}/masCorporate`;
+export const IPD_PACKAGE = `${MASTERS}/ipdPackage`;
+export const MAS_INSURANCE = `${MASTERS}/masInsurance`;
+export const MAS_IPD_BILLING_TYPE = `${MASTERS}/masIpdBillingType`;
+
+export const MAS_SURGERY = `${MASTERS}/masSurgery`;
+
+export const MAS_SURGERY_PRICING = `${MASTERS}/masSurgeryPricing`;
+export const MAS_PROCEDURE_PRICING = `${MASTERS}/masProcedurePricing`;

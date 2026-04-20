@@ -3,8 +3,11 @@ import { createPortal } from "react-dom"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { getRequest, putRequest, postRequest } from "../../../service/apiService"
+import { MAS_SURGERY_PRICING, MAS_SURGERY, MAS_IPD_BILLING_TYPE } from "../../../config/apiConfig"
+import { ADD_SURGERY_PRICING_SUCC_MSG, UPDATE_SURGERY_PRICING_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
 
-// PortalDropdown component (as provided)
+// PortalDropdown component
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
 
@@ -42,71 +45,65 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 };
 
 const SurgeryPricing = () => {
-  // ---------- State for list view ----------
-  const [surgeryList, setSurgeryList] = useState([])
+  // State for list view
+  const [surgeryPricingData, setSurgeryPricingData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [currentPage, setCurrentPage] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
-  const [totalElements, setTotalElements] = useState(0)
-  const [isSearching, setIsSearching] = useState(false)
-  const [isShowAllLoading, setIsShowAllLoading] = useState(false)
+  const [totalItems, setTotalItems] = useState(0)
+  const [process, setProcess] = useState(false)
 
   // Search criteria
   const [surgeryNameSearch, setSurgeryNameSearch] = useState("")
   const [billingTypeSearch, setBillingTypeSearch] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
+  const [isShowAllLoading, setIsShowAllLoading] = useState(false)
 
   // Form mode
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemId: null, newStatus: false })
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemId: null, newStatus: "", itemName: "" })
 
   // Form data
   const [formData, setFormData] = useState({
-    surgeryName: "",
-    billingType: "CASH",
+    surgeryId: "",
+    billingTypeId: "",
     amount: "",
-    discount: "",
-    discountApplicable: "No",
-    fromDate: "",
-    toDate: ""
+    discountAllowed: "",
+    effectiveFrom: "",
+    effectiveTo: ""
   })
   const [isFormValid, setIsFormValid] = useState(false)
 
   // Dropdown options
-  const billingTypeOptions = ["CASH", "INSURANCE", "BOTH"]
-  const discountApplicableOptions = ["Yes", "No"]
+  const [billingTypeOptions, setBillingTypeOptions] = useState([])
+  const discountAllowedOptions = [
+    { value: "Y", label: "Yes" },
+    { value: "N", label: "No" }
+  ]
 
-  // ---------- Autocomplete for Surgery Name ----------
+  // Autocomplete for Surgery Name
   const surgeryInputRef = useRef(null)
   const [showSurgeryDropdown, setShowSurgeryDropdown] = useState(false)
   const [surgerySearchText, setSurgerySearchText] = useState("")
-  const [surgeryOptions, setSurgeryOptions] = useState([])      // full list from API/mock
-  const [filteredSurgeries, setFilteredSurgeries] = useState([])  // filtered by search
+  const [surgeryOptions, setSurgeryOptions] = useState([])
+  const [filteredSurgeries, setFilteredSurgeries] = useState([])
   const [isSurgeryLoading, setIsSurgeryLoading] = useState(false)
 
-  // Mock surgery list – replace with API call
-  const mockSurgeryList = [
-    "Knee Replacement",
-    "Cataract Surgery",
-    "Cardiac Bypass",
-    "Appendectomy",
-    "Hernia Repair",
-    "Gallbladder Removal",
-    "Hip Replacement",
-    "Tonsillectomy",
-    "Spinal Fusion",
-    "Prostate Surgery"
-  ]
-
-  // Simulate fetching surgery options (like API)
+  // Fetch surgery options for autocomplete
   const fetchSurgeryOptions = async () => {
     setIsSurgeryLoading(true)
-    // Simulate network delay
-    setTimeout(() => {
-      setSurgeryOptions(mockSurgeryList)
+    try {
+      const data = await getRequest(`${MAS_SURGERY}/getAll/0`)
+      if (data.status === 200 && data.response) {
+        setSurgeryOptions(data.response)
+      }
+    } catch (error) {
+      console.error("Error fetching surgery options:", error)
+    } finally {
       setIsSurgeryLoading(false)
-    }, 300)
+    }
   }
 
   // Filter surgeries based on search text
@@ -116,7 +113,7 @@ const SurgeryPricing = () => {
       return
     }
     const filtered = surgeryOptions.filter(surg =>
-      surg.toLowerCase().includes(surgerySearchText.toLowerCase())
+      surg.surgeryName?.toLowerCase().includes(surgerySearchText.toLowerCase())
     )
     setFilteredSurgeries(filtered)
   }, [surgerySearchText, surgeryOptions])
@@ -136,40 +133,52 @@ const SurgeryPricing = () => {
   const handleSurgerySearch = (e) => {
     const value = e.target.value
     setSurgerySearchText(value)
-    setFormData(prev => ({ ...prev, surgeryName: value }))
     setShowSurgeryDropdown(value.trim() !== "")
   }
 
   // Handle selection from dropdown
-  const handleSurgerySelect = (surgeryName) => {
-    setSurgerySearchText(surgeryName)
-    setFormData(prev => ({ ...prev, surgeryName }))
+  const handleSurgerySelect = (surgery) => {
+    setSurgerySearchText(surgery.surgeryName)
+    setFormData(prev => ({ ...prev, surgeryId: surgery.surgeryId.toString() }))
     setShowSurgeryDropdown(false)
   }
 
-  // ---------- Mock data & helper functions (replace with API calls) ----------
-  const fetchSurgeryPricingList = async (page = 0, isInitialLoad = false) => {
+  // Fetch billing type options
+  const fetchBillingTypeOptions = async () => {
+    try {
+      const data = await getRequest(`${MAS_IPD_BILLING_TYPE}/getAll/1`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setBillingTypeOptions(data.response)
+      }
+    } catch (error) {
+      console.error("Error fetching billing types:", error)
+    }
+  }
+
+  // Fetch surgery pricing list with pagination and filters
+  const fetchSurgeryPricingData = async (page = 0, isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true)
     try {
-      // Simulate API response – replace with actual getRequest
-      const mockData = [
-        { id: 1, surgeryName: "Knee Replacement", billingType: "CASH", amount: 50000, discount: 10, discountApplicable: "Yes", fromDate: "2025-01-01", toDate: "2025-12-31", status: "y" },
-        { id: 2, surgeryName: "Cataract Surgery", billingType: "INSURANCE", amount: 25000, discount: 0, discountApplicable: "No", fromDate: "2025-02-01", toDate: "", status: "y" },
-        { id: 3, surgeryName: "Cardiac Bypass", billingType: "BOTH", amount: 150000, discount: 5, discountApplicable: "Yes", fromDate: "2025-01-15", toDate: "2025-06-30", status: "n" }
-      ]
-      // Apply filters
-      let filtered = mockData
-      if (surgeryNameSearch.trim()) {
-        filtered = filtered.filter(s => s.surgeryName.toLowerCase().includes(surgeryNameSearch.toLowerCase()))
+      const params = new URLSearchParams()
+      params.append("page", page)
+      params.append("size", DEFAULT_ITEMS_PER_PAGE)
+      if (billingTypeSearch) params.append("billingTypeId", billingTypeSearch)
+      if (surgeryNameSearch) params.append("surgeryName", surgeryNameSearch)
+
+      const data = await getRequest(`${MAS_SURGERY_PRICING}/getAll?${params.toString()}`)
+      
+      if (data.status === 200 && data.response) {
+        setSurgeryPricingData(data.response.content || [])
+        setTotalItems(data.response.totalElements || 0)
+        setTotalPages(data.response.totalPages || 0)
+      } else {
+        setSurgeryPricingData([])
+        setTotalItems(0)
+        setTotalPages(0)
       }
-      if (billingTypeSearch) {
-        filtered = filtered.filter(s => s.billingType === billingTypeSearch)
-      }
-      setSurgeryList(filtered)
-      setTotalElements(filtered.length)
-      setTotalPages(Math.ceil(filtered.length / DEFAULT_ITEMS_PER_PAGE))
-    } catch (err) {
-      console.error("Error fetching surgery pricing:", err)
+    } catch (error) {
+      console.error("Error fetching surgery pricing data:", error)
+      setSurgeryPricingData([])
       showPopup("Failed to fetch data", "error")
     } finally {
       if (isInitialLoad) setLoading(false)
@@ -180,14 +189,16 @@ const SurgeryPricing = () => {
 
   // Initial load
   useEffect(() => {
-    fetchSurgeryPricingList(0, true)
-    fetchSurgeryOptions() // load surgery list for autocomplete
+    fetchSurgeryPricingData(0, true)
+    fetchSurgeryOptions()
+    fetchBillingTypeOptions()
   }, [])
 
   // Re-fetch when search criteria change
   useEffect(() => {
     if (!showForm) {
-      fetchSurgeryPricingList(0, false)
+      fetchSurgeryPricingData(0, false)
+      setCurrentPage(1)
     }
   }, [surgeryNameSearch, billingTypeSearch])
 
@@ -198,26 +209,22 @@ const SurgeryPricing = () => {
       return
     }
     setIsSearching(true)
-    setCurrentPage(0)
-    fetchSurgeryPricingList(0, false)
+    setCurrentPage(1)
+    fetchSurgeryPricingData(0, false)
   }
 
   const handleShowAll = () => {
     setIsShowAllLoading(true)
     setSurgeryNameSearch("")
     setBillingTypeSearch("")
-    setCurrentPage(0)
-    fetchSurgeryPricingList(0, false)
+    setCurrentPage(1)
+    fetchSurgeryPricingData(0, false)
   }
 
   // Pagination
-  const paginatedList = surgeryList.slice(
-    currentPage * DEFAULT_ITEMS_PER_PAGE,
-    (currentPage + 1) * DEFAULT_ITEMS_PER_PAGE
-  )
-
   const handlePageChange = (page) => {
-    setCurrentPage(page - 1)
+    setCurrentPage(page)
+    fetchSurgeryPricingData(page - 1, false)
   }
 
   // Form handling
@@ -231,17 +238,20 @@ const SurgeryPricing = () => {
     setFormData(prev => ({ ...prev, [id]: value }))
   }
 
-  // Validation: fromDate mandatory; toDate optional but must be >= fromDate
+  // Validate form
   useEffect(() => {
-    const requiredValid = formData.surgeryName.trim() !== "" &&
-                          formData.billingType !== "" &&
-                          formData.amount !== "" &&
-                          !isNaN(parseFloat(formData.amount)) &&
-                          parseFloat(formData.amount) > 0 &&
-                          formData.fromDate !== ""
+    const requiredValid = 
+      formData.surgeryId !== "" &&
+      formData.billingTypeId !== "" &&
+      formData.amount !== "" &&
+      !isNaN(parseFloat(formData.amount)) &&
+      parseFloat(formData.amount) > 0 &&
+      formData.effectiveFrom !== "" &&
+      formData.discountAllowed !== ""
+    
     let toDateValid = true
-    if (formData.toDate) {
-      toDateValid = new Date(formData.toDate) >= new Date(formData.fromDate)
+    if (formData.effectiveTo) {
+      toDateValid = new Date(formData.effectiveTo) >= new Date(formData.effectiveFrom)
     }
     setIsFormValid(requiredValid && toDateValid)
   }, [formData])
@@ -249,59 +259,105 @@ const SurgeryPricing = () => {
   const handleAddClick = () => {
     setEditingItem(null)
     setFormData({
-      surgeryName: "",
-      billingType: "CASH",
+      surgeryId: "",
+      billingTypeId: "",
       amount: "",
-      discount: "",
-      discountApplicable: "No",
-      fromDate: "",
-      toDate: ""
+      discountAllowed: "",
+      effectiveFrom: "",
+      effectiveTo: ""
     })
     setSurgerySearchText("")
     setShowSurgeryDropdown(false)
     setShowForm(true)
   }
 
-  const handleEdit = (item) => {
+  const handleEdit = async (item) => {
     setEditingItem(item)
     setFormData({
-      surgeryName: item.surgeryName,
-      billingType: item.billingType,
-      amount: item.amount.toString(),
-      discount: item.discount.toString(),
-      discountApplicable: item.discountApplicable,
-      fromDate: item.fromDate,
-      toDate: item.toDate || ""
+      surgeryId: item.surgeryId?.toString() || "",
+      billingTypeId: item.billingTypeId?.toString() || "",
+      amount: item.amount?.toString() || "",
+      discountAllowed: item.discountAllowed || "",
+      effectiveFrom: item.effectiveFrom || "",
+      effectiveTo: item.effectiveTo || ""
     })
-    setSurgerySearchText(item.surgeryName)
+    setSurgerySearchText(item.surgeryName || "")
     setShowSurgeryDropdown(false)
     setShowForm(true)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
+    setProcess(true)
 
-    const newItem = {
-      id: editingItem ? editingItem.id : Date.now(),
-      surgeryName: formData.surgeryName,
-      billingType: formData.billingType,
+    const payload = {
+      surgeryId: parseInt(formData.surgeryId, 10),
+      billingTypeId: parseInt(formData.billingTypeId, 10),
       amount: parseFloat(formData.amount),
-      discount: parseFloat(formData.discount) || 0,
-      discountApplicable: formData.discountApplicable,
-      fromDate: formData.fromDate,
-      toDate: formData.toDate || "",
-      status: editingItem ? editingItem.status : "y"
+      discountAllowed: formData.discountAllowed,
+      effectiveFrom: formData.effectiveFrom,
+      effectiveTo: formData.effectiveTo || null
     }
 
-    if (editingItem) {
-      setSurgeryList(prev => prev.map(item => item.id === editingItem.id ? newItem : item))
-      showPopup("Surgery pricing updated successfully!", "success")
-    } else {
-      setSurgeryList(prev => [newItem, ...prev])
-      showPopup("Surgery pricing added successfully!", "success")
+    try {
+      let response
+      if (editingItem) {
+        response = await putRequest(
+          `${MAS_SURGERY_PRICING}/update/${editingItem.surgeryPricingId}`,
+          payload
+        )
+        if (response.status === 200) {
+          setPopupMessage({
+            message: "Surgery pricing updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              resetForm()
+              fetchSurgeryPricingData(0, false)
+              setCurrentPage(1)
+            }
+          })
+        } else {
+          throw new Error(response.message || "Update failed")
+        }
+      } else {
+        response = await postRequest(`${MAS_SURGERY_PRICING}/create`, payload)
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: "Surgery pricing added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              resetForm()
+              fetchSurgeryPricingData(0, false)
+              setCurrentPage(1)
+            }
+          })
+        } else {
+          throw new Error(response.message || "Save failed")
+        }
+      }
+    } catch (error) {
+      console.error("Error saving surgery pricing:", error)
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
+    } finally {
+      setProcess(false)
     }
+  }
+
+  const resetForm = () => {
+    setEditingItem(null)
     setShowForm(false)
+    setFormData({
+      surgeryId: "",
+      billingTypeId: "",
+      amount: "",
+      discountAllowed: "",
+      effectiveFrom: "",
+      effectiveTo: ""
+    })
+    setSurgerySearchText("")
   }
 
   const showPopup = (message, type) => {
@@ -309,22 +365,42 @@ const SurgeryPricing = () => {
   }
 
   // Status toggle
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, itemId: id, newStatus })
+  const handleSwitchChange = (id, name, newStatus) => {
+    setConfirmDialog({ 
+      isOpen: true, 
+      itemId: id, 
+      newStatus, 
+      itemName: name 
+    })
   }
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.itemId) {
-      setSurgeryList(prev =>
-        prev.map(item =>
-          item.id === confirmDialog.itemId
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
+      setProcess(true)
+      try {
+        const response = await putRequest(
+          `${MAS_SURGERY_PRICING}/status/${confirmDialog.itemId}?status=${confirmDialog.newStatus}`
         )
-      )
-      showPopup(`Surgery ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Surgery pricing ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              fetchSurgeryPricingData(currentPage - 1, false)
+            }
+          })
+        } else {
+          throw new Error(response.message || "Failed to update status")
+        }
+      } catch (error) {
+        console.error("Error updating status:", error)
+        showPopup(FAIL_TO_UPDATE_STS, "error")
+      } finally {
+        setProcess(false)
+      }
     }
-    setConfirmDialog({ isOpen: false, itemId: null, newStatus: false })
+    setConfirmDialog({ isOpen: false, itemId: null, newStatus: "", itemName: "" })
   }
 
   // Format date for display (dd/mm/yyyy)
@@ -347,13 +423,13 @@ const SurgeryPricing = () => {
                     <button type="button" className="btn btn-success me-2" onClick={handleAddClick}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    <button type="button" className="btn btn-success me-2" onClick={handleShowAll}>
-                      <i className="mdi mdi-refresh"></i> Refresh
+                    <button type="button" className="btn btn-success me-2" onClick={handleShowAll} disabled={isShowAllLoading}>
+                      {isShowAllLoading ? <><span className="spinner-border spinner-border-sm me-2" />Loading...</> : <><i className="mdi mdi-refresh"></i> Show All</>}
                     </button>
                   </>
                 )}
                 {showForm && (
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
                     <i className="mdi mdi-arrow-left"></i> Back
                   </button>
                 )}
@@ -386,7 +462,7 @@ const SurgeryPricing = () => {
                       >
                         <option value="">All</option>
                         {billingTypeOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                          <option key={opt.billingTypeId} value={opt.billingTypeId}>{opt.billingTypeName}</option>
                         ))}
                       </select>
                     </div>
@@ -415,56 +491,61 @@ const SurgeryPricing = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Surgery</th>
+                          <th>Surgery Name</th>
                           <th>Billing Type</th>
                           <th>Amount (₹)</th>
-                          <th>Discount (%)</th>
-                          <th>Discount Applicable</th>
+                          <th>Discount Allowed</th>
                           <th>Effective From</th>
-                          <th>To Date</th>
+                          <th>Effective To</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {paginatedList.length > 0 ? (
-                          paginatedList.map(item => (
-                            <tr key={item.id}>
-                              <td>{item.surgeryName}</td>
-                              <td>{item.billingType}</td>
-                              <td>₹{item.amount.toLocaleString()}</td>
-                              <td>{item.discount}%</td>
-                              <td>{item.discountApplicable}</td>
-                              <td>{formatDate(item.fromDate)}</td>
-                              <td>{formatDate(item.toDate)}</td>
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={item.status === "y"}
-                                    onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                    id={`switch-${item.id}`}
-                                  />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>
-                                    {item.status === "y" ? "Active" : "Inactive"}
-                                  </label>
-                                </div>
-                              </td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(item)}
-                                  disabled={item.status !== "y"}
-                                >
-                                  <i className="fa fa-pencil"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                        {surgeryPricingData.length > 0 ? (
+                          surgeryPricingData.map(item => {
+                            const discountAllowedLabel = item.discountAllowed === "Y" ? "Yes" : "No"
+                            return (
+                              <tr key={item.surgeryPricingId}>
+                                <td>{item.surgeryName || '-'}</td>
+                                <td>{item.billingTypeName || '-'}</td>
+                                <td>₹{item.amount?.toLocaleString() || 0}</td>
+                                <td>{discountAllowedLabel}</td>
+                                <td>{formatDate(item.effectiveFrom)}</td>
+                                <td>{formatDate(item.effectiveTo)}</td>
+                                <td>
+                                  <div className="form-check form-switch">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={item.status === "y"}
+                                      onChange={() => handleSwitchChange(
+                                        item.surgeryPricingId,
+                                        item.surgeryName,
+                                        item.status === "y" ? "n" : "y"
+                                      )}
+                                      id={`switch-${item.surgeryPricingId}`}
+                                    />
+                                    <label className="form-check-label px-0" htmlFor={`switch-${item.surgeryPricingId}`}>
+                                      {item.status === "y" ? "Active" : "Inactive"}
+                                    </label>
+                                  </div>
+                                </td>
+                                <td>
+                                  <button
+                                    className="btn btn-sm btn-success me-2"
+                                    onClick={() => handleEdit(item)}
+                                    disabled={item.status !== "y"}
+                                  >
+                                    <i className="fa fa-pencil"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })
                         ) : (
                           <tr>
-                            <td colSpan="9" className="text-center py-4">No records found</td>
+                            <td colSpan="8" className="text-center py-4">No records found</td>
                           </tr>
                         )}
                       </tbody>
@@ -472,11 +553,11 @@ const SurgeryPricing = () => {
                   </div>
 
                   {/* Pagination */}
-                  {surgeryList.length > 0 && totalPages > 0 && (
+                  {totalItems > 0 && totalPages > 0 && (
                     <Pagination
-                      totalItems={totalElements}
+                      totalItems={totalItems}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage + 1}
+                      currentPage={currentPage}
                       onPageChange={handlePageChange}
                       totalPages={totalPages}
                     />
@@ -518,7 +599,7 @@ const SurgeryPricing = () => {
                           ) : filteredSurgeries.length > 0 ? (
                             filteredSurgeries.map((surg) => (
                               <div
-                                key={surg}
+                                key={surg.surgeryId}
                                 className="p-2"
                                 onMouseDown={(e) => {
                                   e.preventDefault()
@@ -528,11 +609,14 @@ const SurgeryPricing = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
-                                <div className="fw-bold">{surg}</div>
+                                <div className="fw-bold">{surg.surgeryName}</div>
+                                <div className="small text-muted">Code: {surg.surgeryCode}</div>
                               </div>
                             ))
-                          ) : (
+                          ) : surgerySearchText.trim() ? (
                             <div className="p-2 text-muted text-center">No surgeries found</div>
+                          ) : (
+                            <div className="p-2 text-muted text-center">Type to search surgeries...</div>
                           )}
                         </PortalDropdown>
                       </div>
@@ -542,13 +626,15 @@ const SurgeryPricing = () => {
                       <label>Billing Type <span className="text-danger">*</span></label>
                       <select
                         className="form-select"
-                        id="billingType"
-                        value={formData.billingType}
+                        id="billingTypeId"
+                        value={formData.billingTypeId}
                         onChange={handleSelectChange}
                         required
+                        disabled={process}
                       >
+                        <option value="">Select Billing Type</option>
                         {billingTypeOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                          <option key={opt.billingTypeId} value={opt.billingTypeId}>{opt.billingTypeName}</option>
                         ))}
                       </select>
                     </div>
@@ -565,35 +651,23 @@ const SurgeryPricing = () => {
                         min="0"
                         step="0.01"
                         required
+                        disabled={process}
                       />
                     </div>
 
                     <div className="form-group col-md-4 mt-3">
-                      <label>Discount (%)</label>
-                      <input
-                        type="number"
-                        className="form-control"
-                        id="discount"
-                        placeholder="Enter discount percentage"
-                        value={formData.discount}
-                        onChange={handleInputChange}
-                        min="0"
-                        max="100"
-                        step="0.01"
-                      />
-                    </div>
-
-                    <div className="form-group col-md-4 mt-3">
-                      <label>Discount Applicable <span className="text-danger">*</span></label>
+                      <label>Discount Allowed <span className="text-danger">*</span></label>
                       <select
                         className="form-select"
-                        id="discountApplicable"
-                        value={formData.discountApplicable}
+                        id="discountAllowed"
+                        value={formData.discountAllowed}
                         onChange={handleSelectChange}
                         required
+                        disabled={process}
                       >
-                        {discountApplicableOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                        <option value="">Select Option</option>
+                        {discountAllowedOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
                     </div>
@@ -603,24 +677,26 @@ const SurgeryPricing = () => {
                       <input
                         type="date"
                         className="form-control"
-                        id="fromDate"
-                        value={formData.fromDate}
+                        id="effectiveFrom"
+                        value={formData.effectiveFrom}
                         onChange={handleInputChange}
                         required
+                        disabled={process}
                       />
                     </div>
 
                     <div className="form-group col-md-4 mt-3">
-                      <label>To Date</label>
+                      <label>Effective To</label>
                       <input
                         type="date"
                         className="form-control"
-                        id="toDate"
-                        value={formData.toDate}
+                        id="effectiveTo"
+                        value={formData.effectiveTo}
                         onChange={handleInputChange}
+                        disabled={process}
                       />
-                      {formData.toDate && new Date(formData.toDate) < new Date(formData.fromDate) && (
-                        <div className="text-danger mt-1">To Date cannot be before From Date</div>
+                      {formData.effectiveTo && new Date(formData.effectiveTo) < new Date(formData.effectiveFrom) && (
+                        <div className="text-danger mt-1">Effective To cannot be before Effective From</div>
                       )}
                     </div>
                   </div>
@@ -629,11 +705,16 @@ const SurgeryPricing = () => {
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid}
+                      disabled={process || !isFormValid}
                     >
-                      {editingItem ? "Update" : "Save"}
+                      {process ? "Processing..." : (editingItem ? "Update" : "Save")}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={resetForm}
+                      disabled={process}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -654,12 +735,17 @@ const SurgeryPricing = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this surgery pricing?
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} 
+                          <strong> {confirmDialog.itemName}</strong> surgery pricing?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={process}>
+                          Cancel
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={process}>
+                          {process ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>

@@ -3,8 +3,11 @@ import { createPortal } from "react-dom"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import { getRequest, putRequest, postRequest } from "../../../service/apiService"
+import { MAS_PROCEDURE_PRICING, MAS_PROCEDURE, MAS_IPD_BILLING_TYPE } from "../../../config/apiConfig"
+import { ADD_PROCEDURE_PRICING_SUCC_MSG, UPDATE_PROCEDURE_PRICING_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
 
-// PortalDropdown component (as provided)
+// PortalDropdown component
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
 
@@ -42,71 +45,66 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 };
 
 const ProcedurePricing = () => {
-  // ---------- State for list view ----------
-  const [procedureList, setProcedureList] = useState([])
+  // State for list view
+  const [procedurePricingData, setProcedurePricingData] = useState([])
   const [loading, setLoading] = useState(false)
-  const [currentPage, setCurrentPage] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
-  const [totalElements, setTotalElements] = useState(0)
-  const [isSearching, setIsSearching] = useState(false)
-  const [isShowAllLoading, setIsShowAllLoading] = useState(false)
+  const [totalItems, setTotalItems] = useState(0)
+  const [process, setProcess] = useState(false)
 
   // Search criteria
   const [procedureNameSearch, setProcedureNameSearch] = useState("")
   const [billingTypeSearch, setBillingTypeSearch] = useState("")
+  const [isSearching, setIsSearching] = useState(false)
+  const [isShowAllLoading, setIsShowAllLoading] = useState(false)
 
   // Form mode
   const [showForm, setShowForm] = useState(false)
   const [editingItem, setEditingItem] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemId: null, newStatus: false })
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemId: null, newStatus: "", itemName: "" })
 
   // Form data
   const [formData, setFormData] = useState({
-    procedureName: "",
-    billingType: "CASH",
-    amount: "",
+    procedureId: "",
+    billingTypeId: "",
+    basePrice: "",
+    discountAllowed: "",
     discount: "",
-    discountApplicable: "No",
-    fromDate: "",
-    toDate: ""
+    effectiveFrom: "",
+    effectiveTo: ""
   })
   const [isFormValid, setIsFormValid] = useState(false)
 
   // Dropdown options
-  const billingTypeOptions = ["CASH", "INSURANCE", "BOTH"]
-  const discountApplicableOptions = ["Yes", "No"]
+  const [billingTypeOptions, setBillingTypeOptions] = useState([])
+  const discountAllowedOptions = [
+    { value: "Y", label: "Yes" },
+    { value: "N", label: "No" }
+  ]
 
-  // ---------- Autocomplete for Procedure Name ----------
+  // Autocomplete for Procedure Name
   const procedureInputRef = useRef(null)
   const [showProcedureDropdown, setShowProcedureDropdown] = useState(false)
   const [procedureSearchText, setProcedureSearchText] = useState("")
-  const [procedureOptions, setProcedureOptions] = useState([])      // full list from API/mock
-  const [filteredProcedures, setFilteredProcedures] = useState([])  // filtered by search
+  const [procedureOptions, setProcedureOptions] = useState([])
+  const [filteredProcedures, setFilteredProcedures] = useState([])
   const [isProcedureLoading, setIsProcedureLoading] = useState(false)
 
-  // Mock procedure list – replace with API call
-  const mockProcedureList = [
-    "Knee Replacement",
-    "Cataract Surgery",
-    "Cardiac Bypass",
-    "Appendectomy",
-    "MRI Scan",
-    "CT Scan",
-    "X-Ray Chest",
-    "Blood Test",
-    "Urine Analysis",
-    "Ultrasound Abdomen"
-  ]
-
-  // Simulate fetching procedure options (like API)
+  // Fetch procedure options for autocomplete
   const fetchProcedureOptions = async () => {
     setIsProcedureLoading(true)
-    // Simulate network delay
-    setTimeout(() => {
-      setProcedureOptions(mockProcedureList)
+    try {
+      const data = await getRequest(`${MAS_PROCEDURE}/getAll/0`)
+      if (data.status === 200 && data.response) {
+        setProcedureOptions(data.response)
+      }
+    } catch (error) {
+      console.error("Error fetching procedure options:", error)
+    } finally {
       setIsProcedureLoading(false)
-    }, 300)
+    }
   }
 
   // Filter procedures based on search text
@@ -116,7 +114,7 @@ const ProcedurePricing = () => {
       return
     }
     const filtered = procedureOptions.filter(proc =>
-      proc.toLowerCase().includes(procedureSearchText.toLowerCase())
+      proc.procedureName?.toLowerCase().includes(procedureSearchText.toLowerCase())
     )
     setFilteredProcedures(filtered)
   }, [procedureSearchText, procedureOptions])
@@ -136,40 +134,52 @@ const ProcedurePricing = () => {
   const handleProcedureSearch = (e) => {
     const value = e.target.value
     setProcedureSearchText(value)
-    setFormData(prev => ({ ...prev, procedureName: value }))
     setShowProcedureDropdown(value.trim() !== "")
   }
 
   // Handle selection from dropdown
-  const handleProcedureSelect = (procedureName) => {
-    setProcedureSearchText(procedureName)
-    setFormData(prev => ({ ...prev, procedureName }))
+  const handleProcedureSelect = (procedure) => {
+    setProcedureSearchText(procedure.procedureName)
+    setFormData(prev => ({ ...prev, procedureId: procedure.procedureId.toString() }))
     setShowProcedureDropdown(false)
   }
 
-  // ---------- Mock data & helper functions (replace with API calls) ----------
-  const fetchProcedurePricingList = async (page = 0, isInitialLoad = false) => {
+  // Fetch billing type options
+  const fetchBillingTypeOptions = async () => {
+    try {
+      const data = await getRequest(`${MAS_IPD_BILLING_TYPE}/getAll/1`)
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setBillingTypeOptions(data.response)
+      }
+    } catch (error) {
+      console.error("Error fetching billing types:", error)
+    }
+  }
+
+  // Fetch procedure pricing list with pagination and filters
+  const fetchProcedurePricingData = async (page = 0, isInitialLoad = false) => {
     if (isInitialLoad) setLoading(true)
     try {
-      // Simulate API response – replace with actual getRequest
-      const mockData = [
-        { id: 1, procedureName: "Knee Replacement", billingType: "CASH", amount: 50000, discount: 10, discountApplicable: "Yes", fromDate: "2025-01-01", toDate: "2025-12-31", status: "y" },
-        { id: 2, procedureName: "Cataract Surgery", billingType: "INSURANCE", amount: 25000, discount: 0, discountApplicable: "No", fromDate: "2025-02-01", toDate: "", status: "y" },
-        { id: 3, procedureName: "Cardiac Bypass", billingType: "BOTH", amount: 150000, discount: 5, discountApplicable: "Yes", fromDate: "2025-01-15", toDate: "2025-06-30", status: "n" }
-      ]
-      // Apply filters
-      let filtered = mockData
-      if (procedureNameSearch.trim()) {
-        filtered = filtered.filter(p => p.procedureName.toLowerCase().includes(procedureNameSearch.toLowerCase()))
+      const params = new URLSearchParams()
+      params.append("page", page)
+      params.append("size", DEFAULT_ITEMS_PER_PAGE)
+      if (billingTypeSearch) params.append("billingTypeId", billingTypeSearch)
+      if (procedureNameSearch) params.append("procedureName", procedureNameSearch)
+
+      const data = await getRequest(`${MAS_PROCEDURE_PRICING}/getAll?${params.toString()}`)
+      
+      if (data.status === 200 && data.response) {
+        setProcedurePricingData(data.response.content || [])
+        setTotalItems(data.response.totalElements || 0)
+        setTotalPages(data.response.totalPages || 0)
+      } else {
+        setProcedurePricingData([])
+        setTotalItems(0)
+        setTotalPages(0)
       }
-      if (billingTypeSearch) {
-        filtered = filtered.filter(p => p.billingType === billingTypeSearch)
-      }
-      setProcedureList(filtered)
-      setTotalElements(filtered.length)
-      setTotalPages(Math.ceil(filtered.length / DEFAULT_ITEMS_PER_PAGE))
-    } catch (err) {
-      console.error("Error fetching procedure pricing:", err)
+    } catch (error) {
+      console.error("Error fetching procedure pricing data:", error)
+      setProcedurePricingData([])
       showPopup("Failed to fetch data", "error")
     } finally {
       if (isInitialLoad) setLoading(false)
@@ -180,14 +190,16 @@ const ProcedurePricing = () => {
 
   // Initial load
   useEffect(() => {
-    fetchProcedurePricingList(0, true)
-    fetchProcedureOptions() // load procedure list for autocomplete
+    fetchProcedurePricingData(0, true)
+    fetchProcedureOptions()
+    fetchBillingTypeOptions()
   }, [])
 
   // Re-fetch when search criteria change
   useEffect(() => {
     if (!showForm) {
-      fetchProcedurePricingList(0, false)
+      fetchProcedurePricingData(0, false)
+      setCurrentPage(1)
     }
   }, [procedureNameSearch, billingTypeSearch])
 
@@ -198,26 +210,22 @@ const ProcedurePricing = () => {
       return
     }
     setIsSearching(true)
-    setCurrentPage(0)
-    fetchProcedurePricingList(0, false)
+    setCurrentPage(1)
+    fetchProcedurePricingData(0, false)
   }
 
   const handleShowAll = () => {
     setIsShowAllLoading(true)
     setProcedureNameSearch("")
     setBillingTypeSearch("")
-    setCurrentPage(0)
-    fetchProcedurePricingList(0, false)
+    setCurrentPage(1)
+    fetchProcedurePricingData(0, false)
   }
 
   // Pagination
-  const paginatedList = procedureList.slice(
-    currentPage * DEFAULT_ITEMS_PER_PAGE,
-    (currentPage + 1) * DEFAULT_ITEMS_PER_PAGE
-  )
-
   const handlePageChange = (page) => {
-    setCurrentPage(page - 1)
+    setCurrentPage(page)
+    fetchProcedurePricingData(page - 1, false)
   }
 
   // Form handling
@@ -231,17 +239,20 @@ const ProcedurePricing = () => {
     setFormData(prev => ({ ...prev, [id]: value }))
   }
 
-  // Validation: fromDate mandatory; toDate optional but must be >= fromDate
+  // Validate form
   useEffect(() => {
-    const requiredValid = formData.procedureName.trim() !== "" &&
-                          formData.billingType !== "" &&
-                          formData.amount !== "" &&
-                          !isNaN(parseFloat(formData.amount)) &&
-                          parseFloat(formData.amount) > 0 &&
-                          formData.fromDate !== ""
+    const requiredValid = 
+      formData.procedureId !== "" &&
+      formData.billingTypeId !== "" &&
+      formData.basePrice !== "" &&
+      !isNaN(parseFloat(formData.basePrice)) &&
+      parseFloat(formData.basePrice) > 0 &&
+      formData.effectiveFrom !== "" &&
+      formData.discountAllowed !== ""
+    
     let toDateValid = true
-    if (formData.toDate) {
-      toDateValid = new Date(formData.toDate) >= new Date(formData.fromDate)
+    if (formData.effectiveTo) {
+      toDateValid = new Date(formData.effectiveTo) >= new Date(formData.effectiveFrom)
     }
     setIsFormValid(requiredValid && toDateValid)
   }, [formData])
@@ -249,59 +260,109 @@ const ProcedurePricing = () => {
   const handleAddClick = () => {
     setEditingItem(null)
     setFormData({
-      procedureName: "",
-      billingType: "CASH",
-      amount: "",
+      procedureId: "",
+      billingTypeId: "",
+      basePrice: "",
+      discountAllowed: "",
       discount: "",
-      discountApplicable: "No",
-      fromDate: "",
-      toDate: ""
+      effectiveFrom: "",
+      effectiveTo: ""
     })
     setProcedureSearchText("")
     setShowProcedureDropdown(false)
     setShowForm(true)
   }
 
-  const handleEdit = (item) => {
+  const handleEdit = async (item) => {
     setEditingItem(item)
     setFormData({
-      procedureName: item.procedureName,
-      billingType: item.billingType,
-      amount: item.amount.toString(),
-      discount: item.discount.toString(),
-      discountApplicable: item.discountApplicable,
-      fromDate: item.fromDate,
-      toDate: item.toDate || ""
+      procedureId: item.procedureId?.toString() || "",
+      billingTypeId: item.billingTypeId?.toString() || "",
+      basePrice: item.basePrice?.toString() || "",
+      discountAllowed: item.discountAllowed || "",
+      discount: item.discount?.toString() || "",
+      effectiveFrom: item.effectiveFrom || "",
+      effectiveTo: item.effectiveTo || ""
     })
-    setProcedureSearchText(item.procedureName)
+    setProcedureSearchText(item.procedureName || "")
     setShowProcedureDropdown(false)
     setShowForm(true)
   }
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
+    setProcess(true)
 
-    const newItem = {
-      id: editingItem ? editingItem.id : Date.now(),
-      procedureName: formData.procedureName,
-      billingType: formData.billingType,
-      amount: parseFloat(formData.amount),
-      discount: parseFloat(formData.discount) || 0,
-      discountApplicable: formData.discountApplicable,
-      fromDate: formData.fromDate,
-      toDate: formData.toDate || "",
-      status: editingItem ? editingItem.status : "y"
+    const payload = {
+      procedureId: parseInt(formData.procedureId, 10),
+      billingTypeId: parseInt(formData.billingTypeId, 10),
+      basePrice: parseFloat(formData.basePrice),
+      discountAllowed: formData.discountAllowed,
+      discount: formData.discount ? parseFloat(formData.discount) : 0,
+      effectiveFrom: formData.effectiveFrom,
+      effectiveTo: formData.effectiveTo || null
     }
 
-    if (editingItem) {
-      setProcedureList(prev => prev.map(item => item.id === editingItem.id ? newItem : item))
-      showPopup("Procedure pricing updated successfully!", "success")
-    } else {
-      setProcedureList(prev => [newItem, ...prev])
-      showPopup("Procedure pricing added successfully!", "success")
+    try {
+      let response
+      if (editingItem) {
+        response = await putRequest(
+          `${MAS_PROCEDURE_PRICING}/update/${editingItem.procedurePricingId}`,
+          payload
+        )
+        if (response.status === 200) {
+          setPopupMessage({
+            message: "Procedure pricing updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              resetForm()
+              fetchProcedurePricingData(0, false)
+              setCurrentPage(1)
+            }
+          })
+        } else {
+          throw new Error(response.message || "Update failed")
+        }
+      } else {
+        response = await postRequest(`${MAS_PROCEDURE_PRICING}/create`, payload)
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: "Procedure pricing added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              resetForm()
+              fetchProcedurePricingData(0, false)
+              setCurrentPage(1)
+            }
+          })
+        } else {
+          throw new Error(response.message || "Save failed")
+        }
+      }
+    } catch (error) {
+      console.error("Error saving procedure pricing:", error)
+      showPopup(FAIL_TO_SAVE_CHANGES, "error")
+    } finally {
+      setProcess(false)
     }
+  }
+
+  const resetForm = () => {
+    setEditingItem(null)
     setShowForm(false)
+    setFormData({
+      procedureId: "",
+      billingTypeId: "",
+      basePrice: "",
+      discountAllowed: "",
+      discount: "",
+      effectiveFrom: "",
+      effectiveTo: ""
+    })
+    setProcedureSearchText("")
   }
 
   const showPopup = (message, type) => {
@@ -309,22 +370,42 @@ const ProcedurePricing = () => {
   }
 
   // Status toggle
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, itemId: id, newStatus })
+  const handleSwitchChange = (id, name, newStatus) => {
+    setConfirmDialog({ 
+      isOpen: true, 
+      itemId: id, 
+      newStatus, 
+      itemName: name 
+    })
   }
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.itemId) {
-      setProcedureList(prev =>
-        prev.map(item =>
-          item.id === confirmDialog.itemId
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
+      setProcess(true)
+      try {
+        const response = await putRequest(
+          `${MAS_PROCEDURE_PRICING}/status/${confirmDialog.itemId}?status=${confirmDialog.newStatus}`
         )
-      )
-      showPopup(`Procedure ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Procedure pricing ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              fetchProcedurePricingData(currentPage - 1, false)
+            }
+          })
+        } else {
+          throw new Error(response.message || "Failed to update status")
+        }
+      } catch (error) {
+        console.error("Error updating status:", error)
+        showPopup(FAIL_TO_UPDATE_STS, "error")
+      } finally {
+        setProcess(false)
+      }
     }
-    setConfirmDialog({ isOpen: false, itemId: null, newStatus: false })
+    setConfirmDialog({ isOpen: false, itemId: null, newStatus: "", itemName: "" })
   }
 
   // Format date for display (dd/mm/yyyy)
@@ -347,13 +428,13 @@ const ProcedurePricing = () => {
                     <button type="button" className="btn btn-success me-2" onClick={handleAddClick}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    <button type="button" className="btn btn-success me-2" onClick={handleShowAll}>
-                      <i className="mdi mdi-refresh"></i> Refresh
+                    <button type="button" className="btn btn-success me-2" onClick={handleShowAll} disabled={isShowAllLoading}>
+                      {isShowAllLoading ? <><span className="spinner-border spinner-border-sm me-2" />Loading...</> : <><i className="mdi mdi-refresh"></i> Show All</>}
                     </button>
                   </>
                 )}
                 {showForm && (
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                  <button type="button" className="btn btn-secondary" onClick={resetForm}>
                     <i className="mdi mdi-arrow-left"></i> Back
                   </button>
                 )}
@@ -386,7 +467,7 @@ const ProcedurePricing = () => {
                       >
                         <option value="">All</option>
                         {billingTypeOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                          <option key={opt.billingTypeId} value={opt.billingTypeId}>{opt.billingTypeName}</option>
                         ))}
                       </select>
                     </div>
@@ -415,53 +496,60 @@ const ProcedurePricing = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Procedure</th>
+                          <th>Procedure Name</th>
                           <th>Billing Type</th>
-                          <th>Amount (₹)</th>
+                          <th>Base Price (₹)</th>
                           <th>Discount (%)</th>
-                          <th>Discount Applicable</th>
+                          <th>Discount Allowed</th>
                           <th>Effective From</th>
-                          <th>To Date</th>
+                          <th>Effective To</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {paginatedList.length > 0 ? (
-                          paginatedList.map(item => (
-                            <tr key={item.id}>
-                              <td>{item.procedureName}</td>
-                              <td>{item.billingType}</td>
-                              <td>₹{item.amount.toLocaleString()}</td>
-                              <td>{item.discount}%</td>
-                              <td>{item.discountApplicable}</td>
-                              <td>{formatDate(item.fromDate)}</td>
-                              <td>{formatDate(item.toDate)}</td>
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={item.status === "y"}
-                                    onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
-                                    id={`switch-${item.id}`}
-                                  />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>
-                                    {item.status === "y" ? "Active" : "Inactive"}
-                                  </label>
-                                </div>
-                              </td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(item)}
-                                  disabled={item.status !== "y"}
-                                >
-                                  <i className="fa fa-pencil"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                        {procedurePricingData.length > 0 ? (
+                          procedurePricingData.map(item => {
+                            const discountAllowedLabel = item.discountAllowed === "Y" ? "Yes" : "No"
+                            return (
+                              <tr key={item.procedurePricingId}>
+                                <td>{item.procedureName || '-'}</td>
+                                <td>{item.billingTypeName || '-'}</td>
+                                <td>₹{item.basePrice?.toLocaleString() || 0}</td>
+                                <td>{item.discount || 0}%</td>
+                                <td>{discountAllowedLabel}</td>
+                                <td>{formatDate(item.effectiveFrom)}</td>
+                                <td>{formatDate(item.effectiveTo)}</td>
+                                <td>
+                                  <div className="form-check form-switch">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={item.status === "y"}
+                                      onChange={() => handleSwitchChange(
+                                        item.procedurePricingId,
+                                        item.procedureName,
+                                        item.status === "y" ? "n" : "y"
+                                      )}
+                                      id={`switch-${item.procedurePricingId}`}
+                                    />
+                                    <label className="form-check-label px-0" htmlFor={`switch-${item.procedurePricingId}`}>
+                                      {item.status === "y" ? "Active" : "Inactive"}
+                                    </label>
+                                  </div>
+                                </td>
+                                <td>
+                                  <button
+                                    className="btn btn-sm btn-success me-2"
+                                    onClick={() => handleEdit(item)}
+                                    disabled={item.status !== "y"}
+                                  >
+                                    <i className="fa fa-pencil"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })
                         ) : (
                           <tr>
                             <td colSpan="9" className="text-center py-4">No records found</td>
@@ -472,11 +560,11 @@ const ProcedurePricing = () => {
                   </div>
 
                   {/* Pagination */}
-                  {procedureList.length > 0 && totalPages > 0 && (
+                  {totalItems > 0 && totalPages > 0 && (
                     <Pagination
-                      totalItems={totalElements}
+                      totalItems={totalItems}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage + 1}
+                      currentPage={currentPage}
                       onPageChange={handlePageChange}
                       totalPages={totalPages}
                     />
@@ -504,6 +592,7 @@ const ProcedurePricing = () => {
                           }}
                           autoComplete="off"
                           required
+                          disabled={process}
                         />
                         <PortalDropdown
                           anchorRef={procedureInputRef}
@@ -518,7 +607,7 @@ const ProcedurePricing = () => {
                           ) : filteredProcedures.length > 0 ? (
                             filteredProcedures.map((proc) => (
                               <div
-                                key={proc}
+                                key={proc.procedureId}
                                 className="p-2"
                                 onMouseDown={(e) => {
                                   e.preventDefault()
@@ -528,11 +617,14 @@ const ProcedurePricing = () => {
                                 onMouseEnter={(e) => e.currentTarget.style.backgroundColor = '#f8f9fa'}
                                 onMouseLeave={(e) => e.currentTarget.style.backgroundColor = 'transparent'}
                               >
-                                <div className="fw-bold">{proc}</div>
+                                <div className="fw-bold">{proc.procedureName}</div>
+                                <div className="small text-muted">Code: {proc.procedureCode}</div>
                               </div>
                             ))
-                          ) : (
+                          ) : procedureSearchText.trim() ? (
                             <div className="p-2 text-muted text-center">No procedures found</div>
+                          ) : (
+                            <div className="p-2 text-muted text-center">Type to search procedures...</div>
                           )}
                         </PortalDropdown>
                       </div>
@@ -542,29 +634,32 @@ const ProcedurePricing = () => {
                       <label>Billing Type <span className="text-danger">*</span></label>
                       <select
                         className="form-select"
-                        id="billingType"
-                        value={formData.billingType}
+                        id="billingTypeId"
+                        value={formData.billingTypeId}
                         onChange={handleSelectChange}
                         required
+                        disabled={process}
                       >
+                        <option value="">Select Billing Type</option>
                         {billingTypeOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                          <option key={opt.billingTypeId} value={opt.billingTypeId}>{opt.billingTypeName}</option>
                         ))}
                       </select>
                     </div>
 
                     <div className="form-group col-md-4 mt-3">
-                      <label>Amount (₹) <span className="text-danger">*</span></label>
+                      <label>Base Price (₹) <span className="text-danger">*</span></label>
                       <input
                         type="number"
                         className="form-control"
-                        id="amount"
-                        placeholder="Enter amount"
-                        value={formData.amount}
+                        id="basePrice"
+                        placeholder="Enter base price"
+                        value={formData.basePrice}
                         onChange={handleInputChange}
                         min="0"
                         step="0.01"
                         required
+                        disabled={process}
                       />
                     </div>
 
@@ -580,20 +675,23 @@ const ProcedurePricing = () => {
                         min="0"
                         max="100"
                         step="0.01"
+                        disabled={process}
                       />
                     </div>
 
                     <div className="form-group col-md-4 mt-3">
-                      <label>Discount Applicable <span className="text-danger">*</span></label>
+                      <label>Discount Allowed <span className="text-danger">*</span></label>
                       <select
                         className="form-select"
-                        id="discountApplicable"
-                        value={formData.discountApplicable}
+                        id="discountAllowed"
+                        value={formData.discountAllowed}
                         onChange={handleSelectChange}
                         required
+                        disabled={process}
                       >
-                        {discountApplicableOptions.map(opt => (
-                          <option key={opt} value={opt}>{opt}</option>
+                        <option value="">Select Option</option>
+                        {discountAllowedOptions.map(opt => (
+                          <option key={opt.value} value={opt.value}>{opt.label}</option>
                         ))}
                       </select>
                     </div>
@@ -603,24 +701,26 @@ const ProcedurePricing = () => {
                       <input
                         type="date"
                         className="form-control"
-                        id="fromDate"
-                        value={formData.fromDate}
+                        id="effectiveFrom"
+                        value={formData.effectiveFrom}
                         onChange={handleInputChange}
                         required
+                        disabled={process}
                       />
                     </div>
 
                     <div className="form-group col-md-4 mt-3">
-                      <label>To Date</label>
+                      <label>Effective To</label>
                       <input
                         type="date"
                         className="form-control"
-                        id="toDate"
-                        value={formData.toDate}
+                        id="effectiveTo"
+                        value={formData.effectiveTo}
                         onChange={handleInputChange}
+                        disabled={process}
                       />
-                      {formData.toDate && new Date(formData.toDate) < new Date(formData.fromDate) && (
-                        <div className="text-danger mt-1">To Date cannot be before From Date</div>
+                      {formData.effectiveTo && new Date(formData.effectiveTo) < new Date(formData.effectiveFrom) && (
+                        <div className="text-danger mt-1">Effective To cannot be before Effective From</div>
                       )}
                     </div>
                   </div>
@@ -629,11 +729,16 @@ const ProcedurePricing = () => {
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid}
+                      disabled={process || !isFormValid}
                     >
-                      {editingItem ? "Update" : "Save"}
+                      {process ? "Processing..." : (editingItem ? "Update" : "Save")}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={resetForm}
+                      disabled={process}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -654,12 +759,17 @@ const ProcedurePricing = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this procedure pricing?
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} 
+                          <strong> {confirmDialog.itemName}</strong> procedure pricing?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Confirm</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={process}>
+                          Cancel
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={process}>
+                          {process ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>

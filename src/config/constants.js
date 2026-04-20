@@ -1176,6 +1176,12 @@ export const  SAVE_OPTION_VALUE = "Failed to save Option Value";
 export const HOSPITAL_ID_NOT_FOUND = "Hospital ID not found. Please login again.";
 
 
+
+// Package Configuration Messages
+export const ADD_PACKAGE_CONFIG_SUCC_MSG = "Package configuration added successfully!";
+export const UPDATE_PACKAGE_CONFIG_SUCC_MSG = "Package configuration updated successfully!";
+
+
 //View And Update Opening Balance Entry
 
 export const OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE = "Opening Balance Submit Report";
@@ -1192,5 +1198,9 @@ export const FETCH_OPENING_BALANCE_DEATAILS_ERR_MSG = "Failed to fetch opening b
 export const SELECT_INDENT_TYPE_WARN_MSG = "Please select indent type before creating indent";
 export const SELECT_REQ_DEPARTMENT_TYPE_WARN_MSG = "Please select requested department type before creating indent";
 export const SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG = "Please select both indent type and requested department type before creating indent";
+
+//Surgery Master
+export const ADD_SURGERY_SUCC_MSG = "Surgery added successfully!";
+export const UPDATE_SURGERY_SUCC_MSG = "Surgery updated successfully!";
 
 
