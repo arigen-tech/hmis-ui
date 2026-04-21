@@ -10,6 +10,12 @@ import Pagination, {
 const OpdPreconsultation = () => {
   const setLoading = (b) => {};
 
+  // ---------- Search State (similar to OPDReports) ----------
+  const [searchData, setSearchData] = useState({
+    mobileNo: "",
+    patientName: "",
+  });
+
   async function fetchPendingPreconsultation() {
     try {
       const data = await getRequest(`${GET_PRECONSULTATION}`);
@@ -27,16 +33,26 @@ const OpdPreconsultation = () => {
   }
 
   useEffect(() => {
-    // Fetching gender data (simulated API response)
     fetchPendingPreconsultation();
   }, []);
+
   const [visits, setVisits] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
+  const [searchQuery, setSearchQuery] = useState(""); // kept for compatibility but not used in filtering
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("");
   const itemsPerPage = 5;
 
-  const filteredVisits = visits;
+  // Filter visits based on search criteria (mobile number and patient name)
+  const filteredVisits = visits.filter((item) => {
+    const mobileMatch =
+      searchData.mobileNo === "" ||
+      (item.mobleNumber && item.mobleNumber.includes(searchData.mobileNo));
+    const nameMatch =
+      searchData.patientName === "" ||
+      (item.patientName &&
+        item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase()));
+    return mobileMatch && nameMatch;
+  });
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [vitalFormData, setVitalFormData] = useState({
@@ -62,8 +78,20 @@ const OpdPreconsultation = () => {
     });
   };
 
+  // Handle search input changes
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
+    const { id, value } = e.target;
+    setSearchData((prev) => ({ ...prev, [id]: value }));
+    setCurrentPage(1);
+  };
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    // Optional: you can log or trigger any side effect
+  };
+
+  const handleReset = () => {
+    setSearchData({ mobileNo: "", patientName: "" });
     setCurrentPage(1);
   };
 
@@ -73,7 +101,7 @@ const OpdPreconsultation = () => {
 
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
-      setSelectedPatient(null); // Unselect if clicking the same patient
+      setSelectedPatient(null);
       setVitalFormData({
         height: "",
         weight: "",
@@ -135,7 +163,6 @@ const OpdPreconsultation = () => {
 
   const handleSaveVitals = (e) => {
     e.preventDefault();
-
     const updatedPatients = visits.map((patient) => {
       if (patient.id === selectedPatient.id) {
         return {
@@ -145,9 +172,7 @@ const OpdPreconsultation = () => {
       }
       return patient;
     });
-
     setVisits(updatedPatients);
-    // showPopup(`Vital details for ${selectedPatient?.patientName} have been saved successfully!`, "success")
   };
 
   async function submitvitals() {
@@ -188,35 +213,68 @@ const OpdPreconsultation = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header  d-flex justify-content-between align-items-center">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">OPD Pre-consultation</h4>
               <div className="d-flex justify-content-end align-items-center">
-                <div className="d-flex align-items-center">
-                  <form
-                    className="d-inline-block searchform me-4"
-                    role="search"
-                  >
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                  <button type="button" className="btn btn-success me-2">
-                    <i className="mdi mdi-plus"></i> Generate Report
-                  </button>
-                </div>
+                <button type="button" className="btn btn-success me-2">
+                  <i className="mdi mdi-plus"></i> Generate Report
+                </button>
               </div>
             </div>
             <div className="card-body">
+              {/* New Search Section (matching OPDReports) */}
+              <div className="mb-4">
+                <div className="card-body">
+                  <div className="row g-4 align-items-end">
+                    <div className="col-md-3">
+                      <label className="form-label fw-semibold">
+                        Patient Mobile No.
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="mobileNo"
+                        placeholder="Enter mobile number"
+                        value={searchData.mobileNo}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-semibold">
+                        Patient Name
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="patientName"
+                        placeholder="Enter patient name"
+                        value={searchData.patientName}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-2">
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary flex-fill"
+                          onClick={handleSearch}
+                        >
+                          Search
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary flex-fill"
+                          onClick={handleReset}
+                        >
+                          Reset
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Patients Table */}
               <div className="table-responsive packagelist">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
@@ -258,8 +316,8 @@ const OpdPreconsultation = () => {
                       <tr>
                         <td colSpan="8" className="text-center text-muted">
                           No records found
-                        </td>
-                      </tr>
+                         </td>
+                       </tr>
                     )}
                   </tbody>
                 </table>
@@ -269,7 +327,7 @@ const OpdPreconsultation = () => {
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
-                      <div className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center">
+                      <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
                         <h6 className="mb-0 fw-bold">
                           Vital Details for {selectedPatient.patientName}
                         </h6>
@@ -435,14 +493,12 @@ const OpdPreconsultation = () => {
               )}
 
               {/* PAGINATION */}
-              <>
-                <Pagination
-                  totalItems={filteredVisits.length}
-                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-              </>
+              <Pagination
+                totalItems={filteredVisits.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>
