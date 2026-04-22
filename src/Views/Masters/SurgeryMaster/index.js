@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_SURGERY, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { MAS_SURGERY, MAS_DEPARTMENT, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 import { ADD_SURGERY_SUCC_MSG, UPDATE_SURGERY_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
@@ -107,7 +107,7 @@ const SurgeryMaster = () => {
 
   const fetchDepartmentData = async () => {
     try {
-      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         // No filter - include all departments for Surgery
         setDepartmentData(data.response);
