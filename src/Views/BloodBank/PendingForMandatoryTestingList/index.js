@@ -47,11 +47,13 @@ const PendingForMandatoryTestingList = () => {
     });
   };
 
+  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+
   const fetchPendingTestingData = async () => {
     try {
       setLoading(true);
 
-      const res = await getRequest(PENDING_MANDATORY_TESTING_LIST);
+      const res = await getRequest(`${PENDING_MANDATORY_TESTING_LIST}?hospitalId=${hospitalId}`);
 
       if (res.status === 200 && res.response) {
         const mappedData = res.response.map((item) => ({

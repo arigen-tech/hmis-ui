@@ -3,7 +3,7 @@ import placeholderImage from "../../../assets/images/placeholder.jpg"
 import OTDashboard from "./OTDashboard"
 import InvestigationModal from "./InvestigationModal"
 import TreatmentModal from "./TreatmentModal"
-import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY } from "../../../config/apiConfig"
+import { OPD_TEMPLATE, MAS_INVESTIGATION, OPD_PATIENT, MAS_DRUG_MAS, DRUG_TYPE, MAS_OPD_SESSION, DOCTOR, MASTERS, MAS_FREQUENCY, GET_WAITING_LIST } from "../../../config/apiConfig"
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
@@ -483,7 +483,7 @@ const GeneralMedicineWaitingList = () => {
       updated[index] = {
         ...updated[index],
         icdDiagId: selectedICD.icdId,
-        icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}`, // ✅ code + name
+        icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}`,
       };
       return updated;
     });
@@ -507,6 +507,25 @@ const GeneralMedicineWaitingList = () => {
   }, []);
 
 
+  const fetchWaitingList = async () => {
+  try {
+    setLoading(true);
+    // debugger
+    const res = await getRequest(`${GET_WAITING_LIST}`);
+
+    if (res?.status === 200 && res?.response) {
+      setWaitingList(res.response); 
+    } else {
+      setWaitingList([]);
+    }
+
+  } catch (error) {
+    console.error("Error fetching waiting list:", error);
+    setWaitingList([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchOpdTemplateData = async () => {
     try {
@@ -565,6 +584,7 @@ const GeneralMedicineWaitingList = () => {
 
 
   useEffect(() => {
+    fetchWaitingList(); 
     fetchDoctorData();
     fetchSessionData();
     fetchMasICDData();
@@ -2244,9 +2264,6 @@ const handleRelease = (patientId) => {
       total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
     }
 
-    // --------------------------
-    // OTHER TYPES (fallback)
-    // --------------------------
     else {
       total = 1;
     }
@@ -5310,7 +5327,7 @@ const handleRelease = (patientId) => {
                     <tr>
                       <th>S.N.</th>
                       <th>Token No.</th>
-                      <th>Employee No.</th>
+                      <th>Patient No.</th>
                       <th>Patient Name</th>
                       <th>Relation</th>
                       <th>Age</th>
@@ -5340,7 +5357,7 @@ const handleRelease = (patientId) => {
                             </span>
                           </td>
 
-                          <td>{item.employeeNo}</td>
+                          <td>{item.patientNo}</td>
                           <td>{item.patientName}</td>
                           <td>{item.relation}</td>
                           <td>{item.age}</td>

@@ -111,12 +111,16 @@ const DonorRegistrationViewUpdate = () => {
     });
   };
 
+  const hospitalId =
+    sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+
   const fetchDonors = async (page = 0, donorName = "", mobileNo = "") => {
     setSearchLoading(true);
     try {
       const params = new URLSearchParams();
       params.append("page", page);
       params.append("size", DEFAULT_ITEMS_PER_PAGE);
+      params.append("hospitalId", hospitalId);
 
       if (donorName && donorName.trim()) {
         params.append("donorName", donorName.trim());
@@ -282,7 +286,7 @@ const DonorRegistrationViewUpdate = () => {
     try {
       setLoading(true);
       const response = await getRequest(
-        `${GET_DONOR_AND_SCREENING_DETAILS}?donorId=${donor.donorId}`,
+        `${GET_DONOR_AND_SCREENING_DETAILS}?donorId=${donor.donorId}&hospitalId=${hospitalId}`,
       );
 
       if (response.status === 200) {
@@ -436,6 +440,7 @@ const DonorRegistrationViewUpdate = () => {
 
     setFormData(updatedForm);
     setErrors((prev) => ({ ...prev, [name]: "" }));
+    setNewScreeningErrors(prev => ({ ...prev, [name]: "" }));
   };
 
   const handleNewScreeningChange = (e) => {
@@ -467,50 +472,27 @@ const DonorRegistrationViewUpdate = () => {
 
     if (!formData.firstName.trim())
       newErrors.firstName = "First Name is required";
+
     if (!formData.lastName.trim()) newErrors.lastName = "Last Name is required";
-    if (!formData.mobileNo.trim())
-      newErrors.mobileNo = "Mobile number is required";
-    else if (!/^\d{10}$/.test(formData.mobileNo))
-      newErrors.mobileNo = "Must be 10 digits";
+
+    if (!/^\d{10}$/.test(formData.mobileNo))
+      newErrors.mobileNo = "Mobile must be 10 digits";
 
     if (!formData.gender) newErrors.gender = "Gender is required";
     if (!formData.relation) newErrors.relation = "Relation is required";
-    if (!formData.dob) newErrors.dob = "Date of Birth is required";
+    if (!formData.dob) newErrors.dob = "DOB is required";
     if (!formData.bloodGroup) newErrors.bloodGroup = "Blood Group is required";
 
-    if (!formData.address1.trim()) newErrors.address1 = "Address 1 is required";
+    if (!formData.address1.trim()) newErrors.address1 = "Address is required";
+
     if (!formData.country) newErrors.country = "Country is required";
     if (!formData.state) newErrors.state = "State is required";
     if (!formData.district) newErrors.district = "District is required";
+
     if (!formData.city.trim()) newErrors.city = "City is required";
-    if (!formData.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
-    else if (!/^\d{6}$/.test(formData.pinCode))
-      newErrors.pinCode = "Must be 6 digits";
 
-    if (!formData.hemoglobin) newErrors.hemoglobin = "Hemoglobin is required";
-    if (!formData.weight) newErrors.weight = "Weight is required";
-    if (!formData.height) newErrors.height = "Height is required";
-    if (!formData.bloodPressure)
-      newErrors.bloodPressure = "Blood Pressure is required";
-    else if (!/^\d{2,3}\/\d{2,3}$/.test(formData.bloodPressure))
-      newErrors.bloodPressure = "Format: 120/80";
-    if (!formData.pulse) newErrors.pulse = "Pulse is required";
-    if (!formData.temperature)
-      newErrors.temperature = "Temperature is required";
-
-    if (!formData.screenResult) {
-      newErrors.screenResult = "Screen Result is required";
-    }
-
-    if (formData.screenResult === "fail") {
-      if (!formData.deferralType.trim()) {
-        newErrors.deferralType = "Deferral Type is required when screen fails";
-      }
-      if (!formData.deferralReason.trim()) {
-        newErrors.deferralReason =
-          "Deferral Reason is required when screen fails";
-      }
-    }
+    if (!/^\d{6}$/.test(formData.pinCode))
+      newErrors.pinCode = "Pin must be 6 digits";
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
@@ -519,32 +501,32 @@ const DonorRegistrationViewUpdate = () => {
   const validateNewScreening = () => {
     const newErrors = {};
 
-    if (!newScreening.screeningDate)
-      newErrors.screeningDate = "Screening Date is required";
-    if (!newScreening.hemoglobin)
-      newErrors.hemoglobin = "Hemoglobin is required";
-    if (!newScreening.weight) newErrors.weight = "Weight is required";
-    if (!newScreening.height) newErrors.height = "Height is required";
-    if (!newScreening.bloodPressure)
-      newErrors.bloodPressure = "Blood Pressure is required";
-    else if (!/^\d{2,3}\/\d{2,3}$/.test(newScreening.bloodPressure))
-      newErrors.bloodPressure = "Format: 120/80";
-    if (!newScreening.pulse) newErrors.pulse = "Pulse is required";
-    if (!newScreening.temperature)
-      newErrors.temperature = "Temperature is required";
-    if (!newScreening.screenResult)
-      newErrors.screenResult = "Screen Result is required";
-    if (!newScreening.conductedBy)
-      newErrors.conductedBy = "Conducted By is required";
+    if (!newScreening.hemoglobin) newErrors.hemoglobin = "Hemoglobin required";
 
-    if (newScreening.screenResult === "fail") {
-      if (!newScreening.deferralType) {
-        newErrors.deferralType = "Deferral Type is required when screen fails";
-      }
-      if (!newScreening.deferralReason) {
-        newErrors.deferralReason =
-          "Deferral Reason is required when screen fails";
-      }
+    if (!newScreening.weight) newErrors.weight = "Weight required";
+
+    if (!newScreening.height) newErrors.height = "Height required";
+
+    if (!/^\d{2,3}\/\d{2,3}$/.test(newScreening.bloodPressure))
+      newErrors.bloodPressure = "Format 120/80";
+
+    if (!newScreening.pulse) newErrors.pulse = "Pulse required";
+
+    if (!newScreening.temperature)
+      newErrors.temperature = "Temperature required";
+
+    if (!newScreening.screenResult)
+      newErrors.screenResult = "Screen Result required";
+
+    if (!newScreening.conductedBy.trim()) newErrors.conductedBy = "Required";
+
+    // 🔴 SAME LOGIC AS FIRST PAGE
+    if (newScreening.screenResult === SCREENING_RESULT_FAIL) {
+      if (!newScreening.deferralType)
+        newErrors.deferralType = "Deferral Type required";
+
+      if (!newScreening.deferralReason.trim())
+        newErrors.deferralReason = "Deferral Reason required";
     }
 
     setNewScreeningErrors(newErrors);
@@ -552,7 +534,10 @@ const DonorRegistrationViewUpdate = () => {
   };
 
   const handleUpdate = async () => {
-    if (!validateForm()) {
+    const isFormValid = validateForm();
+    const isScreeningValid = validateNewScreening();
+
+    if (!isFormValid || !isScreeningValid) {
       showPopup("Please fill all mandatory fields", "warning");
       return;
     }

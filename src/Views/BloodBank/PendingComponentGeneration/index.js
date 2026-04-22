@@ -65,10 +65,12 @@ const PendingComponentGeneration = () => {
     return result;
   };
 
+    const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+
   const fetchPendingData = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(PENDING_COMPONENT_GENERATION_LIST);
+      const response = await getRequest(`${PENDING_COMPONENT_GENERATION_LIST}?hospitalId=${hospitalId}`);
 
       if (response.status === 200 && response.response) {
         const mappedData = response.response.map((item) => ({

@@ -66,11 +66,16 @@ const PendingBloodCollection = () => {
     inpatientId: "",
   });
 
+  const hospitalId =
+    sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+
   const fetchPendingDonors = async (showLoader = true) => {
     try {
       if (showLoader) setLoading(true);
 
       const params = new URLSearchParams();
+
+      params.append("hospitalId", hospitalId);
       if (searchData.donorName)
         params.append("donorName", searchData.donorName);
       if (searchData.donorRegNo)
@@ -192,7 +197,7 @@ const PendingBloodCollection = () => {
       setLoading(true);
 
       const response = await getRequest(
-        `${GET_PENDING_COLLECTION_DETAILS}?donorId=${donor.id}`,
+        `${GET_PENDING_COLLECTION_DETAILS}?donorId=${donor.id}&hospitalId=${hospitalId}`,
       );
 
       if (response?.status === 200 && response?.response) {

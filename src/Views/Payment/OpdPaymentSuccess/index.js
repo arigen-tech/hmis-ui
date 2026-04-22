@@ -15,9 +15,9 @@ const OpdPaymentSuccess = () => {
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
-    generating: null, // format: "token-{visitId}" or "bill-{visitId}"
-    printing: null, // format: "token-{visitId}" or "bill-{visitId}"
-    allBills: false, // for download all bills
+    generating: null, 
+    printing: null, 
+    allBills: false,
   });
 
   const {

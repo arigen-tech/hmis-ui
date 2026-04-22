@@ -188,7 +188,8 @@ const DonorRegistration = () => {
     const newErrors = {};
     const { personal, screening } = formData;
 
-    if (!personal.firstName.trim()) newErrors.firstName = "First Name is required";
+    if (!personal.firstName.trim())
+      newErrors.firstName = "First Name is required";
     if (!personal.lastName.trim()) newErrors.lastName = "Last Name is required";
     if (!personal.relation) newErrors.relation = "Relation is required";
     if (!personal.gender) newErrors.gender = "Gender is required";
@@ -201,8 +202,6 @@ const DonorRegistration = () => {
     if (!personal.city.trim()) newErrors.city = "City is required";
     if (!personal.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
     if (!personal.mobileNo.trim()) newErrors.mobileNo = "Mobile is required";
-    if (!screening.hemoglobin) newErrors.hemoglobin = "Hemoglobin is required";
-    if (!screening.screenResult) newErrors.screenResult = "Screen Result required";
     if (!personal.relation) newErrors.relation = "Relation is required";
     if (!personal.gender) newErrors.gender = "Gender is required";
     if (!personal.dob) newErrors.dob = "DOB is required";
@@ -213,6 +212,18 @@ const DonorRegistration = () => {
     if (!personal.district) newErrors.district = "District is required";
     if (!personal.city.trim()) newErrors.city = "City is required";
     if (!personal.pinCode.trim()) newErrors.pinCode = "Pin Code is required";
+
+    if (!screening.hemoglobin) newErrors.hemoglobin = "Hemoglobin is required";
+    if (!screening.weight) newErrors.weight = "Weight is required";
+    if (!screening.height) newErrors.height = "Height is required";
+    if (!screening.bloodPressure)
+      newErrors.bloodPressure = "Blood Pressure is required";
+    if (!screening.pulse) newErrors.pulse = "Pulse Rate is required";
+    if (!screening.temperature)
+      newErrors.temperature = "Temperature is required";
+    if (!screening.screenResult)
+      newErrors.screenResult = "Screen Result required";
+
     if (screening.screenResult === SCREENING_RESULT_FAIL) {
       if (!screening.deferralType)
         newErrors.deferralType = DEFERAL_TYPE_REQUIRED_MSG;

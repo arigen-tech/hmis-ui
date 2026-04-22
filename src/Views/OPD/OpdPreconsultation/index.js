@@ -1,14 +1,22 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import Popup from "../../../Components/popup";
-import { GET_PRECONSULTATION, SET_VITALS } from "../../../config/apiConfig";
+import { GET_PRECONSULTATION_LIST, SET_VITALS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 
 const OpdPreconsultation = () => {
-  const setLoading = (b) => {};
+
+  const [loading, setLoading] = useState(true);
+  const [visits, setVisits] = useState([]);
+  const [searchQuery, setSearchQuery] = useState(""); // kept for compatibility but not used in filtering
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
+  const itemsPerPage = 5;
+
+
 
   // ---------- Search State (similar to OPDReports) ----------
   const [searchData, setSearchData] = useState({
@@ -18,7 +26,8 @@ const OpdPreconsultation = () => {
 
   async function fetchPendingPreconsultation() {
     try {
-      const data = await getRequest(`${GET_PRECONSULTATION}`);
+      setLoading(true);
+      const data = await getRequest(`${GET_PRECONSULTATION_LIST}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         console.log(data.response);
         setVisits(data.response);
@@ -35,12 +44,6 @@ const OpdPreconsultation = () => {
   useEffect(() => {
     fetchPendingPreconsultation();
   }, []);
-
-  const [visits, setVisits] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(""); // kept for compatibility but not used in filtering
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
 
   // Filter visits based on search criteria (mobile number and patient name)
   const filteredVisits = visits.filter((item) => {
@@ -187,11 +190,11 @@ const OpdPreconsultation = () => {
       spo2: vitalFormData.spo2,
       bpSystolic: vitalFormData.systolic,
       bpDiastolic: vitalFormData.diastolic,
-      patientId: selectedPatient.patient.id,
-      visitId: selectedPatient.id,
-      departmentId: selectedPatient.department.id,
+      patientId: selectedPatient.patientId,
+      visitId: selectedPatient.visitId,
+      departmentId: selectedPatient.departmentId,
       hospitalId: sessionStorage.getItem("hospitalId"),
-      doctorId: selectedPatient.doctor.userId,
+      doctorId: selectedPatient.doctorId,
       lastChgBy: sessionStorage.getItem("username"),
     };
     try {

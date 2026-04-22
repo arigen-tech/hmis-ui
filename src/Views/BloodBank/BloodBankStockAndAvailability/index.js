@@ -1,15 +1,20 @@
 import { useEffect, useState, useRef } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 import {
   BANK_BLOOD_STOCK_AVAILABILITY,
   MAS_BLOOD_COLLECTION_TYPE,
   MAS_BLOOD_COMPONENT,
   MAS_BLOOD_INVENTORY_STATUS,
   MAS_BLOODGROUP,
+  STOCK_REPORT_DETAIL,
+  STOCK_REPORT_SUMMARY,
 } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 const BloodBankStockAndAvailability = () => {
   const [popupMessage, setPopupMessage] = useState(null);
@@ -20,8 +25,9 @@ const BloodBankStockAndAvailability = () => {
   const [tableData, setTableData] = useState([]);
   const [inventoryStatusData, setInventoryStatusData] = useState([]);
   const [isTableLoading, setIsTableLoading] = useState(false);
-  const debounceTimerRef = useRef(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [reportLoading, setReportLoading] = useState(false);
   const [filters, setFilters] = useState({
     bloodGroupId: "",
     componentId: "",
@@ -55,14 +61,33 @@ const BloodBankStockAndAvailability = () => {
         fetchCollectionTypeData(),
         fetchInventoryStatusData(),
       ]);
-      await fetchStockData();
     };
     loadInitialData();
   }, []);
 
   useEffect(() => {
     fetchStockData();
-  }, [filters, tableView]);
+  }, [tableView]);
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    fetchStockData();
+  };
+
+  const handleReset = () => {
+    const resetFilters = {
+      bloodGroupId: "",
+      componentId: "",
+      inventoryStatus: "",
+      expiryFilter: "",
+      collectionType: "",
+    };
+
+    setFilters(resetFilters);
+    setCurrentPage(1);
+
+    fetchStockData(resetFilters);
+  };
 
   const fetchInventoryStatusData = async () => {
     try {
@@ -137,27 +162,31 @@ const BloodBankStockAndAvailability = () => {
     }
   };
 
-  const fetchStockData = async () => {
+  const hospitalId =
+    sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+
+  const fetchStockData = async (customFilters = filters) => {
     try {
       setIsTableLoading(true);
 
       const params = new URLSearchParams();
 
-      if (filters.bloodGroupId)
-        params.append("bloodGroupId", filters.bloodGroupId);
-      if (filters.componentId)
-        params.append("componentId", filters.componentId);
-      if (filters.inventoryStatus)
-        params.append("inventoryStatus", Number(filters.inventoryStatus));
-      if (filters.expiryFilter)
-        params.append("expiryFilter", filters.expiryFilter);
-      if (filters.collectionType)
-        params.append("collectionType", filters.collectionType);
+      if (customFilters.bloodGroupId)
+        params.append("bloodGroupId", customFilters.bloodGroupId);
+      if (customFilters.componentId)
+        params.append("componentId", customFilters.componentId);
+      if (customFilters.inventoryStatus)
+        params.append("inventoryStatus", Number(customFilters.inventoryStatus));
+      if (customFilters.expiryFilter)
+        params.append("expiryFilter", customFilters.expiryFilter);
+      if (customFilters.collectionType)
+        params.append("collectionType", customFilters.collectionType);
+      params.append("hospitalId", hospitalId);
 
       params.append("viewType", tableView);
 
       const res = await getRequest(
-        `${BANK_BLOOD_STOCK_AVAILABILITY}?${params.toString()}`
+        `${BANK_BLOOD_STOCK_AVAILABILITY}?${params.toString()}`,
       );
 
       if (res?.status === 200 && res?.response) {
@@ -169,6 +198,52 @@ const BloodBankStockAndAvailability = () => {
       showPopup("Failed to load stock data", "error");
     } finally {
       setIsTableLoading(false);
+    }
+  };
+
+
+  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+
+const sectionId = sessionStorage.getItem("sectionId") || localStorage.getItem("sectionId");
+
+const itemClassId = 1;
+
+  const generateReport = async () => {
+    try {
+      setReportLoading(true);
+      setPdfUrl(null);
+
+      const params = new URLSearchParams();
+
+      params.append("hospitalId", hospitalId);
+      params.append("departmentId", departmentId || 0);
+      params.append("itemClassId", itemClassId || 0);
+      params.append("sectionId", sectionId || 0);
+      params.append("itemId", filters.componentId || 0);
+      params.append("flag", "d");
+
+      const baseUrl =
+        tableView === "S" ? STOCK_REPORT_SUMMARY : STOCK_REPORT_DETAIL;
+
+      const response = await fetch(`${baseUrl}?${params.toString()}`, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+          Authorization: `Bearer ${localStorage.getItem("token")}`, // if needed
+        },
+      });
+
+      if (!response.ok) throw new Error("Report generation failed");
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+
+      setPdfUrl(fileURL);
+    } catch (error) {
+      console.error(error);
+      showPopup("Failed to generate report", "error");
+    } finally {
+      setReportLoading(false);
     }
   };
 
@@ -227,14 +302,15 @@ const BloodBankStockAndAvailability = () => {
                     {componentData.map((comp) => (
                       <option key={comp.id} value={comp.id}>
                         {comp.name}
+                        {" [ " + comp.code + " ]"}
                       </option>
                     ))}
                   </select>
                 </div>
               </div>
 
-              {/* INVENTORY FILTERS */}
-              <div className="row mb-4">
+              {/* INVENTORY FILTERS + ACTION BUTTONS */}
+              <div className="row mb-4 align-items-end">
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Inventory Status</label>
                   <select
@@ -261,9 +337,9 @@ const BloodBankStockAndAvailability = () => {
                     onChange={handleFilterChange}
                   >
                     <option value="">Select Expiry</option>
-                    <option value="24">Expiring in 24 hrs</option>
-                    <option value="3">Expiring in 3 days</option>
-                    <option value="7">Expiring in 7 days</option>
+                    <option value="24">24 hrs</option>
+                    <option value="3">3 days</option>
+                    <option value="7">7 days</option>
                   </select>
                 </div>
 
@@ -282,6 +358,50 @@ const BloodBankStockAndAvailability = () => {
                       </option>
                     ))}
                   </select>
+                </div>
+
+                {/* BUTTONS */}
+                <div className="col-md-3 d-flex gap-2">
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={handleSearch}
+                    disabled={isTableLoading}
+                  >
+                    {isTableLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Searching...
+                      </>
+                    ) : (
+                      "Search"
+                    )}
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={handleReset}
+                    disabled={isTableLoading}
+                  >
+                    Reset
+                  </button>
+
+                  <button
+                    type="button"
+                    className="btn btn-primary"
+                    onClick={generateReport}
+                    disabled={reportLoading || isTableLoading}
+                  >
+                    {reportLoading ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-2"></span>
+                        Generating...
+                      </>
+                    ) : (
+                      "Report"
+                    )}
+                  </button>
                 </div>
               </div>
 
@@ -325,14 +445,6 @@ const BloodBankStockAndAvailability = () => {
                       </label>
                     </div>
                   </div>
-                  <div>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                    >
-                      Report
-                    </button>
-                  </div>
                 </div>
               </div>
 
@@ -343,7 +455,6 @@ const BloodBankStockAndAvailability = () => {
                     <h6 className="mb-0 fw-bold">Blood Bank Stock Summary</h6>
                   </div>
                   <div className="card-body p-0 position-relative">
-                   
                     <div className="table-responsive">
                       <table className="table table-bordered table-hover align-middle mb-0">
                         <thead className="table-light">
@@ -388,7 +499,6 @@ const BloodBankStockAndAvailability = () => {
                     <h6 className="mb-0 fw-bold">Detailed Blood Stock List</h6>
                   </div>
                   <div className="card-body p-0 position-relative">
-                    
                     <div className="table-responsive">
                       <table className="table table-bordered table-hover align-middle mb-0">
                         <thead className="table-light">
@@ -428,8 +538,17 @@ const BloodBankStockAndAvailability = () => {
                   </div>
                 </div>
               )}
-
-             
+              {pdfUrl && (
+                <PdfViewer
+                  pdfUrl={pdfUrl}
+                  name={
+                    tableView === "S"
+                      ? "Stock Summary Report"
+                      : "Stock Detail Report"
+                  }
+                  onClose={() => setPdfUrl(null)}
+                />
+              )}
             </div>
           </div>
         </div>
