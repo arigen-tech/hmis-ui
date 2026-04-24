@@ -1,5 +1,7 @@
 export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://localhost:8080'
+
+
 
 //common Apis Endponints
 export const MASTERS = `/master`;
@@ -555,3 +557,12 @@ export const MAS_SURGERY = `${MASTERS}/masSurgery`;
 
 export const MAS_SURGERY_PRICING = `${MASTERS}/masSurgeryPricing`;
 export const MAS_PROCEDURE_PRICING = `${MASTERS}/masProcedurePricing`;
+
+export const SEARCH_PROCEDURE_SURGERY_URL = `${MASTERS}/searchProcedureAndSurgery/getAll`;
+export const SEARCH_STORE_ITEMS_URL = `${MASTERS}/masStoreItem/search`;
+export const GET_ITEM_DETAILS_URL = `${INVENTORY}/item`;
+export const CREATE_BILLING_TEMPLATE_URL = `${MASTERS}/billingTemplate/create`;
+export const UPDATE_BILLING_TEMPLATE_URL = `${MASTERS}/billingTemplate/update`;
+export const UPDATE_TEMPLATE_STATUS_URL = `${MASTERS}/billingTemplate/status`;
+export const SEARCH_TEMPLATES_URL = `${MASTERS}/billingTemplate/searchTemplates`;
+export const GET_TEMPLATE_BY_ID_URL = `${MASTERS}/billingTemplate/getById`;
