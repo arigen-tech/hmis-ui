@@ -1,22 +1,21 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import Popup from "../../../Components/popup";
-import { GET_PRECONSULTATION_LIST, SET_VITALS } from "../../../config/apiConfig";
+import {
+  GET_PRECONSULTATION_LIST,
+  SET_VITALS,
+} from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
 
 const OpdPreconsultation = () => {
-
   const [loading, setLoading] = useState(true);
   const [visits, setVisits] = useState([]);
-  const [searchQuery, setSearchQuery] = useState(""); // kept for compatibility but not used in filtering
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
-
-
+  const [totalItems, setTotalItems] = useState(0);
 
   // ---------- Search State (similar to OPDReports) ----------
   const [searchData, setSearchData] = useState({
@@ -24,26 +23,30 @@ const OpdPreconsultation = () => {
     patientName: "",
   });
 
-  async function fetchPendingPreconsultation() {
+  useEffect(() => {
+    fetchPendingPreconsultation(currentPage - 1, DEFAULT_ITEMS_PER_PAGE);
+  }, [currentPage]);
+
+  async function fetchPendingPreconsultation(
+    page = 0,
+    size = DEFAULT_ITEMS_PER_PAGE,
+  ) {
     try {
       setLoading(true);
-      const data = await getRequest(`${GET_PRECONSULTATION_LIST}`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        console.log(data.response);
-        setVisits(data.response);
-      } else {
-        console.error("Unexpected API response format:", data);
+      const data = await getRequest(
+        `${GET_PRECONSULTATION_LIST}?page=${page}&size=${size}&mobile=${searchData.mobileNo}&name=${searchData.patientName}`,
+      );
+
+      if (data.status === 200) {
+        setVisits(data.response.content);
+        setTotalItems(data.response.totalElements); // IMPORTANT
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
     }
   }
-
-  useEffect(() => {
-    fetchPendingPreconsultation();
-  }, []);
 
   // Filter visits based on search criteria (mobile number and patient name)
   const filteredVisits = visits.filter((item) => {
@@ -53,7 +56,9 @@ const OpdPreconsultation = () => {
     const nameMatch =
       searchData.patientName === "" ||
       (item.patientName &&
-        item.patientName.toLowerCase().includes(searchData.patientName.toLowerCase()));
+        item.patientName
+          .toLowerCase()
+          .includes(searchData.patientName.toLowerCase()));
     return mobileMatch && nameMatch;
   });
 
@@ -90,18 +95,14 @@ const OpdPreconsultation = () => {
 
   const handleSearch = () => {
     setCurrentPage(1);
-    // Optional: you can log or trigger any side effect
   };
 
   const handleReset = () => {
     setSearchData({ mobileNo: "", patientName: "" });
-    setCurrentPage(1);
+    fetchPendingPreconsultation(0, DEFAULT_ITEMS_PER_PAGE);
   };
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredVisits.slice(indexOfFirst, indexOfLast);
-
+  const currentItems = visits;
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
       setSelectedPatient(null);
@@ -209,6 +210,9 @@ const OpdPreconsultation = () => {
     } catch (error) {
       console.error("Error:", error);
     }
+  }
+  if (loading) {
+    return <LoadingScreen />;
   }
 
   return (
@@ -319,8 +323,8 @@ const OpdPreconsultation = () => {
                       <tr>
                         <td colSpan="8" className="text-center text-muted">
                           No records found
-                         </td>
-                       </tr>
+                        </td>
+                      </tr>
                     )}
                   </tbody>
                 </table>
@@ -497,7 +501,7 @@ const OpdPreconsultation = () => {
 
               {/* PAGINATION */}
               <Pagination
-                totalItems={filteredVisits.length}
+                totalItems={totalItems} // from backend
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                 currentPage={currentPage}
                 onPageChange={setCurrentPage}
