@@ -48,6 +48,7 @@ const defaultVisionForm = {
     re: { uncorrected: "", pinhole: "", bestCorrected: "" },
     le: { uncorrected: "", pinhole: "", bestCorrected: "" },
   },
+  fundusGlowText: "", // new field for the text input
   retinoscopy: {
     re: { axis: "" },
     le: { axis: "" },
@@ -84,6 +85,11 @@ const posteriorLabels = {
   opticDisc: "Optic Disc", foveaMacula: "Fovea & Macula",
   vitreous: "Vitreous", bloodVessels: "Blood Vessels", retina: "Retina",
 };
+
+// Vision options for dropdowns
+const visionOptions = [
+  "6/6", "6/9", "6/12", "6/18", "6/24", "6/36", "6/60", "CF", "HM", "PL", "NPL"
+];
 
 const OpdVision = () => {
   const [searchData, setSearchData] = useState({ mobileNo: "", patientName: "" });
@@ -148,6 +154,10 @@ const OpdVision = () => {
       ...prev,
       fundusGlow: { ...prev.fundusGlow, [eye]: { ...prev.fundusGlow[eye], [field]: value } },
     }));
+  };
+
+  const handleFundusGlowTextChange = (e) => {
+    setFormData((prev) => ({ ...prev, fundusGlowText: e.target.value }));
   };
 
   const handleRetinoscopyChange = (eye, value) => {
@@ -217,24 +227,22 @@ const OpdVision = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2 mb-0">OPD Vision Examination</h4>
               <div className="d-flex justify-content-end align-items-center">
-                
-
-                {showForm ? ( <button
-                  type="button"
-                  className="btn btn-secondary me-2"
-                  onClick={()=>setShowForm(false)}
-                >
-Back
-                </button>):
-                
-                 <button
-                  type="button"
-                  className="btn btn-success me-2"
-                >
- Refresh All
-                </button>
-                
-                }
+                {showForm ? ( 
+                  <button
+                    type="button"
+                    className="btn btn-secondary me-2"
+                    onClick={() => setShowForm(false)}
+                  >
+                    Back
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    className="btn btn-success me-2"
+                  >
+                    Refresh All
+                  </button>
+                )}
               </div>
             </div>
 
@@ -329,15 +337,12 @@ Back
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
-
-                     
-
                       <div className="card-body">
                         <form onSubmit={handleSave}>
 
                           {/* ---- Vision (Table) ---- */}
-                          <div className="row mb-4">
-                            <div className="col-12 mb-2">
+                          <div className="row ">
+                            <div className="col-12 ">
                               <h6 className="fw-bold bg-light text-primary border-bottom pb-1">Vision</h6>
                             </div>
                             <div className="col-12">
@@ -403,13 +408,16 @@ Back
                                         </select>
                                       </td>
                                       <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="e.g., 6/6-20/25"
+                                        <select
+                                          className="form-select form-select-sm"
                                           value={formData.fundusGlow.re.bestCorrected}
                                           onChange={(e) => handleFundusGlowChange("re", "bestCorrected", e.target.value)}
-                                        />
+                                        >
+                                          <option value="">Select</option>
+                                          {visionOptions.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                          ))}
+                                        </select>
                                       </td>
                                       <td>
                                         <select
@@ -452,13 +460,16 @@ Back
                                         </select>
                                       </td>
                                       <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="e.g., 6/6-20/25"
+                                        <select
+                                          className="form-select form-select-sm"
                                           value={formData.fundusGlow.le.bestCorrected}
                                           onChange={(e) => handleFundusGlowChange("le", "bestCorrected", e.target.value)}
-                                        />
+                                        >
+                                          <option value="">Select</option>
+                                          {visionOptions.map(opt => (
+                                            <option key={opt} value={opt}>{opt}</option>
+                                          ))}
+                                        </select>
                                       </td>
                                     </tr>
                                     <tr>
@@ -502,13 +513,22 @@ Back
                                         </select>
                                       </td>
                                       <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="e.g., N5-J2"
+                                        <select
+                                          className="form-select form-select-sm"
                                           value=""
-                                          readOnly
-                                        />
+                                          onChange={() => {}}
+                                        >
+                                          <option value="">Select</option>
+                                          <option value="N6">N6</option>
+                                          <option value="N8">N8</option>
+                                          <option value="N10">N10</option>
+                                          <option value="N12">N12</option>
+                                          <option value="N14">N14</option>
+                                          <option value="N18">N18</option>
+                                          <option value="N24">N24</option>
+                                          <option value="N36">N36</option>
+                                          <option value="N48">N48</option>
+                                        </select>
                                       </td>
                                       <td>
                                         <select
@@ -549,18 +569,43 @@ Back
                                         </select>
                                       </td>
                                       <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="e.g., N5-J2"
+                                        <select
+                                          className="form-select form-select-sm"
                                           value=""
-                                          readOnly
-                                        />
+                                          onChange={() => {}}
+                                        >
+                                          <option value="">Select</option>
+                                          <option value="N6">N6</option>
+                                          <option value="N8">N8</option>
+                                          <option value="N10">N10</option>
+                                          <option value="N12">N12</option>
+                                          <option value="N14">N14</option>
+                                          <option value="N18">N18</option>
+                                          <option value="N24">N24</option>
+                                          <option value="N36">N36</option>
+                                          <option value="N48">N48</option>
+                                        </select>
                                       </td>
                                     </tr>
                                   </tbody>
                                 </table>
                               </div>
+                            </div>
+                          </div>
+
+                          {/* ---- Fundus Glow Text Field (NEW) ---- */}
+                          <div className="row mb-3 align-items-center">
+                            <div className="col-md-2">
+                              <label className="form-label fw-semibold mb-0">Fundus Glow</label>
+                            </div>
+                            <div className="col-md-6">
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={formData.fundusGlowText}
+                                onChange={handleFundusGlowTextChange}
+                                placeholder="Enter fundus glow findings"
+                              />
                             </div>
                           </div>
 
@@ -730,10 +775,10 @@ Back
                                                 onChange={(e) => handleMeasurementsChange("re", "iol", e.target.value)}
                                               />
                                             </td>
-                                            <td colSpan="5"> </td>
+                                            <td colSpan="5">  </td>
                                           </tr>
                                           <tr>
-                                            <td colSpan="5"> </td>
+                                            <td colSpan="5">  </td>
                                             <td>
                                               <input
                                                 type="text"
