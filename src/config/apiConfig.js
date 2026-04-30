@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = 'http://localhost:8080'
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = 'http://localhost:8080'
 
 
 
@@ -180,7 +180,34 @@ export const DRUG_TYPE = {
 export const WARD_ID = 10;
 export const MAS_ROOM_CATEGORY = `${MASTERS}/mas-room-category`;
 export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
+
 export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
+
+//OPD waiting list
+export const DOCTOR_BY_DEPARTMENT = `${DOCTOR}/doctorsByDepartment`;
+export const MAS_OPD_SESSION_GET_ALL = `${MAS_OPD_SESSION}/getAll/1`;
+export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
+export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
+export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
+export const WARD_DEPARTMENT_GET_ALL_BY_CATEGORY = `${MASTERS}/ward-department/getAllBy`;
+export const PATIENT_ACTIVE_VISIT_SEARCH = `${OPD_PATIENT}/activeVisit/search`;
+export const PATIENT_UPDATE_STATUS = `${OPD_PATIENT}/update-status`;
+export const PATIENT_OPD_BY_VISIT = `${OPD_PATIENT}/getOpdByVisit`;
+export const MAS_INVESTIGATION_UNIQUE_TYPES = `${MAS_INVESTIGATION}/uniqueInvestigation/types`;
+export const MAS_INVESTIGATION_BY_MAIN_CHARGE_CODE = `${MAS_INVESTIGATION}/dgMasInvestigationByMainChargeCodeId`;
+export const MAS_MEDICAL_HISTORY_GET_ALL = `${MASTERS}/masMedicalHistory/getAll/1`;
+export const MAS_SYMPTOMS_GET_ALL = `${MASTERS}/masSymptoms/getAllSymptoms/1`;
+export const MAS_TREATMENT_ADVISE_GET_ALL = `${MASTERS}/masTreatmentAdvise/getAll/1`;
+export const MAS_OPD_MEDICAL_ADVISE_GET_ALL = `${MASTERS}/masOpdMedicalAdvise/getAll/0`;
+export const OPD_TEMPLATE_GET_ALL = `${OPD_TEMPLATE}/getAll/1`;
+export const OPD_TEMPLATE_GET_ALL_PATH = `${OPD_TEMPLATE}/getAll`;
+export const OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES = `${OPD_TEMPLATE}/getInvestigationsTemplates`;
+export const OPD_TEMPLATE_SAVE = `${OPD_TEMPLATE}/save`;
+export const OPD_TEMPLATE_UPDATE_TREATMENT = `${OPD_TEMPLATE}/updateOpdTemplateTreatment`;
+export const OPD_TEMPLATE_UPDATE = `${OPD_TEMPLATE}/update-opdTemplate`;
+
+//
+
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
 export const MAS_ROOM = `${MASTERS}/mas-room`;

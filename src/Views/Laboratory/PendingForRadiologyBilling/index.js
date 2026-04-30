@@ -127,7 +127,7 @@ const PendingForRadiologyBilling = () => {
           age: item.age || "N/A",
           gender: item.gender || "N/A",
           appointmentDate: item.appointmentDate,
-          orderDate:item.orderDate,
+          orderDate: item.orderDate,
           billingType: item.billingType || "Radiology Services",
           amount: item.billAmount || 0,
           billingStatus: "Pending",
@@ -1043,7 +1043,7 @@ const PendingForRadiologyBilling = () => {
                                 </>
                               ) : (
                                 <>
-                                  <i className="icofont-search me-1"></i> Search
+                                  <i className="mdi mdi-magnify"></i> Search
                                 </>
                               )}
                             </button>
@@ -1253,8 +1253,7 @@ const PendingForRadiologyBilling = () => {
                           </h6>
                         </div>
                         <div className="card-body">
-                          <div className="mb-3">
-                          </div>
+                          <div className="mb-3"></div>
 
                           <table className="table table-bordered">
                             <thead>
@@ -1374,7 +1373,6 @@ const PendingForRadiologyBilling = () => {
                                                         <li
                                                           key={i}
                                                           className="list-group-item list-group-item-action"
-                                                          
                                                           style={{
                                                             backgroundColor:
                                                               "#e3e8e6",
@@ -1789,7 +1787,11 @@ const PendingForRadiologyBilling = () => {
                                         type="button"
                                         className="btn btn-danger"
                                         onClick={() => removeRow(index)}
-                                        disabled={formData.rows.length === 1||row.type === "investigation"||row.type === "package"}
+                                        disabled={
+                                          formData.rows.length === 1 ||
+                                          row.type === "investigation" ||
+                                          row.type === "package"
+                                        }
                                       >
                                         <i className="icofont-close"></i>
                                       </button>

@@ -3,12 +3,12 @@ import placeholderImage from "../../../assets/images/placeholder.jpg"
 import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard"
 import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal"
 import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal"
-import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS } from "../../../config/apiConfig";
+import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS, OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup/index";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
-import MasFamilyModel from "../GeneralMedicineWaitingList/FaimalyHistryModel"
+import MasFamilyModel from "../GeneralMedicineWaitingList/FamilyHistryModel"
 import Pagination,{DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"
 
 const OpdRRecallPatient = () => {
@@ -1117,7 +1117,7 @@ const updateDrug = (selectedDrug, index) => {
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
       setInvestigationTemplateLoading(true)
-      const response = await getRequest(`${OPD_TEMPLATE}/getAllTemplateInvestigations/${flag}`)
+      const response = await getRequest(`${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}`)
       if (response && response.response) {
         setInvestigationTemplates(response.response)
       } else {

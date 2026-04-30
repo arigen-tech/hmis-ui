@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getRequest, postRequest } from "../../../../service/apiService";
-import { DOCTOR, MAS_DEPARTMENT, FILTER_OPD_DEPT, OPD_PATIENT } from "../../../../config/apiConfig";
+import { DOCTOR_BY_SPECIALITY, DOCTOR, MAS_DEPARTMENT_GET_ALL, FILTER_OPD_DEPT, PATIENT_ACTIVE_VISIT_SEARCH } from "../../../../config/apiConfig";
 import LoadingScreen from "../../../../Components/Loading/index";
 
 const PatientWaitingList = () => {
@@ -20,7 +20,7 @@ const PatientWaitingList = () => {
   // -------------------- Fetch Department --------------------
   const fetchDepartmentData = async () => {
     try {
-      const data = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      const data = await getRequest(MAS_DEPARTMENT_GET_ALL);
 
       if (data.status === 200 && Array.isArray(data.response)) {
         const filtered = data.response.filter(
@@ -40,7 +40,7 @@ const PatientWaitingList = () => {
     if (!deptId) return;
 
     try {
-      const data = await getRequest(`${DOCTOR}/doctorBySpeciality/${deptId}`);
+      const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${deptId}`);
 
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
@@ -72,7 +72,7 @@ const PatientWaitingList = () => {
           : new Date().toISOString().split("T")[0] + "T00:00:00Z"
       };
 
-      const data = await postRequest(`${OPD_PATIENT}/activeVisit/search`, payload);
+      const data = await postRequest(PATIENT_ACTIVE_VISIT_SEARCH, payload);
 
       if (data.status === 200 && Array.isArray(data.response)) {
         setList(data.response);

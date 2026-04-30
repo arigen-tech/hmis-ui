@@ -25,6 +25,7 @@ import {
   FOLLOWUP_PATIENTS_LIST,
   STATE_BY_COUNTRY,
   MAS_BLOODGROUP,
+  MAS_GENDER,
 } from "../../../config/apiConfig";
 import {
   DEPARTMENT_CODE_OPD,
@@ -127,7 +128,6 @@ const UpdatePatientRegistration = () => {
   const loadMasterData = async () => {
     setLoading(true);
     try {
-      // Fetch all master data in parallel with proper error handling
       await Promise.allSettled([
         fetchGenderData(),
         fetchRelationData(),
@@ -136,9 +136,6 @@ const UpdatePatientRegistration = () => {
         fetchAllSessions(),
         fetchHospitalDetails(),
       ]);
-
-      // Fetch state and district data after country is loaded
-      // Note: These will be called again when country selection changes
       await Promise.allSettled([
         fetchAllStateData(),
         fetchAllDistrictData(),
@@ -908,11 +905,12 @@ const UpdatePatientRegistration = () => {
       Swal.fire("Error", UNABLE_TO_LOAD_PATIENT_DETAILS, "error");
     }
   };
+
   async function fetchGenderData() {
     setLoading(true);
 
     try {
-      const data = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {

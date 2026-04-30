@@ -16,6 +16,8 @@ const OpdPreconsultation = () => {
   const [visits, setVisits] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [totalItems, setTotalItems] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
   // ---------- Search State (similar to OPDReports) ----------
   const [searchData, setSearchData] = useState({
@@ -27,40 +29,42 @@ const OpdPreconsultation = () => {
     fetchPendingPreconsultation(currentPage - 1, DEFAULT_ITEMS_PER_PAGE);
   }, [currentPage]);
 
-  async function fetchPendingPreconsultation(
+  const fetchPendingPreconsultation = async (
     page = 0,
     size = DEFAULT_ITEMS_PER_PAGE,
-  ) {
+    showFullLoader = true,
+  ) => {
     try {
-      setLoading(true);
+      if (showFullLoader) setLoading(true);
+
       const data = await getRequest(
-        `${GET_PRECONSULTATION_LIST}?page=${page}&size=${size}&mobile=${searchData.mobileNo}&name=${searchData.patientName}`,
+        `${GET_PRECONSULTATION_LIST}?page=${page}&size=${size}&mobileNumber=${searchData.mobileNo}&patientName=${searchData.patientName}`,
       );
 
       if (data.status === 200) {
         setVisits(data.response.content);
-        setTotalItems(data.response.totalElements); // IMPORTANT
+        setTotalItems(data.response.totalElements);
       }
     } catch (error) {
-      console.error("Error fetching data:", error);
+      console.error(error);
     } finally {
-      setLoading(false);
+      if (showFullLoader) setLoading(false);
     }
-  }
+  };
 
   // Filter visits based on search criteria (mobile number and patient name)
-  const filteredVisits = visits.filter((item) => {
-    const mobileMatch =
-      searchData.mobileNo === "" ||
-      (item.mobleNumber && item.mobleNumber.includes(searchData.mobileNo));
-    const nameMatch =
-      searchData.patientName === "" ||
-      (item.patientName &&
-        item.patientName
-          .toLowerCase()
-          .includes(searchData.patientName.toLowerCase()));
-    return mobileMatch && nameMatch;
-  });
+  // const filteredVisits = visits.filter((item) => {
+  //   const mobileMatch =
+  //     searchData.mobileNo === "" ||
+  //     (item.mobleNumber && item.mobleNumber.includes(searchData.mobileNo));
+  //   const nameMatch =
+  //     searchData.patientName === "" ||
+  //     (item.patientName &&
+  //       item.patientName
+  //         .toLowerCase()
+  //         .includes(searchData.patientName.toLowerCase()));
+  //   return mobileMatch && nameMatch;
+  // });
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [vitalFormData, setVitalFormData] = useState({
@@ -93,13 +97,20 @@ const OpdPreconsultation = () => {
     setCurrentPage(1);
   };
 
-  const handleSearch = () => {
+  const handleSearch = async () => {
+    setIsSearching(true);
     setCurrentPage(1);
+
+    await fetchPendingPreconsultation(0, DEFAULT_ITEMS_PER_PAGE, false);
+
+    setIsSearching(false);
   };
 
-  const handleReset = () => {
+  const handleReset = async () => {
     setSearchData({ mobileNo: "", patientName: "" });
-    fetchPendingPreconsultation(0, DEFAULT_ITEMS_PER_PAGE);
+    setCurrentPage(1);
+
+    await fetchPendingPreconsultation(0, DEFAULT_ITEMS_PER_PAGE, false);
   };
 
   const currentItems = visits;
@@ -259,21 +270,35 @@ const OpdPreconsultation = () => {
                         onChange={handleSearchChange}
                       />
                     </div>
-                    <div className="col-md-2">
+                    <div className="col-md-3">
                       <div className="d-flex gap-2">
                         <button
                           type="button"
                           className="btn btn-primary flex-fill"
                           onClick={handleSearch}
+                          disabled={isSearching}
                         >
-                          Search
+                          {isSearching ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Searching...
+                            </>
+                          ) : (
+                            <>
+                              <i className="mdi mdi-magnify"></i> Search
+                            </>
+                          )}
                         </button>
                         <button
                           type="button"
                           className="btn btn-secondary flex-fill"
                           onClick={handleReset}
                         >
-                          Reset
+                          Show All
                         </button>
                       </div>
                     </div>

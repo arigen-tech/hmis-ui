@@ -5,15 +5,26 @@ import InvestigationModal from "./InvestigationModal";
 import TreatmentModal from "./TreatmentModal";
 import {
   OPD_TEMPLATE,
+  OPD_TEMPLATE_GET_ALL,
   MAS_INVESTIGATION,
+  MAS_INVESTIGATION_UNIQUE_TYPES,
   OPD_PATIENT,
   MAS_DRUG_MAS,
   DRUG_TYPE,
   MAS_OPD_SESSION,
+  MAS_OPD_SESSION_GET_ALL,
   DOCTOR,
+  DOCTOR_BY_DEPARTMENT,
   MASTERS,
   MAS_FREQUENCY,
+  MAS_FREQUENCY_GET_ALL,
   GET_WAITING_LIST,
+  MAS_WARD_CATEGORY_GET_ALL,
+  WARD_DEPARTMENT_GET_ALL_BY_CATEGORY,
+  PATIENT_ACTIVE_VISIT_SEARCH,
+  PATIENT_UPDATE_STATUS,
+  PATIENT_OPD_BY_VISIT,
+  OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -23,7 +34,7 @@ import {
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
-import MasFamilyModel from "../GeneralMedicineWaitingList/FaimalyHistryModel";
+import MasFamilyModel from "./FamilyHistryModel";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
@@ -36,13 +47,11 @@ const GeneralMedicineWaitingList = () => {
   const [opdVitalsData, setOpdVitalsData] = useState([]);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
-  const [vitalsAvlaible, setVitalsAvlaible] = useState(false);
+  const [vitalsAvailable, setVitalsAvailable] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
-    useState(new Set());
+  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =useState(new Set());
   const [opdTemplateData, setOpdTemplateData] = useState([]);
-  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
-    useState("Select..");
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =useState("Select..");
   const tableContainerRef = useRef(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
@@ -51,7 +60,7 @@ const GeneralMedicineWaitingList = () => {
   const [icdDropdown, setIcdDropdown] = useState([]);
   const [page, setPage] = useState(0);
   const [lastPage, setLastPage] = useState(false);
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState([]);
   const [openDropdown, setOpenDropdown] = useState(null);
   const [showModelPopup, setModelShowPopup] = useState(false);
   const [popupType, setPopupType] = useState("");
@@ -69,13 +78,9 @@ const GeneralMedicineWaitingList = () => {
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
 
-  const departmentName =
-    localStorage.getItem("departmentName") ||
-    sessionStorage.getItem("departmentName") ||
-    "";
+  const departmentName = localStorage.getItem("departmentName") || sessionStorage.getItem("departmentName") || "";
 
   const searchTimeoutRef = useRef(null);
-
   const debounceRef = useRef({});
 
   // Add state variables for Admission
@@ -106,7 +111,7 @@ const GeneralMedicineWaitingList = () => {
 
   const fetchWardCategoryData = async () => {
     try {
-      const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
+      const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardCategories(data.response);
       } else {
@@ -120,9 +125,8 @@ const GeneralMedicineWaitingList = () => {
   const fetchWardData = async (categoryId) => {
     try {
       const data = await getRequest(
-        `${MASTERS}/ward-department/getAllBy/${categoryId}`,
+        `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
       );
-
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardDepartments(data.response);
       } else {
@@ -282,7 +286,7 @@ const GeneralMedicineWaitingList = () => {
 
   const fetchAllFrequencies = async () => {
     try {
-      const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`);
+      const response = await getRequest(MAS_FREQUENCY_GET_ALL);
       // //console.log("Frequency API Response:", response);
 
       if (response && response.response) {
@@ -301,7 +305,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchMasProcedureData = async (page, searchText = "") => {
     try {
       const data = await getRequest(
-        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
+        `${MASTERS}/masProcedures/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
       );
 
       if (data.status === 200 && data.response?.content) {
@@ -428,6 +432,16 @@ const GeneralMedicineWaitingList = () => {
       return updated;
     });
 
+    setDiagnosisItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        icdDiagId: "",
+        icdDiagnosis: value,
+      };
+      return updated;
+    });
+
     if (debounceRef.current[index]) {
       clearTimeout(debounceRef.current[index]);
     }
@@ -436,7 +450,7 @@ const GeneralMedicineWaitingList = () => {
       if (!value.trim()) {
         setIcdDropdown([]);
         return;
-      } 
+      }
       const result = await fetchMasICDData(0, value);
       setIcdDropdown(result.list);
       setLastPage(result.last);
@@ -508,7 +522,7 @@ const GeneralMedicineWaitingList = () => {
       const res = await getRequest(`${GET_WAITING_LIST}`);
 
       if (res?.status === 200 && res?.response) {
-        setWaitingList(res.response);
+        setWaitingList(res.response.content);
       } else {
         setWaitingList([]);
       }
@@ -522,7 +536,7 @@ const GeneralMedicineWaitingList = () => {
 
   const fetchOpdTemplateData = async () => {
     try {
-      const data = await getRequest(`${OPD_TEMPLATE}/getAll/1`);
+      const data = await getRequest(OPD_TEMPLATE_GET_ALL);
 
       if (data.status === 200 && Array.isArray(data.response)) {
         setOpdTemplateData(data.response);
@@ -539,7 +553,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchDoctorData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${DOCTOR}/doctorsByDepartment`);
+      const data = await getRequest(DOCTOR_BY_DEPARTMENT);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
       } else {
@@ -556,7 +570,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchSessionData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${MAS_OPD_SESSION}/getAll/1`);
+      const data = await getRequest(MAS_OPD_SESSION_GET_ALL);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSessionData(data.response);
       } else {
@@ -691,7 +705,7 @@ const GeneralMedicineWaitingList = () => {
   const [followUps, setFollowUps] = useState({
     noOfFollowDays: "",
     followUpFlag: "n",
-    FolloUpDate: getToday(),
+    followUpDate: getToday(),
   });
 
   console.log("followUps", followUps);
@@ -950,44 +964,20 @@ const GeneralMedicineWaitingList = () => {
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-  // const extractInvestigationTypes = (investigations) => {
-  //   const uniqueTypes = []
-  //   const typeMap = new Map()
-
-  //   investigations.forEach(inv => {
-  //     const typeId = inv.mainChargeCodeId
-  //     const typeName = inv.mainChargeCodeName
-
-  //     if (typeId && typeName && !typeMap.has(typeId)) {
-  //       typeMap.set(typeId, typeName)
-  //       uniqueTypes.push({
-  //         id: typeId,
-  //         name: typeName,
-  //         value: typeName.toLowerCase().replace(/\s+/g, '-')
-  //       })
-  //     }
-  //   })
-
-  //   setInvestigationTypes(uniqueTypes)
-  // }
 
   const fetchInvestigationTypes = async () => {
-    const res = await getRequest(
-      "/DgMasInvestigation/uniqueInvestigation/types",
-    );
+    const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES);
     if (res?.response) {
       setInvestigationTypes(res.response);
     }
   };
-  useEffect(() => {
-    fetchInvestigationTypes();
-  }, []);
+
 
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
       setInvestigationTemplateLoading(true);
       const response = await getRequest(
-        `${OPD_TEMPLATE}/getAllTemplateInvestigations/${flag}`,
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}`,
       );
       if (response && response.response) {
         setInvestigationTemplates(response.response);
@@ -1476,11 +1466,6 @@ const GeneralMedicineWaitingList = () => {
       return;
     }
 
-    setFormData((prev) => ({
-      ...prev,
-      doctorList: userId,
-    }));
-
     const payload = {
       doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
       sessionId: Number(searchFilters.session) || null,
@@ -1491,10 +1476,7 @@ const GeneralMedicineWaitingList = () => {
     try {
       setLoading(true);
 
-      const data = await postRequest(
-        `${OPD_PATIENT}/activeVisit/search`,
-        payload,
-      );
+      const data = await postRequest(PATIENT_ACTIVE_VISIT_SEARCH, payload);
 
       if (data.status === 200 && Array.isArray(data.response)) {
         setWaitingList(data.response);
@@ -1520,7 +1502,7 @@ const GeneralMedicineWaitingList = () => {
   const updateVisitStatus = async (visitId, visitDate, doctorId) => {
     try {
       const response = await putRequest(
-        `/patient/update-status?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`,
+        `${PATIENT_UPDATE_STATUS}?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`,
       );
 
       //console.log("Status Updated:", response);
@@ -1530,17 +1512,17 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const cheackVitalPresent = async (visitId) => {
+  const checkVitalPresent = async (visitId) => {
     try {
       const data = await getRequest(
-        `${OPD_PATIENT}/getOpdByVisit?visitId=${visitId}`,
+        `${PATIENT_OPD_BY_VISIT}?visitId=${visitId}`,
       );
 
       if (data?.status === 200 && data?.response) {
         const res = data.response;
 
         setOpdVitalsData(res);
-        setVitalsAvlaible(true);
+        setVitalsAvailable(true);
 
         setFormData((prev) => ({
           ...prev,
@@ -1560,12 +1542,12 @@ const GeneralMedicineWaitingList = () => {
       }
 
       setOpdVitalsData(null);
-      setVitalsAvlaible(false);
+      setVitalsAvailable(false);
     } catch (error) {
       console.error("Error fetching vital data:", error);
 
       setOpdVitalsData(null);
-      setVitalsAvlaible(false);
+      setVitalsAvailable(false);
     }
   };
 
@@ -1576,22 +1558,16 @@ const GeneralMedicineWaitingList = () => {
       patient.docterId,
     );
 
-    cheackVitalPresent(patient.visitId);
+    checkVitalPresent(patient.visitId);
 
     setSelectedPatient(patient);
     setShowDetailView(true);
   };
 
-  //console.log("setSelectedPatient", selectedPatient)
 
   const handleBackToList = () => {
-    // Hide detail page
     setShowDetailView(false);
-
-    // Clear selected patient
     setSelectedPatient(null);
-
-    // Reset expand sections
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
@@ -1620,7 +1596,7 @@ const GeneralMedicineWaitingList = () => {
     setFollowUps({
       noOfFollowDays: "",
       followUpFlag: false,
-      FolloUpDate: getToday(),
+      followUpDate: getToday(),
     });
 
     // Reset Admission fields
@@ -1802,7 +1778,7 @@ const GeneralMedicineWaitingList = () => {
       const payload = {
 
         // ===== Mapping IDs =====
-        opdPatientDetailId: vitalsAvlaible
+        opdPatientDetailId: vitalsAvailable
           ? opdVitalsData.opdPatientDetailsId
           : null,
         patientId: selectedPatient.patientId,
@@ -1814,13 +1790,12 @@ const GeneralMedicineWaitingList = () => {
         // ===== Clinical History =====
         patientSignsSymptoms: formData.patientSymptoms ?? null,
         clinicalExamination: formData.clinicalExamination ?? null,
-        pastMedicalHistory: formData.pastMedicalHistory ?? formData.pastHistory?? null,
+        pastMedicalHistory: formData.pastHistory ?? null,
         familyHistory: formData.familyHistory ?? null,
         // presentComplaints: formData.patientSymptoms ?? null,
 
         // ===== Vital =====
         height: formData.height,
-        idealWeight: formData.idealWeight || null,
         weight: formData.weight,
         pulse: formData.pulse,
         temperature: formData.temperature,
@@ -1832,8 +1807,8 @@ const GeneralMedicineWaitingList = () => {
         mlcFlag: formData.mlcCase ? "y" : "n",
 
         // ===== Diagnosis =====
-        workingDiag: workingDiagnosis,
-        icdDiag: icdDiagList,
+        workingDiagnosis: workingDiagnosis,
+        icdDiagnosis: icdDiagList,
 
         // ===== Investigation =====
         labFlag: labFlag,
@@ -1858,8 +1833,8 @@ const GeneralMedicineWaitingList = () => {
 
         // ======== follow up =====
         followUpFlag: followUps.followUpFlag,
-        followUpDate: followUps.FolloUpDate
-          ? new Date(followUps.FolloUpDate).toISOString()
+        followUpDate: followUps.followUpDate
+          ? new Date(followUps.followUpDate).toISOString()
           : null,
         followUpDays: Number(followUps.noOfFollowDays),
 
@@ -1951,7 +1926,7 @@ const GeneralMedicineWaitingList = () => {
     setFollowUps({
       noOfFollowDays: "",
       followUpFlag: false,
-      FolloUpDate: getToday(),
+      followUpDate: getToday(),
     });
 
     // Important resets for templates
@@ -2519,7 +2494,7 @@ const GeneralMedicineWaitingList = () => {
 
           // 🟢 MOST IMPORTANT FIELDS (MISSING EARLIER)
           itemClassId: t?.itemClassId ?? null,
-          aDispQty: t?.adispQty ?? 1,
+          aDispQty: t?.aDispQty ?? 1,
         };
 
         // 🟢 AUTO CALCULATE TOTAL
