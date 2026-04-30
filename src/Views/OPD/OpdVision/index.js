@@ -48,7 +48,7 @@ const defaultVisionForm = {
     re: { uncorrected: "", pinhole: "", bestCorrected: "" },
     le: { uncorrected: "", pinhole: "", bestCorrected: "" },
   },
-  fundusGlowText: "", // new field for the text input
+  fundusGlowText: "",
   retinoscopy: {
     re: { axis: "" },
     le: { axis: "" },
@@ -86,7 +86,6 @@ const posteriorLabels = {
   vitreous: "Vitreous", bloodVessels: "Blood Vessels", retina: "Retina",
 };
 
-// Vision options for dropdowns
 const visionOptions = [
   "6/6", "6/9", "6/12", "6/18", "6/24", "6/36", "6/60", "CF", "HM", "PL", "NPL"
 ];
@@ -101,7 +100,6 @@ const OpdVision = () => {
   const [formData, setFormData] = useState(defaultVisionForm);
   const [showForm, setShowForm] = useState(false);
 
-  // Search filter
   const filteredPatients = patients.filter((item) => {
     const mobileMatch =
       searchData.mobileNo === "" ||
@@ -132,7 +130,6 @@ const OpdVision = () => {
 
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
-      // Deselect and go back to list
       setSelectedPatient(null);
       setShowForm(false);
       setFormData(defaultVisionForm);
@@ -143,7 +140,6 @@ const OpdVision = () => {
     }
   };
 
-  // ---- Form change handlers ----
   const handleVisionChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, vision: { ...prev.vision, [name]: value } }));
@@ -222,8 +218,6 @@ const OpdVision = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-
-            {/* ---- Card Header ---- */}
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2 mb-0">OPD Vision Examination</h4>
               <div className="d-flex justify-content-end align-items-center">
@@ -247,7 +241,6 @@ const OpdVision = () => {
             </div>
 
             <div className="card-body">
-              {/* ---- Search Section (only when form not shown) ---- */}
               {!showForm && (
                 <div className="mb-4">
                   <div className="row g-4 align-items-end">
@@ -287,20 +280,18 @@ const OpdVision = () => {
                 </div>
               )}
 
-              {/* ---- Patients Table (only when form not shown) ---- */}
               {!showForm && (
                 <div className="table-responsive packagelist mb-3">
                   <table className="table table-bordered table-hover align-middle">
                     <thead className="table-light">
                       <tr>
                         <th>Patient Name</th>
+                        <th>Mobile No</th>
                         <th>Age</th>
                         <th>Gender</th>
+                        <th>Relation</th>
                         <th>Department</th>
-                        <th>Mobile No</th>
                         <th>Type</th>
-                        <th>Doctor Name</th>
-                        <th>Time Slot</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -313,18 +304,17 @@ const OpdVision = () => {
                             style={{ cursor: "pointer" }}
                           >
                             <td>{item.patientName}</td>
+                            <td>{item.mobileNo}</td>
                             <td>{item.age}</td>
                             <td>{item.gender}</td>
+                            <td>{item.relation}</td>
                             <td>{item.department}</td>
-                            <td>{item.mobileNo}</td>
                             <td>{item.visitType}</td>
-                            <td>{item.doctorName}</td>
-                            <td>{item.appointmentTime}</td>
                           </tr>
                         ))
                       ) : (
                         <tr>
-                          <td colSpan="8" className="text-center text-muted">No records found</td>
+                          <td colSpan="7" className="text-center text-muted">No records found</td>
                         </tr>
                       )}
                     </tbody>
@@ -332,15 +322,12 @@ const OpdVision = () => {
                 </div>
               )}
 
-              {/* ---- Vision Form (shown when showForm is true) ---- */}
               {showForm && selectedPatient && (
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-body">
                         <form onSubmit={handleSave}>
-
-                          {/* ---- Vision (Table) ---- */}
                           <div className="row ">
                             <div className="col-12 ">
                               <h6 className="fw-bold bg-light text-primary border-bottom pb-1">Vision</h6>
@@ -593,7 +580,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- Fundus Glow Text Field (NEW) ---- */}
                           <div className="row mb-3 align-items-center">
                             <div className="col-md-2">
                               <label className="form-label fw-semibold mb-0">Fundus Glow</label>
@@ -609,7 +595,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- RETINOSCOPY (Table) ---- */}
                           <div className="row mb-4">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold  text-primary border-bottom pb-1">RETINOSCOPY</h6>
@@ -710,7 +695,6 @@ const OpdVision = () => {
                                     </tr>
                                   </tbody>
                                 </table>
-                                {/* ---- Additional Measurements (Table) ---- */}
                                 <div className="row ">
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -829,7 +813,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- Spectacle Correction (Table) ---- */}
                           <div className="row">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">Spectacle Correction</h6>
@@ -1016,7 +999,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- Anterior Segment (Table) ---- */}
                           <div className="row mb-4">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">Anterior Segment</h6>
@@ -1073,7 +1055,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- Posterior Segment (Table) ---- */}
                           <div className="row mb-4">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">Posterior Segment</h6>
@@ -1128,7 +1109,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- Colour Vision (Table) ---- */}
                           <div className="row mb-4">
                             <div className="col-12 mb-2">
                               <h6 className="fw-bold text-primary border-bottom pb-1">Colour Vision</h6>
@@ -1175,7 +1155,6 @@ const OpdVision = () => {
                             </div>
                           </div>
 
-                          {/* ---- Submit ---- */}
                           <div className="col-12 mt-3 d-flex justify-content-end">
                             <button type="submit" className="btn btn-primary">
                               Save Examination
@@ -1195,6 +1174,6 @@ const OpdVision = () => {
       </div>
     </div>
   );
-};
+}; 
 
 export default OpdVision;
