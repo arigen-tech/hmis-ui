@@ -49,9 +49,11 @@ const GeneralMedicineWaitingList = () => {
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
   const [vitalsAvailable, setVitalsAvailable] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =useState(new Set());
+  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
+    useState(new Set());
   const [opdTemplateData, setOpdTemplateData] = useState([]);
-  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =useState("Select..");
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
+    useState("Select..");
   const tableContainerRef = useRef(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
@@ -78,7 +80,10 @@ const GeneralMedicineWaitingList = () => {
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
 
-  const departmentName = localStorage.getItem("departmentName") || sessionStorage.getItem("departmentName") || "";
+  const departmentName =
+    localStorage.getItem("departmentName") ||
+    sessionStorage.getItem("departmentName") ||
+    "";
 
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
@@ -518,9 +523,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchWaitingList = async () => {
     try {
       setLoading(true);
-      // debugger
       const res = await getRequest(`${GET_WAITING_LIST}`);
-
       if (res?.status === 200 && res?.response) {
         setWaitingList(res.response.content);
       } else {
@@ -584,17 +587,48 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
+  // useEffect(() => {
+  //   fetchWaitingList();
+  //   fetchDoctorData();
+  //   fetchSessionData();
+  //   fetchMasICDData();
+  //   fetchMasProcedureData();
+  //   fetchOpdTemplateData();
+  //   fetchDrugOptions();
+  //   fetchAllFrequencies();
+  //   fetchWardCategoryData();
+  // }, []);
+
   useEffect(() => {
     fetchWaitingList();
     fetchDoctorData();
     fetchSessionData();
+    fetchOpdTemplateData(); 
+    fetchAllFrequencies();
+    fetchInvestigationTypes();
+    // fetchWardCategoryData();
+  }, []);
+
+  const handleDiagnosisOpen = () => {
     fetchMasICDData();
+  };
+
+  const handleProcedureOpen = () => {
     fetchMasProcedureData();
-    fetchOpdTemplateData();
+  };
+
+  const handleTreatmentOpen = () => {
     fetchDrugOptions();
     fetchAllFrequencies();
+  };
+
+  const handleAdmissionOpen = () => {
     fetchWardCategoryData();
-  }, []);
+  };
+
+  const handleTemplateOpen = () => {
+    fetchOpdTemplateData();
+  };
 
   const [searchFilters, setSearchFilters] = useState({
     doctorList: "",
@@ -964,14 +998,12 @@ const GeneralMedicineWaitingList = () => {
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
-
   const fetchInvestigationTypes = async () => {
     const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES);
     if (res?.response) {
       setInvestigationTypes(res.response);
     }
   };
-
 
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
@@ -1192,7 +1224,6 @@ const GeneralMedicineWaitingList = () => {
     setInvestigationItems((prev) => {
       let updated = [...prev];
 
-      // 🟢 REMOVE EMPTY DEFAULT ITEM ON FIRST USE
       if (
         updated.length === 1 &&
         !updated[0].investigationId &&
@@ -1209,7 +1240,6 @@ const GeneralMedicineWaitingList = () => {
         const existing = existingMap.get(item.investigationId);
 
         if (existing) {
-          // duplicate
           if (!existing.templateIds.includes(templateId)) {
             existing.templateIds = [...existing.templateIds, templateId];
           }
@@ -1219,7 +1249,6 @@ const GeneralMedicineWaitingList = () => {
             investigationName: existing.name ?? item.investigationName,
           });
         } else {
-          // new investigation
           updated.push({
             name:
               item.investigationName ??
@@ -1235,7 +1264,6 @@ const GeneralMedicineWaitingList = () => {
       return updated;
     });
 
-    // After updating state, check duplicates
     setTimeout(() => {
       const unique = Array.from(
         new Map(
@@ -1252,7 +1280,6 @@ const GeneralMedicineWaitingList = () => {
     }, 50);
   };
 
-  // NEW: Function to clear all selected templates and items
   const handleClearAllTemplates = () => {
     setSelectedTemplateIds(new Set());
 
@@ -1273,7 +1300,6 @@ const GeneralMedicineWaitingList = () => {
         .map((item) => {
           const originalTemplateIds = item.templateIds ?? [];
 
-          // Manual item → keep unchanged
           if (originalTemplateIds.length === 0) {
             return item;
           }
@@ -1286,7 +1312,6 @@ const GeneralMedicineWaitingList = () => {
         .filter((item) => {
           const ids = item.templateIds ?? [];
 
-          // Remove template-created items (had templateIds before) but now ids = []
           if (ids.length === 0 && item.templateSource) return false;
 
           return true;
@@ -1295,14 +1320,12 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const handleInvestigationSelect = (index, investigation) => {
-    // ---- CHECK DUPLICATE IN FULL LIST ----
     const duplicate = investigationItems.find(
       (item, idx) =>
         idx !== index && item.investigationId === investigation.investigationId,
     );
 
     if (duplicate) {
-      // Show popup with duplicate item
       setDuplicateItems([
         {
           investigationId: investigation.investigationId,
@@ -1312,7 +1335,6 @@ const GeneralMedicineWaitingList = () => {
 
       setShowDuplicatePopup(true);
 
-      // Reset the row input
       const newItems = [...investigationItems];
       newItems[index] = {
         ...newItems[index],
@@ -1449,11 +1471,11 @@ const GeneralMedicineWaitingList = () => {
     }
   }, [userId]);
 
-  useEffect(() => {
-    if (searchFilters.doctorList) {
-      handleSearch();
-    }
-  }, [searchFilters.doctorList]);
+  // useEffect(() => {
+  //   if (searchFilters.doctorList) {
+  //     handleSearch();
+  //   }
+  // }, [searchFilters.doctorList]);
 
   const handleSearch = async () => {
     const userId =
@@ -1563,7 +1585,6 @@ const GeneralMedicineWaitingList = () => {
     setSelectedPatient(patient);
     setShowDetailView(true);
   };
-
 
   const handleBackToList = () => {
     setShowDetailView(false);
@@ -1746,7 +1767,7 @@ const GeneralMedicineWaitingList = () => {
       // ICD Diagnoses
       const icdDiagList = diagnosisItems.map((item) => ({
         icdId: item.icdDiagId ?? null,
-        icdDiagName: item.icdDiagnosis || "",
+        icdDiagnosisName: item.icdDiagnosis || "",
       }));
 
       // Investigations mapping → backend format
@@ -1776,7 +1797,6 @@ const GeneralMedicineWaitingList = () => {
       //console.log("treatmentItems", treatmentItems)
 
       const payload = {
-
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvailable
           ? opdVitalsData.opdPatientDetailsId
@@ -1859,8 +1879,6 @@ const GeneralMedicineWaitingList = () => {
         referralDate: referralData.referralDate
           ? new Date(referralData.referralDate).toISOString()
           : null,
-
-
       };
 
       const response = await postRequest(
@@ -2310,11 +2328,20 @@ const GeneralMedicineWaitingList = () => {
     handleCloseModal();
   };
 
-  useEffect(() => {
-    if (investigationTypes.length > 0 && !investigationType) {
-      setInvestigationType(investigationTypes[0].id);
+useEffect(() => {
+  if (investigationTypes.length > 0 && !investigationType) {
+    const firstType = investigationTypes[0];
+    setInvestigationType(firstType.id);
+    
+    if (firstType.name === "Laboratory") {
+      setLabFlag("y");
+      setRadioFlag("n");
+    } else if (firstType.name === "Radiology") {
+      setRadioFlag("y");
+      setLabFlag("n");
     }
-  }, [investigationTypes]);
+  }
+}, [investigationTypes]);
 
   const handleClearAllTreatmentTemplates = () => {
     setSelectedTreatmentTemplateIds(new Set());

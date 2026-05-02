@@ -68,6 +68,7 @@ import {
   NO_TOKENS_AVAILABLE_INFO,
 } from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
+import LoadingScreen from "../../../Components/Loading";
 
 const UpdatePatientRegistration = () => {
   const navigate = useNavigate();
@@ -88,9 +89,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchAllStateData() {
@@ -104,9 +106,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchAllDistrictData() {
@@ -120,9 +123,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   const loadMasterData = async () => {
@@ -540,7 +544,7 @@ const UpdatePatientRegistration = () => {
     setPatientDetailForm(next);
   };
 
-  const handleSearch= async (page = 0) => {
+  const handleSearch = async (page = 0) => {
     setCurrentPage(page + 1);
 
     if (typeof page !== "number") {
@@ -718,10 +722,9 @@ const UpdatePatientRegistration = () => {
 
   useEffect(() => {
     loadMasterData();
-  }, []); 
+  }, []);
 
   const handleEdit = async (patient) => {
-
     try {
       const patientId = patient.id;
       const response = await getRequest(
@@ -907,8 +910,6 @@ const UpdatePatientRegistration = () => {
   };
 
   async function fetchGenderData() {
-    setLoading(true);
-
     try {
       const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -919,13 +920,14 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchRelationData() {
-    setLoading(true);
+    // setLoading(true);
 
     try {
       const data = await getRequest(`${ALL_RELATION}/1`);
@@ -937,13 +939,14 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchCountryData() {
-    setLoading(true);
+    // setLoading(true);
 
     try {
       const data = await getRequest(`${ALL_COUNTRY}/1`);
@@ -955,9 +958,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchStates(value) {
@@ -971,9 +975,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchAllSessions() {
@@ -987,9 +992,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchDistrict(value) {
@@ -1003,9 +1009,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchNokStates(value) {
@@ -1019,9 +1026,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchNokAllStates(value) {
@@ -1035,9 +1043,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchNokDistrict(value) {
@@ -1051,11 +1060,11 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
-
 
   async function fetchDepartment() {
     try {
@@ -1071,9 +1080,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   const handleAddChange = (e) => {
@@ -1118,9 +1128,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchSession(doc) {
@@ -1544,7 +1555,7 @@ const UpdatePatientRegistration = () => {
             if (result.isConfirmed) {
               navigate("/OPDBillingDetails", {
                 state: {
-                  source:"billing",
+                  source: "billing",
                   patientId: resp.patientid,
                 },
               });
@@ -1739,18 +1750,18 @@ const UpdatePatientRegistration = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "100vh" }}
-      >
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
+  // if (loading) {
+  //   return (
+  //     <div
+  //       className="d-flex justify-content-center align-items-center"
+  //       style={{ height: "100vh" }}
+  //     >
+  //       <div className="spinner-border text-primary" role="status">
+  //         <span className="visually-hidden">Loading...</span>
+  //       </div>
+  //     </div>
+  //   );
+  // }
 
   const onDateChange = (index, date) => {
     if (!date) return;
@@ -3255,6 +3266,10 @@ const UpdatePatientRegistration = () => {
     );
   }
 
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="body d-flex py-3">
       <div className="container-fluid">
@@ -3334,7 +3349,11 @@ const UpdatePatientRegistration = () => {
                     >
                       {searchLoading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
                           Searching...
                         </>
                       ) : (
