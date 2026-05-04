@@ -242,7 +242,7 @@ const validRoutes = [
   "/SurgeryPricing",
   "/BillingTemplate",
   "/OpdVision",
-  // "/OBGDetails",
+  "/OBGDetails",
 ];
 
 const NotAuthorized = () => {
