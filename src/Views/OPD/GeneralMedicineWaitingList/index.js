@@ -38,6 +38,7 @@ import MasFamilyModel from "./FamilyHistryModel";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import OpdVision from "../OpdVision";
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([]);
@@ -176,6 +177,141 @@ const GeneralMedicineWaitingList = () => {
       fetchWardData(categoryId);
     }
   };
+
+  // Add these state declarations inside the GeneralMedicineWaitingList component
+const [visionFormData, setVisionFormData] = useState({
+  fundusGlow: {
+    re: { uncorrected: "", pinhole: "", bestCorrected: "" },
+    le: { uncorrected: "", pinhole: "", bestCorrected: "" },
+  },
+  vision: { distance: "", near: "" },
+  retinoscopy: { re: { axis: "" }, le: { axis: "" } },
+  measurements: {
+    re: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", iol: "" },
+    le: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", icl: "" },
+  },
+  spectacle: {
+    re: { sph: "", cyl: "", axis: "" },
+    le: { sph: "", cyl: "", axis: "" },
+  },
+  ipd: { value: "", use: "", typeOfLens: "" },
+  anteriorSegment: {
+    lids: "N", conjuctiva: "N", cornea: "N", anteriorChamber: "N", iris: "N", pupil: "N", lens: "N",
+  },
+  posteriorSegment: {
+    re: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
+    le: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
+  },
+  colourVision: { re: "", le: "" },
+});
+
+const anteriorLabels = {
+  lids: "Lids",
+  conjuctiva: "Conjuctiva",
+  cornea: "Cornea",
+  anteriorChamber: "Ant. Chamber",
+  iris: "Iris",
+  pupil: "Pupil",
+  lens: "Lens",
+};
+
+const posteriorLabels = {
+  vitreous: "Vitreous",
+  disc: "Disc",
+  macula: "Macula",
+  vessel: "Vessel",
+  periphery: "Periphery",
+};
+
+// Handlers
+const handleSaveVision = (e) => {
+  e.preventDefault();
+  // Implement API call or local save logic here
+  console.log("Vision data saved:", visionFormData);
+  // You can add a success popup here if needed
+  showPopup("Vision examination saved successfully!", "success");
+};
+
+const handleFundusGlowChange = (eye, field, value) => {
+  setVisionFormData((prev) => ({
+    ...prev,
+    fundusGlow: {
+      ...prev.fundusGlow,
+      [eye]: { ...prev.fundusGlow[eye], [field]: value },
+    },
+  }));
+};
+
+const handleVisionChange = (e) => {
+  const { name, value } = e.target;
+  setVisionFormData((prev) => ({
+    ...prev,
+    vision: { ...prev.vision, [name]: value },
+  }));
+};
+
+const handleRetinoscopyChange = (eye, value) => {
+  setVisionFormData((prev) => ({
+    ...prev,
+    retinoscopy: {
+      ...prev.retinoscopy,
+      [eye]: { axis: value },
+    },
+  }));
+};
+
+const handleMeasurementsChange = (eye, field, value) => {
+  setVisionFormData((prev) => ({
+    ...prev,
+    measurements: {
+      ...prev.measurements,
+      [eye]: { ...prev.measurements[eye], [field]: value },
+    },
+  }));
+};
+
+const handleSpectacleChange = (eye, field, value) => {
+  setVisionFormData((prev) => ({
+    ...prev,
+    spectacle: {
+      ...prev.spectacle,
+      [eye]: { ...prev.spectacle[eye], [field]: value },
+    },
+  }));
+};
+
+const handleIpdChange = (e) => {
+  const { name, value } = e.target;
+  setVisionFormData((prev) => ({
+    ...prev,
+    ipd: { ...prev.ipd, [name]: value },
+  }));
+};
+
+const handleAnteriorChange = (e) => {
+  const { name, value } = e.target;
+  setVisionFormData((prev) => ({
+    ...prev,
+    anteriorSegment: { ...prev.anteriorSegment, [name]: value },
+  }));
+};
+
+const handlePosteriorChange = (eye, field, value) => {
+  setVisionFormData((prev) => ({
+    ...prev,
+    posteriorSegment: {
+      ...prev.posteriorSegment,
+      [eye]: { ...prev.posteriorSegment[eye], [field]: value },
+    },
+  }));
+};
+
+const handleColourVisionChange = (eye, value) => {
+  setVisionFormData((prev) => ({
+    ...prev,
+    colourVision: { ...prev.colourVision, [eye]: value },
+  }));
+};
 
   const handleWardNameChange = (deptId) => {
     setWardName(deptId);
@@ -682,6 +818,7 @@ const GeneralMedicineWaitingList = () => {
     followUp: false,
     doctorRemark: false,
     remarks: false,
+    visionExamination: false, 
   });
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("");
@@ -3163,6 +3300,794 @@ useEffect(() => {
                   )}
                 </div>
 
+                            {/* Vision Examination Section */}
+  <div className="card mb-3">
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("visionExamination")}
+                  >
+                    <h6 className="mb-0 fw-bold">Vision Examination</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.visionExamination ? "−" : "+"}
+                    </span>
+                  </div>
+
+                  {expandedSections.visionExamination && (
+                    <div className="card-body">
+                      {/* ---- Vision Form (embedded from OpdVision) ---- */}
+                      <div className="row mb-3 mt-3">
+                        <div className="col-sm-12">
+                          <div className="card shadow mb-3">
+                            {/* Form Card Header */}
+                           
+
+                            <div className="card-body">
+                              <form onSubmit={handleSaveVision}>
+                                {/* ---- Vision (Table) ---- */}
+                                <div className="row mb-4">
+                                  <div className="col-12 mb-2">
+                                    <h6 className="fw-bold bg-light text-primary border-bottom pb-1">Vision</h6>
+                                  </div>
+                                  <div className="col-12">
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-sm align-middle">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th></th>
+                                            <th colSpan="3" className="text-center">R.E.</th>
+                                            <th colSpan="3" className="text-center">L.E.</th>
+                                          </tr>
+                                          <tr>
+                                            <th></th>
+                                            <th>Uncorrected</th>
+                                            <th>Pinhole</th>
+                                            <th>Best Corrected</th>
+                                            <th>Uncorrected</th>
+                                            <th>Pinhole</th>
+                                            <th>Best Corrected</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr>
+                                            <td className="fw-semibold">Distance</td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.fundusGlow.re.uncorrected}
+                                                onChange={(e) => handleFundusGlowChange("re", "uncorrected", e.target.value)}
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="6/6">6/6</option>
+                                                <option value="6/9">6/9</option>
+                                                <option value="6/12">6/12</option>
+                                                <option value="6/18">6/18</option>
+                                                <option value="6/24">6/24</option>
+                                                <option value="6/36">6/36</option>
+                                                <option value="6/60">6/60</option>
+                                                <option value="CF">CF</option>
+                                                <option value="HM">HM</option>
+                                                <option value="PL">PL</option>
+                                                <option value="NPL">NPL</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.fundusGlow.re.pinhole}
+                                                onChange={(e) => handleFundusGlowChange("re", "pinhole", e.target.value)}
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="6/6">6/6</option>
+                                                <option value="6/9">6/9</option>
+                                                <option value="6/12">6/12</option>
+                                                <option value="6/18">6/18</option>
+                                                <option value="6/24">6/24</option>
+                                                <option value="6/36">6/36</option>
+                                                <option value="6/60">6/60</option>
+                                                <option value="CF">CF</option>
+                                                <option value="HM">HM</option>
+                                                <option value="PL">PL</option>
+                                                <option value="NPL">NPL</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="e.g., 6/6-20/25"
+                                                value={visionFormData.fundusGlow.re.bestCorrected}
+                                                onChange={(e) => handleFundusGlowChange("re", "bestCorrected", e.target.value)}
+                                              />
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.fundusGlow.le.uncorrected}
+                                                onChange={(e) => handleFundusGlowChange("le", "uncorrected", e.target.value)}
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="6/6">6/6</option>
+                                                <option value="6/9">6/9</option>
+                                                <option value="6/12">6/12</option>
+                                                <option value="6/18">6/18</option>
+                                                <option value="6/24">6/24</option>
+                                                <option value="6/36">6/36</option>
+                                                <option value="6/60">6/60</option>
+                                                <option value="CF">CF</option>
+                                                <option value="HM">HM</option>
+                                                <option value="PL">PL</option>
+                                                <option value="NPL">NPL</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.fundusGlow.le.pinhole}
+                                                onChange={(e) => handleFundusGlowChange("le", "pinhole", e.target.value)}
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="6/6">6/6</option>
+                                                <option value="6/9">6/9</option>
+                                                <option value="6/12">6/12</option>
+                                                <option value="6/18">6/18</option>
+                                                <option value="6/24">6/24</option>
+                                                <option value="6/36">6/36</option>
+                                                <option value="6/60">6/60</option>
+                                                <option value="CF">CF</option>
+                                                <option value="HM">HM</option>
+                                                <option value="PL">PL</option>
+                                                <option value="NPL">NPL</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="e.g., 6/6-20/25"
+                                                value={visionFormData.fundusGlow.le.bestCorrected}
+                                                onChange={(e) => handleFundusGlowChange("le", "bestCorrected", e.target.value)}
+                                              />
+                                            </td>
+                                          </tr>
+                                          <tr>
+                                            <td className="fw-semibold">Near</td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.vision.distance}
+                                                onChange={handleVisionChange}
+                                                name="distance"
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="N6">N6</option>
+                                                <option value="N8">N8</option>
+                                                <option value="N10">N10</option>
+                                                <option value="N12">N12</option>
+                                                <option value="N14">N14</option>
+                                                <option value="N18">N18</option>
+                                                <option value="N24">N24</option>
+                                                <option value="N36">N36</option>
+                                                <option value="N48">N48</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.vision.near}
+                                                onChange={handleVisionChange}
+                                                name="near"
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="N6">N6</option>
+                                                <option value="N8">N8</option>
+                                                <option value="N10">N10</option>
+                                                <option value="N12">N12</option>
+                                                <option value="N14">N14</option>
+                                                <option value="N18">N18</option>
+                                                <option value="N24">N24</option>
+                                                <option value="N36">N36</option>
+                                                <option value="N48">N48</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="e.g., N5-J2"
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.vision.distance}
+                                                onChange={handleVisionChange}
+                                                name="distance"
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="N6">N6</option>
+                                                <option value="N8">N8</option>
+                                                <option value="N10">N10</option>
+                                                <option value="N12">N12</option>
+                                                <option value="N14">N14</option>
+                                                <option value="N18">N18</option>
+                                                <option value="N24">N24</option>
+                                                <option value="N36">N36</option>
+                                                <option value="N48">N48</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.vision.near}
+                                                onChange={handleVisionChange}
+                                                name="near"
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="N6">N6</option>
+                                                <option value="N8">N8</option>
+                                                <option value="N10">N10</option>
+                                                <option value="N12">N12</option>
+                                                <option value="N14">N14</option>
+                                                <option value="N18">N18</option>
+                                                <option value="N24">N24</option>
+                                                <option value="N36">N36</option>
+                                                <option value="N48">N48</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="e.g., N5-J2"
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ---- RETINOSCOPY (Table) ---- */}
+                                <div className="row mb-4">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold  text-primary border-bottom pb-1">RETINOSCOPY</h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "130px" }}></th>
+                                      <th colSpan="2" className="text-center">R.E.</th>
+                                      <th colSpan="2" className="text-center">L.E.</th>
+                                    </tr>
+                                    <tr>
+                                      <th style={{ width: "130px" }}></th>
+                                      <th colSpan="1" className="text-center"></th>
+                                      <th colSpan="1" className="text-center">AXIS</th>
+                                      <th colSpan="1" className="text-center"></th>
+                                      <th colSpan="1" className="text-center">AXIS</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">V</td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td className="fw-semibold">H</td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                          value=""
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Axis"
+                                          value=""
+                                        />
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                                {/* ---- Additional Measurements (Table) ---- */}
+                                <div className="row ">
+                                  <div className="col-12">
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-sm align-middle">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th colSpan="5" className="text-center">R.E.</th>
+                                            <th colSpan="5" className="text-center">L.E.</th>
+                                          </tr>
+                                          <tr>
+                                            <th>Keratometry</th>
+                                            <th>Pachymetry</th>
+                                            <th>Non-contact Tonometry</th>
+                                            <th>Field of VN</th>
+                                            <th>IOL</th>
+                                            <th>Keratometry</th>
+                                            <th>Pachymetry</th>
+                                            <th>Non-contact Tonometry</th>
+                                            <th>Field of VN</th>
+                                            <th>ICL</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td colSpan="5"></td>
+                                          </tr>
+                                          <tr>
+                                            <td colSpan="5"></td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                               
+                                {/* ---- SPECTACLE PRESCRIPTION ---- */}
+                               <div className="row">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">Spectacle Correction</h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th></th>
+                                      <th colSpan="3" className="text-center">R.E.</th>
+                                      <th colSpan="3" className="text-center">L.E.</th>
+                                    </tr>
+                                    <tr>
+                                      <th></th>
+                                      <th>SPH</th>
+                                      <th>CYL</th>
+                                      <th>Axis</th>
+                                      <th>SPH</th>
+                                      <th>CYL</th>
+                                      <th>Axis</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">Dist</td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                        />
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td className="fw-semibold">Near</td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Add"
+                                          value=""
+                                          readOnly
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder=""
+                                          value=""
+                                          readOnly
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder=""
+                                          value=""
+                                          readOnly
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder="Add"
+                                          value=""
+                                          readOnly
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder=""
+                                          value=""
+                                          readOnly
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          placeholder=""
+                                          value=""
+                                          readOnly
+                                        />
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                                <div className="col-12">
+                                  <div className="table-responsive">
+                                    <table className="table table-bordered table-sm w-auto">
+                                      <tbody>
+                                        <tr>
+                                          <td className="fw-semibold">IPD (50–70)</td>
+                                          <td>
+                                            <input
+                                              type="text"
+                                              className="form-control form-control-sm"
+                                              name="value"
+                                              placeholder="mm"
+                                            />
+                                          </td>
+                                          <td className="fw-semibold">Use</td>
+                                          <td>
+                                            <select
+                                              className="form-select form-select-sm"
+                                              name="use"
+                                            >
+                                              <option value="">Select</option>
+                                              <option value="Distance">Distance</option>
+                                              <option value="Near">Near</option>
+                                            </select>
+                                          </td>
+                                          <td className="fw-semibold">Type of Lens</td>
+                                          <td>
+                                            <select
+                                              className="form-select form-select-sm"
+                                              name="typeOfLens"
+                                            >
+                                              <option value="">Select</option>
+                                              <option value="Single Vision">Single Vision</option>
+                                              <option value="Bifocal">Bifocal</option>
+                                              <option value="Progressive">Progressive</option>
+                                            </select>
+                                          </td>
+                                        </tr>
+                                      </tbody>
+                                    </table>
+                                  </div>
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                                {/* ---- IPD ---- */}
+                                
+
+                                {/* ---- ANTERIOR SEGMENT ---- */}
+                               {/* ---- Anterior Segment (Table) ---- */}
+<div className="row mb-4">
+  <div className="col-12 mb-2">
+    <h6 className="fw-bold text-primary border-bottom pb-1">Anterior Segment</h6>
+  </div>
+  <div className="col-12">
+    <div className="table-responsive">
+      <table className="table table-bordered table-sm align-middle">
+        <thead className="table-light">
+          <tr>
+            <th></th>
+            {Object.keys(anteriorLabels).map(key => (
+              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
+                {anteriorLabels[key]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="fw-semibold">R.E.</td>
+            {Object.keys(anteriorLabels).map(key => (
+              <td key={`re-${key}`}>
+                <select
+                  className="form-select form-select-sm"
+                  name={key}
+                  value={visionFormData.anteriorSegment?.[key] || "N"}
+                  onChange={handleAnteriorChange}
+                >
+                  <option value="N">N</option>
+                  <option value="Abnormal">Abnormal</option>
+                </select>
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className="fw-semibold">L.E.</td>
+            {Object.keys(anteriorLabels).map(key => (
+              <td key={`le-${key}`}>
+                <select
+                  className="form-select form-select-sm"
+                  name={key}
+                  value={visionFormData.anteriorSegment?.[key] || "N"}
+                  onChange={handleAnteriorChange}
+                >
+                  <option value="N">N</option>
+                  <option value="Abnormal">Abnormal</option>
+                </select>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{/* ---- Posterior Segment (Table) ---- */}
+<div className="row mb-4">
+  <div className="col-12 mb-2">
+    <h6 className="fw-bold text-primary border-bottom pb-1">Posterior Segment</h6>
+  </div>
+  <div className="col-12">
+    <div className="table-responsive">
+      <table className="table table-bordered table-sm align-middle">
+        <thead className="table-light">
+          <tr>
+            <th></th>
+            {Object.keys(posteriorLabels).map(key => (
+              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
+                {posteriorLabels[key]}
+              </th>
+            ))}
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="fw-semibold">R.E.</td>
+            {Object.keys(posteriorLabels).map(field => (
+              <td key={`re-${field}`}>
+                <select
+                  className="form-select form-select-sm"
+                  value={visionFormData.posteriorSegment?.re?.[field] || "N"}
+                  onChange={(e) => handlePosteriorChange("re", field, e.target.value)}
+                >
+                  <option value="N">N</option>
+                  <option value="Abnormal">Abnormal</option>
+                </select>
+              </td>
+            ))}
+          </tr>
+          <tr>
+            <td className="fw-semibold">L.E.</td>
+            {Object.keys(posteriorLabels).map(field => (
+              <td key={`le-${field}`}>
+                <select
+                  className="form-select form-select-sm"
+                  value={visionFormData.posteriorSegment?.le?.[field] || "N"}
+                  onChange={(e) => handlePosteriorChange("le", field, e.target.value)}
+                >
+                  <option value="N">N</option>
+                  <option value="Abnormal">Abnormal</option>
+                </select>
+              </td>
+            ))}
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+
+{/* ---- Colour Vision (Table) ---- */}
+<div className="row mb-4">
+  <div className="col-12 mb-2">
+    <h6 className="fw-bold text-primary border-bottom pb-1">Colour Vision</h6>
+  </div>
+  <div className="col-12">
+    <div className="table-responsive">
+      <table className="table table-bordered table-sm w-auto">
+        <thead className="table-light">
+          <tr>
+            <th></th>
+            <th>R.E.</th>
+            <th>L.E.</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td className="fw-semibold">Select</td>
+            <td>
+              <select
+                className="form-select form-select-sm"
+                value={visionFormData.colourVision?.re || ""}
+                onChange={(e) => handleColourVisionChange("re", e.target.value)}
+              >
+                <option value="">Select</option>
+                <option value="Normal">Normal</option>
+                <option value="Defective">Defective</option>
+              </select>
+            </td>
+            <td>
+              <select
+                className="form-select form-select-sm"
+                value={visionFormData.colourVision?.le || ""}
+                onChange={(e) => handleColourVisionChange("le", e.target.value)}
+              >
+                <option value="">Select</option>
+                <option value="Normal">Normal</option>
+                <option value="Defective">Defective</option>
+              </select>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</div>
+                                <div className="text-end mt-3">
+                                  <button type="submit" className="btn btn-primary">
+                                    Save Vision Examination
+                                  </button>
+                                </div>
+                              </form>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div> 
+
+
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -5601,6 +6526,14 @@ useEffect(() => {
                     </div>
                   )}
                 </div>
+
+    
+
+
+
+
+                
+
 
                 <div className="text-center mt-4">
                   <button
