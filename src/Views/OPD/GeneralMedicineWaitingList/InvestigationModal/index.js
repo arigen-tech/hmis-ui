@@ -14,6 +14,8 @@ import {
   OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
   OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE,
 } from "../../../../config/apiConfig";
+import { ADD_AT_LEAST_ONE_INVESTIGATION, DUPLICATE_INVESTIGATIONS_FOUND, FILL_TEMPLATE_NAME_AND_CODE, INVESTIGATION_ALREADY_ADDED, SELECT_TEMPLATE_TO_UPDATE, TEMPLATE_CODE_ALREADY_EXISTS, TEMPLATE_CREATED_SUCCESS, TEMPLATE_NAME_ALREADY_EXISTS, TEMPLATE_NAME_OR_CODE_EXISTS, TEMPLATE_UPDATED_SUCCESS } from "../../../../config/constants";
+
 
 const InvestigationModal = ({
   show,
@@ -474,10 +476,10 @@ const InvestigationModal = ({
           investigation.investigationId,
     );
 
-    if (investigationIdAlreadyInOtherRow) {
-      showPopup("This investigation is already added to the template", "error");
-      return;
-    }
+        if (investigationIdAlreadyInOtherRow) {
+            showPopup(INVESTIGATION_ALREADY_ADDED, "error")
+            return
+        }
 
     const newItems = [...investigationItems];
     const existingItem = newItems.find(
@@ -524,45 +526,37 @@ const InvestigationModal = ({
     );
   };
 
-  const handleSaveTemplate = async () => {
-    if (!templateName.trim() || !templateCode.trim()) {
-      showPopup("Please fill in template name and code", "error");
-      return;
-    }
+    const handleSaveTemplate = async () => {
+        if (!templateName.trim() || !templateCode.trim()) {
+            showPopup(FILL_TEMPLATE_NAME_AND_CODE, "error")
+            return
+        }
 
-    if (selectedInvestigations.length === 0) {
-      showPopup("Please add at least one investigation", "error");
-      return;
-    }
+        if (selectedInvestigations.length === 0) {
+            showPopup(ADD_AT_LEAST_ONE_INVESTIGATION, "error")
+            return
+        }
 
-    const uniqueInvestigations = [...new Set(selectedInvestigations)];
-    if (uniqueInvestigations.length !== selectedInvestigations.length) {
-      showPopup(
-        "Duplicate investigations found. Please remove duplicates before saving.",
-        "error",
-      );
-      return;
-    }
+        const uniqueInvestigations = [...new Set(selectedInvestigations)]
+        if (uniqueInvestigations.length !== selectedInvestigations.length) {
+            showPopup(DUPLICATE_INVESTIGATIONS_FOUND, "error")
+            return
+        }
 
     try {
       setLoading(true);
 
-      if (templateType === "create") {
-        if (isTemplateNameDuplicate()) {
-          showPopup(
-            "Template name already exists. Please use a different name.",
-            "error",
-          );
-          return;
-        }
-        if (isTemplateCodeDuplicate()) {
-          showPopup(
-            "Template code already exists. Please use a different code.",
-            "error",
-          );
-          return;
-        }
-      }
+            // Only validate duplicates for create operation
+            if (templateType === "create") {
+                if (isTemplateNameDuplicate()) {
+                    showPopup(TEMPLATE_NAME_ALREADY_EXISTS, "error")
+                    return
+                }
+                if (isTemplateCodeDuplicate()) {
+                    showPopup(TEMPLATE_CODE_ALREADY_EXISTS, "error")
+                    return
+                }
+            }
 
       if (templateType === "create") {
         const requestData = {
@@ -580,23 +574,23 @@ const InvestigationModal = ({
           requestData,
         );
 
-        if (response && response.status === 200) {
-          showPopup("Template created successfully!", "success");
-          resetForm();
-          if (onTemplateSaved) {
-            onTemplateSaved(response.response);
-          }
-        } else {
-          throw new Error(response?.message || "Failed to save template");
-        }
-      } else if (templateType === "edit") {
-        const templateId = selectedTemplate
-          ? selectedTemplate.templateId
-          : selectedTemplateId;
-        if (!templateId) {
-          showPopup("Please select a template to update", "error");
-          return;
-        }
+                if (response && response.status === 200) {
+                    showPopup(TEMPLATE_CREATED_SUCCESS, "success")
+                    resetForm()
+                    if (onTemplateSaved) {
+                        onTemplateSaved(response.response)
+                    }
+                } else {
+                    throw new Error(response?.message || "Failed to save template")
+                }
+            }
+            // For UPDATE operation - use the correct structure
+            else if (templateType === "edit") {
+                const templateId = selectedTemplate ? selectedTemplate.templateId : selectedTemplateId
+                if (!templateId) {
+                    showPopup(SELECT_TEMPLATE_TO_UPDATE, "error")
+                    return
+                }
 
         const currentTemplate =
           selectedTemplate || templates.find((t) => t.templateId == templateId);
@@ -659,7 +653,7 @@ const InvestigationModal = ({
         );
 
         if (response && response.status === 200) {
-          showPopup("Template updated successfully!", "success");
+          showPopup(TEMPLATE_UPDATED_SUCCESS, "success");
           resetForm();
           fetchTemplates();
           if (onTemplateSaved) {
@@ -677,7 +671,7 @@ const InvestigationModal = ({
         error.response?.data?.message?.includes("already exists")
       ) {
         showPopup(
-          "Template name or code already exists. Please use different values.",
+          TEMPLATE_NAME_OR_CODE_EXISTS,
           "error",
         );
       } else {

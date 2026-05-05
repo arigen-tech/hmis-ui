@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import LoadingScreen from "../../../Components/Loading";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import DatePicker from "../../../Components/DatePicker";
@@ -68,12 +69,12 @@ import {
   NO_TOKENS_AVAILABLE_INFO,
 } from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
-import LoadingScreen from "../../../Components/Loading";
 
 const UpdatePatientRegistration = () => {
   const navigate = useNavigate();
   async function fetchHospitalDetails() {
     try {
+      setLoading(true);
       const data = await getRequest(
         `${HOSPITAL}/${sessionStorage.getItem("hospitalId")}`,
       );
@@ -97,6 +98,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchAllStateData() {
     try {
+      setLoading(true);
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
@@ -114,6 +116,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchAllDistrictData() {
     try {
+      setLoading(true);
       const data = await getRequest(`${ALL_DISTRICT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
@@ -161,8 +164,8 @@ const UpdatePatientRegistration = () => {
   const [dateResetKey, setDateResetKey] = useState(0);
   const [errors, setErrors] = useState({});
   const [imageURL, setImageURL] = useState("");
-  const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [relationData, setRelationData] = useState([]);
   const [countryData, setCountryData] = useState([]);
   const [stateData, setStateData] = useState([]);
@@ -183,6 +186,7 @@ const UpdatePatientRegistration = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     mobileNo: "",
     patientName: "",
@@ -201,6 +205,7 @@ const UpdatePatientRegistration = () => {
   const [mobileQuery, setMobileQuery] = useState("");
   const [pageInput, setPageInput] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
+const [editLoadingId, setEditLoadingId] = useState(null);  
 
   const [appointments, setAppointments] = useState([
     {
@@ -911,6 +916,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchGenderData() {
     try {
+      
       const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
@@ -930,6 +936,7 @@ const UpdatePatientRegistration = () => {
     // setLoading(true);
 
     try {
+      
       const data = await getRequest(`${ALL_RELATION}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response);
@@ -949,6 +956,7 @@ const UpdatePatientRegistration = () => {
     // setLoading(true);
 
     try {
+      
       const data = await getRequest(`${ALL_COUNTRY}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
@@ -966,6 +974,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchStates(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
@@ -983,6 +992,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchAllSessions() {
     try {
+      setLoading(true);
       const data = await getRequest(`${GET_SESSION}1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSession(data.response);
@@ -1000,6 +1010,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchDistrict(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
@@ -1017,6 +1028,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchNokStates(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -1034,6 +1046,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchNokAllStates(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -1051,6 +1064,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchNokDistrict(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokDistrictData(data.response);
@@ -1068,6 +1082,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchDepartment() {
     try {
+       setLoading(true);
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
@@ -1119,6 +1134,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchDoctor(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
@@ -1762,7 +1778,7 @@ const UpdatePatientRegistration = () => {
   //     </div>
   //   );
   // }
-
+ 
   const onDateChange = (index, date) => {
     if (!date) return;
 
@@ -2116,6 +2132,13 @@ const UpdatePatientRegistration = () => {
   // };
 
   if (showPatientDetails) {
+     {loading && (
+                  <div className="text-center py-4">
+                    <LoadingScreen />
+                  </div>
+                )}
+
+
     return (
       <div className="body d-flex py-3">
         <div className="container-xxl">
@@ -3394,7 +3417,7 @@ const UpdatePatientRegistration = () => {
                                 <td>{patient.gender || ""}</td>
                                 <td>{patient.patientEmailId || ""}</td>
                                 <td>
-                                  <button
+                                  {/* <button
                                     type="button"
                                     className="btn btn-primary btn-sm"
                                     onClick={() => handleEdit(patient)}
@@ -3404,7 +3427,39 @@ const UpdatePatientRegistration = () => {
                                     <span className="ms-2">
                                       <i className="icofont-edit"></i>
                                     </span>
-                                  </button>
+                                  </button> */}
+                                <button
+  type="button"
+  className="btn btn-primary btn-sm"
+  onClick={async () => {
+    setEditLoadingId(patient.id);
+
+    try {
+      await handleEdit(patient);
+    } finally {
+      setEditLoadingId(null);
+    }
+  }}
+  disabled={editLoadingId === patient.id}
+>
+  {editLoadingId === patient.id ? (
+    <>
+      <span
+        className="spinner-border spinner-border-sm me-2"
+        role="status"
+        aria-hidden="true"
+      ></span>
+      Editing...
+    </>
+  ) : (
+    <>
+      Edit
+      <span className="ms-2">
+        <i className="icofont-edit"></i>
+      </span>
+    </>
+  )}
+</button>
                                 </td>
                               </tr>
                             ))}

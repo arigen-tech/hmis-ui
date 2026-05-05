@@ -15,6 +15,20 @@ import {
   DRUG_TYPE,
 } from "../../../../config/apiConfig";
 import DuplicatePopup from "../DuplicatePopup";
+import {
+  FAILED_TO_LOAD_DATA,
+  NO_TEMPLATES_FOUND,
+  FAILED_TO_LOAD_FREQUENCIES,
+  DRUG_ALREADY_ADDED,
+  FILL_TEMPLATE_NAME_AND_CODE,
+  ADD_AT_LEAST_ONE_TREATMENT_ITEM,
+  FAILED_TO_LOAD_TEMPLATES,
+  DUPLICATE_DRUGS_FOUND,
+  TEMPLATE_NAME_ALREADY_EXISTS,
+  TEMPLATE_CODE_ALREADY_EXISTS,
+  SELECT_TEMPLATE_TO_UPDATE,
+  TEMPLATE_NAME_OR_CODE_EXISTS,
+} from "../../../../config/constants";
 
 // Portal Component for dropdown
 const Portal = ({ children }) => {
@@ -129,7 +143,7 @@ const TreatmentModal = ({
           }
         } catch (error) {
           console.error("Error fetching data:", error);
-          showPopup("Failed to load data", "error");
+          showPopup(FAILED_TO_LOAD_DATA, "error");
         } finally {
           setLoading(false);
         }
@@ -195,12 +209,12 @@ const TreatmentModal = ({
         setTemplates(response.response);
         return true;
       } else {
-        showPopup("No templates found", "warning");
+        showPopup(NO_TEMPLATES_FOUND, "warning");
         return false;
       }
     } catch (error) {
       console.error("Error fetching templates:", error);
-      showPopup("Failed to load templates", "error");
+      showPopup( FAILED_TO_LOAD_TEMPLATES, "error");
       return false;
     }
   };
@@ -360,7 +374,7 @@ const TreatmentModal = ({
       }
     } catch (error) {
       console.error("Error fetching frequencies:", error);
-      showPopup("Failed to load frequencies", "error");
+      showPopup(FAILED_TO_LOAD_FREQUENCIES, "error");
       setAllFrequencies([]);
       return false;
     }
@@ -636,7 +650,7 @@ const TreatmentModal = ({
     );
 
     if (drugAlreadyInOtherRow) {
-      showPopup("This drug is already added to the template", "error");
+      showPopup( DRUG_ALREADY_ADDED, "error");
       return;
     }
 
@@ -708,19 +722,19 @@ const TreatmentModal = ({
 
   const handleSaveTemplate = async () => {
     if (!templateName.trim() || !templateCode.trim()) {
-      showPopup("Please fill in template name and code", "error");
+      showPopup(FILL_TEMPLATE_NAME_AND_CODE, "error");
       return;
     }
 
     if (selectedDrugs.length === 0) {
-      showPopup("Please add at least one treatment item", "error");
+      showPopup(ADD_AT_LEAST_ONE_TREATMENT_ITEM , "error");
       return;
     }
 
     const uniqueDrugs = [...new Set(selectedDrugs)];
     if (uniqueDrugs.length !== selectedDrugs.length) {
       showPopup(
-        "Duplicate drugs found. Please remove duplicates before saving.",
+        DUPLICATE_DRUGS_FOUND,
         "error",
       );
       return;
@@ -742,14 +756,14 @@ const TreatmentModal = ({
       if (templateType === "create") {
         if (isTemplateNameDuplicate()) {
           showPopup(
-            "Template name already exists. Please use a different name.",
+            TEMPLATE_NAME_ALREADY_EXISTS,
             "error",
           );
           return;
         }
         if (isTemplateCodeDuplicate()) {
           showPopup(
-            "Template code already exists. Please use a different code.",
+            TEMPLATE_CODE_ALREADY_EXISTS,
             "error",
           );
           return;
@@ -778,7 +792,7 @@ const TreatmentModal = ({
           ? selectedTemplate.templateId
           : selectedTemplateId;
         if (!templateId) {
-          showPopup("Please select a template to update", "error");
+          showPopup(SELECT_TEMPLATE_TO_UPDATE, "error");
           return;
         }
         response = await putRequest(
@@ -807,7 +821,7 @@ const TreatmentModal = ({
         error.response?.data?.message?.includes("already exists")
       ) {
         showPopup(
-          "Template name or code already exists. Please use different values.",
+          TEMPLATE_NAME_OR_CODE_EXISTS,
           "error",
         );
       } else {

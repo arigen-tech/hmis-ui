@@ -2024,7 +2024,7 @@ const handleColourVisionChange = (eye, value) => {
       );
 
       if (response?.status === 200 || response?.success === true) {
-        showPopup("Recall patient created successfully!", "success", () => {
+        showPopup("OPD patient created successfully!", "success", () => {
           handleResetForm();
           setShowDetailView(false);
           handleSearch();
@@ -6763,7 +6763,7 @@ useEffect(() => {
             </div>
           </div>
         )}
-
+ 
         {showTreatmentAdviceModal && (
           <div
             className="modal d-block"
@@ -6966,15 +6966,11 @@ useEffect(() => {
                           <td>
                             {(currentPage - 1) * itemsPerPage + index + 1}
                           </td>
-
-                          <td>
-                            <span
-                              className={`badge ${getPriorityColor(item.priority)}`}
-                            >
-                              {item.tokenNo}
-                            </span>
-                          </td>
-
+                        <td className="text-center">
+                       <span className="badge btn btn-primary fs-6 px-2 py-1 rounded-pill shadow-sm">
+                       {item.tokenNo}
+                       </span>
+                       </td>
                           <td>{item.mobileNo}</td>
                           <td>{item.patientName}</td>
                           <td>{item.relation}</td>

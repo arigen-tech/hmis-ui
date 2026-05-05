@@ -176,6 +176,28 @@ const OpdPreconsultation = () => {
     }
   };
 
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  // Manual validation (recommended)
+  if (
+    !vitalFormData.height ||
+    !vitalFormData.weight ||
+    !vitalFormData.temperature ||
+    !vitalFormData.systolic ||
+    !vitalFormData.diastolic ||
+    !vitalFormData.pulse ||
+    !vitalFormData.rr ||
+    !vitalFormData.spo2
+
+  ) {
+    Swal.fire("Please fill all required fields", "", "warning");
+    return;
+  }
+
+  await submitvitals();
+};
+
   const handleSaveVitals = (e) => {
     e.preventDefault();
     const updatedPatients = visits.map((patient) => {
@@ -482,7 +504,9 @@ const OpdPreconsultation = () => {
                             </div>
 
                             <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">RR</label>
+                              <label className="form-label me-2">RR
+                                <span className="text-danger">*</span>
+                              </label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -495,7 +519,9 @@ const OpdPreconsultation = () => {
                             </div>
 
                             <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">SpO2</label>
+                              <label className="form-label me-2">SpO2
+                              <span className="text-danger">*</span>
+                              </label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -511,7 +537,7 @@ const OpdPreconsultation = () => {
                               <button
                                 type="submit"
                                 className="btn btn-primary"
-                                onClick={submitvitals}
+                                onClick={handleSubmit}
                               >
                                 Save Vital Details
                               </button>

@@ -1221,3 +1221,28 @@ export const ADD_SURGERY_SUCC_MSG = "Surgery added successfully!";
 export const UPDATE_SURGERY_SUCC_MSG = "Surgery updated successfully!";
 
 
+//treatment modal 
+export const FAILED_TO_LOAD_DATA = "Failed to load data";
+export const FAILED_TO_LOAD_FREQUENCIES ="Failed to load frequencies";
+export const DRUG_ALREADY_ADDED = "This drug is already added to the template";
+export const ADD_AT_LEAST_ONE_TREATMENT_ITEM ="Please add at least one treatment item";
+export const DUPLICATE_DRUGS_FOUND = "Duplicate drugs found. Please remove duplicates before saving.";
+
+
+//common 
+export const NO_TEMPLATES_FOUND ="No templates found";
+export const FAILED_TO_LOAD_TEMPLATES = "Failed to load templates";
+export const INVESTIGATION_ALREADY_ADDED = "This investigation is already added to the template";
+export const FILL_TEMPLATE_NAME_AND_CODE ="Please fill in template name and code";
+export const TEMPLATE_NAME_ALREADY_EXISTS ="Template name already exists. Please use a different name.";
+export const TEMPLATE_CODE_ALREADY_EXISTS = "Template code already exists. Please use a different code.";
+export const TEMPLATE_NAME_OR_CODE_EXISTS ="Template name or code already exists. Please use different values.";
+export const SELECT_TEMPLATE_TO_UPDATE = "Please select a template to update";
+
+
+
+//investigation modal
+export const ADD_AT_LEAST_ONE_INVESTIGATION = "Please add at least one investigation";
+export const DUPLICATE_INVESTIGATIONS_FOUND ="Duplicate investigations found. Please remove duplicates before saving.";
+export const TEMPLATE_CREATED_SUCCESS ="Template created successfully!";
+export const TEMPLATE_UPDATED_SUCCESS ="Template updated successfully!";
