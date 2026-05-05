@@ -792,7 +792,7 @@ const InvestigationModal = ({
           <div
             className="modal-header"
             style={{
-              backgroundColor: "#2c7da0",
+             backgroundColor: "#6aab9c",
               color: "white",
               borderBottom: "1px solid #245e7a",
               padding: "0.75rem 1.5rem",
@@ -1161,7 +1161,7 @@ const InvestigationModal = ({
                 disabled={isSaveButtonDisabled()}
                 style={{
                   borderRadius: "4px",
-                  backgroundColor: "#2c7da0",
+                  backgroundColor: "#6aab9c",
                   border: "none",
                 }}
               >

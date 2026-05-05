@@ -900,9 +900,9 @@ const TreatmentModal = ({
           <div
             className="modal-header"
             style={{
-              backgroundColor: "#2c7da0",
+              backgroundColor: "#6aab9c",
               color: "white",
-              borderBottom: "1px solid #245e7a",
+              borderBottom: "1px solid #6aab9c",
               padding: "0.75rem 1.5rem",
               borderRadius: "8px 8px 0 0",
             }}
@@ -1303,7 +1303,7 @@ const TreatmentModal = ({
                         {/* Add Button */}
                         <td className="text-center align-middle" style={{ padding: "6px" }}>
                           <button
-                            className="btn btn-success btn-sm"
+                            className="btn btn-primary btn-sm"
                             onClick={handleAddTreatmentItem}
                             disabled={!dataLoaded}
                             style={{
@@ -1384,7 +1384,7 @@ const TreatmentModal = ({
                   }
                   style={{ 
                     borderRadius: "4px",
-                    backgroundColor: "#2c7da0",
+                    backgroundColor: "#6aab9c",
                     border: "none",
                     fontSize: "0.8125rem"
                   }}
