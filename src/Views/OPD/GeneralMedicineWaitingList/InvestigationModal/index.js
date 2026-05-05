@@ -10,12 +10,23 @@ import {
   MAS_INVESTIGATION,
   MAS_INVESTIGATION_GET_ALL,
   MAS_INVESTIGATION_UNIQUE_TYPES,
+  OPD_CREATE_PATIENT_DETAILS,
   OPD_TEMPLATE,
   OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
   OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE,
 } from "../../../../config/apiConfig";
-import { ADD_AT_LEAST_ONE_INVESTIGATION, DUPLICATE_INVESTIGATIONS_FOUND, FILL_TEMPLATE_NAME_AND_CODE, INVESTIGATION_ALREADY_ADDED, SELECT_TEMPLATE_TO_UPDATE, TEMPLATE_CODE_ALREADY_EXISTS, TEMPLATE_CREATED_SUCCESS, TEMPLATE_NAME_ALREADY_EXISTS, TEMPLATE_NAME_OR_CODE_EXISTS, TEMPLATE_UPDATED_SUCCESS } from "../../../../config/constants";
-
+import {
+  ADD_AT_LEAST_ONE_INVESTIGATION,
+  DUPLICATE_INVESTIGATIONS_FOUND,
+  FILL_TEMPLATE_NAME_AND_CODE,
+  INVESTIGATION_ALREADY_ADDED,
+  SELECT_TEMPLATE_TO_UPDATE,
+  TEMPLATE_CODE_ALREADY_EXISTS,
+  TEMPLATE_CREATED_SUCCESS,
+  TEMPLATE_NAME_ALREADY_EXISTS,
+  TEMPLATE_NAME_OR_CODE_EXISTS,
+  TEMPLATE_UPDATED_SUCCESS,
+} from "../../../../config/constants";
 
 const InvestigationModal = ({
   show,
@@ -249,6 +260,23 @@ const InvestigationModal = ({
   };
 
   const handleInvestigationSearch = (value, index) => {
+    const oldId = investigationItems[index]?.investigationId;
+
+    setInvestigationItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        displayValue: value,
+        name: value,
+        investigationId: null,
+      };
+      return updated;
+    });
+
+    if (oldId) {
+      setSelectedInvestigations((prev) => prev.filter((id) => id !== oldId));
+    }
+
     setInvestigationSearch((prev) => {
       const updated = [...prev];
       updated[index] = value;
@@ -317,7 +345,7 @@ const InvestigationModal = ({
 
     setInvestigationSearch((prev) => {
       const updated = [...prev];
-      updated[index] = "";
+      updated[index] = selected.investigationName;
       return updated;
     });
 
@@ -476,10 +504,10 @@ const InvestigationModal = ({
           investigation.investigationId,
     );
 
-        if (investigationIdAlreadyInOtherRow) {
-            showPopup(INVESTIGATION_ALREADY_ADDED, "error")
-            return
-        }
+    if (investigationIdAlreadyInOtherRow) {
+      showPopup(INVESTIGATION_ALREADY_ADDED, "error");
+      return;
+    }
 
     const newItems = [...investigationItems];
     const existingItem = newItems.find(
@@ -526,71 +554,77 @@ const InvestigationModal = ({
     );
   };
 
-    const handleSaveTemplate = async () => {
-        if (!templateName.trim() || !templateCode.trim()) {
-            showPopup(FILL_TEMPLATE_NAME_AND_CODE, "error")
-            return
-        }
+  const investigationPayload = investigationItems.map((item) => ({
+    id: item.investigationId,
+    investigationName: item.name,
+    investigationDate: item.date,
+    categoryCode: investigationType,
+  }));
 
-        if (selectedInvestigations.length === 0) {
-            showPopup(ADD_AT_LEAST_ONE_INVESTIGATION, "error")
-            return
-        }
+  const handleSaveTemplate = async () => {
+    if (!templateName.trim() || !templateCode.trim()) {
+      showPopup(FILL_TEMPLATE_NAME_AND_CODE, "error");
+      return;
+    }
 
-        const uniqueInvestigations = [...new Set(selectedInvestigations)]
-        if (uniqueInvestigations.length !== selectedInvestigations.length) {
-            showPopup(DUPLICATE_INVESTIGATIONS_FOUND, "error")
-            return
-        }
+    if (selectedInvestigations.length === 0) {
+      showPopup(ADD_AT_LEAST_ONE_INVESTIGATION, "error");
+      return;
+    }
+
+    const uniqueInvestigations = [...new Set(selectedInvestigations)];
+    if (uniqueInvestigations.length !== selectedInvestigations.length) {
+      showPopup(DUPLICATE_INVESTIGATIONS_FOUND, "error");
+      return;
+    }
 
     try {
       setLoading(true);
 
-            // Only validate duplicates for create operation
-            if (templateType === "create") {
-                if (isTemplateNameDuplicate()) {
-                    showPopup(TEMPLATE_NAME_ALREADY_EXISTS, "error")
-                    return
-                }
-                if (isTemplateCodeDuplicate()) {
-                    showPopup(TEMPLATE_CODE_ALREADY_EXISTS, "error")
-                    return
-                }
-            }
+      // Only validate duplicates for create operation
+      if (templateType === "create") {
+        if (isTemplateNameDuplicate()) {
+          showPopup(TEMPLATE_NAME_ALREADY_EXISTS, "error");
+          return;
+        }
+        if (isTemplateCodeDuplicate()) {
+          showPopup(TEMPLATE_CODE_ALREADY_EXISTS, "error");
+          return;
+        }
+      }
 
       if (templateType === "create") {
         const requestData = {
           opdTemplateName: templateName.trim(),
           opdTemplateCode: templateCode.trim(),
-          investigationRequestList: selectedInvestigations.map((invId) => ({
-            templateInvestigationId: null,
-            investigationId: invId,
-          })),
+          investigations: investigationPayload,
           treatments: [],
         };
 
         const response = await postRequest(
-          `${OPD_TEMPLATE}/create-opdTemplate`,
+          `${OPD_CREATE_PATIENT_DETAILS}`,
           requestData,
         );
 
-                if (response && response.status === 200) {
-                    showPopup(TEMPLATE_CREATED_SUCCESS, "success")
-                    resetForm()
-                    if (onTemplateSaved) {
-                        onTemplateSaved(response.response)
-                    }
-                } else {
-                    throw new Error(response?.message || "Failed to save template")
-                }
-            }
-            // For UPDATE operation - use the correct structure
-            else if (templateType === "edit") {
-                const templateId = selectedTemplate ? selectedTemplate.templateId : selectedTemplateId
-                if (!templateId) {
-                    showPopup(SELECT_TEMPLATE_TO_UPDATE, "error")
-                    return
-                }
+        if (response && response.status === 200) {
+          showPopup(TEMPLATE_CREATED_SUCCESS, "success");
+          resetForm();
+          if (onTemplateSaved) {
+            onTemplateSaved(response.response);
+          }
+        } else {
+          throw new Error(response?.message || "Failed to save template");
+        }
+      }
+      // For UPDATE operation - use the correct structure
+      else if (templateType === "edit") {
+        const templateId = selectedTemplate
+          ? selectedTemplate.templateId
+          : selectedTemplateId;
+        if (!templateId) {
+          showPopup(SELECT_TEMPLATE_TO_UPDATE, "error");
+          return;
+        }
 
         const currentTemplate =
           selectedTemplate || templates.find((t) => t.templateId == templateId);
@@ -670,10 +704,7 @@ const InvestigationModal = ({
         error.message?.includes("duplicate") ||
         error.response?.data?.message?.includes("already exists")
       ) {
-        showPopup(
-          TEMPLATE_NAME_OR_CODE_EXISTS,
-          "error",
-        );
+        showPopup(TEMPLATE_NAME_OR_CODE_EXISTS, "error");
       } else {
         showPopup(
           `Failed to ${templateType === "create" ? "create" : "update"} template: ${error.message}`,
@@ -986,8 +1017,8 @@ const InvestigationModal = ({
                                 className="form-control form-control-sm"
                                 placeholder="Search Investigation..."
                                 value={
-                                  investigationItems[index].name ||
-                                  investigationSearch[index] ||
+                                  investigationSearch[index] ??
+                                  investigationItems[index].name ??
                                   ""
                                 }
                                 onChange={(e) =>

@@ -50,11 +50,9 @@ const GeneralMedicineWaitingList = () => {
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
   const [vitalsAvailable, setVitalsAvailable] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
-    useState(new Set());
+  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
   const [opdTemplateData, setOpdTemplateData] = useState([]);
-  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
-    useState("Select..");
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] = useState("Select..");
   const tableContainerRef = useRef(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
@@ -83,9 +81,7 @@ const GeneralMedicineWaitingList = () => {
 
   const departmentName =
     localStorage.getItem("departmentName") ||
-    sessionStorage.getItem("departmentName") ||
-    "";
-
+    sessionStorage.getItem("departmentName") || "";
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -1199,6 +1195,16 @@ const handleColourVisionChange = (eye, value) => {
   };
 
   const handleInvestigationSearch = (value, index) => {
+    setInvestigationItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        name: value,
+        investigationId: null,
+      };
+      return updated;
+    });
+
     setInvestigationSearch((prev) => {
       const updated = [...prev];
       updated[index] = value;
@@ -1252,7 +1258,7 @@ const handleColourVisionChange = (eye, value) => {
 
     setInvestigationSearch((prev) => {
       const updated = [...prev];
-      updated[index] = "";
+      updated[index] = selected.investigationName;
       return updated;
     });
 
@@ -1658,18 +1664,18 @@ const handleColourVisionChange = (eye, value) => {
     });
   };
 
-  const updateVisitStatus = async (visitId, visitDate, doctorId) => {
-    try {
-      const response = await putRequest(
-        `${PATIENT_UPDATE_STATUS}?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`,
-      );
+  // const updateVisitStatus = async (visitId, visitDate, doctorId) => {
+  //   try {
+  //     const response = await putRequest(
+  //       `${PATIENT_UPDATE_STATUS}?visitId=${visitId}&visitDate=${visitDate}&doctorId=${doctorId}`,
+  //     );
 
-      //console.log("Status Updated:", response);
-      return response;
-    } catch (error) {
-      console.error("Error updating status:", error);
-    }
-  };
+  //     //console.log("Status Updated:", response);
+  //     return response;
+  //   } catch (error) {
+  //     console.error("Error updating status:", error);
+  //   }
+  // };
 
   const checkVitalPresent = async (visitId) => {
     try {
@@ -1711,11 +1717,11 @@ const handleColourVisionChange = (eye, value) => {
   };
 
   const handleRowClick = async (patient) => {
-    await updateVisitStatus(
-      patient.visitId,
-      patient.visitDate,
-      patient.docterId,
-    );
+    // await updateVisitStatus(
+    //   patient.visitId,
+    //   patient.visitDate,
+    //   patient.docterId,
+    // );
 
     checkVitalPresent(patient.visitId);
 
@@ -1908,11 +1914,25 @@ const handleColourVisionChange = (eye, value) => {
       }));
 
       // Investigations mapping → backend format
-      const investigationList = investigationItems.map((item) => ({
-        id: item.investigationId,
-        investigationName: item.name,
-        investigationDate: item.date,
-      }));
+      const invalidInvestigation = investigationItems.some(
+        (item) => item.name?.trim() && !item.investigationId,
+      );
+
+      if (invalidInvestigation) {
+        showPopup(
+          "Please select a valid investigation from the dropdown before saving.",
+          "error",
+        );
+        return;
+      }
+
+      const investigationList = investigationItems
+        .filter((item) => item.investigationId)
+        .map((item) => ({
+          id: item.investigationId,
+          investigationName: item.name,
+          investigationDate: item.date,
+        }));
 
       //console.log("inv items", investigationItems)
 
@@ -4488,8 +4508,8 @@ useEffect(() => {
                                       className="form-control"
                                       placeholder="Search Investigation..."
                                       value={
-                                        investigationItems[index].name ||
-                                        investigationSearch[index] ||
+                                        investigationSearch[index] ??
+                                        investigationItems[index].name ??
                                         ""
                                       }
                                       onChange={(e) =>

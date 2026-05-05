@@ -3,7 +3,7 @@ import placeholderImage from "../../../assets/images/placeholder.jpg"
 import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard"
 import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal"
 import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal"
-import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS, OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES } from "../../../config/apiConfig";
+import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS, OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES, MAS_INVESTIGATION_UNIQUE_TYPES } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup/index";
@@ -791,6 +791,22 @@ const updateDrug = (selectedDrug, index) => {
         .filter(v => v?.length > 0)
         .join(",");
 
+      const invalidInvestigation = investigationItems.some(
+        (item) => item.name?.trim() && !item.investigationId
+      );
+
+      if (invalidInvestigation) {
+        showPopup(
+          "Please select a valid investigation from the dropdown before saving.",
+          "error"
+        );
+        return;
+      }
+
+      const validInvestigationItems = investigationItems.filter(
+        (item) => item.investigationId
+      );
+
       const payload = {
         ...formData,
         mlcCase: formData.mlcCase ? "y" : "n",
@@ -814,7 +830,7 @@ const updateDrug = (selectedDrug, index) => {
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
         referralRemarks: referralNotes,
         referralDate: referralData.referralDate ? new Date(referralData.referralDate).toISOString() : null,
-        investigations: investigationItems,
+        investigations: validInvestigationItems,
         labFlag: labFlag,
         radioFlag: radioFlag,
         treatmentAdvice: generalTreatmentAdvice,
@@ -1105,7 +1121,7 @@ const updateDrug = (selectedDrug, index) => {
   }, [])
 
   const fetchInvestigationTypes = async () => {
-    const res = await getRequest("/DgMasInvestigation/uniqueInvestigation/types")
+    const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES)
     if (res?.response) {
       setInvestigationTypes(res.response)
     }
@@ -1171,6 +1187,16 @@ const updateDrug = (selectedDrug, index) => {
 
 
   const handleInvestigationSearch = (value, index) => {
+    setInvestigationItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        name: value,
+        investigationId: null,
+      };
+      return updated;
+    });
+
     setInvestigationSearch((prev) => {
       const updated = [...prev];
       updated[index] = value;
@@ -1226,7 +1252,7 @@ const updateDrug = (selectedDrug, index) => {
 
     setInvestigationSearch((prev) => {
       const updated = [...prev];
-      updated[index] = "";
+      updated[index] = selected.investigationName;
       return updated;
     });
 
@@ -3214,7 +3240,7 @@ const updateDrug = (selectedDrug, index) => {
                                       type="text"
                                       className="form-control"
                                       placeholder="Search Investigation..."
-                                      value={investigationItems[index].name || investigationSearch[index] || ""}
+                                      value={investigationSearch[index] ?? investigationItems[index].name ?? ""}
                                       onChange={(e) => handleInvestigationSearch(e.target.value, index)}
                                       onClick={() => {
                                         loadFirstInvestigationPage(index);

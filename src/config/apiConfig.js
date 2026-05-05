@@ -1,5 +1,5 @@
 export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = 'http://localhost:8080'
+// export const API_HOST = 'http://localhost:8080';
 
 
 
@@ -207,7 +207,6 @@ export const OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE = `${OPD_TEMPLATE}/upda
 export const OPD_TEMPLATE_SAVE = `${OPD_TEMPLATE}/save`;
 export const OPD_TEMPLATE_UPDATE_TREATMENT = `${OPD_TEMPLATE}/updateOpdTemplateTreatment`;
 export const OPD_TEMPLATE_UPDATE = `${OPD_TEMPLATE}/update-opdTemplate`;
-
 //
 
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
@@ -340,6 +339,8 @@ export const SET_VITALS = `/patient/saveVitalDetails`;
 //OPD
 export const GET_PRECONSULTATION_LIST = `/opd/getPendingPreConsultations`;
 export const GET_WAITING_LIST = `/opd/getOpdWaitingList`;
+export const OPD_CREATE_PATIENT_DETAILS = `opd/createOpdPatientDetails`;
+
 
 //billing
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";

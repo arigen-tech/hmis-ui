@@ -179,7 +179,6 @@ const OpdPreconsultation = () => {
   const handleSubmit = async (e) => {
   e.preventDefault();
 
-  // Manual validation (recommended)
   if (
     !vitalFormData.height ||
     !vitalFormData.weight ||
@@ -233,10 +232,18 @@ const OpdPreconsultation = () => {
     };
     try {
       const data = await postRequest(`${SET_VITALS}`, requestData);
+
       if (data.status === 200) {
-        fetchPendingPreconsultation();
-        await Swal.fire("Vitals saved for appointment", "", "success");
-        setSelectedPatient(null);
+        const result = await Swal.fire(
+          "Vitals saved for appointment",
+          "",
+          "success",
+        );
+
+        if (result.isConfirmed) {
+          fetchPendingPreconsultation();
+          setSelectedPatient(null);
+        }
       } else {
         console.error("Unexpected API response format:", data);
       }
@@ -504,9 +511,7 @@ const OpdPreconsultation = () => {
                             </div>
 
                             <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">RR
-                                <span className="text-danger">*</span>
-                              </label>
+                              <label className="form-label me-2">RR<span className="text-danger">*</span></label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -514,14 +519,13 @@ const OpdPreconsultation = () => {
                                 name="rr"
                                 value={vitalFormData.rr}
                                 onChange={handleVitalInputChange}
+                                required
                               />
                               <span className="input-group-text">/min</span>
                             </div>
 
                             <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">SpO2
-                              <span className="text-danger">*</span>
-                              </label>
+                              <label className="form-label me-2">SpO2<span className="text-danger">*</span></label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -529,6 +533,7 @@ const OpdPreconsultation = () => {
                                 name="spo2"
                                 value={vitalFormData.spo2}
                                 onChange={handleVitalInputChange}
+                                required
                               />
                               <span className="input-group-text">%</span>
                             </div>
