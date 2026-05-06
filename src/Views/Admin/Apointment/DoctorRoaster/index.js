@@ -86,7 +86,7 @@ const DoctorRoaster = () => {
   const generateDatesFromSelectedDate = () => {
     if (!fromDate) return [];
   
-    const startDate = new Date(fromDate);
+   const startDate = new Date(fromDate); 
     const today = new Date();
     today.setHours(0, 0, 0, 0); 
   
@@ -97,11 +97,10 @@ const DoctorRoaster = () => {
       currentDate.setDate(startDate.getDate() + i);
       currentDate.setHours(0, 0, 0, 0); 
   
-      if (currentDate > today) {
         const formattedDate = `${currentDate.getDate().toString().padStart(2, '0')}/${(currentDate.getMonth() + 1).toString().padStart(2, '0')}/${currentDate.getFullYear()}`;
         
         dates.push(formattedDate);
-      }
+  
     }
   
     let doctorsToUse = [];
