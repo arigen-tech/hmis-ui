@@ -25,6 +25,8 @@ import {
   PATIENT_UPDATE_STATUS,
   PATIENT_OPD_BY_VISIT,
   OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
+  OPTH_MAS_DISTANCE_VISION,
+  OPTH_MAS_NEAR_VISION,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -39,6 +41,7 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 import OpdVision from "../OpdVision";
+import { FLAG } from "../../../config/constants";
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([]);
@@ -111,6 +114,37 @@ const GeneralMedicineWaitingList = () => {
     "Critical",
   ]);
 
+  const [distanceVisionData, setDistanceVisionData] = useState([]);
+  const [nearVisionData, setNearVisionData] = useState([]);
+
+  const fetchDistanceVisionData = async () => {
+    try {
+      const data = await getRequest(OPTH_MAS_DISTANCE_VISION);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDistanceVisionData(data.response);
+      } else {
+        setDistanceVisionData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Distance Vision data:", error);
+    }
+  };
+
+  const fetchNearVisionData = async () => {
+    try {
+      const data = await getRequest(OPTH_MAS_NEAR_VISION);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setNearVisionData(data.response);
+      } else {
+        setNearVisionData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Near Vision data:", error);
+    }
+  };
+
+
+
   const fetchWardCategoryData = async () => {
     try {
       const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
@@ -123,6 +157,7 @@ const GeneralMedicineWaitingList = () => {
       console.error("Error fetching WardCategory data:", error);
     }
   };
+
 
   const fetchWardData = async (categoryId) => {
     try {
@@ -175,139 +210,139 @@ const GeneralMedicineWaitingList = () => {
   };
 
   // Add these state declarations inside the GeneralMedicineWaitingList component
-const [visionFormData, setVisionFormData] = useState({
-  fundusGlow: {
-    re: { uncorrected: "", pinhole: "", bestCorrected: "" },
-    le: { uncorrected: "", pinhole: "", bestCorrected: "" },
-  },
-  vision: { distance: "", near: "" },
-  retinoscopy: { re: { axis: "" }, le: { axis: "" } },
-  measurements: {
-    re: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", iol: "" },
-    le: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", icl: "" },
-  },
-  spectacle: {
-    re: { sph: "", cyl: "", axis: "" },
-    le: { sph: "", cyl: "", axis: "" },
-  },
-  ipd: { value: "", use: "", typeOfLens: "" },
-  anteriorSegment: {
-    lids: "N", conjuctiva: "N", cornea: "N", anteriorChamber: "N", iris: "N", pupil: "N", lens: "N",
-  },
-  posteriorSegment: {
-    re: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
-    le: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
-  },
-  colourVision: { re: "", le: "" },
-});
-
-const anteriorLabels = {
-  lids: "Lids",
-  conjuctiva: "Conjuctiva",
-  cornea: "Cornea",
-  anteriorChamber: "Ant. Chamber",
-  iris: "Iris",
-  pupil: "Pupil",
-  lens: "Lens",
-};
-
-const posteriorLabels = {
-  vitreous: "Vitreous",
-  disc: "Disc",
-  macula: "Macula",
-  vessel: "Vessel",
-  periphery: "Periphery",
-};
-
-// Handlers
-const handleSaveVision = (e) => {
-  e.preventDefault();
-  // Implement API call or local save logic here
-  console.log("Vision data saved:", visionFormData);
-  // You can add a success popup here if needed
-  showPopup("Vision examination saved successfully!", "success");
-};
-
-const handleFundusGlowChange = (eye, field, value) => {
-  setVisionFormData((prev) => ({
-    ...prev,
+  const [visionFormData, setVisionFormData] = useState({
     fundusGlow: {
-      ...prev.fundusGlow,
-      [eye]: { ...prev.fundusGlow[eye], [field]: value },
+      re: { uncorrected: "", pinhole: "", bestCorrected: "" },
+      le: { uncorrected: "", pinhole: "", bestCorrected: "" },
     },
-  }));
-};
-
-const handleVisionChange = (e) => {
-  const { name, value } = e.target;
-  setVisionFormData((prev) => ({
-    ...prev,
-    vision: { ...prev.vision, [name]: value },
-  }));
-};
-
-const handleRetinoscopyChange = (eye, value) => {
-  setVisionFormData((prev) => ({
-    ...prev,
-    retinoscopy: {
-      ...prev.retinoscopy,
-      [eye]: { axis: value },
-    },
-  }));
-};
-
-const handleMeasurementsChange = (eye, field, value) => {
-  setVisionFormData((prev) => ({
-    ...prev,
+    vision: { distance: "", near: "" },
+    retinoscopy: { re: { axis: "" }, le: { axis: "" } },
     measurements: {
-      ...prev.measurements,
-      [eye]: { ...prev.measurements[eye], [field]: value },
+      re: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", iol: "" },
+      le: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", icl: "" },
     },
-  }));
-};
-
-const handleSpectacleChange = (eye, field, value) => {
-  setVisionFormData((prev) => ({
-    ...prev,
     spectacle: {
-      ...prev.spectacle,
-      [eye]: { ...prev.spectacle[eye], [field]: value },
+      re: { sph: "", cyl: "", axis: "" },
+      le: { sph: "", cyl: "", axis: "" },
     },
-  }));
-};
-
-const handleIpdChange = (e) => {
-  const { name, value } = e.target;
-  setVisionFormData((prev) => ({
-    ...prev,
-    ipd: { ...prev.ipd, [name]: value },
-  }));
-};
-
-const handleAnteriorChange = (e) => {
-  const { name, value } = e.target;
-  setVisionFormData((prev) => ({
-    ...prev,
-    anteriorSegment: { ...prev.anteriorSegment, [name]: value },
-  }));
-};
-
-const handlePosteriorChange = (eye, field, value) => {
-  setVisionFormData((prev) => ({
-    ...prev,
+    ipd: { value: "", use: "", typeOfLens: "" },
+    anteriorSegment: {
+      lids: "N", conjuctiva: "N", cornea: "N", anteriorChamber: "N", iris: "N", pupil: "N", lens: "N",
+    },
     posteriorSegment: {
-      ...prev.posteriorSegment,
-      [eye]: { ...prev.posteriorSegment[eye], [field]: value },
+      re: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
+      le: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
     },
-  }));
-};
+    colourVision: { re: "", le: "" },
+  });
 
-const handleColourVisionChange = (eye, value) => {
-  setVisionFormData((prev) => ({
-    ...prev,
-    colourVision: { ...prev.colourVision, [eye]: value },
-  }));
-};
+  const anteriorLabels = {
+    lids: "Lids",
+    conjuctiva: "Conjuctiva",
+    cornea: "Cornea",
+    anteriorChamber: "Ant. Chamber",
+    iris: "Iris",
+    pupil: "Pupil",
+    lens: "Lens",
+  };
+
+  const posteriorLabels = {
+    vitreous: "Vitreous",
+    disc: "Disc",
+    macula: "Macula",
+    vessel: "Vessel",
+    periphery: "Periphery",
+  };
+
+  // Handlers
+  const handleSaveVision = (e) => {
+    e.preventDefault();
+    // Implement API call or local save logic here
+    console.log("Vision data saved:", visionFormData);
+    // You can add a success popup here if needed
+    showPopup("Vision examination saved successfully!", "success");
+  };
+
+  const handleFundusGlowChange = (eye, field, value) => {
+    setVisionFormData((prev) => ({
+      ...prev,
+      fundusGlow: {
+        ...prev.fundusGlow,
+        [eye]: { ...prev.fundusGlow[eye], [field]: value },
+      },
+    }));
+  };
+
+  const handleVisionChange = (e) => {
+    const { name, value } = e.target;
+    setVisionFormData((prev) => ({
+      ...prev,
+      vision: { ...prev.vision, [name]: value },
+    }));
+  };
+
+  const handleRetinoscopyChange = (eye, value) => {
+    setVisionFormData((prev) => ({
+      ...prev,
+      retinoscopy: {
+        ...prev.retinoscopy,
+        [eye]: { axis: value },
+      },
+    }));
+  };
+
+  const handleMeasurementsChange = (eye, field, value) => {
+    setVisionFormData((prev) => ({
+      ...prev,
+      measurements: {
+        ...prev.measurements,
+        [eye]: { ...prev.measurements[eye], [field]: value },
+      },
+    }));
+  };
+
+  const handleSpectacleChange = (eye, field, value) => {
+    setVisionFormData((prev) => ({
+      ...prev,
+      spectacle: {
+        ...prev.spectacle,
+        [eye]: { ...prev.spectacle[eye], [field]: value },
+      },
+    }));
+  };
+
+  const handleIpdChange = (e) => {
+    const { name, value } = e.target;
+    setVisionFormData((prev) => ({
+      ...prev,
+      ipd: { ...prev.ipd, [name]: value },
+    }));
+  };
+
+  const handleAnteriorChange = (e) => {
+    const { name, value } = e.target;
+    setVisionFormData((prev) => ({
+      ...prev,
+      anteriorSegment: { ...prev.anteriorSegment, [name]: value },
+    }));
+  };
+
+  const handlePosteriorChange = (eye, field, value) => {
+    setVisionFormData((prev) => ({
+      ...prev,
+      posteriorSegment: {
+        ...prev.posteriorSegment,
+        [eye]: { ...prev.posteriorSegment[eye], [field]: value },
+      },
+    }));
+  };
+
+  const handleColourVisionChange = (eye, value) => {
+    setVisionFormData((prev) => ({
+      ...prev,
+      colourVision: { ...prev.colourVision, [eye]: value },
+    }));
+  };
 
   const handleWardNameChange = (deptId) => {
     setWardName(deptId);
@@ -735,10 +770,12 @@ const handleColourVisionChange = (eye, value) => {
     fetchWaitingList();
     fetchDoctorData();
     fetchSessionData();
-    fetchOpdTemplateData(); 
+    fetchOpdTemplateData();
     fetchAllFrequencies();
     fetchInvestigationTypes();
-    // fetchWardCategoryData();
+    fetchWardCategoryData();
+    fetchDistanceVisionData();
+    fetchNearVisionData();
   }, []);
 
   const handleDiagnosisOpen = () => {
@@ -814,7 +851,7 @@ const handleColourVisionChange = (eye, value) => {
     followUp: false,
     doctorRemark: false,
     remarks: false,
-    visionExamination: false, 
+    visionExamination: false,
   });
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("");
@@ -1981,7 +2018,7 @@ const handleColourVisionChange = (eye, value) => {
         spo2: formData.spo2,
         bpSystolic: formData.systolicBP,
         bpDiastolic: formData.diastolicBP,
-        mlcFlag: formData.mlcCase ? "y" : "n",
+        mlcFlag: formData.mlcCase ? FLAG.FLAG_Y : FLAG.FLAG_N,
 
         // ===== Diagnosis =====
         workingDiagnosis: workingDiagnosis,
@@ -2017,7 +2054,7 @@ const handleColourVisionChange = (eye, value) => {
 
         // ===== Admission Details =====
 
-        admissionFlag: admissionAdvised ? "y" : "n",
+        admissionFlag: admissionAdvised ? FLAG.FLAG_Y : FLAG.FLAG_N,
         admissionAdvisedDate:
           admissionAdvised && admissionDate
             ? new Date(admissionDate).toISOString()
@@ -2031,7 +2068,7 @@ const handleColourVisionChange = (eye, value) => {
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
         // ================= Referal ================
-        referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
+        referralFlag: referralData.isReferred === "Yes" ? FLAG.FLAG_Y : FLAG.FLAG_N,
         referralRemarks: referralNotes,
         referralDate: referralData.referralDate
           ? new Date(referralData.referralDate).toISOString()
@@ -2485,20 +2522,20 @@ const handleColourVisionChange = (eye, value) => {
     handleCloseModal();
   };
 
-useEffect(() => {
-  if (investigationTypes.length > 0 && !investigationType) {
-    const firstType = investigationTypes[0];
-    setInvestigationType(firstType.id);
-    
-    if (firstType.name === "Laboratory") {
-      setLabFlag("y");
-      setRadioFlag("n");
-    } else if (firstType.name === "Radiology") {
-      setRadioFlag("y");
-      setLabFlag("n");
+  useEffect(() => {
+    if (investigationTypes.length > 0 && !investigationType) {
+      const firstType = investigationTypes[0];
+      setInvestigationType(firstType.id);
+
+      if (firstType.name === "Laboratory") {
+        setLabFlag(FLAG.FLAG_Y);
+        setRadioFlag(FLAG.FLAG_N);
+      } else if (firstType.name === "Radiology") {
+        setRadioFlag(FLAG.FLAG_Y);
+        setLabFlag(FLAG.FLAG_N);
+      }
     }
-  }
-}, [investigationTypes]);
+  }, [investigationTypes]);
 
   const handleClearAllTreatmentTemplates = () => {
     setSelectedTreatmentTemplateIds(new Set());
@@ -2997,11 +3034,10 @@ useEffect(() => {
                             ].map((btn) => (
                               <button
                                 key={btn.id}
-                                className={`btn btn-sm ${
-                                  selectedHistoryType === btn.id
+                                className={`btn btn-sm ${selectedHistoryType === btn.id
                                     ? "btn-primary"
                                     : "btn-outline-primary"
-                                }`}
+                                  }`}
                                 onClick={() => handleHistoryTypeClick(btn.id)}
                               >
                                 {btn.label}
@@ -3320,8 +3356,8 @@ useEffect(() => {
                   )}
                 </div>
 
-                            {/* Vision Examination Section */}
-  <div className="card mb-3">
+                {/* Vision Examination Section */}
+                <div className="card mb-3">
                   <div
                     className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -3340,7 +3376,7 @@ useEffect(() => {
                         <div className="col-sm-12">
                           <div className="card shadow mb-3">
                             {/* Form Card Header */}
-                           
+
 
                             <div className="card-body">
                               <form onSubmit={handleSaveVision}>
@@ -3375,40 +3411,48 @@ useEffect(() => {
                                               <select
                                                 className="form-select form-select-sm"
                                                 value={visionFormData.fundusGlow.re.uncorrected}
-                                                onChange={(e) => handleFundusGlowChange("re", "uncorrected", e.target.value)}
+                                                onChange={(e) =>
+                                                  handleFundusGlowChange(
+                                                    "re",
+                                                    "uncorrected",
+                                                    e.target.value
+                                                  )
+                                                }
                                               >
                                                 <option value="">Select</option>
-                                                <option value="6/6">6/6</option>
-                                                <option value="6/9">6/9</option>
-                                                <option value="6/12">6/12</option>
-                                                <option value="6/18">6/18</option>
-                                                <option value="6/24">6/24</option>
-                                                <option value="6/36">6/36</option>
-                                                <option value="6/60">6/60</option>
-                                                <option value="CF">CF</option>
-                                                <option value="HM">HM</option>
-                                                <option value="PL">PL</option>
-                                                <option value="NPL">NPL</option>
+
+                                                {distanceVisionData.map((item) => (
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.visionValue}
+                                                  >
+                                                    {item.visionValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
                                                 value={visionFormData.fundusGlow.re.pinhole}
-                                                onChange={(e) => handleFundusGlowChange("re", "pinhole", e.target.value)}
+                                                onChange={(e) =>
+                                                  handleFundusGlowChange(
+                                                    "re",
+                                                    "pinhole",
+                                                    e.target.value
+                                                  )
+                                                }
                                               >
                                                 <option value="">Select</option>
-                                                <option value="6/6">6/6</option>
-                                                <option value="6/9">6/9</option>
-                                                <option value="6/12">6/12</option>
-                                                <option value="6/18">6/18</option>
-                                                <option value="6/24">6/24</option>
-                                                <option value="6/36">6/36</option>
-                                                <option value="6/60">6/60</option>
-                                                <option value="CF">CF</option>
-                                                <option value="HM">HM</option>
-                                                <option value="PL">PL</option>
-                                                <option value="NPL">NPL</option>
+
+                                                {distanceVisionData.map((item) => (
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.visionValue}
+                                                  >
+                                                    {item.visionValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
@@ -3424,40 +3468,48 @@ useEffect(() => {
                                               <select
                                                 className="form-select form-select-sm"
                                                 value={visionFormData.fundusGlow.le.uncorrected}
-                                                onChange={(e) => handleFundusGlowChange("le", "uncorrected", e.target.value)}
+                                                onChange={(e) =>
+                                                  handleFundusGlowChange(
+                                                    "le",
+                                                    "uncorrected",
+                                                    e.target.value
+                                                  )
+                                                }
                                               >
                                                 <option value="">Select</option>
-                                                <option value="6/6">6/6</option>
-                                                <option value="6/9">6/9</option>
-                                                <option value="6/12">6/12</option>
-                                                <option value="6/18">6/18</option>
-                                                <option value="6/24">6/24</option>
-                                                <option value="6/36">6/36</option>
-                                                <option value="6/60">6/60</option>
-                                                <option value="CF">CF</option>
-                                                <option value="HM">HM</option>
-                                                <option value="PL">PL</option>
-                                                <option value="NPL">NPL</option>
+
+                                                {distanceVisionData.map((item) => (
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.visionValue}
+                                                  >
+                                                    {item.visionValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.fundusGlow.le.pinhole}
-                                                onChange={(e) => handleFundusGlowChange("le", "pinhole", e.target.value)}
+                                                value={visionFormData.fundusGlow.re.pinhole}
+                                                onChange={(e) =>
+                                                  handleFundusGlowChange(
+                                                    "re",
+                                                    "pinhole",
+                                                    e.target.value
+                                                  )
+                                                }
                                               >
                                                 <option value="">Select</option>
-                                                <option value="6/6">6/6</option>
-                                                <option value="6/9">6/9</option>
-                                                <option value="6/12">6/12</option>
-                                                <option value="6/18">6/18</option>
-                                                <option value="6/24">6/24</option>
-                                                <option value="6/36">6/36</option>
-                                                <option value="6/60">6/60</option>
-                                                <option value="CF">CF</option>
-                                                <option value="HM">HM</option>
-                                                <option value="PL">PL</option>
-                                                <option value="NPL">NPL</option>
+
+                                                {distanceVisionData.map((item) => (
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.visionValue}
+                                                  >
+                                                    {item.visionValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
@@ -3470,7 +3522,7 @@ useEffect(() => {
                                               />
                                             </td>
                                           </tr>
-                                          <tr>
+                                          <tr>                                           
                                             <td className="fw-semibold">Near</td>
                                             <td>
                                               <select
@@ -3480,15 +3532,11 @@ useEffect(() => {
                                                 name="distance"
                                               >
                                                 <option value="">Select</option>
-                                                <option value="N6">N6</option>
-                                                <option value="N8">N8</option>
-                                                <option value="N10">N10</option>
-                                                <option value="N12">N12</option>
-                                                <option value="N14">N14</option>
-                                                <option value="N18">N18</option>
-                                                <option value="N24">N24</option>
-                                                <option value="N36">N36</option>
-                                                <option value="N48">N48</option>
+                                                {nearVisionData.map((item) => (
+                                                  <option key={item.id} value={item.nearValue}>
+                                                    {item.nearValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
@@ -3499,15 +3547,11 @@ useEffect(() => {
                                                 name="near"
                                               >
                                                 <option value="">Select</option>
-                                                <option value="N6">N6</option>
-                                                <option value="N8">N8</option>
-                                                <option value="N10">N10</option>
-                                                <option value="N12">N12</option>
-                                                <option value="N14">N14</option>
-                                                <option value="N18">N18</option>
-                                                <option value="N24">N24</option>
-                                                <option value="N36">N36</option>
-                                                <option value="N48">N48</option>
+                                                {nearVisionData.map((item) => (
+                                                  <option key={item.id} value={item.nearValue}>
+                                                    {item.nearValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
@@ -3527,15 +3571,11 @@ useEffect(() => {
                                                 name="distance"
                                               >
                                                 <option value="">Select</option>
-                                                <option value="N6">N6</option>
-                                                <option value="N8">N8</option>
-                                                <option value="N10">N10</option>
-                                                <option value="N12">N12</option>
-                                                <option value="N14">N14</option>
-                                                <option value="N18">N18</option>
-                                                <option value="N24">N24</option>
-                                                <option value="N36">N36</option>
-                                                <option value="N48">N48</option>
+                                                {nearVisionData.map((item) => (
+                                                  <option key={item.id} value={item.nearValue}>
+                                                    {item.nearValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
@@ -3546,15 +3586,11 @@ useEffect(() => {
                                                 name="near"
                                               >
                                                 <option value="">Select</option>
-                                                <option value="N6">N6</option>
-                                                <option value="N8">N8</option>
-                                                <option value="N10">N10</option>
-                                                <option value="N12">N12</option>
-                                                <option value="N14">N14</option>
-                                                <option value="N18">N18</option>
-                                                <option value="N24">N24</option>
-                                                <option value="N36">N36</option>
-                                                <option value="N48">N48</option>
+                                                {nearVisionData.map((item) => (
+                                                  <option key={item.id} value={item.nearValue}>
+                                                    {item.nearValue}
+                                                  </option>
+                                                ))}
                                               </select>
                                             </td>
                                             <td>
@@ -3575,152 +3611,220 @@ useEffect(() => {
 
                                 {/* ---- RETINOSCOPY (Table) ---- */}
                                 <div className="row mb-4">
-                            <div className="col-12 mb-2">
-                              <h6 className="fw-bold  text-primary border-bottom pb-1">RETINOSCOPY</h6>
-                            </div>
-                            <div className="col-12">
-                              <div className="table-responsive">
-                                <table className="table table-bordered table-sm align-middle">
-                                  <thead className="table-light">
-                                    <tr>
-                                      <th style={{ width: "130px" }}></th>
-                                      <th colSpan="2" className="text-center">R.E.</th>
-                                      <th colSpan="2" className="text-center">L.E.</th>
-                                    </tr>
-                                    <tr>
-                                      <th style={{ width: "130px" }}></th>
-                                      <th colSpan="1" className="text-center"></th>
-                                      <th colSpan="1" className="text-center">AXIS</th>
-                                      <th colSpan="1" className="text-center"></th>
-                                      <th colSpan="1" className="text-center">AXIS</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr>
-                                      <td className="fw-semibold">V</td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                        />
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td className="fw-semibold">H</td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                          value=""
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Axis"
-                                          value=""
-                                        />
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                                {/* ---- Additional Measurements (Table) ---- */}
-                                <div className="row ">
+                                  <div className="col-12 mb-2">
+                                    <h6 className="fw-bold  text-primary border-bottom pb-1">RETINOSCOPY</h6>
+                                  </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
                                       <table className="table table-bordered table-sm align-middle">
                                         <thead className="table-light">
                                           <tr>
-                                            <th colSpan="5" className="text-center">R.E.</th>
-                                            <th colSpan="5" className="text-center">L.E.</th>
+                                            <th style={{ width: "130px" }}></th>
+                                            <th colSpan="2" className="text-center">R.E.</th>
+                                            <th colSpan="2" className="text-center">L.E.</th>
                                           </tr>
                                           <tr>
-                                            <th>Keratometry</th>
-                                            <th>Pachymetry</th>
-                                            <th>Non-contact Tonometry</th>
-                                            <th>Field of VN</th>
-                                            <th>IOL</th>
-                                            <th>Keratometry</th>
-                                            <th>Pachymetry</th>
-                                            <th>Non-contact Tonometry</th>
-                                            <th>Field of VN</th>
-                                            <th>ICL</th>
+                                            <th style={{ width: "130px" }}></th>
+                                            <th colSpan="1" className="text-center"></th>
+                                            <th colSpan="1" className="text-center">AXIS</th>
+                                            <th colSpan="1" className="text-center"></th>
+                                            <th colSpan="1" className="text-center">AXIS</th>
                                           </tr>
                                         </thead>
                                         <tbody>
                                           <tr>
+                                            <td className="fw-semibold">V</td>
                                             <td>
                                               <input
                                                 type="text"
                                                 className="form-control form-control-sm"
+                                                placeholder="Axis"
                                               />
                                             </td>
                                             <td>
                                               <input
                                                 type="text"
                                                 className="form-control form-control-sm"
+                                                placeholder="Axis"
                                               />
                                             </td>
                                             <td>
                                               <input
                                                 type="text"
                                                 className="form-control form-control-sm"
+                                                placeholder="Axis"
                                               />
                                             </td>
                                             <td>
                                               <input
                                                 type="text"
                                                 className="form-control form-control-sm"
+                                                placeholder="Axis"
                                               />
                                             </td>
-                                            <td>
-                                              <input
-                                                type="text"
-                                                className="form-control form-control-sm"
-                                              />
-                                            </td>
-                                            <td colSpan="5"></td>
                                           </tr>
                                           <tr>
-                                            <td colSpan="5"></td>
+                                            <td className="fw-semibold">H</td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Axis"
+                                                value=""
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Axis"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Axis"
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Axis"
+                                                value=""
+                                              />
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                      {/* ---- Additional Measurements (Table) ---- */}
+                                      <div className="row ">
+                                        <div className="col-12">
+                                          <div className="table-responsive">
+                                            <table className="table table-bordered table-sm align-middle">
+                                              <thead className="table-light">
+                                                <tr>
+                                                  <th colSpan="5" className="text-center">R.E.</th>
+                                                  <th colSpan="5" className="text-center">L.E.</th>
+                                                </tr>
+                                                <tr>
+                                                  <th>Keratometry</th>
+                                                  <th>Pachymetry</th>
+                                                  <th>Non-contact Tonometry</th>
+                                                  <th>Field of VN</th>
+                                                  <th>IOL</th>
+                                                  <th>Keratometry</th>
+                                                  <th>Pachymetry</th>
+                                                  <th>Non-contact Tonometry</th>
+                                                  <th>Field of VN</th>
+                                                  <th>ICL</th>
+                                                </tr>
+                                              </thead>
+                                              <tbody>
+                                                <tr>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td colSpan="5"></td>
+                                                </tr>
+                                                <tr>
+                                                  <td colSpan="5"></td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                  <td>
+                                                    <input
+                                                      type="text"
+                                                      className="form-control form-control-sm"
+                                                    />
+                                                  </td>
+                                                </tr>
+                                              </tbody>
+                                            </table>
+                                          </div>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+
+                                {/* ---- SPECTACLE PRESCRIPTION ---- */}
+                                <div className="row">
+                                  <div className="col-12 mb-2">
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">Spectacle Correction</h6>
+                                  </div>
+                                  <div className="col-12">
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-sm align-middle">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th></th>
+                                            <th colSpan="3" className="text-center">R.E.</th>
+                                            <th colSpan="3" className="text-center">L.E.</th>
+                                          </tr>
+                                          <tr>
+                                            <th></th>
+                                            <th>SPH</th>
+                                            <th>CYL</th>
+                                            <th>Axis</th>
+                                            <th>SPH</th>
+                                            <th>CYL</th>
+                                            <th>Axis</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr>
+                                            <td className="fw-semibold">Dist</td>
                                             <td>
                                               <input
                                                 type="text"
@@ -3750,6 +3854,274 @@ useEffect(() => {
                                                 type="text"
                                                 className="form-control form-control-sm"
                                               />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                              />
+                                            </td>
+                                          </tr>
+                                          <tr>
+                                            <td className="fw-semibold">Near</td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Add"
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder=""
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder=""
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder="Add"
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder=""
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                            <td>
+                                              <input
+                                                type="text"
+                                                className="form-control form-control-sm"
+                                                placeholder=""
+                                                value=""
+                                                readOnly
+                                              />
+                                            </td>
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                      <div className="col-12">
+                                        <div className="table-responsive">
+                                          <table className="table table-bordered table-sm w-auto">
+                                            <tbody>
+                                              <tr>
+                                                <td className="fw-semibold">IPD (50–70)</td>
+                                                <td>
+                                                  <input
+                                                    type="text"
+                                                    className="form-control form-control-sm"
+                                                    name="value"
+                                                    placeholder="mm"
+                                                  />
+                                                </td>
+                                                <td className="fw-semibold">Use</td>
+                                                <td>
+                                                  <select
+                                                    className="form-select form-select-sm"
+                                                    name="use"
+                                                  >
+                                                    <option value="">Select</option>
+                                                    <option value="Distance">Distance</option>
+                                                    <option value="Near">Near</option>
+                                                  </select>
+                                                </td>
+                                                <td className="fw-semibold">Type of Lens</td>
+                                                <td>
+                                                  <select
+                                                    className="form-select form-select-sm"
+                                                    name="typeOfLens"
+                                                  >
+                                                    <option value="">Select</option>
+                                                    <option value="Single Vision">Single Vision</option>
+                                                    <option value="Bifocal">Bifocal</option>
+                                                    <option value="Progressive">Progressive</option>
+                                                  </select>
+                                                </td>
+                                              </tr>
+                                            </tbody>
+                                          </table>
+                                        </div>
+                                      </div>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ---- IPD ---- */}
+
+
+                                {/* ---- ANTERIOR SEGMENT ---- */}
+                                {/* ---- Anterior Segment (Table) ---- */}
+                                <div className="row mb-4">
+                                  <div className="col-12 mb-2">
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">Anterior Segment</h6>
+                                  </div>
+                                  <div className="col-12">
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-sm align-middle">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th></th>
+                                            {Object.keys(anteriorLabels).map(key => (
+                                              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
+                                                {anteriorLabels[key]}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr>
+                                            <td className="fw-semibold">R.E.</td>
+                                            {Object.keys(anteriorLabels).map(key => (
+                                              <td key={`re-${key}`}>
+                                                <select
+                                                  className="form-select form-select-sm"
+                                                  name={key}
+                                                  value={visionFormData.anteriorSegment?.[key] || "N"}
+                                                  onChange={handleAnteriorChange}
+                                                >
+                                                  <option value="N">N</option>
+                                                  <option value="Abnormal">Abnormal</option>
+                                                </select>
+                                              </td>
+                                            ))}
+                                          </tr>
+                                          <tr>
+                                            <td className="fw-semibold">L.E.</td>
+                                            {Object.keys(anteriorLabels).map(key => (
+                                              <td key={`le-${key}`}>
+                                                <select
+                                                  className="form-select form-select-sm"
+                                                  name={key}
+                                                  value={visionFormData.anteriorSegment?.[key] || "N"}
+                                                  onChange={handleAnteriorChange}
+                                                >
+                                                  <option value="N">N</option>
+                                                  <option value="Abnormal">Abnormal</option>
+                                                </select>
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ---- Posterior Segment (Table) ---- */}
+                                <div className="row mb-4">
+                                  <div className="col-12 mb-2">
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">Posterior Segment</h6>
+                                  </div>
+                                  <div className="col-12">
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-sm align-middle">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th></th>
+                                            {Object.keys(posteriorLabels).map(key => (
+                                              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
+                                                {posteriorLabels[key]}
+                                              </th>
+                                            ))}
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr>
+                                            <td className="fw-semibold">R.E.</td>
+                                            {Object.keys(posteriorLabels).map(field => (
+                                              <td key={`re-${field}`}>
+                                                <select
+                                                  className="form-select form-select-sm"
+                                                  value={visionFormData.posteriorSegment?.re?.[field] || "N"}
+                                                  onChange={(e) => handlePosteriorChange("re", field, e.target.value)}
+                                                >
+                                                  <option value="N">N</option>
+                                                  <option value="Abnormal">Abnormal</option>
+                                                </select>
+                                              </td>
+                                            ))}
+                                          </tr>
+                                          <tr>
+                                            <td className="fw-semibold">L.E.</td>
+                                            {Object.keys(posteriorLabels).map(field => (
+                                              <td key={`le-${field}`}>
+                                                <select
+                                                  className="form-select form-select-sm"
+                                                  value={visionFormData.posteriorSegment?.le?.[field] || "N"}
+                                                  onChange={(e) => handlePosteriorChange("le", field, e.target.value)}
+                                                >
+                                                  <option value="N">N</option>
+                                                  <option value="Abnormal">Abnormal</option>
+                                                </select>
+                                              </td>
+                                            ))}
+                                          </tr>
+                                        </tbody>
+                                      </table>
+                                    </div>
+                                  </div>
+                                </div>
+
+                                {/* ---- Colour Vision (Table) ---- */}
+                                <div className="row mb-4">
+                                  <div className="col-12 mb-2">
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">Colour Vision</h6>
+                                  </div>
+                                  <div className="col-12">
+                                    <div className="table-responsive">
+                                      <table className="table table-bordered table-sm w-auto">
+                                        <thead className="table-light">
+                                          <tr>
+                                            <th></th>
+                                            <th>R.E.</th>
+                                            <th>L.E.</th>
+                                          </tr>
+                                        </thead>
+                                        <tbody>
+                                          <tr>
+                                            <td className="fw-semibold">Select</td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.colourVision?.re || ""}
+                                                onChange={(e) => handleColourVisionChange("re", e.target.value)}
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="Normal">Normal</option>
+                                                <option value="Defective">Defective</option>
+                                              </select>
+                                            </td>
+                                            <td>
+                                              <select
+                                                className="form-select form-select-sm"
+                                                value={visionFormData.colourVision?.le || ""}
+                                                onChange={(e) => handleColourVisionChange("le", e.target.value)}
+                                              >
+                                                <option value="">Select</option>
+                                                <option value="Normal">Normal</option>
+                                                <option value="Defective">Defective</option>
+                                              </select>
                                             </td>
                                           </tr>
                                         </tbody>
@@ -3757,342 +4129,6 @@ useEffect(() => {
                                     </div>
                                   </div>
                                 </div>
-                              </div>
-                            </div>
-                          </div>
-
-                               
-                                {/* ---- SPECTACLE PRESCRIPTION ---- */}
-                               <div className="row">
-                            <div className="col-12 mb-2">
-                              <h6 className="fw-bold text-primary border-bottom pb-1">Spectacle Correction</h6>
-                            </div>
-                            <div className="col-12">
-                              <div className="table-responsive">
-                                <table className="table table-bordered table-sm align-middle">
-                                  <thead className="table-light">
-                                    <tr>
-                                      <th></th>
-                                      <th colSpan="3" className="text-center">R.E.</th>
-                                      <th colSpan="3" className="text-center">L.E.</th>
-                                    </tr>
-                                    <tr>
-                                      <th></th>
-                                      <th>SPH</th>
-                                      <th>CYL</th>
-                                      <th>Axis</th>
-                                      <th>SPH</th>
-                                      <th>CYL</th>
-                                      <th>Axis</th>
-                                    </tr>
-                                  </thead>
-                                  <tbody>
-                                    <tr>
-                                      <td className="fw-semibold">Dist</td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                        />
-                                      </td>
-                                    </tr>
-                                    <tr>
-                                      <td className="fw-semibold">Near</td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Add"
-                                          value=""
-                                          readOnly
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder=""
-                                          value=""
-                                          readOnly
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder=""
-                                          value=""
-                                          readOnly
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder="Add"
-                                          value=""
-                                          readOnly
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder=""
-                                          value=""
-                                          readOnly
-                                        />
-                                      </td>
-                                      <td>
-                                        <input
-                                          type="text"
-                                          className="form-control form-control-sm"
-                                          placeholder=""
-                                          value=""
-                                          readOnly
-                                        />
-                                      </td>
-                                    </tr>
-                                  </tbody>
-                                </table>
-                                <div className="col-12">
-                                  <div className="table-responsive">
-                                    <table className="table table-bordered table-sm w-auto">
-                                      <tbody>
-                                        <tr>
-                                          <td className="fw-semibold">IPD (50–70)</td>
-                                          <td>
-                                            <input
-                                              type="text"
-                                              className="form-control form-control-sm"
-                                              name="value"
-                                              placeholder="mm"
-                                            />
-                                          </td>
-                                          <td className="fw-semibold">Use</td>
-                                          <td>
-                                            <select
-                                              className="form-select form-select-sm"
-                                              name="use"
-                                            >
-                                              <option value="">Select</option>
-                                              <option value="Distance">Distance</option>
-                                              <option value="Near">Near</option>
-                                            </select>
-                                          </td>
-                                          <td className="fw-semibold">Type of Lens</td>
-                                          <td>
-                                            <select
-                                              className="form-select form-select-sm"
-                                              name="typeOfLens"
-                                            >
-                                              <option value="">Select</option>
-                                              <option value="Single Vision">Single Vision</option>
-                                              <option value="Bifocal">Bifocal</option>
-                                              <option value="Progressive">Progressive</option>
-                                            </select>
-                                          </td>
-                                        </tr>
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-
-                                {/* ---- IPD ---- */}
-                                
-
-                                {/* ---- ANTERIOR SEGMENT ---- */}
-                               {/* ---- Anterior Segment (Table) ---- */}
-<div className="row mb-4">
-  <div className="col-12 mb-2">
-    <h6 className="fw-bold text-primary border-bottom pb-1">Anterior Segment</h6>
-  </div>
-  <div className="col-12">
-    <div className="table-responsive">
-      <table className="table table-bordered table-sm align-middle">
-        <thead className="table-light">
-          <tr>
-            <th></th>
-            {Object.keys(anteriorLabels).map(key => (
-              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
-                {anteriorLabels[key]}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="fw-semibold">R.E.</td>
-            {Object.keys(anteriorLabels).map(key => (
-              <td key={`re-${key}`}>
-                <select
-                  className="form-select form-select-sm"
-                  name={key}
-                  value={visionFormData.anteriorSegment?.[key] || "N"}
-                  onChange={handleAnteriorChange}
-                >
-                  <option value="N">N</option>
-                  <option value="Abnormal">Abnormal</option>
-                </select>
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <td className="fw-semibold">L.E.</td>
-            {Object.keys(anteriorLabels).map(key => (
-              <td key={`le-${key}`}>
-                <select
-                  className="form-select form-select-sm"
-                  name={key}
-                  value={visionFormData.anteriorSegment?.[key] || "N"}
-                  onChange={handleAnteriorChange}
-                >
-                  <option value="N">N</option>
-                  <option value="Abnormal">Abnormal</option>
-                </select>
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-{/* ---- Posterior Segment (Table) ---- */}
-<div className="row mb-4">
-  <div className="col-12 mb-2">
-    <h6 className="fw-bold text-primary border-bottom pb-1">Posterior Segment</h6>
-  </div>
-  <div className="col-12">
-    <div className="table-responsive">
-      <table className="table table-bordered table-sm align-middle">
-        <thead className="table-light">
-          <tr>
-            <th></th>
-            {Object.keys(posteriorLabels).map(key => (
-              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
-                {posteriorLabels[key]}
-              </th>
-            ))}
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="fw-semibold">R.E.</td>
-            {Object.keys(posteriorLabels).map(field => (
-              <td key={`re-${field}`}>
-                <select
-                  className="form-select form-select-sm"
-                  value={visionFormData.posteriorSegment?.re?.[field] || "N"}
-                  onChange={(e) => handlePosteriorChange("re", field, e.target.value)}
-                >
-                  <option value="N">N</option>
-                  <option value="Abnormal">Abnormal</option>
-                </select>
-              </td>
-            ))}
-          </tr>
-          <tr>
-            <td className="fw-semibold">L.E.</td>
-            {Object.keys(posteriorLabels).map(field => (
-              <td key={`le-${field}`}>
-                <select
-                  className="form-select form-select-sm"
-                  value={visionFormData.posteriorSegment?.le?.[field] || "N"}
-                  onChange={(e) => handlePosteriorChange("le", field, e.target.value)}
-                >
-                  <option value="N">N</option>
-                  <option value="Abnormal">Abnormal</option>
-                </select>
-              </td>
-            ))}
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
-
-{/* ---- Colour Vision (Table) ---- */}
-<div className="row mb-4">
-  <div className="col-12 mb-2">
-    <h6 className="fw-bold text-primary border-bottom pb-1">Colour Vision</h6>
-  </div>
-  <div className="col-12">
-    <div className="table-responsive">
-      <table className="table table-bordered table-sm w-auto">
-        <thead className="table-light">
-          <tr>
-            <th></th>
-            <th>R.E.</th>
-            <th>L.E.</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr>
-            <td className="fw-semibold">Select</td>
-            <td>
-              <select
-                className="form-select form-select-sm"
-                value={visionFormData.colourVision?.re || ""}
-                onChange={(e) => handleColourVisionChange("re", e.target.value)}
-              >
-                <option value="">Select</option>
-                <option value="Normal">Normal</option>
-                <option value="Defective">Defective</option>
-              </select>
-            </td>
-            <td>
-              <select
-                className="form-select form-select-sm"
-                value={visionFormData.colourVision?.le || ""}
-                onChange={(e) => handleColourVisionChange("le", e.target.value)}
-              >
-                <option value="">Select</option>
-                <option value="Normal">Normal</option>
-                <option value="Defective">Defective</option>
-              </select>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-  </div>
-</div>
                                 <div className="text-end mt-3">
                                   <button type="submit" className="btn btn-primary">
                                     Save Vision Examination
@@ -4105,7 +4141,7 @@ useEffect(() => {
                       </div>
                     </div>
                   )}
-                </div> 
+                </div>
 
 
                 {/* Diagnosis Section */}
@@ -4202,7 +4238,7 @@ useEffect(() => {
                                         onScroll={(e) => {
                                           if (
                                             e.target.scrollHeight -
-                                              e.target.scrollTop ===
+                                            e.target.scrollTop ===
                                             e.target.clientHeight
                                           ) {
                                             loadMore();
@@ -4451,14 +4487,14 @@ useEffect(() => {
                                       setInvestigationType(type.id);
 
                                       if (type.name === "Laboratory") {
-                                        setLabFlag("y");
-                                        setRadioFlag("n");
+                                        setLabFlag(FLAG.FLAG_Y);
+                                        setRadioFlag(FLAG.FLAG_N);
                                       } else if (type.name === "Radiology") {
-                                        setRadioFlag("y");
-                                        setLabFlag("n");
+                                        setRadioFlag(FLAG.FLAG_Y);
+                                        setLabFlag(FLAG.FLAG_N);
                                       } else {
-                                        setLabFlag("n");
-                                        setRadioFlag("n");
+                                        setLabFlag(FLAG.FLAG_N);
+                                        setRadioFlag(FLAG.FLAG_N);
                                       }
                                     }}
                                   />
@@ -4543,7 +4579,7 @@ useEffect(() => {
                                         onScroll={(e) => {
                                           if (
                                             e.target.scrollHeight -
-                                              e.target.scrollTop ===
+                                            e.target.scrollTop ===
                                             e.target.clientHeight
                                           ) {
                                             loadMoreInvestigations();
@@ -4872,7 +4908,7 @@ useEffect(() => {
                                         onScroll={(e) => {
                                           if (
                                             e.target.scrollHeight -
-                                              e.target.scrollTop ===
+                                            e.target.scrollTop ===
                                             e.target.clientHeight
                                           ) {
                                             loadMoreDrugs();
@@ -5199,8 +5235,8 @@ useEffect(() => {
                                     <div
                                       className="procedure-wrapper"
                                       ref={(el) =>
-                                        (procedureDropdownRef.current[index] =
-                                          el)
+                                      (procedureDropdownRef.current[index] =
+                                        el)
                                       }
                                       style={{
                                         position: "relative",
@@ -5277,7 +5313,7 @@ useEffect(() => {
                                           onScroll={(e) => {
                                             if (
                                               e.target.scrollHeight -
-                                                e.target.scrollTop ===
+                                              e.target.scrollTop ===
                                               e.target.clientHeight
                                             ) {
                                               loadMoreProcedure();
@@ -5390,7 +5426,7 @@ useEffect(() => {
                                         !procedureCareItems[0].procedureName &&
                                         !procedureCareItems[0].frequencyId &&
                                         procedureCareItems[0].noOfDays ===
-                                          "0" &&
+                                        "0" &&
                                         !procedureCareItems[0].remarks
                                       }
                                     >
@@ -5810,7 +5846,7 @@ useEffect(() => {
                                   </label>
                                   <input
                                     type="text"
-                                    className="form-control"
+                                    className="form-select"
                                     value={admissionCareLevelName}
                                     readOnly
                                   />
@@ -6547,12 +6583,12 @@ useEffect(() => {
                   )}
                 </div>
 
-    
 
 
 
 
-                
+
+
 
 
                 <div className="text-center mt-4">
@@ -6783,7 +6819,7 @@ useEffect(() => {
             </div>
           </div>
         )}
- 
+
         {showTreatmentAdviceModal && (
           <div
             className="modal d-block"
@@ -6986,11 +7022,11 @@ useEffect(() => {
                           <td>
                             {(currentPage - 1) * itemsPerPage + index + 1}
                           </td>
-                        <td className="text-center">
-                       <span className="badge btn btn-primary fs-6 px-2 py-1 rounded-pill shadow-sm">
-                       {item.tokenNo}
-                       </span>
-                       </td>
+                          <td className="text-center">
+                            <span className="badge btn btn-primary fs-6 px-2 py-1 rounded-pill shadow-sm">
+                              {item.tokenNo}
+                            </span>
+                          </td>
                           <td>{item.mobileNo}</td>
                           <td>{item.patientName}</td>
                           <td>{item.relation}</td>

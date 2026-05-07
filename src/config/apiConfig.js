@@ -207,7 +207,8 @@ export const OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE = `${OPD_TEMPLATE}/upda
 export const OPD_TEMPLATE_SAVE = `${OPD_TEMPLATE}/save`;
 export const OPD_TEMPLATE_UPDATE_TREATMENT = `${OPD_TEMPLATE}/updateOpdTemplateTreatment`;
 export const OPD_TEMPLATE_UPDATE = `${OPD_TEMPLATE}/update-opdTemplate`;
-//
+export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
+export const OPTH_MAS_NEAR_VISION = `${MASTERS}/opthMasNearVision/getAll/1`;
 
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;

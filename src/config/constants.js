@@ -1114,6 +1114,11 @@ export const STATUS = {
   INACTIVE: "n",
 };
 
+export const FLAG = {
+  FLAG_Y: "y",
+  FLAG_N: "n",
+};
+
 //Physical Stock Adjustment
 
 export const PHYSICAL_STOCK_SAVE_MSG ="Are you sure you want to save the stock adjustment?";
