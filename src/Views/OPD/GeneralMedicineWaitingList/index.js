@@ -3,6 +3,7 @@ import placeholderImage from "../../../assets/images/placeholder.jpg";
 import OTDashboard from "./OTDashboard";
 import InvestigationModal from "./InvestigationModal";
 import TreatmentModal from "./TreatmentModal";
+import ClinicalHistoryPopup from "./ClinicalHistoryPopup";
 import {
   OPD_TEMPLATE,
   OPD_TEMPLATE_GET_ALL,
@@ -113,6 +114,64 @@ const GeneralMedicineWaitingList = () => {
     "Urgent",
     "Critical",
   ]);
+
+  // const [showPreviousVisitsModal, setShowPreviousVisitsModal] = useState(false);
+  // const [showPreviousVitalsModal, setShowPreviousVitalsModal] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+const [clinicalPopupType, setClinicalPopupType] = useState("visits"); 
+
+  const [previousVitalsData, setPreviousVitalsData] = useState([
+  {
+    visitDate: "06-05-2026",
+    height: "165",
+    weight: "65",
+    bmi: "23.9",
+    bpSystolic: "120",
+    bpDiastolic: "80",
+    pulse: "72",
+    temperature: "98.6",
+    rr: "16",
+    spo2: "98",
+  },
+  {
+    visitDate: "15-03-2026",
+    height: "165",
+    weight: "66",
+    bmi: "24.2",
+    bpSystolic: "118",
+    bpDiastolic: "78",
+    pulse: "70",
+    temperature: "98.4",
+    rr: "15",
+    spo2: "99",
+  },
+]);
+
+
+const [previousVisitsData, setPreviousVisitsData] = useState([
+  {
+    visitDate: "06-05-2026",
+    doctorName: "Dr. Sharma",
+    department: "ENT",
+    icdDiag: "J06.9 - Acute upper respiratory infection",
+    workingDiag: "Viral Infection",
+  },
+  {
+    visitDate: "15-03-2026",
+    doctorName: "Dr. Patel",
+    department: "Cardiology",
+    icdDiag: "I10 - Essential hypertension",
+    workingDiag: "Hypertension Stage 1",
+  },
+  {
+    visitDate: "20-01-2026",
+    doctorName: "Dr. Gupta",
+    department: "Neurology",
+    icdDiag: "G43.909 - Migraine",
+    workingDiag: "Chronic Migraine",
+  },
+]);
+
 
   const [distanceVisionData, setDistanceVisionData] = useState([]);
   const [nearVisionData, setNearVisionData] = useState([]);
@@ -1668,6 +1727,7 @@ const GeneralMedicineWaitingList = () => {
       return;
     }
 
+
     const payload = {
       doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
       sessionId: Number(searchFilters.session) || null,
@@ -1927,16 +1987,16 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const showPopup = (message, type = "info", onCloseCallback = null) => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-        if (onCloseCallback) onCloseCallback();
-      },
-    });
-  };
+ const showPopupMessage = (message, type = "info", onCloseCallback = null) => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: () => {
+      setPopupMessage(null);
+      if (onCloseCallback) onCloseCallback();
+    },
+  });
+};
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -3011,41 +3071,50 @@ const GeneralMedicineWaitingList = () => {
                     <div className="card-body">
                       <div className="row">
                         {/* Sidebar Buttons */}
-                        <div className="col-md-3">
-                          <div className="d-flex flex-column gap-2">
-                            {[
-                              {
-                                id: "previous-visits",
-                                label: "Previous Visits",
-                              },
-                              {
-                                id: "previous-vitals",
-                                label: "Previous Vitals",
-                              },
-                              {
-                                id: "previous-lab",
-                                label: "Previous Lab Investigation",
-                              },
-                              {
-                                id: "previous-ecg",
-                                label: "Previous ECG Investigation",
-                              },
-                              { id: "audit-history", label: "Audit History" },
-                            ].map((btn) => (
-                              <button
-                                key={btn.id}
-                                className={`btn btn-sm ${selectedHistoryType === btn.id
-                                    ? "btn-primary"
-                                    : "btn-outline-primary"
-                                  }`}
-                                onClick={() => handleHistoryTypeClick(btn.id)}
-                              >
-                                {btn.label}
-                              </button>
-                            ))}
-                          </div>
-                        </div>
-
+                       <div className="col-md-3">
+  <div className="d-flex flex-column gap-2">
+    {[
+      {
+        id: "previous-visits",
+        label: "Previous Visits",
+      },
+      {
+        id: "previous-vitals",
+        label: "Previous Vitals",
+      },
+      {
+        id: "previous-lab",
+        label: "Previous Lab Investigation",
+      },
+      {
+        id: "previous-ecg",
+        label: "Previous ECG Investigation",
+      },
+      { id: "audit-history", label: "Audit History" },
+    ].map((btn) => (
+<button
+  key={btn.id}
+  className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"}`}
+  onClick={(e) => {
+    e.stopPropagation(); 
+    if (btn.id === "previous-visits") {
+      console.log("Opening Previous Visits Modal");
+      setClinicalPopupType("visits");
+      setShowPopup(true);
+    } else if (btn.id === "previous-vitals") {  
+      console.log("Opening Previous Vitals Modal");
+      setClinicalPopupType("vitals");
+      setShowPopup(true);
+    } else {
+      handleHistoryTypeClick(btn.id);
+    }
+  }}
+>
+  {btn.label}
+</button>
+    ))}
+  </div>
+</div>
                         {/* Input Area */}
                         <div className="col-md-9">
                           {/* Symptoms */}
@@ -6583,14 +6652,6 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
 
-
-
-
-
-
-
-
-
                 <div className="text-center mt-4">
                   <button
                     className="btn btn-primary me-3"
@@ -6820,7 +6881,7 @@ const GeneralMedicineWaitingList = () => {
           </div>
         )}
 
-        {showTreatmentAdviceModal && (
+               {showTreatmentAdviceModal && (
           <div
             className="modal d-block"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
@@ -6884,9 +6945,38 @@ const GeneralMedicineWaitingList = () => {
             </div>
           </div>
         )}
-      </div>
+
+        {/* {showPreviousVisitsModal && (
+          <ClinicalHistoryPopup
+            show={showPreviousVisitsModal}
+            onClose={() => setShowPreviousVisitsModal(false)}
+            visitsData={previousVisitsData}
+          />
+        )}
+
+        {showPreviousVitalsModal && (
+  <ClinicalHistoryPopup
+    show={showPreviousVitalsModal}
+    onClose={() => setShowPreviousVitalsModal(false)}
+    // visitsData={previousVisitsData}
+    vitalsData={previousVitalsData}
+    selectedHistoryType="previous-vitals"
+    setSelectedHistoryType={setSelectedHistoryType}
+  />
+)} */}
+{showPopup && (
+  <ClinicalHistoryPopup
+    show={showPopup}
+    onClose={() => setShowPopup(false)}
+    visitsData={previousVisitsData}
+    vitalsData={previousVitalsData}
+    popupType={clinicalPopupType}  
+  />
+)}
+      </div>  
     );
   }
+  
 
   return (
     <div className="content-wrapper">
@@ -6992,6 +7082,8 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                 </div>
               </div>
+
+             
 
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
