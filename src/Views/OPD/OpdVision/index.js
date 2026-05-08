@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { getRequest, postRequest } from "../../../service/apiService";
 import { GET_WAITING_LIST } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading/index";
+import Popup from "../../../Components/popup";
 
 const anteriorApiKeys = {
   eyebrow: "Eyebrow", eyelid: "Eyelid", cornea: "Cornea",
@@ -40,18 +41,30 @@ const defaultVisionForm = {
   reColourVision: "", leColourVision: "",
 };
 
-// Safely map API response → form state (null → default)
+// Safely map API response → form state (keep existing values even if empty)
 const mapApiResponseToForm = (data) => {
   if (!data) return defaultVisionForm;
-  const mapped = {};
+  const mapped = { ...defaultVisionForm };
+  
+  // Special handling for retinoscopy H fields - preserve any value including empty string
+  const retinoscopyHFields = ['reRetinoscopyH', 'reRetinoscopyHValue', 'leRetinoscopyH', 'leRetinoscopyHValue'];
+  
   Object.keys(defaultVisionForm).forEach((key) => {
-    const apiValue = data[key];
-    if (apiValue === null || apiValue === undefined || apiValue === "") {
-      mapped[key] = defaultVisionForm[key];
-    } else {
-      mapped[key] = apiValue;
+    if (data.hasOwnProperty(key)) {
+      // For retinoscopy H fields, preserve the value even if it's empty string
+      if (retinoscopyHFields.includes(key)) {
+        mapped[key] = data[key] !== undefined ? data[key] : "";
+      } else {
+        const apiValue = data[key];
+        if (apiValue === null || apiValue === undefined) {
+          mapped[key] = defaultVisionForm[key];
+        } else {
+          mapped[key] = apiValue;
+        }
+      }
     }
   });
+  
   return mapped;
 };
 
@@ -73,6 +86,8 @@ const OpdVision = () => {
   const [colorVisionOptions, setColorVisionOptions] = useState([]);
   const [spectacleUseOptions, setSpectacleUseOptions] = useState([]);
   const [lensTypeOptions, setLensTypeOptions] = useState([]);
+
+  const [popupMessage, setPopupMessage] = useState(null);
 
   const departmentName =
     localStorage.getItem("departmentName") ||
@@ -194,27 +209,36 @@ const OpdVision = () => {
     setFormLoading(true);
 
     try {
-      // ✅ FIXED: corrected typo in endpoint — "geOtphthalmology" → "getOphthalmology"
       const res = await getRequest(
         `/opd/geOtphthalmologyExaminationDetail?visitId=${patient.visitId}`
       );
 
-      // ✅ FIXED: API returns { status, message, production } with data nested under
-      //    res.response OR directly in res — handle both shapes safely
       if (res?.status === 200) {
-        // Try res.response first, then fall back to res itself as the data object
         const data = res?.response ?? null;
 
         if (data && typeof data === "object" && !Array.isArray(data)) {
-          // Check if data actually has ophthalmology fields (not just { message, production })
           const hasOphthFields = Object.keys(defaultVisionForm).some(
             (key) => data[key] !== undefined
           );
 
           if (hasOphthFields) {
-            setFormData(mapApiResponseToForm(data));
+            // Debug: Log the API response to see what keys are coming
+            console.log("API Response Data:", data);
+            console.log("All keys from API:", Object.keys(data));
+            
+            const mappedData = mapApiResponseToForm(data);
+            console.log("Mapped Form Data:", mappedData);
+            
+            // Specifically log the retinoscopy H fields
+            console.log("Retinoscopy H fields from API:", {
+              reRetinoscopyH: data.reRetinoscopyH,
+              reRetinoscopyHValue: data.reRetinoscopyHValue,
+              leRetinoscopyH: data.leRetinoscopyH,
+              leRetinoscopyHValue: data.leRetinoscopyHValue,
+            });
+            
+            setFormData(mappedData);
           } else {
-            // Response has no ophthalmology data yet — keep defaults (new record)
             setFormData(defaultVisionForm);
           }
         } else {
@@ -236,14 +260,27 @@ const OpdVision = () => {
     setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+      },
+    });
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (isSubmitting) return;
-    if (!selectedPatient) { alert("No patient selected"); return; }
+    if (!selectedPatient) {
+      showPopup("No patient selected", "error");
+      return;
+    }
 
     const requiredFields = ["reDistanceUnaided", "leDistanceUnaided", "reNearUnaided", "leNearUnaided"];
     if (requiredFields.some((f) => !formData[f])) {
-      alert("Please fill all required vision fields (Distance & Near for both eyes)");
+      showPopup("Please fill all required vision fields (Distance & Near for both eyes)", "error");
       return;
     }
 
@@ -258,15 +295,15 @@ const OpdVision = () => {
       };
       const response = await postRequest("/opd/saveOphthalmologyExaminationDetails", payload);
       if (response?.status === 200) {
-        alert("Vision examination saved successfully!");
+        showPopup("Vision examination saved successfully!", "success");
         closeForm();
         fetchWaitingList();
       } else {
-        alert("Failed to save. Please try again.");
+        showPopup("Failed to save. Please try again.", "error");
       }
     } catch (error) {
       console.error("Save Error:", error);
-      alert("Failed to save examination data.");
+      showPopup("Failed to save examination data.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -290,6 +327,9 @@ const OpdVision = () => {
 
             <div className="card-body">
               {loading && <LoadingScreen />}
+              {popupMessage && (
+                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+              )}
 
               {/* ── WAITING LIST ─────────────────────────────────────────── */}
               {!showForm && (
@@ -420,7 +460,7 @@ const OpdVision = () => {
                                           "leDistanceUnaided","leDistancePinhole","leDistanceBestCorrected"].map((field, i) => (
                                           <td key={field}>
                                             <select className="form-select form-select-sm" name={field}
-                                              value={formData[field]} onChange={handleChange}
+                                              value={formData[field] || ""} onChange={handleChange}
                                               required={i === 0 || i === 3}>
                                               <option value="">Select</option>
                                               {distanceVisionOptions.map(opt =>
@@ -435,7 +475,7 @@ const OpdVision = () => {
                                           "leNearUnaided","leNearPinhole","leNearBestCorrected"].map((field, i) => (
                                           <td key={field}>
                                             <select className="form-select form-select-sm" name={field}
-                                              value={formData[field]} onChange={handleChange}
+                                              value={formData[field] || ""} onChange={handleChange}
                                               required={i === 0 || i === 3}>
                                               <option value="">Select</option>
                                               {nearVisionOptions.map(opt =>
@@ -457,7 +497,7 @@ const OpdVision = () => {
                               </div>
                               <div className="col-md-6">
                                 <input type="text" className="form-control" name="fundusGlow"
-                                  value={formData.fundusGlow} onChange={handleChange}
+                                  value={formData.fundusGlow || ""} onChange={handleChange}
                                   placeholder="Enter fundus glow findings" />
                               </div>
                             </div>
@@ -487,17 +527,17 @@ const OpdVision = () => {
                                     <tbody>
                                       <tr>
                                         <td className="fw-semibold">V</td>
-                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyAxis" value={formData.reRetinoscopyAxis} onChange={handleChange} placeholder="Axis" /></td>
-                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyV" value={formData.reRetinoscopyV} onChange={handleChange} placeholder="Axis" /></td>
-                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyAxis" value={formData.leRetinoscopyAxis} onChange={handleChange} placeholder="Axis" /></td>
-                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyV" value={formData.leRetinoscopyV} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyAxis" value={formData.reRetinoscopyAxis || ""} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyV" value={formData.reRetinoscopyV || ""} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyAxis" value={formData.leRetinoscopyAxis || ""} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyV" value={formData.leRetinoscopyV || ""} onChange={handleChange} placeholder="Axis" /></td>
                                       </tr>
                                       <tr>
                                         <td className="fw-semibold">H</td>
-                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyH" value={formData.reRetinoscopyH} onChange={handleChange} placeholder="Axis" /></td>
-                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyHValue" value={formData.reRetinoscopyHValue} onChange={handleChange} placeholder="Axis" /></td>
-                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyH" value={formData.leRetinoscopyH} onChange={handleChange} placeholder="Axis" /></td>
-                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyHValue" value={formData.leRetinoscopyHValue} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyH" value={formData.reRetinoscopyH || ""} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="reRetinoscopyHValue" value={formData.reRetinoscopyHValue || ""} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyH" value={formData.leRetinoscopyH || ""} onChange={handleChange} placeholder="Axis" /></td>
+                                        <td><input type="text" className="form-control form-control-sm" name="leRetinoscopyHValue" value={formData.leRetinoscopyHValue || ""} onChange={handleChange} placeholder="Axis" /></td>
                                       </tr>
                                     </tbody>
                                   </table>
@@ -529,7 +569,7 @@ const OpdVision = () => {
                                       <tr>
                                         {["reKeratometry","rePachymetry","reTonometry","reFieldOfVision","reIolPower",
                                           "leKeratometry","lePachymetry","leTonometry","leFieldOfVision","leIolPower"].map(f => (
-                                          <td key={f}><input type="text" className="form-control form-control-sm" name={f} value={formData[f]} onChange={handleChange} /></td>
+                                          <td key={f}><input type="text" className="form-control form-control-sm" name={f} value={formData[f] || ""} onChange={handleChange} /></td>
                                         ))}
                                       </tr>
                                     </tbody>
@@ -562,13 +602,13 @@ const OpdVision = () => {
                                       <tr>
                                         <td className="fw-semibold">Dist</td>
                                         {["reSphDist","reCylDist","reAxisDist","leSphDist","leCylDist","leAxisDist"].map(f => (
-                                          <td key={f}><input type="text" className="form-control form-control-sm" name={f} value={formData[f]} onChange={handleChange} /></td>
+                                          <td key={f}><input type="text" className="form-control form-control-sm" name={f} value={formData[f] || ""} onChange={handleChange} /></td>
                                         ))}
                                       </tr>
                                       <tr>
                                         <td className="fw-semibold">Near</td>
                                         {["reSphNear","reCylNear","reAxisNear","leSphNear","leCylNear","leAxisNear"].map((f, i) => (
-                                          <td key={f}><input type="text" className="form-control form-control-sm" name={f} value={formData[f]} onChange={handleChange} placeholder={i === 0 || i === 3 ? "Add" : ""} /></td>
+                                          <td key={f}><input type="text" className="form-control form-control-sm" name={f} value={formData[f] || ""} onChange={handleChange} placeholder={i === 0 || i === 3 ? "Add" : ""} /></td>
                                         ))}
                                       </tr>
                                     </tbody>
@@ -587,13 +627,13 @@ const OpdVision = () => {
                                         <td className="fw-semibold">IPD (50–70)</td>
                                         <td>
                                           <input type="text" className="form-control form-control-sm"
-                                            name="ipdValue" value={formData.ipdValue}
+                                            name="ipdValue" value={formData.ipdValue || ""}
                                             onChange={handleChange} placeholder="mm" />
                                         </td>
                                         <td className="fw-semibold">Use</td>
                                         <td>
                                           <select className="form-select form-select-sm" name="spectacleUse"
-                                            value={formData.spectacleUse} onChange={handleChange}>
+                                            value={formData.spectacleUse || ""} onChange={handleChange}>
                                             <option value="">Select</option>
                                             {spectacleUseOptions.map(opt =>
                                               <option key={opt.id} value={opt.useName}>{opt.useName}</option>)}
@@ -602,7 +642,7 @@ const OpdVision = () => {
                                         <td className="fw-semibold">Type of Lens</td>
                                         <td>
                                           <select className="form-select form-select-sm" name="lensType"
-                                            value={formData.lensType} onChange={handleChange}>
+                                            value={formData.lensType || ""} onChange={handleChange}>
                                             <option value="">Select</option>
                                             {lensTypeOptions.map(opt =>
                                               <option key={opt.id} value={opt.lensType}>{opt.lensType}</option>)}
@@ -723,7 +763,7 @@ const OpdVision = () => {
                                         <td className="fw-semibold">Select</td>
                                         <td>
                                           <select className="form-select form-select-sm" name="reColourVision"
-                                            value={formData.reColourVision} onChange={handleChange}>
+                                            value={formData.reColourVision || ""} onChange={handleChange}>
                                             <option value="">Select</option>
                                             {colorVisionOptions.map(opt =>
                                               <option key={opt.id} value={opt.colorValue}>{opt.colorValue}</option>)}
@@ -731,7 +771,7 @@ const OpdVision = () => {
                                         </td>
                                         <td>
                                           <select className="form-select form-select-sm" name="leColourVision"
-                                            value={formData.leColourVision} onChange={handleChange}>
+                                            value={formData.leColourVision || ""} onChange={handleChange}>
                                             <option value="">Select</option>
                                             {colorVisionOptions.map(opt =>
                                               <option key={opt.id} value={opt.colorValue}>{opt.colorValue}</option>)}
