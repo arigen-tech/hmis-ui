@@ -22,7 +22,6 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
     }
   };
 
-  // Get title based on popupType
   const getTitle = () => {
     if (popupType === "vitals") {
       return "PREVIOUS VITALS HISTORY";
@@ -30,7 +29,6 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
     return "PREVIOUS VISITS HISTORY";
   };
 
-  // Get icon based on popupType
   const getIcon = () => {
     if (popupType === "vitals") {
       return "mdi mdi-heart-pulse me-2";
@@ -59,8 +57,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
           maxHeight: "80vh",
           margin: "5vh auto",
           position: "fixed",
-            top: "20vh",     
-
+          top: "20vh",
         }}
         onClick={(e) => e.stopPropagation()}
       >
@@ -83,10 +80,10 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
               className="btn-close btn-close-white"
               onClick={onClose}
               style={{ margin: 0 }}
-            ></button>
+            />
           </div>
 
-          {/* Body - Show table based on popupType */}
+          {/* Body */}
           <div
             className="modal-body"
             style={{
@@ -96,7 +93,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
               overflowX: "hidden",
             }}
           >
-            {/* Show Visits Table when popupType is "visits" */}
+            {/* Visits Table */}
             {popupType === "visits" && (
               <>
                 {visitsData?.length > 0 ? (
@@ -104,11 +101,12 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                     <table className="table table-bordered table-sm" style={{ marginBottom: 0 }}>
                       <thead className="table-light">
                         <tr>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Visit Date</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Doctor Name</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Department</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>ICD Diagnosis</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Working Diagnosis</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Visit Date</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Doctor Name</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Department</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>ICD Diagnosis</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Working Diagnosis</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold", textAlign: "center" }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -121,6 +119,12 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                               <span style={{ color: "#0d6efd" }}>{visit.icdDiag || "-"}</span>
                             </td>
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{visit.workingDiag || "-"}</td>
+                            <td style={{ padding: "8px", verticalAlign: "middle", textAlign: "center" }}>
+                              <div className="d-flex gap-1 justify-content-center">
+                                <button className="btn btn-sm btn btn-primary" style={{ cursor: "pointer" }}> OPD Case sheet</button>
+                                
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -128,14 +132,14 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                   </div>
                 ) : (
                   <div className="text-center py-5">
-                    <i className="mdi mdi-inbox" style={{ fontSize: "48px", color: "#6c757d" }}></i>
+                    <i className="mdi mdi-inbox" style={{ fontSize: "48px", color: "#6c757d" }} />
                     <p className="mt-2 mb-0 text-muted">No Previous Visits Found</p>
                   </div>
                 )}
               </>
             )}
 
-            {/* Show Vitals Table when popupType is "vitals" */}
+            {/* Vitals Table */}
             {popupType === "vitals" && (
               <>
                 {vitalsData?.length > 0 ? (
@@ -143,15 +147,16 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                     <table className="table table-bordered table-sm" style={{ marginBottom: 0 }}>
                       <thead className="table-light">
                         <tr>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Visit Date</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Height (cm)</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Weight (kg)</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>BMI</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>BP</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Pulse</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>Temp (°F)</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>RR</th>
-                          <th style={{ padding: "8px", fontSize: "0.875rem" }}>SpO2 (%)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Visit Date</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Height (cm)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Weight (kg)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>BMI (kg/m²)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>BP (mmHg)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Pulse (bpm)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Temp (°F)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>RR</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>SpO₂ (%)</th>
+                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold", textAlign: "center" }}>Action</th>
                         </tr>
                       </thead>
                       <tbody>
@@ -170,6 +175,12 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.temperature || "-"}</td>
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.rr || "-"}</td>
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.spo2 || "-"}</td>
+                            <td style={{ padding: "8px", verticalAlign: "middle", textAlign: "center" }}>
+                              <div className="d-flex gap-1 justify-content-center">
+                                <button className="btn btn-sm btn btn-primary"> OPD Case sheet</button>
+                                
+                              </div>
+                            </td>
                           </tr>
                         ))}
                       </tbody>
@@ -177,7 +188,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                   </div>
                 ) : (
                   <div className="text-center py-5">
-                    <i className="mdi mdi-heart-pulse" style={{ fontSize: "48px", color: "#6c757d" }}></i>
+                    <i className="mdi mdi-heart-pulse" style={{ fontSize: "48px", color: "#6c757d" }} />
                     <p className="mt-2 mb-0 text-muted">No Previous Vitals Found</p>
                   </div>
                 )}
@@ -197,7 +208,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
           >
             <div className="d-flex justify-content-between align-items-center">
               <div className="text-muted small">
-                <i className="mdi mdi-information-outline me-1"></i>
+                <i className="mdi mdi-information-outline me-1" />
                 Total: {popupType === "vitals" ? (vitalsData?.length || 0) : (visitsData?.length || 0)} record(s)
               </div>
               <div className="d-flex gap-2">
@@ -210,7 +221,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                     border: "none",
                   }}
                 >
-                  <i className="mdi mdi-check-circle me-2"></i>
+                  <i className="mdi mdi-check-circle me-2" />
                   CLOSE
                 </button>
               </div>
