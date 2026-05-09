@@ -26,8 +26,10 @@ import {
   PATIENT_UPDATE_STATUS,
   PATIENT_OPD_BY_VISIT,
   OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
+  OPD_CREATE_PATIENT_DETAILS,
   OPTH_MAS_DISTANCE_VISION,
   OPTH_MAS_NEAR_VISION,
+  GET_PATIENT_PRESCRIPTION_DETAILS,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -54,13 +56,22 @@ const GeneralMedicineWaitingList = () => {
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
   const [vitalsAvailable, setVitalsAvailable] = useState(false);
   const [popupMessage, setPopupMessage] = useState("");
-  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
+  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
+    useState(new Set());
   const [opdTemplateData, setOpdTemplateData] = useState([]);
-  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] = useState("Select..");
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
+    useState("Select..");
   const tableContainerRef = useRef(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
   const [allFrequencies, setAllFrequencies] = useState([]);
+  const initialDataLoadedRef = useRef(false);
+  const opdTemplateLoadedRef = useRef(false);
+  const frequencyLoadedRef = useRef(false);
+  const wardCategoryLoadedRef = useRef(false);
+  const investigationTypeLoadedRef = useRef(false);
+  const distanceVisionLoadedRef = useRef(false);
+  const nearVisionLoadedRef = useRef(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [icdDropdown, setIcdDropdown] = useState([]);
   const [page, setPage] = useState(0);
@@ -85,7 +96,8 @@ const GeneralMedicineWaitingList = () => {
 
   const departmentName =
     localStorage.getItem("departmentName") ||
-    sessionStorage.getItem("departmentName") || "";
+    sessionStorage.getItem("departmentName") ||
+    "";
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -118,69 +130,69 @@ const GeneralMedicineWaitingList = () => {
   // const [showPreviousVisitsModal, setShowPreviousVisitsModal] = useState(false);
   // const [showPreviousVitalsModal, setShowPreviousVitalsModal] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
-const [clinicalPopupType, setClinicalPopupType] = useState("visits"); 
+  const [clinicalPopupType, setClinicalPopupType] = useState("visits");
 
   const [previousVitalsData, setPreviousVitalsData] = useState([
-  {
-    visitDate: "06-05-2026",
-    height: "165",
-    weight: "65",
-    bmi: "23.9",
-    bpSystolic: "120",
-    bpDiastolic: "80",
-    pulse: "72",
-    temperature: "98.6",
-    rr: "16",
-    spo2: "98",
-  },
-  {
-    visitDate: "15-03-2026",
-    height: "165",
-    weight: "66",
-    bmi: "24.2",
-    bpSystolic: "118",
-    bpDiastolic: "78",
-    pulse: "70",
-    temperature: "98.4",
-    rr: "15",
-    spo2: "99",
-  },
-]);
+    {
+      visitDate: "06-05-2026",
+      height: "165",
+      weight: "65",
+      bmi: "23.9",
+      bpSystolic: "120",
+      bpDiastolic: "80",
+      pulse: "72",
+      temperature: "98.6",
+      rr: "16",
+      spo2: "98",
+    },
+    {
+      visitDate: "15-03-2026",
+      height: "165",
+      weight: "66",
+      bmi: "24.2",
+      bpSystolic: "118",
+      bpDiastolic: "78",
+      pulse: "70",
+      temperature: "98.4",
+      rr: "15",
+      spo2: "99",
+    },
+  ]);
 
-
-const [previousVisitsData, setPreviousVisitsData] = useState([
-  {
-    visitDate: "06-05-2026",
-    doctorName: "Dr. Sharma",
-    department: "ENT",
-    icdDiag: "J06.9 - Acute upper respiratory infection",
-    workingDiag: "Viral Infection",
-  },
-  {
-    visitDate: "15-03-2026",
-    doctorName: "Dr. Patel",
-    department: "Cardiology",
-    icdDiag: "I10 - Essential hypertension",
-    workingDiag: "Hypertension Stage 1",
-  },
-  {
-    visitDate: "20-01-2026",
-    doctorName: "Dr. Gupta",
-    department: "Neurology",
-    icdDiag: "G43.909 - Migraine",
-    workingDiag: "Chronic Migraine",
-  },
-]);
-
+  const [previousVisitsData, setPreviousVisitsData] = useState([
+    {
+      visitDate: "06-05-2026",
+      doctorName: "Dr. Sharma",
+      department: "ENT",
+      icdDiag: "J06.9 - Acute upper respiratory infection",
+      workingDiag: "Viral Infection",
+    },
+    {
+      visitDate: "15-03-2026",
+      doctorName: "Dr. Patel",
+      department: "Cardiology",
+      icdDiag: "I10 - Essential hypertension",
+      workingDiag: "Hypertension Stage 1",
+    },
+    {
+      visitDate: "20-01-2026",
+      doctorName: "Dr. Gupta",
+      department: "Neurology",
+      icdDiag: "G43.909 - Migraine",
+      workingDiag: "Chronic Migraine",
+    },
+  ]);
 
   const [distanceVisionData, setDistanceVisionData] = useState([]);
   const [nearVisionData, setNearVisionData] = useState([]);
 
   const fetchDistanceVisionData = async () => {
+    if (distanceVisionLoadedRef.current) return;
     try {
       const data = await getRequest(OPTH_MAS_DISTANCE_VISION);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistanceVisionData(data.response);
+        distanceVisionLoadedRef.current = true;
       } else {
         setDistanceVisionData([]);
       }
@@ -190,10 +202,12 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   };
 
   const fetchNearVisionData = async () => {
+    if (nearVisionLoadedRef.current) return;
     try {
       const data = await getRequest(OPTH_MAS_NEAR_VISION);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNearVisionData(data.response);
+        nearVisionLoadedRef.current = true;
       } else {
         setNearVisionData([]);
       }
@@ -202,13 +216,13 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     }
   };
 
-
-
   const fetchWardCategoryData = async () => {
+    if (wardCategoryLoadedRef.current) return;
     try {
       const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardCategories(data.response);
+        wardCategoryLoadedRef.current = true;
       } else {
         setWardCategories([]);
       }
@@ -216,7 +230,6 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       console.error("Error fetching WardCategory data:", error);
     }
   };
-
 
   const fetchWardData = async (categoryId) => {
     try {
@@ -251,21 +264,25 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     setOccupiedBeds("0");
     setVacantBeds("0");
     setWardDepartments([]);
+    setAdmissionCareLevel("");
+    setAdmissionCareLevelName("");
 
     const selectedCategory = wardCategories.find(
-      (cat) => cat.categoryId === categoryId,
+      (cat) => Number(cat.categoryId) === Number(categoryId),
     );
 
     if (selectedCategory) {
-      // store care id
       setAdmissionCareLevel(selectedCategory.careId);
-
-      // show care level name
       setAdmissionCareLevelName(selectedCategory.careLevelName);
-
-      // fetch ward list
       fetchWardData(categoryId);
     }
+
+    setErrors((prev) => ({
+      ...prev,
+      wardCategory: "",
+      admissionCareLevel: "",
+      wardName: "",
+    }));
   };
 
   // Add these state declarations inside the GeneralMedicineWaitingList component
@@ -277,8 +294,20 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     vision: { distance: "", near: "" },
     retinoscopy: { re: { axis: "" }, le: { axis: "" } },
     measurements: {
-      re: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", iol: "" },
-      le: { keratometry: "", pachymetry: "", nonContactTonometry: "", fieldOfVN: "", icl: "" },
+      re: {
+        keratometry: "",
+        pachymetry: "",
+        nonContactTonometry: "",
+        fieldOfVN: "",
+        iol: "",
+      },
+      le: {
+        keratometry: "",
+        pachymetry: "",
+        nonContactTonometry: "",
+        fieldOfVN: "",
+        icl: "",
+      },
     },
     spectacle: {
       re: { sph: "", cyl: "", axis: "" },
@@ -286,11 +315,29 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     },
     ipd: { value: "", use: "", typeOfLens: "" },
     anteriorSegment: {
-      lids: "N", conjuctiva: "N", cornea: "N", anteriorChamber: "N", iris: "N", pupil: "N", lens: "N",
+      lids: "N",
+      conjuctiva: "N",
+      cornea: "N",
+      anteriorChamber: "N",
+      iris: "N",
+      pupil: "N",
+      lens: "N",
     },
     posteriorSegment: {
-      re: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
-      le: { vitreous: "N", disc: "N", macula: "N", vessel: "N", periphery: "N" },
+      re: {
+        vitreous: "N",
+        disc: "N",
+        macula: "N",
+        vessel: "N",
+        periphery: "N",
+      },
+      le: {
+        vitreous: "N",
+        disc: "N",
+        macula: "N",
+        vessel: "N",
+        periphery: "N",
+      },
     },
     colourVision: { re: "", le: "" },
   });
@@ -319,7 +366,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     // Implement API call or local save logic here
     console.log("Vision data saved:", visionFormData);
     // You can add a success popup here if needed
-    showPopup("Vision examination saved successfully!", "success");
+    showPopupMessage("Vision examination saved successfully!", "success");
   };
 
   const handleFundusGlowChange = (eye, field, value) => {
@@ -406,11 +453,20 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   const handleWardNameChange = (deptId) => {
     setWardName(deptId);
 
-    const selectedWard = wardDepartments.find((dept) => dept.id === deptId);
+    const selectedWard = wardDepartments.find(
+      (dept) => Number(dept.id) === Number(deptId),
+    );
 
     if (selectedWard) {
       setOccupiedBeds(selectedWard.occupiedBed);
       setVacantBeds(selectedWard.vacantBed);
+    }
+
+    if (errors.wardName) {
+      setErrors((prev) => ({
+        ...prev,
+        wardName: "",
+      }));
     }
   };
 
@@ -516,12 +572,14 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   };
 
   const fetchAllFrequencies = async () => {
+    if (frequencyLoadedRef.current) return;
     try {
       const response = await getRequest(MAS_FREQUENCY_GET_ALL);
       // //console.log("Frequency API Response:", response);
 
       if (response && response.response) {
         setAllFrequencies(response.response);
+        frequencyLoadedRef.current = true;
         // //console.log("Frequencies loaded:", response.response);
       } else {
         console.warn("No frequencies found in response");
@@ -733,6 +791,14 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       updated[index] = "";
       return updated;
     });
+
+    if (errors.diagnosis || errors.workingDiagnosis) {
+      setErrors((prev) => ({
+        ...prev,
+        diagnosis: "",
+        workingDiagnosis: "",
+      }));
+    }
   };
 
   // CLOSE DROPDOWN ON OUTSIDE CLICK
@@ -764,11 +830,13 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   };
 
   const fetchOpdTemplateData = async () => {
+    if (opdTemplateLoadedRef.current) return;
     try {
       const data = await getRequest(OPD_TEMPLATE_GET_ALL);
 
       if (data.status === 200 && Array.isArray(data.response)) {
         setOpdTemplateData(data.response);
+        opdTemplateLoadedRef.current = true;
       } else {
         setOpdTemplateData([]);
       }
@@ -826,6 +894,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   // }, []);
 
   useEffect(() => {
+    if (initialDataLoadedRef.current) return;
+    initialDataLoadedRef.current = true;
+
     fetchWaitingList();
     fetchDoctorData();
     fetchSessionData();
@@ -872,6 +943,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   const [showOtCalendarModal, setShowOtCalendarModal] = useState(false);
   const [showCurrentMedicationModal, setShowCurrentMedicationModal] =
     useState(false);
+  const [currentMedicationActions, setCurrentMedicationActions] = useState({});
 
   // Modal states - UPDATED
   const [showInvestigationModal, setShowInvestigationModal] = useState(false);
@@ -944,6 +1016,36 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   const [selectedTemplate, setSelectedTemplate] = useState("Select..");
   const [templateName, setTemplateName] = useState("");
   const getToday = () => new Date().toISOString().split("T")[0];
+  const formatDateForDisplay = (value) => {
+    if (!hasValue(value)) return "";
+
+    const normalized = String(value).trim();
+    const datePart = normalized.includes("T")
+      ? normalized.split("T")[0]
+      : normalized;
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) return datePart;
+
+    const isoMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${day}/${month}/${year}`;
+    }
+
+    const hyphenDisplayMatch = datePart.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (hyphenDisplayMatch) {
+      const [, day, month, year] = hyphenDisplayMatch;
+      return `${day}/${month}/${year}`;
+    }
+
+    const parsedDate = new Date(normalized);
+    if (Number.isNaN(parsedDate.getTime())) return normalized;
+
+    const day = String(parsedDate.getDate()).padStart(2, "0");
+    const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+    const year = parsedDate.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
   const [investigationItems, setInvestigationItems] = useState([
     {
       investigationId: "",
@@ -967,11 +1069,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
   const [followUps, setFollowUps] = useState({
     noOfFollowDays: "",
-    followUpFlag: "n",
+    followUpFlag: false,
     followUpDate: getToday(),
   });
 
-  console.log("followUps", followUps);
+  // console.log("followUps", followUps);
 
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
@@ -1079,7 +1181,26 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       templateId: "",
     },
   ]);
-  console.log("treatmentItems", treatmentItems);
+  const [currentMedications, setCurrentMedications] = useState([
+    {
+      id: "sample-1",
+      drugId: "",
+      drugName: "CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET",
+      dispUnit: "",
+      dosage: "1",
+      days: "30",
+      frequency: "ONCE IN 7 DAYS",
+      total: "4",
+      stock: "0",
+      prescribedBy: "Dr. M.G.Prashanth",
+      department: "GENERAL MEDICINE",
+      prescribedDate: "19/12/2020",
+      instruction: "",
+      itemClassId: null,
+      aDispQty: 1,
+    },
+  ]);
+  // console.log("treatmentItems", treatmentItems);
 
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("");
   const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("");
@@ -1110,7 +1231,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     { id: "", name: "", frequency: "", days: "", remarks: "" },
   ]);
 
-  console.log("procedureCareItems", procedureCareItems);
+  // console.log("procedureCareItems", procedureCareItems);
 
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
@@ -1128,21 +1249,16 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null);
   const [additionalAdvice, setAdditionalAdvice] = useState("");
 
-  // Referral state - UPDATED
-  const [referralData, setReferralData] = useState({
+  const defaultReferralData = {
     isReferred: "No",
     referTo: "",
-    referralType: "Internal",
-    referralScope: "Internal",
     referralDate: getToday(),
-    empanel: false,
     currentPriorityNo: "",
-    select: "",
-    noOfDays: "",
-    treatmentType: "OPD",
-    referredFor: "",
-    hospital: "",
-  });
+    referredHospitalName: "",
+  };
+
+  // Referral state - UPDATED
+  const [referralData, setReferralData] = useState(defaultReferralData);
 
   const [departmentData, setDepartmentData] = useState([
     {
@@ -1173,10 +1289,8 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
   const itemsPerPage = 5;
 
-  // NEW: Track selected templates to prevent duplicates
   const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set());
 
-  // Modal handlers - UPDATED
   const handleOpenInvestigationModal = (type = "create") => {
     setInvestigationModalType(type);
     setShowInvestigationModal(true);
@@ -1198,6 +1312,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   };
 
   const handleOpenCurrentMedicationModal = () => {
+    setActiveDrugDropdown(null);
+    setOpenDropdown(null);
+    setOpenInvestigationDropdown(null);
     setShowCurrentMedicationModal(true);
   };
 
@@ -1227,10 +1344,45 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     return () => window.removeEventListener("click", handleClickOutside);
   }, []);
 
+  const fetchCurrentMedications = async (patientId) => {
+    // debugger
+    try {
+      const response = await getRequest(
+        `${GET_PATIENT_PRESCRIPTION_DETAILS}/${patientId}`,
+      );
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        const medications = response.response.map((item, index) => ({
+          id: index + 1,
+          drugId: item.drugId,
+          drugName: item.drugName,
+          dosage: item.dosage,
+          days: item.days,
+          frequency: item.frequency,
+          total: item.total,
+          instruction: item.instruction,
+          prescribedBy: item.doctorName,
+          department: item.departmentName,
+          prescribedDate: item.prescribedDate,
+          dispUnit: item.dispUnit,
+          stock: "0",
+        }));
+
+        setCurrentMedications(medications);
+      } else {
+        setCurrentMedications([]);
+      }
+    } catch (error) {
+      console.error("Error fetching current medications:", error);
+      setCurrentMedications([]);
+    }
+  };
+
   const fetchInvestigationTypes = async () => {
+    if (investigationTypeLoadedRef.current) return;
     const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES);
     if (res?.response) {
       setInvestigationTypes(res.response);
+      investigationTypeLoadedRef.current = true;
     }
   };
 
@@ -1599,19 +1751,54 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   };
 
   const handleReferralChange = (field, value) => {
+    const referralErrorKeys = [
+      "referralDate",
+      "referTo",
+      "currentPriorityNo",
+      "departmentData",
+      "referredHospitalName",
+      "referralNotes",
+    ];
+
     if (field === "isReferred" && value === "No") {
-      setReferralData((prev) => ({
-        ...prev,
+      setReferralData({
+        ...defaultReferralData,
         isReferred: "No",
         referralDate: "",
-      }));
+      });
       setReferralNotes("");
+    } else if (field === "isReferred" && value === "Yes") {
+      setReferralData((prev) => ({
+        ...prev,
+        isReferred: "Yes",
+        referralDate: prev.referralDate || getToday(),
+      }));
+    } else if (field === "referTo") {
+      setReferralData((prev) => ({
+        ...prev,
+        referTo: value,
+        currentPriorityNo: value === "Internal" ? prev.currentPriorityNo : "",
+        referredHospitalName:
+          value === "External" ? prev.referredHospitalName : "",
+      }));
     } else {
       setReferralData((prev) => ({
         ...prev,
         [field]: value,
       }));
     }
+
+    setErrors((prev) => {
+      const updated = { ...prev };
+      if (field === "isReferred" || field === "referTo") {
+        referralErrorKeys.forEach((key) => {
+          updated[key] = "";
+        });
+      } else {
+        updated[field] = "";
+      }
+      return updated;
+    });
   };
 
   const handleDepartmentChange = (index, field, value) => {
@@ -1621,6 +1808,12 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       [field]: value,
     };
     setDepartmentData(newData);
+    if (errors.departmentData) {
+      setErrors((prev) => ({
+        ...prev,
+        departmentData: "",
+      }));
+    }
   };
 
   const handleAddDepartment = () => {
@@ -1639,12 +1832,10 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
         .map((item) => {
           if (!item.templateId) return item;
 
-          // Convert to array
           const ids = item.templateId
             .split(",")
             .filter((id) => id !== String(templateId));
 
-          // CASE 1: treatmentId exists → KEEP row but update templateId
           if (item.treatmentId != null) {
             return {
               ...item,
@@ -1652,7 +1843,6 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
             };
           }
 
-          // CASE 2: no treatmentId & some templateIds left → update only
           if (ids.length > 0) {
             return {
               ...item,
@@ -1660,13 +1850,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
             };
           }
 
-          // CASE 3: no treatmentId & no templateIds left → REMOVE row
           return null;
         })
         .filter((item) => item !== null),
     );
 
-    // remove template from selected list
     setSelectedTreatmentTemplateIds((prev) => {
       const updated = new Set(prev);
       updated.delete(templateId);
@@ -1727,7 +1915,6 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       return;
     }
 
-
     const payload = {
       doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
       sessionId: Number(searchFilters.session) || null,
@@ -1775,6 +1962,10 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
   // };
 
   const checkVitalPresent = async (visitId) => {
+    clearVitalFields();
+    setOpdVitalsData(null);
+    setVitalsAvailable(false);
+
     try {
       const data = await getRequest(
         `${PATIENT_OPD_BY_VISIT}?visitId=${visitId}`,
@@ -1785,6 +1976,12 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
         setOpdVitalsData(res);
         setVitalsAvailable(true);
+        const medications =
+          getCurrentMedicationSource(res).map(mapCurrentMedication);
+
+        if (medications.length > 0) {
+          setCurrentMedications(medications);
+        }
 
         setFormData((prev) => ({
           ...prev,
@@ -1805,24 +2002,23 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
       setOpdVitalsData(null);
       setVitalsAvailable(false);
+      clearVitalFields();
+      setCurrentMedicationActions({});
     } catch (error) {
       console.error("Error fetching vital data:", error);
 
       setOpdVitalsData(null);
       setVitalsAvailable(false);
+      clearVitalFields();
+      setCurrentMedicationActions({});
     }
   };
 
   const handleRowClick = async (patient) => {
-    // await updateVisitStatus(
-    //   patient.visitId,
-    //   patient.visitDate,
-    //   patient.docterId,
-    // );
-
-    checkVitalPresent(patient.visitId);
-
+    await checkVitalPresent(patient.visitId);
+    await fetchCurrentMedications(patient.patientId);
     setSelectedPatient(patient);
+    setCurrentMedicationActions({});
     setShowDetailView(true);
   };
 
@@ -1850,10 +2046,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     setDoctorRemarksText("");
     setGeneralTreatmentAdvice("");
     setReferralNotes("");
-    setReferralData({
-      isReferred: "No",
-      referralDate: getToday(),
-    });
+    setReferralData(defaultReferralData);
     setFollowUps({
       noOfFollowDays: "",
       followUpFlag: false,
@@ -1949,6 +2142,22 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     setSelectedHistoryType(historyType);
   };
 
+  const clearVitalFields = () => {
+    setFormData((prev) => ({
+      ...prev,
+      height: "",
+      weight: "",
+      temperature: "",
+      systolicBP: "",
+      diastolicBP: "",
+      pulse: "",
+      bmi: "",
+      rr: "",
+      spo2: "",
+      mlcCase: false,
+    }));
+  };
+
   function calculateBMI(weight, height) {
     if (!weight || !height) return "";
 
@@ -1979,36 +2188,294 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     });
 
     // Clear field error
-    if (errors[name]) {
+    if (
+      errors[name] ||
+      ((name === "weight" || name === "height") && errors.bmi)
+    ) {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
+        ...((name === "weight" || name === "height") && { bmi: "" }),
       }));
     }
   };
 
- const showPopupMessage = (message, type = "info", onCloseCallback = null) => {
-  setPopupMessage({
-    message,
-    type,
-    onClose: () => {
-      setPopupMessage(null);
-      if (onCloseCallback) onCloseCallback();
-    },
-  });
-};
+  const showPopupMessage = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
+    });
+  };
+
+  const hasValue = (value) =>
+    value !== null && value !== undefined && String(value).trim() !== "";
+
+  const isPositiveNumber = (value) => hasValue(value) && Number(value) > 0;
+
+  const toNumberOrNull = (value) => {
+    if (!hasValue(value)) return null;
+    const numberValue = Number(value);
+    return Number.isNaN(numberValue) ? null : numberValue;
+  };
+
+  const firstValue = (...values) => values.find((value) => hasValue(value));
+
+  const validateSubmitForm = () => {
+    const nextErrors = {};
+    const messages = [];
+
+    const addError = (key, message) => {
+      nextErrors[key] = message;
+      messages.push(message);
+    };
+
+    const requiredVitals = [
+      ["height", "Height"],
+      ["weight", "Weight"],
+      ["temperature", "Temperature"],
+      ["systolicBP", "Systolic BP"],
+      ["diastolicBP", "Diastolic BP"],
+      ["pulse", "Pulse"],
+      ["bmi", "BMI"],
+      ["rr", "RR"],
+      ["spo2", "SpO2"],
+    ];
+
+    if (!hasValue(formData.patientSymptoms)) {
+      addError("patientSymptoms", "Patient signs & symptoms is required.");
+    }
+
+    requiredVitals.forEach(([key, label]) => {
+      if (!hasValue(formData[key])) {
+        addError(key, `${label} is required.`);
+      }
+    });
+
+    const validateNumberRange = (key, label, min, max) => {
+      if (!hasValue(formData[key])) return;
+
+      const value = Number(formData[key]);
+      if (Number.isNaN(value) || value < min || value > max) {
+        addError(key, `${label} must be between ${min} and ${max}.`);
+      }
+    };
+
+    validateNumberRange("height", "Height", 1, 300);
+    validateNumberRange("weight", "Weight", 1, 500);
+    validateNumberRange("temperature", "Temperature", 80, 110);
+    validateNumberRange("systolicBP", "Systolic BP", 40, 300);
+    validateNumberRange("diastolicBP", "Diastolic BP", 30, 200);
+    validateNumberRange("pulse", "Pulse", 20, 250);
+    validateNumberRange("bmi", "BMI", 1, 100);
+    validateNumberRange("rr", "RR", 5, 80);
+    validateNumberRange("spo2", "SpO2", 1, 100);
+
+    if (
+      hasValue(formData.systolicBP) &&
+      hasValue(formData.diastolicBP) &&
+      Number(formData.systolicBP) <= Number(formData.diastolicBP)
+    ) {
+      addError("systolicBP", "Systolic BP must be greater than diastolic BP.");
+    }
+
+    const hasWorkingDiagnosis = hasValue(workingDiagnosis);
+    const hasSelectedIcdDiagnosis = diagnosisItems.some((item) =>
+      hasValue(item.icdDiagId),
+    );
+    const hasDiagnosis = hasWorkingDiagnosis || hasSelectedIcdDiagnosis;
+
+    if (!hasDiagnosis) {
+      addError(
+        "diagnosis",
+        "Working diagnosis or ICD diagnosis is required.",
+      );
+      addError("workingDiagnosis", "Working diagnosis or ICD diagnosis is required.");
+    }
+
+    if (
+      !hasWorkingDiagnosis &&
+      diagnosisItems.some(
+        (item) => hasValue(item.icdDiagnosis) && !item.icdDiagId,
+      )
+    ) {
+      addError(
+        "diagnosis",
+        "Please select a valid ICD diagnosis from the dropdown.",
+      );
+    }
+
+    if (
+      investigationItems.some(
+        (item) => hasValue(item.name) && !item.investigationId,
+      )
+    ) {
+      addError(
+        "investigation",
+        "Please select a valid investigation from the dropdown.",
+      );
+    }
+
+    const invalidTreatment = treatmentItems.some((item) => {
+      const rowStarted = [item.drugName, item.drugId].some(hasValue);
+
+      if (!rowStarted) return false;
+
+      return (
+        !item.drugId ||
+        !isPositiveNumber(item.dosage) ||
+        !hasValue(item.frequency) ||
+        !isPositiveNumber(item.days) ||
+        !hasValue(item.instruction)
+      );
+    });
+
+    if (invalidTreatment) {
+      addError(
+        "treatment",
+        "Please complete drug, dosage, frequency, days and instruction for each selected treatment row.",
+      );
+    }
+
+    if (followUps.followUpFlag) {
+      if (!isPositiveNumber(followUps.noOfFollowDays)) {
+        addError("noOfFollowDays", "Follow-up days must be greater than 0.");
+      }
+
+      if (!hasValue(followUps.followUpDate)) {
+        addError("followUpDate", "Follow-up date is required.");
+      }
+    }
+
+    if (admissionAdvised) {
+      if (!hasValue(admissionDate)) {
+        addError("admissionDate", "Admission date is required.");
+      }
+      if (!hasValue(admissionRemarks)) {
+        addError("admissionRemarks", "Admission remarks is required.");
+      }
+      if (!hasValue(wardCategory)) {
+        addError("wardCategory", "Ward category is required.");
+      }
+      if (!hasValue(admissionCareLevel)) {
+        addError("admissionCareLevel", "Admission care level is required.");
+      }
+      if (!hasValue(wardName)) {
+        addError("wardName", "Ward is required.");
+      }
+    }
+
+    if (referralData.isReferred === "Yes") {
+      if (!hasValue(referralData.referralDate)) {
+        addError("referralDate", "Referral date is required.");
+      }
+      if (!hasValue(referralData.referTo)) {
+        addError("referTo", "Referral type is required.");
+      }
+      if (
+        referralData.referTo === "Internal" &&
+        !hasValue(referralData.currentPriorityNo)
+      ) {
+        addError("currentPriorityNo", "Current priority number is required.");
+      }
+      if (
+        referralData.referTo === "Internal" &&
+        !departmentData.some(
+          (item) =>
+            item.selected && hasValue(item.doctor) && item.doctor !== "Select",
+        )
+      ) {
+        addError(
+          "departmentData",
+          "Please select at least one department doctor for referral.",
+        );
+      }
+      if (
+        referralData.referTo === "External" &&
+        !hasValue(referralData.referredHospitalName)
+      ) {
+        addError("referredHospitalName", "Referred hospital name is required.");
+      }
+      if (!hasValue(referralNotes)) {
+        addError("referralNotes", "Referral notes is required.");
+      }
+    }
+
+    setErrors(nextErrors);
+
+    if (messages.length > 0) {
+      setExpandedSections((prev) => ({
+        ...prev,
+        vitalDetail:
+          prev.vitalDetail ||
+          [
+            "patientSymptoms",
+            "height",
+            "weight",
+            "temperature",
+            "systolicBP",
+            "diastolicBP",
+            "pulse",
+            "bmi",
+            "rr",
+            "spo2",
+          ].some((key) => nextErrors[key]),
+        clinicalHistory:
+          prev.clinicalHistory || Boolean(nextErrors.patientSymptoms),
+        diagnosis:
+          prev.diagnosis ||
+          Boolean(nextErrors.diagnosis || nextErrors.workingDiagnosis),
+        investigation: prev.investigation || Boolean(nextErrors.investigation),
+        treatment: prev.treatment || Boolean(nextErrors.treatment),
+        admissionAdvice:
+          prev.admissionAdvice ||
+          [
+            "admissionDate",
+            "admissionRemarks",
+            "wardCategory",
+            "admissionCareLevel",
+            "wardName",
+          ].some((key) => nextErrors[key]),
+        referral:
+          prev.referral ||
+          [
+            "referralDate",
+            "referTo",
+            "currentPriorityNo",
+            "departmentData",
+            "referredHospitalName",
+            "referralNotes",
+          ].some((key) => nextErrors[key]),
+        followUp:
+          prev.followUp ||
+          ["noOfFollowDays", "followUpDate"].some((key) => nextErrors[key]),
+      }));
+      showPopupMessage(messages[0], "error");
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
 
     if (isSubmitting) return;
+
+    if (!validateSubmitForm()) return;
+
     try {
       setIsSubmitting(true);
       // ICD Diagnoses
-      const icdDiagList = diagnosisItems.map((item) => ({
-        icdId: item.icdDiagId ?? null,
-        icdDiagnosisName: item.icdDiagnosis || "",
-      }));
+      const icdDiagList = diagnosisItems
+        .filter((item) => hasValue(item.icdDiagId))
+        .map((item) => ({
+          icdId: item.icdDiagId,
+          icdDiagnosisName: item.icdDiagnosis || "",
+        }));
 
       // Investigations mapping → backend format
       const invalidInvestigation = investigationItems.some(
@@ -2016,7 +2483,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       );
 
       if (invalidInvestigation) {
-        showPopup(
+        showPopupMessage(
           "Please select a valid investigation from the dropdown before saving.",
           "error",
         );
@@ -2050,6 +2517,51 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
       //console.log("treatmentItems", treatmentItems)
 
+      const selectedWardCategory = wardCategories.find(
+        (category) => Number(category.categoryId) === Number(wardCategory),
+      );
+      const selectedWard = wardDepartments.find(
+        (ward) => Number(ward.id) === Number(wardName),
+      );
+      const mappedDepartmentId = toNumberOrNull(
+        firstValue(
+          selectedPatient.departmentId,
+          selectedPatient.deptId,
+          selectedPatient.dept_id,
+          selectedPatient.department?.id,
+          sessionStorage.getItem("departmentId"),
+          localStorage.getItem("departmentId"),
+        ),
+      );
+      const mappedHospitalId = toNumberOrNull(
+        firstValue(
+          selectedPatient.hospitalId,
+          selectedPatient.hospital?.id,
+          sessionStorage.getItem("hospitalId"),
+          localStorage.getItem("hospitalId"),
+        ),
+      );
+      const mappedDoctorId = toNumberOrNull(
+        firstValue(
+          selectedPatient.doctorId,
+          selectedPatient.docterId,
+          selectedPatient.docId,
+          selectedPatient.doctor?.userId,
+          selectedPatient.doctor?.id,
+          searchFilters.doctorList,
+          sessionStorage.getItem("userId"),
+          localStorage.getItem("userId"),
+        ),
+      );
+
+      if (!mappedDepartmentId || !mappedHospitalId || !mappedDoctorId) {
+        showPopupMessage(
+          "Department, hospital and doctor details are required before submitting.",
+          "error",
+        );
+        return;
+      }
+
       const payload = {
         // ===== Mapping IDs =====
         opdPatientDetailId: vitalsAvailable
@@ -2057,9 +2569,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
           : null,
         patientId: selectedPatient.patientId,
         visitId: selectedPatient.visitId,
-        departmentId: selectedPatient.deptId,
-        hospitalId: selectedPatient.hospitalId,
-        doctorId: selectedPatient.docterId,
+        departmentId: mappedDepartmentId,
+        hospitalId: mappedHospitalId,
+        doctorId: mappedDoctorId,
 
         // ===== Clinical History =====
         patientSignsSymptoms: formData.patientSymptoms ?? null,
@@ -2106,11 +2618,14 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
         doctorRemarks: doctorRemarksText,
 
         // ======== follow up =====
-        followUpFlag: followUps.followUpFlag,
-        followUpDate: followUps.followUpDate
-          ? new Date(followUps.followUpDate).toISOString()
-          : null,
-        followUpDays: Number(followUps.noOfFollowDays),
+        followUpFlag: followUps.followUpFlag ? FLAG.FLAG_Y : FLAG.FLAG_N,
+        followUpDate:
+          followUps.followUpFlag && followUps.followUpDate
+            ? new Date(followUps.followUpDate).toISOString()
+            : null,
+        followUpDays: followUps.followUpFlag
+          ? Number(followUps.noOfFollowDays)
+          : 0,
 
         // ===== Admission Details =====
 
@@ -2119,29 +2634,41 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
           admissionAdvised && admissionDate
             ? new Date(admissionDate).toISOString()
             : null,
-        admissionRemarks: additionalAdvice || null,
+        admissionRemarks: admissionAdvised ? admissionRemarks : null,
         admissionCareLevel: admissionAdvised
-          ? Number(admissionCareLevel)
+          ? Number(selectedWardCategory?.careId ?? admissionCareLevel)
           : null,
-        admissionWardCategory: admissionAdvised ? Number(wardCategory) : null,
-        admissionWard: admissionAdvised ? Number(wardName) : null,
+        admissionWardCategory: admissionAdvised
+          ? Number(selectedWardCategory?.categoryId ?? wardCategory)
+          : null,
+        admissionWard: admissionAdvised
+          ? Number(selectedWard?.id ?? wardName)
+          : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
         // ================= Referal ================
-        referralFlag: referralData.isReferred === "Yes" ? FLAG.FLAG_Y : FLAG.FLAG_N,
+        referralFlag:
+          referralData.isReferred === "Yes" ? FLAG.FLAG_Y : FLAG.FLAG_N,
         referralRemarks: referralNotes,
         referralDate: referralData.referralDate
           ? new Date(referralData.referralDate).toISOString()
           : null,
+        referTo:
+          referralData.isReferred === "Yes" ? referralData.referTo : null,
+        referredHospitalName:
+          referralData.isReferred === "Yes" &&
+          referralData.referTo === "External"
+            ? referralData.referredHospitalName
+            : null,
       };
 
       const response = await postRequest(
-        `${OPD_PATIENT}/patient-details`,
+        `${OPD_CREATE_PATIENT_DETAILS}`,
         payload,
       );
 
       if (response?.status === 200 || response?.success === true) {
-        showPopup("OPD patient created successfully!", "success", () => {
+        showPopupMessage("OPD patient created successfully!", "success", () => {
           handleResetForm();
           setShowDetailView(false);
           handleSearch();
@@ -2151,7 +2678,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       }
     } catch (error) {
       console.error("Update Error:", error);
-      showPopup("Failed to Submit Data. Please try again.", "error");
+      showPopupMessage("Failed to Submit Data. Please try again.", "error");
     } finally {
       setIsSubmitting(false);
     }
@@ -2191,10 +2718,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     // Reset followUps to default
     setGeneralTreatmentAdvice("");
     setReferralNotes("");
-    setReferralData({
-      isReferred: "No",
-      referralDate: getToday(),
-    });
+    setReferralData(defaultReferralData);
     setFollowUps({
       noOfFollowDays: "",
       followUpFlag: false,
@@ -2295,13 +2819,13 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
       );
 
       if (response?.status === 200) {
-        showPopup("Update successfully.", "success");
+        showPopupMessage("Update successfully.", "success");
         handleSearch();
       } else {
-        showPopup("Failed to update. Please try again.", "error");
+        showPopupMessage("Failed to update. Please try again.", "error");
       }
     } catch (error) {
-      showPopup("Failed to update. Please try again.", "error");
+      showPopupMessage("Failed to update. Please try again.", "error");
     }
   };
 
@@ -2490,6 +3014,104 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     return total.toString();
   };
 
+  const mapCurrentMedication = (item, index) => ({
+    id:
+      item.id ??
+      item.treatmentId ??
+      item.opdTreatmentId ??
+      item.itemId ??
+      item.drugId ??
+      `current-med-${index}`,
+    drugId: item.drugId ?? item.itemId ?? "",
+    drugName:
+      item.drugName ?? item.itemName ?? item.nomenclature ?? item.name ?? "",
+    dispUnit: item.dispUnit ?? item.dispUnitName ?? item.dispU ?? "",
+    dosage: item.dosage ?? "",
+    days: item.days ?? item.noOfDays ?? "",
+    frequency:
+      item.frequency ??
+      item.frequencyName ??
+      item.frequencyCode ??
+      item.frequencyId ??
+      "",
+    total: item.total ?? item.totalQty ?? "",
+    stock: item.stock ?? item.stocks ?? "0",
+    prescribedBy: item.prescribedBy ?? item.doctorName ?? "",
+    department: item.department ?? item.departmentName ?? "",
+    prescribedDate:
+      item.prescribedDate ?? item.createdDate ?? item.opdDate ?? "",
+    instruction: item.instruction ?? "",
+    itemClassId: item.itemClassId ?? null,
+    aDispQty: item.aDispQty ?? item.adispQty ?? 1,
+  });
+
+  const getCurrentMedicationSource = (data) =>
+    data?.currentMedications ??
+    data?.medications ??
+    data?.treatments ??
+    data?.treatment ??
+    data?.opdTreatments ??
+    data?.opdTreatmentList ??
+    [];
+
+  const addCurrentMedicationToTreatment = (medication) => {
+    if (!medication?.drugName) return;
+
+    setTreatmentItems((prev) => {
+      const alreadyAdded = prev.some((item) => {
+        if (medication.drugId && item.drugId === medication.drugId) return true;
+        return (
+          item.drugName?.trim().toLowerCase() ===
+          medication.drugName.trim().toLowerCase()
+        );
+      });
+
+      if (alreadyAdded) {
+        showPopupMessage(
+          "Selected medication is already added in treatment.",
+          "info",
+        );
+        return prev;
+      }
+
+      const repeatedItem = {
+        treatmentId: null,
+        drugId: medication.drugId,
+        drugName: medication.drugName,
+        dispUnit: medication.dispUnit,
+        dosage: medication.dosage,
+        frequency: medication.frequency,
+        days: medication.days,
+        total: medication.total,
+        instruction: medication.instruction,
+        stock: medication.stock || "0",
+        templateId: "",
+        itemClassId: medication.itemClassId,
+        aDispQty: medication.aDispQty,
+      };
+
+      if (isOnlyDefaultTreatmentRow(prev)) {
+        return [repeatedItem];
+      }
+
+      return [...prev, repeatedItem];
+    });
+  };
+
+  const handleCurrentMedicationAction = (medication, action) => {
+    setCurrentMedicationActions((prev) => ({
+      ...prev,
+      [medication.id]: prev[medication.id] === action ? "" : action,
+    }));
+
+    if (
+      action === "repeat" &&
+      currentMedicationActions[medication.id] !== action
+    ) {
+      addCurrentMedicationToTreatment(medication);
+    }
+  };
+
   const handleRemoveTreatmentItem = (index) => {
     const itemToRemove = treatmentItems[index];
     const isLastRow = index === treatmentItems.length - 1;
@@ -2548,6 +3170,12 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     }
 
     setTreatmentItems(updated);
+    if (errors.treatment) {
+      setErrors((prev) => ({
+        ...prev,
+        treatment: "",
+      }));
+    }
   };
 
   const handleOpenTreatmentAdviceModal = (type) => {
@@ -2802,15 +3430,28 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     if (!checked) {
       // Reset all related fields
       setAdmissionDate("");
-      setAdditionalAdvice("");
+      setAdmissionRemarks("");
       setWardCategory("");
+      setAdmissionCareLevel("");
       setAdmissionCareLevelName("");
       setWardName("");
       setWardDepartments([]);
-      setAdmissionPriority("");
+      setAdmissionPriority("Normal");
       setOccupiedBeds("");
       setVacantBeds("");
+    } else {
+      setAdmissionDate((prev) => prev || getToday());
+      setAdmissionPriority((prev) => prev || "Normal");
     }
+
+    setErrors((prev) => ({
+      ...prev,
+      admissionDate: "",
+      admissionRemarks: "",
+      wardCategory: "",
+      admissionCareLevel: "",
+      wardName: "",
+    }));
   };
 
   const handleFollowUpChange = (e) => {
@@ -2819,8 +3460,14 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     setFollowUps({
       followUpFlag: checked,
       noOfFollowDays: checked ? followUps.noOfFollowDays : "",
-      followUpDate: checked ? followUps.followUpDate : "",
+      followUpDate: checked ? followUps.followUpDate || getToday() : "",
     });
+
+    setErrors((prev) => ({
+      ...prev,
+      noOfFollowDays: "",
+      followUpDate: "",
+    }));
   };
 
   const handleRemovePhysiotherapyItem = (index) => {
@@ -3010,7 +3657,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                           <input
                             type="text"
                             id="dob"
-                            value={selectedPatient.dob || ""}
+                            value={formatDateForDisplay(selectedPatient.dob)}
                             name="dob"
                             className="form-control"
                             placeholder="dd/mm/yyyy"
@@ -3071,50 +3718,54 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                     <div className="card-body">
                       <div className="row">
                         {/* Sidebar Buttons */}
-                       <div className="col-md-3">
-  <div className="d-flex flex-column gap-2">
-    {[
-      {
-        id: "previous-visits",
-        label: "Previous Visits",
-      },
-      {
-        id: "previous-vitals",
-        label: "Previous Vitals",
-      },
-      {
-        id: "previous-lab",
-        label: "Previous Lab Investigation",
-      },
-      {
-        id: "previous-ecg",
-        label: "Previous ECG Investigation",
-      },
-      { id: "audit-history", label: "Audit History" },
-    ].map((btn) => (
-<button
-  key={btn.id}
-  className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"}`}
-  onClick={(e) => {
-    e.stopPropagation(); 
-    if (btn.id === "previous-visits") {
-      console.log("Opening Previous Visits Modal");
-      setClinicalPopupType("visits");
-      setShowPopup(true);
-    } else if (btn.id === "previous-vitals") {  
-      console.log("Opening Previous Vitals Modal");
-      setClinicalPopupType("vitals");
-      setShowPopup(true);
-    } else {
-      handleHistoryTypeClick(btn.id);
-    }
-  }}
->
-  {btn.label}
-</button>
-    ))}
-  </div>
-</div>
+                        <div className="col-md-3">
+                          <div className="d-flex flex-column gap-2">
+                            {[
+                              {
+                                id: "previous-visits",
+                                label: "Previous Visits",
+                              },
+                              {
+                                id: "previous-vitals",
+                                label: "Previous Vitals",
+                              },
+                              {
+                                id: "previous-lab",
+                                label: "Previous Lab Investigation",
+                              },
+                              {
+                                id: "previous-ecg",
+                                label: "Previous ECG Investigation",
+                              },
+                              { id: "audit-history", label: "Audit History" },
+                            ].map((btn) => (
+                              <button
+                                key={btn.id}
+                                className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"}`}
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (btn.id === "previous-visits") {
+                                    console.log(
+                                      "Opening Previous Visits Modal",
+                                    );
+                                    setClinicalPopupType("visits");
+                                    setShowPopup(true);
+                                  } else if (btn.id === "previous-vitals") {
+                                    console.log(
+                                      "Opening Previous Vitals Modal",
+                                    );
+                                    setClinicalPopupType("vitals");
+                                    setShowPopup(true);
+                                  } else {
+                                    handleHistoryTypeClick(btn.id);
+                                  }
+                                }}
+                              >
+                                {btn.label}
+                              </button>
+                            ))}
+                          </div>
+                        </div>
                         {/* Input Area */}
                         <div className="col-md-9">
                           {/* Symptoms */}
@@ -3133,12 +3784,17 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                             </div>
                             <input
                               type="text"
-                              className="form-control mt-3"
+                              className={`form-control mt-3 ${errors.patientSymptoms ? "is-invalid" : ""}`}
                               name="patientSymptoms"
                               value={formData.patientSymptoms}
                               onChange={handleChange}
                               placeholder="Enter symptoms"
                             />
+                            {errors.patientSymptoms && (
+                              <div className="invalid-feedback d-block">
+                                {errors.patientSymptoms}
+                              </div>
+                            )}
                           </div>
 
                           {/* Clinical Examination */}
@@ -3446,13 +4102,14 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                           <div className="card shadow mb-3">
                             {/* Form Card Header */}
 
-
                             <div className="card-body">
                               <form onSubmit={handleSaveVision}>
                                 {/* ---- Vision (Table) ---- */}
                                 <div className="row mb-4">
                                   <div className="col-12 mb-2">
-                                    <h6 className="fw-bold bg-light text-primary border-bottom pb-1">Vision</h6>
+                                    <h6 className="fw-bold bg-light text-primary border-bottom pb-1">
+                                      Vision
+                                    </h6>
                                   </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -3460,8 +4117,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         <thead className="table-light">
                                           <tr>
                                             <th></th>
-                                            <th colSpan="3" className="text-center">R.E.</th>
-                                            <th colSpan="3" className="text-center">L.E.</th>
+                                            <th
+                                              colSpan="3"
+                                              className="text-center"
+                                            >
+                                              R.E.
+                                            </th>
+                                            <th
+                                              colSpan="3"
+                                              className="text-center"
+                                            >
+                                              L.E.
+                                            </th>
                                           </tr>
                                           <tr>
                                             <th></th>
@@ -3475,53 +4142,65 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         </thead>
                                         <tbody>
                                           <tr>
-                                            <td className="fw-semibold">Distance</td>
+                                            <td className="fw-semibold">
+                                              Distance
+                                            </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.fundusGlow.re.uncorrected}
+                                                value={
+                                                  visionFormData.fundusGlow.re
+                                                    .uncorrected
+                                                }
                                                 onChange={(e) =>
                                                   handleFundusGlowChange(
                                                     "re",
                                                     "uncorrected",
-                                                    e.target.value
+                                                    e.target.value,
                                                   )
                                                 }
                                               >
                                                 <option value="">Select</option>
 
-                                                {distanceVisionData.map((item) => (
-                                                  <option
-                                                    key={item.id}
-                                                    value={item.visionValue}
-                                                  >
-                                                    {item.visionValue}
-                                                  </option>
-                                                ))}
+                                                {distanceVisionData.map(
+                                                  (item) => (
+                                                    <option
+                                                      key={item.id}
+                                                      value={item.visionValue}
+                                                    >
+                                                      {item.visionValue}
+                                                    </option>
+                                                  ),
+                                                )}
                                               </select>
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.fundusGlow.re.pinhole}
+                                                value={
+                                                  visionFormData.fundusGlow.re
+                                                    .pinhole
+                                                }
                                                 onChange={(e) =>
                                                   handleFundusGlowChange(
                                                     "re",
                                                     "pinhole",
-                                                    e.target.value
+                                                    e.target.value,
                                                   )
                                                 }
                                               >
                                                 <option value="">Select</option>
 
-                                                {distanceVisionData.map((item) => (
-                                                  <option
-                                                    key={item.id}
-                                                    value={item.visionValue}
-                                                  >
-                                                    {item.visionValue}
-                                                  </option>
-                                                ))}
+                                                {distanceVisionData.map(
+                                                  (item) => (
+                                                    <option
+                                                      key={item.id}
+                                                      value={item.visionValue}
+                                                    >
+                                                      {item.visionValue}
+                                                    </option>
+                                                  ),
+                                                )}
                                               </select>
                                             </td>
                                             <td>
@@ -3529,56 +4208,75 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                                 type="text"
                                                 className="form-control form-control-sm"
                                                 placeholder="e.g., 6/6-20/25"
-                                                value={visionFormData.fundusGlow.re.bestCorrected}
-                                                onChange={(e) => handleFundusGlowChange("re", "bestCorrected", e.target.value)}
+                                                value={
+                                                  visionFormData.fundusGlow.re
+                                                    .bestCorrected
+                                                }
+                                                onChange={(e) =>
+                                                  handleFundusGlowChange(
+                                                    "re",
+                                                    "bestCorrected",
+                                                    e.target.value,
+                                                  )
+                                                }
                                               />
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.fundusGlow.le.uncorrected}
+                                                value={
+                                                  visionFormData.fundusGlow.le
+                                                    .uncorrected
+                                                }
                                                 onChange={(e) =>
                                                   handleFundusGlowChange(
                                                     "le",
                                                     "uncorrected",
-                                                    e.target.value
+                                                    e.target.value,
                                                   )
                                                 }
                                               >
                                                 <option value="">Select</option>
 
-                                                {distanceVisionData.map((item) => (
-                                                  <option
-                                                    key={item.id}
-                                                    value={item.visionValue}
-                                                  >
-                                                    {item.visionValue}
-                                                  </option>
-                                                ))}
+                                                {distanceVisionData.map(
+                                                  (item) => (
+                                                    <option
+                                                      key={item.id}
+                                                      value={item.visionValue}
+                                                    >
+                                                      {item.visionValue}
+                                                    </option>
+                                                  ),
+                                                )}
                                               </select>
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.fundusGlow.re.pinhole}
+                                                value={
+                                                  visionFormData.fundusGlow.re
+                                                    .pinhole
+                                                }
                                                 onChange={(e) =>
                                                   handleFundusGlowChange(
                                                     "re",
                                                     "pinhole",
-                                                    e.target.value
+                                                    e.target.value,
                                                   )
                                                 }
                                               >
                                                 <option value="">Select</option>
 
-                                                {distanceVisionData.map((item) => (
-                                                  <option
-                                                    key={item.id}
-                                                    value={item.visionValue}
-                                                  >
-                                                    {item.visionValue}
-                                                  </option>
-                                                ))}
+                                                {distanceVisionData.map(
+                                                  (item) => (
+                                                    <option
+                                                      key={item.id}
+                                                      value={item.visionValue}
+                                                    >
+                                                      {item.visionValue}
+                                                    </option>
+                                                  ),
+                                                )}
                                               </select>
                                             </td>
                                             <td>
@@ -3586,23 +4284,39 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                                 type="text"
                                                 className="form-control form-control-sm"
                                                 placeholder="e.g., 6/6-20/25"
-                                                value={visionFormData.fundusGlow.le.bestCorrected}
-                                                onChange={(e) => handleFundusGlowChange("le", "bestCorrected", e.target.value)}
+                                                value={
+                                                  visionFormData.fundusGlow.le
+                                                    .bestCorrected
+                                                }
+                                                onChange={(e) =>
+                                                  handleFundusGlowChange(
+                                                    "le",
+                                                    "bestCorrected",
+                                                    e.target.value,
+                                                  )
+                                                }
                                               />
                                             </td>
                                           </tr>
-                                          <tr>                                           
-                                            <td className="fw-semibold">Near</td>
+                                          <tr>
+                                            <td className="fw-semibold">
+                                              Near
+                                            </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.vision.distance}
+                                                value={
+                                                  visionFormData.vision.distance
+                                                }
                                                 onChange={handleVisionChange}
                                                 name="distance"
                                               >
                                                 <option value="">Select</option>
                                                 {nearVisionData.map((item) => (
-                                                  <option key={item.id} value={item.nearValue}>
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.nearValue}
+                                                  >
                                                     {item.nearValue}
                                                   </option>
                                                 ))}
@@ -3611,13 +4325,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.vision.near}
+                                                value={
+                                                  visionFormData.vision.near
+                                                }
                                                 onChange={handleVisionChange}
                                                 name="near"
                                               >
                                                 <option value="">Select</option>
                                                 {nearVisionData.map((item) => (
-                                                  <option key={item.id} value={item.nearValue}>
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.nearValue}
+                                                  >
                                                     {item.nearValue}
                                                   </option>
                                                 ))}
@@ -3635,13 +4354,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.vision.distance}
+                                                value={
+                                                  visionFormData.vision.distance
+                                                }
                                                 onChange={handleVisionChange}
                                                 name="distance"
                                               >
                                                 <option value="">Select</option>
                                                 {nearVisionData.map((item) => (
-                                                  <option key={item.id} value={item.nearValue}>
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.nearValue}
+                                                  >
                                                     {item.nearValue}
                                                   </option>
                                                 ))}
@@ -3650,13 +4374,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.vision.near}
+                                                value={
+                                                  visionFormData.vision.near
+                                                }
                                                 onChange={handleVisionChange}
                                                 name="near"
                                               >
                                                 <option value="">Select</option>
                                                 {nearVisionData.map((item) => (
-                                                  <option key={item.id} value={item.nearValue}>
+                                                  <option
+                                                    key={item.id}
+                                                    value={item.nearValue}
+                                                  >
                                                     {item.nearValue}
                                                   </option>
                                                 ))}
@@ -3681,7 +4410,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                 {/* ---- RETINOSCOPY (Table) ---- */}
                                 <div className="row mb-4">
                                   <div className="col-12 mb-2">
-                                    <h6 className="fw-bold  text-primary border-bottom pb-1">RETINOSCOPY</h6>
+                                    <h6 className="fw-bold  text-primary border-bottom pb-1">
+                                      RETINOSCOPY
+                                    </h6>
                                   </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -3689,15 +4420,41 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         <thead className="table-light">
                                           <tr>
                                             <th style={{ width: "130px" }}></th>
-                                            <th colSpan="2" className="text-center">R.E.</th>
-                                            <th colSpan="2" className="text-center">L.E.</th>
+                                            <th
+                                              colSpan="2"
+                                              className="text-center"
+                                            >
+                                              R.E.
+                                            </th>
+                                            <th
+                                              colSpan="2"
+                                              className="text-center"
+                                            >
+                                              L.E.
+                                            </th>
                                           </tr>
                                           <tr>
                                             <th style={{ width: "130px" }}></th>
-                                            <th colSpan="1" className="text-center"></th>
-                                            <th colSpan="1" className="text-center">AXIS</th>
-                                            <th colSpan="1" className="text-center"></th>
-                                            <th colSpan="1" className="text-center">AXIS</th>
+                                            <th
+                                              colSpan="1"
+                                              className="text-center"
+                                            ></th>
+                                            <th
+                                              colSpan="1"
+                                              className="text-center"
+                                            >
+                                              AXIS
+                                            </th>
+                                            <th
+                                              colSpan="1"
+                                              className="text-center"
+                                            ></th>
+                                            <th
+                                              colSpan="1"
+                                              className="text-center"
+                                            >
+                                              AXIS
+                                            </th>
                                           </tr>
                                         </thead>
                                         <tbody>
@@ -3774,8 +4531,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                             <table className="table table-bordered table-sm align-middle">
                                               <thead className="table-light">
                                                 <tr>
-                                                  <th colSpan="5" className="text-center">R.E.</th>
-                                                  <th colSpan="5" className="text-center">L.E.</th>
+                                                  <th
+                                                    colSpan="5"
+                                                    className="text-center"
+                                                  >
+                                                    R.E.
+                                                  </th>
+                                                  <th
+                                                    colSpan="5"
+                                                    className="text-center"
+                                                  >
+                                                    L.E.
+                                                  </th>
                                                 </tr>
                                                 <tr>
                                                   <th>Keratometry</th>
@@ -3866,11 +4633,12 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   </div>
                                 </div>
 
-
                                 {/* ---- SPECTACLE PRESCRIPTION ---- */}
                                 <div className="row">
                                   <div className="col-12 mb-2">
-                                    <h6 className="fw-bold text-primary border-bottom pb-1">Spectacle Correction</h6>
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">
+                                      Spectacle Correction
+                                    </h6>
                                   </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -3878,8 +4646,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         <thead className="table-light">
                                           <tr>
                                             <th></th>
-                                            <th colSpan="3" className="text-center">R.E.</th>
-                                            <th colSpan="3" className="text-center">L.E.</th>
+                                            <th
+                                              colSpan="3"
+                                              className="text-center"
+                                            >
+                                              R.E.
+                                            </th>
+                                            <th
+                                              colSpan="3"
+                                              className="text-center"
+                                            >
+                                              L.E.
+                                            </th>
                                           </tr>
                                           <tr>
                                             <th></th>
@@ -3893,7 +4671,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         </thead>
                                         <tbody>
                                           <tr>
-                                            <td className="fw-semibold">Dist</td>
+                                            <td className="fw-semibold">
+                                              Dist
+                                            </td>
                                             <td>
                                               <input
                                                 type="text"
@@ -3932,7 +4712,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                             </td>
                                           </tr>
                                           <tr>
-                                            <td className="fw-semibold">Near</td>
+                                            <td className="fw-semibold">
+                                              Near
+                                            </td>
                                             <td>
                                               <input
                                                 type="text"
@@ -3995,7 +4777,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                           <table className="table table-bordered table-sm w-auto">
                                             <tbody>
                                               <tr>
-                                                <td className="fw-semibold">IPD (50–70)</td>
+                                                <td className="fw-semibold">
+                                                  IPD (50–70)
+                                                </td>
                                                 <td>
                                                   <input
                                                     type="text"
@@ -4004,27 +4788,45 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                                     placeholder="mm"
                                                   />
                                                 </td>
-                                                <td className="fw-semibold">Use</td>
+                                                <td className="fw-semibold">
+                                                  Use
+                                                </td>
                                                 <td>
                                                   <select
                                                     className="form-select form-select-sm"
                                                     name="use"
                                                   >
-                                                    <option value="">Select</option>
-                                                    <option value="Distance">Distance</option>
-                                                    <option value="Near">Near</option>
+                                                    <option value="">
+                                                      Select
+                                                    </option>
+                                                    <option value="Distance">
+                                                      Distance
+                                                    </option>
+                                                    <option value="Near">
+                                                      Near
+                                                    </option>
                                                   </select>
                                                 </td>
-                                                <td className="fw-semibold">Type of Lens</td>
+                                                <td className="fw-semibold">
+                                                  Type of Lens
+                                                </td>
                                                 <td>
                                                   <select
                                                     className="form-select form-select-sm"
                                                     name="typeOfLens"
                                                   >
-                                                    <option value="">Select</option>
-                                                    <option value="Single Vision">Single Vision</option>
-                                                    <option value="Bifocal">Bifocal</option>
-                                                    <option value="Progressive">Progressive</option>
+                                                    <option value="">
+                                                      Select
+                                                    </option>
+                                                    <option value="Single Vision">
+                                                      Single Vision
+                                                    </option>
+                                                    <option value="Bifocal">
+                                                      Bifocal
+                                                    </option>
+                                                    <option value="Progressive">
+                                                      Progressive
+                                                    </option>
                                                   </select>
                                                 </td>
                                               </tr>
@@ -4038,12 +4840,13 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
                                 {/* ---- IPD ---- */}
 
-
                                 {/* ---- ANTERIOR SEGMENT ---- */}
                                 {/* ---- Anterior Segment (Table) ---- */}
                                 <div className="row mb-4">
                                   <div className="col-12 mb-2">
-                                    <h6 className="fw-bold text-primary border-bottom pb-1">Anterior Segment</h6>
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">
+                                      Anterior Segment
+                                    </h6>
                                   </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -4051,45 +4854,77 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         <thead className="table-light">
                                           <tr>
                                             <th></th>
-                                            {Object.keys(anteriorLabels).map(key => (
-                                              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
-                                                {anteriorLabels[key]}
-                                              </th>
-                                            ))}
+                                            {Object.keys(anteriorLabels).map(
+                                              (key) => (
+                                                <th
+                                                  key={key}
+                                                  className="text-center"
+                                                  style={{ fontSize: "12px" }}
+                                                >
+                                                  {anteriorLabels[key]}
+                                                </th>
+                                              ),
+                                            )}
                                           </tr>
                                         </thead>
                                         <tbody>
                                           <tr>
-                                            <td className="fw-semibold">R.E.</td>
-                                            {Object.keys(anteriorLabels).map(key => (
-                                              <td key={`re-${key}`}>
-                                                <select
-                                                  className="form-select form-select-sm"
-                                                  name={key}
-                                                  value={visionFormData.anteriorSegment?.[key] || "N"}
-                                                  onChange={handleAnteriorChange}
-                                                >
-                                                  <option value="N">N</option>
-                                                  <option value="Abnormal">Abnormal</option>
-                                                </select>
-                                              </td>
-                                            ))}
+                                            <td className="fw-semibold">
+                                              R.E.
+                                            </td>
+                                            {Object.keys(anteriorLabels).map(
+                                              (key) => (
+                                                <td key={`re-${key}`}>
+                                                  <select
+                                                    className="form-select form-select-sm"
+                                                    name={key}
+                                                    value={
+                                                      visionFormData
+                                                        .anteriorSegment?.[
+                                                        key
+                                                      ] || "N"
+                                                    }
+                                                    onChange={
+                                                      handleAnteriorChange
+                                                    }
+                                                  >
+                                                    <option value="N">N</option>
+                                                    <option value="Abnormal">
+                                                      Abnormal
+                                                    </option>
+                                                  </select>
+                                                </td>
+                                              ),
+                                            )}
                                           </tr>
                                           <tr>
-                                            <td className="fw-semibold">L.E.</td>
-                                            {Object.keys(anteriorLabels).map(key => (
-                                              <td key={`le-${key}`}>
-                                                <select
-                                                  className="form-select form-select-sm"
-                                                  name={key}
-                                                  value={visionFormData.anteriorSegment?.[key] || "N"}
-                                                  onChange={handleAnteriorChange}
-                                                >
-                                                  <option value="N">N</option>
-                                                  <option value="Abnormal">Abnormal</option>
-                                                </select>
-                                              </td>
-                                            ))}
+                                            <td className="fw-semibold">
+                                              L.E.
+                                            </td>
+                                            {Object.keys(anteriorLabels).map(
+                                              (key) => (
+                                                <td key={`le-${key}`}>
+                                                  <select
+                                                    className="form-select form-select-sm"
+                                                    name={key}
+                                                    value={
+                                                      visionFormData
+                                                        .anteriorSegment?.[
+                                                        key
+                                                      ] || "N"
+                                                    }
+                                                    onChange={
+                                                      handleAnteriorChange
+                                                    }
+                                                  >
+                                                    <option value="N">N</option>
+                                                    <option value="Abnormal">
+                                                      Abnormal
+                                                    </option>
+                                                  </select>
+                                                </td>
+                                              ),
+                                            )}
                                           </tr>
                                         </tbody>
                                       </table>
@@ -4100,7 +4935,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                 {/* ---- Posterior Segment (Table) ---- */}
                                 <div className="row mb-4">
                                   <div className="col-12 mb-2">
-                                    <h6 className="fw-bold text-primary border-bottom pb-1">Posterior Segment</h6>
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">
+                                      Posterior Segment
+                                    </h6>
                                   </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -4108,43 +4945,83 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         <thead className="table-light">
                                           <tr>
                                             <th></th>
-                                            {Object.keys(posteriorLabels).map(key => (
-                                              <th key={key} className="text-center" style={{ fontSize: "12px" }}>
-                                                {posteriorLabels[key]}
-                                              </th>
-                                            ))}
+                                            {Object.keys(posteriorLabels).map(
+                                              (key) => (
+                                                <th
+                                                  key={key}
+                                                  className="text-center"
+                                                  style={{ fontSize: "12px" }}
+                                                >
+                                                  {posteriorLabels[key]}
+                                                </th>
+                                              ),
+                                            )}
                                           </tr>
                                         </thead>
                                         <tbody>
                                           <tr>
-                                            <td className="fw-semibold">R.E.</td>
-                                            {Object.keys(posteriorLabels).map(field => (
-                                              <td key={`re-${field}`}>
-                                                <select
-                                                  className="form-select form-select-sm"
-                                                  value={visionFormData.posteriorSegment?.re?.[field] || "N"}
-                                                  onChange={(e) => handlePosteriorChange("re", field, e.target.value)}
-                                                >
-                                                  <option value="N">N</option>
-                                                  <option value="Abnormal">Abnormal</option>
-                                                </select>
-                                              </td>
-                                            ))}
+                                            <td className="fw-semibold">
+                                              R.E.
+                                            </td>
+                                            {Object.keys(posteriorLabels).map(
+                                              (field) => (
+                                                <td key={`re-${field}`}>
+                                                  <select
+                                                    className="form-select form-select-sm"
+                                                    value={
+                                                      visionFormData
+                                                        .posteriorSegment?.re?.[
+                                                        field
+                                                      ] || "N"
+                                                    }
+                                                    onChange={(e) =>
+                                                      handlePosteriorChange(
+                                                        "re",
+                                                        field,
+                                                        e.target.value,
+                                                      )
+                                                    }
+                                                  >
+                                                    <option value="N">N</option>
+                                                    <option value="Abnormal">
+                                                      Abnormal
+                                                    </option>
+                                                  </select>
+                                                </td>
+                                              ),
+                                            )}
                                           </tr>
                                           <tr>
-                                            <td className="fw-semibold">L.E.</td>
-                                            {Object.keys(posteriorLabels).map(field => (
-                                              <td key={`le-${field}`}>
-                                                <select
-                                                  className="form-select form-select-sm"
-                                                  value={visionFormData.posteriorSegment?.le?.[field] || "N"}
-                                                  onChange={(e) => handlePosteriorChange("le", field, e.target.value)}
-                                                >
-                                                  <option value="N">N</option>
-                                                  <option value="Abnormal">Abnormal</option>
-                                                </select>
-                                              </td>
-                                            ))}
+                                            <td className="fw-semibold">
+                                              L.E.
+                                            </td>
+                                            {Object.keys(posteriorLabels).map(
+                                              (field) => (
+                                                <td key={`le-${field}`}>
+                                                  <select
+                                                    className="form-select form-select-sm"
+                                                    value={
+                                                      visionFormData
+                                                        .posteriorSegment?.le?.[
+                                                        field
+                                                      ] || "N"
+                                                    }
+                                                    onChange={(e) =>
+                                                      handlePosteriorChange(
+                                                        "le",
+                                                        field,
+                                                        e.target.value,
+                                                      )
+                                                    }
+                                                  >
+                                                    <option value="N">N</option>
+                                                    <option value="Abnormal">
+                                                      Abnormal
+                                                    </option>
+                                                  </select>
+                                                </td>
+                                              ),
+                                            )}
                                           </tr>
                                         </tbody>
                                       </table>
@@ -4155,7 +5032,9 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                 {/* ---- Colour Vision (Table) ---- */}
                                 <div className="row mb-4">
                                   <div className="col-12 mb-2">
-                                    <h6 className="fw-bold text-primary border-bottom pb-1">Colour Vision</h6>
+                                    <h6 className="fw-bold text-primary border-bottom pb-1">
+                                      Colour Vision
+                                    </h6>
                                   </div>
                                   <div className="col-12">
                                     <div className="table-responsive">
@@ -4169,27 +5048,53 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         </thead>
                                         <tbody>
                                           <tr>
-                                            <td className="fw-semibold">Select</td>
+                                            <td className="fw-semibold">
+                                              Select
+                                            </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.colourVision?.re || ""}
-                                                onChange={(e) => handleColourVisionChange("re", e.target.value)}
+                                                value={
+                                                  visionFormData.colourVision
+                                                    ?.re || ""
+                                                }
+                                                onChange={(e) =>
+                                                  handleColourVisionChange(
+                                                    "re",
+                                                    e.target.value,
+                                                  )
+                                                }
                                               >
                                                 <option value="">Select</option>
-                                                <option value="Normal">Normal</option>
-                                                <option value="Defective">Defective</option>
+                                                <option value="Normal">
+                                                  Normal
+                                                </option>
+                                                <option value="Defective">
+                                                  Defective
+                                                </option>
                                               </select>
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select form-select-sm"
-                                                value={visionFormData.colourVision?.le || ""}
-                                                onChange={(e) => handleColourVisionChange("le", e.target.value)}
+                                                value={
+                                                  visionFormData.colourVision
+                                                    ?.le || ""
+                                                }
+                                                onChange={(e) =>
+                                                  handleColourVisionChange(
+                                                    "le",
+                                                    e.target.value,
+                                                  )
+                                                }
                                               >
                                                 <option value="">Select</option>
-                                                <option value="Normal">Normal</option>
-                                                <option value="Defective">Defective</option>
+                                                <option value="Normal">
+                                                  Normal
+                                                </option>
+                                                <option value="Defective">
+                                                  Defective
+                                                </option>
                                               </select>
                                             </td>
                                           </tr>
@@ -4199,7 +5104,10 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   </div>
                                 </div>
                                 <div className="text-end mt-3">
-                                  <button type="submit" className="btn btn-primary">
+                                  <button
+                                    type="submit"
+                                    className="btn btn-primary"
+                                  >
                                     Save Vision Examination
                                   </button>
                                 </div>
@@ -4211,7 +5119,6 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                     </div>
                   )}
                 </div>
-
 
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
@@ -4234,13 +5141,27 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                         </label>
                         <input
                           type="text"
-                          className="form-control"
+                          className={`form-control ${errors.workingDiagnosis || errors.diagnosis ? "is-invalid" : ""}`}
                           style={{ width: "400px" }}
                           value={workingDiagnosis}
-                          onChange={(e) => setWorkingDiagnosis(e.target.value)}
+                          onChange={(e) => {
+                            setWorkingDiagnosis(e.target.value);
+                            if (errors.workingDiagnosis || errors.diagnosis) {
+                              setErrors((prev) => ({
+                                ...prev,
+                                workingDiagnosis: "",
+                                diagnosis: "",
+                              }));
+                            }
+                          }}
                           placeholder="Enter working diagnosis"
                           maxLength={40}
                         />
+                        {(errors.workingDiagnosis || errors.diagnosis) && (
+                          <div className="invalid-feedback d-block">
+                            {errors.workingDiagnosis || errors.diagnosis}
+                          </div>
+                        )}
                       </div>
 
                       <div
@@ -4274,7 +5195,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     {/* INPUT */}
                                     <input
                                       type="text"
-                                      className="form-control"
+                                      className={`form-control ${errors.diagnosis ? "is-invalid" : ""}`}
                                       placeholder="Search ICD..."
                                       value={
                                         diagnosisItems[index].icdDiagnosis ||
@@ -4307,7 +5228,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         onScroll={(e) => {
                                           if (
                                             e.target.scrollHeight -
-                                            e.target.scrollTop ===
+                                              e.target.scrollTop ===
                                             e.target.clientHeight
                                           ) {
                                             loadMore();
@@ -4435,7 +5356,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     Selected Templates
                                   </h6>
                                   <button
-                                    className="btn btn-sm btn-outline-danger"
+                                    className="btn btn-sm btn-outline-dark"
                                     onClick={handleClearAllTemplates}
                                   >
                                     Clear All Templates
@@ -4648,7 +5569,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         onScroll={(e) => {
                                           if (
                                             e.target.scrollHeight -
-                                            e.target.scrollTop ===
+                                              e.target.scrollTop ===
                                             e.target.clientHeight
                                           ) {
                                             loadMoreInvestigations();
@@ -4765,7 +5686,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   </h6>
 
                                   <button
-                                    className="btn btn-sm btn-outline-danger"
+                                    className="btn btn-sm btn-outline-dark"
                                     onClick={handleClearAllTreatmentTemplates}
                                   >
                                     Clear All Templates
@@ -4977,7 +5898,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         onScroll={(e) => {
                                           if (
                                             e.target.scrollHeight -
-                                            e.target.scrollTop ===
+                                              e.target.scrollTop ===
                                             e.target.clientHeight
                                           ) {
                                             loadMoreDrugs();
@@ -5036,7 +5957,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                 <td style={{ width: "70px" }}>
                                   <input
                                     type="number"
-                                    className="form-control"
+                                    className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.dosage) ? "is-invalid" : ""}`}
                                     value={row.dosage}
                                     onChange={(e) =>
                                       handleTreatmentChange(
@@ -5051,7 +5972,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
                                 <td style={{ width: "120px" }}>
                                   <select
-                                    className="form-select"
+                                    className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.frequency) ? "is-invalid" : ""}`}
                                     value={row.frequency || ""}
                                     onChange={(e) =>
                                       handleTreatmentChange(
@@ -5076,7 +5997,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                 <td style={{ width: "70px" }}>
                                   <input
                                     type="number"
-                                    className="form-control"
+                                    className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.days) ? "is-invalid" : ""}`}
                                     value={row.days}
                                     onChange={(e) =>
                                       handleTreatmentChange(
@@ -5100,7 +6021,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
 
                                 <td style={{ width: "140px" }}>
                                   <select
-                                    className="form-select"
+                                    className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.instruction) ? "is-invalid" : ""}`}
                                     value={row.instruction}
                                     onChange={(e) =>
                                       handleTreatmentChange(
@@ -5173,6 +6094,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                           </tbody>
                         </table>
                       </div>
+                      {errors.treatment && (
+                        <div className="text-danger small mt-1">
+                          {errors.treatment}
+                        </div>
+                      )}
 
                       {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
@@ -5304,8 +6230,8 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     <div
                                       className="procedure-wrapper"
                                       ref={(el) =>
-                                      (procedureDropdownRef.current[index] =
-                                        el)
+                                        (procedureDropdownRef.current[index] =
+                                          el)
                                       }
                                       style={{
                                         position: "relative",
@@ -5382,7 +6308,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                           onScroll={(e) => {
                                             if (
                                               e.target.scrollHeight -
-                                              e.target.scrollTop ===
+                                                e.target.scrollTop ===
                                               e.target.clientHeight
                                             ) {
                                               loadMoreProcedure();
@@ -5495,7 +6421,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         !procedureCareItems[0].procedureName &&
                                         !procedureCareItems[0].frequencyId &&
                                         procedureCareItems[0].noOfDays ===
-                                        "0" &&
+                                          "0" &&
                                         !procedureCareItems[0].remarks
                                       }
                                     >
@@ -5858,12 +6784,23 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   </label>
                                   <input
                                     type="date"
-                                    className="form-control"
+                                    className={`form-control ${errors.admissionDate ? "is-invalid" : ""}`}
                                     value={admissionDate}
-                                    onChange={(e) =>
-                                      setAdmissionDate(e.target.value)
-                                    }
+                                    onChange={(e) => {
+                                      setAdmissionDate(e.target.value);
+                                      if (errors.admissionDate) {
+                                        setErrors((prev) => ({
+                                          ...prev,
+                                          admissionDate: "",
+                                        }));
+                                      }
+                                    }}
                                   />
+                                  {errors.admissionDate && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.admissionDate}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="col-md-9">
                                   <label className="form-label fw-bold">
@@ -5871,14 +6808,25 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     <span className="text-danger">*</span>
                                   </label>
                                   <textarea
-                                    className="form-control"
+                                    className={`form-control ${errors.admissionRemarks ? "is-invalid" : ""}`}
                                     rows={3}
-                                    value={additionalAdvice}
-                                    onChange={(e) =>
-                                      setAdditionalAdvice(e.target.value)
-                                    }
+                                    value={admissionRemarks}
+                                    onChange={(e) => {
+                                      setAdmissionRemarks(e.target.value);
+                                      if (errors.admissionRemarks) {
+                                        setErrors((prev) => ({
+                                          ...prev,
+                                          admissionRemarks: "",
+                                        }));
+                                      }
+                                    }}
                                     placeholder="Enter admission advice"
                                   ></textarea>
+                                  {errors.admissionRemarks && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.admissionRemarks}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
@@ -5888,7 +6836,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     Ward Category
                                   </label>
                                   <select
-                                    className="form-select"
+                                    className={`form-select ${errors.wardCategory ? "is-invalid" : ""}`}
                                     value={wardCategory}
                                     onChange={(e) =>
                                       handleWardCategoryChange(
@@ -5908,6 +6856,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                       </option>
                                     ))}
                                   </select>
+                                  {errors.wardCategory && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.wardCategory}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">
@@ -5915,10 +6868,15 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   </label>
                                   <input
                                     type="text"
-                                    className="form-select"
+                                    className={`form-control ${errors.admissionCareLevel ? "is-invalid" : ""}`}
                                     value={admissionCareLevelName}
                                     readOnly
                                   />
+                                  {errors.admissionCareLevel && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.admissionCareLevel}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">
@@ -5926,7 +6884,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     <span className="text-danger">*</span>
                                   </label>
                                   <select
-                                    className="form-select"
+                                    className={`form-select ${errors.wardName ? "is-invalid" : ""}`}
                                     value={wardName}
                                     onChange={(e) =>
                                       handleWardNameChange(
@@ -5942,6 +6900,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                       </option>
                                     ))}
                                   </select>
+                                  {errors.wardName && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.wardName}
+                                    </div>
+                                  )}
                                 </div>
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">
@@ -6069,7 +7032,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                 Refer To
                               </label>
                               <select
-                                className="form-select"
+                                className={`form-select ${errors.referTo ? "is-invalid" : ""}`}
                                 value={referralData.referTo}
                                 onChange={(e) =>
                                   handleReferralChange(
@@ -6080,9 +7043,13 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                               >
                                 <option value="">Select...</option>
                                 <option value="Internal">Internal</option>
-                                <option value="Empanel">Empanel</option>
-                                <option value="Both">Both</option>
+                                <option value="External">External</option>
                               </select>
+                              {errors.referTo && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referTo}
+                                </div>
+                              )}
                             </div>
 
                             <div className="col-md-2">
@@ -6091,7 +7058,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                               </label>
                               <input
                                 type="date"
-                                className="form-control"
+                                className={`form-control ${errors.referralDate ? "is-invalid" : ""}`}
                                 value={referralData.referralDate}
                                 onChange={(e) =>
                                   handleReferralChange(
@@ -6100,6 +7067,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   )
                                 }
                               />
+                              {errors.referralDate && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralDate}
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
@@ -6117,7 +7089,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   </label>
                                   <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control ${errors.currentPriorityNo ? "is-invalid" : ""}`}
                                     value={referralData.currentPriorityNo}
                                     onChange={(e) =>
                                       handleReferralChange(
@@ -6127,6 +7099,11 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                     }
                                     placeholder="Enter priority no"
                                   />
+                                  {errors.currentPriorityNo && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.currentPriorityNo}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
@@ -6172,7 +7149,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                             </td>
                                             <td>
                                               <select
-                                                className="form-select"
+                                                className={`form-select ${errors.departmentData ? "is-invalid" : ""}`}
                                                 value={item.doctor}
                                                 onChange={(e) =>
                                                   handleDepartmentChange(
@@ -6224,294 +7201,42 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                         ))}
                                       </tbody>
                                     </table>
+                                    {errors.departmentData && (
+                                      <div className="text-danger small">
+                                        {errors.departmentData}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                             </>
                           )}
 
-                          {/* EMPANEL REFERRAL */}
-                          {referralData.referTo === "Empanel" && (
+                          {/* EXTERNAL REFERRAL */}
+                          {referralData.referTo === "External" && (
                             <>
                               <div className="row mb-3">
                                 <div className="col-md-2">
                                   <label className="form-label fw-bold">
-                                    Hospital *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.hospital}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "hospital",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="">Select...</option>
-                                    <option value="Hospital A">
-                                      Hospital A
-                                    </option>
-                                    <option value="Hospital B">
-                                      Hospital B
-                                    </option>
-                                    <option value="Hospital C">
-                                      Hospital C
-                                    </option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    No. of Days
-                                  </label>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={referralData.noOfDays}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "noOfDays",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Treatment Type *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.treatmentType}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "treatmentType",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="OPD">OPD</option>
-                                    <option value="IPD">IPD</option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Referred For*
+                                    Reffered Hospital Name
                                   </label>
                                   <input
                                     type="text"
-                                    className="form-control"
-                                    value={referralData.referredFor}
+                                    className={`form-control ${errors.referredHospitalName ? "is-invalid" : ""}`}
+                                    value={referralData.referredHospitalName}
                                     onChange={(e) =>
                                       handleReferralChange(
-                                        "referredFor",
+                                        "referredHospitalName",
                                         e.target.value,
                                       )
                                     }
-                                    placeholder="Referred for"
+                                    placeholder="Enter hospital name"
                                   />
-                                </div>
-                              </div>
-                            </>
-                          )}
-
-                          {/* BOTH REFERRAL */}
-                          {referralData.referTo === "Both" && (
-                            <>
-                              <div className="row mb-3">
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Current Priority No.
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={referralData.currentPriorityNo}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "currentPriorityNo",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Enter priority no"
-                                  />
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Hospital *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.hospital}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "hospital",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="">Select...</option>
-                                    <option value="Hospital A">
-                                      Hospital A
-                                    </option>
-                                    <option value="Hospital B">
-                                      Hospital B
-                                    </option>
-                                    <option value="Hospital C">
-                                      Hospital C
-                                    </option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    No. of Days
-                                  </label>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={referralData.noOfDays}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "noOfDays",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Treatment Type *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.treatmentType}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "treatmentType",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="OPD">OPD</option>
-                                    <option value="IPD">IPD</option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Referred For*
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={referralData.referredFor}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "referredFor",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Referred for"
-                                  />
-                                </div>
-                              </div>
-
-                              <hr className="my-4" />
-
-                              <div className="row mb-3">
-                                <div className="col-12">
-                                  <h6 className="fw-bold mb-3">Department</h6>
-                                  <div className="table-responsive">
-                                    <table className="table table-bordered">
-                                      <thead
-                                        style={{ backgroundColor: "#b0c4de" }}
-                                      >
-                                        <tr>
-                                          <th style={{ width: "10%" }}>
-                                            Select
-                                          </th>
-                                          <th style={{ width: "70%" }}>
-                                            Doctor
-                                          </th>
-                                          <th style={{ width: "10%" }}>Add</th>
-                                          <th style={{ width: "10%" }}>
-                                            Delete
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {departmentData.map((item, index) => (
-                                          <tr key={index}>
-                                            <td className="text-center">
-                                              <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={item.selected}
-                                                onChange={(e) =>
-                                                  handleDepartmentChange(
-                                                    index,
-                                                    "selected",
-                                                    e.target.checked,
-                                                  )
-                                                }
-                                              />
-                                            </td>
-                                            <td>
-                                              <select
-                                                className="form-select"
-                                                value={item.doctor}
-                                                onChange={(e) =>
-                                                  handleDepartmentChange(
-                                                    index,
-                                                    "doctor",
-                                                    e.target.value,
-                                                  )
-                                                }
-                                              >
-                                                <option value="Select">
-                                                  Select
-                                                </option>
-                                                <option value="Dr. Smith">
-                                                  Dr. Smith
-                                                </option>
-                                                <option value="Dr. Johnson">
-                                                  Dr. Johnson
-                                                </option>
-                                                <option value="Dr. Williams">
-                                                  Dr. Williams
-                                                </option>
-                                                <option value="Dr. Brown">
-                                                  Dr. Brown
-                                                </option>
-                                              </select>
-                                            </td>
-                                            <td className="text-center">
-                                              <button
-                                                className="btn btn-sm btn-success"
-                                                onClick={handleAddDepartment}
-                                              >
-                                                +
-                                              </button>
-                                            </td>
-                                            <td className="text-center">
-                                              <button
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() =>
-                                                  handleRemoveDepartment(index)
-                                                }
-                                                disabled={
-                                                  departmentData.length === 1
-                                                }
-                                              >
-                                                −
-                                              </button>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
+                                  {errors.referredHospitalName && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.referredHospitalName}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </>
@@ -6522,14 +7247,25 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                             <div className="col-12">
                               <h6 className="fw-bold mb-3">Referral Notes</h6>
                               <textarea
-                                className="form-control"
+                                className={`form-control ${errors.referralNotes ? "is-invalid" : ""}`}
                                 rows={4}
                                 value={referralNotes}
-                                onChange={(e) =>
-                                  setReferralNotes(e.target.value)
-                                }
+                                onChange={(e) => {
+                                  setReferralNotes(e.target.value);
+                                  if (errors.referralNotes) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      referralNotes: "",
+                                    }));
+                                  }
+                                }}
                                 placeholder="Enter referral notes"
                               ></textarea>
+                              {errors.referralNotes && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralNotes}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </>
@@ -6558,7 +7294,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                           <input
                             type="checkbox"
                             className="form-check-input m-0"
-                            checked={followUps.followUpFlag}
+                            checked={Boolean(followUps.followUpFlag)}
                             onChange={handleFollowUpChange}
                           />
 
@@ -6574,7 +7310,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                             <input
                               type="number"
                               min={0}
-                              className="form-control"
+                              className={`form-control ${errors.noOfFollowDays ? "is-invalid" : ""}`}
                               value={followUps.noOfFollowDays}
                               onChange={(e) => {
                                 const days = e.target.value;
@@ -6583,10 +7319,25 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                                   noOfFollowDays: days,
                                   followUpDate: calculateFollowUpDate(days),
                                 });
+                                if (
+                                  errors.noOfFollowDays ||
+                                  errors.followUpDate
+                                ) {
+                                  setErrors((prev) => ({
+                                    ...prev,
+                                    noOfFollowDays: "",
+                                    followUpDate: "",
+                                  }));
+                                }
                               }}
                               style={{ width: "120px" }}
                               disabled={!followUps.followUpFlag}
                             />
+                            {errors.noOfFollowDays && (
+                              <div className="invalid-feedback d-block">
+                                {errors.noOfFollowDays}
+                              </div>
+                            )}
                           </div>
 
                           {/* Follow Up Date (Read Only) */}
@@ -6695,7 +7446,6 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
           onTemplateSaved={(template) => {
-            //console.log("Template saved:", template)
             fetchInvestigationTemplates();
           }}
         />
@@ -6704,9 +7454,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
           show={showTreatmentModal}
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
-          onTemplateSaved={(template) => {
-            //console.log("Treatment template saved:", template)
-          }}
+          onTemplateSaved={(template) => {}}
         />
 
         {/* OT Calendar Modal */}
@@ -6716,7 +7464,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
             style={{
               display: "block",
               backgroundColor: "rgba(0,0,0,0.5)",
-              zIndex: 0,
+              zIndex: 1055,
             }}
             tabIndex="-1"
             onClick={() => setShowOtCalendarModal(false)}
@@ -6772,7 +7520,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
             style={{
               display: "block",
               backgroundColor: "rgba(0,0,0,0.5)",
-              zIndex: 0,
+              zIndex: 1055,
             }}
             tabIndex="-1"
             onClick={() => setShowCurrentMedicationModal(false)}
@@ -6841,31 +7589,107 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>1</td>
-                          <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
-                          <td className="text-center">1</td>
-                          <td className="text-center">30</td>
-                          <td className="text-center">ONCE IN 7 DAYS</td>
-                          <td className="text-center">4</td>
-                          <td className="text-center">0</td>
-                          <td>Dr. M.G.Prashanth</td>
-                          <td>GENERAL MEDICINE</td>
-                          <td className="text-center">19/12/2020</td>
-                          <td className="text-center">
-                            <input type="checkbox" />
-                          </td>
-                          <td className="text-center">
-                            <input type="checkbox" />
-                          </td>
-                        </tr>
+                        {currentMedications.length > 0 ? (
+                          currentMedications.map((medication, index) => (
+                            <tr key={medication.id || index}>
+                              <td>{index + 1}</td>
+                              <td>{medication.drugName}</td>
+                              <td className="text-center">
+                                {medication.dosage}
+                              </td>
+                              <td className="text-center">{medication.days}</td>
+                              <td className="text-center">
+                                {medication.frequency}
+                              </td>
+                              <td className="text-center">
+                                {medication.total}
+                              </td>
+                              <td className="text-center">
+                                {medication.stock || 0}
+                              </td>
+                              <td>{medication.prescribedBy}</td>
+                              <td>{medication.department}</td>
+                              <td className="text-center">
+                                {formatDateForDisplay(
+                                  medication.prescribedDate,
+                                )}
+                              </td>
+                              <td className="text-center">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={
+                                    currentMedicationActions[medication.id] ===
+                                    "stop"
+                                  }
+                                  onChange={() =>
+                                    handleCurrentMedicationAction(
+                                      medication,
+                                      "stop",
+                                    )
+                                  }
+                                />
+                              </td>
+                              <td className="text-center">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={
+                                    currentMedicationActions[medication.id] ===
+                                    "repeat"
+                                  }
+                                  onChange={() =>
+                                    handleCurrentMedicationAction(
+                                      medication,
+                                      "repeat",
+                                    )
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="12" className="text-center text-muted">
+                              No current medication found
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ marginTop: "15px" }}>
-                    <button className="btn btn-primary me-2">STOP</button>
-                    <button className="btn btn-primary me-2">REPEAT</button>
-                  </div>
+                  {Object.values(currentMedicationActions).some(Boolean) && (
+                    <div className="card mt-3">
+                      <div className="card-header py-2">
+                        <h6 className="mb-0 fw-bold">Selected Medications</h6>
+                      </div>
+                      <div className="card-body">
+                        <div className="d-flex flex-wrap gap-2">
+                          {currentMedications
+                            .filter((medication) =>
+                              Boolean(currentMedicationActions[medication.id]),
+                            )
+                            .map((medication) => (
+                              <span
+                                key={medication.id}
+                                className={`badge ${
+                                  currentMedicationActions[medication.id] ===
+                                  "repeat"
+                                    ? "bg-primary"
+                                    : "bg-danger"
+                                }`}
+                              >
+                                {medication.drugName} -{" "}
+                                {currentMedicationActions[medication.id] ===
+                                "repeat"
+                                  ? "Repeat"
+                                  : "Stop"}
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="modal-footer">
                   <button
@@ -6881,7 +7705,7 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
           </div>
         )}
 
-               {showTreatmentAdviceModal && (
+        {showTreatmentAdviceModal && (
           <div
             className="modal d-block"
             style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
@@ -6964,19 +7788,18 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
     setSelectedHistoryType={setSelectedHistoryType}
   />
 )} */}
-{showPopup && (
-  <ClinicalHistoryPopup
-    show={showPopup}
-    onClose={() => setShowPopup(false)}
-    visitsData={previousVisitsData}
-    vitalsData={previousVitalsData}
-    popupType={clinicalPopupType}  
-  />
-)}
-      </div>  
+        {showPopup && (
+          <ClinicalHistoryPopup
+            show={showPopup}
+            onClose={() => setShowPopup(false)}
+            visitsData={previousVisitsData}
+            vitalsData={previousVitalsData}
+            popupType={clinicalPopupType}
+          />
+        )}
+      </div>
     );
   }
-  
 
   return (
     <div className="content-wrapper">
@@ -7082,8 +7905,6 @@ const [previousVisitsData, setPreviousVisitsData] = useState([
                   </div>
                 </div>
               </div>
-
-             
 
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">

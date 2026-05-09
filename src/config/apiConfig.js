@@ -209,6 +209,8 @@ export const OPD_TEMPLATE_UPDATE_TREATMENT = `${OPD_TEMPLATE}/updateOpdTemplateT
 export const OPD_TEMPLATE_UPDATE = `${OPD_TEMPLATE}/update-opdTemplate`;
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
 export const OPTH_MAS_NEAR_VISION = `${MASTERS}/opthMasNearVision/getAll/1`;
+export const GET_PATIENT_PRESCRIPTION_DETAILS = `/opd/getPatientPrescriptionDetails`;
+
 
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
@@ -340,7 +342,7 @@ export const SET_VITALS = `/patient/saveVitalDetails`;
 //OPD
 export const GET_PRECONSULTATION_LIST = `/opd/getPendingPreConsultations`;
 export const GET_WAITING_LIST = `/opd/getOpdWaitingList`;
-export const OPD_CREATE_PATIENT_DETAILS = `opd/createOpdPatientDetails`;
+export const OPD_CREATE_PATIENT_DETAILS = `/opd/createOpdPatientDetails`;
 
 
 //billing
