@@ -30,6 +30,7 @@ import {
   OPTH_MAS_DISTANCE_VISION,
   OPTH_MAS_NEAR_VISION,
   GET_PATIENT_PRESCRIPTION_DETAILS,
+  MAS_BED_COUNT,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -121,6 +122,7 @@ const GeneralMedicineWaitingList = () => {
   const [admissionAdvised, setAdmissionAdvised] = useState(false);
   const [wardDepartment, setWardDepartment] = useState([]);
   const [careLevels, setCareLevels] = useState([]);
+  const [cleaningBeds, setCleaningBeds] = useState("0");
   const [admissionPriorities, setAdmissionPriorities] = useState([
     "Normal",
     "Urgent",
@@ -448,26 +450,6 @@ const GeneralMedicineWaitingList = () => {
       ...prev,
       colourVision: { ...prev.colourVision, [eye]: value },
     }));
-  };
-
-  const handleWardNameChange = (deptId) => {
-    setWardName(deptId);
-
-    const selectedWard = wardDepartments.find(
-      (dept) => Number(dept.id) === Number(deptId),
-    );
-
-    if (selectedWard) {
-      setOccupiedBeds(selectedWard.occupiedBed);
-      setVacantBeds(selectedWard.vacantBed);
-    }
-
-    if (errors.wardName) {
-      setErrors((prev) => ({
-        ...prev,
-        wardName: "",
-      }));
-    }
   };
 
   const fetchDrugOptions = async (searchText = "", page = 0) => {
@@ -2289,11 +2271,11 @@ const GeneralMedicineWaitingList = () => {
     const hasDiagnosis = hasWorkingDiagnosis || hasSelectedIcdDiagnosis;
 
     if (!hasDiagnosis) {
+      addError("diagnosis", "Working diagnosis or ICD diagnosis is required.");
       addError(
-        "diagnosis",
+        "workingDiagnosis",
         "Working diagnosis or ICD diagnosis is required.",
       );
-      addError("workingDiagnosis", "Working diagnosis or ICD diagnosis is required.");
     }
 
     if (
@@ -2458,6 +2440,37 @@ const GeneralMedicineWaitingList = () => {
     }
 
     return true;
+  };
+
+  const handleWardNameChange = async (deptId) => {
+    setWardName(deptId);
+
+    const selectedWard = wardDepartments.find(
+      (dept) => Number(dept.id) === Number(deptId),
+    );
+
+    if (selectedWard) {
+      setOccupiedBeds(selectedWard.occupiedBed || "0");
+      setVacantBeds(selectedWard.vacantBed || "0");
+    }
+    if (deptId) {
+      try {
+        const response = await getRequest(`${MAS_BED_COUNT}/${deptId}`);
+        if (response?.status === 200 && response?.response) {
+          setOccupiedBeds(response.response.occupied || "0");
+          setVacantBeds(response.response.available || "0");
+        }
+      } catch (error) {
+        console.error("Error fetching bed status:", error);
+      }
+    }
+
+    if (errors.wardName) {
+      setErrors((prev) => ({
+        ...prev,
+        wardName: "",
+      }));
+    }
   };
 
   const handleSubmit = async (e) => {
@@ -2671,6 +2684,7 @@ const GeneralMedicineWaitingList = () => {
         showPopupMessage("OPD patient created successfully!", "success", () => {
           handleResetForm();
           setShowDetailView(false);
+          fetchWaitingList();
           handleSearch();
         });
       } else {
@@ -3232,8 +3246,6 @@ const GeneralMedicineWaitingList = () => {
       const updated = prev
         .map((item) => {
           const templateList = (item.templateId ?? "").trim();
-
-          // CASE 1: treatmentId exists → KEEP but clear templateId
           if (item.treatmentId != null) {
             return {
               ...item,
@@ -3241,21 +3253,15 @@ const GeneralMedicineWaitingList = () => {
             };
           }
 
-          // CASE 2: New UI row (treatmentId null)
-          // - If templateId was "" → this is manual item → KEEP
           if (templateList === "") {
             return {
               ...item,
               templateId: "",
             };
           }
-
-          // CASE 3: treatmentId null + templateIds exist → REMOVE (auto-generated from template)
           return null;
         })
         .filter((item) => item !== null);
-
-      // If everything removed → add a default empty row
       if (updated.length === 0) {
         return [
           {
@@ -3363,7 +3369,6 @@ const GeneralMedicineWaitingList = () => {
         if (existingDrugIds.includes(t.itemId)) {
           duplicateItems.push(t);
 
-          // ➕ ADD TEMPLATE-ID to existing row
           updatedList.forEach((row) => {
             if (row.drugId === t.itemId) {
               const oldIds = row.templateId ? row.templateId.split(",") : [];
@@ -3378,15 +3383,12 @@ const GeneralMedicineWaitingList = () => {
         }
       });
 
-      // POPUP FOR DUPLICATE DRUGS
       if (duplicateItems.length > 0) {
         setDuplicateItems(duplicateItems);
         setShowDuplicatePopup(true);
       }
 
-      // ADD ONLY NEW ITEMS
       const formattedNew = newItemsToAdd.map((t) => {
-        // 🟢 FETCH FULL DRUG DETAILS FROM DROPDOWN SOURCE
         const freName = getFreqDetails(t.frequencyId);
 
         const newItem = {
@@ -6948,6 +6950,18 @@ const GeneralMedicineWaitingList = () => {
                                     type="text"
                                     className="form-control"
                                     value={vacantBeds}
+                                    readOnly
+                                  />
+                                </div>
+
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">
+                                    Cleaning Bed
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={cleaningBeds}
                                     readOnly
                                   />
                                 </div>

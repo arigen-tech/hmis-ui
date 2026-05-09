@@ -90,10 +90,9 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
+    } finally {
+      setLoading(false);
     }
-    // finally {
-    //   setLoading(false);
-    // }
   }
 
   async function fetchAllStateData() {
@@ -126,10 +125,9 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
+    } finally {
+      setLoading(false);
     }
-    // finally {
-    //   setLoading(false);
-    // }
   }
 
   const loadMasterData = async () => {
@@ -228,6 +226,15 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [sessionDataMap, setSessionDataMap] = useState({});
+  const masterDataLoadedRef = useRef(false);
+  const patientDetailsCacheRef = useRef(new Map());
+  const patientDetailsInFlightRef = useRef(new Map());
+  const doctorsBySpecialityCacheRef = useRef(new Map());
+  const doctorsBySpecialityInFlightRef = useRef(new Map());
+  const statesByCountryCacheRef = useRef(new Map());
+  const districtsByStateCacheRef = useRef(new Map());
+  const tokenRequestsInFlightRef = useRef(new Set());
+  const searchRequestsInFlightRef = useRef(new Set());
 
   const isPastDate = (dateStr) => {
     const selected = new Date(dateStr);
@@ -290,6 +297,35 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     });
   };
 
+  const getDoctorsBySpeciality = async (specialityId) => {
+    if (!specialityId) return [];
+
+    const cacheKey = String(specialityId);
+    if (doctorsBySpecialityCacheRef.current.has(cacheKey)) {
+      return doctorsBySpecialityCacheRef.current.get(cacheKey);
+    }
+
+    if (doctorsBySpecialityInFlightRef.current.has(cacheKey)) {
+      return doctorsBySpecialityInFlightRef.current.get(cacheKey);
+    }
+
+    const request = getRequest(`${DOCTOR_BY_SPECIALITY}${specialityId}`)
+      .then((data) => {
+        const doctors =
+          data.status === 200 && Array.isArray(data.response)
+            ? data.response
+            : [];
+        doctorsBySpecialityCacheRef.current.set(cacheKey, doctors);
+        return doctors;
+      })
+      .finally(() => {
+        doctorsBySpecialityInFlightRef.current.delete(cacheKey);
+      });
+
+    doctorsBySpecialityInFlightRef.current.set(cacheKey, request);
+    return request;
+  };
+
   const handleSpecialityChange = async (rowId, value) => {
     const selectedDepartment = departmentData.find((d) => d.id == value);
 
@@ -315,10 +351,8 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     );
 
     try {
-      const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
-      if (data.status === 200) {
-        setDoctorDataMap((prev) => ({ ...prev, [rowId]: data.response }));
-      }
+      const doctors = await getDoctorsBySpeciality(value);
+      setDoctorDataMap((prev) => ({ ...prev, [rowId]: doctors }));
     } catch (err) {
       console.error(err);
     }
@@ -556,12 +590,18 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       page = 0;
     }
     setSearchLoading(true);
-    try {
-      const payload = {
-        mobileNo: formData.mobileNo || null,
-        patientName: formData.patientName || null,
-      };
+    const payload = {
+      mobileNo: formData.mobileNo || null,
+      patientName: formData.patientName || null,
+    };
+    const requestKey = `${page}:${payload.mobileNo || ""}:${payload.patientName || ""}:${itemsPerPage}`;
 
+    if (searchRequestsInFlightRef.current.has(requestKey)) {
+      return;
+    }
+
+    searchRequestsInFlightRef.current.add(requestKey);
+    try {
       const response = await postRequest(
         `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
         payload,
@@ -586,6 +626,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       console.error(error);
       Swal.fire("Error", SEARCH_PATIENTS_FAILED_MSG, "error");
     } finally {
+      searchRequestsInFlightRef.current.delete(requestKey);
       setSearchLoading(false);
     }
   };
@@ -726,15 +767,38 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   };
 
   useEffect(() => {
+    if (masterDataLoadedRef.current) return;
+    masterDataLoadedRef.current = true;
     loadMasterData();
   }, []);
 
   const handleEdit = async (patient) => {
     try {
       const patientId = patient.id;
-      const response = await getRequest(
-        `${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`,
-      );
+      if (!patientId) return;
+
+      setEditLoadingId(patientId);
+
+      let response = patientDetailsCacheRef.current.get(patientId);
+      if (!response) {
+        if (patientDetailsInFlightRef.current.has(patientId)) {
+          response = await patientDetailsInFlightRef.current.get(patientId);
+        } else {
+          const request = getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`)
+            .then((res) => {
+              if (res.status === 200) {
+                patientDetailsCacheRef.current.set(patientId, res);
+              }
+              return res;
+            })
+            .finally(() => {
+              patientDetailsInFlightRef.current.delete(patientId);
+            });
+
+          patientDetailsInFlightRef.current.set(patientId, request);
+          response = await request;
+        }
+      }
 
       if (response.status === 200) {
         const data = response.response;
@@ -798,10 +862,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
         if (address.country) {
           await fetchStates(address.country);
           if (address.state) {
-            const selectedState = stateData.find((s) => s.id === address.state);
-            if (selectedState) {
-              await fetchDistrict(address.state);
-            }
+            await fetchDistrict(address.state);
           }
         }
 
@@ -858,25 +919,30 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           setNextAppointmentId(mappedAppointments.length);
           setAppointmentFlag(true);
 
-          mappedAppointments.forEach(async (appt) => {
-            if (appt.speciality) {
-              try {
-                const doctorData = await getRequest(
-                  `${DOCTOR_BY_SPECIALITY}${appt.speciality}`,
-                );
-                if (doctorData.status === 200) {
-                  setDoctorDataMap((prev) => ({
-                    ...prev,
-                    [appt.id]: doctorData.response,
-                  }));
-                }
-              } catch (err) {
-                console.error(
-                  `Error fetching doctors for speciality ${appt.speciality}:`,
-                  err,
-                );
+          const uniqueSpecialities = [
+            ...new Set(
+              mappedAppointments
+                .map((appt) => appt.speciality)
+                .filter(Boolean),
+            ),
+          ];
+
+          const doctorsBySpeciality = await Promise.all(
+            uniqueSpecialities.map(async (speciality) => [
+              speciality,
+              await getDoctorsBySpeciality(speciality),
+            ]),
+          );
+          const doctorMap = Object.fromEntries(doctorsBySpeciality);
+
+          setDoctorDataMap((prev) => {
+            const next = { ...prev };
+            mappedAppointments.forEach((appt) => {
+              if (appt.speciality) {
+                next[appt.id] = doctorMap[appt.speciality] || [];
               }
-            }
+            });
+            return next;
           });
         } else {
           setAppointments([
@@ -911,6 +977,8 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     } catch (err) {
       console.error(err);
       Swal.fire("Error", UNABLE_TO_LOAD_PATIENT_DETAILS, "error");
+    } finally {
+      setEditLoadingId(null);
     }
   };
 
@@ -926,10 +994,9 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
+    } finally {
+      setLoading(false);
     }
-    // finally {
-    //   setLoading(false);
-    // }
   }
 
   async function fetchRelationData() {
@@ -973,10 +1040,18 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   }
 
   async function fetchStates(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (statesByCountryCacheRef.current.has(cacheKey)) {
+      setStateData(statesByCountryCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        statesByCountryCacheRef.current.set(cacheKey, data.response);
         setStateData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1002,17 +1077,24 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
+    } finally {
+      setLoading(false);
     }
-    //  finally {
-    //   setLoading(false);
-    // }
   }
 
   async function fetchDistrict(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (districtsByStateCacheRef.current.has(cacheKey)) {
+      setDistrictData(districtsByStateCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        districtsByStateCacheRef.current.set(cacheKey, data.response);
         setDistrictData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1027,10 +1109,18 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   }
 
   async function fetchNokStates(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (statesByCountryCacheRef.current.has(cacheKey)) {
+      setNokStateData(statesByCountryCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        statesByCountryCacheRef.current.set(cacheKey, data.response);
         setNokStateData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1063,10 +1153,18 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   }
 
   async function fetchNokDistrict(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (districtsByStateCacheRef.current.has(cacheKey)) {
+      setNokDistrictData(districtsByStateCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
       setLoading(true);
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        districtsByStateCacheRef.current.set(cacheKey, data.response);
         setNokDistrictData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1074,10 +1172,9 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
+    } finally {
+      setLoading(false);
     }
-    //  finally {
-    //   setLoading(false);
-    // }
   }
 
   async function fetchDepartment() {
@@ -1135,19 +1232,14 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   async function fetchDoctor(value) {
     try {
       setLoading(true);
-      const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setDoctorData(data.response);
-      } else {
-        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
-        setDoctorData([]);
-      }
+      const doctors = await getDoctorsBySpeciality(value);
+      setDoctorData(doctors);
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
+      setDoctorData([]);
+    } finally {
+      setLoading(false);
     }
-    // finally {
-    //   setLoading(false);
-    // }
   }
 
   async function fetchSession(doc) {
@@ -1855,6 +1947,10 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }).toString();
 
       const url = `${GET_TOKENS}/0?${params}`;
+      const requestKey = `${appointmentIndex}:${params}`;
+      if (tokenRequestsInFlightRef.current.has(requestKey)) return;
+
+      tokenRequestsInFlightRef.current.add(requestKey);
       const data = await getRequest(url);
 
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -1880,10 +1976,24 @@ const [editLoadingId, setEditLoadingId] = useState(null);
         title: "Error",
         text: FETCH_TOKEN_AVAILABILITY_ERROR,
       });
+    } finally {
+      const targetAppointment = appointments[appointmentIndex];
+      const selectedDate = dateOverride || targetAppointment?.selDate;
+      if (
+        targetAppointment?.speciality &&
+        targetAppointment?.selDoctorId &&
+        targetAppointment?.selSession &&
+        selectedDate
+      ) {
+        const params = new URLSearchParams({
+          deptId: targetAppointment.speciality,
+          doctorId: targetAppointment.selDoctorId,
+          appointmentDate: selectedDate,
+          sessionId: targetAppointment.selSession,
+        }).toString();
+        tokenRequestsInFlightRef.current.delete(`${appointmentIndex}:${params}`);
+      }
     }
-    //  finally {
-    //   setLoading(false);
-    // }
   };
 
   const showTokenPopup = (

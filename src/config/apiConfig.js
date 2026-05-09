@@ -210,6 +210,7 @@ export const OPD_TEMPLATE_UPDATE = `${OPD_TEMPLATE}/update-opdTemplate`;
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
 export const OPTH_MAS_NEAR_VISION = `${MASTERS}/opthMasNearVision/getAll/1`;
 export const GET_PATIENT_PRESCRIPTION_DETAILS = `/opd/getPatientPrescriptionDetails`;
+export const MAS_BED_COUNT = `${MASTERS}/masBedCount`;
 
 
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
