@@ -802,6 +802,9 @@ const TreatmentModal = ({
       }
 
       if (response && response.status === 200) {
+
+        await fetchTemplates();
+
         showPopup(
           `Template ${templateType === "create" ? "created" : "updated"} successfully!`,
           "success",

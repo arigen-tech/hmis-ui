@@ -13,6 +13,7 @@ import {
   OPD_CREATE_PATIENT_DETAILS,
   OPD_TEMPLATE,
   OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
+  OPD_TEMPLATE_SAVE,
   OPD_TEMPLATE_UPDATE_INVESTIGATIONS_TEMPLATE,
 } from "../../../../config/apiConfig";
 import {
@@ -84,14 +85,12 @@ const InvestigationModal = ({
     }
   }, [show, templateType, selectedTemplate]);
 
-  // Extract investigation types from API response
   useEffect(() => {
     if (allInvestigations.length > 0) {
       extractInvestigationTypes();
     }
   }, [allInvestigations]);
 
-  // Load template data when template is selected from dropdown
   useEffect(() => {
     if (
       templateType === "edit" &&
@@ -267,7 +266,6 @@ const InvestigationModal = ({
       updated[index] = {
         ...updated[index],
         displayValue: value,
-        name: value,
         investigationId: null,
       };
       return updated;
@@ -318,34 +316,28 @@ const InvestigationModal = ({
   const updateInvestigation = (selected, index) => {
     if (!selected) return;
 
-    // Remove old investigation ID if exists
     const oldId = investigationItems[index]?.investigationId;
+    const alreadyExists = selectedInvestigations.some(
+      (id) => id === selected.investigationId && id !== oldId,
+    );
 
-    setInvestigationItems((prev) => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        investigationId: selected.investigationId,
-        name: selected.investigationName,
-      };
-      return updated;
-    });
+    if (alreadyExists) {
+      showPopup(INVESTIGATION_ALREADY_ADDED, "error");
+      return;
+    }
 
-    // Update selected investigations
+    const updatedItems = [...investigationItems];
+
+    updatedItems[index] = {
+      ...updatedItems[index],
+      displayValue: selected.investigationName,
+      investigationId: selected.investigationId,
+    };
+    setInvestigationItems(updatedItems);
+
     setSelectedInvestigations((prev) => {
-      let updated = [...prev];
-      if (oldId) {
-        updated = updated.filter((id) => id !== oldId);
-      }
-      if (!updated.includes(selected.investigationId)) {
-        updated.push(selected.investigationId);
-      }
-      return updated;
-    });
-
-    setInvestigationSearch((prev) => {
-      const updated = [...prev];
-      updated[index] = selected.investigationName;
+      let updated = prev.filter((id) => id !== oldId);
+      updated.push(selected.investigationId);
       return updated;
     });
 
@@ -459,35 +451,39 @@ const InvestigationModal = ({
       ...prev,
       {
         displayValue: "",
+        name: "",
         date: getToday(),
         investigationId: null,
+        templateInvestigationId: null,
       },
     ]);
   };
 
   const handleRemoveInvestigationItem = (index) => {
-    const itemToRemove = investigationItems[index];
+    const removedItem = investigationItems[index];
 
-    // Remove from selectedInvestigations
-    if (itemToRemove.investigationId) {
+    // Remove selected investigation id
+    if (removedItem?.investigationId) {
       setSelectedInvestigations((prev) =>
-        prev.filter((id) => id !== itemToRemove.investigationId),
+        prev.filter((id) => id !== removedItem.investigationId),
       );
     }
 
-    let newItems = investigationItems.filter((_, i) => i !== index);
+    const updatedItems = investigationItems.filter((_, i) => i !== index);
 
-    if (newItems.length === 0) {
-      newItems = [
-        {
-          displayValue: "",
-          date: getToday(),
-          investigationId: null,
-        },
-      ];
-    }
-
-    setInvestigationItems(newItems);
+    setInvestigationItems(
+      updatedItems.length > 0
+        ? updatedItems
+        : [
+            {
+              displayValue: "",
+              name: "",
+              date: getToday(),
+              investigationId: null,
+              templateInvestigationId: null,
+            },
+          ],
+    );
   };
 
   const handleRowChange = (index, field, value) => {
@@ -555,13 +551,14 @@ const InvestigationModal = ({
   };
 
   const investigationPayload = investigationItems.map((item) => ({
-    id: item.investigationId,
-    investigationName: item.name,
+    investigationId: item.investigationId,
+    investigationName: item.displayValue,
     investigationDate: item.date,
     categoryCode: investigationType,
   }));
 
   const handleSaveTemplate = async () => {
+    debugger;
     if (!templateName.trim() || !templateCode.trim()) {
       showPopup(FILL_TEMPLATE_NAME_AND_CODE, "error");
       return;
@@ -581,7 +578,6 @@ const InvestigationModal = ({
     try {
       setLoading(true);
 
-      // Only validate duplicates for create operation
       if (templateType === "create") {
         if (isTemplateNameDuplicate()) {
           showPopup(TEMPLATE_NAME_ALREADY_EXISTS, "error");
@@ -597,14 +593,11 @@ const InvestigationModal = ({
         const requestData = {
           opdTemplateName: templateName.trim(),
           opdTemplateCode: templateCode.trim(),
-          investigations: investigationPayload,
+          investigationRequestList: investigationPayload,
           treatments: [],
         };
 
-        const response = await postRequest(
-          `${OPD_CREATE_PATIENT_DETAILS}`,
-          requestData,
-        );
+        const response = await postRequest(`${OPD_TEMPLATE_SAVE}`, requestData);
 
         if (response && response.status === 200) {
           showPopup(TEMPLATE_CREATED_SUCCESS, "success");
@@ -792,7 +785,7 @@ const InvestigationModal = ({
           <div
             className="modal-header"
             style={{
-             backgroundColor: "#6aab9c",
+              backgroundColor: "#6aab9c",
               color: "white",
               borderBottom: "1px solid #245e7a",
               padding: "0.75rem 1.5rem",
@@ -1017,9 +1010,7 @@ const InvestigationModal = ({
                                 className="form-control form-control-sm"
                                 placeholder="Search Investigation..."
                                 value={
-                                  investigationSearch[index] ??
-                                  investigationItems[index].name ??
-                                  ""
+                                  investigationItems[index].displayValue || ""
                                 }
                                 onChange={(e) =>
                                   handleInvestigationSearch(

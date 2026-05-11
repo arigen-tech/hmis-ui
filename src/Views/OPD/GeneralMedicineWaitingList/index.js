@@ -4,7 +4,6 @@ import OTDashboard from "./OTDashboard";
 import InvestigationModal from "./InvestigationModal";
 import TreatmentModal from "./TreatmentModal";
 import ClinicalHistoryPopup from "./ClinicalHistoryPopup";
-import SubmitScreen from "./SubmitScreen";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 
@@ -137,6 +136,9 @@ const GeneralMedicineWaitingList = () => {
   const [wardDepartment, setWardDepartment] = useState([]);
   const [careLevels, setCareLevels] = useState([]);
   const [cleaningBeds, setCleaningBeds] = useState("0");
+  const [currentSearchParams, setCurrentSearchParams] = useState(null);
+  const [totalRecords, setTotalRecords] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
   const [admissionPriorities, setAdmissionPriorities] = useState([
     "Normal",
     "Urgent",
@@ -834,9 +836,17 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
   const fetchWaitingList = async () => {
     try {
       setLoading(true);
-      const res = await getRequest(`${GET_WAITING_LIST}`);
+      // Initial fetch without filters (just first page)
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", "0");
+      queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+      const res = await getRequest(
+        `${GET_WAITING_LIST}?${queryParams.toString()}`,
+      );
       if (res?.status === 200 && res?.response) {
-        setWaitingList(res.response.content);
+        setWaitingList(res.response.content || []);
+        setTotalRecords(res.response.totalElements || 0);
       } else {
         setWaitingList([]);
       }
@@ -849,7 +859,6 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
   };
 
   const fetchOpdTemplateData = async () => {
-    if (opdTemplateLoadedRef.current) return;
     try {
       const data = await getRequest(OPD_TEMPLATE_GET_ALL);
 
@@ -863,8 +872,6 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
       console.error("Error fetching Doctor data:", error);
     }
   };
-
-  console.log("opdTemplateData", opdTemplateData);
 
   const fetchDoctorData = async () => {
     setLoading(true);
@@ -1069,7 +1076,7 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
     {
       investigationId: "",
       templateIds: [],
-      name: "",
+      displayValue: "",
       date: getToday(),
     },
   ]);
@@ -1439,8 +1446,14 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
+        const selectedIds = investigationItems
+          .map((item) => item.investigationId)
+          .filter(Boolean);
+
         return {
-          list: data.response.content,
+          list: data.response.content.filter(
+            (item) => !selectedIds.includes(item.investigationId),
+          ),
           last: data.response.last,
         };
       }
@@ -1464,17 +1477,13 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
   const handleInvestigationSearch = (value, index) => {
     setInvestigationItems((prev) => {
       const updated = [...prev];
+
       updated[index] = {
         ...updated[index],
-        name: value,
+        displayValue: value,
         investigationId: null,
       };
-      return updated;
-    });
 
-    setInvestigationSearch((prev) => {
-      const updated = [...prev];
-      updated[index] = value;
       return updated;
     });
 
@@ -1489,6 +1498,7 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
       }
 
       const result = await fetchInvestigations(0, value);
+
       setInvestigationDropdown(result.list);
       setInvestigationLastPage(result.last);
       setInvestigationPage(0);
@@ -1518,7 +1528,7 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
       updated[index] = {
         ...updated[index],
         investigationId: selected.investigationId,
-        name: selected.investigationName,
+        displayValue: selected.investigationName,
       };
       return updated;
     });
@@ -1637,7 +1647,7 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
       if (
         updated.length === 1 &&
         !updated[0].investigationId &&
-        !updated[0].name
+        !updated[0].displayValue
       ) {
         updated = [];
       }
@@ -1656,11 +1666,11 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
 
           duplicateItemsBuffer.push({
             investigationId: item.investigationId,
-            investigationName: existing.name ?? item.investigationName,
+            investigationName: existing.displayValue ?? item.investigationName,
           });
         } else {
           updated.push({
-            name:
+            displayValue:
               item.investigationName ??
               `Investigation #${item.investigationId}`,
             date: getToday(),
@@ -1761,7 +1771,7 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
     const newItems = [...investigationItems];
     newItems[index] = {
       ...newItems[index],
-      name: investigation.investigationName,
+      displayValue: investigation.investigationName,
       investigationId: investigation.investigationId,
     };
 
@@ -1930,31 +1940,49 @@ const fetchPreviousVisits = async (patientId, hospitalId) => {
     if (!userId) return;
 
     if (!searchFilters.doctorList) {
-      alert("Doctor is required");
+      showPopupMessage("Doctor is required", "error");
       return;
     }
 
-    const payload = {
-      doctorId: Number(searchFilters.doctorList) || Number(userId) || null,
-      sessionId: Number(searchFilters.session) || null,
-      mobileNo: searchFilters.mobileNo?.trim() || null,
-      patientName: searchFilters.patientName?.trim() || null,
-    };
-
     try {
-      setLoading(true);
+      setIsSearching(true);
+      const queryParams = new URLSearchParams();
+      queryParams.append("page", "0");
+      queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
 
-      const data = await postRequest(PATIENT_ACTIVE_VISIT_SEARCH, payload);
+      if (searchFilters.doctorList) {
+        queryParams.append("doctorId", searchFilters.doctorList);
+      }
+      if (searchFilters.session) {
+        queryParams.append("sessionId", searchFilters.session);
+      }
+      if (searchFilters.mobileNo?.trim()) {
+        queryParams.append("mobileNumber", searchFilters.mobileNo.trim());
+      }
+      if (searchFilters.patientName?.trim()) {
+        queryParams.append("patientName", searchFilters.patientName.trim());
+      }
 
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setWaitingList(data.response);
+      const data = await getRequest(
+        `${GET_WAITING_LIST}?${queryParams.toString()}`,
+      );
+
+      if (data.status === 200 && data.response) {
+        const waitingListData = data.response.content || [];
+        setWaitingList(waitingListData);
+        setCurrentPage(1);
       } else {
         setWaitingList([]);
       }
     } catch (error) {
       console.error("Search API Error:", error);
+      setWaitingList([]);
+      showPopupMessage(
+        "Failed to fetch waiting list. Please try again.",
+        "error",
+      );
     } finally {
-      setLoading(false);
+      setIsSearching(false);
     }
   };
 
@@ -2157,7 +2185,7 @@ const handleConfirmPopupClose = (confirmed) => {
       {
         investigationId: "",
         templateIds: [],
-        name: "",
+        displayValue: "",
         date: getToday(),
       },
     ]);
@@ -2379,7 +2407,7 @@ const handleConfirmPopupClose = (confirmed) => {
 
     if (
       investigationItems.some(
-        (item) => hasValue(item.name) && !item.investigationId,
+        (item) => hasValue(item.displayValue) && !item.investigationId,
       )
     ) {
       addError(
@@ -2579,7 +2607,7 @@ const handleConfirmPopupClose = (confirmed) => {
 
       // Investigations mapping → backend format
       const invalidInvestigation = investigationItems.some(
-        (item) => item.name?.trim() && !item.investigationId,
+        (item) => item.displayValue?.trim() && !item.investigationId,
       );
 
       if (invalidInvestigation) {
@@ -2594,7 +2622,7 @@ const handleConfirmPopupClose = (confirmed) => {
         .filter((item) => item.investigationId)
         .map((item) => ({
           id: item.investigationId,
-          investigationName: item.name,
+          investigationName: item.displayValue,
           investigationDate: item.date,
         }));
 
@@ -3001,7 +3029,7 @@ const handleConfirmPopupClose = (confirmed) => {
   const handleCreateTemplate = () => {
     setShowCreateTemplateModal(true);
     setTemplateName("");
-    setInvestigationItems([{ name: "", date: getToday() }]);
+    setInvestigationItems([{ displayValue: "", date: getToday() }]);
   };
 
   const handleUpdateTemplate = () => {
@@ -3010,14 +3038,17 @@ const handleConfirmPopupClose = (confirmed) => {
   };
 
   const handleAddInvestigationItem = () => {
-    setInvestigationItems((prev) => [...prev, { name: "", date: getToday() }]);
+    setInvestigationItems((prev) => [
+      ...prev,
+      { displayValue: "", date: getToday() },
+    ]);
   };
 
   const handleRemoveInvestigationItem = (index) => {
     const itemToRemove = investigationItems[index];
     const onlyOneRow = investigationItems.length === 1;
     const isEmptyRow =
-      !itemToRemove.name &&
+      !itemToRemove.displayValue &&
       (!itemToRemove.templateIds || itemToRemove.templateIds.length === 0) &&
       !itemToRemove.date;
 
@@ -3029,7 +3060,7 @@ const handleConfirmPopupClose = (confirmed) => {
 
     if (onlyOneRow) {
       updatedItems = [
-        { id: null, templateIds: [], name: "", date: getToday() },
+        { id: null, templateIds: [], displayValue: "", date: getToday() },
       ];
     }
 
@@ -3047,13 +3078,13 @@ const handleConfirmPopupClose = (confirmed) => {
       setTemplates([...templates, templateName]);
       setShowCreateTemplateModal(false);
       setTemplateName("");
-      setInvestigationItems([{ name: "", date: getToday() }]);
+      setInvestigationItems([{ displayValue: "", date: getToday() }]);
     }
   };
 
   const handleResetTemplate = () => {
     setTemplateName("");
-    setInvestigationItems([{ name: "", date: getToday() }]);
+    setInvestigationItems([{ displayValue: "", date: getToday() }]);
   };
 
   const handleCloseModal = () => {
@@ -3061,7 +3092,7 @@ const handleConfirmPopupClose = (confirmed) => {
     setShowUpdateTemplateModal(false);
     setShowTreatmentAdviceModal(false);
     setTemplateName("");
-    setInvestigationItems([{ name: "", date: getToday() }]);
+    setInvestigationItems([{ displayValue: "", date: getToday() }]);
     setUpdateTemplateSelection("Select..");
     setTreatmentAdviceSelection("");
     setSelectedTreatmentAdviceItems([]);
@@ -3193,7 +3224,11 @@ const handleConfirmPopupClose = (confirmed) => {
       `current-med-${index}`,
     drugId: item.drugId ?? item.itemId ?? "",
     drugName:
-      item.drugName ?? item.itemName ?? item.nomenclature ?? item.name ?? "",
+      item.drugName ??
+      item.itemName ??
+      item.nomenclature ??
+      item.displayValue ??
+      "",
     dispUnit: item.dispUnit ?? item.dispUnitName ?? item.dispU ?? "",
     dosage: item.dosage ?? "",
     days: item.days ?? item.noOfDays ?? "",
@@ -5691,9 +5726,8 @@ const handleConfirmPopupClose = (confirmed) => {
                                       className="form-control"
                                       placeholder="Search Investigation..."
                                       value={
-                                        investigationSearch[index] ??
-                                        investigationItems[index].name ??
-                                        ""
+                                        investigationItems[index]
+                                          .displayValue || ""
                                       }
                                       onChange={(e) =>
                                         handleInvestigationSearch(
@@ -7623,7 +7657,10 @@ const handleConfirmPopupClose = (confirmed) => {
           show={showTreatmentModal}
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
-          onTemplateSaved={(template) => {}}
+          onTemplateSaved={() => {
+            opdTemplateLoadedRef.current = false;
+            fetchOpdTemplateData();
+          }}
         />
 
         {/* OT Calendar Modal */}
@@ -8126,7 +8163,7 @@ const handleConfirmPopupClose = (confirmed) => {
                       />
                     </div>
 
-                    <div className="col-md-3">
+                    <div className="col-md-2">
                       <label className="form-label fw-bold">Patient Name</label>
                       <input
                         type="text"
@@ -8139,13 +8176,27 @@ const handleConfirmPopupClose = (confirmed) => {
                       />
                     </div>
 
-                    <div className="col-md-2 d-flex gap-2">
+                    <div className="col-md-3 d-flex gap-2">
                       <button
                         type="button"
                         className="btn btn-primary w-100"
                         onClick={handleSearch}
+                        disabled={isSearching}
                       >
-                        SEARCH
+                        {isSearching ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            Searching...
+                          </>
+                        ) : (
+                          <>
+                            <i className="mdi mdi-magnify"></i> Search
+                          </>
+                        )}
                       </button>
                       <button
                         type="button"

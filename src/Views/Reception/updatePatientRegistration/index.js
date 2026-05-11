@@ -90,7 +90,8 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   }
@@ -108,9 +109,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    //  finally {
-    //   setLoading(false);
-    // }
+     finally {
+      setLoading(false);
+    }
   }
 
   async function fetchAllDistrictData() {
@@ -125,7 +126,8 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+     finally {
       setLoading(false);
     }
   }
@@ -234,7 +236,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   const statesByCountryCacheRef = useRef(new Map());
   const districtsByStateCacheRef = useRef(new Map());
   const tokenRequestsInFlightRef = useRef(new Set());
-  const searchRequestsInFlightRef = useRef(new Set());
 
   const isPastDate = (dateStr) => {
     const selected = new Date(dateStr);
@@ -590,18 +591,12 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       page = 0;
     }
     setSearchLoading(true);
-    const payload = {
-      mobileNo: formData.mobileNo || null,
-      patientName: formData.patientName || null,
-    };
-    const requestKey = `${page}:${payload.mobileNo || ""}:${payload.patientName || ""}:${itemsPerPage}`;
-
-    if (searchRequestsInFlightRef.current.has(requestKey)) {
-      return;
-    }
-
-    searchRequestsInFlightRef.current.add(requestKey);
     try {
+      const payload = {
+        mobileNo: formData.mobileNo || null,
+        patientName: formData.patientName || null,
+      };
+
       const response = await postRequest(
         `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
         payload,
@@ -626,7 +621,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       console.error(error);
       Swal.fire("Error", SEARCH_PATIENTS_FAILED_MSG, "error");
     } finally {
-      searchRequestsInFlightRef.current.delete(requestKey);
       setSearchLoading(false);
     }
   };
@@ -862,7 +856,10 @@ const [editLoadingId, setEditLoadingId] = useState(null);
         if (address.country) {
           await fetchStates(address.country);
           if (address.state) {
-            await fetchDistrict(address.state);
+            const selectedState = stateData.find((s) => s.id === address.state);
+            if (selectedState) {
+              await fetchDistrict(address.state);
+            }
           }
         }
 
@@ -994,7 +991,8 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   }
@@ -1077,9 +1075,10 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchDistrict(value) {
@@ -1172,9 +1171,10 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchDepartment() {
@@ -1232,14 +1232,19 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   async function fetchDoctor(value) {
     try {
       setLoading(true);
-      const doctors = await getDoctorsBySpeciality(value);
-      setDoctorData(doctors);
+      const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDoctorData(data.response);
+      } else {
+        console.error(UNEXPECTED_API_RESPONSE_ERR, data);
+        setDoctorData([]);
+      }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-      setDoctorData([]);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchSession(doc) {
@@ -1520,7 +1525,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       nokRelationId: null,
     };
 
-    // 2. Prepare OPD detail request
     const opdPatientDetailRequest = {
       height: patientDetailForm.height || "0",
       idealWeight: patientDetailForm.idealWeight || "0",
@@ -1561,7 +1565,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       lastChgBy: username,
     };
 
-    // 3. Prepare visits array
     const visitsArray = appointmentFlag
       ? appointments
           .filter(
@@ -1592,7 +1595,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           })
       : [];
 
-    // 4. Create the final request and apply automatic validation
     const finalRequest = prepareData({
       appointmentFlag: appointmentFlag,
       patientDetails: {
@@ -1619,21 +1621,16 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       Swal.close();
 
       if (response.status === 200) {
-        const message = appointmentFlag
-          ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS
-          : PATIENT_UPDATE_SUCCESS;
+        const message = appointmentFlag ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS : PATIENT_UPDATE_SUCCESS;
 
         const resp = response.response?.opdBillingPatientResponse;
         const patientResp = response.response?.patient || response.response;
 
-        // Get visit information
         const visits = patientResp?.visits || [];
         const hasBillingStatusY =
           visits.length > 0 && visits[0]?.billingStatus === "y";
 
-        // Handle different scenarios like in registration page
         if (hasBillingStatusY) {
-          // Direct redirect to PendingForBilling
           Swal.fire({
             title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>
@@ -1672,7 +1669,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
             }
           });
         } else if (patientResp) {
-          // Case: no billing response but patient saved (update without appointments)
           const displayName =
             patientResp.patientName ||
             `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim();
@@ -1684,16 +1680,15 @@ const [editLoadingId, setEditLoadingId] = useState(null);
             confirmButtonText: "OK",
             allowOutsideClick: false,
           }).then(() => {
-            handleReset(); // Go back to search
+            handleReset(); 
           });
         } else {
-          // Fallback success message
           Swal.fire({
             icon: "success",
             title: "Update Successful",
             text: PATIENT_UPDATE_SUCCESS,
           }).then(() => {
-            handleReset(); // Go back to search
+            handleReset();
           });
         }
       } else {
@@ -1730,6 +1725,8 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           confirmButtonText: "OK",
         });
       }
+    }finally {
+      setLoading(false);
     }
   };
 
@@ -1947,10 +1944,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }).toString();
 
       const url = `${GET_TOKENS}/0?${params}`;
-      const requestKey = `${appointmentIndex}:${params}`;
-      if (tokenRequestsInFlightRef.current.has(requestKey)) return;
-
-      tokenRequestsInFlightRef.current.add(requestKey);
       const data = await getRequest(url);
 
       if (data.status === 200 && Array.isArray(data.response)) {
@@ -1976,24 +1969,10 @@ const [editLoadingId, setEditLoadingId] = useState(null);
         title: "Error",
         text: FETCH_TOKEN_AVAILABILITY_ERROR,
       });
-    } finally {
-      const targetAppointment = appointments[appointmentIndex];
-      const selectedDate = dateOverride || targetAppointment?.selDate;
-      if (
-        targetAppointment?.speciality &&
-        targetAppointment?.selDoctorId &&
-        targetAppointment?.selSession &&
-        selectedDate
-      ) {
-        const params = new URLSearchParams({
-          deptId: targetAppointment.speciality,
-          doctorId: targetAppointment.selDoctorId,
-          appointmentDate: selectedDate,
-          sessionId: targetAppointment.selSession,
-        }).toString();
-        tokenRequestsInFlightRef.current.delete(`${appointmentIndex}:${params}`);
-      }
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   };
 
   const showTokenPopup = (
