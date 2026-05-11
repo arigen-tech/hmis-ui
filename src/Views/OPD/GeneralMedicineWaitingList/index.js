@@ -7976,105 +7976,62 @@ const GeneralMedicineWaitingList = () => {
           </div>
         )}
 
-        {/* {showPreviousVisitsModal && (
+        {showPopup && (
           <ClinicalHistoryPopup
-            show={showPreviousVisitsModal}
-            onClose={() => setShowPreviousVisitsModal(false)}
+            show={showPopup}
+            onClose={() => setShowPopup(false)}
             visitsData={previousVisitsData}
+            vitalsData={previousVitalsData}
+            popupType={clinicalPopupType}
           />
         )}
 
-        {showPreviousVitalsModal && (
-  <ClinicalHistoryPopup
-    show={showPreviousVitalsModal}
-    onClose={() => setShowPreviousVitalsModal(false)}
-    // visitsData={previousVisitsData}
-    vitalsData={previousVitalsData}
-    selectedHistoryType="previous-vitals"
-    setSelectedHistoryType={setSelectedHistoryType}
-  />
-)} */}
-
-        {confirmationPopup.show &&
-          createPortal(
-            <div
-              className="modal fade show"
-              style={{
-                display: "block",
-                backgroundColor: "rgba(0,0,0,0.5)",
-                zIndex: 9999,
-                position: "fixed",
-                top: 0,
-                left: 0,
-                right: 0,
-                bottom: 0,
-              }}
-              tabIndex="-1"
-            >
-              <div className="modal-dialog modal-dialog-centered">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">
-                      {confirmationPopup.type === "success"
-                        ? "Success"
-                        : confirmationPopup.type === "error"
-                          ? "Error"
-                          : confirmationPopup.type === "warning"
-                            ? "Warning"
-                            : "Information"}
-                    </h5>
-                    <button
-                      type="button"
-                      className="btn-close"
-                      onClick={() => handleConfirmPopupClose(false)}
-                    ></button>
-                  </div>
-                  <div className="modal-body">
-                    <div className="text-center">
-                      {confirmationPopup.type === "success" && (
-                        <i
-                          className="mdi mdi-check-circle"
-                          style={{ fontSize: "48px", color: "green" }}
-                        ></i>
-                      )}
-                      {confirmationPopup.type === "error" && (
-                        <i
-                          className="mdi mdi-alert-circle"
-                          style={{ fontSize: "48px", color: "red" }}
-                        ></i>
-                      )}
-                      {confirmationPopup.type === "warning" && (
-                        <i
-                          className="mdi mdi-alert"
-                          style={{ fontSize: "48px", color: "orange" }}
-                        ></i>
-                      )}
-                      <p className="mt-3">{confirmationPopup.message}</p>
-                    </div>
-                  </div>
-                  <div className="modal-footer">
-                    {confirmationPopup.cancelText && (
-                      <button
-                        type="button"
-                        className="btn btn-secondary"
-                        onClick={() => handleConfirmPopupClose(false)}
-                      >
-                        {confirmationPopup.cancelText}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => handleConfirmPopupClose(true)}
-                    >
-                      {confirmationPopup.confirmText}
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>,
-            document.body,
-          )}
+       
+{confirmationPopup.show && createPortal(
+  <div
+    className="modal fade show"
+    style={{
+      display: "block",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      zIndex: 9999,
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    }}
+    tabIndex="-1"
+  >
+     <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">Success</h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => handleConfirmPopupClose(false)}
+          ></button>
+        </div>
+        <div className="modal-body">
+          <div className="text-center">
+            <i className="mdi mdi-check-circle" style={{ fontSize: "48px", color: "green" }}></i>
+            <p className="mt-3">{confirmationPopup.message}</p>
+          </div>
+        </div>
+        <div className="modal-footer">
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => handleConfirmPopupClose(true)}
+          >
+            OK
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>,
+  document.body
+)}
       </div>
     );
   }

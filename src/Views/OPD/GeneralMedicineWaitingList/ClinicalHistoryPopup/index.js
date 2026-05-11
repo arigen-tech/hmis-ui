@@ -157,8 +157,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                           <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Temp (°F)</th>
                           <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>RR</th>
                           <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>SpO₂ (%)</th>
-                          <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold", textAlign: "center" }}>Action</th>
-                        </tr>
+                       </tr>
                       </thead>
                       <tbody>
                         {vitalsData.map((vital, idx) => (
@@ -176,12 +175,7 @@ const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.temperature || "-"}</td>
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.rr || "-"}</td>
                             <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.spo2 || "-"}</td>
-                            <td style={{ padding: "8px", verticalAlign: "middle", textAlign: "center" }}>
-                              <div className="d-flex gap-1 justify-content-center">
-                                <button className="btn btn-sm btn btn-primary"> OPD Case sheet</button>
-                                
-                              </div>
-                            </td>
+                           
                           </tr>
                         ))}
                       </tbody>
