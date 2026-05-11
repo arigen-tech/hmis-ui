@@ -4,6 +4,10 @@ import OTDashboard from "./OTDashboard";
 import InvestigationModal from "./InvestigationModal";
 import TreatmentModal from "./TreatmentModal";
 import ClinicalHistoryPopup from "./ClinicalHistoryPopup";
+import SubmitScreen from "./SubmitScreen";
+import { createPortal } from "react-dom";
+import { useNavigate } from "react-router-dom";
+
 import {
   OPD_TEMPLATE,
   OPD_TEMPLATE_GET_ALL,
@@ -29,6 +33,8 @@ import {
   OPD_CREATE_PATIENT_DETAILS,
   OPTH_MAS_DISTANCE_VISION,
   OPTH_MAS_NEAR_VISION,
+  GET_PREVIOUS_OPD_VISIT_HISTORY,
+
   GET_PATIENT_PRESCRIPTION_DETAILS,
   MAS_BED_COUNT,
 } from "../../../config/apiConfig";
@@ -46,6 +52,14 @@ import Pagination, {
 } from "../../../Components/Pagination";
 import OpdVision from "../OpdVision";
 import { FLAG } from "../../../config/constants";
+import { data } from "react-router-dom";
+
+
+
+const INDENT_REPORT_URL = "/indent/print";
+const REQUERST_PARAM_INDENT_M_ID = "indentMId";
+const INDENT_SAVE_TITLE = "Indent Report";
+const INDENT_SAVE_FILE_NAME = "Indent_Report.pdf";
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([]);
@@ -129,10 +143,12 @@ const GeneralMedicineWaitingList = () => {
     "Critical",
   ]);
 
+  const navigate = useNavigate();
   // const [showPreviousVisitsModal, setShowPreviousVisitsModal] = useState(false);
   // const [showPreviousVitalsModal, setShowPreviousVitalsModal] = useState(false);
   const [showPopup, setShowPopup] = useState(false);
   const [clinicalPopupType, setClinicalPopupType] = useState("visits");
+  const [showSubmitScreen, setShowSubmitScreen] = useState(false);
 
   const [previousVitalsData, setPreviousVitalsData] = useState([
     {
@@ -161,29 +177,18 @@ const GeneralMedicineWaitingList = () => {
     },
   ]);
 
-  const [previousVisitsData, setPreviousVisitsData] = useState([
-    {
-      visitDate: "06-05-2026",
-      doctorName: "Dr. Sharma",
-      department: "ENT",
-      icdDiag: "J06.9 - Acute upper respiratory infection",
-      workingDiag: "Viral Infection",
-    },
-    {
-      visitDate: "15-03-2026",
-      doctorName: "Dr. Patel",
-      department: "Cardiology",
-      icdDiag: "I10 - Essential hypertension",
-      workingDiag: "Hypertension Stage 1",
-    },
-    {
-      visitDate: "20-01-2026",
-      doctorName: "Dr. Gupta",
-      department: "Neurology",
-      icdDiag: "G43.909 - Migraine",
-      workingDiag: "Chronic Migraine",
-    },
-  ]);
+const [confirmationPopup, setConfirmationPopup] = useState({
+  show: false,
+  message: "",
+  type: "success",
+  onConfirm: null,
+  onCancel: null,
+  confirmText: "Yes",
+  cancelText: "No"
+});
+
+const [previousVisitsData, setPreviousVisitsData] = useState([]);
+
 
   const [distanceVisionData, setDistanceVisionData] = useState([]);
   const [nearVisionData, setNearVisionData] = useState([]);
@@ -217,6 +222,33 @@ const GeneralMedicineWaitingList = () => {
       console.error("Error fetching Near Vision data:", error);
     }
   };
+
+
+const fetchPreviousVisits = async (patientId, hospitalId) => {
+  if (!patientId) return;
+  
+  try {
+    setLoading(true);
+    // const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=930&hospitalId=12&page=0&size=5`;
+     const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+    console.log("Calling API:", url);
+    
+    const response = await getRequest(url);
+    console.log("Response:", response);
+    
+    if (response.status === 200 && response.response) {
+      const data = response.response.content || response.response;
+      setPreviousVisitsData(data);
+    } else {
+      setPreviousVisitsData([]);
+    }
+  } catch (error) {
+    console.error("Error fetching previous visits:", error);
+    setPreviousVisitsData([]);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const fetchWardCategoryData = async () => {
     if (wardCategoryLoadedRef.current) return;
@@ -259,6 +291,11 @@ const GeneralMedicineWaitingList = () => {
       !items[0].days
     );
   };
+
+  const handleSelectVisitType = (type) => {
+  setClinicalPopupType(type);
+  setShowPopup(true);
+};
 
   const handleWardCategoryChange = (categoryId) => {
     setWardCategory(categoryId);
@@ -2002,7 +2039,57 @@ const GeneralMedicineWaitingList = () => {
     setSelectedPatient(patient);
     setCurrentMedicationActions({});
     setShowDetailView(true);
+
+
+ if(patient.patientId){
+    const hospitalId = patient.hospitalId || 
+                       sessionStorage.getItem("hospitalId") || 
+                       localStorage.getItem("hospitalId");
+    await fetchPreviousVisits(patient.patientId, hospitalId);
+  }
+
   };
+
+  // Add this function
+const showConfirmationPopup = (
+  message, 
+  type = "success", 
+  onConfirm = null, 
+  onCancel = null, 
+  confirmText = "Yes", 
+  cancelText = "No"
+) => {
+  setConfirmationPopup({
+    show: true,
+    message,
+    type,
+    onConfirm,
+    onCancel,
+    confirmText,
+    cancelText
+  });
+};
+
+// Add this function
+const handleConfirmPopupClose = (confirmed) => {
+  const { onConfirm, onCancel } = confirmationPopup;
+  
+  if (confirmed && onConfirm) {
+    onConfirm();
+  } else if (!confirmed && onCancel) {
+    onCancel();
+  }
+  
+  setConfirmationPopup({
+    show: false,
+    message: "",
+    type: "success",
+    onConfirm: null,
+    onCancel: null,
+    confirmText: "Yes",
+    cancelText: "No"
+  });
+};
 
   const handleBackToList = () => {
     setShowDetailView(false);
@@ -2679,24 +2766,92 @@ const GeneralMedicineWaitingList = () => {
         `${OPD_CREATE_PATIENT_DETAILS}`,
         payload,
       );
-
-      if (response?.status === 200 || response?.success === true) {
-        showPopupMessage("OPD patient created successfully!", "success", () => {
-          handleResetForm();
-          setShowDetailView(false);
-          fetchWaitingList();
-          handleSearch();
-        });
-      } else {
-        alert("Updated but unexpected response received.");
-      }
-    } catch (error) {
-      console.error("Update Error:", error);
-      showPopupMessage("Failed to Submit Data. Please try again.", "error");
-    } finally {
-      setIsSubmitting(false);
+//   if (response?.status === 200 || response?.success === true) {
+//   showPopupMessage("Submit Successful!", "success", () => {
+//     navigate("/ViewDownLoadReport", {
+//       state: {
+//         reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${response.response?.indentMId}`,
+//         title: INDENT_SAVE_TITLE,
+//         fileName: INDENT_SAVE_FILE_NAME,
+//         returnPath: window.location.pathname
+//       }
+//     });
+//   });
+ 
+//     } else {
+//       alert("Updated but unexpected response received.");
+//     }
+//   } catch (error) {
+//     console.error("Update Error:", error);
+//     showPopupMessage("Failed to Submit Data. Please try again.", "error");
+//   } finally {
+//     setIsSubmitting(false);
+//   }
+// };
+ if (response?.status === 200 || response?.success === true) {
+      const indentMId = response.response?.indentMId;
+      
+      showConfirmationPopup(
+        "Submit Successful!",
+        "success",
+        () => {
+          navigate("/ViewDownLoadReport", {
+            state: {
+              reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`,
+              title: INDENT_SAVE_TITLE,
+              fileName: INDENT_SAVE_FILE_NAME,
+              returnPath: window.location.pathname
+            }
+          });
+          handleBackToList();
+        },
+        () => {
+          handleBackToList();
+        },
+        "Yes",
+        "No"
+      );
+    } else {
+      showConfirmationPopup(
+        "Updated but unexpected response received.",
+        "error",
+        null,
+        null,
+        "OK",
+        "Close"
+      );
     }
-  };
+  } catch (error) {
+    console.error("Update Error:", error);
+    showConfirmationPopup(
+      "Failed to Submit Data. Please try again.",
+      "error",
+      null,
+      null,
+      "OK",
+      "Close"
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
+
+
+
+  // showPopupMessage("Submit Successful!", "success", () => {
+  //   setShowSubmitScreen(true);
+  // });
+
+  //     } else {
+  //       alert("Updated but unexpected response received.");
+  //     }
+  //   } catch (error) {
+  //     console.error("Update Error:", error);
+  //     showPopupMessage("Failed to Submit Data. Please try again.", "error");
+  //   } finally {
+  //     setIsSubmitting(false);
+  //   }
+  // };
 
   const handleResetForm = () => {
     // Reset main form data
@@ -7418,12 +7573,12 @@ const GeneralMedicineWaitingList = () => {
                 </div>
 
                 <div className="text-center mt-4">
-                  <button
-                    className="btn btn-primary me-3"
-                    onClick={handleSubmit}
-                    disabled={isSubmitting}
-                    type="button"
-                  >
+                 <button
+  className="btn btn-primary me-3"
+  onClick={handleSubmit }
+  disabled={isSubmitting}
+  type="button"
+>
                     {isSubmitting ? (
                       <>
                         <i className="mdi mdi-loading mdi-spin"></i>{" "}
@@ -7552,7 +7707,13 @@ const GeneralMedicineWaitingList = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-content">
-                <div className="modal-header">
+                <div className="modal-header" style={{
+              backgroundColor: "#6aab9c",
+              color: "white",
+              borderBottom: "1px solid #6aab9c",
+              padding: "0.75rem 1.5rem",
+              borderRadius: "8px 8px 0 0",
+            }}>
                   <h5 className="modal-title">Current Medication</h5>
                   <button
                     type="button"
@@ -7802,6 +7963,16 @@ const GeneralMedicineWaitingList = () => {
     setSelectedHistoryType={setSelectedHistoryType}
   />
 )} */}
+
+{showSubmitScreen && (
+        <SubmitScreen
+          show={showSubmitScreen}
+          onClose={() => setShowSubmitScreen(false)}
+          onSelectVisitType={handleSelectVisitType}
+        />
+      )}
+
+      
         {showPopup && (
           <ClinicalHistoryPopup
             show={showPopup}
@@ -7811,6 +7982,74 @@ const GeneralMedicineWaitingList = () => {
             popupType={clinicalPopupType}
           />
         )}
+
+       
+{confirmationPopup.show && createPortal(
+  <div
+    className="modal fade show"
+    style={{
+      display: "block",
+      backgroundColor: "rgba(0,0,0,0.5)",
+      zIndex: 9999,
+      position: "fixed",
+      top: 0,
+      left: 0,
+      right: 0,
+      bottom: 0,
+    }}
+    tabIndex="-1"
+  >
+    <div className="modal-dialog modal-dialog-centered">
+      <div className="modal-content">
+        <div className="modal-header">
+          <h5 className="modal-title">
+            {confirmationPopup.type === "success" ? "Success" : 
+             confirmationPopup.type === "error" ? "Error" : 
+             confirmationPopup.type === "warning" ? "Warning" : "Information"}
+          </h5>
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => handleConfirmPopupClose(false)}
+          ></button>
+        </div>
+        <div className="modal-body">
+          <div className="text-center">
+            {confirmationPopup.type === "success" && (
+              <i className="mdi mdi-check-circle" style={{ fontSize: "48px", color: "green" }}></i>
+            )}
+            {confirmationPopup.type === "error" && (
+              <i className="mdi mdi-alert-circle" style={{ fontSize: "48px", color: "red" }}></i>
+            )}
+            {confirmationPopup.type === "warning" && (
+              <i className="mdi mdi-alert" style={{ fontSize: "48px", color: "orange" }}></i>
+            )}
+            <p className="mt-3">{confirmationPopup.message}</p>
+          </div>
+        </div>
+        <div className="modal-footer">
+          {confirmationPopup.cancelText && (
+            <button
+              type="button"
+              className="btn btn-secondary"
+              onClick={() => handleConfirmPopupClose(false)}
+            >
+              {confirmationPopup.cancelText}
+            </button>
+          )}
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => handleConfirmPopupClose(true)}
+          >
+            {confirmationPopup.confirmText}
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>,
+  document.body
+)}
       </div>
     );
   }

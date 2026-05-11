@@ -2,6 +2,7 @@
 import React, { useEffect } from "react";
 import ReactDOM from "react-dom";
 
+
 const ClinicalHistoryPopup = ({ show, onClose, visitsData, vitalsData, popupType }) => {
   useEffect(() => {
     if (show) {

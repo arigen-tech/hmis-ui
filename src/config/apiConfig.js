@@ -1,5 +1,5 @@
 export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = 'http://localhost:8080';
+//export const API_HOST = 'http://localhost:8080';
 
 
 
@@ -284,6 +284,8 @@ export const USG_MODALITY = 41;
 export const MRI_MODALITY = 43;
 export const CT_MODALITY = 42;
 export const PET_MODALITY = 48;
+
+export const GET_PREVIOUS_OPD_VISIT_HISTORY = `/opd/getPreviousOpdVisitHistory`;
 
 // Constants for date validation for Lab report
 export const MAX_MONTHS_BACK = 4; // 4 months maximum back date

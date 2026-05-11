@@ -57,6 +57,9 @@ const HospitalMaster = () => {
     longitude: "",
     executive1Contact: "",
     executive2Contact: "",
+     laboratoryBilling: "",     
+  radiologyBilling: "",    
+
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -251,8 +254,10 @@ const HospitalMaster = () => {
         (updatedFormData.city || "").trim() !== "" &&
         (updatedFormData.regCostApplicable || "").trim() !== "" &&
         (updatedFormData.appCostApplicable || "").trim() !== "" &&
-        (updatedFormData.preConsultationAvailable || "").trim() !== "";
-
+        (updatedFormData.preConsultationAvailable || "").trim() !== ""&&
+        (updatedFormData.laboratoryBilling || "").trim() !== "" &&  
+      (updatedFormData.radiologyBilling || "").trim() !== "";  
+ 
       setIsFormValid(isValid);
       return updatedFormData;
     });
@@ -263,7 +268,9 @@ const HospitalMaster = () => {
     const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No";
     const preConsultationValue =
       hospital.preConsultationAvailable === "y" ? "Yes" : "No";
-
+const labBillingValue = hospital.laboratoryBilling === "y" ? "Yes" : "No";      
+  const radBillingValue = hospital.radiologyBilling === "y" ? "Yes" : "No";     
+  
     setEditingHospital(hospital);
 
     setFormData({
@@ -288,6 +295,8 @@ const HospitalMaster = () => {
       longitude: hospital.longitude || "",
       executive1Contact: hospital.executive1Contact || "",
       executive2Contact: hospital.executive2Contact || "",
+       laboratoryBilling: labBillingValue,     
+    radiologyBilling: radBillingValue, 
     });
 
     if (hospital.countryId) {
@@ -326,6 +335,8 @@ const HospitalMaster = () => {
       const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n";
       const preConsultationValue =
         formData.preConsultationAvailable === "Yes" ? "y" : "n";
+const labBillingValue = formData.laboratoryBilling === "Yes" ? "y" : "n";      
+    const radBillingValue = formData.radiologyBilling === "Yes" ? "y" : "n";      
 
       if (editingHospital) {
         const response = await putRequest(
@@ -350,6 +361,9 @@ const HospitalMaster = () => {
             longitude: formData.longitude,
             executive1Contact: formData.executive1Contact,
             executive2Contact: formData.executive2Contact,
+            laboratoryBilling: labBillingValue,    
+          radiologyBilling: radBillingValue,     
+
           },
         );
 
@@ -382,6 +396,9 @@ const HospitalMaster = () => {
           longitude: formData.longitude,
           executive1Contact: formData.executive1Contact,
           executive2Contact: formData.executive2Contact,
+           laboratoryBilling: labBillingValue,     
+        radiologyBilling: radBillingValue,        
+
         });
 
         if (response && response.response) {
@@ -413,6 +430,8 @@ const HospitalMaster = () => {
         longitude: "",
         executive1Contact: "",
         executive2Contact: "",
+         laboratoryBilling: "",     
+  radiologyBilling: "",    
       });
       setShowForm(false);
       fetchHospitals();
@@ -531,6 +550,9 @@ const HospitalMaster = () => {
                             longitude: "",
                             executive1Contact: "",
                             executive2Contact: "",
+                            laboratoryBilling: "",     
+                            radiologyBilling: "",    
+                            
                           });
                           setIsFormValid(false);
                           setShowForm(true);
@@ -883,7 +905,7 @@ const HospitalMaster = () => {
                           <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="regCostApplicable"
                           name="regCostApplicable"
                           value={formData.regCostApplicable}
@@ -905,7 +927,7 @@ const HospitalMaster = () => {
                           <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="appCostApplicable"
                           name="appCostApplicable"
                           value={formData.appCostApplicable}
@@ -926,7 +948,7 @@ const HospitalMaster = () => {
                           <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="preConsultationAvailable"
                           name="preConsultationAvailable"
                           value={formData.preConsultationAvailable}
@@ -1012,7 +1034,45 @@ const HospitalMaster = () => {
                           }
                         />
                       </div>
-                    </div>
+                   
+                    {/* Laboratory Billing */}
+<div className="col-md-6">
+  <label htmlFor="laboratoryBilling" className="form-label">
+    Laboratory Billing <span className="text-danger">*</span>
+  </label>
+  <select
+    className="form-select"
+    id="laboratoryBilling"
+    name="laboratoryBilling"
+    value={formData.laboratoryBilling}
+    onChange={handleInputChange}
+    required
+  >
+    <option value="">Select</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+</div>
+
+{/* Radiology Billing */}
+<div className="col-md-6">
+  <label htmlFor="radiologyBilling" className="form-label">
+    Radiology Billing <span className="text-danger">*</span>
+  </label>
+  <select
+    className="form-select"
+    id="radiologyBilling"
+    name="radiologyBilling"
+    value={formData.radiologyBilling}
+    onChange={handleInputChange}
+    required
+  >
+    <option value="">Select</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+</div>
+</div>
                     <div className="d-flex justify-content-end mt-4">
                       <button
                         type="button"
