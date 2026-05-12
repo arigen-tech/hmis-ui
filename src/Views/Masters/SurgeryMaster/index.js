@@ -252,7 +252,7 @@ const SurgeryMaster = () => {
 
         if (response.status === 200) {
           setPopupMessage({
-            message:  "Surgery added successfully!",
+            message:  `Surgery master ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
