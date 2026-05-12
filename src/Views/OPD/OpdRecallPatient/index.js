@@ -1,24 +1,44 @@
-import { useState, useEffect, useRef } from "react"
-import placeholderImage from "../../../assets/images/placeholder.jpg"
-import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard"
-import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal"
-import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal"
-import { OPD_PATIENT, OPD_TEMPLATE, MAS_FREQUENCY, MAS_DRUG_MAS, DRUG_TYPE, ITEM_CLASS, MAS_INVESTIGATION, MASTERS, OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES, MAS_INVESTIGATION_UNIQUE_TYPES } from "../../../config/apiConfig";
-import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { useState, useEffect, useRef } from "react";
+import placeholderImage from "../../../assets/images/placeholder.jpg";
+import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard";
+import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal";
+import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal";
+import {
+  OPD_PATIENT,
+  OPD_TEMPLATE,
+  MAS_FREQUENCY,
+  MAS_DRUG_MAS,
+  DRUG_TYPE,
+  ITEM_CLASS,
+  MAS_INVESTIGATION,
+  MASTERS,
+  OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
+  MAS_INVESTIGATION_UNIQUE_TYPES,
+  GET_RECALL_OPD_PATIENTS_LIST,
+} from "../../../config/apiConfig";
+import {
+  getRequest,
+  putRequest,
+  postRequest,
+} from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup/index";
 import DuplicatePopup from "../GeneralMedicineWaitingList/DuplicatePopup";
-import MasFamilyModel from "../GeneralMedicineWaitingList/FamilyHistryModel"
-import Pagination,{DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination"
+import MasFamilyModel from "../GeneralMedicineWaitingList/FamilyHistryModel";
+import Pagination, {
+  DEFAULT_ITEMS_PER_PAGE,
+} from "../../../Components/Pagination";
 
 const OpdRRecallPatient = () => {
-  const [currentPage, setCurrentPage] = useState(1)
-  const [pageInput, setPageInput] = useState("")
-  const [showDetailView, setShowDetailView] = useState(false)
-  const [selectedPatient, setSelectedPatient] = useState(null)
-  const [showOtCalendarModal, setShowOtCalendarModal] = useState(false)
-  const [showCurrentMedicationModal, setShowCurrentMedicationModal] = useState(false)
-  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] = useState(new Set());
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageInput, setPageInput] = useState("");
+  const [showDetailView, setShowDetailView] = useState(false);
+  const [selectedPatient, setSelectedPatient] = useState(null);
+  const [showOtCalendarModal, setShowOtCalendarModal] = useState(false);
+  const [showCurrentMedicationModal, setShowCurrentMedicationModal] =
+    useState(false);
+  const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
+    useState(new Set());
   const [removedInvestigationIds, setRemovedInvestigationIds] = useState([]);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
@@ -26,11 +46,12 @@ const OpdRRecallPatient = () => {
   const [removedTreatmentIds, setRemovedTreatmentIds] = useState([]);
   const [removeIcdIds, setRemoveIcdIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] = useState("Select..");
+  const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
+    useState("Select..");
   const [usedTemplateIds, setUsedTemplateIds] = useState(new Set());
   const [recallPatientOpd, setRecallPatientOpd] = useState([]);
   const [opdTemplateData, setOpdTemplateData] = useState([]);
-  const [allFrequencies, setAllFrequencies] = useState([])
+  const [allFrequencies, setAllFrequencies] = useState([]);
   const today = new Date().toISOString().split("T")[0];
   const [loading, setLoading] = useState(false);
   const [popup, setPopup] = useState("");
@@ -47,7 +68,7 @@ const OpdRRecallPatient = () => {
   const dropdownRef = useRef(null);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
-  const getToday = () => new Date().toISOString().split("T")[0]
+  const getToday = () => new Date().toISOString().split("T")[0];
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [searchFilters, setSearchFilters] = useState({
     mobileNumber: "",
@@ -62,47 +83,42 @@ const OpdRRecallPatient = () => {
     FolloUpDate: getToday(),
   });
 
-  const [labFlag, setLabFlag] = useState("")
-  const [radioFlag, setRadioFlag] = useState("")
+  const [labFlag, setLabFlag] = useState("");
+  const [radioFlag, setRadioFlag] = useState("");
 
   // Admission state
 
+  const [wardCategory, setWardCategory] = useState("");
+  const [wardCategories, setWardCategories] = useState([]);
 
-  const [wardCategory, setWardCategory] = useState("")
-  const [wardCategories, setWardCategories] = useState([])
+  const [admissionCareLevel, setAdmissionCareLevel] = useState("");
+  const [admissionCareLevelName, setAdmissionCareLevelName] = useState("");
 
-  const [admissionCareLevel, setAdmissionCareLevel] = useState("")
-  const [admissionCareLevelName, setAdmissionCareLevelName] = useState("")
+  const [wardDepartments, setWardDepartments] = useState([]);
+  const [wardName, setWardName] = useState("");
 
-  const [wardDepartments, setWardDepartments] = useState([])
-  const [wardName, setWardName] = useState("")
+  const [occupiedBeds, setOccupiedBeds] = useState("0");
+  const [vacantBeds, setVacantBeds] = useState("0");
 
-  const [occupiedBeds, setOccupiedBeds] = useState("0")
-  const [vacantBeds, setVacantBeds] = useState("0")
-
-
-
-  const [admissionDate, setAdmissionDate] = useState("")
-  const [admissionRemarks, setAdmissionRemarks] = useState("")
-  const [admissionPriority, setAdmissionPriority] = useState("Normal")
-  const [admissionAdvised, setAdmissionAdvised] = useState(false)
-  const [wardDepartment, setWardDepartment] = useState([])
-  const [careLevels, setCareLevels] = useState([])
+  const [admissionDate, setAdmissionDate] = useState("");
+  const [admissionRemarks, setAdmissionRemarks] = useState("");
+  const [admissionPriority, setAdmissionPriority] = useState("Normal");
+  const [admissionAdvised, setAdmissionAdvised] = useState(false);
+  const [wardDepartment, setWardDepartment] = useState([]);
+  const [careLevels, setCareLevels] = useState([]);
   const [admissionPriorities, setAdmissionPriorities] = useState([
-    "Normal", "Urgent", "Critical"
-  ])
-
+    "Normal",
+    "Urgent",
+    "Critical",
+  ]);
 
   const [drugDropdown, setDrugDropdown] = useState([]);
-const [drugSearch, setDrugSearch] = useState([]);
-const [drugPage, setDrugPage] = useState(0);
-const [drugLastPage, setDrugLastPage] = useState(true);
-const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
-const drugDebounceRef = useRef([]);
+  const [drugSearch, setDrugSearch] = useState([]);
+  const [drugPage, setDrugPage] = useState(0);
+  const [drugLastPage, setDrugLastPage] = useState(true);
+  const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
+  const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
-
-
-
 
   const fetchWardCategoryData = async () => {
     try {
@@ -120,19 +136,18 @@ const drugDebounceRef = useRef([]);
   const fetchWardData = async (categoryId) => {
     try {
       const data = await getRequest(
-        `${MASTERS}/ward-department/getAllBy/${categoryId}`
-      )
+        `${MASTERS}/ward-department/getAllBy/${categoryId}`,
+      );
 
       if (data.status === 200 && Array.isArray(data.response)) {
-        setWardDepartments(data.response)
+        setWardDepartments(data.response);
       } else {
-        setWardDepartments([])
+        setWardDepartments([]);
       }
     } catch (error) {
-      console.error("Error fetching Ward data:", error)
+      console.error("Error fetching Ward data:", error);
     }
-  }
-
+  };
 
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
@@ -147,166 +162,158 @@ const drugDebounceRef = useRef([]);
   };
 
   const handleWardCategoryChange = (categoryId) => {
-    setWardCategory(categoryId)
-    setWardName("")
-    setOccupiedBeds("0")
-    setVacantBeds("0")
-    setWardDepartments([])
+    setWardCategory(categoryId);
+    setWardName("");
+    setOccupiedBeds("0");
+    setVacantBeds("0");
+    setWardDepartments([]);
 
     const selectedCategory = wardCategories.find(
-      (cat) => cat.categoryId === categoryId
-    )
+      (cat) => cat.categoryId === categoryId,
+    );
 
     if (selectedCategory) {
       // store care id
-      setAdmissionCareLevel(selectedCategory.careId)
+      setAdmissionCareLevel(selectedCategory.careId);
 
       // show care level name
-      setAdmissionCareLevelName(selectedCategory.careLevelName)
+      setAdmissionCareLevelName(selectedCategory.careLevelName);
 
       // fetch ward list
-      fetchWardData(categoryId)
+      fetchWardData(categoryId);
     }
-  }
+  };
 
   const handleWardNameChange = (deptId) => {
-    setWardName(deptId)
+    setWardName(deptId);
 
-    const selectedWard = wardDepartments.find(
-      (dept) => dept.id === deptId
-    )
+    const selectedWard = wardDepartments.find((dept) => dept.id === deptId);
 
     if (selectedWard) {
-      setOccupiedBeds(selectedWard.occupiedBed)
-      setVacantBeds(selectedWard.vacantBed)
+      setOccupiedBeds(selectedWard.occupiedBed);
+      setVacantBeds(selectedWard.vacantBed);
     }
-  }
+  };
 
+  const fetchDrugOptions = async (searchText = "", page = 0) => {
+    try {
+      const response = await getRequest(
+        `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`,
+      );
 
-const fetchDrugOptions = async (searchText = "", page = 0) => {
-  try {
-    const response = await getRequest(
-      `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`
-    );
+      if (response.status === 200 && response.response?.content) {
+        return {
+          list: response.response.content,
+          last: response.response.last,
+        };
+      }
 
-    if (response.status === 200 && response.response?.content) {
-      return {
-        list: response.response.content,
-        last: response.response.last,
-      };
+      return { list: [], last: true };
+    } catch (err) {
+      console.error("Error fetching drug options:", err);
+      return { list: [], last: true };
     }
+  };
 
-    return { list: [], last: true };
-  } catch (err) {
-    console.error("Error fetching drug options:", err);
-    return { list: [], last: true };
-  }
-};
+  const handleDrugSearch = (value, index) => {
+    setDrugSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = value;
+      return updated;
+    });
 
+    if (drugDebounceRef.current[index])
+      clearTimeout(drugDebounceRef.current[index]);
 
-const handleDrugSearch = (value, index) => {
-  setDrugSearch((prev) => {
-    const updated = [...prev];
-    updated[index] = value;
-    return updated;
-  });
+    drugDebounceRef.current[index] = setTimeout(async () => {
+      if (!value.trim()) {
+        setDrugDropdown([]);
+        return;
+      }
 
-  if (drugDebounceRef.current[index]) clearTimeout(drugDebounceRef.current[index]);
+      const result = await fetchDrugOptions(value, 0);
+      setDrugDropdown(result.list);
+      setDrugLastPage(result.last);
+      setDrugPage(0);
+      setActiveDrugDropdown(index);
+    }, 700);
+  };
 
-  drugDebounceRef.current[index] = setTimeout(async () => {
-    if (!value.trim()) {
-      setDrugDropdown([]);
-      return;
-    }
+  const loadFirstDrugPage = async (index) => {
+    const searchText = drugSearch[index] || "";
+    const result = await fetchDrugOptions(searchText, 0);
 
-    const result = await fetchDrugOptions(value, 0);
     setDrugDropdown(result.list);
     setDrugLastPage(result.last);
     setDrugPage(0);
     setActiveDrugDropdown(index);
-  }, 700);
-};
+  };
 
+  const loadMoreDrugs = async () => {
+    if (drugLastPage || activeDrugDropdown === null) return;
 
-const loadFirstDrugPage = async (index) => {
-  const searchText = drugSearch[index] || "";
-  const result = await fetchDrugOptions(searchText, 0);
+    const nextPage = drugPage + 1;
+    const result = await fetchDrugOptions(
+      drugSearch[activeDrugDropdown] || "",
+      nextPage,
+    );
 
-  setDrugDropdown(result.list);
-  setDrugLastPage(result.last);
-  setDrugPage(0);
-  setActiveDrugDropdown(index);
-};
+    setDrugDropdown((prev) => [...prev, ...result.list]);
+    setDrugLastPage(result.last);
+    setDrugPage(nextPage);
+  };
 
+  const updateDrug = (selectedDrug, index) => {
+    if (!selectedDrug) return;
 
+    const isDuplicate = treatmentItems.some(
+      (item, i) => item.drugId === selectedDrug.itemId && i !== index,
+    );
 
-const loadMoreDrugs = async () => {
-  if (drugLastPage || activeDrugDropdown === null) return;
+    if (isDuplicate) {
+      setDuplicateItems([selectedDrug]);
+      setShowDuplicatePopup(true);
+      return;
+    }
 
-  const nextPage = drugPage + 1;
-  const result = await fetchDrugOptions(drugSearch[activeDrugDropdown] || "", nextPage);
-
-  setDrugDropdown((prev) => [...prev, ...result.list]);
-  setDrugLastPage(result.last);
-  setDrugPage(nextPage);
-};
-
-
-
-const updateDrug = (selectedDrug, index) => {
-  if (!selectedDrug) return;
-
-  const isDuplicate = treatmentItems.some(
-    (item, i) => item.drugId === selectedDrug.itemId && i !== index
-  );
-
-  if (isDuplicate) {
-    setDuplicateItems([selectedDrug]);
-    setShowDuplicatePopup(true);
-    return;
-  }
-
-  setTreatmentItems((prev) => {
-    const updated = [...prev];
-    updated[index] = {
-      ...updated[index],
-      drugName: selectedDrug.nomenclature,
-      dispUnit: selectedDrug.dispUnitName,
-      drugId: selectedDrug.itemId,
-      itemClassId: selectedDrug.itemClassId,
-      aDispQty: selectedDrug.aDispQty ?? 1,
-      total: calculateTotal({
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
         ...updated[index],
+        drugName: selectedDrug.nomenclature,
+        dispUnit: selectedDrug.dispUnitName,
+        drugId: selectedDrug.itemId,
+        itemClassId: selectedDrug.itemClassId,
         aDispQty: selectedDrug.aDispQty ?? 1,
-      }),
-    };
-    return updated;
-  });
+        total: calculateTotal({
+          ...updated[index],
+          aDispQty: selectedDrug.aDispQty ?? 1,
+        }),
+      };
+      return updated;
+    });
 
-  setActiveDrugDropdown(null);
-};
-
-
-
+    setActiveDrugDropdown(null);
+  };
 
   const fetchAllFrequencies = async () => {
     try {
-      const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`)
+      const response = await getRequest(`${MAS_FREQUENCY}/getAll/1`);
       if (response && response.response) {
-        setAllFrequencies(response.response)
+        setAllFrequencies(response.response);
       } else {
-        setAllFrequencies([])
+        setAllFrequencies([]);
       }
     } catch (error) {
-      console.error("Error fetching frequencies:", error)
-      setAllFrequencies([])
+      console.error("Error fetching frequencies:", error);
+      setAllFrequencies([]);
     }
-  }
+  };
 
   const fetchMasProcedureData = async (page, searchText = "") => {
     try {
       const data = await getRequest(
-        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+        `${MASTERS}/masProcedureFilter/getAll?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
       );
 
       if (data.status === 200 && data.response?.content) {
@@ -323,7 +330,6 @@ const updateDrug = (selectedDrug, index) => {
     }
   };
 
-
   const loadProcedureFirstPage = async (index) => {
     const searchText = procedureSearch[index] || "";
     const result = await fetchMasProcedureData(0, searchText);
@@ -333,12 +339,14 @@ const updateDrug = (selectedDrug, index) => {
     setProcedurePage(0);
   };
 
-
   const loadMoreProcedure = async () => {
     if (procedureLastPage) return;
 
     const nextPage = procedurePage + 1;
-    const result = await fetchMasProcedureData(nextPage, procedureSearch[openProcedureDropdown] || "");
+    const result = await fetchMasProcedureData(
+      nextPage,
+      procedureSearch[openProcedureDropdown] || "",
+    );
 
     setProcedureDropdown((prev) => [...prev, ...result.list]);
     setProcedureLastPage(result.last);
@@ -351,7 +359,8 @@ const updateDrug = (selectedDrug, index) => {
     // prevent duplicate procedureId
     const exists = procedureCareItems.some(
       (item, idx) =>
-        String(item.procedureId) === String(selected.procedureId) && idx !== index
+        String(item.procedureId) === String(selected.procedureId) &&
+        idx !== index,
     );
 
     if (exists) {
@@ -365,7 +374,7 @@ const updateDrug = (selectedDrug, index) => {
       updated[index] = {
         ...updated[index],
         procedureId: selected.procedureId,
-        procedureName: selected.procedureName
+        procedureName: selected.procedureName,
       };
       return updated;
     });
@@ -378,14 +387,12 @@ const updateDrug = (selectedDrug, index) => {
     });
   };
 
-
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       const refs = procedureDropdownRef.current;
 
       const clickedInside = refs.some(
-        (ref) => ref && ref.contains && ref.contains(e.target)
+        (ref) => ref && ref.contains && ref.contains(e.target),
       );
 
       if (!clickedInside) {
@@ -397,11 +404,10 @@ const updateDrug = (selectedDrug, index) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
   const fetchMasICDData = async (page, searchText = "") => {
     try {
       const data = await getRequest(
-        `${MASTERS}/masIcd/all?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`
+        `${MASTERS}/masIcd/all?flag=0&page=${page}&size=20&search=${encodeURIComponent(searchText)}`,
       );
 
       if (data.status === 200 && data.response?.content) {
@@ -426,7 +432,6 @@ const updateDrug = (selectedDrug, index) => {
     setLastPage(result.last);
     setPage(0);
   };
-
 
   const handleIcdSearch = (value, index) => {
     // Update text
@@ -455,33 +460,28 @@ const updateDrug = (selectedDrug, index) => {
     }, 700);
   };
 
-
   const loadMore = async () => {
     if (lastPage || openDropdown === null) return;
 
     const nextPage = page + 1;
-    const result = await fetchMasICDData(
-      nextPage,
-      search[openDropdown] || ""
-    );
+    const result = await fetchMasICDData(nextPage, search[openDropdown] || "");
 
     setIcdDropdown((prev) => [...prev, ...result.list]);
     setLastPage(result.last);
     setPage(nextPage);
   };
 
-
   const updateICD = (selectedICD, index) => {
     if (!selectedICD) return;
 
     const exists = diagnosisItems.some(
       (item, idx) =>
-        String(item.icdDiagId) === String(selectedICD.icdId) && idx !== index
+        String(item.icdDiagId) === String(selectedICD.icdId) && idx !== index,
     );
 
     if (exists) {
       setDuplicateItems([
-        { icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}` }
+        { icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}` },
       ]);
       setShowDuplicatePopup(true);
       return;
@@ -504,7 +504,6 @@ const updateDrug = (selectedDrug, index) => {
     });
   };
 
-
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target)) {
@@ -515,18 +514,15 @@ const updateDrug = (selectedDrug, index) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-
   const [investigationDropdown, setInvestigationDropdown] = useState([]);
   const [investigationSearch, setInvestigationSearch] = useState([]);
   const [investigationPage, setInvestigationPage] = useState(0);
   const [investigationLastPage, setInvestigationLastPage] = useState(true);
-  const [openInvestigationDropdown, setOpenInvestigationDropdown] = useState(null);
+  const [openInvestigationDropdown, setOpenInvestigationDropdown] =
+    useState(null);
 
   const debounceInvestigationRef = useRef([]);
   const dropdownInvestigationRef = useRef(null);
-
-
 
   const fetchOpdTemplateData = async () => {
     try {
@@ -557,10 +553,10 @@ const updateDrug = (selectedDrug, index) => {
       return;
     }
 
-    const newNames = selectedItems.map(x => x.name);
+    const newNames = selectedItems.map((x) => x.name);
 
     const mergeValues = (oldValue, newValues) => {
-      const oldArr = oldValue ? oldValue.split(",").map(x => x.trim()) : [];
+      const oldArr = oldValue ? oldValue.split(",").map((x) => x.trim()) : [];
       const merged = Array.from(new Set([...oldArr, ...newValues]));
       return merged.join(", ");
     };
@@ -587,28 +583,23 @@ const updateDrug = (selectedDrug, index) => {
     }
 
     if (popupType === "treatmentAdvice") {
-      setGeneralTreatmentAdvice(prev =>
-        mergeValues(prev, newNames)
-      );
+      setGeneralTreatmentAdvice((prev) => mergeValues(prev, newNames));
     }
 
     if (popupType === "doctorRemark") {
-      setDoctorRemarksText(prev =>
-        mergeValues(prev, newNames)
-      );
+      setDoctorRemarksText((prev) => mergeValues(prev, newNames));
     }
 
     setModelShowPopup(false);
     setSelectedItems([]);
   };
 
-
   const handleSelect = (item) => {
-    setSelectedItems(prev => {
-      const exists = prev.find(x => x.id === item.id);
+    setSelectedItems((prev) => {
+      const exists = prev.find((x) => x.id === item.id);
 
       if (exists) {
-        return prev.filter(x => x.id !== item.id);
+        return prev.filter((x) => x.id !== item.id);
       }
 
       return [...prev, item];
@@ -622,7 +613,9 @@ const updateDrug = (selectedDrug, index) => {
   useEffect(() => {
     if (activeDrugNameDropdown !== null) {
       const container = tableContainerRef.current;
-      const inputEl = document.getElementById(`drug-name-${activeDrugNameDropdown}`);
+      const inputEl = document.getElementById(
+        `drug-name-${activeDrugNameDropdown}`,
+      );
       const dropdownHeight = 200;
 
       if (container && inputEl) {
@@ -630,7 +623,8 @@ const updateDrug = (selectedDrug, index) => {
         const containerRect = container.getBoundingClientRect();
 
         if (inputRect.bottom + dropdownHeight > containerRect.bottom) {
-          container.scrollTop += (inputRect.bottom + dropdownHeight) - containerRect.bottom + 10;
+          container.scrollTop +=
+            inputRect.bottom + dropdownHeight - containerRect.bottom + 10;
         }
       }
     }
@@ -661,22 +655,31 @@ const updateDrug = (selectedDrug, index) => {
 
   const fetchOpdPatientData = async () => {
     setLoading(true);
+
     try {
       const params = new URLSearchParams();
 
-      if (searchFilters.mobileNumber) params.append("mobile", searchFilters.mobileNumber);
-      if (searchFilters.patientName) params.append("name", searchFilters.patientName);
+      if (searchFilters.mobileNumber)
+        params.append("mobile", searchFilters.mobileNumber);
+
+      if (searchFilters.patientName)
+        params.append("name", searchFilters.patientName);
+
       if (searchFilters.date) params.append("visitDate", searchFilters.date);
 
-      const data = await getRequest(`${OPD_PATIENT}/recallVisit?${params.toString()}`);
+      const data = await getRequest(
+        `${GET_RECALL_OPD_PATIENTS_LIST}?${params.toString()}`,
+      );
 
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setRecallPatientOpd(data.response);
+      console.log(data);
+
+      if (data.status === 200 && Array.isArray(data.response?.content)) {
+        setRecallPatientOpd(data.response.content);
       } else {
         setRecallPatientOpd([]);
       }
     } catch (error) {
-      console.error("Error fetching Doctor data:", error);
+      console.error("Error fetching OPD patient data:", error);
     } finally {
       setLoading(false);
     }
@@ -694,14 +697,15 @@ const updateDrug = (selectedDrug, index) => {
   const handleClearAllTreatmentTemplates = () => {
     setSelectedTreatmentTemplateIds(new Set());
 
-    setTreatmentItems(prev => {
-      const updated = prev.filter(item => {
-        const tpl = (item.templateId ?? "").trim();
-        if (item.treatmentId !== null) return true;
-        if (tpl === "") return true;
-        return false;
-      })
-        .map(item => {
+    setTreatmentItems((prev) => {
+      const updated = prev
+        .filter((item) => {
+          const tpl = (item.templateId ?? "").trim();
+          if (item.treatmentId !== null) return true;
+          if (tpl === "") return true;
+          return false;
+        })
+        .map((item) => {
           if (item.treatmentId !== null) {
             return { ...item, templateId: "" };
           }
@@ -721,8 +725,8 @@ const updateDrug = (selectedDrug, index) => {
             total: "",
             instruction: "",
             stock: "",
-            templateId: ""
-          }
+            templateId: "",
+          },
         ];
       }
 
@@ -731,35 +735,35 @@ const updateDrug = (selectedDrug, index) => {
   };
 
   const handleRemoveTreatmentTemplateItems = (templateId) => {
-    setTreatmentItems(prev =>
+    setTreatmentItems((prev) =>
       prev
-        .map(item => {
+        .map((item) => {
           if (!item.templateId) return item;
 
           const ids = item.templateId
             .split(",")
-            .filter(id => id !== String(templateId));
+            .filter((id) => id !== String(templateId));
 
           if (item.treatmentId != null) {
             return {
               ...item,
-              templateId: ids.join(",")
+              templateId: ids.join(","),
             };
           }
 
           if (ids.length > 0) {
             return {
               ...item,
-              templateId: ids.join(",")
+              templateId: ids.join(","),
             };
           }
 
           return null;
         })
-        .filter(item => item !== null)
+        .filter((item) => item !== null),
     );
 
-    setSelectedTreatmentTemplateIds(prev => {
+    setSelectedTreatmentTemplateIds((prev) => {
       const updated = new Set(prev);
       updated.delete(templateId);
       return updated;
@@ -780,31 +784,31 @@ const updateDrug = (selectedDrug, index) => {
         return;
       }
 
-      const icdObjList = diagnosisItems.map(item => ({
+      const icdObjList = diagnosisItems.map((item) => ({
         id: item.id,
         icdId: item.icdDiagId ?? null,
-        icdDiagName: item.icdDiagnosis || ""
+        icdDiagName: item.icdDiagnosis || "",
       }));
 
       const icdDiagnosisStr = diagnosisItems
-        .map(item => item.icdDiagnosis?.trim())
-        .filter(v => v?.length > 0)
+        .map((item) => item.icdDiagnosis?.trim())
+        .filter((v) => v?.length > 0)
         .join(",");
 
       const invalidInvestigation = investigationItems.some(
-        (item) => item.name?.trim() && !item.investigationId
+        (item) => item.name?.trim() && !item.investigationId,
       );
 
       if (invalidInvestigation) {
         showPopup(
           "Please select a valid investigation from the dropdown before saving.",
-          "error"
+          "error",
         );
         return;
       }
 
       const validInvestigationItems = investigationItems.filter(
-        (item) => item.investigationId
+        (item) => item.investigationId,
       );
 
       const payload = {
@@ -817,19 +821,28 @@ const updateDrug = (selectedDrug, index) => {
         treatments: treatmentItems,
         // procedureCare: procedureCareItems,
         followUpFlag: followUps.followUpFlag ? "y" : "n",
-        followUpDate: followUps.FolloUpDate ? new Date(followUps.FolloUpDate).toISOString() : null,
+        followUpDate: followUps.FolloUpDate
+          ? new Date(followUps.FolloUpDate).toISOString()
+          : null,
         followUpDays: Number(followUps.noOfFollowDays),
         // ===== Admission Details =====
         admissionFlag: admissionAdvised ? "y" : "n",
-        admissionAdvisedDate: admissionAdvised && admissionDate ? new Date(admissionDate).toISOString() : null,
+        admissionAdvisedDate:
+          admissionAdvised && admissionDate
+            ? new Date(admissionDate).toISOString()
+            : null,
         admissionRemarks: additionalAdvice || null,
-        admissionCareLevel: admissionAdvised ? Number(admissionCareLevel) : null,
+        admissionCareLevel: admissionAdvised
+          ? Number(admissionCareLevel)
+          : null,
         admissionWardCategory: admissionAdvised ? Number(wardCategory) : null,
         admissionWard: admissionAdvised ? Number(wardName) : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
         referralRemarks: referralNotes,
-        referralDate: referralData.referralDate ? new Date(referralData.referralDate).toISOString() : null,
+        referralDate: referralData.referralDate
+          ? new Date(referralData.referralDate).toISOString()
+          : null,
         investigations: validInvestigationItems,
         labFlag: labFlag,
         radioFlag: radioFlag,
@@ -843,21 +856,21 @@ const updateDrug = (selectedDrug, index) => {
         visitId: selectedPatient.visitId,
         departmentId: selectedPatient.deptId,
         hospitalId: selectedPatient.hospitalId ?? null,
-        doctorId: selectedPatient.docterId
+        doctorId: selectedPatient.docterId,
       };
 
-      const response = await putRequest(`${OPD_PATIENT}/update-recall-patient`, payload);
+      const response = await putRequest(
+        `${OPD_PATIENT}/update-recall-patient`,
+        payload,
+      );
 
       if (response?.status === 200 || response?.success === true) {
-        showPopup(
-          "Recall patient updated successfully!",
-          "success",
-          () => handleBackWithFatch()
+        showPopup("Recall patient updated successfully!", "success", () =>
+          handleBackWithFatch(),
         );
       } else {
         alert("Updated but unexpected response received.");
       }
-
     } catch (error) {
       console.error("Update Error:", error);
       showPopup("Failed to update. Please try again.", "error");
@@ -872,19 +885,24 @@ const updateDrug = (selectedDrug, index) => {
   };
 
   // Modal states
-  const [showInvestigationModal, setShowInvestigationModal] = useState(false)
-  const [showTreatmentModal, setShowTreatmentModal] = useState(false)
-  const [investigationModalType, setInvestigationModalType] = useState("create")
-  const [treatmentModalType, setTreatmentModalType] = useState("create")
-  const [investigationType, setInvestigationType] = useState(null)
-  const [procedureCareType, setProcedureCareType] = useState("procedure")
-  const [investigationTemplates, setInvestigationTemplates] = useState([])
-  const [selectedInvestigationTemplate, setSelectedInvestigationTemplate] = useState("Select..")
-  const [investigationTemplateLoading, setInvestigationTemplateLoading] = useState(false)
-  const [allInvestigations, setAllInvestigations] = useState([])
-  const [filteredInvestigationsByType, setFilteredInvestigationsByType] = useState([])
-  const [investigationTypes, setInvestigationTypes] = useState([])
-  const [activeInvestigationRowIndex, setActiveInvestigationRowIndex] = useState(null)
+  const [showInvestigationModal, setShowInvestigationModal] = useState(false);
+  const [showTreatmentModal, setShowTreatmentModal] = useState(false);
+  const [investigationModalType, setInvestigationModalType] =
+    useState("create");
+  const [treatmentModalType, setTreatmentModalType] = useState("create");
+  const [investigationType, setInvestigationType] = useState(null);
+  const [procedureCareType, setProcedureCareType] = useState("procedure");
+  const [investigationTemplates, setInvestigationTemplates] = useState([]);
+  const [selectedInvestigationTemplate, setSelectedInvestigationTemplate] =
+    useState("Select..");
+  const [investigationTemplateLoading, setInvestigationTemplateLoading] =
+    useState(false);
+  const [allInvestigations, setAllInvestigations] = useState([]);
+  const [filteredInvestigationsByType, setFilteredInvestigationsByType] =
+    useState([]);
+  const [investigationTypes, setInvestigationTypes] = useState([]);
+  const [activeInvestigationRowIndex, setActiveInvestigationRowIndex] =
+    useState(null);
 
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
@@ -901,9 +919,9 @@ const updateDrug = (selectedDrug, index) => {
     followUp: false,
     doctorRemark: false,
     remarks: false,
-  })
+  });
 
-  const [selectedHistoryType, setSelectedHistoryType] = useState("")
+  const [selectedHistoryType, setSelectedHistoryType] = useState("");
 
   const [formData, setFormData] = useState({
     height: "",
@@ -921,36 +939,38 @@ const updateDrug = (selectedDrug, index) => {
     pastHistory: "",
     familyHistory: "",
     mlcCase: false,
-  })
+  });
 
-  const [errors, setErrors] = useState({})
+  const [errors, setErrors] = useState({});
 
-  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false)
-  const [showUpdateTemplateModal, setShowUpdateTemplateModal] = useState(false)
-  const [showTreatmentAdviceModal, setShowTreatmentAdviceModal] = useState(false)
-  const [treatmentAdviceModalType, setTreatmentAdviceModalType] = useState("")
-  const [selectedTemplate, setSelectedTemplate] = useState("Select..")
-  const [templateName, setTemplateName] = useState("")
+  const [showCreateTemplateModal, setShowCreateTemplateModal] = useState(false);
+  const [showUpdateTemplateModal, setShowUpdateTemplateModal] = useState(false);
+  const [showTreatmentAdviceModal, setShowTreatmentAdviceModal] =
+    useState(false);
+  const [treatmentAdviceModalType, setTreatmentAdviceModalType] = useState("");
+  const [selectedTemplate, setSelectedTemplate] = useState("Select..");
+  const [templateName, setTemplateName] = useState("");
   const [investigationItems, setInvestigationItems] = useState([
     {
       id: null,
       investigationId: "",
       templateIds: [],
       name: "",
-      date: getToday()
-    }
+      date: getToday(),
+    },
   ]);
-  const [updateTemplateSelection, setUpdateTemplateSelection] = useState("Select..")
-  const [templateType, setTemplateType] = useState("")
-  const [dropdownVisible, setDropdownVisible] = useState(false)
+  const [updateTemplateSelection, setUpdateTemplateSelection] =
+    useState("Select..");
+  const [templateType, setTemplateType] = useState("");
+  const [dropdownVisible, setDropdownVisible] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({
     x: 0,
     y: 0,
     height: 0,
-  })
-  const [dropdownWidth, setDropdownWidth] = useState(0)
+  });
+  const [dropdownWidth, setDropdownWidth] = useState(0);
 
-  const [workingDiagnosis, setWorkingDiagnosis] = useState("")
+  const [workingDiagnosis, setWorkingDiagnosis] = useState("");
 
   const [diagnosisItems, setDiagnosisItems] = useState([
     {
@@ -960,16 +980,20 @@ const updateDrug = (selectedDrug, index) => {
       communicableDisease: false,
       infectiousDisease: false,
     },
-  ])
+  ]);
 
-  const [templates, setTemplates] = useState(["Blood Test Template", "Cardiac Template", "Diabetes Template"])
+  const [templates, setTemplates] = useState([
+    "Blood Test Template",
+    "Cardiac Template",
+    "Diabetes Template",
+  ]);
   const [treatmentAdviceTemplates, setTreatmentAdviceTemplates] = useState([
     "MEDICINES TO BE REPEATED AT FAC",
     "WARM WATER GARGLING, WITH/WITHOUT",
     "REVIEW AFTER 3 MONTHS WITH - FBS - P",
     "REVIEW AFTER 3 MONTHS",
     "REVIEW AFTER 6 MONTHS",
-  ])
+  ]);
 
   const [treatmentItems, setTreatmentItems] = useState([
     {
@@ -984,16 +1008,18 @@ const updateDrug = (selectedDrug, index) => {
       instruction: "",
       stock: "",
       templateId: "",
-    }
+    },
   ]);
 
-  console.log("treat", treatmentItems)
+  console.log("treat", treatmentItems);
 
-  const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("")
-  const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("")
-  const [procedureTreatmentAdvice, setProcedureTreatmentAdvice] = useState("")
-  const [physiotherapyTreatmentAdvice, setPhysiotherapyTreatmentAdvice] = useState("")
-  const [selectedTreatmentAdviceItems, setSelectedTreatmentAdviceItems] = useState([])
+  const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("");
+  const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("");
+  const [procedureTreatmentAdvice, setProcedureTreatmentAdvice] = useState("");
+  const [physiotherapyTreatmentAdvice, setPhysiotherapyTreatmentAdvice] =
+    useState("");
+  const [selectedTreatmentAdviceItems, setSelectedTreatmentAdviceItems] =
+    useState([]);
 
   const [procedureDropdown, setProcedureDropdown] = useState([]);
   const [procedurePage, setProcedurePage] = useState(0);
@@ -1008,15 +1034,14 @@ const updateDrug = (selectedDrug, index) => {
       procedureName: "",
       frequencyId: null,
       noOfDays: "",
-      remarks: ""
-    }
+      remarks: "",
+    },
   ]);
 
   // store deleted ids
   const [deletedProcedureCareIds, setDeletedProcedureCareIds] = useState([]);
 
-  console.log("procedureCareItems", procedureCareItems)
-
+  console.log("procedureCareItems", procedureCareItems);
 
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
@@ -1025,13 +1050,14 @@ const updateDrug = (selectedDrug, index) => {
       days: "",
       remarks: "",
     },
-  ])
+  ]);
 
-  const [surgeryType, setSurgeryType] = useState("major")
-  const [surgerySearchInput, setSurgerySearchInput] = useState("")
-  const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] = useState(false)
-  const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null)
-  const [additionalAdvice, setAdditionalAdvice] = useState("")
+  const [surgeryType, setSurgeryType] = useState("major");
+  const [surgerySearchInput, setSurgerySearchInput] = useState("");
+  const [isSurgeryDropdownVisible, setIsSurgeryDropdownVisible] =
+    useState(false);
+  const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null);
+  const [additionalAdvice, setAdditionalAdvice] = useState("");
 
   // Referral state
   const [referralData, setReferralData] = useState({
@@ -1047,16 +1073,16 @@ const updateDrug = (selectedDrug, index) => {
     treatmentType: "OPD",
     referredFor: "",
     hospital: "",
-  })
+  });
 
   const [departmentData, setDepartmentData] = useState([
     {
       selected: false,
       doctor: "Select",
-    }
-  ])
+    },
+  ]);
 
-  const [referralNotes, setReferralNotes] = useState("")
+  const [referralNotes, setReferralNotes] = useState("");
 
   const surgeryOptions = [
     { id: 1, name: "Appendectomy", code: "APD" },
@@ -1064,88 +1090,90 @@ const updateDrug = (selectedDrug, index) => {
     { id: 3, name: "Hernia Repair", code: "HER" },
     { id: 4, name: "Hysterectomy", code: "HYS" },
     { id: 5, name: "Prostatectomy", code: "PRO" },
-  ]
+  ];
 
   const [surgeryItems, setSurgeryItems] = useState([
     {
       surgery: "",
       selected: false,
     },
-  ])
+  ]);
 
-  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] = useState("");
+  const [selectedBloodTestTemplate, setSelectedBloodTestTemplate] =
+    useState("");
 
-  const itemsPerPage = 5
+  const itemsPerPage = 5;
 
   // Track selected templates to prevent duplicates
-  const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set())
+  const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set());
 
   // Modal handlers
   const handleOpenInvestigationModal = (type = "create") => {
-    setInvestigationModalType(type)
-    setShowInvestigationModal(true)
-  }
+    setInvestigationModalType(type);
+    setShowInvestigationModal(true);
+  };
 
   const handleCloseInvestigationModal = () => {
-    setShowInvestigationModal(false)
-    setInvestigationModalType("create")
-  }
+    setShowInvestigationModal(false);
+    setInvestigationModalType("create");
+  };
 
   const handleOpenTreatmentModal = (type = "create") => {
-    setTreatmentModalType(type)
-    setShowTreatmentModal(true)
-  }
+    setTreatmentModalType(type);
+    setShowTreatmentModal(true);
+  };
 
   const handleCloseTreatmentModal = () => {
-    setShowTreatmentModal(false)
-    setTreatmentModalType("create")
-  }
+    setShowTreatmentModal(false);
+    setTreatmentModalType("create");
+  };
 
   const handleOpenCurrentMedicationModal = () => {
-    setShowCurrentMedicationModal(true)
-  }
+    setShowCurrentMedicationModal(true);
+  };
 
   const handleCloseCurrentMedicationModal = () => {
-    setShowCurrentMedicationModal(false)
-  }
-
+    setShowCurrentMedicationModal(false);
+  };
 
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (!e.target.closest(".form-control")) {
-        setDropdownVisible(false)
+        setDropdownVisible(false);
       }
-    }
-    window.addEventListener("click", handleClickOutside)
-    return () => window.removeEventListener("click", handleClickOutside)
-  }, [])
+    };
+    window.addEventListener("click", handleClickOutside);
+    return () => window.removeEventListener("click", handleClickOutside);
+  }, []);
 
   const fetchInvestigationTypes = async () => {
-    const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES)
+    const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES);
     if (res?.response) {
-      setInvestigationTypes(res.response)
+      setInvestigationTypes(res.response);
     }
-  }
+  };
   useEffect(() => {
     fetchInvestigationTypes();
   }, []);
 
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
-      setInvestigationTemplateLoading(true)
-      const response = await getRequest(`${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}`)
+      setInvestigationTemplateLoading(true);
+      const response = await getRequest(
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}`,
+      );
       if (response && response.response) {
-        setInvestigationTemplates(response.response)
+        setInvestigationTemplates(response.response);
       } else {
-        setInvestigationTemplates([])
+        setInvestigationTemplates([]);
       }
     } catch (error) {
-      console.error("Error fetching investigation templates:", error)
-      setInvestigationTemplates([])
+      console.error("Error fetching investigation templates:", error);
+      setInvestigationTemplates([]);
     } finally {
-      setInvestigationTemplateLoading(false)
+      setInvestigationTemplateLoading(false);
     }
-  }
+  };
 
   const fetchInvestigations = async (page, searchText = "") => {
     try {
@@ -1184,8 +1212,6 @@ const updateDrug = (selectedDrug, index) => {
     setInvestigationPage(0);
   };
 
-
-
   const handleInvestigationSearch = (value, index) => {
     setInvestigationItems((prev) => {
       const updated = [...prev];
@@ -1221,21 +1247,19 @@ const updateDrug = (selectedDrug, index) => {
     }, 700);
   };
 
-
   const loadMoreInvestigations = async () => {
     if (investigationLastPage || openInvestigationDropdown === null) return;
 
     const nextPage = investigationPage + 1;
     const result = await fetchInvestigations(
       nextPage,
-      investigationSearch[openInvestigationDropdown] || ""
+      investigationSearch[openInvestigationDropdown] || "",
     );
 
     setInvestigationDropdown((prev) => [...prev, ...result.list]);
     setInvestigationLastPage(result.last);
     setInvestigationPage(nextPage);
   };
-
 
   const updateInvestigation = (selected, index) => {
     if (!selected) return;
@@ -1259,10 +1283,12 @@ const updateDrug = (selectedDrug, index) => {
     setOpenInvestigationDropdown(null);
   };
 
-
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (dropdownInvestigationRef.current && !dropdownInvestigationRef.current.contains(e.target)) {
+      if (
+        dropdownInvestigationRef.current &&
+        !dropdownInvestigationRef.current.contains(e.target)
+      ) {
         setOpenInvestigationDropdown(null);
       }
     };
@@ -1271,39 +1297,49 @@ const updateDrug = (selectedDrug, index) => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-
-  console.log("allInvestigations", allInvestigations)
+  console.log("allInvestigations", allInvestigations);
 
   const filterInvestigationsByMainChargeCode = () => {
     if (!investigationType || allInvestigations.length === 0) {
-      setFilteredInvestigationsByType([])
-      return
+      setFilteredInvestigationsByType([]);
+      return;
     }
 
-    const selectedType = investigationTypes.find(type => type.value === investigationType)
+    const selectedType = investigationTypes.find(
+      (type) => type.value === investigationType,
+    );
     if (selectedType) {
-      const filtered = allInvestigations.filter(inv => inv.mainChargeCodeId === selectedType.id)
-      setFilteredInvestigationsByType(filtered)
+      const filtered = allInvestigations.filter(
+        (inv) => inv.mainChargeCodeId === selectedType.id,
+      );
+      setFilteredInvestigationsByType(filtered);
     } else {
-      setFilteredInvestigationsByType([])
+      setFilteredInvestigationsByType([]);
     }
-  }
+  };
 
   const filterInvestigationsBySearch = (searchQuery) => {
     if (!searchQuery.trim()) {
-      return filteredInvestigationsByType.slice(0, 5)
+      return filteredInvestigationsByType.slice(0, 5);
     }
 
     const filtered = filteredInvestigationsByType
-      .filter(inv =>
-        inv.investigationName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inv.mainChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        inv.subChargeCodeName?.toLowerCase().includes(searchQuery.toLowerCase())
+      .filter(
+        (inv) =>
+          inv.investigationName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          inv.mainChargeCodeName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()) ||
+          inv.subChargeCodeName
+            ?.toLowerCase()
+            .includes(searchQuery.toLowerCase()),
       )
-      .slice(0, 5)
+      .slice(0, 5);
 
-    return filtered
-  }
+    return filtered;
+  };
 
   const handleInvestigationTemplateSelect = (template) => {
     const templateId = template.templateId;
@@ -1315,7 +1351,7 @@ const updateDrug = (selectedDrug, index) => {
       return;
     }
 
-    setSelectedTemplateIds(prev => new Set([...prev, templateId]));
+    setSelectedTemplateIds((prev) => new Set([...prev, templateId]));
     setSelectedInvestigationTemplate(templateId);
 
     if (!template.investigationResponseList) {
@@ -1325,14 +1361,14 @@ const updateDrug = (selectedDrug, index) => {
 
     let duplicateItemsBuffer = [];
 
-    setInvestigationItems(prev => {
+    setInvestigationItems((prev) => {
       const updated = [...prev];
 
       const existingMap = new Map(
-        prev.map(item => [item.investigationId, item])
+        prev.map((item) => [item.investigationId, item]),
       );
 
-      template.investigationResponseList.forEach(item => {
+      template.investigationResponseList.forEach((item) => {
         const existing = existingMap.get(item.investigationId);
 
         if (existing) {
@@ -1343,30 +1379,30 @@ const updateDrug = (selectedDrug, index) => {
 
           if (!templateIds.includes(templateId)) {
             const index = updated.findIndex(
-              i => i.investigationId === item.investigationId
+              (i) => i.investigationId === item.investigationId,
             );
 
             updated[index] = {
               ...existing,
-              templateIds: [...templateIds, templateId]
+              templateIds: [...templateIds, templateId],
             };
           }
 
           duplicateItemsBuffer.push({
             investigationId: item.investigationId,
-            investigationName:
-              existing.name ?? item.investigationName
+            investigationName: existing.name ?? item.investigationName,
           });
-
         } else {
           // ✅ Always initialize templateIds
           updated.push({
             id: null,
-            name: item.investigationName ?? `Investigation #${item.investigationId}`,
+            name:
+              item.investigationName ??
+              `Investigation #${item.investigationId}`,
             date: getToday(),
             investigationId: item.investigationId,
             templateSource: template.opdTemplateName,
-            templateIds: [templateId]
+            templateIds: [templateId],
           });
         }
       });
@@ -1377,8 +1413,8 @@ const updateDrug = (selectedDrug, index) => {
     setTimeout(() => {
       const unique = Array.from(
         new Map(
-          duplicateItemsBuffer.map(d => [d.investigationId, d])
-        ).values()
+          duplicateItemsBuffer.map((d) => [d.investigationId, d]),
+        ).values(),
       );
 
       if (unique.length > 0) {
@@ -1390,12 +1426,11 @@ const updateDrug = (selectedDrug, index) => {
     }, 50);
   };
 
-
   const handleClearAllTemplates = () => {
     setSelectedTemplateIds(new Set());
 
-    setInvestigationItems(prevItems => {
-      return prevItems.filter(item => {
+    setInvestigationItems((prevItems) => {
+      return prevItems.filter((item) => {
         const ids = item.templateIds ?? [];
 
         if (item.id !== null) return true;
@@ -1406,22 +1441,23 @@ const updateDrug = (selectedDrug, index) => {
   };
 
   const handleRemoveTemplateItems = (templateId) => {
-    setSelectedTemplateIds(prev => {
+    setSelectedTemplateIds((prev) => {
       const newSet = new Set(prev);
       newSet.delete(templateId);
       return newSet;
     });
 
-    setInvestigationItems(prev => {
+    setInvestigationItems((prev) => {
       return prev
-        .map(item => {
-          const newTemplateIds = item.templateIds?.filter(id => id !== templateId) || [];
+        .map((item) => {
+          const newTemplateIds =
+            item.templateIds?.filter((id) => id !== templateId) || [];
           return {
             ...item,
-            templateIds: newTemplateIds
+            templateIds: newTemplateIds,
           };
         })
-        .filter(item => {
+        .filter((item) => {
           if (item.templateIds.length === 0 && item.id === null) return false;
           return true;
         });
@@ -1431,15 +1467,15 @@ const updateDrug = (selectedDrug, index) => {
   const handleInvestigationSelect = (index, investigation) => {
     const duplicate = investigationItems.find(
       (item, idx) =>
-        idx !== index && item.investigationId === investigation.investigationId
+        idx !== index && item.investigationId === investigation.investigationId,
     );
 
     if (duplicate) {
       setDuplicateItems([
         {
           investigationId: investigation.investigationId,
-          investigationName: investigation.investigationName
-        }
+          investigationName: investigation.investigationName,
+        },
       ]);
       setShowDuplicatePopup(true);
       const newItems = [...investigationItems];
@@ -1466,29 +1502,28 @@ const updateDrug = (selectedDrug, index) => {
   // Referral handlers
   const handleReferralChange = (field, value) => {
     if (field === "isReferred" && value === "No") {
-      setReferralData(prev => ({
+      setReferralData((prev) => ({
         ...prev,
         isReferred: "No",
         referralDate: "",
       }));
       setReferralNotes("");
     } else {
-      setReferralData(prev => ({
+      setReferralData((prev) => ({
         ...prev,
         [field]: value,
       }));
     }
   };
 
-
   const handleDepartmentChange = (index, field, value) => {
-    const newData = [...departmentData]
+    const newData = [...departmentData];
     newData[index] = {
       ...newData[index],
-      [field]: value
-    }
-    setDepartmentData(newData)
-  }
+      [field]: value,
+    };
+    setDepartmentData(newData);
+  };
 
   const handleAddDepartment = () => {
     setDepartmentData([
@@ -1496,22 +1531,21 @@ const updateDrug = (selectedDrug, index) => {
       {
         selected: false,
         doctor: "Select",
-      }
-    ])
-  }
+      },
+    ]);
+  };
 
   const handleRemoveDepartment = (index) => {
-    if (departmentData.length === 1) return
-    const newData = departmentData.filter((_, i) => i !== index)
-    setDepartmentData(newData)
-  }
+    if (departmentData.length === 1) return;
+    const newData = departmentData.filter((_, i) => i !== index);
+    setDepartmentData(newData);
+  };
 
   useEffect(() => {
     if (showDetailView && selectedPatient) {
-      fetchInvestigationTemplates()
+      fetchInvestigationTemplates();
     }
-  }, [showDetailView, selectedPatient])
-
+  }, [showDetailView, selectedPatient]);
 
   useEffect(() => {
     if (investigationTypes.length > 0 && !investigationType) {
@@ -1520,16 +1554,16 @@ const updateDrug = (selectedDrug, index) => {
   }, [investigationTypes]);
 
   useEffect(() => {
-    filterInvestigationsByMainChargeCode()
-  }, [investigationType])
+    filterInvestigationsByMainChargeCode();
+  }, [investigationType]);
 
   const handleFilterChange = (field, value) => {
     setSearchFilters((prev) => ({
       ...prev,
       [field]: value,
-    }))
-    setCurrentPage(1)
-  }
+    }));
+    setCurrentPage(1);
+  };
 
   const handleMobileChange = (e) => {
     let value = e.target.value.replace(/\D/g, "");
@@ -1567,76 +1601,79 @@ const updateDrug = (selectedDrug, index) => {
     /* -------------------- DIAGNOSIS -------------------- */
     setDiagnosisItems(
       patient.icdDiag?.length
-        ? patient.icdDiag.map(item => ({
-          id: item.id ?? null,
-          icdDiagId: item.icdId ?? "",
-          icdDiagnosis: item.icdDiagName ?? "",
-          communicableDisease: false,
-          infectiousDisease: false,
-        }))
-        : [{
-          id: null,
-          icdDiagId: "",
-          icdDiagnosis: "",
-          communicableDisease: false,
-          infectiousDisease: false,
-        }]
+        ? patient.icdDiag.map((item) => ({
+            id: item.id ?? null,
+            icdDiagId: item.icdId ?? "",
+            icdDiagnosis: item.icdDiagName ?? "",
+            communicableDisease: false,
+            infectiousDisease: false,
+          }))
+        : [
+            {
+              id: null,
+              icdDiagId: "",
+              icdDiagnosis: "",
+              communicableDisease: false,
+              infectiousDisease: false,
+            },
+          ],
     );
 
     /* -------------------- INVESTIGATIONS -------------------- */
-    const investigationList =
-      patient.dgOrderHdList?.length
-        ? patient.dgOrderHdList.flatMap(hd =>
-          hd.dgOrderDts.map(dt => ({
+    const investigationList = patient.dgOrderHdList?.length
+      ? patient.dgOrderHdList.flatMap((hd) =>
+          hd.dgOrderDts.map((dt) => ({
             id: dt.dgOrderDtId || "",
             name: dt.investigationName || "",
             date: dt.appointmentDate || getToday(),
             investigationId: dt.investigationId,
-          }))
+          })),
         )
-        : [{ id: "", name: "", date: getToday() }];
+      : [{ id: "", name: "", date: getToday() }];
 
     setInvestigationItems(investigationList);
 
     /* -------------------- TREATMENT -------------------- */
     setTreatmentItems(
       patient.patientPrescriptionDts?.length
-        ? patient.patientPrescriptionDts.map(item => {
-          const freq = getFreqDetails(item.frequencyId);
+        ? patient.patientPrescriptionDts.map((item) => {
+            const freq = getFreqDetails(item.frequencyId);
 
-          const obj = {
-            treatmentId: item.prescriptionDtId,
-            drugId: item.itemId,
-            drugName: item.itemName,
-            dispUnit: item.dispUnit ?? "",
-            dosage: Number(item.dosage) || "",
-            frequency: freq?.frequencyName ?? item.frequencyId ?? "",
-            days: Number(item.days) || "",
-            instruction: item.instraction ?? "",
-            stock: item.stocks ?? "",
-            itemClassId: item.itemClassId ?? null,
-            aDispQty: item.adispQty ?? 1,
-          };
+            const obj = {
+              treatmentId: item.prescriptionDtId,
+              drugId: item.itemId,
+              drugName: item.itemName,
+              dispUnit: item.dispUnit ?? "",
+              dosage: Number(item.dosage) || "",
+              frequency: freq?.frequencyName ?? item.frequencyId ?? "",
+              days: Number(item.days) || "",
+              instruction: item.instraction ?? "",
+              stock: item.stocks ?? "",
+              itemClassId: item.itemClassId ?? null,
+              aDispQty: item.adispQty ?? 1,
+            };
 
-          obj.total = calculateTotal(obj);
-          return obj;
-        })
-        : [{
-          treatmentId: null,
-          drugId: "",
-          drugName: "",
-          dispUnit: "",
-          dosage: "",
-          frequency: "",
-          days: "",
-          total: "",
-          instruction: "",
-          stock: "",
-        }]
+            obj.total = calculateTotal(obj);
+            return obj;
+          })
+        : [
+            {
+              treatmentId: null,
+              drugId: "",
+              drugName: "",
+              dispUnit: "",
+              dosage: "",
+              frequency: "",
+              days: "",
+              total: "",
+              instruction: "",
+              stock: "",
+            },
+          ],
     );
 
     /*-------------------- final remark --------------- */
-    setDoctorRemarksText(patient.doctorRemarks || "")
+    setDoctorRemarksText(patient.doctorRemarks || "");
 
     /* -------------------- FOLLOW UP -------------------- */
     setFollowUps({
@@ -1644,13 +1681,11 @@ const updateDrug = (selectedDrug, index) => {
       FolloUpDate: patient.followUpDate
         ? patient.followUpDate.split("T")[0]
         : "",
-      noOfFollowDays: patient.followUpDays
-        ? String(patient.followUpDays)
-        : "",
+      noOfFollowDays: patient.followUpDays ? String(patient.followUpDays) : "",
     });
 
     /* -------------------- REFERRAL -------------------- */
-    setReferralData(prev => ({
+    setReferralData((prev) => ({
       ...prev,
       isReferred: patient.referralFlag === "y" ? "Yes" : "No",
       referralDate: patient.referralDate
@@ -1667,7 +1702,7 @@ const updateDrug = (selectedDrug, index) => {
       setAdmissionDate(
         patient.admissionAdvisedDate
           ? patient.admissionAdvisedDate.split("T")[0]
-          : ""
+          : "",
       );
       setAdditionalAdvice(patient.admissionRemarks || "");
       setAdmissionPriority(patient.admissionPriority || "Normal");
@@ -1706,7 +1741,6 @@ const updateDrug = (selectedDrug, index) => {
     }
   };
 
-
   const handleFollowUpChange = (e) => {
     const checked = e.target.checked;
 
@@ -1717,11 +1751,9 @@ const updateDrug = (selectedDrug, index) => {
     });
   };
 
-
-
   const handleBackToList = () => {
-    setShowDetailView(false)
-    setSelectedPatient(null)
+    setShowDetailView(false);
+    setSelectedPatient(null);
     setFormData({
       height: "",
       weight: "",
@@ -1745,9 +1777,9 @@ const updateDrug = (selectedDrug, index) => {
         icdDiagnosis: "",
         communicableDisease: false,
         infectiousDisease: false,
-      }
+      },
     ]);
-    setWorkingDiagnosis("")
+    setWorkingDiagnosis("");
     setInvestigationItems([{ id: "", name: "", date: getToday() }]);
     setTreatmentItems([
       {
@@ -1761,9 +1793,9 @@ const updateDrug = (selectedDrug, index) => {
         total: "",
         instruction: "",
         stock: "",
-      }
+      },
     ]);
-    setGeneralTreatmentAdvice("")
+    setGeneralTreatmentAdvice("");
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
@@ -1779,7 +1811,7 @@ const updateDrug = (selectedDrug, index) => {
       followUp: false,
       doctorRemark: false,
       remarks: false,
-    })
+    });
     setProcedureCareItems([
       {
         id: null,
@@ -1787,8 +1819,8 @@ const updateDrug = (selectedDrug, index) => {
         procedureName: "",
         frequencyId: null,
         noOfDays: "",
-        remarks: ""
-      }
+        remarks: "",
+      },
     ]);
     setReferralNotes("");
     setReferralData({
@@ -1807,34 +1839,32 @@ const updateDrug = (selectedDrug, index) => {
     });
     setDeletedProcedureCareIds([]);
 
-    setSelectedHistoryType("")
-    setRemovedInvestigationIds([])
-    setSelectedTemplateIds(new Set())
-    setSelectedTreatmentTemplateIds(new Set())
-    setDoctorRemarksText("")
-    setAdmissionAdvised(false)
-    setAdmissionDate("")
-    setAdmissionRemarks("")
-    setWardCategory("")
-    setAdmissionCareLevel("")
-    setWardName("")
-    setAdmissionPriority("Normal")
-    setOccupiedBeds(0)
-    setVacantBeds(0)
-  }
-
-
+    setSelectedHistoryType("");
+    setRemovedInvestigationIds([]);
+    setSelectedTemplateIds(new Set());
+    setSelectedTreatmentTemplateIds(new Set());
+    setDoctorRemarksText("");
+    setAdmissionAdvised(false);
+    setAdmissionDate("");
+    setAdmissionRemarks("");
+    setWardCategory("");
+    setAdmissionCareLevel("");
+    setWardName("");
+    setAdmissionPriority("Normal");
+    setOccupiedBeds(0);
+    setVacantBeds(0);
+  };
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
       ...prev,
       [section]: !prev[section],
-    }))
-  }
+    }));
+  };
 
   const handleHistoryTypeClick = (historyType) => {
-    setSelectedHistoryType(historyType)
-  }
+    setSelectedHistoryType(historyType);
+  };
 
   function calculateBMI(weight, height) {
     if (!weight || !height) return "";
@@ -1846,16 +1876,18 @@ const updateDrug = (selectedDrug, index) => {
   }
 
   const handleChange = (e) => {
-    const { name, value, type, checked } = e.target
+    const { name, value, type, checked } = e.target;
     setFormData((prev) => {
       const updated = {
         ...prev,
         [name]: type === "checkbox" ? checked : value,
       };
 
-      if ((name === "weight" || name === "height") &&
+      if (
+        (name === "weight" || name === "height") &&
         updated.height !== "" &&
-        updated.weight !== "") {
+        updated.weight !== ""
+      ) {
         updated.bmi = calculateBMI(updated.weight, updated.height);
       }
 
@@ -1865,9 +1897,9 @@ const updateDrug = (selectedDrug, index) => {
       setErrors((prev) => ({
         ...prev,
         [name]: "",
-      }))
+      }));
     }
-  }
+  };
 
   const handleResetForm = () => {
     // Reset main form data
@@ -1901,7 +1933,7 @@ const updateDrug = (selectedDrug, index) => {
     ]);
 
     // Reset followUps to default
-       setGeneralTreatmentAdvice("");
+    setGeneralTreatmentAdvice("");
     setReferralNotes("");
     setReferralData({
       isReferred: "No",
@@ -1966,19 +1998,22 @@ const updateDrug = (selectedDrug, index) => {
   };
 
   const handleCreateTemplate = () => {
-    setShowCreateTemplateModal(true)
-    setTemplateName("")
-    setInvestigationItems([{ name: "", date: getToday() }])
-  }
+    setShowCreateTemplateModal(true);
+    setTemplateName("");
+    setInvestigationItems([{ name: "", date: getToday() }]);
+  };
 
   const handleUpdateTemplate = () => {
-    setShowUpdateTemplateModal(true)
-    setUpdateTemplateSelection("Select..")
-  }
+    setShowUpdateTemplateModal(true);
+    setUpdateTemplateSelection("Select..");
+  };
 
   const handleAddInvestigationItem = () => {
-    setInvestigationItems((prev) => [...prev, { id: null, templateIds: [], name: "", date: getToday() }])
-  }
+    setInvestigationItems((prev) => [
+      ...prev,
+      { id: null, templateIds: [], name: "", date: getToday() },
+    ]);
+  };
 
   const handleRemoveInvestigationItem = (index) => {
     const itemToRemove = investigationItems[index];
@@ -1994,51 +2029,52 @@ const updateDrug = (selectedDrug, index) => {
     }
 
     if (itemToRemove.id !== null) {
-      setRemovedInvestigationIds(prev => [...prev, itemToRemove.id]);
+      setRemovedInvestigationIds((prev) => [...prev, itemToRemove.id]);
     }
 
     let updatedItems = investigationItems.filter((_, i) => i !== index);
 
     if (onlyOneRow) {
       // Only one row existed and had data -> reset to empty row
-      updatedItems = [{ id: null, templateIds: [], name: "", date: getToday() }];
+      updatedItems = [
+        { id: null, templateIds: [], name: "", date: getToday() },
+      ];
     }
 
     setInvestigationItems(updatedItems);
   };
 
-
   const handleInvestigationItemChange = (index, field, value) => {
-    const newItems = [...investigationItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setInvestigationItems(newItems)
-  }
+    const newItems = [...investigationItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setInvestigationItems(newItems);
+  };
 
   const handleSaveTemplate = () => {
     if (templateName.trim()) {
-      setTemplates([...templates, templateName])
-      setShowCreateTemplateModal(false)
-      setTemplateName("")
-      setInvestigationItems([{ name: "", date: getToday() }])
+      setTemplates([...templates, templateName]);
+      setShowCreateTemplateModal(false);
+      setTemplateName("");
+      setInvestigationItems([{ name: "", date: getToday() }]);
     }
-  }
+  };
 
   const handleResetTemplate = () => {
-    setTemplateName("")
-    setInvestigationItems([{ name: "", date: getToday() }])
-  }
+    setTemplateName("");
+    setInvestigationItems([{ name: "", date: getToday() }]);
+  };
 
   const handleCloseModal = () => {
-    setShowCreateTemplateModal(false)
-    setShowUpdateTemplateModal(false)
-    setShowTreatmentAdviceModal(false)
-    setTemplateName("")
-    setInvestigationItems([{ name: "", date: getToday() }])
-    setUpdateTemplateSelection("Select..")
-    setTreatmentAdviceSelection("")
-    setSelectedTreatmentAdviceItems([])
-    setTreatmentAdviceModalType("")
-  }
+    setShowCreateTemplateModal(false);
+    setShowUpdateTemplateModal(false);
+    setShowTreatmentAdviceModal(false);
+    setTemplateName("");
+    setInvestigationItems([{ name: "", date: getToday() }]);
+    setUpdateTemplateSelection("Select..");
+    setTreatmentAdviceSelection("");
+    setSelectedTreatmentAdviceItems([]);
+    setTreatmentAdviceModalType("");
+  };
 
   const handleAddDiagnosisItem = () => {
     setDiagnosisItems([
@@ -2050,8 +2086,8 @@ const updateDrug = (selectedDrug, index) => {
         communicableDisease: false,
         infectiousDisease: false,
       },
-    ])
-  }
+    ]);
+  };
 
   const handleRemoveDiagnosisItem = (index) => {
     const itemToRemove = diagnosisItems[index];
@@ -2086,8 +2122,6 @@ const updateDrug = (selectedDrug, index) => {
 
     setDiagnosisItems(newItems);
   };
-
-
 
   const handleDiagnosisChange = (index, field, value) => {
     const newItems = [...diagnosisItems];
@@ -2157,29 +2191,28 @@ const updateDrug = (selectedDrug, index) => {
     setTreatmentItems(newItems);
   };
 
-
   const getFreqDetails = (feqId) => {
-    return allFrequencies.find(d => d.frequencyId === feqId);
+    return allFrequencies.find((d) => d.frequencyId === feqId);
   };
 
   const handleTreatmentTemplateSelect = (templateId) => {
     if (!templateId || templateId === "Select..") return;
     if (selectedTreatmentTemplateIds.has(templateId)) return;
 
-    const template = opdTemplateData.find(t => t.templateId == templateId);
+    const template = opdTemplateData.find((t) => t.templateId == templateId);
     if (!template || !template.treatments) return;
 
-    setTreatmentItems(prevList => {
+    setTreatmentItems((prevList) => {
       const updatedList = [...prevList];
-      const existingDrugIds = updatedList.map(i => i.drugId);
+      const existingDrugIds = updatedList.map((i) => i.drugId);
 
       const duplicateItems = [];
       const newItemsToAdd = [];
 
-      template.treatments.forEach(t => {
+      template.treatments.forEach((t) => {
         if (existingDrugIds.includes(t.itemId)) {
           duplicateItems.push(t);
-          updatedList.forEach(row => {
+          updatedList.forEach((row) => {
             if (row.drugId === t.itemId) {
               const oldIds = row.templateId ? row.templateId.split(",") : [];
               if (!oldIds.includes(String(templateId))) {
@@ -2197,7 +2230,7 @@ const updateDrug = (selectedDrug, index) => {
         setShowDuplicatePopup(true);
       }
 
-      const formattedNew = newItemsToAdd.map(t => {
+      const formattedNew = newItemsToAdd.map((t) => {
         const freName = getFreqDetails(t.frequencyId);
         const newItem = {
           treatmentId: null,
@@ -2217,7 +2250,7 @@ const updateDrug = (selectedDrug, index) => {
         return newItem;
       });
 
-      console.log("new  data", newItemsToAdd)
+      console.log("new  data", newItemsToAdd);
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -2226,7 +2259,7 @@ const updateDrug = (selectedDrug, index) => {
       return [...updatedList, ...formattedNew];
     });
 
-    setSelectedTreatmentTemplateIds(prev => new Set([...prev, templateId]));
+    setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
     setSelectedTreatmentTemplateId("Select..");
   };
 
@@ -2247,7 +2280,7 @@ const updateDrug = (selectedDrug, index) => {
     }
 
     const selectedFrequency = allFrequencies.find(
-      f => Number(f.frequencyId) === Number(item.frequency)
+      (f) => Number(f.frequencyId) === Number(item.frequency),
     );
     const frequencyMultiplier = selectedFrequency
       ? Number(selectedFrequency.feq)
@@ -2255,15 +2288,12 @@ const updateDrug = (selectedDrug, index) => {
 
     let total = 0;
 
-
     if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
-    }
-    else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
+    } else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
       const qtyPerUnit = Number(item.aDispQty) || 1;
       total = Math.ceil((dosage * frequencyMultiplier * days) / qtyPerUnit);
-    }
-    else {
+    } else {
       total = 1;
     }
 
@@ -2274,7 +2304,13 @@ const updateDrug = (selectedDrug, index) => {
     const updated = [...treatmentItems];
     updated[index] = { ...updated[index], [field]: value };
 
-    const recalcFields = ["dosage", "days", "frequency", "itemClassId", "aDispQty"];
+    const recalcFields = [
+      "dosage",
+      "days",
+      "frequency",
+      "itemClassId",
+      "aDispQty",
+    ];
     if (recalcFields.includes(field)) {
       updated[index].total = calculateTotal(updated[index]);
     }
@@ -2283,34 +2319,36 @@ const updateDrug = (selectedDrug, index) => {
   };
 
   const handleOpenTreatmentAdviceModal = (type) => {
-    setTreatmentAdviceModalType(type)
-    setShowTreatmentAdviceModal(true)
-    setSelectedTreatmentAdviceItems([])
-  }
+    setTreatmentAdviceModalType(type);
+    setShowTreatmentAdviceModal(true);
+    setSelectedTreatmentAdviceItems([]);
+  };
 
   const handleTreatmentAdviceCheckboxChange = (index) => {
     setSelectedTreatmentAdviceItems((prev) => {
       if (prev.includes(index)) {
-        return prev.filter((i) => i !== index)
+        return prev.filter((i) => i !== index);
       } else {
-        return [...prev, index]
+        return [...prev, index];
       }
-    })
-  }
+    });
+  };
 
   const handleSaveTreatmentAdvice = () => {
-    const selected = selectedTreatmentAdviceItems.map((i) => treatmentAdviceTemplates[i]).join(", ")
+    const selected = selectedTreatmentAdviceItems
+      .map((i) => treatmentAdviceTemplates[i])
+      .join(", ");
 
     if (treatmentAdviceModalType === "general") {
-      setGeneralTreatmentAdvice(selected)
+      setGeneralTreatmentAdvice(selected);
     } else if (treatmentAdviceModalType === "procedure") {
-      setProcedureTreatmentAdvice(selected)
+      setProcedureTreatmentAdvice(selected);
     } else if (treatmentAdviceModalType === "physiotherapy") {
-      setPhysiotherapyTreatmentAdvice(selected)
+      setPhysiotherapyTreatmentAdvice(selected);
     }
 
-    handleCloseModal()
-  }
+    handleCloseModal();
+  };
 
   const handleAddProcedureCareItem = () => {
     setProcedureCareItems((prev) => [
@@ -2321,19 +2359,16 @@ const updateDrug = (selectedDrug, index) => {
         procedureName: "",
         frequencyId: null,
         noOfDays: "",
-        remarks: ""
-      }
+        remarks: "",
+      },
     ]);
   };
-
 
   const calculateFollowUpDate = (days) => {
     const date = new Date();
     date.setDate(date.getDate() + Number(days || 0));
     return date.toISOString().split("T")[0];
   };
-
-
 
   const handleRemoveProcedureCareItem = (index) => {
     const itemToDelete = procedureCareItems[index];
@@ -2374,18 +2409,16 @@ const updateDrug = (selectedDrug, index) => {
     setProcedureCareItems(newItems);
   };
 
-
   const handleProcedureCareChange = (index, field, value) => {
     setProcedureCareItems((prev) => {
       const updated = [...prev];
       updated[index] = {
         ...updated[index],
-        [field]: value
+        [field]: value,
       };
       return updated;
     });
   };
-
 
   const handleAddPhysiotherapyItem = () => {
     setPhysiotherapyItems([
@@ -2396,8 +2429,8 @@ const updateDrug = (selectedDrug, index) => {
         days: "",
         remarks: "",
       },
-    ])
-  }
+    ]);
+  };
 
   const handleRemovePhysiotherapyItem = (index) => {
     const itemToRemove = physiotherapyItems[index];
@@ -2428,12 +2461,11 @@ const updateDrug = (selectedDrug, index) => {
     setPhysiotherapyItems(newItems);
   };
 
-
   const handlePhysiotherapyChange = (index, field, value) => {
-    const newItems = [...physiotherapyItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setPhysiotherapyItems(newItems)
-  }
+    const newItems = [...physiotherapyItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setPhysiotherapyItems(newItems);
+  };
 
   const handleAddSurgeryItem = () => {
     setSurgeryItems([
@@ -2442,70 +2474,65 @@ const updateDrug = (selectedDrug, index) => {
         surgery: "",
         selected: false,
       },
-    ])
-  }
+    ]);
+  };
 
   const handleRemoveSurgeryItem = (index) => {
-    if (surgeryItems.length === 1) return
-    const newItems = surgeryItems.filter((_, i) => i !== index)
-    setSurgeryItems(newItems)
-  }
+    if (surgeryItems.length === 1) return;
+    const newItems = surgeryItems.filter((_, i) => i !== index);
+    setSurgeryItems(newItems);
+  };
 
   const handleSurgerySearchChange = (value, index) => {
-    setSurgerySearchInput(value)
-    setIsSurgeryDropdownVisible(true)
-    setSelectedSurgeryIndex(index)
-  }
+    setSurgerySearchInput(value);
+    setIsSurgeryDropdownVisible(true);
+    setSelectedSurgeryIndex(index);
+  };
 
   const handleSurgerySelect = (surgery, index) => {
-    const newItems = [...surgeryItems]
-    newItems[index] = { ...newItems[index], surgery: surgery.name }
-    setSurgeryItems(newItems)
-    setSurgerySearchInput("")
-    setIsSurgeryDropdownVisible(false)
-  }
+    const newItems = [...surgeryItems];
+    newItems[index] = { ...newItems[index], surgery: surgery.name };
+    setSurgeryItems(newItems);
+    setSurgerySearchInput("");
+    setIsSurgeryDropdownVisible(false);
+  };
 
   const handleSurgeryChange = (index, field, value) => {
-    const newItems = [...surgeryItems]
-    newItems[index] = { ...newItems[index], [field]: value }
-    setSurgeryItems(newItems)
-  }
+    const newItems = [...surgeryItems];
+    newItems[index] = { ...newItems[index], [field]: value };
+    setSurgeryItems(newItems);
+  };
 
-  const filteredTotalPages = Math.ceil(recallPatientOpd.length / itemsPerPage)
+  const filteredTotalPages = Math.ceil(recallPatientOpd.length / itemsPerPage);
 
-  
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = recallPatientOpd.slice(indexOfFirst, indexOfLast);
 
-
- 
   const handleInputFocus = (event, index) => {
-    const rect = event.target.getBoundingClientRect()
+    const rect = event.target.getBoundingClientRect();
     setDropdownPosition({
       x: rect.left,
       y: rect.top,
       height: rect.height,
-    })
-    setDropdownWidth(rect.width)
-    setActiveInvestigationRowIndex(index)
-    setDropdownVisible(true)
-  }
+    });
+    setDropdownWidth(rect.width);
+    setActiveInvestigationRowIndex(index);
+    setDropdownVisible(true);
+  };
 
   const getPriorityColor = (priority) => {
     switch (priority) {
       case "Priority-1":
-        return "bg-danger text-white"
+        return "bg-danger text-white";
       case "Priority-2":
-        return "bg-warning text-dark"
+        return "bg-warning text-dark";
       case "Priority-3":
-        return "bg-success text-white"
+        return "bg-success text-white";
       default:
-        return "bg-secondary text-white"
+        return "bg-secondary text-white";
     }
-  }
-
-
+  };
 
   if (showDetailView && selectedPatient) {
     return (
@@ -2515,8 +2542,13 @@ const updateDrug = (selectedDrug, index) => {
             <div className="card form-card">
               <div className="card-header">
                 <div className="d-flex justify-content-between align-items-center">
-                  <h4 className="card-title p-2 mb-0">PATIENT RECALL - {selectedPatient.patientName}</h4>
-                  <button className="btn btn-secondary" onClick={handleBackToList}>
+                  <h4 className="card-title p-2 mb-0">
+                    PATIENT RECALL - {selectedPatient.patientName}
+                  </h4>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleBackToList}
+                  >
                     <i className="mdi mdi-arrow-left"></i> Back to List
                   </button>
                 </div>
@@ -2604,7 +2636,15 @@ const updateDrug = (selectedDrug, index) => {
                           <label className="form-label" htmlFor="age">
                             Age
                           </label>
-                          <input type="text" id="age" value={selectedPatient?.age} name="age" className="form-control" placeholder="Enter Age" readOnly />
+                          <input
+                            type="text"
+                            id="age"
+                            value={selectedPatient?.age}
+                            name="age"
+                            className="form-control"
+                            placeholder="Enter Age"
+                            readOnly
+                          />
                         </div>
                       </div>
                     </div>
@@ -2615,7 +2655,11 @@ const updateDrug = (selectedDrug, index) => {
                             src={placeholderImage || "/placeholder.svg"}
                             alt="Profile photo"
                             className="img-fluid border"
-                            style={{ width: "100%", height: "150px", objectFit: "cover" }}
+                            style={{
+                              width: "100%",
+                              height: "150px",
+                              objectFit: "cover",
+                            }}
                           />
                         </div>
                       </div>
@@ -2644,16 +2688,31 @@ const updateDrug = (selectedDrug, index) => {
                         <div className="col-md-3">
                           <div className="d-flex flex-column gap-2">
                             {[
-                              { id: "previous-visits", label: "Previous Visits" },
-                              { id: "previous-vitals", label: "Previous Vitals" },
-                              { id: "previous-lab", label: "Previous Lab Investigation" },
-                              { id: "previous-ecg", label: "Previous ECG Investigation" },
+                              {
+                                id: "previous-visits",
+                                label: "Previous Visits",
+                              },
+                              {
+                                id: "previous-vitals",
+                                label: "Previous Vitals",
+                              },
+                              {
+                                id: "previous-lab",
+                                label: "Previous Lab Investigation",
+                              },
+                              {
+                                id: "previous-ecg",
+                                label: "Previous ECG Investigation",
+                              },
                               { id: "audit-history", label: "Audit History" },
                             ].map((btn) => (
                               <button
                                 key={btn.id}
-                                className={`btn btn-sm ${selectedHistoryType === btn.id ? "btn-primary" : "btn-outline-primary"
-                                  }`}
+                                className={`btn btn-sm ${
+                                  selectedHistoryType === btn.id
+                                    ? "btn-primary"
+                                    : "btn-outline-primary"
+                                }`}
                                 onClick={() => handleHistoryTypeClick(btn.id)}
                               >
                                 {btn.label}
@@ -2686,7 +2745,9 @@ const updateDrug = (selectedDrug, index) => {
                           </div>
 
                           <div className="mb-3">
-                            <label className="form-label fw-bold">Clinical Examination</label>
+                            <label className="form-label fw-bold">
+                              Clinical Examination
+                            </label>
                             <textarea
                               className="form-control"
                               rows={3}
@@ -2768,7 +2829,9 @@ const updateDrug = (selectedDrug, index) => {
                     onClick={() => toggleSection("vitalDetail")}
                   >
                     <h6 className="mb-0 fw-bold">Vital Detail</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.vitalDetail ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.vitalDetail ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.vitalDetail && (
                     <div className="card-body">
@@ -2785,7 +2848,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">cm</span>
-                          {errors.height && <div className="invalid-feedback d-block">{errors.height}</div>}
+                          {errors.height && (
+                            <div className="invalid-feedback d-block">
+                              {errors.height}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2800,7 +2867,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">kg</span>
-                          {errors.weight && <div className="invalid-feedback d-block">{errors.weight}</div>}
+                          {errors.weight && (
+                            <div className="invalid-feedback d-block">
+                              {errors.weight}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2815,7 +2886,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">°F</span>
-                          {errors.temperature && <div className="invalid-feedback d-block">{errors.temperature}</div>}
+                          {errors.temperature && (
+                            <div className="invalid-feedback d-block">
+                              {errors.temperature}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2830,7 +2905,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">/</span>
-                          {errors.systolicBP && <div className="invalid-feedback d-block">{errors.systolicBP}</div>}
+                          {errors.systolicBP && (
+                            <div className="invalid-feedback d-block">
+                              {errors.systolicBP}
+                            </div>
+                          )}
                           <input
                             type="number"
                             min={0}
@@ -2841,7 +2920,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">mmHg</span>
-                          {errors.diastolicBP && <div className="invalid-feedback d-block">{errors.diastolicBP}</div>}
+                          {errors.diastolicBP && (
+                            <div className="invalid-feedback d-block">
+                              {errors.diastolicBP}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2856,7 +2939,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">/min</span>
-                          {errors.pulse && <div className="invalid-feedback d-block">{errors.pulse}</div>}
+                          {errors.pulse && (
+                            <div className="invalid-feedback d-block">
+                              {errors.pulse}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2872,7 +2959,11 @@ const updateDrug = (selectedDrug, index) => {
                             readOnly
                           />
                           <span className="input-group-text">kg/m²</span>
-                          {errors.bmi && <div className="invalid-feedback d-block">{errors.bmi}</div>}
+                          {errors.bmi && (
+                            <div className="invalid-feedback d-block">
+                              {errors.bmi}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2887,7 +2978,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">/min</span>
-                          {errors.rr && <div className="invalid-feedback d-block">{errors.rr}</div>}
+                          {errors.rr && (
+                            <div className="invalid-feedback d-block">
+                              {errors.rr}
+                            </div>
+                          )}
                         </div>
 
                         <div className="col-md-4 d-flex">
@@ -2902,7 +2997,11 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleChange}
                           />
                           <span className="input-group-text">%</span>
-                          {errors.spo2 && <div className="invalid-feedback d-block">{errors.spo2}</div>}
+                          {errors.spo2 && (
+                            <div className="invalid-feedback d-block">
+                              {errors.spo2}
+                            </div>
+                          )}
                         </div>
                       </div>
                       <div className="row mt-3">
@@ -2915,7 +3014,9 @@ const updateDrug = (selectedDrug, index) => {
                               checked={formData.mlcCase}
                               onChange={handleChange}
                             />
-                            <label className="form-check-label">Mark as MLC Case</label>
+                            <label className="form-check-label">
+                              Mark as MLC Case
+                            </label>
                           </div>
                         </div>
                       </div>
@@ -2931,12 +3032,16 @@ const updateDrug = (selectedDrug, index) => {
                     onClick={() => toggleSection("diagnosis")}
                   >
                     <h6 className="mb-0 fw-bold">Diagnosis</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.diagnosis ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.diagnosis ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.diagnosis && (
                     <div className="card-body" style={{ overflow: "visible" }}>
                       <div className="mb-3">
-                        <label className="form-label fw-bold">Working Diagnosis</label>
+                        <label className="form-label fw-bold">
+                          Working Diagnosis
+                        </label>
                         <input
                           type="text"
                           className="form-control"
@@ -2948,13 +3053,20 @@ const updateDrug = (selectedDrug, index) => {
                         />
                       </div>
 
-                      <div className="table-responsive" style={{ overflow: "visible" }}>
+                      <div
+                        className="table-responsive"
+                        style={{ overflow: "visible" }}
+                      >
                         <table className="table table-bordered">
                           <thead>
                             <tr>
                               <th className="col-md-6">ICD Diagnosis</th>
-                              <th className="col-md-2 text-center">Communicable</th>
-                              <th className="col-md-2 text-center">Infectious</th>
+                              <th className="col-md-2 text-center">
+                                Communicable
+                              </th>
+                              <th className="col-md-2 text-center">
+                                Infectious
+                              </th>
                               <th className="col-md-1 text-center">Add</th>
                               <th className="col-md-1 text-center">Delete</th>
                             </tr>
@@ -2963,13 +3075,23 @@ const updateDrug = (selectedDrug, index) => {
                             {diagnosisItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <div className="position-relative" style={{ width: "100%", zIndex: 20 }} ref={dropdownRef}>
+                                  <div
+                                    className="position-relative"
+                                    style={{ width: "100%", zIndex: 20 }}
+                                    ref={dropdownRef}
+                                  >
                                     <input
                                       type="text"
                                       className="form-control"
                                       placeholder="Search ICD..."
-                                      value={diagnosisItems[index].icdDiagnosis || search[index] || ""}
-                                      onChange={(e) => handleIcdSearch(e.target.value, index)}
+                                      value={
+                                        diagnosisItems[index].icdDiagnosis ||
+                                        search[index] ||
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        handleIcdSearch(e.target.value, index)
+                                      }
                                       onClick={() => {
                                         loadFirstPage(index);
                                         setOpenDropdown(index);
@@ -2984,9 +3106,17 @@ const updateDrug = (selectedDrug, index) => {
                                     {openDropdown === index && (
                                       <div
                                         className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        style={{
+                                          maxHeight: "220px",
+                                          zIndex: 9999,
+                                          overflowY: "auto",
+                                        }}
                                         onScroll={(e) => {
-                                          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                          if (
+                                            e.target.scrollHeight -
+                                              e.target.scrollTop ===
+                                            e.target.clientHeight
+                                          ) {
                                             loadMore();
                                           }
                                         }}
@@ -3004,13 +3134,16 @@ const updateDrug = (selectedDrug, index) => {
                                             >
                                               {icd.icdCode} - {icd.icdName}
                                             </div>
-
                                           ))
                                         ) : (
-                                          <div className="p-2 text-muted">No results found</div>
+                                          <div className="p-2 text-muted">
+                                            No results found
+                                          </div>
                                         )}
                                         {!lastPage && (
-                                          <div className="text-center p-2 text-primary small">Loading...</div>
+                                          <div className="text-center p-2 text-primary small">
+                                            Loading...
+                                          </div>
                                         )}
                                       </div>
                                     )}
@@ -3022,7 +3155,11 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-check-input border-black"
                                     checked={item.communicableDisease}
                                     onChange={(e) =>
-                                      handleDiagnosisChange(index, "communicableDisease", e.target.checked)
+                                      handleDiagnosisChange(
+                                        index,
+                                        "communicableDisease",
+                                        e.target.checked,
+                                      )
                                     }
                                   />
                                 </td>
@@ -3032,19 +3169,28 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-check-input border-black"
                                     checked={item.infectiousDisease}
                                     onChange={(e) =>
-                                      handleDiagnosisChange(index, "infectiousDisease", e.target.checked)
+                                      handleDiagnosisChange(
+                                        index,
+                                        "infectiousDisease",
+                                        e.target.checked,
+                                      )
                                     }
                                   />
                                 </td>
                                 <td className="text-center">
-                                  <button className="btn btn-sm btn-success" onClick={handleAddDiagnosisItem}>
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddDiagnosisItem}
+                                  >
                                     +
                                   </button>
                                 </td>
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
-                                    onClick={() => handleRemoveDiagnosisItem(index)}
+                                    onClick={() =>
+                                      handleRemoveDiagnosisItem(index)
+                                    }
                                     disabled={
                                       diagnosisItems.length === 1 &&
                                       !diagnosisItems[0].icdDiagId &&
@@ -3055,8 +3201,6 @@ const updateDrug = (selectedDrug, index) => {
                                   >
                                     −
                                   </button>
-
-
                                 </td>
                               </tr>
                             ))}
@@ -3075,7 +3219,9 @@ const updateDrug = (selectedDrug, index) => {
                     onClick={() => toggleSection("investigation")}
                   >
                     <h6 className="mb-0 fw-bold">Investigation</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.investigation ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.investigation ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.investigation && (
                     <div className="card-body" style={{ overflow: "visible" }}>
@@ -3085,7 +3231,9 @@ const updateDrug = (selectedDrug, index) => {
                             <div className="card">
                               <div className="card-header py-2  ">
                                 <div className="d-flex justify-content-between align-items-center">
-                                  <h6 className="mb-0 fw-bold">Selected Templates</h6>
+                                  <h6 className="mb-0 fw-bold">
+                                    Selected Templates
+                                  </h6>
                                   <button
                                     className="btn btn-sm btn-outline-danger"
                                     onClick={handleClearAllTemplates}
@@ -3096,24 +3244,34 @@ const updateDrug = (selectedDrug, index) => {
                               </div>
                               <div className="card-body">
                                 <div className="d-flex flex-wrap gap-2">
-                                  {Array.from(selectedTemplateIds).map(templateId => {
-                                    const template = investigationTemplates.find(t => t.templateId == templateId)
-                                    return template ? (
-                                      <span key={templateId} className="badge bg-primary d-flex align-items-center gap-1">
-                                        {template.opdTemplateName}
-                                        <button
-                                          type="button"
-                                          className="btn-close btn-close-white"
-                                          style={{ fontSize: '0.7rem' }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleRemoveTemplateItems(templateId)
-                                          }}
-                                          aria-label="Remove template"
-                                        ></button>
-                                      </span>
-                                    ) : null
-                                  })}
+                                  {Array.from(selectedTemplateIds).map(
+                                    (templateId) => {
+                                      const template =
+                                        investigationTemplates.find(
+                                          (t) => t.templateId == templateId,
+                                        );
+                                      return template ? (
+                                        <span
+                                          key={templateId}
+                                          className="badge bg-primary d-flex align-items-center gap-1"
+                                        >
+                                          {template.opdTemplateName}
+                                          <button
+                                            type="button"
+                                            className="btn-close btn-close-white"
+                                            style={{ fontSize: "0.7rem" }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRemoveTemplateItems(
+                                                templateId,
+                                              );
+                                            }}
+                                            aria-label="Remove template"
+                                          ></button>
+                                        </span>
+                                      ) : null;
+                                    },
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -3130,14 +3288,16 @@ const updateDrug = (selectedDrug, index) => {
                             className="form-select"
                             value={selectedInvestigationTemplate}
                             onChange={(e) => {
-                              const selectedId = e.target.value
-                              if (selectedId === "Select..") return
+                              const selectedId = e.target.value;
+                              if (selectedId === "Select..") return;
 
-                              const template = investigationTemplates.find(t => t.templateId == selectedId)
+                              const template = investigationTemplates.find(
+                                (t) => t.templateId == selectedId,
+                              );
                               if (template) {
-                                handleInvestigationTemplateSelect(template)
+                                handleInvestigationTemplateSelect(template);
                               } else {
-                                setSelectedInvestigationTemplate("Select..")
+                                setSelectedInvestigationTemplate("Select..");
                               }
                             }}
                             disabled={investigationTemplateLoading}
@@ -3147,10 +3307,15 @@ const updateDrug = (selectedDrug, index) => {
                               <option
                                 key={template.templateId}
                                 value={template.templateId}
-                                disabled={selectedTemplateIds.has(template.templateId)}
+                                disabled={selectedTemplateIds.has(
+                                  template.templateId,
+                                )}
                               >
-                                {template.opdTemplateName} ({template.opdTemplateCode})
-                                {selectedTemplateIds.has(template.templateId) ? ' (Already Selected)' : ''}
+                                {template.opdTemplateName} (
+                                {template.opdTemplateCode})
+                                {selectedTemplateIds.has(template.templateId)
+                                  ? " (Already Selected)"
+                                  : ""}
                               </option>
                             ))}
                           </select>
@@ -3158,7 +3323,9 @@ const updateDrug = (selectedDrug, index) => {
                         <div className="col-md-6">
                           <button
                             className="btn btn-primary me-2"
-                            onClick={() => handleOpenInvestigationModal("create")}
+                            onClick={() =>
+                              handleOpenInvestigationModal("create")
+                            }
                           >
                             Create Template
                           </button>
@@ -3217,9 +3384,10 @@ const updateDrug = (selectedDrug, index) => {
                         </div>
                       </div>
 
-
-
-                      <div className="table-responsive" style={{ overflow: "visible" }}>
+                      <div
+                        className="table-responsive"
+                        style={{ overflow: "visible" }}
+                      >
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
@@ -3233,21 +3401,36 @@ const updateDrug = (selectedDrug, index) => {
                             {investigationItems.map((item, index) => (
                               <tr key={index}>
                                 <td>
-                                  <div className="position-relative w-100" ref={dropdownInvestigationRef}>
-
+                                  <div
+                                    className="position-relative w-100"
+                                    ref={dropdownInvestigationRef}
+                                  >
                                     {/* INPUT */}
                                     <input
                                       type="text"
                                       className="form-control"
                                       placeholder="Search Investigation..."
-                                      value={investigationSearch[index] ?? investigationItems[index].name ?? ""}
-                                      onChange={(e) => handleInvestigationSearch(e.target.value, index)}
+                                      value={
+                                        investigationSearch[index] ??
+                                        investigationItems[index].name ??
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        handleInvestigationSearch(
+                                          e.target.value,
+                                          index,
+                                        )
+                                      }
                                       onClick={() => {
                                         loadFirstInvestigationPage(index);
                                         setOpenInvestigationDropdown(index);
                                       }}
                                       onBlur={() => {
-                                        setTimeout(() => setOpenInvestigationDropdown(null), 200);
+                                        setTimeout(
+                                          () =>
+                                            setOpenInvestigationDropdown(null),
+                                          200,
+                                        );
                                       }}
                                     />
 
@@ -3255,10 +3438,16 @@ const updateDrug = (selectedDrug, index) => {
                                     {openInvestigationDropdown === index && (
                                       <div
                                         className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
+                                        style={{
+                                          maxHeight: "220px",
+                                          zIndex: 9999,
+                                          overflowY: "auto",
+                                        }}
                                         onScroll={(e) => {
                                           if (
-                                            e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight
+                                            e.target.scrollHeight -
+                                              e.target.scrollTop ===
+                                            e.target.clientHeight
                                           ) {
                                             loadMoreInvestigations();
                                           }
@@ -3274,18 +3463,25 @@ const updateDrug = (selectedDrug, index) => {
                                                 updateInvestigation(inv, index);
                                               }}
                                             >
-                                              <strong>{inv.investigationName}</strong>
+                                              <strong>
+                                                {inv.investigationName}
+                                              </strong>
                                               <div className="text-muted small">
-                                                {inv.mainChargeCodeName} • {inv.subChargeCodeName}
+                                                {inv.mainChargeCodeName} •{" "}
+                                                {inv.subChargeCodeName}
                                               </div>
                                             </div>
                                           ))
                                         ) : (
-                                          <div className="p-2 text-muted">No results found</div>
+                                          <div className="p-2 text-muted">
+                                            No results found
+                                          </div>
                                         )}
 
                                         {!investigationLastPage && (
-                                          <div className="text-center p-2 text-primary small">Loading...</div>
+                                          <div className="text-center p-2 text-primary small">
+                                            Loading...
+                                          </div>
                                         )}
                                       </div>
                                     )}
@@ -3296,28 +3492,39 @@ const updateDrug = (selectedDrug, index) => {
                                     type="date"
                                     className="form-control"
                                     value={item.date}
-                                    onChange={(e) => handleInvestigationItemChange(index, "date", e.target.value)}
+                                    onChange={(e) =>
+                                      handleInvestigationItemChange(
+                                        index,
+                                        "date",
+                                        e.target.value,
+                                      )
+                                    }
                                   />
                                 </td>
                                 <td className="text-center">
-                                  <button className="btn btn-sm btn-success" onClick={handleAddInvestigationItem}>
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddInvestigationItem}
+                                  >
                                     +
                                   </button>
                                 </td>
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
-                                    onClick={() => handleRemoveInvestigationItem(index)}
+                                    onClick={() =>
+                                      handleRemoveInvestigationItem(index)
+                                    }
                                     disabled={
                                       investigationItems.length === 1 &&
                                       !investigationItems[0].name &&
-                                      (!investigationItems[0].templateIds || investigationItems[0].templateIds.length === 0)
+                                      (!investigationItems[0].templateIds ||
+                                        investigationItems[0].templateIds
+                                          .length === 0)
                                     }
                                   >
                                     −
                                   </button>
-
-
                                 </td>
                               </tr>
                             ))}
@@ -3349,7 +3556,9 @@ const updateDrug = (selectedDrug, index) => {
                             <div className="card">
                               <div className="card-header py-2  ">
                                 <div className="d-flex justify-content-between align-items-center">
-                                  <h6 className="mb-0 fw-bold">Selected Templates</h6>
+                                  <h6 className="mb-0 fw-bold">
+                                    Selected Templates
+                                  </h6>
                                   <button
                                     className="btn btn-sm btn-outline-danger"
                                     onClick={handleClearAllTreatmentTemplates}
@@ -3360,24 +3569,33 @@ const updateDrug = (selectedDrug, index) => {
                               </div>
                               <div className="card-body">
                                 <div className="d-flex flex-wrap gap-2">
-                                  {Array.from(selectedTreatmentTemplateIds).map((templateId) => {
-                                    const template = opdTemplateData.find(t => t.templateId == templateId)
-                                    return template ? (
-                                      <span key={templateId} className="badge bg-primary d-flex align-items-center gap-1">
-                                        {template.opdTemplateName}
-                                        <button
-                                          type="button"
-                                          className="btn-close btn-close-white"
-                                          style={{ fontSize: "0.7rem" }}
-                                          onClick={(e) => {
-                                            e.stopPropagation()
-                                            handleRemoveTreatmentTemplateItems(templateId)
-                                          }}
-                                          aria-label="Remove template"
-                                        ></button>
-                                      </span>
-                                    ) : null
-                                  })}
+                                  {Array.from(selectedTreatmentTemplateIds).map(
+                                    (templateId) => {
+                                      const template = opdTemplateData.find(
+                                        (t) => t.templateId == templateId,
+                                      );
+                                      return template ? (
+                                        <span
+                                          key={templateId}
+                                          className="badge bg-primary d-flex align-items-center gap-1"
+                                        >
+                                          {template.opdTemplateName}
+                                          <button
+                                            type="button"
+                                            className="btn-close btn-close-white"
+                                            style={{ fontSize: "0.7rem" }}
+                                            onClick={(e) => {
+                                              e.stopPropagation();
+                                              handleRemoveTreatmentTemplateItems(
+                                                templateId,
+                                              );
+                                            }}
+                                            aria-label="Remove template"
+                                          ></button>
+                                        </span>
+                                      ) : null;
+                                    },
+                                  )}
                                 </div>
                               </div>
                             </div>
@@ -3393,17 +3611,25 @@ const updateDrug = (selectedDrug, index) => {
                           <select
                             className="form-select"
                             value={selectedTreatmentTemplateId}
-                            onChange={(e) => handleTreatmentTemplateSelect(e.target.value)}
+                            onChange={(e) =>
+                              handleTreatmentTemplateSelect(e.target.value)
+                            }
                           >
                             <option value="Select..">Select..</option>
                             {opdTemplateData.map((item) => (
                               <option
                                 key={item.templateId}
                                 value={item.templateId}
-                                disabled={selectedTreatmentTemplateIds.has(item.templateId)}
+                                disabled={selectedTreatmentTemplateIds.has(
+                                  item.templateId,
+                                )}
                               >
                                 {item.opdTemplateName}
-                                {selectedTreatmentTemplateIds.has(item.templateId) ? " (Already Added)" : ""}
+                                {selectedTreatmentTemplateIds.has(
+                                  item.templateId,
+                                )
+                                  ? " (Already Added)"
+                                  : ""}
                               </option>
                             ))}
                           </select>
@@ -3430,79 +3656,155 @@ const updateDrug = (selectedDrug, index) => {
                         </div>
                       </div>
 
-                      <div className="table-responsive" ref={tableContainerRef} style={{ overflow: "visible" }}>
+                      <div
+                        className="table-responsive"
+                        ref={tableContainerRef}
+                        style={{ overflow: "visible" }}
+                      >
                         <table className="table table-bordered">
                           <thead style={{ backgroundColor: "#b0c4de" }}>
                             <tr>
                               <th style={{ width: "350px" }}>Drug Name</th>
-                              <th style={{ width: "90px" }} className="text-center">Disp. Unit</th>
-                              <th style={{ width: "70px" }} className="text-center">Dosage</th>
-                              <th style={{ width: "120px" }} className="text-center">Frequency</th>
-                              <th style={{ width: "70px" }} className="text-center">Days</th>
-                              <th style={{ width: "70px" }} className="text-center">Total</th>
-                              <th style={{ width: "130px" }} className="text-center">Instruction</th>
-                              <th style={{ width: "100px" }} className="text-center">Stock</th>
-                              <th style={{ width: "60px" }} className="text-center">Add</th>
-                              <th style={{ width: "60px" }} className="text-center">Delete</th>
+                              <th
+                                style={{ width: "90px" }}
+                                className="text-center"
+                              >
+                                Disp. Unit
+                              </th>
+                              <th
+                                style={{ width: "70px" }}
+                                className="text-center"
+                              >
+                                Dosage
+                              </th>
+                              <th
+                                style={{ width: "120px" }}
+                                className="text-center"
+                              >
+                                Frequency
+                              </th>
+                              <th
+                                style={{ width: "70px" }}
+                                className="text-center"
+                              >
+                                Days
+                              </th>
+                              <th
+                                style={{ width: "70px" }}
+                                className="text-center"
+                              >
+                                Total
+                              </th>
+                              <th
+                                style={{ width: "130px" }}
+                                className="text-center"
+                              >
+                                Instruction
+                              </th>
+                              <th
+                                style={{ width: "100px" }}
+                                className="text-center"
+                              >
+                                Stock
+                              </th>
+                              <th
+                                style={{ width: "60px" }}
+                                className="text-center"
+                              >
+                                Add
+                              </th>
+                              <th
+                                style={{ width: "60px" }}
+                                className="text-center"
+                              >
+                                Delete
+                              </th>
                             </tr>
                           </thead>
                           <tbody>
                             {treatmentItems.map((row, index) => (
                               <tr key={index}>
-<td>
-  <div className="position-relative" style={{ width: "100%", zIndex: 20 }} ref={drugDropdownRef}>
-    <input
-      type="text"
-      className="form-control"
-      placeholder="Search Drug..."
-      value={treatmentItems[index].drugName || drugSearch[index] || ""}
-      onChange={(e) => handleDrugSearch(e.target.value, index)}
-      onClick={() => {
-        loadFirstDrugPage(index);
-        setActiveDrugDropdown(index);
-      }}
-      onBlur={() => {
-        setTimeout(() => {
-          setActiveDrugDropdown(null);
-        }, 200);
-      }}
-      autoComplete="off"
-    />
+                                <td>
+                                  <div
+                                    className="position-relative"
+                                    style={{ width: "100%", zIndex: 20 }}
+                                    ref={drugDropdownRef}
+                                  >
+                                    <input
+                                      type="text"
+                                      className="form-control"
+                                      placeholder="Search Drug..."
+                                      value={
+                                        treatmentItems[index].drugName ||
+                                        drugSearch[index] ||
+                                        ""
+                                      }
+                                      onChange={(e) =>
+                                        handleDrugSearch(e.target.value, index)
+                                      }
+                                      onClick={() => {
+                                        loadFirstDrugPage(index);
+                                        setActiveDrugDropdown(index);
+                                      }}
+                                      onBlur={() => {
+                                        setTimeout(() => {
+                                          setActiveDrugDropdown(null);
+                                        }, 200);
+                                      }}
+                                      autoComplete="off"
+                                    />
 
-    {activeDrugDropdown === index && (
-      <div
-        className="border rounded mt-1 bg-white position-absolute w-100"
-        style={{ maxHeight: "220px", zIndex: 9999, overflowY: "auto" }}
-        onScroll={(e) => {
-          if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
-            loadMoreDrugs();
-          }
-        }}
-      >
-        {drugDropdown.length > 0 ? (
-          drugDropdown.map((drug) => (
-            <div
-              key={drug.itemId}
-              className="p-2 cursor-pointer"
-              onMouseDown={(e) => e.preventDefault()} // prevent blur
-              onClick={() => {
-                updateDrug(drug, index);
-                setActiveDrugDropdown(null);
-              }}
-            >
-              <strong>{drug.nomenclature}</strong> — {drug.pvmsNo}
-            </div>
-          ))
-        ) : (
-          <div className="p-2 text-muted">No results found</div>
-        )}
-        {!drugLastPage && (
-          <div className="text-center p-2 small text-primary">Loading...</div>
-        )}
-      </div>
-    )}
-  </div>
-</td>
+                                    {activeDrugDropdown === index && (
+                                      <div
+                                        className="border rounded mt-1 bg-white position-absolute w-100"
+                                        style={{
+                                          maxHeight: "220px",
+                                          zIndex: 9999,
+                                          overflowY: "auto",
+                                        }}
+                                        onScroll={(e) => {
+                                          if (
+                                            e.target.scrollHeight -
+                                              e.target.scrollTop ===
+                                            e.target.clientHeight
+                                          ) {
+                                            loadMoreDrugs();
+                                          }
+                                        }}
+                                      >
+                                        {drugDropdown.length > 0 ? (
+                                          drugDropdown.map((drug) => (
+                                            <div
+                                              key={drug.itemId}
+                                              className="p-2 cursor-pointer"
+                                              onMouseDown={(e) =>
+                                                e.preventDefault()
+                                              } // prevent blur
+                                              onClick={() => {
+                                                updateDrug(drug, index);
+                                                setActiveDrugDropdown(null);
+                                              }}
+                                            >
+                                              <strong>
+                                                {drug.nomenclature}
+                                              </strong>{" "}
+                                              — {drug.pvmsNo}
+                                            </div>
+                                          ))
+                                        ) : (
+                                          <div className="p-2 text-muted">
+                                            No results found
+                                          </div>
+                                        )}
+                                        {!drugLastPage && (
+                                          <div className="text-center p-2 small text-primary">
+                                            Loading...
+                                          </div>
+                                        )}
+                                      </div>
+                                    )}
+                                  </div>
+                                </td>
 
                                 <td style={{ width: "90px" }}>
                                   <input
@@ -3510,7 +3812,11 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-control"
                                     value={row.dispUnit}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "dispUnit", e.target.value)
+                                      handleTreatmentChange(
+                                        index,
+                                        "dispUnit",
+                                        e.target.value,
+                                      )
                                     }
                                     readOnly
                                   />
@@ -3521,7 +3827,11 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-control"
                                     value={row.dosage}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "dosage", e.target.value)
+                                      handleTreatmentChange(
+                                        index,
+                                        "dosage",
+                                        e.target.value,
+                                      )
                                     }
                                     min={0}
                                   />
@@ -3531,12 +3841,19 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-select"
                                     value={row.frequency || ""}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "frequency", e.target.value)
+                                      handleTreatmentChange(
+                                        index,
+                                        "frequency",
+                                        e.target.value,
+                                      )
                                     }
                                   >
                                     <option value="">Select..</option>
                                     {allFrequencies.map((f) => (
-                                      <option key={f.frequencyId} value={f.frequencyName}>
+                                      <option
+                                        key={f.frequencyId}
+                                        value={f.frequencyName}
+                                      >
                                         {f.frequencyName}
                                       </option>
                                     ))}
@@ -3548,7 +3865,11 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-control"
                                     value={row.days}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "days", e.target.value)
+                                      handleTreatmentChange(
+                                        index,
+                                        "days",
+                                        e.target.value,
+                                      )
                                     }
                                     min={0}
                                   />
@@ -3559,7 +3880,11 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-control"
                                     value={row.total}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "total", e.target.value)
+                                      handleTreatmentChange(
+                                        index,
+                                        "total",
+                                        e.target.value,
+                                      )
                                     }
                                     readOnly
                                   />
@@ -3569,28 +3894,53 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-select"
                                     value={row.instruction}
                                     onChange={(e) =>
-                                      handleTreatmentChange(index, "instruction", e.target.value)
+                                      handleTreatmentChange(
+                                        index,
+                                        "instruction",
+                                        e.target.value,
+                                      )
                                     }
                                   >
                                     <option value="">Select...</option>
-                                    <option value="After Meal">After Meal</option>
-                                    <option value="Before Meal">Before Meal</option>
+                                    <option value="After Meal">
+                                      After Meal
+                                    </option>
+                                    <option value="Before Meal">
+                                      Before Meal
+                                    </option>
                                     <option value="With Food">With Food</option>
                                   </select>
                                 </td>
                                 <td style={{ width: "100px" }}>
-                                  <input type="number" className="form-control" value={row.stock || 0} readOnly />
+                                  <input
+                                    type="number"
+                                    className="form-control"
+                                    value={row.stock || 0}
+                                    readOnly
+                                  />
                                 </td>
-                                <td style={{ width: "60px" }} className="text-center">
-                                  <button className="btn btn-sm btn-success" onClick={handleAddTreatmentItem}>
+                                <td
+                                  style={{ width: "60px" }}
+                                  className="text-center"
+                                >
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddTreatmentItem}
+                                  >
                                     +
                                   </button>
                                 </td>
-                                <td style={{ width: "60px" }} className="text-center">
+                                <td
+                                  style={{ width: "60px" }}
+                                  className="text-center"
+                                >
                                   <button
                                     className="btn btn-sm btn-danger"
-                                    onClick={() => handleRemoveTreatmentItem(index)}
-                                    disabled={treatmentItems.length === 1 &&
+                                    onClick={() =>
+                                      handleRemoveTreatmentItem(index)
+                                    }
+                                    disabled={
+                                      treatmentItems.length === 1 &&
                                       !treatmentItems[0].drugName &&
                                       !treatmentItems[0].dispUnit &&
                                       !treatmentItems[0].dosage &&
@@ -3599,12 +3949,11 @@ const updateDrug = (selectedDrug, index) => {
                                       !treatmentItems[0].total &&
                                       !treatmentItems[0].instruction &&
                                       treatmentItems[0].stock === "0" &&
-                                      !treatmentItems[0].treatmentId}
+                                      !treatmentItems[0].treatmentId
+                                    }
                                   >
                                     −
                                   </button>
-
-
                                 </td>
                               </tr>
                             ))}
@@ -3623,7 +3972,9 @@ const updateDrug = (selectedDrug, index) => {
                               rows={3}
                               value={generalTreatmentAdvice}
                               placeholder="Treatment advice will be populated here"
-                              onChange={(e) => setGeneralTreatmentAdvice(e.target.value)}
+                              onChange={(e) =>
+                                setGeneralTreatmentAdvice(e.target.value)
+                              }
                             />
 
                             <button
@@ -3638,7 +3989,6 @@ const updateDrug = (selectedDrug, index) => {
                           </div>
                         </div>
                       </div>
-
                     </div>
                   )}
                 </div>
@@ -3651,7 +4001,9 @@ const updateDrug = (selectedDrug, index) => {
                     onClick={() => toggleSection("procedureCare")}
                   >
                     <h6 className="mb-0 fw-bold">Procedure Care</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.procedureCare ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.procedureCare ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.procedureCare && (
                     <div className="card-body" style={{ overflow: "visible" }}>
@@ -3666,7 +4018,10 @@ const updateDrug = (selectedDrug, index) => {
                               checked={procedureCareType === "procedure"}
                               onChange={() => setProcedureCareType("procedure")}
                             />
-                            <label className="form-check-label" htmlFor="procedure">
+                            <label
+                              className="form-check-label"
+                              htmlFor="procedure"
+                            >
                               Procedure
                             </label>
                           </div>
@@ -3677,9 +4032,14 @@ const updateDrug = (selectedDrug, index) => {
                               name="procedureCareType"
                               id="physiotherapy"
                               checked={procedureCareType === "physiotherapy"}
-                              onChange={() => setProcedureCareType("physiotherapy")}
+                              onChange={() =>
+                                setProcedureCareType("physiotherapy")
+                              }
                             />
-                            <label className="form-check-label" htmlFor="physiotherapy">
+                            <label
+                              className="form-check-label"
+                              htmlFor="physiotherapy"
+                            >
                               Physiotherapy
                             </label>
                           </div>
@@ -3687,22 +4047,39 @@ const updateDrug = (selectedDrug, index) => {
                       </div>
 
                       {procedureCareType === "procedure" ? (
-                        <div className="table-responsive" style={{ overflow: "visible" }}>
+                        <div
+                          className="table-responsive"
+                          style={{ overflow: "visible" }}
+                        >
                           <table className="table table-bordered">
                             <thead style={{ backgroundColor: "#b0c4de" }}>
                               <tr>
-                                <th style={{ width: "40%" }}>Nursing Care Name</th>
-                                <th className="text-center" style={{ width: "20%" }}>
+                                <th style={{ width: "40%" }}>
+                                  Nursing Care Name
+                                </th>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "20%" }}
+                                >
                                   Frequency
                                 </th>
-                                <th className="text-center" style={{ width: "15%" }}>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "15%" }}
+                                >
                                   No.Of Days
                                 </th>
                                 <th style={{ width: "15%" }}>Remarks</th>
-                                <th className="text-center" style={{ width: "5%" }}>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "5%" }}
+                                >
                                   Add
                                 </th>
-                                <th className="text-center" style={{ width: "5%" }}>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "5%" }}
+                                >
                                   Delete
                                 </th>
                               </tr>
@@ -3713,15 +4090,24 @@ const updateDrug = (selectedDrug, index) => {
                                   <td>
                                     <div
                                       className="procedure-wrapper"
-                                      ref={(el) => (procedureDropdownRef.current[index] = el)}
-                                      style={{ position: "relative", width: "100%" }}
+                                      ref={(el) =>
+                                        (procedureDropdownRef.current[index] =
+                                          el)
+                                      }
+                                      style={{
+                                        position: "relative",
+                                        width: "100%",
+                                      }}
                                     >
-
                                       <input
                                         type="text"
                                         className="form-control"
                                         placeholder="Search Procedure..."
-                                        value={row.procedureName || procedureSearch[index] || ""}
+                                        value={
+                                          row.procedureName ||
+                                          procedureSearch[index] ||
+                                          ""
+                                        }
                                         onChange={async (e) => {
                                           const val = e.target.value;
                                           setProcedureSearch((prev) => {
@@ -3730,7 +4116,8 @@ const updateDrug = (selectedDrug, index) => {
                                             return updated;
                                           });
 
-                                          const result = await fetchMasProcedureData(0, val);
+                                          const result =
+                                            await fetchMasProcedureData(0, val);
                                           setProcedureDropdown(result.list);
                                           setProcedureLastPage(result.last);
                                           setProcedurePage(0);
@@ -3742,10 +4129,15 @@ const updateDrug = (selectedDrug, index) => {
                                         }}
                                         onBlur={() => {
                                           setTimeout(() => {
-                                            const selected = procedureCareItems[index];
+                                            const selected =
+                                              procedureCareItems[index];
                                             const text = procedureSearch[index];
 
-                                            if ((!selected.id || selected.name !== text) && text !== "") {
+                                            if (
+                                              (!selected.id ||
+                                                selected.name !== text) &&
+                                              text !== ""
+                                            ) {
                                               setProcedureSearch((prev) => {
                                                 const updated = [...prev];
                                                 updated[index] = "";
@@ -3772,10 +4164,14 @@ const updateDrug = (selectedDrug, index) => {
                                             overflowY: "auto",
                                             zIndex: 999999,
                                             top: "100%",
-                                            left: 0
+                                            left: 0,
                                           }}
                                           onScroll={(e) => {
-                                            if (e.target.scrollHeight - e.target.scrollTop === e.target.clientHeight) {
+                                            if (
+                                              e.target.scrollHeight -
+                                                e.target.scrollTop ===
+                                              e.target.clientHeight
+                                            ) {
                                               loadMoreProcedure();
                                             }
                                           }}
@@ -3787,18 +4183,25 @@ const updateDrug = (selectedDrug, index) => {
                                                 className="p-2 cursor-pointer hover:bg-light"
                                                 onMouseDown={() => {
                                                   updateProcedure(proc, index);
-                                                  setOpenProcedureDropdown(null);
+                                                  setOpenProcedureDropdown(
+                                                    null,
+                                                  );
                                                 }}
                                               >
-                                                {proc.procedureCode} - {proc.procedureName}
+                                                {proc.procedureCode} -{" "}
+                                                {proc.procedureName}
                                               </div>
                                             ))
                                           ) : (
-                                            <div className="p-2 text-muted">No results found</div>
+                                            <div className="p-2 text-muted">
+                                              No results found
+                                            </div>
                                           )}
 
                                           {!procedureLastPage && (
-                                            <div className="text-center p-2 text-primary small">Loading...</div>
+                                            <div className="text-center p-2 text-primary small">
+                                              Loading...
+                                            </div>
                                           )}
                                         </div>
                                       )}
@@ -3810,12 +4213,19 @@ const updateDrug = (selectedDrug, index) => {
                                       className="form-select"
                                       value={row.frequencyId || ""}
                                       onChange={(e) =>
-                                        handleProcedureCareChange(index, "frequencyId", e.target.value)
+                                        handleProcedureCareChange(
+                                          index,
+                                          "frequencyId",
+                                          e.target.value,
+                                        )
                                       }
                                     >
                                       <option value="">Select..</option>
                                       {allFrequencies.map((f) => (
-                                        <option key={f.frequencyId} value={f.frequencyId}>
+                                        <option
+                                          key={f.frequencyId}
+                                          value={f.frequencyId}
+                                        >
                                           {f.frequencyName}
                                         </option>
                                       ))}
@@ -3827,7 +4237,11 @@ const updateDrug = (selectedDrug, index) => {
                                       className="form-control"
                                       value={row.noOfDays}
                                       onChange={(e) =>
-                                        handleProcedureCareChange(index, "noOfDays", e.target.value)
+                                        handleProcedureCareChange(
+                                          index,
+                                          "noOfDays",
+                                          e.target.value,
+                                        )
                                       }
                                       placeholder="num"
                                       min={0}
@@ -3839,7 +4253,11 @@ const updateDrug = (selectedDrug, index) => {
                                       className="form-control"
                                       value={row.remarks}
                                       onChange={(e) =>
-                                        handleProcedureCareChange(index, "remarks", e.target.value)
+                                        handleProcedureCareChange(
+                                          index,
+                                          "remarks",
+                                          e.target.value,
+                                        )
                                       }
                                       placeholder="Enter remarks"
                                     />
@@ -3855,20 +4273,23 @@ const updateDrug = (selectedDrug, index) => {
                                   <td className="text-center">
                                     <button
                                       className="btn btn-sm btn-danger"
-                                      onClick={() => handleRemoveProcedureCareItem(index)}
+                                      onClick={() =>
+                                        handleRemoveProcedureCareItem(index)
+                                      }
                                       disabled={
                                         procedureCareItems.length === 1 &&
                                         !procedureCareItems[0].procedureId &&
                                         !procedureCareItems[0].procedureName &&
                                         !procedureCareItems[0].frequencyId &&
-                                        (procedureCareItems[0].noOfDays === "" || procedureCareItems[0].noOfDays === 0) &&
+                                        (procedureCareItems[0].noOfDays ===
+                                          "" ||
+                                          procedureCareItems[0].noOfDays ===
+                                            0) &&
                                         !procedureCareItems[0].remarks
                                       }
-
                                     >
                                       −
                                     </button>
-
                                   </td>
                                 </tr>
                               ))}
@@ -3880,18 +4301,32 @@ const updateDrug = (selectedDrug, index) => {
                           <table className="table table-bordered">
                             <thead style={{ backgroundColor: "#b0c4de" }}>
                               <tr>
-                                <th style={{ width: "40%" }}>Nursing Care Name</th>
-                                <th className="text-center" style={{ width: "20%" }}>
+                                <th style={{ width: "40%" }}>
+                                  Nursing Care Name
+                                </th>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "20%" }}
+                                >
                                   Frequency
                                 </th>
-                                <th className="text-center" style={{ width: "15%" }}>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "15%" }}
+                                >
                                   No.Of Days
                                 </th>
                                 <th style={{ width: "15%" }}>Remarks</th>
-                                <th className="text-center" style={{ width: "5%" }}>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "5%" }}
+                                >
                                   Add
                                 </th>
-                                <th className="text-center" style={{ width: "5%" }}>
+                                <th
+                                  className="text-center"
+                                  style={{ width: "5%" }}
+                                >
                                   Delete
                                 </th>
                               </tr>
@@ -3904,7 +4339,13 @@ const updateDrug = (selectedDrug, index) => {
                                       type="text"
                                       className="form-control"
                                       value={row.name}
-                                      onChange={(e) => handlePhysiotherapyChange(index, "name", e.target.value)}
+                                      onChange={(e) =>
+                                        handlePhysiotherapyChange(
+                                          index,
+                                          "name",
+                                          e.target.value,
+                                        )
+                                      }
                                       placeholder="Enter nursing care name"
                                     />
                                   </td>
@@ -3913,12 +4354,19 @@ const updateDrug = (selectedDrug, index) => {
                                       className="form-select"
                                       value={row.frequency || ""}
                                       onChange={(e) =>
-                                        handlePhysiotherapyChange(index, "frequency", e.target.value)
+                                        handlePhysiotherapyChange(
+                                          index,
+                                          "frequency",
+                                          e.target.value,
+                                        )
                                       }
                                     >
                                       <option value="">Select..</option>
                                       {allFrequencies.map((f) => (
-                                        <option key={f.frequencyId} value={f.frequencyId}>
+                                        <option
+                                          key={f.frequencyId}
+                                          value={f.frequencyId}
+                                        >
                                           {f.frequencyName}
                                         </option>
                                       ))}
@@ -3929,7 +4377,13 @@ const updateDrug = (selectedDrug, index) => {
                                       type="number"
                                       className="form-control"
                                       value={row.days}
-                                      onChange={(e) => handlePhysiotherapyChange(index, "days", e.target.value)}
+                                      onChange={(e) =>
+                                        handlePhysiotherapyChange(
+                                          index,
+                                          "days",
+                                          e.target.value,
+                                        )
+                                      }
                                       placeholder="0"
                                       min={0}
                                     />
@@ -3940,7 +4394,11 @@ const updateDrug = (selectedDrug, index) => {
                                       className="form-control"
                                       value={row.remarks}
                                       onChange={(e) =>
-                                        handlePhysiotherapyChange(index, "remarks", e.target.value)
+                                        handlePhysiotherapyChange(
+                                          index,
+                                          "remarks",
+                                          e.target.value,
+                                        )
                                       }
                                       placeholder="Enter remarks"
                                     />
@@ -3956,7 +4414,9 @@ const updateDrug = (selectedDrug, index) => {
                                   <td className="text-center">
                                     <button
                                       className="btn btn-sm btn-danger"
-                                      onClick={() => handleRemovePhysiotherapyItem(index)}
+                                      onClick={() =>
+                                        handleRemovePhysiotherapyItem(index)
+                                      }
                                       disabled={
                                         physiotherapyItems.length === 1 &&
                                         !physiotherapyItems[0].name &&
@@ -3967,7 +4427,6 @@ const updateDrug = (selectedDrug, index) => {
                                     >
                                       −
                                     </button>
-
                                   </td>
                                 </tr>
                               ))}
@@ -3987,7 +4446,9 @@ const updateDrug = (selectedDrug, index) => {
                     onClick={() => toggleSection("surgeryAdvice")}
                   >
                     <h6 className="mb-0 fw-bold">Surgery Advice</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.surgeryAdvice ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.surgeryAdvice ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.surgeryAdvice && (
                     <div className="card-body">
@@ -4024,8 +4485,8 @@ const updateDrug = (selectedDrug, index) => {
                               <button
                                 className="btn btn-sm btn-primary"
                                 onClick={(e) => {
-                                  e.stopPropagation()
-                                  setShowOtCalendarModal(true)
+                                  e.stopPropagation();
+                                  setShowOtCalendarModal(true);
                                 }}
                                 style={{ fontSize: "12px" }}
                               >
@@ -4057,7 +4518,10 @@ const updateDrug = (selectedDrug, index) => {
                                     className="form-control"
                                     value={item.surgery}
                                     onChange={(e) => {
-                                      handleSurgerySearchChange(e.target.value, index)
+                                      handleSurgerySearchChange(
+                                        e.target.value,
+                                        index,
+                                      );
                                     }}
                                     placeholder="Search Surgery"
                                     autoComplete="off"
@@ -4071,13 +4535,22 @@ const updateDrug = (selectedDrug, index) => {
                                       >
                                         {surgeryOptions
                                           .filter((surgery) =>
-                                            surgery.name.toLowerCase().includes(surgerySearchInput.toLowerCase()),
+                                            surgery.name
+                                              .toLowerCase()
+                                              .includes(
+                                                surgerySearchInput.toLowerCase(),
+                                              ),
                                           )
                                           .map((surgery) => (
                                             <li
                                               key={surgery.id}
                                               className="list-group-item list-group-item-action"
-                                              onClick={() => handleSurgerySelect(surgery, index)}
+                                              onClick={() =>
+                                                handleSurgerySelect(
+                                                  surgery,
+                                                  index,
+                                                )
+                                              }
                                             >
                                               {surgery.name}
                                             </li>
@@ -4090,18 +4563,29 @@ const updateDrug = (selectedDrug, index) => {
                                     type="checkbox"
                                     className="form-check-input"
                                     checked={item.selected}
-                                    onChange={(e) => handleSurgeryChange(index, "selected", e.target.checked)}
+                                    onChange={(e) =>
+                                      handleSurgeryChange(
+                                        index,
+                                        "selected",
+                                        e.target.checked,
+                                      )
+                                    }
                                   />
                                 </td>
                                 <td className="text-center">
-                                  <button className="btn btn-sm btn-success" onClick={handleAddSurgeryItem}>
+                                  <button
+                                    className="btn btn-sm btn-success"
+                                    onClick={handleAddSurgeryItem}
+                                  >
                                     +
                                   </button>
                                 </td>
                                 <td className="text-center">
                                   <button
                                     className="btn btn-sm btn-danger"
-                                    onClick={() => handleRemoveSurgeryItem(index)}
+                                    onClick={() =>
+                                      handleRemoveSurgeryItem(index)
+                                    }
                                     disabled={surgeryItems.length === 1}
                                   >
                                     −
@@ -4143,33 +4627,44 @@ const updateDrug = (selectedDrug, index) => {
                                   onChange={handleAdmissionAdvisedChange}
                                 />
 
-                                <label className="form-check-label fw-bold" htmlFor="admissionAdvised">
+                                <label
+                                  className="form-check-label fw-bold"
+                                  htmlFor="admissionAdvised"
+                                >
                                   Admission Advised
                                 </label>
                               </div>
                             </div>
-
                           </div>
 
                           {admissionAdvised && (
                             <div className="border-top pt-3 mt-3">
                               <div className="row g-3">
                                 <div className="col-md-3">
-                                  <label className="form-label fw-bold">Admission Date</label>
+                                  <label className="form-label fw-bold">
+                                    Admission Date
+                                  </label>
                                   <input
                                     type="date"
                                     className="form-control"
                                     value={admissionDate}
-                                    onChange={(e) => setAdmissionDate(e.target.value)}
+                                    onChange={(e) =>
+                                      setAdmissionDate(e.target.value)
+                                    }
                                   />
                                 </div>
                                 <div className="col-md-9">
-                                  <label className="form-label fw-bold">Admission Notes <span className="text-danger">*</span></label>
+                                  <label className="form-label fw-bold">
+                                    Admission Notes{" "}
+                                    <span className="text-danger">*</span>
+                                  </label>
                                   <textarea
                                     className="form-control"
                                     rows={3}
                                     value={additionalAdvice}
-                                    onChange={(e) => setAdditionalAdvice(e.target.value)}
+                                    onChange={(e) =>
+                                      setAdditionalAdvice(e.target.value)
+                                    }
                                     placeholder="Enter admission advice"
                                   ></textarea>
                                 </div>
@@ -4177,37 +4672,55 @@ const updateDrug = (selectedDrug, index) => {
 
                               <div className="row g-3 mt-3">
                                 <div className="col-md-3">
-                                  <label className="form-label fw-bold">Ward Category</label>
+                                  <label className="form-label fw-bold">
+                                    Ward Category
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={wardCategory}
-                                    onChange={(e) => handleWardCategoryChange(Number(e.target.value))}
+                                    onChange={(e) =>
+                                      handleWardCategoryChange(
+                                        Number(e.target.value),
+                                      )
+                                    }
                                   >
-                                    <option value="">Select Ward Category</option>
+                                    <option value="">
+                                      Select Ward Category
+                                    </option>
                                     {wardCategories.map((category) => (
-                                      <option key={category.categoryId} value={category.categoryId}>
+                                      <option
+                                        key={category.categoryId}
+                                        value={category.categoryId}
+                                      >
                                         {category.categoryName}
                                       </option>
                                     ))}
                                   </select>
-
                                 </div>
                                 <div className="col-md-3">
-                                  <label className="form-label fw-bold">Care Level</label>
+                                  <label className="form-label fw-bold">
+                                    Care Level
+                                  </label>
                                   <input
                                     type="text"
                                     className="form-control"
                                     value={admissionCareLevelName}
                                     readOnly
                                   />
-
                                 </div>
                                 <div className="col-md-3">
-                                  <label className="form-label fw-bold">Ward Name/Dept Name <span className="text-danger">*</span></label>
+                                  <label className="form-label fw-bold">
+                                    Ward Name/Dept Name{" "}
+                                    <span className="text-danger">*</span>
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={wardName}
-                                    onChange={(e) => handleWardNameChange(Number(e.target.value))}
+                                    onChange={(e) =>
+                                      handleWardNameChange(
+                                        Number(e.target.value),
+                                      )
+                                    }
                                     disabled={!wardCategory}
                                   >
                                     <option value="">Select Ward/Dept</option>
@@ -4217,14 +4730,17 @@ const updateDrug = (selectedDrug, index) => {
                                       </option>
                                     ))}
                                   </select>
-
                                 </div>
                                 <div className="col-md-3">
-                                  <label className="form-label fw-bold">Admission Priority (Optional)</label>
+                                  <label className="form-label fw-bold">
+                                    Admission Priority (Optional)
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={admissionPriority}
-                                    onChange={(e) => setAdmissionPriority(e.target.value)}
+                                    onChange={(e) =>
+                                      setAdmissionPriority(e.target.value)
+                                    }
                                   >
                                     {admissionPriorities.map((priority) => (
                                       <option key={priority} value={priority}>
@@ -4238,7 +4754,9 @@ const updateDrug = (selectedDrug, index) => {
                               {wardName && (
                                 <div className="row g-3 mt-3">
                                   <div className="col-md-3">
-                                    <label className="form-label fw-bold">Occupied Bed</label>
+                                    <label className="form-label fw-bold">
+                                      Occupied Bed
+                                    </label>
                                     <input
                                       type="text"
                                       className="form-control"
@@ -4248,7 +4766,9 @@ const updateDrug = (selectedDrug, index) => {
                                   </div>
 
                                   <div className="col-md-3">
-                                    <label className="form-label fw-bold">Vacant Bed</label>
+                                    <label className="form-label fw-bold">
+                                      Vacant Bed
+                                    </label>
                                     <input
                                       type="text"
                                       className="form-control"
@@ -4258,7 +4778,6 @@ const updateDrug = (selectedDrug, index) => {
                                   </div>
                                 </div>
                               )}
-
                             </div>
                           )}
                         </div>
@@ -4275,7 +4794,9 @@ const updateDrug = (selectedDrug, index) => {
                     onClick={() => toggleSection("referral")}
                   >
                     <h6 className="mb-0 fw-bold">Referral</h6>
-                    <span style={{ fontSize: "18px" }}>{expandedSections.referral ? "−" : "+"}</span>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.referral ? "−" : "+"}
+                    </span>
                   </div>
                   {expandedSections.referral && (
                     <div className="card-body">
@@ -4291,7 +4812,12 @@ const updateDrug = (selectedDrug, index) => {
                                 id="referralNo"
                                 value="No"
                                 checked={referralData.isReferred === "No"}
-                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+                                onChange={(e) =>
+                                  handleReferralChange(
+                                    "isReferred",
+                                    e.target.value,
+                                  )
+                                }
                               />
                             </div>
                             <div className="form-check">
@@ -4302,9 +4828,17 @@ const updateDrug = (selectedDrug, index) => {
                                 id="referralYes"
                                 value="Yes"
                                 checked={referralData.isReferred === "Yes"}
-                                onChange={(e) => handleReferralChange("isReferred", e.target.value)}
+                                onChange={(e) =>
+                                  handleReferralChange(
+                                    "isReferred",
+                                    e.target.value,
+                                  )
+                                }
                               />
-                              <label className="form-check-label" htmlFor="referralYes">
+                              <label
+                                className="form-check-label"
+                                htmlFor="referralYes"
+                              >
                                 Yes
                               </label>
                             </div>
@@ -4314,11 +4848,18 @@ const updateDrug = (selectedDrug, index) => {
                         {referralData.isReferred === "Yes" && (
                           <>
                             <div className="col-md-2">
-                              <label className="form-label fw-bold">Refer To</label>
+                              <label className="form-label fw-bold">
+                                Refer To
+                              </label>
                               <select
                                 className="form-select"
                                 value={referralData.referTo}
-                                onChange={(e) => handleReferralChange("referTo", e.target.value)}
+                                onChange={(e) =>
+                                  handleReferralChange(
+                                    "referTo",
+                                    e.target.value,
+                                  )
+                                }
                               >
                                 <option value="">Select...</option>
                                 <option value="Internal">Internal</option>
@@ -4328,12 +4869,19 @@ const updateDrug = (selectedDrug, index) => {
                             </div>
 
                             <div className="col-md-2">
-                              <label className="form-label fw-bold">Refer Date:</label>
+                              <label className="form-label fw-bold">
+                                Refer Date:
+                              </label>
                               <input
                                 type="date"
                                 className="form-control"
                                 value={referralData.referralDate}
-                                onChange={(e) => handleReferralChange("referralDate", e.target.value)}
+                                onChange={(e) =>
+                                  handleReferralChange(
+                                    "referralDate",
+                                    e.target.value,
+                                  )
+                                }
                               />
                             </div>
                           </>
@@ -4346,12 +4894,19 @@ const updateDrug = (selectedDrug, index) => {
                             <>
                               <div className="row mb-3">
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Current Priority No.</label>
+                                  <label className="form-label fw-bold">
+                                    Current Priority No.
+                                  </label>
                                   <input
                                     type="text"
                                     className="form-control"
                                     value={referralData.currentPriorityNo}
-                                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "currentPriorityNo",
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="Enter priority no"
                                   />
                                 </div>
@@ -4364,12 +4919,20 @@ const updateDrug = (selectedDrug, index) => {
                                   <h6 className="fw-bold mb-3">Department</h6>
                                   <div className="table-responsive">
                                     <table className="table table-bordered">
-                                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                                      <thead
+                                        style={{ backgroundColor: "#b0c4de" }}
+                                      >
                                         <tr>
-                                          <th style={{ width: "10%" }}>Select</th>
-                                          <th style={{ width: "70%" }}>Doctor</th>
+                                          <th style={{ width: "10%" }}>
+                                            Select
+                                          </th>
+                                          <th style={{ width: "70%" }}>
+                                            Doctor
+                                          </th>
                                           <th style={{ width: "10%" }}>Add</th>
-                                          <th style={{ width: "10%" }}>Delete</th>
+                                          <th style={{ width: "10%" }}>
+                                            Delete
+                                          </th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -4380,32 +4943,61 @@ const updateDrug = (selectedDrug, index) => {
                                                 type="checkbox"
                                                 className="form-check-input"
                                                 checked={item.selected}
-                                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                                onChange={(e) =>
+                                                  handleDepartmentChange(
+                                                    index,
+                                                    "selected",
+                                                    e.target.checked,
+                                                  )
+                                                }
                                               />
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select"
                                                 value={item.doctor}
-                                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                                                onChange={(e) =>
+                                                  handleDepartmentChange(
+                                                    index,
+                                                    "doctor",
+                                                    e.target.value,
+                                                  )
+                                                }
                                               >
-                                                <option value="Select">Select</option>
-                                                <option value="Dr. Smith">Dr. Smith</option>
-                                                <option value="Dr. Johnson">Dr. Johnson</option>
-                                                <option value="Dr. Williams">Dr. Williams</option>
-                                                <option value="Dr. Brown">Dr. Brown</option>
+                                                <option value="Select">
+                                                  Select
+                                                </option>
+                                                <option value="Dr. Smith">
+                                                  Dr. Smith
+                                                </option>
+                                                <option value="Dr. Johnson">
+                                                  Dr. Johnson
+                                                </option>
+                                                <option value="Dr. Williams">
+                                                  Dr. Williams
+                                                </option>
+                                                <option value="Dr. Brown">
+                                                  Dr. Brown
+                                                </option>
                                               </select>
                                             </td>
                                             <td className="text-center">
-                                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                              <button
+                                                className="btn btn-sm btn-success"
+                                                onClick={handleAddDepartment}
+                                              >
                                                 +
                                               </button>
                                             </td>
                                             <td className="text-center">
                                               <button
                                                 className="btn btn-sm btn-danger"
-                                                onClick={() => handleRemoveDepartment(index)}
-                                                disabled={departmentData.length === 1}
+                                                onClick={() =>
+                                                  handleRemoveDepartment(index)
+                                                }
+                                                disabled={
+                                                  departmentData.length === 1
+                                                }
                                               >
                                                 −
                                               </button>
@@ -4424,46 +5016,80 @@ const updateDrug = (selectedDrug, index) => {
                             <>
                               <div className="row mb-3">
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Hospital *</label>
+                                  <label className="form-label fw-bold">
+                                    Hospital *
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={referralData.hospital}
-                                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "hospital",
+                                        e.target.value,
+                                      )
+                                    }
                                   >
                                     <option value="">Select...</option>
-                                    <option value="Hospital A">Hospital A</option>
-                                    <option value="Hospital B">Hospital B</option>
-                                    <option value="Hospital C">Hospital C</option>
+                                    <option value="Hospital A">
+                                      Hospital A
+                                    </option>
+                                    <option value="Hospital B">
+                                      Hospital B
+                                    </option>
+                                    <option value="Hospital C">
+                                      Hospital C
+                                    </option>
                                   </select>
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">No. of Days</label>
+                                  <label className="form-label fw-bold">
+                                    No. of Days
+                                  </label>
                                   <input
                                     type="number"
                                     className="form-control"
                                     value={referralData.noOfDays}
-                                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "noOfDays",
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="0"
                                   />
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Treatment Type *</label>
+                                  <label className="form-label fw-bold">
+                                    Treatment Type *
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={referralData.treatmentType}
-                                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "treatmentType",
+                                        e.target.value,
+                                      )
+                                    }
                                   >
                                     <option value="OPD">OPD</option>
                                     <option value="IPD">IPD</option>
                                   </select>
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Referred For*</label>
+                                  <label className="form-label fw-bold">
+                                    Referred For*
+                                  </label>
                                   <input
                                     type="text"
                                     className="form-control"
                                     value={referralData.referredFor}
-                                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "referredFor",
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="Referred for"
                                   />
                                 </div>
@@ -4475,56 +5101,97 @@ const updateDrug = (selectedDrug, index) => {
                             <>
                               <div className="row mb-3">
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Current Priority No.</label>
+                                  <label className="form-label fw-bold">
+                                    Current Priority No.
+                                  </label>
                                   <input
                                     type="text"
                                     className="form-control"
                                     value={referralData.currentPriorityNo}
-                                    onChange={(e) => handleReferralChange("currentPriorityNo", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "currentPriorityNo",
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="Enter priority no"
                                   />
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Hospital *</label>
+                                  <label className="form-label fw-bold">
+                                    Hospital *
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={referralData.hospital}
-                                    onChange={(e) => handleReferralChange("hospital", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "hospital",
+                                        e.target.value,
+                                      )
+                                    }
                                   >
                                     <option value="">Select...</option>
-                                    <option value="Hospital A">Hospital A</option>
-                                    <option value="Hospital B">Hospital B</option>
-                                    <option value="Hospital C">Hospital C</option>
+                                    <option value="Hospital A">
+                                      Hospital A
+                                    </option>
+                                    <option value="Hospital B">
+                                      Hospital B
+                                    </option>
+                                    <option value="Hospital C">
+                                      Hospital C
+                                    </option>
                                   </select>
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">No. of Days</label>
+                                  <label className="form-label fw-bold">
+                                    No. of Days
+                                  </label>
                                   <input
                                     type="number"
                                     className="form-control"
                                     value={referralData.noOfDays}
-                                    onChange={(e) => handleReferralChange("noOfDays", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "noOfDays",
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="0"
                                   />
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Treatment Type *</label>
+                                  <label className="form-label fw-bold">
+                                    Treatment Type *
+                                  </label>
                                   <select
                                     className="form-select"
                                     value={referralData.treatmentType}
-                                    onChange={(e) => handleReferralChange("treatmentType", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "treatmentType",
+                                        e.target.value,
+                                      )
+                                    }
                                   >
                                     <option value="OPD">OPD</option>
                                     <option value="IPD">IPD</option>
                                   </select>
                                 </div>
                                 <div className="col-md-2">
-                                  <label className="form-label fw-bold">Referred For*</label>
+                                  <label className="form-label fw-bold">
+                                    Referred For*
+                                  </label>
                                   <input
                                     type="text"
                                     className="form-control"
                                     value={referralData.referredFor}
-                                    onChange={(e) => handleReferralChange("referredFor", e.target.value)}
+                                    onChange={(e) =>
+                                      handleReferralChange(
+                                        "referredFor",
+                                        e.target.value,
+                                      )
+                                    }
                                     placeholder="Referred for"
                                   />
                                 </div>
@@ -4537,12 +5204,20 @@ const updateDrug = (selectedDrug, index) => {
                                   <h6 className="fw-bold mb-3">Department</h6>
                                   <div className="table-responsive">
                                     <table className="table table-bordered">
-                                      <thead style={{ backgroundColor: "#b0c4de" }}>
+                                      <thead
+                                        style={{ backgroundColor: "#b0c4de" }}
+                                      >
                                         <tr>
-                                          <th style={{ width: "10%" }}>Select</th>
-                                          <th style={{ width: "70%" }}>Doctor</th>
+                                          <th style={{ width: "10%" }}>
+                                            Select
+                                          </th>
+                                          <th style={{ width: "70%" }}>
+                                            Doctor
+                                          </th>
                                           <th style={{ width: "10%" }}>Add</th>
-                                          <th style={{ width: "10%" }}>Delete</th>
+                                          <th style={{ width: "10%" }}>
+                                            Delete
+                                          </th>
                                         </tr>
                                       </thead>
                                       <tbody>
@@ -4553,32 +5228,61 @@ const updateDrug = (selectedDrug, index) => {
                                                 type="checkbox"
                                                 className="form-check-input"
                                                 checked={item.selected}
-                                                onChange={(e) => handleDepartmentChange(index, "selected", e.target.checked)}
+                                                onChange={(e) =>
+                                                  handleDepartmentChange(
+                                                    index,
+                                                    "selected",
+                                                    e.target.checked,
+                                                  )
+                                                }
                                               />
                                             </td>
                                             <td>
                                               <select
                                                 className="form-select"
                                                 value={item.doctor}
-                                                onChange={(e) => handleDepartmentChange(index, "doctor", e.target.value)}
+                                                onChange={(e) =>
+                                                  handleDepartmentChange(
+                                                    index,
+                                                    "doctor",
+                                                    e.target.value,
+                                                  )
+                                                }
                                               >
-                                                <option value="Select">Select</option>
-                                                <option value="Dr. Smith">Dr. Smith</option>
-                                                <option value="Dr. Johnson">Dr. Johnson</option>
-                                                <option value="Dr. Williams">Dr. Williams</option>
-                                                <option value="Dr. Brown">Dr. Brown</option>
+                                                <option value="Select">
+                                                  Select
+                                                </option>
+                                                <option value="Dr. Smith">
+                                                  Dr. Smith
+                                                </option>
+                                                <option value="Dr. Johnson">
+                                                  Dr. Johnson
+                                                </option>
+                                                <option value="Dr. Williams">
+                                                  Dr. Williams
+                                                </option>
+                                                <option value="Dr. Brown">
+                                                  Dr. Brown
+                                                </option>
                                               </select>
                                             </td>
                                             <td className="text-center">
-                                              <button className="btn btn-sm btn-success" onClick={handleAddDepartment}>
+                                              <button
+                                                className="btn btn-sm btn-success"
+                                                onClick={handleAddDepartment}
+                                              >
                                                 +
                                               </button>
                                             </td>
                                             <td className="text-center">
                                               <button
                                                 className="btn btn-sm btn-danger"
-                                                onClick={() => handleRemoveDepartment(index)}
-                                                disabled={departmentData.length === 1}
+                                                onClick={() =>
+                                                  handleRemoveDepartment(index)
+                                                }
+                                                disabled={
+                                                  departmentData.length === 1
+                                                }
                                               >
                                                 −
                                               </button>
@@ -4600,7 +5304,9 @@ const updateDrug = (selectedDrug, index) => {
                                 className="form-control"
                                 rows={4}
                                 value={referralNotes}
-                                onChange={(e) => setReferralNotes(e.target.value)}
+                                onChange={(e) =>
+                                  setReferralNotes(e.target.value)
+                                }
                                 placeholder="Enter referral notes"
                               ></textarea>
                             </div>
@@ -4627,7 +5333,6 @@ const updateDrug = (selectedDrug, index) => {
                   {expandedSections.followUp && (
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between">
-
                         {/* Checkbox */}
                         <div className="d-flex align-items-center gap-2">
                           <input
@@ -4637,15 +5342,15 @@ const updateDrug = (selectedDrug, index) => {
                             onChange={handleFollowUpChange}
                           />
 
-
                           <h6 className="fw-bold mb-0">Follow Up</h6>
                         </div>
 
                         <div className="d-flex align-items-center gap-4">
-
                           {/* Number of Days */}
                           <div className="d-flex align-items-center gap-2">
-                            <label className="form-label mb-0">Number of days</label>
+                            <label className="form-label mb-0">
+                              Number of days
+                            </label>
                             <input
                               type="number"
                               min={0}
@@ -4662,12 +5367,13 @@ const updateDrug = (selectedDrug, index) => {
                               style={{ width: "120px" }}
                               disabled={!followUps.followUpFlag}
                             />
-
                           </div>
 
                           {/* Follow Up Date (Read Only) */}
                           <div className="d-flex align-items-center gap-2">
-                            <label className="form-label mb-0">Follow Up date</label>
+                            <label className="form-label mb-0">
+                              Follow Up date
+                            </label>
                             <input
                               type="date"
                               className="form-control"
@@ -4675,16 +5381,12 @@ const updateDrug = (selectedDrug, index) => {
                               value={followUps.followUpDate}
                               readOnly
                             />
-
-
                           </div>
-
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
-
 
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
@@ -4706,7 +5408,9 @@ const updateDrug = (selectedDrug, index) => {
                             className="form-control"
                             rows={4}
                             value={doctorRemarksText}
-                            onChange={(e) => setDoctorRemarksText(e.target.value)}
+                            onChange={(e) =>
+                              setDoctorRemarksText(e.target.value)
+                            }
                             placeholder="Doctor's remarks will be populated here"
                           />
                         </div>
@@ -4735,7 +5439,8 @@ const updateDrug = (selectedDrug, index) => {
                   >
                     {isSubmitting ? (
                       <>
-                        <i className="mdi mdi-loading mdi-spin"></i> PROCESSING...
+                        <i className="mdi mdi-loading mdi-spin"></i>{" "}
+                        PROCESSING...
                       </>
                     ) : (
                       <>
@@ -4743,10 +5448,16 @@ const updateDrug = (selectedDrug, index) => {
                       </>
                     )}
                   </button>
-                  <button className="btn btn-secondary me-3" onClick={handleResetForm}>
+                  <button
+                    className="btn btn-secondary me-3"
+                    onClick={handleResetForm}
+                  >
                     <i className="mdi mdi-refresh"></i> RESET
                   </button>
-                  <button className="btn btn-secondary" onClick={handleBackToList}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleBackToList}
+                  >
                     <i className="mdi mdi-arrow-left"></i> BACK
                   </button>
                 </div>
@@ -4761,7 +5472,7 @@ const updateDrug = (selectedDrug, index) => {
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
           onTemplateSaved={(template) => {
-            fetchInvestigationTemplates()
+            fetchInvestigationTemplates();
           }}
         />
 
@@ -4769,16 +5480,18 @@ const updateDrug = (selectedDrug, index) => {
           show={showTreatmentModal}
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
-          onTemplateSaved={(template) => {
-          }}
+          onTemplateSaved={(template) => {}}
         />
-
 
         {/* OT Calendar Modal */}
         {showOtCalendarModal && (
           <div
             className="modal fade show"
-            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+            style={{
+              display: "block",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              zIndex: 0,
+            }}
             tabIndex="-1"
             onClick={() => setShowOtCalendarModal(false)}
           >
@@ -4797,16 +5510,28 @@ const updateDrug = (selectedDrug, index) => {
               <div className="modal-content">
                 <div className="modal-header">
                   <h5 className="modal-title">OT DASHBOARD</h5>
-                  <button type="button" className="btn-close" onClick={() => setShowOtCalendarModal(false)}></button>
+                  <button
+                    type="button"
+                    className="btn-close"
+                    onClick={() => setShowOtCalendarModal(false)}
+                  ></button>
                 </div>
                 <div
                   className="modal-body"
-                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+                  style={{
+                    overflowY: "auto",
+                    flex: "1 1 auto",
+                    maxHeight: "calc(90vh - 120px)",
+                  }}
                 >
                   <OTDashboard />
                 </div>
                 <div className="modal-footer">
-                  <button type="button" className="btn btn-secondary" onClick={() => setShowOtCalendarModal(false)}>
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setShowOtCalendarModal(false)}
+                  >
                     Close
                   </button>
                 </div>
@@ -4818,7 +5543,11 @@ const updateDrug = (selectedDrug, index) => {
         {showCurrentMedicationModal && (
           <div
             className="modal fade show"
-            style={{ display: "block", backgroundColor: "rgba(0,0,0,0.5)", zIndex: 0 }}
+            style={{
+              display: "block",
+              backgroundColor: "rgba(0,0,0,0.5)",
+              zIndex: 0,
+            }}
             tabIndex="-1"
             onClick={() => setShowCurrentMedicationModal(false)}
           >
@@ -4845,7 +5574,11 @@ const updateDrug = (selectedDrug, index) => {
                 </div>
                 <div
                   className="modal-body"
-                  style={{ overflowY: "auto", flex: "1 1 auto", maxHeight: "calc(90vh - 120px)" }}
+                  style={{
+                    overflowY: "auto",
+                    flex: "1 1 auto",
+                    maxHeight: "calc(90vh - 120px)",
+                  }}
                 >
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover">
@@ -4923,7 +5656,10 @@ const updateDrug = (selectedDrug, index) => {
         )}
 
         {showTreatmentAdviceModal && (
-          <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+          <div
+            className="modal d-block"
+            style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+          >
             <div className="modal-dialog modal-lg">
               <div className="modal-content">
                 <div className="modal-header">
@@ -4950,8 +5686,12 @@ const updateDrug = (selectedDrug, index) => {
                               <input
                                 type="checkbox"
                                 className="form-check-input"
-                                checked={selectedTreatmentAdviceItems.includes(index)}
-                                onChange={() => handleTreatmentAdviceCheckboxChange(index)}
+                                checked={selectedTreatmentAdviceItems.includes(
+                                  index,
+                                )}
+                                onChange={() =>
+                                  handleTreatmentAdviceCheckboxChange(index)
+                                }
                               />
                             </td>
                             <td>{advice}</td>
@@ -4962,10 +5702,16 @@ const updateDrug = (selectedDrug, index) => {
                   </div>
                 </div>
                 <div className="modal-footer">
-                  <button className="btn btn-primary" onClick={handleSaveTreatmentAdvice}>
+                  <button
+                    className="btn btn-primary"
+                    onClick={handleSaveTreatmentAdvice}
+                  >
                     OK
                   </button>
-                  <button className="btn btn-secondary" onClick={() => setShowTreatmentAdviceModal(false)}>
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => setShowTreatmentAdviceModal(false)}
+                  >
                     CLOSE
                   </button>
                 </div>
@@ -4974,7 +5720,7 @@ const updateDrug = (selectedDrug, index) => {
           </div>
         )}
       </div>
-    )
+    );
   }
 
   // Main OPD Recall List view
@@ -5011,7 +5757,9 @@ const updateDrug = (selectedDrug, index) => {
                         type="text"
                         className="form-control"
                         value={searchFilters.patientName}
-                        onChange={(e) => handleFilterChange("patientName", e.target.value)}
+                        onChange={(e) =>
+                          handleFilterChange("patientName", e.target.value)
+                        }
                         placeholder="Patient Name"
                         maxLength={30}
                       />
@@ -5022,18 +5770,31 @@ const updateDrug = (selectedDrug, index) => {
                         type="date"
                         className="form-control"
                         value={searchFilters.date}
-                        onChange={(e) => handleFilterChange("date", e.target.value)}
+                        onChange={(e) =>
+                          handleFilterChange("date", e.target.value)
+                        }
                       />
                     </div>
                     <div className="col-md-3">
-                      <label className="form-label fw-bold" style={{ visibility: "hidden" }}>
+                      <label
+                        className="form-label fw-bold"
+                        style={{ visibility: "hidden" }}
+                      >
                         DUALWYYYY
                       </label>
                       <div className="d-flex gap-2">
-                        <button type="button" className="btn btn-primary" onClick={handleSearch}>
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={handleSearch}
+                        >
                           Search
                         </button>
-                        <button type="button" className="btn btn-secondary" onClick={handleReset}>
+                        <button
+                          type="button"
+                          className="btn btn-secondary"
+                          onClick={handleReset}
+                        >
                           Reset
                         </button>
                       </div>
@@ -5044,7 +5805,9 @@ const updateDrug = (selectedDrug, index) => {
 
               {/* Results Count */}
               <div className="mb-3">
-                <h6 className="text-muted">{recallPatientOpd.length} matches</h6>
+                <h6 className="text-muted">
+                  {recallPatientOpd.length} matches
+                </h6>
               </div>
 
               {/* Patients Table */}
@@ -5074,7 +5837,7 @@ const updateDrug = (selectedDrug, index) => {
                           <td>{item.gender}</td>
                           <td>{item.deptName}</td>
                           <td>{item.mobileNo}</td>
-                          <td>{item.docterName}</td>
+                          <td>{item.doctorName}</td>
                           <td>{item?.typeOfPatient || " "}</td>
                         </tr>
                       ))
@@ -5086,26 +5849,23 @@ const updateDrug = (selectedDrug, index) => {
                       </tr>
                     )}
                   </tbody>
-
                 </table>
               </div>
 
               {/* Pagination */}
 
               <Pagination
-                                            totalItems={recallPatientOpd.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                            currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
-                                        />
-
-             
+                totalItems={recallPatientOpd.length}
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default OpdRRecallPatient
+export default OpdRRecallPatient;

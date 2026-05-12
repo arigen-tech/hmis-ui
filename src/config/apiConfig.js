@@ -1,5 +1,5 @@
  export const API_HOST = 'http://103.133.215.182:8081/hims';
-//export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = 'http://localhost:8080';
 
 
 
@@ -183,7 +183,7 @@ export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
 
 export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
 
-//OPD waiting list
+//OPD
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
 export const OPTH_MAS_NEAR_VISION = `${MASTERS}/opthMasNearVision/getAll/1`;
 export const MAS_BED_COUNT = `${MASTERS}/masBedCount`;
@@ -213,6 +213,7 @@ export const PATIENT_ACTIVE_VISIT_SEARCH = `${OPD_PATIENT}/activeVisit/search`;
 export const PATIENT_UPDATE_STATUS = `${OPD_PATIENT}/update-status`;
 export const PATIENT_OPD_BY_VISIT = `${OPD_PATIENT}/getOpdByVisit`;
 export const GET_PATIENT_PRESCRIPTION_DETAILS = `/opd/getPatientPrescriptionDetails`;
+export const GET_RECALL_OPD_PATIENTS_LIST = `/opd/getRecallOpdPatientVisitList`;
 
 
 
