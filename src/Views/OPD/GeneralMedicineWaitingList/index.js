@@ -2645,29 +2645,18 @@ const GeneralMedicineWaitingList = () => {
       debugger;
       const mappedDepartmentId = toNumberOrNull(
         firstValue(
-          selectedPatient.departmentId,
-          selectedPatient.deptId,
-          selectedPatient.dept_id,
-          selectedPatient.department?.id,
           sessionStorage.getItem("departmentId"),
           localStorage.getItem("departmentId"),
         ),
       );
       const mappedHospitalId = toNumberOrNull(
         firstValue(
-          selectedPatient.hospitalId,
-          selectedPatient.hospital?.id,
           sessionStorage.getItem("hospitalId"),
           localStorage.getItem("hospitalId"),
         ),
       );
       const mappedDoctorId = toNumberOrNull(
         firstValue(
-          selectedPatient.doctorId,
-          selectedPatient.docterId,
-          selectedPatient.docId,
-          selectedPatient.doctor?.userId,
-          selectedPatient.doctor?.id,
           searchFilters.doctorList,
           sessionStorage.getItem("userId"),
           localStorage.getItem("userId"),
@@ -2797,7 +2786,7 @@ const GeneralMedicineWaitingList = () => {
           () => {
             navigate("/ViewDownLoadReport", {
               state: {
-                reportUrl: `${ALL_REPORTS}/opdCaseSheetReport?visitId=${visitId}&flag=p`,
+                reportUrl: `${ALL_REPORTS}/opdCaseSheetReport?visitId=${visitId}`,
                 title: INDENT_SAVE_TITLE,
                 fileName: INDENT_SAVE_FILE_NAME,
                 returnPath: window.location.pathname,
