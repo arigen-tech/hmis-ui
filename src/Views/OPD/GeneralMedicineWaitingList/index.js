@@ -35,6 +35,7 @@ import {
   GET_PREVIOUS_OPD_VISIT_HISTORY,
   GET_PATIENT_PRESCRIPTION_DETAILS,
   MAS_BED_COUNT,
+  ALL_REPORTS,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -52,10 +53,8 @@ import OpdVision from "../OpdVision";
 import { FLAG } from "../../../config/constants";
 import { data } from "react-router-dom";
 
-const INDENT_REPORT_URL = "/indent/print";
-const REQUERST_PARAM_INDENT_M_ID = "indentMId";
-const INDENT_SAVE_TITLE = "Indent Report";
-const INDENT_SAVE_FILE_NAME = "Indent_Report.pdf";
+const INDENT_SAVE_TITLE = "OPD Case Sheet";
+const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([]);
@@ -2071,7 +2070,6 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  // Add this function
   const showConfirmationPopup = (
     message,
     type = "success",
@@ -2644,6 +2642,7 @@ const GeneralMedicineWaitingList = () => {
       const selectedWard = wardDepartments.find(
         (ward) => Number(ward.id) === Number(wardName),
       );
+      debugger;
       const mappedDepartmentId = toNumberOrNull(
         firstValue(
           selectedPatient.departmentId,
@@ -2787,50 +2786,32 @@ const GeneralMedicineWaitingList = () => {
         `${OPD_CREATE_PATIENT_DETAILS}`,
         payload,
       );
-      //   if (response?.status === 200 || response?.success === true) {
-      //   showPopupMessage("Submit Successful!", "success", () => {
-      //     navigate("/ViewDownLoadReport", {
-      //       state: {
-      //         reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${response.response?.indentMId}`,
-      //         title: INDENT_SAVE_TITLE,
-      //         fileName: INDENT_SAVE_FILE_NAME,
-      //         returnPath: window.location.pathname
-      //       }
-      //     });
-      //   });
 
-      //     } else {
-      //       alert("Updated but unexpected response received.");
-      //     }
-      //   } catch (error) {
-      //     console.error("Update Error:", error);
-      //     showPopupMessage("Failed to Submit Data. Please try again.", "error");
-      //   } finally {
-      //     setIsSubmitting(false);
-      //   }
-      // };
       if (response?.status === 200 || response?.success === true) {
         const indentMId = response.response?.indentMId;
+        const visitId = response.response?.visitId || selectedPatient.visitId; // Capture visit ID
 
         showConfirmationPopup(
-          "Submit Successful!",
+          "Patient consultation submitted successfully!",
           "success",
           () => {
             navigate("/ViewDownLoadReport", {
               state: {
-                reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`,
+                reportUrl: `${ALL_REPORTS}/opdCaseSheetReport?visitId=${visitId}&flag=p`,
                 title: INDENT_SAVE_TITLE,
                 fileName: INDENT_SAVE_FILE_NAME,
                 returnPath: window.location.pathname,
+                visitId: response.response?.visitId || selectedPatient.visitId,
               },
             });
             handleBackToList();
           },
           () => {
+            fetchWaitingList();
             handleBackToList();
           },
-          "Yes",
-          "No",
+          "View Report", 
+          "Back to List",
         );
       } else {
         showConfirmationPopup(
@@ -2856,21 +2837,6 @@ const GeneralMedicineWaitingList = () => {
       setIsSubmitting(false);
     }
   };
-
-  // showPopupMessage("Submit Successful!", "success", () => {
-  //   setShowSubmitScreen(true);
-  // });
-
-  //     } else {
-  //       alert("Updated but unexpected response received.");
-  //     }
-  //   } catch (error) {
-  //     console.error("Update Error:", error);
-  //     showPopupMessage("Failed to Submit Data. Please try again.", "error");
-  //   } finally {
-  //     setIsSubmitting(false);
-  //   }
-  // };
 
   const handleResetForm = () => {
     // Reset main form data
@@ -7986,52 +7952,87 @@ const GeneralMedicineWaitingList = () => {
           />
         )}
 
-       
-{confirmationPopup.show && createPortal(
-  <div
-    className="modal fade show"
-    style={{
-      display: "block",
-      backgroundColor: "rgba(0,0,0,0.5)",
-      zIndex: 9999,
-      position: "fixed",
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-    }}
-    tabIndex="-1"
-  >
-     <div className="modal-dialog modal-dialog-centered">
-      <div className="modal-content">
-        <div className="modal-header">
-          <h5 className="modal-title">Success</h5>
-          <button
-            type="button"
-            className="btn-close"
-            onClick={() => handleConfirmPopupClose(false)}
-          ></button>
-        </div>
-        <div className="modal-body">
-          <div className="text-center">
-            <i className="mdi mdi-check-circle" style={{ fontSize: "48px", color: "green" }}></i>
-            <p className="mt-3">{confirmationPopup.message}</p>
-          </div>
-        </div>
-        <div className="modal-footer">
-          <button
-            type="button"
-            className="btn btn-primary"
-            onClick={() => handleConfirmPopupClose(true)}
-          >
-            OK
-          </button>
-        </div>
-      </div>
-    </div>
-  </div>,
-  document.body
-)}
+        {confirmationPopup.show &&
+          createPortal(
+            <div
+              className="modal fade show"
+              style={{
+                display: "block",
+                backgroundColor: "rgba(0,0,0,0.5)",
+                zIndex: 9999,
+                position: "fixed",
+                top: 0,
+                left: 0,
+                right: 0,
+                bottom: 0,
+              }}
+              tabIndex="-1"
+            >
+              <div className="modal-dialog modal-dialog-centered">
+                <div className="modal-content">
+                  <div className="modal-header">
+                    <h5 className="modal-title">
+                      {confirmationPopup.type === "success"
+                        ? "Success"
+                        : "Information"}
+                    </h5>
+                    <button
+                      type="button"
+                      className="btn-close"
+                      onClick={() => handleConfirmPopupClose(false)}
+                    ></button>
+                  </div>
+                  <div className="modal-body">
+                    <div className="text-center">
+                      {confirmationPopup.type === "success" ? (
+                        <i
+                          className="mdi mdi-check-circle"
+                          style={{ fontSize: "48px", color: "#28a745" }}
+                        ></i>
+                      ) : (
+                        <i
+                          className="mdi mdi-alert-circle"
+                          style={{ fontSize: "48px", color: "#dc3545" }}
+                        ></i>
+                      )}
+                      <p className="mt-3">{confirmationPopup.message}</p>
+                    </div>
+                  </div>
+                  <div className="modal-footer justify-content-center">
+                    {confirmationPopup.onConfirm && (
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => handleConfirmPopupClose(true)}
+                      >
+                        {confirmationPopup.confirmText || "Yes"}
+                      </button>
+                    )}
+                    {confirmationPopup.onCancel && (
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => handleConfirmPopupClose(false)}
+                      >
+                        {confirmationPopup.cancelText || "No"}
+                      </button>
+                    )}
+                    {!confirmationPopup.onConfirm &&
+                      !confirmationPopup.onCancel && (
+                        <button
+                          type="button"
+                          className="btn btn-primary"
+                          onClick={() => handleConfirmPopupClose(true)}
+                        >
+                          OK
+                        </button>
+                      )}
+                  </div>
+                </div>
+              </div>
+            </div>,
+            document.body,
+          )}
       </div>
     );
   }
