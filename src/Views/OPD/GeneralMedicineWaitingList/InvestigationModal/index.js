@@ -358,28 +358,46 @@ const InvestigationModal = ({
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const filterInvestigations = () => {
-    let filtered = allInvestigations;
+  const filterTimeoutRef = useRef(null);
 
-    if (investigationType && investigationTypes.length > 0) {
-      const selectedType = investigationTypes.find(
-        (type) => type.id === investigationType,
-      );
-      if (selectedType) {
-        filtered = filtered.filter(
-          (inv) => inv.mainChargeCodeId === selectedType.id,
-        );
-      }
+  const filterInvestigations = () => {
+    if (filterTimeoutRef.current) {
+      clearTimeout(filterTimeoutRef.current);
     }
 
-    setFilteredInvestigations(filtered);
-    setInvestigationDropdown(filtered.slice(0, 20));
+    filterTimeoutRef.current = setTimeout(() => {
+      let filtered = allInvestigations;
+
+      if (investigationType && investigationTypes.length > 0) {
+        const selectedType = investigationTypes.find(
+          (type) => type.id === investigationType,
+        );
+        if (selectedType) {
+          filtered = filtered.filter(
+            (inv) => inv.mainChargeCodeId === selectedType.id,
+          );
+        }
+      }
+
+      setFilteredInvestigations(filtered);
+      setInvestigationDropdown(filtered.slice(0, 20));
+    }, 100);
   };
 
+  const investigationTypesFetchedRef = useRef(false);
+
   const fetchInvestigationTypes = async () => {
+    if (investigationTypesFetchedRef.current) return;
+    investigationTypesFetchedRef.current = true;
+
     const res = await getRequest(MAS_INVESTIGATION_UNIQUE_TYPES);
     if (res?.response) {
-      setInvestigationTypes(res.response);
+      // Duplicates hatao
+      const uniqueTypes = res.response.filter(
+        (type, index, self) =>
+          index === self.findIndex((t) => t.id === type.id),
+      );
+      setInvestigationTypes(uniqueTypes);
     }
   };
 
@@ -554,7 +572,7 @@ const InvestigationModal = ({
     investigationId: item.investigationId,
     investigationName: item.displayValue,
     investigationDate: item.date,
-    categoryCode: investigationType,
+    categoryCode: investigationType || "",
   }));
 
   const handleSaveTemplate = async () => {
