@@ -15,6 +15,8 @@ import {
   OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES,
   MAS_INVESTIGATION_UNIQUE_TYPES,
   GET_RECALL_OPD_PATIENTS_LIST,
+  GET_PREVIOUS_OPD_VISIT_HISTORY,
+  GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -28,6 +30,7 @@ import MasFamilyModel from "../GeneralMedicineWaitingList/FamilyHistryModel";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryPopup";
 
 const OpdRRecallPatient = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -70,6 +73,12 @@ const OpdRRecallPatient = () => {
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
   const getToday = () => new Date().toISOString().split("T")[0];
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
+
+  const [showClinicalPopup, setShowClinicalPopup] = useState(false);
+  const [clinicalPopupType, setClinicalPopupType] = useState("visits");
+  const [previousVisitsData, setPreviousVisitsData] = useState([]);
+  const [previousVitalsData, setPreviousVitalsData] = useState([]);
+
   const [searchFilters, setSearchFilters] = useState({
     mobileNumber: "",
     patientName: "",
@@ -192,6 +201,74 @@ const OpdRRecallPatient = () => {
     if (selectedWard) {
       setOccupiedBeds(selectedWard.occupiedBed);
       setVacantBeds(selectedWard.vacantBed);
+    }
+  };
+
+  const fetchPreviousVisits = async (patientId, hospitalId) => {
+    if (!patientId) return;
+
+    try {
+      setLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      const response = await getRequest(url);
+
+      if (response.status === 200 && response.response) {
+        const data = response.response.content || response.response;
+        setPreviousVisitsData(data);
+      } else {
+        setPreviousVisitsData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching previous visits:", error);
+      setPreviousVisitsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPreviousVitals = async (patientId, hospitalId) => {
+    if (!patientId) {
+      console.warn("fetchPreviousVitals: patientId is required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      console.log("Fetching vitals from URL:", url);
+
+      const response = await getRequest(url);
+      console.log("Vitals API response:", response);
+
+      if (response?.status === 200 && response?.response) {
+        const vitalsData = response.response.content || response.response;
+        const vitalsList = Array.isArray(vitalsData) ? vitalsData : [];
+        const formattedVitals = vitalsList.map((vital) => ({
+          visitDate: vital.visitDate || vital.createdDate || "",
+          height: vital.height || "",
+          weight: vital.weight || "",
+          bmi: vital.bmi || "",
+          bpSystolic: vital.bpSystolic || vital.systolicBP || "",
+          bpDiastolic: vital.bpDiastolic || vital.diastolicBP || "",
+          pulse: vital.pulse || "",
+          temperature: vital.temperature || "",
+          rr: vital.rr || "",
+          spo2: vital.spo2 || "",
+        }));
+
+        setPreviousVitalsData(formattedVitals);
+      } else {
+        console.warn("No vitals data received or invalid response");
+        setPreviousVitalsData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching previous vitals:", error);
+      setPreviousVitalsData([]);
+
+      // Optional: Show user-friendly error message
+      // showPopupMessage("Failed to fetch vitals history", "error");
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -1066,7 +1143,7 @@ const OpdRRecallPatient = () => {
     referralType: "Internal",
     referralScope: "Internal",
     referralDate: getToday(),
-    empanel: false,
+    external: false,
     currentPriorityNo: "",
     select: "",
     noOfDays: "",
@@ -1829,7 +1906,7 @@ const OpdRRecallPatient = () => {
       referralType: "Internal",
       referralScope: "Internal",
       referralDate: getToday(),
-      empanel: false,
+      external: false,
       currentPriorityNo: "",
       select: "",
       noOfDays: "",
@@ -1862,8 +1939,30 @@ const OpdRRecallPatient = () => {
     }));
   };
 
-  const handleHistoryTypeClick = (historyType) => {
-    setSelectedHistoryType(historyType);
+  const handleHistoryTypeClick = async (historyType) => {
+    if (historyType === "previous-visits") {
+      setClinicalPopupType("visits");
+      if (selectedPatient) {
+        const hospitalId =
+          selectedPatient.hospitalId ||
+          sessionStorage.getItem("hospitalId") ||
+          localStorage.getItem("hospitalId");
+        await fetchPreviousVisits(selectedPatient.patientId, hospitalId);
+      }
+      setShowClinicalPopup(true);
+    } else if (historyType === "previous-vitals") {
+      setClinicalPopupType("vitals");
+      if (selectedPatient) {
+        const hospitalId =
+          selectedPatient.hospitalId ||
+          sessionStorage.getItem("hospitalId") ||
+          localStorage.getItem("hospitalId");
+        await fetchPreviousVitals(selectedPatient.patientId, hospitalId);
+      }
+      setShowClinicalPopup(true);
+    } else {
+      setSelectedHistoryType(historyType);
+    }
   };
 
   function calculateBMI(weight, height) {
@@ -2713,7 +2812,20 @@ const OpdRRecallPatient = () => {
                                     ? "btn-primary"
                                     : "btn-outline-primary"
                                 }`}
-                                onClick={() => handleHistoryTypeClick(btn.id)}
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  if (btn.id === "previous-visits") {
+                                    await handleHistoryTypeClick(
+                                      "previous-visits",
+                                    );
+                                  } else if (btn.id === "previous-vitals") {
+                                    await handleHistoryTypeClick(
+                                      "previous-vitals",
+                                    );
+                                  } else {
+                                    handleHistoryTypeClick(btn.id);
+                                  }
+                                }}
                               >
                                 {btn.label}
                               </button>
@@ -4863,8 +4975,7 @@ const OpdRRecallPatient = () => {
                               >
                                 <option value="">Select...</option>
                                 <option value="Internal">Internal</option>
-                                <option value="Empanel">Empanel</option>
-                                <option value="Both">Both</option>
+                                <option value="External">External</option>
                               </select>
                             </div>
 
@@ -5012,7 +5123,7 @@ const OpdRRecallPatient = () => {
                             </>
                           )}
 
-                          {referralData.referTo === "Empanel" && (
+                          {referralData.referTo === "External" && (
                             <>
                               <div className="row mb-3">
                                 <div className="col-md-2">
@@ -5653,6 +5764,16 @@ const OpdRRecallPatient = () => {
               </div>
             </div>
           </div>
+        )}
+
+        {showClinicalPopup && (
+          <ClinicalHistoryPopup
+            show={showClinicalPopup}
+            onClose={() => setShowClinicalPopup(false)}
+            visitsData={previousVisitsData}
+            vitalsData={previousVitalsData}
+            popupType={clinicalPopupType}
+          />
         )}
 
         {showTreatmentAdviceModal && (

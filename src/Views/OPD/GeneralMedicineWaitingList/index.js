@@ -36,6 +36,7 @@ import {
   GET_PATIENT_PRESCRIPTION_DETAILS,
   MAS_BED_COUNT,
   ALL_REPORTS,
+  GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -240,6 +241,59 @@ const GeneralMedicineWaitingList = () => {
     } catch (error) {
       console.error("Error fetching previous visits:", error);
       setPreviousVisitsData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchPreviousVitals = async (patientId, hospitalId) => {
+    if (!patientId) {
+      console.warn("fetchPreviousVitals: patientId is required");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      console.log("Fetching vitals from URL:", url);
+
+      const response = await getRequest(url);
+      console.log("Vitals API response:", response);
+
+      if (response?.status === 200 && response?.response) {
+        // Handle both possible response structures
+        let vitalsData = response.response;
+
+        // If response has content property (pagination)
+        if (vitalsData.content) {
+          vitalsData = vitalsData.content;
+        }
+
+        // Ensure it's an array
+        const vitalsList = Array.isArray(vitalsData) ? vitalsData : [];
+
+        const formattedVitals = vitalsList.map((vital) => ({
+          visitDate: vital.visitDate || vital.createdDate || "",
+          height: vital.height || "",
+          weight: vital.weight || "",
+          bmi: vital.bmi || "",
+          bpSystolic: vital.bpSystolic || vital.systolicBP || "",
+          bpDiastolic: vital.bpDiastolic || vital.diastolicBP || "",
+          pulse: vital.pulse || "",
+          temperature: vital.temperature || "",
+          rr: vital.rr || "",
+          spo2: vital.spo2 || "",
+        }));
+
+        console.log("Formatted vitals:", formattedVitals);
+        setPreviousVitalsData(formattedVitals);
+      } else {
+        console.warn("No vitals data received or invalid response");
+        setPreviousVitalsData([]);
+      }
+    } catch (error) {
+      console.error("Error fetching previous vitals:", error);
+      setPreviousVitalsData([]);
     } finally {
       setLoading(false);
     }
