@@ -5,17 +5,15 @@ import { MAS_TPA } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
 import { FETCH_TPA } from "../../../config/constants";
 
-
 const TPAMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    tpaName: "",        
-    tpaCode: "",    
+    tpaName: "",
+    tpaCode: "",
     contactPerson: "",
     contactNo: "",
   });
-
 
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -26,7 +24,6 @@ const TPAMaster = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: false });
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -36,7 +33,6 @@ const TPAMaster = () => {
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
   };
-
 
   const fetchData = async (flag = 0) => {
     setLoading(true);
@@ -55,9 +51,8 @@ const TPAMaster = () => {
     fetchData();
   }, []);
 
-
   const filteredData = (data || []).filter((rec) =>
-    (rec.tpaName || rec.name || "")  
+    (rec.tpaName || rec.name || "")
       .toLowerCase()
       .includes((searchQuery || "").toLowerCase())
   );
@@ -70,16 +65,16 @@ const TPAMaster = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    const { tpaName, tpaCode, contactPerson, contactNo} = {
+    const { tpaName, tpaCode, contactPerson, contactNo } = {
       ...formData,
       [name]: value,
     };
+    // ✅ FIXED: removed trailing || and extra comma
     setIsFormValid(
       (tpaName?.trim() || "") !== "" ||
       (tpaCode?.trim() || "") !== "" ||
       (contactPerson?.trim() || "") !== "" ||
-      (contactNo?.trim() || "") !== "" ||
-      (email?.trim() || "") !== ""
+      (contactNo?.trim() || "") !== ""
     );
   };
 
@@ -89,8 +84,6 @@ const TPAMaster = () => {
       tpaCode: "",
       contactPerson: "",
       contactNo: "",
-      email: "",
-      address: "",
     });
     setIsFormValid(false);
   };
@@ -121,20 +114,16 @@ const TPAMaster = () => {
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    // ✅ map API fields to formData (supports both tpaName/name and tpaCode/code)
     setFormData({
       tpaName: rec.tpaName || rec.name || "",
       tpaCode: rec.tpaCode || rec.code || "",
       contactPerson: rec.contactPerson || "",
       contactNo: rec.contactNo || "",
-      email: rec.email || "",
-      address: rec.address || "",
     });
     setShowForm(true);
     setIsFormValid(true);
   };
 
-  // ✅ added confirmation dialog (like Insurance Master)
   const handleStatusChange = (recordId, newStatus) => {
     setConfirmDialog({ isOpen: true, recordId, newStatus });
   };
