@@ -17,6 +17,9 @@ import {
   GET_RECALL_OPD_PATIENTS_LIST,
   GET_PREVIOUS_OPD_VISIT_HISTORY,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
+  MAS_WARD_CATEGORY_GET_ALL,
+  WARD_DEPARTMENT_GET_ALL_BY_CATEGORY,
+  MAS_BED_COUNT,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -130,34 +133,54 @@ const OpdRRecallPatient = () => {
   const drugDropdownRef = useRef(null);
 const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
 
-  const fetchWardCategoryData = async () => {
-    try {
-      const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setWardCategories(data.response);
-      } else {
-        setWardCategories([]);
-      }
-    } catch (error) {
-      console.error("Error fetching WardCategory data:", error);
+  // const fetchWardCategoryData = async () => {
+  //   try {
+  //     const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
+  //     if (data.status === 200 && Array.isArray(data.response)) {
+  //       setWardCategories(data.response);
+  //     } else {
+  //       setWardCategories([]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching WardCategory data:", error);
+  //   }
+  // };
+const fetchWardCategoryData = async () => {
+  try {
+    const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
+    if (data.status === 200 && Array.isArray(data.response)) {
+      setWardCategories(data.response);
+    } else {
+      setWardCategories([]);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching WardCategory data:", error);
+  }
+};
 
-  const fetchWardData = async (categoryId) => {
-    try {
-      const data = await getRequest(
-        `${MASTERS}/ward-department/getAllBy/${categoryId}`,
-      );
 
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setWardDepartments(data.response);
-      } else {
-        setWardDepartments([]);
+const fetchWardData = async (categoryId) => {
+  try {
+    const data = await getRequest(
+      `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
+    );
+    if (data.status === 200 && Array.isArray(data.response)) {
+      setWardDepartments(data.response);
+      
+      if (wardName) {
+        const selectedWard = data.response.find(dept => dept.id === wardName);
+        if (selectedWard) {
+          setOccupiedBeds(String(selectedWard.occupiedBed || selectedWard.occupied || "0"));
+          setVacantBeds(String(selectedWard.vacantBed || selectedWard.vacant || "0"));
+        }
       }
-    } catch (error) {
-      console.error("Error fetching Ward data:", error);
+    } else {
+      setWardDepartments([]);
     }
-  };
+  } catch (error) {
+    console.error("Error fetching Ward data:", error);
+  }
+};
 
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
@@ -194,16 +217,38 @@ const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
     }
   };
 
-  const handleWardNameChange = (deptId) => {
-    setWardName(deptId);
+const handleWardNameChange = async (deptId) => {
+  setWardName(deptId);
 
-    const selectedWard = wardDepartments.find((dept) => dept.id === deptId);
+  const selectedWard = wardDepartments.find((dept) => dept.id === deptId);
 
-    if (selectedWard) {
-      setOccupiedBeds(selectedWard.occupiedBed);
-      setVacantBeds(selectedWard.vacantBed);
+  if (selectedWard) {
+    setOccupiedBeds(selectedWard.occupiedBed || selectedWard.occupied || "0");
+    setVacantBeds(selectedWard.vacantBed || selectedWard.vacant || "0");
+  }
+  
+  if (deptId) {
+    try {
+      const response = await getRequest(`${MAS_BED_COUNT}/${deptId}`);
+      console.log("Bed Status Response:", response);
+      
+      if (response?.status === 200 && response?.response) {
+        const occupied = response.response.occupied || 
+                        response.response.occupiedBeds || 
+                        response.response.filledBeds || 
+                        "0";
+        const vacant = response.response.available || 
+                      response.response.vacantBeds || 
+                      "0";
+        
+        setOccupiedBeds(String(occupied));
+        setVacantBeds(String(vacant));
+      }
+    } catch (error) {
+      console.error("Error fetching bed status:", error);
     }
-  };
+  }
+};
 
   const fetchPreviousVisits = async (patientId, hospitalId) => {
     if (!patientId) return;
@@ -775,6 +820,7 @@ const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
     fetchDrugOptions();
     fetchMasICDData();
     fetchWardCategoryData();
+    
   }, []);
 
   const handleClearAllTreatmentTemplates = () => {
@@ -1783,31 +1829,39 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
     }));
     setReferralNotes(patient.referralRemarks);
 
+
     /* -------------------- ADMISSION ADVICE -------------------- */
-    const admissionAdvised = patient.admissionFlag === "y";
-    setAdmissionAdvised(admissionAdvised);
+const admissionAdvised = patient.admissionFlag === "y";
+setAdmissionAdvised(admissionAdvised);
 
-    if (admissionAdvised) {
-      setAdmissionDate(
-        patient.admissionAdvisedDate
-          ? patient.admissionAdvisedDate.split("T")[0]
-          : "",
-      );
-      setAdditionalAdvice(patient.admissionRemarks || "");
-      setAdmissionPriority(patient.admissionPriority || "Normal");
+if (admissionAdvised) {
+  setAdmissionDate(
+    patient.admissionAdvisedDate
+      ? patient.admissionAdvisedDate.split("T")[0]
+      : "",
+  );
+  setAdditionalAdvice(patient.admissionRemarks || "");
+  setAdmissionPriority(patient.admissionPriority || "Normal");
 
-      setWardCategory(patient.admissionWardCategory || "");
-      setAdmissionCareLevel(patient.admissionCareLevel || "");
-      setAdmissionCareLevelName(patient.admissionCareLevelName || "");
+  setWardCategory(patient.admissionWardCategory || "");
+  setAdmissionCareLevel(patient.admissionCareLevel || "");
+  setAdmissionCareLevelName(patient.admissionCareLevelName || "");
 
-      if (patient.admissionWardCategory) {
-        await fetchWardData(patient.admissionWardCategory);
-      }
+  if (patient.admissionWardCategory) {
+    await fetchWardData(patient.admissionWardCategory);
+  }
 
-      setWardName(patient.admissionWard || "");
-      setOccupiedBeds(String(patient.occupiedBed ?? "0"));
-      setVacantBeds(String(patient.vacantBed ?? "0"));
-    }
+  setWardName(patient.admissionWard || "");
+  
+  const selectedWard = wardDepartments.find(dept => dept.id === patient.admissionWard);
+  if (selectedWard) {
+    setOccupiedBeds(String(selectedWard.occupiedBed || selectedWard.occupied || "0"));
+    setVacantBeds(String(selectedWard.vacantBed || selectedWard.vacant || "0"));
+  } else {
+    setOccupiedBeds(String(patient.occupiedBed ?? "0"));
+    setVacantBeds(String(patient.vacantBed ?? "0"));
+  }
+}
 
     /* -------------------- SHOW DETAIL VIEW -------------------- */
     setShowDetailView(true);
@@ -4875,7 +4929,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                 </div>
                               </div>
 
-                              {wardName && (
+                      
                                 <div className="row g-3 mt-3">
                                   <div className="col-md-3">
                                     <label className="form-label fw-bold">
@@ -4884,7 +4938,8 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                     <input
                                       type="text"
                                       className="form-control"
-                                      value={occupiedBeds}
+                                      // value={occupiedBeds}
+                                       value={occupiedBeds || "0"}
                                       readOnly
                                     />
                                   </div>
@@ -4896,12 +4951,13 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                     <input
                                       type="text"
                                       className="form-control"
-                                      value={vacantBeds}
+                                      // value={vacantBeds}
+                                      value={vacantBeds || "0"}  
                                       readOnly
                                     />
                                   </div>
                                 </div>
-                              )}
+                              
                             </div>
                           )}
                         </div>
@@ -4911,7 +4967,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                 </div>
 
                 {/* Referral Section */}
-                <div className="card mb-3">
+                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -4943,6 +4999,12 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                   )
                                 }
                               />
+                              <label
+                                className="form-check-label"
+                                htmlFor="referralNo"
+                              >
+                                No
+                              </label>
                             </div>
                             <div className="form-check">
                               <input
@@ -4976,7 +5038,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                 Refer To
                               </label>
                               <select
-                                className="form-select"
+                                className={`form-select ${errors.referTo ? "is-invalid" : ""}`}
                                 value={referralData.referTo}
                                 onChange={(e) =>
                                   handleReferralChange(
@@ -4989,6 +5051,11 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                 <option value="Internal">Internal</option>
                                 <option value="External">External</option>
                               </select>
+                              {errors.referTo && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referTo}
+                                </div>
+                              )}
                             </div>
 
                             <div className="col-md-2">
@@ -4997,7 +5064,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                               </label>
                               <input
                                 type="date"
-                                className="form-control"
+                                className={`form-control ${errors.referralDate ? "is-invalid" : ""}`}
                                 value={referralData.referralDate}
                                 onChange={(e) =>
                                   handleReferralChange(
@@ -5006,6 +5073,11 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                   )
                                 }
                               />
+                              {errors.referralDate && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralDate}
+                                </div>
+                              )}
                             </div>
                           </>
                         )}
@@ -5013,6 +5085,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
 
                       {referralData.isReferred === "Yes" && (
                         <>
+                          {/* INTERNAL REFERRAL */}
                           {referralData.referTo === "Internal" && (
                             <>
                               <div className="row mb-3">
@@ -5022,7 +5095,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                   </label>
                                   <input
                                     type="text"
-                                    className="form-control"
+                                    className={`form-control ${errors.currentPriorityNo ? "is-invalid" : ""}`}
                                     value={referralData.currentPriorityNo}
                                     onChange={(e) =>
                                       handleReferralChange(
@@ -5032,6 +5105,11 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                     }
                                     placeholder="Enter priority no"
                                   />
+                                  {errors.currentPriorityNo && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.currentPriorityNo}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
 
@@ -5077,7 +5155,7 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                             </td>
                                             <td>
                                               <select
-                                                className="form-select"
+                                                className={`form-select ${errors.departmentData ? "is-invalid" : ""}`}
                                                 value={item.doctor}
                                                 onChange={(e) =>
                                                   handleDepartmentChange(
@@ -5129,309 +5207,71 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
                                         ))}
                                       </tbody>
                                     </table>
+                                    {errors.departmentData && (
+                                      <div className="text-danger small">
+                                        {errors.departmentData}
+                                      </div>
+                                    )}
                                   </div>
                                 </div>
                               </div>
                             </>
                           )}
 
+                          {/* EXTERNAL REFERRAL */}
                           {referralData.referTo === "External" && (
                             <>
                               <div className="row mb-3">
                                 <div className="col-md-2">
                                   <label className="form-label fw-bold">
-                                    Hospital *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.hospital}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "hospital",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="">Select...</option>
-                                    <option value="Hospital A">
-                                      Hospital A
-                                    </option>
-                                    <option value="Hospital B">
-                                      Hospital B
-                                    </option>
-                                    <option value="Hospital C">
-                                      Hospital C
-                                    </option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    No. of Days
-                                  </label>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={referralData.noOfDays}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "noOfDays",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Treatment Type *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.treatmentType}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "treatmentType",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="OPD">OPD</option>
-                                    <option value="IPD">IPD</option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Referred For*
+                                    Reffered Hospital Name
                                   </label>
                                   <input
                                     type="text"
-                                    className="form-control"
-                                    value={referralData.referredFor}
+                                    className={`form-control ${errors.referredHospitalName ? "is-invalid" : ""}`}
+                                    value={referralData.referredHospitalName}
                                     onChange={(e) =>
                                       handleReferralChange(
-                                        "referredFor",
+                                        "referredHospitalName",
                                         e.target.value,
                                       )
                                     }
-                                    placeholder="Referred for"
+                                    placeholder="Enter hospital name"
                                   />
+                                  {errors.referredHospitalName && (
+                                    <div className="invalid-feedback d-block">
+                                      {errors.referredHospitalName}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             </>
                           )}
 
-                          {referralData.referTo === "Both" && (
-                            <>
-                              <div className="row mb-3">
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Current Priority No.
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={referralData.currentPriorityNo}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "currentPriorityNo",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Enter priority no"
-                                  />
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Hospital *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.hospital}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "hospital",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="">Select...</option>
-                                    <option value="Hospital A">
-                                      Hospital A
-                                    </option>
-                                    <option value="Hospital B">
-                                      Hospital B
-                                    </option>
-                                    <option value="Hospital C">
-                                      Hospital C
-                                    </option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    No. of Days
-                                  </label>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={referralData.noOfDays}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "noOfDays",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="0"
-                                  />
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Treatment Type *
-                                  </label>
-                                  <select
-                                    className="form-select"
-                                    value={referralData.treatmentType}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "treatmentType",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="OPD">OPD</option>
-                                    <option value="IPD">IPD</option>
-                                  </select>
-                                </div>
-                                <div className="col-md-2">
-                                  <label className="form-label fw-bold">
-                                    Referred For*
-                                  </label>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={referralData.referredFor}
-                                    onChange={(e) =>
-                                      handleReferralChange(
-                                        "referredFor",
-                                        e.target.value,
-                                      )
-                                    }
-                                    placeholder="Referred for"
-                                  />
-                                </div>
-                              </div>
-
-                              <hr className="my-4" />
-
-                              <div className="row mb-3">
-                                <div className="col-12">
-                                  <h6 className="fw-bold mb-3">Department</h6>
-                                  <div className="table-responsive">
-                                    <table className="table table-bordered">
-                                      <thead
-                                        style={{ backgroundColor: "#b0c4de" }}
-                                      >
-                                        <tr>
-                                          <th style={{ width: "10%" }}>
-                                            Select
-                                          </th>
-                                          <th style={{ width: "70%" }}>
-                                            Doctor
-                                          </th>
-                                          <th style={{ width: "10%" }}>Add</th>
-                                          <th style={{ width: "10%" }}>
-                                            Delete
-                                          </th>
-                                        </tr>
-                                      </thead>
-                                      <tbody>
-                                        {departmentData.map((item, index) => (
-                                          <tr key={index}>
-                                            <td className="text-center">
-                                              <input
-                                                type="checkbox"
-                                                className="form-check-input"
-                                                checked={item.selected}
-                                                onChange={(e) =>
-                                                  handleDepartmentChange(
-                                                    index,
-                                                    "selected",
-                                                    e.target.checked,
-                                                  )
-                                                }
-                                              />
-                                            </td>
-                                            <td>
-                                              <select
-                                                className="form-select"
-                                                value={item.doctor}
-                                                onChange={(e) =>
-                                                  handleDepartmentChange(
-                                                    index,
-                                                    "doctor",
-                                                    e.target.value,
-                                                  )
-                                                }
-                                              >
-                                                <option value="Select">
-                                                  Select
-                                                </option>
-                                                <option value="Dr. Smith">
-                                                  Dr. Smith
-                                                </option>
-                                                <option value="Dr. Johnson">
-                                                  Dr. Johnson
-                                                </option>
-                                                <option value="Dr. Williams">
-                                                  Dr. Williams
-                                                </option>
-                                                <option value="Dr. Brown">
-                                                  Dr. Brown
-                                                </option>
-                                              </select>
-                                            </td>
-                                            <td className="text-center">
-                                              <button
-                                                className="btn btn-sm btn-success"
-                                                onClick={handleAddDepartment}
-                                              >
-                                                +
-                                              </button>
-                                            </td>
-                                            <td className="text-center">
-                                              <button
-                                                className="btn btn-sm btn-danger"
-                                                onClick={() =>
-                                                  handleRemoveDepartment(index)
-                                                }
-                                                disabled={
-                                                  departmentData.length === 1
-                                                }
-                                              >
-                                                −
-                                              </button>
-                                            </td>
-                                          </tr>
-                                        ))}
-                                      </tbody>
-                                    </table>
-                                  </div>
-                                </div>
-                              </div>
-                            </>
-                          )}
-
+                          {/* REFERRAL NOTES */}
                           <div className="row">
                             <div className="col-12">
                               <h6 className="fw-bold mb-3">Referral Notes</h6>
                               <textarea
-                                className="form-control"
+                                className={`form-control ${errors.referralNotes ? "is-invalid" : ""}`}
                                 rows={4}
                                 value={referralNotes}
-                                onChange={(e) =>
-                                  setReferralNotes(e.target.value)
-                                }
+                                onChange={(e) => {
+                                  setReferralNotes(e.target.value);
+                                  if (errors.referralNotes) {
+                                    setErrors((prev) => ({
+                                      ...prev,
+                                      referralNotes: "",
+                                    }));
+                                  }
+                                }}
                                 placeholder="Enter referral notes"
                               ></textarea>
+                              {errors.referralNotes && (
+                                <div className="invalid-feedback d-block">
+                                  {errors.referralNotes}
+                                </div>
+                              )}
                             </div>
                           </div>
                         </>

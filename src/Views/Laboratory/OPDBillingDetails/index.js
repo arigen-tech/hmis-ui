@@ -536,7 +536,7 @@ const OPDBillingDetails = () => {
       // Build payment request for zero amount
       const paymentRequest = {
         billingType: "Consultation Services",
-        billHeaderIds: billingHeaderIds,
+        billingHeaderIds: billingHeaderIds,
         opdBillPayments: appointments
           .map((appt) => ({
             billHeaderId: Number(appt.billingHdId),
