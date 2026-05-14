@@ -1,17 +1,19 @@
+
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { MAS_INSURANCE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest } from "../../../service/apiService";
+import { FETCH_INSURANCE } from "../../../config/constants";
 
 const InsuranceMaster = () => {
-
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    code: "",
+    insuranceName: "",      
+    insuranceCode: "",      
     contactPerson: "",
     contactNo: "",
-    email: "",
-    address: "",
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -23,32 +25,40 @@ const InsuranceMaster = () => {
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: false });
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
+  
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const d = new Date(dateString);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}/${d.getFullYear()}`;
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_INSURANCE}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_INSURANCE, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    setData([
-      {
-        id: 1,
-        name: "LIC",
-        code: "LIC001",
-        contactPerson: "Amit",
-        contactNo: "9876543210",
-        email: "lic@mail.com",
-        address: "Delhi",
-        status: "y",
-        lastUpdateDate: new Date(),
-      },
-    ]);
+    fetchData();
   }, []);
 
-  const filteredData = data.filter((rec) =>
-    rec.name.toLowerCase().includes(searchQuery.toLowerCase())
+
+
+  const filteredData = (data || []).filter((rec) =>
+    (rec?.insuranceName || "")
+      .toLowerCase()
+      .includes((searchQuery || "").toLowerCase())
   );
 
   const currentItems = filteredData.slice(
@@ -59,18 +69,25 @@ const InsuranceMaster = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    const valid = formData.name || formData.code || formData.contactPerson || formData.contactNo || formData.email;
-    setIsFormValid(valid !== "");
+    const { insuranceName, insuranceCode, contactPerson, contactNo, email } = {
+      ...formData,
+      [name]: value,
+    };
+    setIsFormValid(
+      (insuranceName?.trim() || "") !== "" ||
+      (insuranceCode?.trim() || "") !== "" ||
+      (contactPerson?.trim() || "") !== "" ||
+      (contactNo?.trim() || "") !== "" ||
+      (email?.trim() || "") !== ""
+    );
   };
 
   const resetForm = () => {
     setFormData({
-      name: "",
-      code: "",
+      insuranceName: "",
+      insuranceCode: "",
       contactPerson: "",
       contactNo: "",
-      email: "",
-      address: "",
     });
     setIsFormValid(false);
   };
@@ -102,7 +119,13 @@ const InsuranceMaster = () => {
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    // ✅ fixed: populate form with existing values
+    setFormData({
+      insuranceName: rec.insuranceName || "",
+      insuranceCode: rec.insuranceCode || "",
+      contactPerson: rec.contactPerson || "",
+      contactNo: rec.contactNo || "",
+    });
     setShowForm(true);
     setIsFormValid(true);
   };
@@ -204,8 +227,6 @@ const InsuranceMaster = () => {
                           <th>Code</th>
                           <th>Contact Person</th>
                           <th>Contact No.</th>
-                          <th>Email</th>
-                          <th>Address</th>
                           <th>Last Update</th>
                           <th>Status</th>
                           <th>Edit</th>
@@ -214,12 +235,10 @@ const InsuranceMaster = () => {
                       <tbody>
                         {currentItems.map((rec) => (
                           <tr key={rec.id}>
-                            <td>{rec.name}</td>
-                            <td>{rec.code}</td>
+                            <td>{rec.insuranceName}</td>
+                            <td>{rec.insuranceCode}</td>
                             <td>{rec.contactPerson}</td>
                             <td>{rec.contactNo}</td>
-                            <td>{rec.email}</td>
-                            <td>{rec.address}</td>
                             <td>{formatDate(rec.lastUpdateDate)}</td>
                             <td>
                               <div className="form-check form-switch">
@@ -266,65 +285,45 @@ const InsuranceMaster = () => {
                       <label>Name</label>
                       <input
                         className="form-control mt-1"
-                        name="name"
-                        value={formData.name}
+                        name="insuranceName"
+                        value={formData.insuranceName}
                         onChange={handleInputChange}
                       />
                     </div>
 
-                <div className="col-md-4">
+                    <div className="form-group col-md-4">
                       <label>Code</label>
                       <input
-                    className="form-control"
-                        name="code"
-                        value={formData.code}
+                        className="form-control"
+                        name="insuranceCode"
+                        value={formData.insuranceCode}
                         onChange={handleInputChange}
                       />
                     </div>
 
-                <div className="col-md-4">
+                    <div className="form-group col-md-4">
                       <label>Contact Person</label>
                       <input
-                    className="form-control"
+                        className="form-control"
                         name="contactPerson"
                         value={formData.contactPerson}
                         onChange={handleInputChange}
                       />
                     </div>
 
-                <div className="col-md-4">
+                    <div className="form-group col-md-4">
                       <label>Contact No</label>
                       <input
-                    className="form-control"
+                        className="form-control"
                         name="contactNo"
                         value={formData.contactNo}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-
-                <div className="col-md-4">
-                      <label>Email</label>
-                      <input
-                    className="form-control"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-
-                    <div className="form-group col-md-4">
-                      <label>Address</label>
-                      <input
-                        className="form-control mt-1"
-                        name="address"
-                        value={formData.address}
                         onChange={handleInputChange}
                       />
                     </div>
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2">
+                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       {editingRecord ? "Update" : "Save"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleCancel}>

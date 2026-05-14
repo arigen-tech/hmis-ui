@@ -1,18 +1,21 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { MAS_TPA } from "../../../config/apiConfig";
+import { getRequest } from "../../../service/apiService";
+import { FETCH_TPA } from "../../../config/constants";
+
 
 const TPAMaster = () => {
-
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    name: "",
-    code: "",
+    tpaName: "",        
+    tpaCode: "",    
     contactPerson: "",
     contactNo: "",
-    email: "",
-    address: "",
   });
+
 
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -20,36 +23,43 @@ const TPAMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: false });
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  const MAX_LENGTH = 50;
 
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const d = new Date(dateString);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}/${d.getFullYear()}`;
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const { response } = await getRequest(`${MAS_TPA}/getAll/${flag}`);
+      setData(response || []);
+    } catch {
+      showPopup(FETCH_TPA, "error");
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
-    setData([
-      {
-        id: 1,
-        name: "MediAssist",
-        code: "TPA001",
-        contactPerson: "Rahul",
-        contactNo: "9876543210",
-        email: "tpa@mail.com",
-        address: "Delhi",
-        status: "y",
-        lastUpdateDate: new Date(),
-      },
-    ]);
+    fetchData();
   }, []);
 
-  const filteredData = data.filter((rec) =>
-    rec.name.toLowerCase().includes(searchQuery.toLowerCase())
+
+  const filteredData = (data || []).filter((rec) =>
+    (rec.tpaName || rec.name || "")  
+      .toLowerCase()
+      .includes((searchQuery || "").toLowerCase())
   );
 
   const currentItems = filteredData.slice(
@@ -60,14 +70,23 @@ const TPAMaster = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
-    const valid = formData.name || formData.code || formData.contactPerson || formData.contactNo || formData.email;
-    setIsFormValid(valid !== "");
+    const { tpaName, tpaCode, contactPerson, contactNo} = {
+      ...formData,
+      [name]: value,
+    };
+    setIsFormValid(
+      (tpaName?.trim() || "") !== "" ||
+      (tpaCode?.trim() || "") !== "" ||
+      (contactPerson?.trim() || "") !== "" ||
+      (contactNo?.trim() || "") !== "" ||
+      (email?.trim() || "") !== ""
+    );
   };
 
   const resetForm = () => {
     setFormData({
-      name: "",
-      code: "",
+      tpaName: "",
+      tpaCode: "",
       contactPerson: "",
       contactNo: "",
       email: "",
@@ -97,24 +116,40 @@ const TPAMaster = () => {
       setData([...data, newRecord]);
       showPopup("Added Successfully", "success");
     }
-
     handleCancel();
   };
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    setFormData(rec);
+    // ✅ map API fields to formData (supports both tpaName/name and tpaCode/code)
+    setFormData({
+      tpaName: rec.tpaName || rec.name || "",
+      tpaCode: rec.tpaCode || rec.code || "",
+      contactPerson: rec.contactPerson || "",
+      contactNo: rec.contactNo || "",
+      email: rec.email || "",
+      address: rec.address || "",
+    });
     setShowForm(true);
     setIsFormValid(true);
   };
 
-  const toggleStatus = (rec) => {
-    const updated = data.map((item) =>
-      item.id === rec.id
-        ? { ...item, status: item.status === "y" ? "n" : "y" }
-        : item
-    );
-    setData(updated);
+  // ✅ added confirmation dialog (like Insurance Master)
+  const handleStatusChange = (recordId, newStatus) => {
+    setConfirmDialog({ isOpen: true, recordId, newStatus });
+  };
+
+  const handleConfirm = (confirmed) => {
+    if (confirmed && confirmDialog.recordId !== null) {
+      const updated = data.map((item) =>
+        item.id === confirmDialog.recordId
+          ? { ...item, status: confirmDialog.newStatus }
+          : item
+      );
+      setData(updated);
+      showPopup(`Record ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+    }
+    setConfirmDialog({ isOpen: false, recordId: null, newStatus: false });
   };
 
   const showPopup = (message, type) => {
@@ -169,9 +204,9 @@ const TPAMaster = () => {
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-success me-2 flex-shrink-0" 
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
@@ -197,8 +232,6 @@ const TPAMaster = () => {
                           <th>Code</th>
                           <th>Contact Person</th>
                           <th>Contact No.</th>
-                          <th>Email</th>
-                          <th>Address</th>
                           <th>Last Update</th>
                           <th>Status</th>
                           <th>Edit</th>
@@ -207,12 +240,10 @@ const TPAMaster = () => {
                       <tbody>
                         {currentItems.map((rec) => (
                           <tr key={rec.id}>
-                            <td>{rec.name}</td>
-                            <td>{rec.code}</td>
+                            <td>{rec.tpaName || rec.name}</td>
+                            <td>{rec.tpaCode || rec.code}</td>
                             <td>{rec.contactPerson}</td>
                             <td>{rec.contactNo}</td>
-                            <td>{rec.email}</td>
-                            <td>{rec.address}</td>
                             <td>{formatDate(rec.lastUpdateDate)}</td>
                             <td>
                               <div className="form-check form-switch">
@@ -220,7 +251,7 @@ const TPAMaster = () => {
                                   className="form-check-input"
                                   type="checkbox"
                                   checked={rec.status === "y"}
-                                  onChange={() => toggleStatus(rec)}
+                                  onChange={() => handleStatusChange(rec.id, rec.status === "y" ? "n" : "y")}
                                   id={`switch-${rec.id}`}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${rec.id}`}>
@@ -259,8 +290,8 @@ const TPAMaster = () => {
                       <label>Name</label>
                       <input
                         className="form-control mt-1"
-                        name="name"
-                        value={formData.name}
+                        name="tpaName"
+                        value={formData.tpaName}
                         onChange={handleInputChange}
                       />
                     </div>
@@ -269,8 +300,8 @@ const TPAMaster = () => {
                       <label>Code</label>
                       <input
                         className="form-control mt-1"
-                        name="code"
-                        value={formData.code}
+                        name="tpaCode"
+                        value={formData.tpaCode}
                         onChange={handleInputChange}
                       />
                     </div>
@@ -294,30 +325,10 @@ const TPAMaster = () => {
                         onChange={handleInputChange}
                       />
                     </div>
-
-                    <div className="form-group col-md-4">
-                      <label>Email</label>
-                      <input
-                        className="form-control mt-1"
-                        name="email"
-                        value={formData.email}
-                        onChange={handleInputChange}
-                      />
-                    </div>
-
-                    <div className="form-group col-md-4">
-                      <label>Address</label>
-                      <input
-                        className="form-control mt-1"
-                        name="address"
-                        value={formData.address}
-                        onChange={handleInputChange}
-                      />
-                    </div>
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2">
+                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
                       {editingRecord ? "Update" : "Save"}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleCancel}>
@@ -326,12 +337,58 @@ const TPAMaster = () => {
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && <Popup {...popupMessage} />}
             </div>
           </div>
         </div>
       </div>
+
+      {/* Confirmation Modal */}
+      {confirmDialog.isOpen && (
+        <div
+          className="modal d-block"
+          tabIndex="-1"
+          role="dialog"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div className="modal-dialog" role="document">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Confirm Status Change</h5>
+                <button
+                  type="button"
+                  className="close"
+                  onClick={() => handleConfirm(false)}
+                >
+                  <span>&times;</span>
+                </button>
+              </div>
+              <div className="modal-body">
+                <p>
+                  Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+                </p>
+              </div>
+              <div className="modal-footer">
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={() => handleConfirm(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={() => handleConfirm(true)}
+                >
+                  Confirm
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
