@@ -948,6 +948,17 @@ export const ADD_DESIGNATION =  "Added successfully";
  export const STATUS_UPDATE_DESIGNATION = "Status update failed";
  
 
+//  Masinsurance
+export const FETCH_INSURANCE = "Failed to fetch records";
+
+
+
+
+
+
+//TPAMaster
+
+export const FETCH_TPA = "Failed to fetch records";
 
 
 
