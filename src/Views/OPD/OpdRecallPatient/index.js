@@ -20,6 +20,7 @@ import {
   MAS_WARD_CATEGORY_GET_ALL,
   WARD_DEPARTMENT_GET_ALL_BY_CATEGORY,
   MAS_BED_COUNT,
+  GET_RECALL_PATIENT_DETAILS,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -1709,163 +1710,253 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
     handleFilterChange("mobileNumber", value);
   };
 
-  const handleRowClick = async (patient) => {
-    setSelectedPatient(patient);
+const handleRowClick = async (patient) => {
+  setLoading(true);
 
-    /* -------------------- VITALS / BASIC DATA -------------------- */
-    setFormData({
-      height: patient.height || "",
-      weight: patient.weight || "",
-      temperature: patient.temperature || "",
-      systolicBP: patient.bpSystolic || "",
-      diastolicBP: patient.bpDiastolic || "",
-      pulse: patient.pulse || "",
-      bmi: patient.bmi || "",
-      rr: patient.rr || "",
-      spo2: patient.spo2 || "",
-      patientSymptoms: patient.patientSignsSymptoms || "",
-      clinicalExamination: patient.clinicalExamination || "",
-      pastHistory: patient.pastMedicalHistory || "",
-      familyHistory: patient.familyHistory || "",
-      mlcCase: patient.mlcFlag === "y",
-    });
+  try {
+    const response = await getRequest(
+      `${GET_RECALL_PATIENT_DETAILS}?visitId=${patient.visitId}`,
+    );
 
-    setGeneralTreatmentAdvice(patient.treatmentAdvice || "");
-    setWorkingDiagnosis(patient?.workingDiag || "");
+    if (response?.status === 200 && response?.response) {
+      const patientData = response.response;
+      setSelectedPatient(patientData);
+      const sectionsToExpand = {};
 
-    /* -------------------- DIAGNOSIS -------------------- */
-    setDiagnosisItems(
-      patient.icdDiag?.length
-        ? patient.icdDiag.map((item) => ({
-            id: item.id ?? null,
-            icdDiagId: item.icdId ?? "",
-            icdDiagnosis: item.icdDiagName ?? "",
-            communicableDisease: false,
-            infectiousDisease: false,
-          }))
-        : [
-            {
-              id: null,
-              icdDiagId: "",
-              icdDiagnosis: "",
+      /* -------------------- VITALS / BASIC DATA -------------------- */
+      const hasVitalsData = patientData.height || 
+                           patientData.weight || 
+                           patientData.temperature || 
+                           patientData.bpSystolic || 
+                           patientData.bpDiastolic || 
+                           patientData.pulse || 
+                           patientData.bmi || 
+                           patientData.rr || 
+                           patientData.spo2;
+      
+      setFormData({
+        height: patientData.height || "",
+        weight: patientData.weight || "",
+        temperature: patientData.temperature || "",
+        systolicBP: patientData.bpSystolic || "",
+        diastolicBP: patientData.bpDiastolic || "",
+        pulse: patientData.pulse || "",
+        bmi: patientData.bmi || "",
+        rr: patientData.rr || "",
+        spo2: patientData.spo2 || "",
+        patientSymptoms: patientData.patientSignsSymptoms || "",
+        clinicalExamination: patientData.clinicalExamination || "",
+        pastHistory: patientData.pastMedicalHistory || "",
+        familyHistory: patientData.familyHistory || "",
+        mlcCase: patientData.mlcFlag === "y",
+      });
+      const hasClinicalData = patientData.patientSignsSymptoms || 
+                             patientData.clinicalExamination || 
+                             patientData.pastMedicalHistory || 
+                             patientData.familyHistory;
+      if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
+
+      setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
+      setWorkingDiagnosis(patientData?.workingDiag || "");
+
+      /* -------------------- DIAGNOSIS -------------------- */
+      const hasDiagnosisData = patientData.icdDiag?.length > 0;
+      if (hasDiagnosisData) sectionsToExpand.diagnosis = true;
+      
+      setDiagnosisItems(
+        patientData.icdDiag?.length
+          ? patientData.icdDiag.map((item) => ({
+              id: item.id ?? null,
+              icdDiagId: item.icdId ?? "",
+              icdDiagnosis: item.icdDiagName ?? "",
               communicableDisease: false,
               infectiousDisease: false,
-            },
-          ],
-    );
+            }))
+          : [
+              {
+                id: null,
+                icdDiagId: "",
+                icdDiagnosis: "",
+                communicableDisease: false,
+                infectiousDisease: false,
+              },
+            ],
+      );
 
-    /* -------------------- INVESTIGATIONS -------------------- */
-    const investigationList = patient.dgOrderHdList?.length
-      ? patient.dgOrderHdList.flatMap((hd) =>
-          hd.dgOrderDts.map((dt) => ({
-            id: dt.dgOrderDtId || "",
-            name: dt.investigationName || "",
-            date: dt.appointmentDate || getToday(),
-            investigationId: dt.investigationId,
-          })),
-        )
-      : [{ id: "", name: "", date: getToday() }];
+      /* -------------------- INVESTIGATIONS -------------------- */
+      // Combine lab and radiology investigations
+      const labInvestigations = patientData.labOrderHds?.length
+        ? patientData.labOrderHds.flatMap((hd) =>
+            hd.labOrderDts.map((dt) => ({
+              id: dt.orderDtId || "",
+              name: dt.investigationName || "",
+              date: dt.appointmentDate || getToday(),
+              investigationId: dt.investigationId,
+              templateIds: [],
+            })),
+          )
+        : [];
 
-    setInvestigationItems(investigationList);
+      const radInvestigations = patientData.radOrderHds?.length
+        ? patientData.radOrderHds.flatMap((hd) =>
+            hd.radOrderDts.map((dt) => ({
+              id: dt.orderDtId || "",
+              name: dt.investigationName || "",
+              date: dt.appointmentDate || getToday(),
+              investigationId: dt.investigationId,
+              templateIds: [],
+            })),
+          )
+        : [];
 
-    /* -------------------- TREATMENT -------------------- */
-    setTreatmentItems(
-      patient.patientPrescriptionDts?.length
-        ? patient.patientPrescriptionDts.map((item) => {
-            const freq = getFreqDetails(item.frequencyId);
+      const allInvestigations = [...labInvestigations, ...radInvestigations];
+      const hasInvestigationData = allInvestigations.length > 0;
+      if (hasInvestigationData) sectionsToExpand.investigation = true;
 
-            const obj = {
-              treatmentId: item.prescriptionDtId,
-              drugId: item.itemId,
-              drugName: item.itemName,
-              dispUnit: item.dispUnit ?? "",
-              dosage: Number(item.dosage) || "",
-              frequency: freq?.frequencyName ?? item.frequencyId ?? "",
-              days: Number(item.days) || "",
-              instruction: item.instraction ?? "",
-              stock: item.stocks ?? "",
-              itemClassId: item.itemClassId ?? null,
-              aDispQty: item.adispQty ?? 1,
-            };
+      setInvestigationItems(
+        allInvestigations.length
+          ? allInvestigations
+          : [{ id: "", name: "", date: getToday(), templateIds: [] }],
+      );
 
-            obj.total = calculateTotal(obj);
-            return obj;
-          })
-        : [
-            {
-              treatmentId: null,
-              drugId: "",
-              drugName: "",
-              dispUnit: "",
-              dosage: "",
-              frequency: "",
-              days: "",
-              total: "",
-              instruction: "",
-              stock: "",
-            },
-          ],
-    );
+      // Set lab and radio flags
+      setLabFlag(patientData.labFlag || "n");
+      setRadioFlag(patientData.radioFlag || "n");
 
-    /*-------------------- final remark --------------- */
-    setDoctorRemarksText(patient.doctorRemarks || "");
+      /* -------------------- TREATMENT -------------------- */
+      const hasTreatmentData = patientData.patientPrescriptionDts?.length > 0;
+      if (hasTreatmentData) sectionsToExpand.treatment = true;
+      if (patientData.treatmentAdvice) sectionsToExpand.treatmentAdvice = true;
+      
+      setTreatmentItems(
+        patientData.patientPrescriptionDts?.length
+          ? patientData.patientPrescriptionDts.map((item) => {
+              const freq = getFreqDetails(item.frequencyId);
+              const obj = {
+                treatmentId: item.prescriptionDtId,
+                drugId: item.itemId,
+                drugName: item.itemName,
+                dispUnit: item.dispUnit ?? "",
+                dosage: Number(item.dosage) || "",
+                frequency: freq?.frequencyName ?? item.frequencyId ?? "",
+                days: Number(item.days) || "",
+                instruction: item.instraction ?? "",
+                stock: item.stocks ?? "",
+                itemClassId: item.itemClassId ?? null,
+                aDispQty: item.adispQty ?? 1,
+                templateId: "",
+              };
+              obj.total = calculateTotal(obj);
+              return obj;
+            })
+          : [
+              {
+                treatmentId: null,
+                drugId: "",
+                drugName: "",
+                dispUnit: "",
+                dosage: "",
+                frequency: "",
+                days: "",
+                total: "",
+                instruction: "",
+                stock: "",
+                templateId: "",
+              },
+            ],
+      );
 
-    /* -------------------- FOLLOW UP -------------------- */
-    setFollowUps({
-      followUpFlag: patient.followUpFlag === "y",
-      FolloUpDate: patient.followUpDate
-        ? patient.followUpDate.split("T")[0]
+      /*-------------------- final remark --------------- */
+      const hasDoctorRemarks = patientData.doctorRemarks;
+      if (hasDoctorRemarks) sectionsToExpand.remarks = true;
+      
+      setDoctorRemarksText(patientData.doctorRemarks || "");
+
+      /* -------------------- FOLLOW UP -------------------- */
+      const hasFollowUpData = patientData.followUpFlag === "y";
+      if (hasFollowUpData) sectionsToExpand.followUp = true;
+      
+      setFollowUps({
+        followUpFlag: patientData.followUpFlag === "y",
+        FolloUpDate: patientData.followUpDate
+          ? patientData.followUpDate.split("T")[0]
+          : "",
+        noOfFollowDays: patientData.followUpDays
+          ? String(patientData.followUpDays)
+          : "",
+      });
+
+      /* -------------------- REFERRAL -------------------- */
+      const hasReferralData = patientData.referralFlag === "y";
+      if (hasReferralData) sectionsToExpand.referral = true;
+      
+      setReferralData((prev) => ({
+        ...prev,
+        isReferred: patientData.referralFlag === "y" ? "Yes" : "No",
+        referralDate: patientData.referralDate
+          ? patientData.referralDate.split("T")[0]
+          : "",
+      }));
+      setReferralNotes(patientData.referralRemarks || "");
+
+
+      /* -------------------- ADMISSION ADVICE -------------------- */
+  const admissionAdvised = patientData.admissionFlag === "y";
+      if (admissionAdvised) sectionsToExpand.admissionAdvice = true;
+      
+  setAdmissionAdvised(admissionAdvised);
+
+  if (admissionAdvised) {
+    setAdmissionDate(
+      patientData.admissionAdvisedDate
+        ? patientData.admissionAdvisedDate.split("T")[0]
         : "",
-      noOfFollowDays: patient.followUpDays ? String(patient.followUpDays) : "",
-    });
+    );
+    setAdditionalAdvice(patientData.admissionRemarks || "");
+    setAdmissionPriority(patientData.admissionPriority || "Normal");
+    setWardCategory(patientData.admissionWardCategory || "");
+    setAdmissionCareLevel(patientData.admissionCareLevel || "");
+    setAdmissionCareLevelName(patientData.admissionCareLevelName || "");
 
-    /* -------------------- REFERRAL -------------------- */
-    setReferralData((prev) => ({
-      ...prev,
-      isReferred: patient.referralFlag === "y" ? "Yes" : "No",
-      referralDate: patient.referralDate
-        ? patient.referralDate.split("T")[0]
-        : "",
-    }));
-    setReferralNotes(patient.referralRemarks);
+    if (patientData.admissionWardCategory) {
+      await fetchWardData(patientData.admissionWardCategory);
+    }
 
-
-    /* -------------------- ADMISSION ADVICE -------------------- */
-const admissionAdvised = patient.admissionFlag === "y";
-setAdmissionAdvised(admissionAdvised);
-
-if (admissionAdvised) {
-  setAdmissionDate(
-    patient.admissionAdvisedDate
-      ? patient.admissionAdvisedDate.split("T")[0]
-      : "",
-  );
-  setAdditionalAdvice(patient.admissionRemarks || "");
-  setAdmissionPriority(patient.admissionPriority || "Normal");
-
-  setWardCategory(patient.admissionWardCategory || "");
-  setAdmissionCareLevel(patient.admissionCareLevel || "");
-  setAdmissionCareLevelName(patient.admissionCareLevelName || "");
-
-  if (patient.admissionWardCategory) {
-    await fetchWardData(patient.admissionWardCategory);
-  }
-
-  setWardName(patient.admissionWard || "");
-  
+    setWardName(patientData.admissionWard || "");
+    
   const selectedWard = wardDepartments.find(dept => dept.id === patient.admissionWard);
   if (selectedWard) {
     setOccupiedBeds(String(selectedWard.occupiedBed || selectedWard.occupied || "0"));
     setVacantBeds(String(selectedWard.vacantBed || selectedWard.vacant || "0"));
   } else {
-    setOccupiedBeds(String(patient.occupiedBed ?? "0"));
-    setVacantBeds(String(patient.vacantBed ?? "0"));
-  }
+    setOccupiedBeds(String(patientData.occupiedBed ?? "0"));
+      setVacantBeds(String(patientData.vacantBed ?? "0"));
+    }
 }
 
-    /* -------------------- SHOW DETAIL VIEW -------------------- */
-    setShowDetailView(true);
-  };
+      /* -------------------- UPDATE EXPANDED SECTIONS -------------------- */
+      setExpandedSections((prev) => ({
+        ...prev,
+        ...sectionsToExpand,
+        vitalDetail: hasVitalsData || prev.vitalDetail,
+        clinicalHistory: hasClinicalData || prev.clinicalHistory,
+      }));
+
+      /* -------------------- SHOW DETAIL VIEW -------------------- */
+      setShowDetailView(true);
+    } else {
+      showPopup(
+        "Failed to fetch patient details. Please try again.",
+        "error",
+      );
+    }
+  } catch (error) {
+    console.error("Error fetching patient details:", error);
+    showPopup("Error fetching patient details. Please try again.", "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleAdmissionAdvisedChange = (e) => {
     const checked = e.target.checked;

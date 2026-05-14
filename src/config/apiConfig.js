@@ -214,6 +214,7 @@ export const PATIENT_UPDATE_STATUS = `${OPD_PATIENT}/update-status`;
 export const PATIENT_OPD_BY_VISIT = `${OPD_PATIENT}/getOpdByVisit`;
 export const GET_PATIENT_PRESCRIPTION_DETAILS = `/opd/getPatientPrescriptionDetails`;
 export const GET_RECALL_OPD_PATIENTS_LIST = `/opd/getRecallOpdPatientVisitList`;
+export const GET_RECALL_PATIENT_DETAILS = `/opd/recallPatientDetailsByVisit`;
 
 
 
