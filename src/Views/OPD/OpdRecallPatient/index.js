@@ -128,6 +128,7 @@ const OpdRRecallPatient = () => {
   const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
+const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
 
   const fetchWardCategoryData = async () => {
     try {
@@ -613,6 +614,11 @@ const OpdRRecallPatient = () => {
       console.error("Error fetching Doctor data:", error);
     }
   };
+
+  const handleTreatmentTemplateSaved = async (template) => {
+  await fetchOpdTemplateData();
+  // showPopup("Treatment template updated successfully!", "success");
+};
 
   const openPopup = (type) => {
     setPopupType(type);
@@ -1195,10 +1201,16 @@ const OpdRRecallPatient = () => {
     setInvestigationModalType("create");
   };
 
-  const handleOpenTreatmentModal = (type = "create") => {
-    setTreatmentModalType(type);
-    setShowTreatmentModal(true);
-  };
+  // const handleOpenTreatmentModal = (type = "create") => {
+  //   setTreatmentModalType(type);
+  //   setShowTreatmentModal(true);
+  // };
+const handleOpenTreatmentModal = (type = "create", template = null) => {
+  setTreatmentModalType(type);
+  setSelectedTemplateForEdit(template);
+  setShowTreatmentModal(true);
+};
+
 
   const handleCloseTreatmentModal = () => {
     setShowTreatmentModal(false);
@@ -5587,12 +5599,23 @@ const OpdRRecallPatient = () => {
           }}
         />
 
-        <TreatmentModal
+        {/* <TreatmentModal
           show={showTreatmentModal}
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
           onTemplateSaved={(template) => {}}
-        />
+        /> */}
+        <TreatmentModal
+  show={showTreatmentModal}
+  onClose={() => {
+    setShowTreatmentModal(false);
+    setSelectedTemplateForEdit(null);
+    setTreatmentModalType("create");
+  }}
+  templateType={treatmentModalType}
+  selectedTemplate={selectedTemplateForEdit}
+  onTemplateSaved={handleTreatmentTemplateSaved}
+/>
 
         {/* OT Calendar Modal */}
         {showOtCalendarModal && (

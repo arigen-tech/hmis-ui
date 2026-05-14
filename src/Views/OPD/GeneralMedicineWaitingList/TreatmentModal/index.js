@@ -124,6 +124,7 @@ const TreatmentModal = ({
   // Fetch initial data - ONLY ONCE when modal opens
   useEffect(() => {
     if (show) {
+      setDataLoaded(false);
       resetForm();
       // Fetch all data first
       const fetchData = async () => {
@@ -497,6 +498,10 @@ const TreatmentModal = ({
     setActiveRowIndex(null);
     setDropdownVisible(false);
     setDataLoaded(false);
+    setDataLoaded(false);        // ← ADD THIS
+  setActiveDrugDropdown(null); // ← ADD THIS
+  setDrugDropdown([]);         // ← ADD THIS
+  setDrugSearch([]); 
   };
 
   const handleAddTreatmentItem = () => {
@@ -810,6 +815,8 @@ const TreatmentModal = ({
           "success",
         );
         resetForm();
+        setDataLoaded(true);  // ← IMPORTANT
+  setSelectedTemplateId("");
         if (onTemplateSaved) {
           onTemplateSaved(response.response);
         }
