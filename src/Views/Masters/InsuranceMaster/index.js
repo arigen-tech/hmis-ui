@@ -10,8 +10,10 @@ import {
   UPDATE_INSURANCE_SUCCESS,
   UPDATE_INSURANCE_FAIL,
   DUPLICATE_INSURANCE,
-  STATUS_INSURANCE_SUCCESS,
-  STATUS_INSURANCE_FAIL,
+  ACTIVATE_INSURANCE_SUCCESS,
+  DEACTIVATE_INSURANCE_SUCCESS,
+  ACTIVATE_INSURANCE_FAIL,
+  DEACTIVATE_INSURANCE_FAIL,
 } from "../../../config/constants";
 
 const InsuranceMaster = () => {
@@ -184,11 +186,22 @@ const InsuranceMaster = () => {
       await putRequest(
         `${MAS_INSURANCE}/status/${confirmDialog.reccord.insuranceId}?status=${confirmDialog.newStatus}`
       );
-      showPopup(STATUS_INSURANCE_SUCCESS, "success");
+
+      // Use constants based on action
+      const successMsg =
+        confirmDialog.newStatus === "y"
+          ? ACTIVATE_INSURANCE_SUCCESS
+          : DEACTIVATE_INSURANCE_SUCCESS;
+      showPopup(successMsg, "success");
+
       fetchData();
     } catch (error) {
       console.error("Status update error:", error);
-      showPopup(STATUS_INSURANCE_FAIL, "error");
+      const errorMsg =
+        confirmDialog.newStatus === "y"
+          ? ACTIVATE_INSURANCE_FAIL
+          : DEACTIVATE_INSURANCE_FAIL;
+      showPopup(errorMsg, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
@@ -208,7 +221,7 @@ const InsuranceMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData(1);  // show only active records
+    fetchData(1);
   };
 
   return (

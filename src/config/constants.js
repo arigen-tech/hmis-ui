@@ -948,15 +948,18 @@ export const ADD_DESIGNATION =  "Added successfully";
  export const STATUS_UPDATE_DESIGNATION = "Status update failed";
  
 
-// Insurance Master
-export const FETCH_INSURANCE = "Failed to fetch Insurance data"; 
+
+//Insurance Master
+ export const FETCH_INSURANCE = "Failed to fetch Insurance data";
 export const ADD_INSURANCE_SUCCESS = "Insurance added successfully";
 export const ADD_INSURANCE_FAIL = "Failed to add Insurance";
 export const UPDATE_INSURANCE_SUCCESS = "Insurance updated successfully";
 export const UPDATE_INSURANCE_FAIL = "Failed to update Insurance";
 export const DUPLICATE_INSURANCE = "Insurance with same Name already exists!";
-export const STATUS_INSURANCE_SUCCESS = "Status updated successfully";
-export const STATUS_INSURANCE_FAIL = "Failed to update status";
+export const ACTIVATE_INSURANCE_SUCCESS = "Insurance activated successfully!";
+export const DEACTIVATE_INSURANCE_SUCCESS = "Insurance deactivated successfully!";
+export const ACTIVATE_INSURANCE_FAIL = "Failed to activate Insurance";
+export const DEACTIVATE_INSURANCE_FAIL = "Failed to deactivate Insurance";
 
 
 
@@ -981,9 +984,8 @@ export const ADD_TPA_FAIL = "Failed to add TPA";
 export const UPDATE_TPA_SUCCESS = "TPA updated successfully";
 export const UPDATE_TPA_FAIL = "Failed to update TPA";
 export const DUPLICATE_TPA = "TPA with same Name already exists!";
-export const STATUS_TPA_SUCCESS = "Status updated successfully";
+export const STATUS_TPA_SUCCESS = "TPA activated successfully!";
 export const STATUS_TPA_FAIL = "Failed to update status";
-
 
 
 //updatepatientragistration

@@ -10,8 +10,6 @@ import {
   UPDATE_TPA_SUCCESS,
   UPDATE_TPA_FAIL,
   DUPLICATE_TPA,
-  STATUS_TPA_SUCCESS,
-  STATUS_TPA_FAIL,
 } from "../../../config/constants";
 
 const TPAMaster = () => {
@@ -184,11 +182,23 @@ const TPAMaster = () => {
       await putRequest(
         `${MAS_TPA}/status/${confirmDialog.reccord.tpaId}?status=${confirmDialog.newStatus}`
       );
-      showPopup(STATUS_TPA_SUCCESS, "success");
+
+      // Dynamic success message based on action
+      const successMsg =
+        confirmDialog.newStatus === "y"
+          ? "TPA activated successfully!"
+          : "TPA deactivated successfully!";
+      showPopup(successMsg, "success");
+
       fetchData();
     } catch (error) {
       console.error("Status update error:", error);
-      showPopup(STATUS_TPA_FAIL, "error");
+      // Dynamic error message based on action
+      const errorMsg =
+        confirmDialog.newStatus === "y"
+          ? "Failed to activate TPA"
+          : "Failed to deactivate TPA";
+      showPopup(errorMsg, "error");
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
