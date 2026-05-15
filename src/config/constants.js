@@ -960,6 +960,17 @@ export const STATUS_INSURANCE_FAIL = "Failed to update status";
 
 
 
+// Corporate Master
+export const FETCH_CORPORATE = "Failed to fetch Corporate data";
+export const ADD_CORPORATE_SUCCESS = "Corporate added successfully";
+export const ADD_CORPORATE_FAIL = "Failed to add Corporate";
+export const UPDATE_CORPORATE_SUCCESS = "Corporate updated successfully";
+export const UPDATE_CORPORATE_FAIL = "Failed to update Corporate";
+export const DUPLICATE_CORPORATE = "Corporate with same Name already exists!";
+export const STATUS_CORPORATE_SUCCESS = "Status updated successfully";
+export const STATUS_CORPORATE_FAIL = "Failed to update status";
+
+
 
 
 
