@@ -1,17 +1,25 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import { MAS_INSURANCE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { getRequest } from "../../../service/apiService";
-import { FETCH_INSURANCE } from "../../../config/constants";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import {
+  FETCH_INSURANCE,
+  ADD_INSURANCE_SUCCESS,
+  ADD_INSURANCE_FAIL,
+  UPDATE_INSURANCE_SUCCESS,
+  UPDATE_INSURANCE_FAIL,
+  DUPLICATE_INSURANCE,
+  STATUS_INSURANCE_SUCCESS,
+  STATUS_INSURANCE_FAIL,
+} from "../../../config/constants";
 
 const InsuranceMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    insuranceName: "",      
-    insuranceCode: "",      
+    insuranceName: "",
+    insuranceCode: "",
     contactPerson: "",
     contactNo: "",
   });
@@ -22,10 +30,14 @@ const InsuranceMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, recordId: null, newStatus: false });
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    reccord: null,
+    newStatus: "",
+  });
+
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -41,7 +53,8 @@ const InsuranceMaster = () => {
     try {
       const { response } = await getRequest(`${MAS_INSURANCE}/getAll/${flag}`);
       setData(response || []);
-    } catch {
+    } catch (error) {
+      console.error("Fetch error:", error);
       showPopup(FETCH_INSURANCE, "error");
       setData([]);
     } finally {
@@ -52,8 +65,6 @@ const InsuranceMaster = () => {
   useEffect(() => {
     fetchData();
   }, []);
-
-
 
   const filteredData = (data || []).filter((rec) =>
     (rec?.insuranceName || "")
@@ -66,20 +77,20 @@ const InsuranceMaster = () => {
     currentPage * itemsPerPage
   );
 
+  const validateForm = (values) => {
+    return (
+      values.insuranceName?.trim() !== "" &&
+      values.insuranceCode?.trim() !== "" &&
+      values.contactPerson?.trim() !== "" &&
+      values.contactNo?.trim() !== ""
+    );
+  };
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    const { insuranceName, insuranceCode, contactPerson, contactNo, email } = {
-      ...formData,
-      [name]: value,
-    };
-    setIsFormValid(
-      (insuranceName?.trim() || "") !== "" ||
-      (insuranceCode?.trim() || "") !== "" ||
-      (contactPerson?.trim() || "") !== "" ||
-      (contactNo?.trim() || "") !== "" ||
-      (email?.trim() || "") !== ""
-    );
+    const updatedForm = { ...formData, [name]: value };
+    setFormData(updatedForm);
+    setIsFormValid(validateForm(updatedForm));
   };
 
   const resetForm = () => {
@@ -92,34 +103,58 @@ const InsuranceMaster = () => {
     setIsFormValid(false);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
+  const isDuplicate = () => {
+    const newName = formData.insuranceName.trim().toLowerCase();
+    return data.some((rec) => {
+      if (editingRecord && rec.insuranceId === editingRecord.insuranceId) return false;
+      return (rec.insuranceName || "").trim().toLowerCase() === newName;
+    });
+  };
 
-    if (editingRecord) {
-      const updated = data.map((item) =>
-        item.id === editingRecord.id
-          ? { ...editingRecord, ...formData, lastUpdateDate: new Date() }
-          : item
-      );
-      setData(updated);
-      showPopup("Updated Successfully", "success");
-    } else {
-      const newRecord = {
-        ...formData,
-        id: Date.now(),
-        status: "y",
-        lastUpdateDate: new Date(),
-      };
-      setData([...data, newRecord]);
-      showPopup("Added Successfully", "success");
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!isFormValid) return;
+
+    if (isDuplicate()) {
+      showPopup(DUPLICATE_INSURANCE, "error");
+      return;
     }
 
-    handleCancel();
+    setLoading(true);
+    try {
+      if (editingRecord) {
+        const payload = {
+          insuranceId: editingRecord.insuranceId,
+          insuranceName: formData.insuranceName,
+          insuranceCode: formData.insuranceCode,
+          contactPerson: formData.contactPerson,
+          contactNo: formData.contactNo,
+        };
+        await putRequest(`${MAS_INSURANCE}/update/${editingRecord.insuranceId}`, payload);
+        showPopup(UPDATE_INSURANCE_SUCCESS, "success");
+      } else {
+        const payload = {
+          insuranceName: formData.insuranceName,
+          insuranceCode: formData.insuranceCode,
+          contactPerson: formData.contactPerson,
+          contactNo: formData.contactNo,
+          status: "y",
+        };
+        await postRequest(`${MAS_INSURANCE}/create`, payload);
+        showPopup(ADD_INSURANCE_SUCCESS, "success");
+      }
+      await fetchData();
+      handleCancel();
+    } catch (error) {
+      console.error("Save error:", error);
+      showPopup(editingRecord ? UPDATE_INSURANCE_FAIL : ADD_INSURANCE_FAIL, "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);
-    // ✅ fixed: populate form with existing values
     setFormData({
       insuranceName: rec.insuranceName || "",
       insuranceCode: rec.insuranceCode || "",
@@ -130,21 +165,34 @@ const InsuranceMaster = () => {
     setIsFormValid(true);
   };
 
-  const handleStatusChange = (recordId, newStatus) => {
-    setConfirmDialog({ isOpen: true, recordId, newStatus });
+  const handleStatusChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      reccord: rec,
+      newStatus: rec.status === "y" ? "n" : "y",
+    });
   };
 
-  const handleConfirm = (confirmed) => {
-    if (confirmed && confirmDialog.recordId !== null) {
-      const updated = data.map((item) =>
-        item.id === confirmDialog.recordId
-          ? { ...item, status: confirmDialog.newStatus }
-          : item
-      );
-      setData(updated);
-      showPopup(`Record ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
+      return;
     }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: false });
+
+    try {
+      setLoading(true);
+      await putRequest(
+        `${MAS_INSURANCE}/status/${confirmDialog.reccord.insuranceId}?status=${confirmDialog.newStatus}`
+      );
+      showPopup(STATUS_INSURANCE_SUCCESS, "success");
+      fetchData();
+    } catch (error) {
+      console.error("Status update error:", error);
+      showPopup(STATUS_INSURANCE_FAIL, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
+    }
   };
 
   const showPopup = (message, type) => {
@@ -160,6 +208,7 @@ const InsuranceMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData(1);  // show only active records
   };
 
   return (
@@ -196,19 +245,26 @@ const InsuranceMaster = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={() => setShowForm(true)}
+                        disabled={loading}
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-success me-2 flex-shrink-0" 
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
+                        disabled={loading}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -219,6 +275,7 @@ const InsuranceMaster = () => {
             <div className="card-body">
               {!showForm ? (
                 <>
+                  {loading && <div className="text-center">Loading...</div>}
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -234,22 +291,23 @@ const InsuranceMaster = () => {
                       </thead>
                       <tbody>
                         {currentItems.map((rec) => (
-                          <tr key={rec.id}>
+                          <tr key={rec.insuranceId}>
                             <td>{rec.insuranceName}</td>
                             <td>{rec.insuranceCode}</td>
                             <td>{rec.contactPerson}</td>
                             <td>{rec.contactNo}</td>
-                            <td>{formatDate(rec.lastUpdateDate)}</td>
+                            <td>{formatDate(rec.lastChgDate)}</td>
                             <td>
                               <div className="form-check form-switch">
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
                                   checked={rec.status === "y"}
-                                  onChange={() => handleStatusChange(rec.id, rec.status === "y" ? "n" : "y")}
-                                  id={`switch-${rec.id}`}
+                                  onChange={() => handleStatusChange(rec)}
+                                  id={`switch-${rec.insuranceId}`}
+                                  disabled={loading}
                                 />
-                                <label className="form-check-label px-0" htmlFor={`switch-${rec.id}`}>
+                                <label className="form-check-label px-0" htmlFor={`switch-${rec.insuranceId}`}>
                                   {rec.status === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
@@ -258,7 +316,7 @@ const InsuranceMaster = () => {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y"}
+                                disabled={rec.status !== "y" || loading}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -277,62 +335,78 @@ const InsuranceMaster = () => {
                       onPageChange={setCurrentPage}
                     />
                   )}
+                  {filteredData.length === 0 && !loading && (
+                    <div className="text-center mt-3">No records found</div>
+                  )}
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
                     <div className="form-group col-md-4">
-                      <label>Name</label>
+                      <label>Name *</label>
                       <input
                         className="form-control mt-1"
                         name="insuranceName"
                         value={formData.insuranceName}
                         onChange={handleInputChange}
+                        required
                       />
                     </div>
 
                     <div className="form-group col-md-4">
-                      <label>Code</label>
+                      <label>Code *</label>
                       <input
                         className="form-control"
                         name="insuranceCode"
                         value={formData.insuranceCode}
                         onChange={handleInputChange}
+                        required
                       />
                     </div>
 
                     <div className="form-group col-md-4">
-                      <label>Contact Person</label>
+                      <label>Contact Person *</label>
                       <input
                         className="form-control"
                         name="contactPerson"
                         value={formData.contactPerson}
                         onChange={handleInputChange}
+                        required
                       />
                     </div>
 
                     <div className="form-group col-md-4">
-                      <label>Contact No</label>
+                      <label>Contact No *</label>
                       <input
                         className="form-control"
                         name="contactNo"
                         value={formData.contactNo}
                         onChange={handleInputChange}
+                        required
                       />
                     </div>
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      {editingRecord ? "Update" : "Save"}
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : editingRecord ? "Update" : "Save"}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
                       Cancel
                     </button>
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && <Popup {...popupMessage} />}
             </div>
           </div>
@@ -360,7 +434,8 @@ const InsuranceMaster = () => {
               </div>
               <div className="modal-body">
                 <p>
-                  Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+                  Are you sure you want to{" "}
+                  {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
                 </p>
               </div>
               <div className="modal-footer">
@@ -368,6 +443,7 @@ const InsuranceMaster = () => {
                   type="button"
                   className="btn btn-secondary"
                   onClick={() => handleConfirm(false)}
+                  disabled={loading}
                 >
                   Cancel
                 </button>
@@ -375,6 +451,7 @@ const InsuranceMaster = () => {
                   type="button"
                   className="btn btn-primary"
                   onClick={() => handleConfirm(true)}
+                  disabled={loading}
                 >
                   Confirm
                 </button>
