@@ -1,5 +1,5 @@
- export const API_HOST =  'http://103.133.215.182:8081/hims';
-// export const API_HOST = 'http://localhost:8080';
+export const API_HOST =  'http://103.133.215.182:8081/hims';
+//export const API_HOST = 'http://localhost:8080';
 
 
 
@@ -608,3 +608,5 @@ export const UPDATE_BILLING_TEMPLATE_URL = `${MASTERS}/billingTemplate/update`;
 export const UPDATE_TEMPLATE_STATUS_URL = `${MASTERS}/billingTemplate/status`;
 export const SEARCH_TEMPLATES_URL = `${MASTERS}/billingTemplate/searchTemplates`;
 export const GET_TEMPLATE_BY_ID_URL = `${MASTERS}/billingTemplate/getById`;
+
+export const MAS_OPD_HOLIDAY = `${MASTERS}/opdHoliday`;

@@ -1288,3 +1288,11 @@ export const ADD_AT_LEAST_ONE_INVESTIGATION = "Please add at least one investiga
 export const DUPLICATE_INVESTIGATIONS_FOUND ="Duplicate investigations found. Please remove duplicates before saving.";
 export const TEMPLATE_CREATED_SUCCESS ="Template created successfully!";
 export const TEMPLATE_UPDATED_SUCCESS ="Template updated successfully!";
+
+//opd holiday master
+export const FETCH_HOLIDAY = "Failed to fetch OPD holiday data";
+export const ADD_HOLIDAY_SUCCESS = "OPD holiday added successfully!";
+export const ADD_HOLIDAY_FAIL = "Failed to add OPD holiday";
+export const UPDATE_HOLIDAY_FAIL = "Failed to update OPD holiday";
+export const UPDATE_HOLIDAY_SUCCESS = "OPD holiday updated successfully!";
+export const DUPLICATE_HOLIDAY = "OPD holiday with the same date already exists";
