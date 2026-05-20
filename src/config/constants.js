@@ -1296,3 +1296,10 @@ export const ADD_HOLIDAY_FAIL = "Failed to add OPD holiday";
 export const UPDATE_HOLIDAY_FAIL = "Failed to update OPD holiday";
 export const UPDATE_HOLIDAY_SUCCESS = "OPD holiday updated successfully!";
 export const DUPLICATE_HOLIDAY = "OPD holiday with the same date already exists";
+//tpamapping
+export const REQUIRED_FIELDS_ERROR = "Please fill all required fieldss";
+export const DUPLICATE_INSURANCE_TPA_MAPPING ="Duplicate Insurance TPA Mapping";
+export const RECORD_ADDED_SUCCESSFULLY = "Record Added Successfully";
+export const RECORD_UPDATED_SUCCESSFULLY = "Record Updated Successfully";
+export const STATUS_UPDATED_SUCCESSFULLY = "Status updated successfully";
+export const FAILED_TO_UPDATE_STATUS = "Failed to update status";
