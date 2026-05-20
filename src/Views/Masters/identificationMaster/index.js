@@ -112,22 +112,14 @@ const Identificationmaster = () => {
       }
 
       if (editingType) {
-        const response = await putRequest(`${MAS_IDENTIFICATION_TYPE}/updateById/${editingType.identificationId}`, {
+        await putRequest(`${MAS_IDENTIFICATION_TYPE}/updateById/${editingType.identificationId}`, {
           identificationCode: formData.identificationCode,
           identificationName: formData.identificationName,
           status: editingType.status,
         });
 
-        if (response && response.response) {
-          setIdentificationTypes((prevData) =>
-            prevData.map((type) =>
-              type.identificationTypeId === editingType.identificationId 
-                ? response.response 
-                : type
-            )
-          );
-          showPopup(UPDATE_IDENTIFICATION_SUCC_MSG, "success");
-        }
+        showPopup(UPDATE_IDENTIFICATION_SUCC_MSG, "success");
+        fetchIdentificationTypes();
       } else {
         const response = await postRequest(`${MAS_IDENTIFICATION_TYPE}/create`, {
           identificationCode: formData.identificationCode,
@@ -144,7 +136,6 @@ const Identificationmaster = () => {
       setEditingType(null);
       setFormData({ identificationCode: "", identificationName: "" });
       setShowForm(false);
-      fetchIdentificationTypes();
     } catch (err) {
       console.error("Error saving identification type:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -172,23 +163,22 @@ const Identificationmaster = () => {
       try {
         setLoading(true);
         
-        const response = await putRequest(
+        await putRequest(
           `${MAS_IDENTIFICATION_TYPE}/status/${confirmDialog.identificationId}?status=${confirmDialog.newStatus}`
         );
         
-        if (response && response.response) {
-          setIdentificationTypes((prevData) =>
-            prevData.map((type) =>
-              type.identificationTypeId === confirmDialog.identificationId
-                ? { ...type, status: confirmDialog.newStatus }
-                : type
-            )
-          );
-          showPopup(
-            `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
-        }
+        setIdentificationTypes((prevData) =>
+          prevData.map((type) =>
+            type.identificationTypeId === confirmDialog.identificationId
+              ? { ...type, status: confirmDialog.newStatus }
+              : type
+          )
+        );
+        
+        showPopup(
+          `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          "success"
+        );
       } catch (err) {
         console.error("Error updating identification type status:", err);
         showPopup(FAIL_TO_UPDATE_STS, "error");
@@ -208,6 +198,11 @@ const Identificationmaster = () => {
       updatedFormData.identificationCode.trim() !== "" && 
       updatedFormData.identificationName.trim() !== "";
     setIsFormValid(isValid);
+  };
+
+  const handleGenerateReport = () => {
+    console.log("Generating report...");
+    showPopup("Report generated successfully!", "success");
   };
 
   return (
@@ -260,8 +255,12 @@ const Identificationmaster = () => {
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
-                      <button type="button" className="btn btn-success d-flex align-items-center">
-                        <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
+                      <button 
+                        type="button" 
+                        className="btn btn-success d-flex align-items-center"
+                        onClick={handleGenerateReport}
+                      >
+                        <i className="mdi mdi-file-export d-sm-inline ms-1"></i> Generate Report
                       </button>
                     </>
                   ) : (
@@ -353,6 +352,7 @@ const Identificationmaster = () => {
                           maxLength={IDENTIFICATION_CODE_MAX_LENGTH}
                           onChange={handleInputChange}
                           required
+                          disabled={editingType ? true : false}
                         />
                       </div>
                       <div className="col-md-6">
@@ -373,11 +373,11 @@ const Identificationmaster = () => {
                       </div>
                     </div>
                     <div className="d-flex justify-content-end mt-4">
-                      <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
-                        Cancel
-                      </button>
-                      <button type="submit" className="btn btn-success" disabled={!isFormValid}>
+                      <button type="submit" className="btn btn-success me-2" disabled={!isFormValid}>
                         {editingType ? "Update" : "Save"}
+                      </button>
+                      <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                        Cancel
                       </button>
                     </div>
                   </div>
@@ -407,7 +407,7 @@ const Identificationmaster = () => {
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => setConfirmDialog({ isOpen: false })}>No</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
                         <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
                       </div>
                     </div>

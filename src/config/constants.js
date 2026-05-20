@@ -431,7 +431,7 @@ export const UPDATE_COUNTRY_SUCC_MSG = "Country updated successfully!";
 export const ADD_COUNTRY_SUCC_MSG = "New country added successfully!";
 
 //Department Type Master
-export const DUPLICATE_DEPARTMENT_TYPE ="Department type with the same name already exists!";
+export const DUPLICATE_DEPARTMENT_TYPE ="Department type with the same name or code already exists!";
 export const UPDATE_DEPARTMENT_TYPE_SUCC_MSG ="Department type updated successfully!";
 export const ADD_DEPARTMENT_TYPE_SUCC_MSG ="New department type added successfully!";
 
@@ -469,7 +469,7 @@ export const VALID_GST_RATE ="Please enter a valid GST Rate between 0 and 100.";
 
 //Identification Master
 export const FETCH_IDENTIFICATION_ERR_MSG ="Failed to load identification data";
-export const DUPLICATE_IDENTIFICATION ="Identification with the same name already exists!";
+export const DUPLICATE_IDENTIFICATION ="Identification with the same name or code already exists!";
 export const UPDATE_IDENTIFICATION_SUCC_MSG ="Identification updated successfully!";
 export const ADD_IDENTIFICATION_SUCC_MSG ="New identification added successfully!";
 
