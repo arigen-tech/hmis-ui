@@ -183,28 +183,19 @@ const DepartmentMaster = () => {
                 departmentData.wardCategoryId = null;
             }
 
-            if (editingDepartment) {
-                // Update existing department
-                const response = await putRequest(`${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`, departmentData);
+if (editingDepartment) {
+    await putRequest(
+        `${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`,
+        departmentData
+    );
+    showPopup(UPDATE_DEPARTMENT_SUCC_MSG, "success");
+} else {
+    await postRequest(`${MAS_DEPARTMENT}/create`, departmentData);
+    showPopup(ADD_DEPARTMENT_SUCC_MSG, "success");
+}
 
-                if (response && response.response) {
-                    setDepartments((prevData) =>
-                        prevData.map((dept) =>
-                            dept.id === editingDepartment.id ? response.response : dept
-                        )
-                    );
-                    showPopup(UPDATE_DEPARTMENT_SUCC_MSG, "success");
-                }
-            } else {
-                // Add new department
-                const response = await postRequest(`${MAS_DEPARTMENT}/create`, departmentData);
-
-                if (response && response.response) {
-                    setDepartments([...departments, response.response]);
-                    showPopup(ADD_DEPARTMENT_SUCC_MSG, "success");
-                }
-            }
-
+await fetchDepartments();
+ 
             setEditingDepartment(null);
             setFormData({
                 departmentCode: "",

@@ -7,11 +7,11 @@ import { postRequest, putRequest, getRequest } from "../../../service/apiService
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import {
   FETCH_GENDER_ERR_MSG,
-  DUPLICATE_GENDER,
   UPDATE_GENDER_SUCC_MSG,
   ADD_GENDER_SUCC_MSG,
   FAIL_TO_SAVE_CHANGES,
-  FAIL_TO_UPDATE_STS
+  FAIL_TO_UPDATE_STS,
+  DUPLICATE_GENDER_MSG,
 } from "../../../config/constants";
 
 
@@ -100,45 +100,44 @@ const Gendermaster = () => {
 
     try {
       setLoading(true);
+      setEditingGender(null);
+setFormData({ genderCode: "", genderName: "" });
+setShowForm(false);
 
       if (editingGender) {
 
-        const response = await axios.put(`${MAS_GENDER}/updateById/${editingGender.id}`, {
-          id: editingGender.id,
-          genderCode: formData.genderCode,
-          genderName: formData.genderName,
-          code: null,
-          status: editingGender.status
-        });
+        await putRequest(
+  `${MAS_GENDER}/updateById/${editingGender.id}`,
+  {
+    id: editingGender.id,
+    genderCode: formData.genderCode,
+    genderName: formData.genderName,
+    code: null,
+    status: editingGender.status
+  }
+);
 
-        if (response && response.response) {
-
-          setGenderData(genderData.map(gender =>
-            gender.id === editingGender.id ? response.response : gender
-          ));
-          showPopup(UPDATE_GENDER_SUCC_MSG, "success");
-        }
+showPopup(UPDATE_GENDER_SUCC_MSG, "success");
+await fetchGenderData();
       } else {
 
-        const response = await postRequest(`${MAS_GENDER}/create`, {
-          genderCode: formData.genderCode,
-          genderName: formData.genderName,
-          code: null,
-          status: "y"
-        });
+const isDuplicate = genderData.some(
+  (gender) =>
+    gender.genderCode.toLowerCase() === formData.genderCode.toLowerCase() ||
+    gender.genderName.toLowerCase() === formData.genderName.toLowerCase()
+);
 
-        const isDuplicate = genderData.some(
-          (gender) =>
-            gender.genderCode === formData.genderCode ||
-            gender.genderName === formData.genderName
-        );
+if (isDuplicate) {
+  showPopup(DUPLICATE_GENDER_MSG , "error");
+  return;
+}
 
-        if (isDuplicate) {
-          showPopup(DUPLICATE_GENDER, "error");
-          setLoading(false);
-          return;
-        }
-
+const response = await postRequest(`${MAS_GENDER}/create`, {
+  genderCode: formData.genderCode,
+  genderName: formData.genderName,
+  code: null,
+  status: "y"
+});
         if (response && response.response) {
 
           setGenderData([...genderData, response.response]);
@@ -176,12 +175,17 @@ const Gendermaster = () => {
     if (confirmed && confirmDialog.genderId !== null) {
       try {
         setLoading(true);
+await putRequest(
+  `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
+);
 
-        const response = await putRequest(
-          `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
-        );
+showPopup(
+  `Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+  "success"
+);
 
-        if (response && response.response) {
+await fetchGenderData();
+       
 
           setGenderData((prevData) =>
             prevData.map((gender) =>
@@ -192,7 +196,7 @@ const Gendermaster = () => {
           );
           showPopup(`Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
         }
-      } catch (err) {
+       catch (err) {
         console.error("Error updating gender status:", err);
         showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
@@ -204,20 +208,23 @@ const Gendermaster = () => {
     setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
   };
 
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [id]: value }));
+ 
+  
+const handleInputChange = (e) => {
+  const { id, value } = e.target;
 
-
-    if (id === "genderName") {
-      setIsFormValid(value.trim() !== "");
-    } else if (id === "genderCode") {
-
-      if (!editingGender) {
-        setIsFormValid(value.trim() !== "" && formData.genderName.trim() !== "");
-      }
-    }
+  const updated = {
+    ...formData,
+    [id]: value
   };
+
+  setFormData(updated);
+
+  setIsFormValid(
+    updated.genderCode.trim() !== "" &&
+    updated.genderName.trim() !== ""
+  );
+};
 
   const handleRefresh = () => {
     setSearchQuery("");
@@ -355,7 +362,7 @@ const Gendermaster = () => {
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
-                  {!editingGender && (
+                  
                     <div className="form-group col-md-4">
                       <label>Gender Code <span className="text-danger">*</span></label>
                       <input
@@ -370,7 +377,7 @@ const Gendermaster = () => {
                         required
                       />
                     </div>
-                  )}
+      
                   <div className="form-group col-md-4">
                     <label>Gender Name <span className="text-danger">*</span></label>
                     <input

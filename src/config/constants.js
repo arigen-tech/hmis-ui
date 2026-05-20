@@ -448,9 +448,9 @@ export const ADD_FREQUENCY_SUCC_MSG = "New frequency added successfully!";
 
 //Gender Master
 export const FETCH_GENDER_ERR_MSG = "Failed to load gender data";
-export const DUPLICATE_GENDER = "Gender with the same name already exists!";
 export const UPDATE_GENDER_SUCC_MSG = "Gender updated successfully!";
 export const ADD_GENDER_SUCC_MSG = "New gender added successfully!";
+export const DUPLICATE_GENDER_MSG ="Gender Code or Gender Name already exists";
 
 //Hospital Master
 export const FETCH_HOSPITAL_ERR_MSG = "Failed to load hospital data";
@@ -1296,6 +1296,7 @@ export const ADD_HOLIDAY_FAIL = "Failed to add OPD holiday";
 export const UPDATE_HOLIDAY_FAIL = "Failed to update OPD holiday";
 export const UPDATE_HOLIDAY_SUCCESS = "OPD holiday updated successfully!";
 export const DUPLICATE_HOLIDAY = "OPD holiday with the same date already exists";
+
 //tpamapping
 export const REQUIRED_FIELDS_ERROR = "Please fill all required fieldss";
 export const DUPLICATE_INSURANCE_TPA_MAPPING ="Duplicate Insurance TPA Mapping";
