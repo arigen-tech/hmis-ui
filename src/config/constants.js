@@ -419,6 +419,7 @@ export const INDENT_APPROVAL_PROCESS_ERR = "Failed to process indent. Please try
 
 export const FETCH_BLOOD_GROUP_ERR_MSG = "Failed to load blood group data";
 export const DUPLICATE_BLOOD_GROUP ="Blood group with the same name already exists!";
+export const DUPLICATE_BLOOD_GROUP_MSG = "Blood Group Code or Name already exists";
 export const UPDATE_BLOOD_GROUP_SUCC_MSG = "Blood group updated successfully!";
 export const ADD_BLOOD_GROUP_SUCC_MSG = "New blood group added successfully!";
 export const INVALID_BLOOD_GROUP_ID = "Error: Invalid blood group ID";
@@ -515,9 +516,9 @@ export const DISCOUNT_PERCENTAGE ="Discount percentage must be between 0 and 100
 
 //Relationship Master
 export const FETCH_RELATIONSHIP_ERR_MSG = "Failed to load relationship data";
-export const DUPLICATE_RELATIONSHIP ="Relationship with the same name already exists!";
 export const UPDATE_RELATIONSHIP_SUCC_MSG ="Relationship updated successfully!";
 export const ADD_RELATIONSHIP_SUCC_MSG = "New relationship added successfully!";
+export const DUPLICATE_RELATION_CODE_NAME = "Relation Code or Relation Name already exists";
 
 //Religion Master
 export const FETCH_RELIGION_ERR_MSG = "Failed to load religion data";

@@ -9,7 +9,7 @@ import {
   FETCH_RELATIONSHIP_ERR_MSG,
   UPDATE_RELATIONSHIP_SUCC_MSG,
   ADD_RELATIONSHIP_SUCC_MSG,
-  DUPLICATE_RELATIONSHIP,
+  DUPLICATE_RELATION_CODE_NAME,
   FAIL_TO_SAVE_CHANGES,
   FAIL_TO_UPDATE_STS
 } from "../../../config/constants";
@@ -35,6 +35,14 @@ const Relationmaster = () => {
   const RELATION_NAME_MAX_LENGTH = 30;
   const RELATION_CODE_MAX_LENGTH = 30;
 
+
+  const showPopup = (message, type = "info") => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: () => setPopupMessage(null),
+  });
+};
 
   useEffect(() => {
     fetchRelationData(0);
@@ -99,46 +107,56 @@ const Relationmaster = () => {
     try {
       setLoading(true);
 
+     if (editingRelation) {
+  try {
+    const response = await putRequest(
+      `${MAS_RELATION}/updateById/${editingRelation.id}`,
+      {
+        id: editingRelation.id,
+        relationName: formData.relationName,
+        code: editingRelation.code, 
+        status: editingRelation.status,
+      }
+    );
 
-      const isDuplicate = relationData.some(
-        (relation) =>
-          relation.relationName === formData.relationName ||
-          relation.code === formData.code
+    if (response) {
+      setRelationData((prevData) =>
+        prevData.map((relation) =>
+          relation.id === editingRelation.id
+            ? {
+                ...relation,
+                relationName: formData.relationName,
+                code: editingRelation.code, 
+              }
+            : relation
+        )
       );
 
-      if (isDuplicate) {
-        showPopup(DUPLICATE_RELATIONSHIP, "error");
-        setLoading(false);
-        return;
-      }
+      showPopup(UPDATE_RELATIONSHIP_SUCC_MSG, "success");
+    }
+  } catch (error) {
+    console.error("Update failed:", error);
+    showPopup(FAIL_TO_SAVE_CHANGES, "error");
+  }
+}else {
+  const isDuplicate = relationData.some(
+    (relation) =>
+      relation.relationName.trim().toLowerCase() === formData.relationName.trim().toLowerCase() ||
+      relation.code.trim().toLowerCase() === formData.code.trim().toLowerCase()
+  );
 
-      if (editingRelation) {
-
-        const response = await putRequest(`${MAS_RELATION}/updateById/${editingRelation.id}`, {
-          id: editingRelation.id,
-          relationName: formData.relationName,
-          code: formData.code,
-          status: editingRelation.status,
-        });
-
-        if (response && response.response) {
-
-          setRelationData((prevData) =>
-            prevData.map((relation) =>
-              relation.id === editingRelation.id ? response.response : relation
-            )
-          );
-          showPopup(UPDATE_RELATIONSHIP_SUCC_MSG, "success");
-        }
-      } else {
-
+  if (isDuplicate) {
+    showPopup(DUPLICATE_RELATION_CODE_NAME, "error");
+    setLoading(false);
+    return;
+  }
         const response = await postRequest(`${MAS_RELATION}/create`, {
           relationName: formData.relationName,
           code: formData.code,
           status: "y",
         });
 
-        if (response && response.response) {
+        if (response) {
           setRelationData((prevData) => [...prevData, response.response]);
           showPopup(ADD_RELATIONSHIP_SUCC_MSG, "success");
         }
@@ -161,53 +179,47 @@ const Relationmaster = () => {
   };
 
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
-    });
-  };
-
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, relationId: id, newStatus });
   };
 
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.relationId !== null) {
-      try {
-        setLoading(true);
-
-        const response = await putRequest(
-          `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
-        );
-
-        if (response && response.response) {
-
-          setRelationData((prevData) =>
-            prevData.map((relation) =>
-              relation.id === confirmDialog.relationId
-                ? { ...relation, status: confirmDialog.newStatus }
-                : relation
-            )
-          );
-          showPopup(
-            `Relation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
-        }
-      } catch (err) {
-        console.error("Error updating relation status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
-      }
-    }
+  
+const handleConfirm = async (confirmed) => {
+  if (!confirmed || confirmDialog.relationId === null) {
     setConfirmDialog({ isOpen: false, relationId: null, newStatus: null });
-  };
+    return;
+  }
 
+  try {
+    setLoading(true);
+
+    await putRequest(
+      `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
+    );
+
+    // UI update
+    setRelationData((prev) =>
+      prev.map((item) =>
+        item.id === confirmDialog.relationId
+          ? { ...item, status: confirmDialog.newStatus }
+          : item
+      )
+    );
+
+    showPopup(
+      `Relation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+      "success"
+    );
+
+  } catch (err) {
+    console.error("Status update error:", err);
+    showPopup(FAIL_TO_UPDATE_STS, "error");
+
+  } finally {
+    setLoading(false);
+    setConfirmDialog({ isOpen: false, relationId: null, newStatus: null });
+  }
+};
   const handleInputChange = (e) => {
     const { id, value } = e.target;
 
@@ -362,17 +374,18 @@ const Relationmaster = () => {
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-4">
                     <label> Relation Code <span className="text-danger">*</span></label>
-                    <input
-                      type="text"
-                      className="form-control  mt-1"
-                      id="code"
-                      name="code"
-                      placeholder=" Relation code"
-                      value={formData.code}
-                      onChange={handleInputChange}
-                      maxLength={RELATION_CODE_MAX_LENGTH}
-                      required
-                    />
+                   <input
+  type="text"
+  className="form-control mt-1"
+  id="code"
+  name="code"
+  placeholder=" Relation code"
+  value={formData.code}
+  onChange={handleInputChange}
+  maxLength={RELATION_CODE_MAX_LENGTH}
+  required
+  disabled={editingRelation ? true : false}
+/>
                   </div>
                   <div className="form-group col-md-4">
                     <label>Relation Name <span className="text-danger">*</span></label>

@@ -365,17 +365,17 @@ const handleInputChange = (e) => {
                   
                     <div className="form-group col-md-4">
                       <label>Gender Code <span className="text-danger">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control  mt-1"
-                        id="genderCode"
-                        name="genderCode"
-                        placeholder="Gender Code"
-                        value={formData.genderCode}
-                        onChange={handleInputChange}
-                        maxLength={Gender_Code_MAX_LENGTH}
-                        required
-                      />
+                     <input
+  type="text"
+  className="form-control mt-1"
+  id="genderCode"
+  name="genderCode"
+  value={formData.genderCode}
+  onChange={handleInputChange}
+  maxLength={Gender_Code_MAX_LENGTH}
+  required
+  disabled={!!editingGender}
+/>
                     </div>
       
                   <div className="form-group col-md-4">
