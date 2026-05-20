@@ -599,6 +599,7 @@ export const MAS_IPD_BILLING_TYPE = `${MASTERS}/masIpdBillingType`;
 export const INSURANCE_TPA_MAPPING = `${MASTERS}/insuranceTpaMapping`;
 
 export const MAS_SURGERY = `${MASTERS}/masSurgery`;
+export const MAS_OPD_HOLIDAY = `${MASTERS}/masOpdHoliday`;
 
 export const MAS_SURGERY_PRICING = `${MASTERS}/masSurgeryPricing`;
 export const MAS_PROCEDURE_PRICING = `${MASTERS}/masProcedurePricing`;
