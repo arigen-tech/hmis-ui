@@ -40,7 +40,13 @@ const Identificationmaster = () => {
       setLoading(true);
       const response = await getRequest(`${MAS_IDENTIFICATION_TYPE}/getAll/${flag}`);
       if (response && response.response) {
-        setIdentificationTypes(response.response);
+        // Sort the data to show active items first
+        const sortedData = response.response.sort((a, b) => {
+          if (a.status === 'y' && b.status !== 'y') return -1;
+          if (a.status !== 'y' && b.status === 'y') return 1;
+          return 0;
+        });
+        setIdentificationTypes(sortedData);
       }
     } catch (err) {
       console.error("Error fetching identification types:", err);
@@ -128,7 +134,13 @@ const Identificationmaster = () => {
         });
 
         if (response && response.response) {
-          setIdentificationTypes([...identificationTypes, response.response]);
+          // Add new item and re-sort
+          const updatedTypes = [...identificationTypes, response.response].sort((a, b) => {
+            if (a.status === 'y' && b.status !== 'y') return -1;
+            if (a.status !== 'y' && b.status === 'y') return 1;
+            return 0;
+          });
+          setIdentificationTypes(updatedTypes);
           showPopup(ADD_IDENTIFICATION_SUCC_MSG, "success");
         }
       }
@@ -167,13 +179,21 @@ const Identificationmaster = () => {
           `${MAS_IDENTIFICATION_TYPE}/status/${confirmDialog.identificationId}?status=${confirmDialog.newStatus}`
         );
         
-        setIdentificationTypes((prevData) =>
-          prevData.map((type) =>
+        // Update state and re-sort immediately
+        setIdentificationTypes((prevData) => {
+          const updatedData = prevData.map((type) =>
             type.identificationTypeId === confirmDialog.identificationId
               ? { ...type, status: confirmDialog.newStatus }
               : type
-          )
-        );
+          );
+          
+          // Sort to move deactivated items to bottom
+          return updatedData.sort((a, b) => {
+            if (a.status === 'y' && b.status !== 'y') return -1;
+            if (a.status !== 'y' && b.status === 'y') return 1;
+            return 0;
+          });
+        });
         
         showPopup(
           `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
