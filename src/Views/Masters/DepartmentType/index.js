@@ -148,18 +148,12 @@ const Departmenttype = () => {
         if (confirmed && confirmDialog.categoryId !== null) {
             try {
                 setLoading(true);
-                const response = await putRequest(
+                await putRequest(
                     `${MAS_DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
                 );
                 
-                // Update local state immediately
-                setDepartmentTypes((prevData) =>
-                    prevData.map((type) =>
-                        type.id === confirmDialog.categoryId
-                            ? { ...type, status: confirmDialog.newStatus }
-                            : type
-                    )
-                );
+                // Call fetchDepartmentTypes to reload data from API
+                await fetchDepartmentTypes();
                 
                 showPopup(
                     `Department type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
