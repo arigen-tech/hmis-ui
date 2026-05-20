@@ -38,7 +38,6 @@ const Religionmaster = () => {
         fetchReligionData(0);
     }, []);
 
-    // FIXED: Added useEffect to reset page when search changes
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery]);
@@ -83,7 +82,6 @@ const Religionmaster = () => {
     const currentItems = filteredReligions.length > 0 ?
         filteredReligions.slice(indexOfFirst, indexOfLast) : [];
 
-    // FIXED: Removed handlePageNavigation function (handled by Pagination component)
 
     const handleEdit = (religion) => {
         setEditingReligion(religion);
@@ -101,7 +99,7 @@ const Religionmaster = () => {
         try {
             setLoading(true);
 
-            // FIXED: Check duplicate including editing case
+    
           const isDuplicate = religionData.some(
     (religion) =>
         religion.id !== (editingReligion?.id || null) &&
@@ -113,7 +111,7 @@ if (isDuplicate) {
     setLoading(false);
     return;
 }
-            // if (editingReligion) {
+            
 
                 const response = await putRequest(`${MAS_RELIGION}/updateById/${editingReligion.id}`, {
                     name: formData.religionName,
@@ -178,35 +176,7 @@ if (isDuplicate) {
         setConfirmDialog({ isOpen: true, religionId: id, newStatus });
     };
 
-    // const handleConfirm = async (confirmed) => {
-    //     if (confirmed && confirmDialog.religionId !== null) {
-    //         try {
-    //             setLoading(true);
-    //             const response = await putRequest(
-    //                 `${MAS_RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
-    //             );
-    //             if (response && response.response) {
-    //                 setReligionData((prevData) =>
-    //                     prevData.map((religion) =>
-    //                         religion.id === confirmDialog.religionId
-    //                             ? { ...religion, status: confirmDialog.newStatus }
-    //                             : religion
-    //                     )
-    //                 );
-    //                 showPopup(
-    //                     `Religion ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-    //                     "success"
-    //                 );
-    //             }
-    //         } catch (err) {
-    //             console.error("Error updating religion status:", err);
-    //             showPopup(FAIL_TO_UPDATE_STS, "error");
-    //         } finally {
-    //             setLoading(false);
-    //         }
-    //     }
-    //     setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
-    // };
+
 const handleConfirm = async (confirmed) => {
     if (!confirmed || confirmDialog.religionId === null) {
         setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
