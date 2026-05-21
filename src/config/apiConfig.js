@@ -1,5 +1,5 @@
-export const API_HOST =  'http://103.133.215.182:8081/hims';
-//export const API_HOST = 'http://localhost:8080';
+//export const API_HOST =  'http://103.133.215.182:8081/hims';
+export const API_HOST = 'http://localhost:8080';
  //export const API_HOST = 'http://192.168.1.17:8080';
 
 
@@ -599,7 +599,7 @@ export const MAS_IPD_BILLING_TYPE = `${MASTERS}/masIpdBillingType`;
 export const INSURANCE_TPA_MAPPING = `${MASTERS}/insuranceTpaMapping`;
 
 export const MAS_SURGERY = `${MASTERS}/masSurgery`;
-export const MAS_OPD_HOLIDAY = `${MASTERS}/masOpdHoliday`;
+export const MAS_OPD_HOLIDAY = `${MASTERS}/opdHoliday`;
 
 export const MAS_SURGERY_PRICING = `${MASTERS}/masSurgeryPricing`;
 export const MAS_PROCEDURE_PRICING = `${MASTERS}/masProcedurePricing`;
