@@ -410,12 +410,25 @@ const DistrictMaster = () => {
                                             </div>
                                         </div>
                                         <div className="d-flex justify-content-end mt-4">
-                                            <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
-                                                Cancel
-                                            </button>
-                                            <button type="submit" className="btn btn-success" disabled={!isFormValid}>
-                                                {editingDistrict ? "Update" : "Save"}
-                                            </button>
+                                            {editingDistrict ? (
+                                                <>
+                                                    <button type="submit" className="btn btn-success me-2" disabled={!isFormValid}>
+                                                        Update
+                                                    </button>
+                                                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                                        Cancel
+                                                    </button>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
+                                                        Cancel
+                                                    </button>
+                                                    <button type="submit" className="btn btn-success" disabled={!isFormValid}>
+                                                        Save
+                                                    </button>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                 </form>
