@@ -47,19 +47,24 @@ const TPAMaster = () => {
   };
 
   const fetchData = async (flag = 0) => {
-    setLoading(true);
-    try {
-      const { response } = await getRequest(`${MAS_TPA}/getAll/${flag}`);
-      setData(response || []);
-    } catch (error) {
-      console.error("Fetch error:", error);
-      showPopup(FETCH_TPA, "error");
-      setData([]);
-    } finally {
-      setLoading(false);
-    }
-  };
+  setLoading(true);
+  try {
+    const res = await getRequest(`${MAS_TPA}/getAll/${flag}`);
 
+    const list =
+      res?.response?.content ||
+      res?.response ||
+      res?.data ||
+      [];
+
+    setData(list);
+  } catch (error) {
+    console.error(error);
+    setData([]);
+  } finally {
+    setLoading(false);
+  }
+};
   useEffect(() => {
     fetchData();
   }, []);
@@ -109,48 +114,71 @@ const TPAMaster = () => {
     });
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+ const handleSave = async (e) => {
+  e.preventDefault();
+  if (!isFormValid) return;
 
-    if (isDuplicate()) {
-      showPopup(DUPLICATE_TPA, "error");
-      return;
+  if (isDuplicate()) {
+    showPopup(DUPLICATE_TPA, "error");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    if (editingRecord) {
+      const payload = {
+        tpaId: editingRecord.tpaId,
+        tpaName: formData.tpaName,
+        tpaCode: formData.tpaCode,
+        contactPerson: formData.contactPerson,
+        contactNo: formData.contactNo,
+      };
+
+      await putRequest(`${MAS_TPA}/update/${editingRecord.tpaId}`, payload);
+
+      showPopup(UPDATE_TPA_SUCCESS, "success", () => {
+        setData((prev) =>
+          prev.map((item) =>
+            item.tpaId === editingRecord.tpaId
+              ? { ...item, ...payload }
+              : item
+          )
+        );
+
+        handleCancel();
+      });
+
+    } else {
+      const payload = {
+        tpaName: formData.tpaName,
+        tpaCode: formData.tpaCode,
+        contactPerson: formData.contactPerson,
+        contactNo: formData.contactNo,
+        status: "y",
+      };
+
+      await postRequest(`${MAS_TPA}/create`, payload);
+
+      showPopup(ADD_TPA_SUCCESS, "success", () => {
+        const newRecord = {
+          ...payload,
+          tpaId: Date.now(), // temporary id
+        };
+
+        setData((prev) => [newRecord, ...prev]); // ✅ TOP ME ADD
+
+        handleCancel();
+      });
     }
 
-    setLoading(true);
-    try {
-      if (editingRecord) {
-        const payload = {
-          tpaId: editingRecord.tpaId,
-          tpaName: formData.tpaName,
-          tpaCode: formData.tpaCode,
-          contactPerson: formData.contactPerson,
-          contactNo: formData.contactNo,
-        };
-        await putRequest(`${MAS_TPA}/update/${editingRecord.tpaId}`, payload);
-        showPopup(UPDATE_TPA_SUCCESS, "success");
-      } else {
-        const payload = {
-          tpaName: formData.tpaName,
-          tpaCode: formData.tpaCode,
-          contactPerson: formData.contactPerson,
-          contactNo: formData.contactNo,
-          status: "y",
-        };
-        await postRequest(`${MAS_TPA}/create`, payload);
-        showPopup(ADD_TPA_SUCCESS, "success");
-      }
-      await fetchData();
-      handleCancel();
-    } catch (error) {
-      console.error("Save error:", error);
-      showPopup(editingRecord ? UPDATE_TPA_FAIL : ADD_TPA_FAIL, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-
+  } catch (error) {
+    console.error("Save error:", error);
+    showPopup(editingRecord ? UPDATE_TPA_FAIL : ADD_TPA_FAIL, "error");
+  } finally {
+    setLoading(false);
+  }
+};
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -205,10 +233,16 @@ const TPAMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
-
+  const showPopup = (message, type, callback) => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: async () => {
+      setPopupMessage(null);
+      if (callback) await callback();
+    }
+  });
+};
   const handleCancel = () => {
     resetForm();
     setEditingRecord(null);

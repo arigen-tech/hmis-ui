@@ -50,6 +50,19 @@ const InsuranceMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
+
+  const showPopupWithCallback = (message, type, onOkCallback) => {
+  setPopupMessage({ 
+    message, 
+    type, 
+    onClose: () => {
+      setPopupMessage(null);
+      if (onOkCallback) onOkCallback();
+    }
+  });
+};
+
+
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -65,7 +78,7 @@ const InsuranceMaster = () => {
   };
 
   useEffect(() => {
-    fetchData();
+    fetchData(1);
   }, []);
 
   const filteredData = (data || []).filter((rec) =>
@@ -113,47 +126,82 @@ const InsuranceMaster = () => {
     });
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+ const handleSave = async (e) => {
+  e.preventDefault();
+  if (!isFormValid) return;
 
-    if (isDuplicate()) {
-      showPopup(DUPLICATE_INSURANCE, "error");
-      return;
-    }
+  if (isDuplicate()) {
+    showPopup(DUPLICATE_INSURANCE, "error");
+    return;
+  }
 
-    setLoading(true);
-    try {
-      if (editingRecord) {
-        const payload = {
-          insuranceId: editingRecord.insuranceId,
-          insuranceName: formData.insuranceName,
-          insuranceCode: formData.insuranceCode,
-          contactPerson: formData.contactPerson,
-          contactNo: formData.contactNo,
-        };
-        await putRequest(`${MAS_INSURANCE}/update/${editingRecord.insuranceId}`, payload);
-        showPopup(UPDATE_INSURANCE_SUCCESS, "success");
-      } else {
-        const payload = {
-          insuranceName: formData.insuranceName,
-          insuranceCode: formData.insuranceCode,
-          contactPerson: formData.contactPerson,
-          contactNo: formData.contactNo,
-          status: "y",
-        };
-        await postRequest(`${MAS_INSURANCE}/create`, payload);
-        showPopup(ADD_INSURANCE_SUCCESS, "success");
-      }
-      await fetchData();
-      handleCancel();
-    } catch (error) {
-      console.error("Save error:", error);
-      showPopup(editingRecord ? UPDATE_INSURANCE_FAIL : ADD_INSURANCE_FAIL, "error");
-    } finally {
-      setLoading(false);
-    }
+  setLoading(true);
+
+  try {
+   // ================= UPDATE =================
+if (editingRecord) {
+  const payload = {
+    insuranceId: editingRecord.insuranceId,
+    insuranceName: formData.insuranceName,
+    insuranceCode: formData.insuranceCode,
+    contactPerson: formData.contactPerson,
+    contactNo: formData.contactNo,
   };
+
+  await putRequest(`${MAS_INSURANCE}/update/${editingRecord.insuranceId}`, payload);
+
+  showPopupWithCallback(UPDATE_INSURANCE_SUCCESS, "success", () => {
+    setData((prev) =>
+      prev.map((item) =>
+        item.insuranceId === editingRecord.insuranceId
+          ? { ...item, ...payload }
+          : item
+      )
+    );
+    resetForm();
+    setEditingRecord(null);
+    setShowForm(false);
+    setCurrentPage(1);
+  });
+}
+
+    // ================= ADD =================
+else {
+  const payload = {
+    insuranceName: formData.insuranceName,
+    insuranceCode: formData.insuranceCode,
+    contactPerson: formData.contactPerson,
+    contactNo: formData.contactNo,
+    status: "y",
+  };
+
+  const response = await postRequest(`${MAS_INSURANCE}/create`, payload);
+  
+  const newRecord = response?.response || {
+    ...payload,
+    insuranceId: Date.now(),
+  };
+
+  // OK button dabane ke baad hi table mein add hoga
+  showPopupWithCallback(ADD_INSURANCE_SUCCESS, "success", () => {
+    setData((prev) => [newRecord, ...prev]); // Top par add
+    resetForm();
+    setEditingRecord(null);
+    setShowForm(false);
+    setCurrentPage(1);
+  });
+}
+
+  } catch (error) {
+    console.error("Save error:", error);
+    showPopup(
+      editingRecord ? UPDATE_INSURANCE_FAIL : ADD_INSURANCE_FAIL,
+      "error"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEdit = (rec) => {
     setEditingRecord(rec);

@@ -185,10 +185,10 @@ const Itemclass = () => {
                 );
 
                 if (response.status === 200) {
-                    showPopup(
-                        `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-                        "success"
-                    );
+                   showPopup(
+    `Item Class ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+    "success"
+);
                     await fetchItemClassData();
                 } else {
                     throw new Error(response.message || "Failed to update status");
