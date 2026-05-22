@@ -170,6 +170,13 @@ const RoomMasterScreen = () => {
     );
   };
 
+  const handleCancel = () => {
+    setEditingRoom(null);
+    setFormData({ roomName: "", deptId: "", roomCategoryId: "", noOfBeds: "" });
+    setIsFormValid(false);
+    setShowForm(false);
+  };
+
   // Save (Add / Update)
   const handleSave = async (e) => {
     e.preventDefault();
@@ -204,22 +211,32 @@ const RoomMasterScreen = () => {
         const response = await putRequest(`${MAS_ROOM}/update/${editingRoom.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchRoomData();
-          showPopup(UPDATE_ROOM_SUCC_MSG, "success");
+          setPopupMessage({
+            message: UPDATE_ROOM_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchRoomData(0);
+            }
+          });
         }
       } else {
         // Add new room
         const response = await postRequest(`${MAS_ROOM}/create`, requestData);
 
         if (response && response.status === 200) {
-          fetchRoomData();
-          showPopup(ADD_ROOM_SUCC_MSG, "success");
+          setPopupMessage({
+            message: ADD_ROOM_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchRoomData(0);
+            }
+          });
         }
       }
-
-      setEditingRoom(null);
-      setFormData({ roomName: "", deptId: "", roomCategoryId: "", noOfBeds: "" });
-      setShowForm(false);
     } catch (err) {
       console.error("Error saving room:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -247,31 +264,21 @@ const RoomMasterScreen = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed) {
+    if (confirmed && confirmDialog.id !== null) {
       try {
         setLoading(true);
         const response = await putRequest(
           `${MAS_ROOM}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
-          // Update local state with formatted date
-          setRoomData((prevData) =>
-            prevData.map((room) =>
-              room.id === confirmDialog.id
-                ? {
-                  ...room,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-                : room
-            )
-          );
-
-          showPopup(
-            `Room ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+        if (response && response.status === 200) {
+          // Refresh data from API after status change
+          await fetchRoomData(0);
+          setPopupMessage({
+            message: `Room ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            type: "success",
+            onClose: () => setPopupMessage(null)
+          });
         }
       } catch (err) {
         console.error("Error updating room status:", err);
@@ -325,7 +332,7 @@ const RoomMasterScreen = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    fetchRoomData();
+    fetchRoomData(0);
     fetchDropdownData();
   };
 
@@ -425,9 +432,10 @@ const RoomMasterScreen = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
-                          setShowForm(true);
                           setEditingRoom(null);
                           setFormData({ roomName: "", deptId: "", roomCategoryId: "", noOfBeds: "" });
+                          setIsFormValid(false);
+                          setShowForm(true);
                         }}
                       >
                         <i className="mdi mdi-plus"></i> Add
@@ -441,7 +449,7 @@ const RoomMasterScreen = () => {
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -658,7 +666,7 @@ const RoomMasterScreen = () => {
                     <button 
                       type="button" 
                       className="btn btn-danger" 
-                      onClick={() => setShowForm(false)}
+                      onClick={handleCancel}
                       disabled={loading}
                     >
                       Cancel
@@ -704,7 +712,7 @@ const RoomMasterScreen = () => {
                           onClick={() => handleConfirm(false)}
                           disabled={loading}
                         >
-                          Cancel
+                          No
                         </button>
                         <button
                           type="button"
@@ -712,7 +720,7 @@ const RoomMasterScreen = () => {
                           onClick={() => handleConfirm(true)}
                           disabled={loading}
                         >
-                          Cancel
+                          Yes
                         </button>
                       </div>
                     </div>
