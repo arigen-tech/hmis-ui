@@ -33,7 +33,6 @@ const StoreUnitMaster = () => {
   
       if (response && response.response) {
         const transformedData = response.response.map(unit => ({
-          // Map unitId to id for consistency in the frontend
           id: unit.unitId || unit.id,
           unitName: unit.unitName,
           status: unit.status
@@ -92,18 +91,17 @@ const StoreUnitMaster = () => {
           status: editingUnit.status
         });
 
-        if (response && response.response) {
-          // Make sure to map unitId to id if needed
-          const updatedUnit = {
-            id: response.response.unitId || response.response.id,
-            unitName: response.response.unitName,
-            status: response.response.status
-          };
-          
-          setStoreUnits(storeUnits.map(unit =>
-            unit.id === editingUnit.id ? updatedUnit : unit
-          ));
-          showPopup("Store unit updated successfully!", "success");
+        if (response && (response.status === 200 || response.status === 201)) {
+          // Refresh the data after successful update
+          await fetchStoreUnits(0);
+          setPopupMessage({
+            message: "Store unit updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+            }
+          });
         }
       } else {
         const isDuplicate = storeUnits.some(
@@ -121,29 +119,32 @@ const StoreUnitMaster = () => {
           status: "y"
         });
 
-        if (response && response.response) {
-          // Map the response to match our frontend structure
-          const newUnit = {
-            id: response.response.unitId || response.response.id,
-            unitName: response.response.unitName,
-            status: response.response.status
-          };
-          
-          setStoreUnits([...storeUnits, newUnit]);
-          showPopup("New store unit added successfully!", "success");
+        if (response && (response.status === 200 || response.status === 201)) {
+          // Refresh the data after successful creation
+          await fetchStoreUnits(0);
+          setPopupMessage({
+            message: "New store unit added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+            }
+          });
         }
       }
-
-      setEditingUnit(null);
-      setFormData({ unitName: "" });
-      setShowForm(false);
-      fetchStoreUnits();
     } catch (err) {
       console.error("Error saving store unit data:", err);
       showPopup(`Failed to save changes: ${err.response?.message || err.message}`, "error");
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleCancel = () => {
+    setEditingUnit(null);
+    setFormData({ unitName: "" });
+    setIsFormValid(false);
+    setShowForm(false);
   };
 
   const showPopup = (message, type = 'info') => {
@@ -157,7 +158,6 @@ const StoreUnitMaster = () => {
   };
 
   const handleSwitchChange = (id, newStatus) => {
-    // Make sure id is defined before proceeding
     if (id === undefined || id === null) {
       showPopup("Unit ID is invalid. Cannot update status.", "error");
       return;
@@ -170,7 +170,6 @@ const StoreUnitMaster = () => {
       try {
         setLoading(true);
         
-        // Verify unitId exists and is not undefined
         if (confirmDialog.unitId === undefined) {
           throw new Error("Unit ID is undefined");
         }
@@ -179,30 +178,20 @@ const StoreUnitMaster = () => {
           `${MAS_STORE_UNIT}/status/${confirmDialog.unitId}?stat=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
-          // Handle the response consistently
-          const updatedUnit = {
-            id: response.response.unitId || response.response.id,
-            unitName: response.response.unitName,
-            status: response.response.status
-          };
-          
-          setStoreUnits((prevData) =>
-            prevData.map((unit) =>
-              unit.id === confirmDialog.unitId ? 
-                { ...unit, status: updatedUnit.status } : 
-                unit
-            )
-          );
-          showPopup(`Store unit ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        if (response && (response.status === 200 || response.status === 201)) {
+          // Refresh the data after status change
+          await fetchStoreUnits(0);
+          setPopupMessage({
+            message: `Store unit ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            type: "success",
+            onClose: () => setPopupMessage(null)
+          });
         }
       } catch (err) {
         console.error("Error updating store unit status:", err);
         showPopup(`Failed to update status: ${err.response?.message || err.message}`, "error");
       } finally {
-        setTimeout(() => {
-          setLoading(false);
-        }, 2000);
+        setLoading(false);
       }
     }
     setConfirmDialog({ isOpen: false, unitId: null, newStatus: null });
@@ -217,7 +206,7 @@ const StoreUnitMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchStoreUnits();
+    fetchStoreUnits(0);
   };
 
   return (
@@ -272,7 +261,7 @@ const StoreUnitMaster = () => {
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -335,7 +324,6 @@ const StoreUnitMaster = () => {
                     </table>
                   </div>
                   
-                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredStoreUnits.length > 0 && (
                     <Pagination
                       totalItems={filteredStoreUnits.length}
@@ -362,10 +350,19 @@ const StoreUnitMaster = () => {
                     />
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary me-2" 
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : editingUnit ? "Update" : "Save"}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                    <button 
+                      type="button" 
+                      className="btn btn-danger" 
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
                       Cancel
                     </button>
                   </div>
