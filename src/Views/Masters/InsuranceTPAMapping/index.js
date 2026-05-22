@@ -169,50 +169,76 @@ const isDuplicate = () => {
   });
 };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
+ const handleSave = async (e) => {
+  e.preventDefault();
 
-    if (!isFormValid) {
-      showPopup(REQUIRED_FIELDS_ERROR, "error");
-      return;
-    }
+  if (!isFormValid) return;
 
-    if (isDuplicate()) {
-      showPopup(DUPLICATE_INSURANCE_TPA_MAPPING, "error");
-      return;
-    }
+  if (isDuplicate()) {
+    showPopup(DUPLICATE_INSURANCE_TPA_MAPPING, "error");
+    return;
+  }
 
-    setLoading(true);
+  setLoading(true);
 
-    try {
-     const payload = {
-  insuranceId: Number(formData.insuranceId),
-  tpaId: Number(formData.tpaId),
-  effectiveFrom: formData.effFrom,
-  effectiveTo: formData.effTo,
-  mode: formData.mode,
-};
+  try {
+    const payload = {
+      insuranceId: Number(formData.insuranceId),
+      tpaId: Number(formData.tpaId),
+      effectiveFrom: formData.effFrom,
+      effectiveTo: formData.effTo,
+      mode: formData.mode,
+    };
 
-      if (editingRecord) {
-        await putRequest(
-          `${INSURANCE_TPA_MAPPING}/update/${formData.mappingId}`,
-          payload
+    if (editingRecord) {
+      await putRequest(
+        `${INSURANCE_TPA_MAPPING}/update/${editingRecord.mappingId}`,
+        payload
+      );
+
+      showPopup(RECORD_UPDATED_SUCCESSFULLY, "success", () => {
+    
+        setData((prev) =>
+          prev.map((item) =>
+            item.mappingId === editingRecord.mappingId
+              ? { ...item, ...payload }
+              : item
+          )
         );
-        showPopup(RECORD_UPDATED_SUCCESSFULLY, "success");
-      } else {
-        await postRequest(`${INSURANCE_TPA_MAPPING}/create`, payload);
-        showPopup(RECORD_ADDED_SUCCESSFULLY, "success");
-      }
 
-      await fetchData();
-      handleCancel();
-    } catch (error) {
-      console.error("Save error:", error);
-      showPopup(editingRecord ? "Update Failed" : "Add Failed", "error");
-    } finally {
-      setLoading(false);
+        handleCancel();
+      });
+
+    } else {
+      const res = await postRequest(
+        `${INSURANCE_TPA_MAPPING}/create`,
+        payload
+      );
+
+      const newRecord = {
+        mappingId: res?.response?.mappingId || Date.now(),
+        ...payload,
+        insuranceName:
+          insuranceOptions.find(i => i.insuranceId == payload.insuranceId)?.insuranceName,
+        tpaName:
+          tpaOptions.find(t => t.tpaId == payload.tpaId)?.tpaName,
+        status: "y",
+      };
+
+      showPopup(RECORD_ADDED_SUCCESSFULLY, "success", () => {
+  
+       setData((prev) => [newRecord, ...prev]);
+        handleCancel();
+      });
     }
-  };
+
+  } catch (error) {
+    console.error(error);
+    showPopup("Save Failed", "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEdit = (rec) => {
   console.log("EDIT RECORD =>", rec);
@@ -243,9 +269,16 @@ const isDuplicate = () => {
     });
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
+ const showPopup = (message, type, onClose) => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: () => {
+      setPopupMessage(null);
+      if (onClose) onClose();
+    },
+  });
+};
 
   const handleConfirm = async (confirmed) => {
     if (!confirmed) {

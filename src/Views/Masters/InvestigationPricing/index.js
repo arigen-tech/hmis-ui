@@ -590,7 +590,9 @@ const handleShowAll = async () => {
                                 </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                  
+                                    <div className="d-flex justify-content-end">
+                                       
+                                    </div>
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>

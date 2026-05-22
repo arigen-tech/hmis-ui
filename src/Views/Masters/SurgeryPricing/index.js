@@ -84,7 +84,7 @@ const SurgeryPricing = () => {
   ]
 
   // Autocomplete for Surgery Name
-  const surgeryInputRef = useRef(null)
+  const surgeryContainerRef = useRef(null)
   const [showSurgeryDropdown, setShowSurgeryDropdown] = useState(false)
   const [surgerySearchText, setSurgerySearchText] = useState("")
   const [surgeryOptions, setSurgeryOptions] = useState([])
@@ -119,15 +119,22 @@ const SurgeryPricing = () => {
   }, [surgerySearchText, surgeryOptions])
 
   // Close dropdown when clicking outside
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (surgeryInputRef.current && !surgeryInputRef.current.contains(event.target)) {
-        setShowSurgeryDropdown(false)
-      }
+ useEffect(() => {
+  const handleClickOutside = (event) => {
+    if (
+      surgeryContainerRef.current &&
+      !surgeryContainerRef.current.contains(event.target)
+    ) {
+      setShowSurgeryDropdown(false)
     }
-    document.addEventListener("mousedown", handleClickOutside)
-    return () => document.removeEventListener("mousedown", handleClickOutside)
-  }, [])
+  }
+
+  document.addEventListener("mousedown", handleClickOutside)
+
+  return () => {
+    document.removeEventListener("mousedown", handleClickOutside)
+  }
+}, [])
 
   // Handle search input change
   const handleSurgerySearch = (e) => {
@@ -137,11 +144,16 @@ const SurgeryPricing = () => {
   }
 
   // Handle selection from dropdown
-  const handleSurgerySelect = (surgery) => {
-    setSurgerySearchText(surgery.surgeryName)
-    setFormData(prev => ({ ...prev, surgeryId: surgery.surgeryId.toString() }))
-    setShowSurgeryDropdown(false)
-  }
+ const handleSurgerySelect = (surgery) => {
+  setSurgerySearchText(surgery.surgeryName);
+
+  setFormData((prev) => ({
+    ...prev,
+    surgeryId: String(surgery.surgeryId),
+  }));
+
+  setShowSurgeryDropdown(false);
+};
 
   // Fetch billing type options
   const fetchBillingTypeOptions = async () => {
@@ -570,9 +582,11 @@ const SurgeryPricing = () => {
                     {/* Surgery Name with Autocomplete */}
                     <div className="form-group col-md-4 mt-3">
                       <label>Surgery Name <span className="text-danger">*</span></label>
-                      <div className="dropdown-search-container position-relative">
+                      <div className="dropdown-search-container position-relative"
+                         ref={surgeryContainerRef}
+                         >
                         <input
-                          ref={surgeryInputRef}
+                          //  ref={surgeryInputRef}
                           type="text"
                           className="form-control"
                           placeholder="Type surgery name..."
@@ -587,7 +601,7 @@ const SurgeryPricing = () => {
                           required
                         />
                         <PortalDropdown
-                          anchorRef={surgeryInputRef}
+                    anchorRef={surgeryContainerRef}
                           show={showSurgeryDropdown}
                         >
                           {isSurgeryLoading && filteredSurgeries.length === 0 ? (
