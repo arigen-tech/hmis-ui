@@ -53,8 +53,13 @@ const OPDHolidayMaster = () => {
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_OPD_HOLIDAY}/getAll/${flag}`);
-      setData(response || []);
+      const response = await getRequest(`${MAS_OPD_HOLIDAY}/getAll/${flag}`);
+      if (response.status === 200 && response.response) {
+        setData(response.response || []);
+      } else {
+        console.error("Unexpected API response format:", response);
+        setData([]);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
       showPopup(FETCH_HOLIDAY, "error");
@@ -73,9 +78,6 @@ const OPDHolidayMaster = () => {
       .toLowerCase()
       .includes((searchQuery || "").toLowerCase()) ||
     (rec.remarks || "")
-      .toLowerCase()
-      .includes((searchQuery || "").toLowerCase()) ||
-    (rec.createdBy || "")
       .toLowerCase()
       .includes((searchQuery || "").toLowerCase())
   );
@@ -137,19 +139,39 @@ const OPDHolidayMaster = () => {
           holidayName: formData.holidayName,
           remarks: formData.remarks,
         };
-        await putRequest(`${MAS_OPD_HOLIDAY}/update/${editingRecord.opdHolidayId}`, payload);
-        showPopup(UPDATE_HOLIDAY_SUCCESS, "success");
+        const response = await putRequest(`${MAS_OPD_HOLIDAY}/update/${editingRecord.opdHolidayId}`, payload);
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_HOLIDAY_SUCCESS,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchData(0);
+              setCurrentPage(1);
+            }
+          });
+        }
       } else {
         const payload = {
           holidayDate: formData.holidayDate,
           holidayName: formData.holidayName,
           remarks: formData.remarks,
         };
-        await postRequest(`${MAS_OPD_HOLIDAY}/create`, payload);
-        showPopup(ADD_HOLIDAY_SUCCESS, "success");
+        const response = await postRequest(`${MAS_OPD_HOLIDAY}/create`, payload);
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_HOLIDAY_SUCCESS,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchData(0);
+              setCurrentPage(1);
+            }
+          });
+        }
       }
-      await fetchData();
-      handleCancel();
     } catch (error) {
       console.error("Save error:", error);
       showPopup(editingRecord ? UPDATE_HOLIDAY_FAIL : ADD_HOLIDAY_FAIL, "error");
@@ -185,24 +207,26 @@ const OPDHolidayMaster = () => {
 
     try {
       setLoading(true);
-      await putRequest(
+      const response = await putRequest(
         `${MAS_OPD_HOLIDAY}/status/${confirmDialog.record.opdHolidayId}?status=${confirmDialog.newStatus}`
       );
-
-      const successMsg =
-        confirmDialog.newStatus === "y"
-          ? "Holiday activated successfully!"
-          : "Holiday deactivated successfully!";
-      showPopup(successMsg, "success");
-
-      fetchData();
+      if (response.status === 200) {
+        setPopupMessage({
+          message: confirmDialog.newStatus === "y" ? "Holiday activated successfully!" : "Holiday deactivated successfully!",
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            fetchData(0);
+            setCurrentPage(1);
+          }
+        });
+      }
     } catch (error) {
       console.error("Status update error:", error);
-      const errorMsg =
-        confirmDialog.newStatus === "y"
-          ? "Failed to activate holiday"
-          : "Failed to deactivate holiday";
-      showPopup(errorMsg, "error");
+      showPopup(
+        confirmDialog.newStatus === "y" ? "Failed to activate holiday" : "Failed to deactivate holiday",
+        "error"
+      );
     } finally {
       setLoading(false);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
@@ -222,7 +246,7 @@ const OPDHolidayMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData(1);
+    fetchData(0);
   };
 
   return (
@@ -297,7 +321,6 @@ const OPDHolidayMaster = () => {
                           <th>Holiday Date</th>
                           <th>Holiday Name</th>
                           <th>Remarks</th>
-                          <th>Created By</th>
                           <th>Last Update</th>
                           <th>Status</th>
                           <th>Edit</th>
@@ -309,7 +332,6 @@ const OPDHolidayMaster = () => {
                             <td>{formatDate(rec.holidayDate)}</td>
                             <td>{rec.holidayName}</td>
                             <td>{rec.remarks || "N/A"}</td>
-                            <td>{rec.createdBy || "N/A"}</td>
                             <td>{formatDate(rec.lastUpdatedDt)}</td>
                             <td>
                               <div className="form-check form-switch">
