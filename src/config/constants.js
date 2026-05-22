@@ -1305,3 +1305,14 @@ export const RECORD_ADDED_SUCCESSFULLY = "Record Added Successfully";
 export const RECORD_UPDATED_SUCCESSFULLY = "Record Updated Successfully";
 export const STATUS_UPDATED_SUCCESSFULLY = "Status updated successfully";
 export const FAILED_TO_UPDATE_STATUS = "Failed to update status";
+
+
+//ItemTypeManagement
+export const FETCH_ITEM_TYPE = "Failed to fetch Item Type data";
+export const ADD_ITEM_TYPE_SUCCESS = "Item Type added successfully!";
+export const ADD_ITEM_TYPE_FAIL = "Failed to add Item Type";
+export const UPDATE_ITEM_TYPE_SUCCESS = "Item Type updated successfully!";
+export const UPDATE_ITEM_TYPE_FAIL = "Failed to update Item Type";
+export const DUPLICATE_ITEM_TYPE = "Item Type with the same code or name already exists";
+export const STATUS_ITEM_TYPE_SUCCESS = "Item Type status updated successfully!";
+export const STATUS_ITEM_TYPE_FAIL = "Failed to update Item Type status";
