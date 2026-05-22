@@ -56,8 +56,13 @@ const CorporateMaster = () => {
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(`${MAS_CORPORATE}/getAll/${flag}`);
-      setData(response || []);
+      const response = await getRequest(`${MAS_CORPORATE}/getAll/${flag}`);
+      if (response.status === 200 && response.response) {
+        setData(response.response || []);
+      } else {
+        console.error("Unexpected API response format:", response);
+        setData([]);
+      }
     } catch (error) {
       console.error("Fetch error:", error);
       showPopup(FETCH_CORPORATE, "error");
@@ -150,8 +155,19 @@ const CorporateMaster = () => {
           creditAllowed: formData.creditAllowed,
           creditDays: formData.creditDays,
         };
-        await putRequest(`${MAS_CORPORATE}/update/${editingRecord.corporateId}`, payload);
-        showPopup(UPDATE_CORPORATE_SUCCESS, "success");
+        const response = await putRequest(`${MAS_CORPORATE}/update/${editingRecord.corporateId}`, payload);
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_CORPORATE_SUCCESS,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchData(0);
+              setCurrentPage(1);
+            }
+          });
+        }
       } else {
         const payload = {
           corporateName: formData.corporateName,
@@ -164,11 +180,20 @@ const CorporateMaster = () => {
           creditDays: formData.creditDays,
           status: "y",
         };
-        await postRequest(`${MAS_CORPORATE}/create`, payload);
-        showPopup(ADD_CORPORATE_SUCCESS, "success");
+        const response = await postRequest(`${MAS_CORPORATE}/create`, payload);
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_CORPORATE_SUCCESS,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchData(0);
+              setCurrentPage(1);
+            }
+          });
+        }
       }
-      await fetchData();
-      handleCancel();
     } catch (error) {
       console.error("Save error:", error);
       showPopup(editingRecord ? UPDATE_CORPORATE_FAIL : ADD_CORPORATE_FAIL, "error");
@@ -209,11 +234,20 @@ const CorporateMaster = () => {
 
     try {
       setLoading(true);
-      await putRequest(
+      const response = await putRequest(
         `${MAS_CORPORATE}/status/${confirmDialog.reccord.corporateId}?status=${confirmDialog.newStatus}`
       );
-      showPopup(STATUS_CORPORATE_SUCCESS, "success");
-      fetchData();
+      if (response.status === 200) {
+        setPopupMessage({
+          message: STATUS_CORPORATE_SUCCESS,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            fetchData(0);
+            setCurrentPage(1);
+          }
+        });
+      }
     } catch (error) {
       console.error("Status update error:", error);
       showPopup(STATUS_CORPORATE_FAIL, "error");
@@ -224,7 +258,11 @@ const CorporateMaster = () => {
   };
 
   const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null)
+    });
   };
 
   const handleCancel = () => {
@@ -236,7 +274,7 @@ const CorporateMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData(1);   // show only active records
+    fetchData(0);
   };
 
   return (
