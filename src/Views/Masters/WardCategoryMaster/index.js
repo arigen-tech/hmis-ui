@@ -159,6 +159,12 @@ const WardCategoryMaster = () => {
     setShowForm(true);
   };
 
+  const handleCancel = () => {
+    setEditingCategory(null);
+    setFormData({ categoryName: "", description: "", careId: "" });
+    setShowForm(false);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -188,8 +194,15 @@ const WardCategoryMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchWardCategoryData();
-          showPopup(UPDATE_WARD_CATEGORY_SUCC_MSG, "success");
+          setPopupMessage({
+            message: UPDATE_WARD_CATEGORY_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchWardCategoryData(0);
+            }
+          });
         }
       } else {
         // Add new ward category
@@ -200,14 +213,17 @@ const WardCategoryMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchWardCategoryData();
-          showPopup(ADD_WARD_CATEGORY_SUCC_MSG, "success");
+          setPopupMessage({
+            message: ADD_WARD_CATEGORY_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleCancel();
+              fetchWardCategoryData(0);
+            }
+          });
         }
       }
-
-      setEditingCategory(null);
-      setFormData({ categoryName: "", description: "", careId: "" });
-      setShowForm(false);
     } catch (err) {
       console.error("Error saving ward category data:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -239,20 +255,14 @@ const WardCategoryMaster = () => {
           `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
-          // Update local state with formatted date
-          setWardCategoryData((prevData) =>
-            prevData.map((category) =>
-              category.id === confirmDialog.categoryId
-                ? {
-                  ...category,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-                : category
-            )
-          );
-          showPopup(`Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        if (response && response.status === 200) {
+          // Refresh data from API after status change
+          await fetchWardCategoryData(0);
+          setPopupMessage({
+            message: `Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            type: "success",
+            onClose: () => setPopupMessage(null)
+          });
         }
       } catch (err) {
         console.error("Error updating ward category status:", err);
@@ -278,7 +288,7 @@ const WardCategoryMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    fetchWardCategoryData(); // Refresh from API
+    fetchWardCategoryData(0); // Refresh from API
   };
 
  
@@ -340,7 +350,7 @@ const WardCategoryMaster = () => {
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -490,7 +500,7 @@ const WardCategoryMaster = () => {
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
+                      onClick={handleCancel}
                       disabled={loading}
                     >
                       Cancel
@@ -538,5 +548,5 @@ const WardCategoryMaster = () => {
     </div>
   );
 };
-
+ 
 export default WardCategoryMaster;
