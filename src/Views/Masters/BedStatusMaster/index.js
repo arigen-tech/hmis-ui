@@ -123,57 +123,55 @@ const BedStatusMaster = () => {
   };
 
   const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+  e.preventDefault();
+  if (!isFormValid) return;
 
-    try {
-      setLoading(true);
+  try {
+    setLoading(true);
 
-      // Check for duplicates
-      const isDuplicate = bedStatusData.some(
-        (status) =>
-          status.statusName.toLowerCase() === formData.statusName.toLowerCase() &&
-          (!editingStatus || editingStatus.id !== status.id)
+    const payload = {
+      bedStatusName: formData.statusName,
+    };
+
+    let response;
+
+    if (editingStatus) {
+      response = await putRequest(
+        `${MAS_BED_STATUS}/update/${editingStatus.id}`,
+        payload
+      );
+    } else {
+      response = await postRequest(
+        `${MAS_BED_STATUS}/create`,
+        payload
+      );
+    }
+
+    if (response && response.status === 200) {
+
+      showPopup(
+        editingStatus
+          ? UPDATE_BED_STATUS_SUCC_MSG
+          : ADD_BED_STATUS_SUCC_MSG,
+        "success"
       );
 
-      if (isDuplicate) {
-        showPopup(DUPLICATE_BED_STATUS, "error");
-        setLoading(false);
-        return;
-      }
-
-      if (editingStatus) {
-        // Update existing status
-        const response = await putRequest(`${MAS_BED_STATUS}/update/${editingStatus.id}`, {
-          bedStatusName: formData.statusName,
-        });
-
-        if (response && response.status === 200) {
-          fetchBedStatusData();
-          showPopup(UPDATE_BED_STATUS_SUCC_MSG, "success");
-        }
-      } else {
-        // Add new status
-        const response = await postRequest(`${MAS_BED_STATUS}/create`, {
-          bedStatusName: formData.statusName,
-        });
-
-        if (response && response.status === 200) {
-          fetchBedStatusData();
-          showPopup(ADD_BED_STATUS_SUCC_MSG, "success");
-        }
-      }
+      await fetchBedStatusData(0);
 
       setEditingStatus(null);
       setFormData({ statusName: "" });
       setShowForm(false);
-    } catch (err) {
-      console.error("Error saving bed status data:", err);
-      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
-    } finally {
-      setLoading(false);
+    } else {
+      showPopup(FAIL_TO_SAVE_CHANGES, "error");
     }
-  };
+
+  } catch (err) {
+    console.error(err);
+    showPopup(FAIL_TO_SAVE_CHANGES, "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const showPopup = (message, type = 'info') => {
     setPopupMessage({
@@ -190,39 +188,42 @@ const BedStatusMaster = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.statusId !== null) {
-      try {
-        setLoading(true);
+  if (!confirmed || confirmDialog.statusId === null) return;
 
-        const response = await putRequest(
-          `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
-        );
+  try {
+    setLoading(true);
 
-        if (response && response.response) {
-          // Update local state with formatted date
-          setBedStatusData((prevData) =>
-            prevData.map((status) =>
-              status.id === confirmDialog.statusId
-                ? {
-                  ...status,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-                : status
-            )
-          );
-          showPopup(`Bed status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-        }
-      } catch (err) {
-        console.error("Error updating bed status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
-      }
+    const response = await putRequest(
+      `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
+    );
+
+    if (response && response.status === 200) {
+
+      setBedStatusData((prev) =>
+        prev.map((item) =>
+          item.id === confirmDialog.statusId
+            ? { ...item, status: confirmDialog.newStatus }
+            : item
+        )
+      );
+
+      showPopup(
+        `Bed status ${
+          confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+        } successfully!`,
+        "success"
+      );
+    } else {
+      showPopup(FAIL_TO_UPDATE_STS, "error");
     }
-    setConfirmDialog({ isOpen: false, statusId: null, newStatus: null });
-  };
 
+  } catch (err) {
+    showPopup(FAIL_TO_UPDATE_STS, "error");
+  } finally {
+    setLoading(false);
+    setConfirmDialog({ isOpen: false, statusId: null, newStatus: null });
+  }
+};
   /*const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
@@ -387,16 +388,17 @@ const BedStatusMaster = () => {
                   <div className="form-group col-md-6">
                     <label>Bed Status Name <span className="text-danger">*</span></label>
                     <input
-                      type="text"
-                      className="form-control mt-1"
-                      id="statusName"
-                      name="statusName"
-                      placeholder="Enter bed status name (e.g., Available, Occupied)"
-                      value={formData.statusName}
-                      //onChange={handleInputChange}
-                      maxLength={STATUS_NAME_MAX_LENGTH}
-                      required
-                    />
+  type="text"
+  className="form-control mt-1"
+  id="statusName"
+  name="statusName"
+  value={formData.statusName}
+  onChange={(e) =>
+    setFormData({ ...formData, statusName: e.target.value })
+  }
+  maxLength={STATUS_NAME_MAX_LENGTH}
+  required
+/>
                     {/* <small className="text-muted">
                       {formData.statusName.length}/{STATUS_NAME_MAX_LENGTH} characters
                     </small> */}

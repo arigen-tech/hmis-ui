@@ -192,20 +192,25 @@ const BedManagement = () => {
   }, [formData]);
 
   // Filter data based on search query
-  const filteredBedData = bedData.filter(bed =>
+  const filteredBedData = bedData
+  .filter(bed =>
     bed.bedNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.room?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.department?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.bedType?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     bed.bedStatus?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  )
+  .sort((a, b) => {
+    if (a.status === b.status) return 0;
+    return a.status === "y" ? -1 : 1;
+  });
+
 
   // Calculate pagination values
   const totalPages = Math.ceil(filteredBedData.length / itemsPerPage);
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentItems = filteredBedData.slice(indexOfFirstItem, indexOfLastItem);
-
+const currentItems =filteredBedData.slice(indexOfFirstItem, indexOfLastItem);
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
@@ -272,18 +277,59 @@ const BedManagement = () => {
         // Update existing bed
         const response = await putRequest(`${MAS_BED}/update/${editingBed.id}`, requestData);
 
-        if (response && response.status === 200) {
-          fetchBedData();
-          showPopup(UPDATE_BED_SUCC_MSG, "success");
-        }
+       if (response && response.status === 200) {
+  const updatedItem = response.response;
+
+  setBedData((prev) =>
+    prev.map((bed) =>
+      bed.id === editingBed.id
+        ? {
+            ...bed,
+            bedNumber: formData.bedNumber,
+            roomId: parseInt(formData.roomId),
+            bedTypeId: parseInt(formData.bedTypeId),
+            bedStatusId: parseInt(formData.bedStatusId),
+          }
+        : bed
+    )
+  );
+
+  showPopup(UPDATE_BED_SUCC_MSG, "success");
+
+  setEditingBed(null);
+  setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
+  setShowForm(false);
+}
       } else {
         // Add new bed
         const response = await postRequest(`${MAS_BED}/create`, requestData);
 
-        if (response && response.status === 200) {
-          fetchBedData();
-          showPopup(ADD_BED_SUCC_MSG, "success");
-        }
+       if (response && response.status === 200) {
+  const newItem = response.response;
+
+  setBedData((prev) => [
+    {
+      id: newItem.bedId || Date.now(),
+      bedNumber: formData.bedNumber,
+      roomId: parseInt(formData.roomId),
+      room: roomOptions.find(r => r.id === parseInt(formData.roomId))?.name || "N/A",
+      bedTypeId: parseInt(formData.bedTypeId),
+      bedType: bedTypeOptions.find(t => t.id === parseInt(formData.bedTypeId))?.name || "N/A",
+      bedStatusId: parseInt(formData.bedStatusId),
+      bedStatus: bedStatusOptions.find(s => s.id === parseInt(formData.bedStatusId))?.name || "N/A",
+      status: "y",
+      lastUpdated: formatDate(new Date().toISOString())
+    },
+    ...prev
+  ]);
+
+  showPopup(ADD_BED_SUCC_MSG, "success");
+
+  setEditingBed(null);
+  setFormData({ bedNumber: "", roomId: "", bedTypeId: "", bedStatusId: "" });
+  setSelectedWardId("");
+  setShowForm(false);
+}
       }
 
       setEditingBed(null);
@@ -313,38 +359,59 @@ const BedManagement = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.bedId !== null) {
-      try {
-        setLoading(true);
-
-        const response = await putRequest(
-          `${MAS_BED}/status/${confirmDialog.bedId}?status=${confirmDialog.newStatus}`
-        );
-
-        if (response && response.response) {
-          // Update local state with formatted date
-          setBedData((prevData) =>
-            prevData.map((bed) =>
-              bed.id === confirmDialog.bedId
-                ? {
-                  ...bed,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-                : bed
-            )
-          );
-          showPopup(`Bed ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-        }
-      } catch (err) {
-        console.error("Error updating bed status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
-      }
-    }
+  if (!confirmed || confirmDialog.bedId === null) {
     setConfirmDialog({ isOpen: false, bedId: null, newStatus: null });
-  };
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const response = await putRequest(
+      `${MAS_BED}/status/${confirmDialog.bedId}?status=${confirmDialog.newStatus}`
+    );
+
+    // ✅ FIX: correct success check
+    if (response && response.status === 200) {
+
+      // 🔥 instant UI update (no refresh needed)
+      setBedData((prev) =>
+        prev.map((bed) =>
+          bed.id === confirmDialog.bedId
+            ? {
+                ...bed,
+                status: confirmDialog.newStatus,
+                lastUpdated: formatDate(new Date().toISOString()),
+              }
+            : bed
+        )
+      );
+
+     
+      showPopup(
+        confirmDialog.newStatus === "y"
+          ? "Bed activated successfully!"
+          : "Bed deactivated successfully!",
+        "success"
+      );
+    } else {
+      showPopup(FAIL_TO_UPDATE_STS, "error");
+    }
+
+  } catch (err) {
+    console.error("Error updating bed status:", err);
+    showPopup(FAIL_TO_UPDATE_STS, "error");
+  } finally {
+    setLoading(false);
+
+    // close modal always
+    setConfirmDialog({
+      isOpen: false,
+      bedId: null,
+      newStatus: null,
+    });
+  }
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;

@@ -201,39 +201,59 @@ const BedTypeMaster = () => {
     setConfirmDialog({ isOpen: true, typeId: id, newStatus });
   };
 
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.typeId !== null) {
-      try {
-        setLoading(true);
+ const handleConfirm = async (confirmed) => {
+  if (confirmed && confirmDialog.typeId !== null) {
+    try {
+      setLoading(true);
 
-        const response = await putRequest(
-          `${MAS_BED_TYPE}/status/${confirmDialog.typeId}?status=${confirmDialog.newStatus}`
-        );
+      const response = await putRequest(
+        `${MAS_BED_TYPE}/status/${confirmDialog.typeId}?status=${confirmDialog.newStatus}`
+      );
 
-        if (response && response.response) {
-          // Update local state with formatted date
-          setBedTypeData((prevData) =>
-            prevData.map((type) =>
-              type.id === confirmDialog.typeId
-                ? {
+      if (response && response.status === 200) {
+
+        // ONLY local update (no API refresh)
+        setBedTypeData((prevData) =>
+          prevData.map((type) =>
+            type.id === confirmDialog.typeId
+              ? {
                   ...type,
                   status: confirmDialog.newStatus,
                   lastUpdated: formatDate(new Date().toISOString())
                 }
-                : type
-            )
-          );
-          showPopup(`Bed type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-        }
-      } catch (err) {
-        console.error("Error updating bed type status:", err);
+              : type
+          )
+        );
+
+        showPopup(
+          `Bed type ${
+            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+          } successfully!`,
+          "success"
+        );
+      } else {
         showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
       }
+
+    } catch (err) {
+      console.error("Error updating bed type status:", err);
+      showPopup(FAIL_TO_UPDATE_STS, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({
+        isOpen: false,
+        typeId: null,
+        newStatus: null
+      });
     }
-    setConfirmDialog({ isOpen: false, typeId: null, newStatus: null });
-  };
+  } else {
+    setConfirmDialog({
+      isOpen: false,
+      typeId: null,
+      newStatus: null
+    });
+  }
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
