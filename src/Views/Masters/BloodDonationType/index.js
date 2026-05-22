@@ -34,6 +34,7 @@ const BloodDonationType = () => {
   });
 
   const MAX_LENGTH = 10;
+  const DESCRIPTION_MAX_LENGTH = 50;
 
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
@@ -43,6 +44,13 @@ const BloodDonationType = () => {
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
     return `${day}/${month}/${year}`;
+  };
+
+  const truncateDescription = (description) => {
+    if (!description) return "N/A";
+    return description.length > DESCRIPTION_MAX_LENGTH
+      ? description.substring(0, DESCRIPTION_MAX_LENGTH) + "..."
+      : description;
   };
 
   const fetchData = async (flag = 0) => {
@@ -231,7 +239,7 @@ const BloodDonationType = () => {
                   <tr>
                     <th>Donation Code</th>
                     <th>Donation Type</th>
-                    <th>Description</th>
+                    <th style={{ width: "250px", maxWidth: "250px" }}>Description</th>
                     <th>Last Update</th>
                     <th>Status</th>
                     <th>Edit</th>
@@ -242,7 +250,9 @@ const BloodDonationType = () => {
                     <tr key={rec.id}>
                       <td>{rec.donationTypeCode}</td>
                       <td>{rec.donationTypeName}</td>
-                      <td>{rec.description}</td>
+                      <td style={{ maxWidth: "250px", wordBreak: "break-word" }}>
+                        {truncateDescription(rec.description)}
+                      </td>
                       <td>{formatDate(rec.lastUpdateDate)}</td>
                       <td>
                         <div className="form-check form-switch">
