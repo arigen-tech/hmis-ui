@@ -103,6 +103,13 @@ const RoomCategoryMaster = () => {
         setShowForm(true);
     };
 
+    const handleCancel = () => {
+        setEditingCategory(null);
+        setFormData({ categoryName: "" });
+        setIsFormValid(false);
+        setShowForm(false);
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
@@ -129,9 +136,15 @@ const RoomCategoryMaster = () => {
                 });
 
                 if (response && response.status === 200) {
-
-                    fetchCategoryData();
-                    showPopup(UPDATE_ROOM_CAT_SUCC_MSG, "success");
+                    setPopupMessage({
+                        message: UPDATE_ROOM_CAT_SUCC_MSG,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            handleCancel();
+                            fetchCategoryData(0);
+                        }
+                    });
                 }
             } else {
 
@@ -140,16 +153,17 @@ const RoomCategoryMaster = () => {
                 });
 
                 if (response && response.status === 200) {
-
-                    fetchCategoryData();
-                    showPopup(ADD_ROOM_CAT_SUCC_MSG, "success");
+                    setPopupMessage({
+                        message: ADD_ROOM_CAT_SUCC_MSG,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            handleCancel();
+                            fetchCategoryData(0);
+                        }
+                    });
                 }
             }
-
-
-            setEditingCategory(null);
-            setFormData({ categoryName: "" });
-            setShowForm(false);
         } catch (err) {
             console.error("Error saving room category:", err);
             showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -179,18 +193,14 @@ const RoomCategoryMaster = () => {
                 const response = await putRequest(
                     `${MAS_ROOM_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
                 );
-                if (response && response.response) {
-                    setCategoryData((prevData) =>
-                        prevData.map((category) =>
-                            category.id === confirmDialog.categoryId
-                                ? { ...category, status: confirmDialog.newStatus }
-                                : category
-                        )
-                    );
-                    showPopup(
-                        `Room Category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
+                if (response && response.status === 200) {
+                    // Refresh data from API after status change
+                    await fetchCategoryData(0);
+                    setPopupMessage({
+                        message: `Room Category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        type: "success",
+                        onClose: () => setPopupMessage(null)
+                    });
                 }
             } catch (err) {
                 console.error("Error updating room category status:", err);
@@ -205,14 +215,13 @@ const RoomCategoryMaster = () => {
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         setFormData((prevData) => ({ ...prevData, [id]: value }));
-        setIsFormValid(formData.categoryName.trim() !== "");
+        setIsFormValid(value.trim() !== "");
     };
 
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
-        
-        fetchCategoryData();
+        fetchCategoryData(0);
     };
 
 
@@ -248,7 +257,12 @@ const RoomCategoryMaster = () => {
                                 <div className="d-flex align-items-center">
                                     {!showForm ? (
                                         <>
-                                            <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                                            <button type="button" className="btn btn-success me-2" onClick={() => {
+                                                setEditingCategory(null);
+                                                setFormData({ categoryName: "" });
+                                                setIsFormValid(false);
+                                                setShowForm(true);
+                                            }}>
                                                 <i className="mdi mdi-plus"></i> Add
                                             </button>
                                             <button type="button" className="btn btn-success me-2 flex-shrink-0" onClick={handleRefresh}>
@@ -259,7 +273,7 @@ const RoomCategoryMaster = () => {
                                             </button>
                                         </>
                                     ) : (
-                                        <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                        <button type="button" className="btn btn-secondary" onClick={handleCancel}>
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
                                     )}
@@ -344,10 +358,19 @@ const RoomCategoryMaster = () => {
                                         />
                                     </div>
                                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                                        <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                            Save
+                                        <button 
+                                            type="submit" 
+                                            className="btn btn-primary me-2" 
+                                            disabled={!isFormValid || loading}
+                                        >
+                                            {loading ? "Saving..." : editingCategory ? "Update" : "Save"}
                                         </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-danger" 
+                                            onClick={handleCancel}
+                                            disabled={loading}
+                                        >
                                             Cancel
                                         </button>
                                     </div>
@@ -411,5 +434,4 @@ const RoomCategoryMaster = () => {
         </div>
     );
 };
-
 export default RoomCategoryMaster;
