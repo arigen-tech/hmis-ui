@@ -1254,26 +1254,7 @@ const GeneralMedicineWaitingList = () => {
       templateId: "",
     },
   ]);
-  const [currentMedications, setCurrentMedications] = useState([
-    {
-      id: "sample-1",
-      drugId: "",
-      drugName: "CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET",
-      dispUnit: "",
-      dosage: "1",
-      days: "30",
-      frequency: "ONCE IN 7 DAYS",
-      total: "4",
-      stock: "0",
-      prescribedBy: "Dr. M.G.Prashanth",
-      department: "GENERAL MEDICINE",
-      prescribedDate: "19/12/2020",
-      instruction: "",
-      itemClassId: null,
-      aDispQty: 1,
-    },
-  ]);
-  // console.log("treatmentItems", treatmentItems);
+  const [currentMedications, setCurrentMedications] = useState([]);
 
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("");
   const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("");
@@ -1418,14 +1399,13 @@ const GeneralMedicineWaitingList = () => {
   }, []);
 
   const fetchCurrentMedications = async (patientId) => {
-    // debugger
     try {
       const response = await getRequest(
         `${GET_PATIENT_PRESCRIPTION_DETAILS}/${patientId}`,
       );
       if (response?.status === 200 && Array.isArray(response.response)) {
         const medications = response.response.map((item, index) => ({
-          id: index + 1,
+          id: item.prescriptionDtId || index + 1, // Better to use actual ID if available
           drugId: item.drugId,
           drugName: item.drugName,
           dosage: item.dosage,
@@ -1437,16 +1417,18 @@ const GeneralMedicineWaitingList = () => {
           department: item.departmentName,
           prescribedDate: item.prescribedDate,
           dispUnit: item.dispUnit,
-          stock: "0",
+          stock: item.stock || "0",
+          itemClassId: item.itemClassId,
+          aDispQty: item.aDispQty || 1,
         }));
 
         setCurrentMedications(medications);
       } else {
-        setCurrentMedications([]);
+        setCurrentMedications([]); // Set empty array, not empty string
       }
     } catch (error) {
       console.error("Error fetching current medications:", error);
-      setCurrentMedications([]);
+      setCurrentMedications([]); // Set empty array, not empty string
     }
   };
 
@@ -2075,6 +2057,8 @@ const GeneralMedicineWaitingList = () => {
 
         if (medications.length > 0) {
           setCurrentMedications(medications);
+        } else {
+          setCurrentMedications([]);
         }
 
         setFormData((prev) => ({
@@ -2853,7 +2837,7 @@ const GeneralMedicineWaitingList = () => {
             fetchWaitingList();
             handleBackToList();
           },
-          "View Report", 
+          "View Report",
           "Back to List",
         );
       } else {
@@ -7421,7 +7405,7 @@ const GeneralMedicineWaitingList = () => {
                               <div className="row mb-3">
                                 <div className="col-md-2">
                                   <label className="form-label fw-bold">
-                                    Reffered Hospital Name
+                                    Referred Hospital Name
                                   </label>
                                   <input
                                     type="text"

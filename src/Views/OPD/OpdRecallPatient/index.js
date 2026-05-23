@@ -21,6 +21,8 @@ import {
   WARD_DEPARTMENT_GET_ALL_BY_CATEGORY,
   MAS_BED_COUNT,
   GET_RECALL_PATIENT_DETAILS,
+  UPDATE_RECALL_PATIENT,
+  GET_PATIENT_PRESCRIPTION_DETAILS,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -46,12 +48,9 @@ const OpdRRecallPatient = () => {
     useState(false);
   const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
     useState(new Set());
-  const [removedInvestigationIds, setRemovedInvestigationIds] = useState([]);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
   const tableContainerRef = useRef(null);
-  const [removedTreatmentIds, setRemovedTreatmentIds] = useState([]);
-  const [removeIcdIds, setRemoveIcdIds] = useState([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
     useState("Select..");
@@ -83,6 +82,9 @@ const OpdRRecallPatient = () => {
   const [previousVisitsData, setPreviousVisitsData] = useState([]);
   const [previousVitalsData, setPreviousVitalsData] = useState([]);
 
+  const [currentMedicationActions, setCurrentMedicationActions] = useState({});
+  const [currentMedications, setCurrentMedications] = useState([]);
+
   const [searchFilters, setSearchFilters] = useState({
     mobileNumber: "",
     patientName: "",
@@ -93,7 +95,7 @@ const OpdRRecallPatient = () => {
   const [followUps, setFollowUps] = useState({
     noOfFollowDays: "",
     followUpFlag: "n",
-    FolloUpDate: getToday(),
+    FollowUpDate: getToday(),
   });
 
   const [labFlag, setLabFlag] = useState("");
@@ -132,7 +134,7 @@ const OpdRRecallPatient = () => {
   const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
-const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
+  const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
 
   // const fetchWardCategoryData = async () => {
   //   try {
@@ -146,42 +148,47 @@ const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
   //     console.error("Error fetching WardCategory data:", error);
   //   }
   // };
-const fetchWardCategoryData = async () => {
-  try {
-    const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
-    if (data.status === 200 && Array.isArray(data.response)) {
-      setWardCategories(data.response);
-    } else {
-      setWardCategories([]);
-    }
-  } catch (error) {
-    console.error("Error fetching WardCategory data:", error);
-  }
-};
-
-
-const fetchWardData = async (categoryId) => {
-  try {
-    const data = await getRequest(
-      `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
-    );
-    if (data.status === 200 && Array.isArray(data.response)) {
-      setWardDepartments(data.response);
-      
-      if (wardName) {
-        const selectedWard = data.response.find(dept => dept.id === wardName);
-        if (selectedWard) {
-          setOccupiedBeds(String(selectedWard.occupiedBed || selectedWard.occupied || "0"));
-          setVacantBeds(String(selectedWard.vacantBed || selectedWard.vacant || "0"));
-        }
+  const fetchWardCategoryData = async () => {
+    try {
+      const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWardCategories(data.response);
+      } else {
+        setWardCategories([]);
       }
-    } else {
-      setWardDepartments([]);
+    } catch (error) {
+      console.error("Error fetching WardCategory data:", error);
     }
-  } catch (error) {
-    console.error("Error fetching Ward data:", error);
-  }
-};
+  };
+
+  const fetchWardData = async (categoryId) => {
+    try {
+      const data = await getRequest(
+        `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
+      );
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setWardDepartments(data.response);
+
+        if (wardName) {
+          const selectedWard = data.response.find(
+            (dept) => dept.id === wardName,
+          );
+          if (selectedWard) {
+            setOccupiedBeds(
+              String(selectedWard.occupiedBed || selectedWard.occupied || "0"),
+            );
+            setVacantBeds(
+              String(selectedWard.vacantBed || selectedWard.vacant || "0"),
+            );
+          }
+        }
+      } else {
+        setWardDepartments([]);
+      }
+    } catch (error) {
+      console.error("Error fetching Ward data:", error);
+    }
+  };
 
   const isOnlyDefaultTreatmentRow = (items) => {
     return (
@@ -218,38 +225,39 @@ const fetchWardData = async (categoryId) => {
     }
   };
 
-const handleWardNameChange = async (deptId) => {
-  setWardName(deptId);
+  const handleWardNameChange = async (deptId) => {
+    setWardName(deptId);
 
-  const selectedWard = wardDepartments.find((dept) => dept.id === deptId);
+    const selectedWard = wardDepartments.find((dept) => dept.id === deptId);
 
-  if (selectedWard) {
-    setOccupiedBeds(selectedWard.occupiedBed || selectedWard.occupied || "0");
-    setVacantBeds(selectedWard.vacantBed || selectedWard.vacant || "0");
-  }
-  
-  if (deptId) {
-    try {
-      const response = await getRequest(`${MAS_BED_COUNT}/${deptId}`);
-      console.log("Bed Status Response:", response);
-      
-      if (response?.status === 200 && response?.response) {
-        const occupied = response.response.occupied || 
-                        response.response.occupiedBeds || 
-                        response.response.filledBeds || 
-                        "0";
-        const vacant = response.response.available || 
-                      response.response.vacantBeds || 
-                      "0";
-        
-        setOccupiedBeds(String(occupied));
-        setVacantBeds(String(vacant));
-      }
-    } catch (error) {
-      console.error("Error fetching bed status:", error);
+    if (selectedWard) {
+      setOccupiedBeds(selectedWard.occupiedBed || selectedWard.occupied || "0");
+      setVacantBeds(selectedWard.vacantBed || selectedWard.vacant || "0");
     }
-  }
-};
+
+    // ✅ Always fetch fresh bed count from API
+    if (deptId) {
+      try {
+        const response = await getRequest(`${MAS_BED_COUNT}/${deptId}`);
+        console.log("Bed Status Response:", response);
+
+        if (response?.status === 200 && response?.response) {
+          const occupied =
+            response.response.occupied ||
+            response.response.occupiedBeds ||
+            response.response.filledBeds ||
+            "0";
+          const vacant =
+            response.response.available || response.response.vacantBeds || "0";
+
+          setOccupiedBeds(String(occupied));
+          setVacantBeds(String(vacant));
+        }
+      } catch (error) {
+        console.error("Error fetching bed status:", error);
+      }
+    }
+  };
 
   const fetchPreviousVisits = async (patientId, hospitalId) => {
     if (!patientId) return;
@@ -311,9 +319,6 @@ const handleWardNameChange = async (deptId) => {
     } catch (error) {
       console.error("Error fetching previous vitals:", error);
       setPreviousVitalsData([]);
-
-      // Optional: Show user-friendly error message
-      // showPopupMessage("Failed to fetch vitals history", "error");
     } finally {
       setLoading(false);
     }
@@ -662,9 +667,9 @@ const handleWardNameChange = async (deptId) => {
   };
 
   const handleTreatmentTemplateSaved = async (template) => {
-  await fetchOpdTemplateData();
-  // showPopup("Treatment template updated successfully!", "success");
-};
+    await fetchOpdTemplateData();
+    // showPopup("Treatment template updated successfully!", "success");
+  };
 
   const openPopup = (type) => {
     setPopupType(type);
@@ -782,6 +787,10 @@ const handleWardNameChange = async (deptId) => {
     fetchOpdPatientData();
   };
 
+  useEffect(() => {
+    console.log("All Frequencies loaded:", allFrequencies);
+  }, [allFrequencies]);
+
   const fetchOpdPatientData = async () => {
     setLoading(true);
 
@@ -819,9 +828,7 @@ const handleWardNameChange = async (deptId) => {
     fetchOpdTemplateData();
     fetchAllFrequencies();
     fetchDrugOptions();
-    fetchMasICDData();
     fetchWardCategoryData();
-    
   }, []);
 
   const handleClearAllTreatmentTemplates = () => {
@@ -864,40 +871,72 @@ const handleWardNameChange = async (deptId) => {
     });
   };
 
-  const handleRemoveTreatmentTemplateItems = (templateId) => {
-    setTreatmentItems((prev) =>
-      prev
-        .map((item) => {
-          if (!item.templateId) return item;
+  const handleRemoveTreatmentItem = (index) => {
+    const itemToRemove = treatmentItems[index];
+    const onlyOneRow = treatmentItems.length === 1;
+    const isEmptyRow = !itemToRemove.drugName && !itemToRemove.dispUnit;
 
-          const ids = item.templateId
-            .split(",")
-            .filter((id) => id !== String(templateId));
+    if (onlyOneRow && isEmptyRow) return;
 
-          if (item.treatmentId != null) {
-            return {
-              ...item,
-              templateId: ids.join(","),
-            };
-          }
+    let newItems = treatmentItems.filter((_, i) => i !== index);
 
-          if (ids.length > 0) {
-            return {
-              ...item,
-              templateId: ids.join(","),
-            };
-          }
+    if (onlyOneRow) {
+      newItems = [
+        {
+          treatmentId: null,
+          drugId: "",
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "",
+          templateId: "",
+        },
+      ];
+    }
 
-          return null;
-        })
-        .filter((item) => item !== null),
-    );
+    setTreatmentItems(newItems);
+  };
 
-    setSelectedTreatmentTemplateIds((prev) => {
-      const updated = new Set(prev);
-      updated.delete(templateId);
-      return updated;
+  const validateSubmitForm = () => {
+    const errors = {};
+
+    // Validate required fields
+    if (!formData.patientSymptoms) {
+      errors.patientSymptoms = "Patient signs & symptoms is required";
+    }
+
+    // Validate vitals
+    const requiredVitals = [
+      "height",
+      "weight",
+      "temperature",
+      "systolicBP",
+      "diastolicBP",
+      "pulse",
+      "rr",
+      "spo2",
+    ];
+    requiredVitals.forEach((field) => {
+      if (!formData[field]) {
+        errors[field] =
+          `${field.charAt(0).toUpperCase() + field.slice(1)} is required`;
+      }
     });
+
+    // Validate diagnosis
+    const hasWorkingDiagnosis = workingDiagnosis?.trim();
+    const hasIcdDiagnosis = diagnosisItems.some((item) => item.icdDiagId);
+
+    if (!hasWorkingDiagnosis && !hasIcdDiagnosis) {
+      errors.diagnosis = "Working diagnosis or ICD diagnosis is required";
+    }
+
+    setErrors(errors);
+    return Object.keys(errors).length === 0;
   };
 
   const handleUpdateRecallPatient = async (e) => {
@@ -905,101 +944,186 @@ const handleWardNameChange = async (deptId) => {
 
     if (isSubmitting) return;
 
+    if (!validateSubmitForm()) return;
+
     try {
       setIsSubmitting(true);
 
       if (!selectedPatient.visitId) {
-        alert("Recall ID missing!");
+        showPopup("Visit ID missing!", "error");
         setIsSubmitting(false);
         return;
       }
 
-      const icdObjList = diagnosisItems.map((item) => ({
-        id: item.id,
-        icdId: item.icdDiagId ?? null,
-        icdDiagName: item.icdDiagnosis || "",
-      }));
-
-      const icdDiagnosisStr = diagnosisItems
-        .map((item) => item.icdDiagnosis?.trim())
-        .filter((v) => v?.length > 0)
-        .join(",");
-
-      const invalidInvestigation = investigationItems.some(
-        (item) => item.name?.trim() && !item.investigationId,
+      const mappedDepartmentId = Number(
+        sessionStorage.getItem("departmentId") ||
+          localStorage.getItem("departmentId") ||
+          selectedPatient.deptId,
+      );
+      const mappedHospitalId = Number(
+        sessionStorage.getItem("hospitalId") ||
+          localStorage.getItem("hospitalId") ||
+          selectedPatient.hospitalId,
+      );
+      const mappedDoctorId = Number(
+        sessionStorage.getItem("userId") ||
+          localStorage.getItem("userId") ||
+          selectedPatient.docterId,
       );
 
-      if (invalidInvestigation) {
-        showPopup(
-          "Please select a valid investigation from the dropdown before saving.",
-          "error",
-        );
-        return;
-      }
+      // ===== 1. ICD Diagnoses - All new =====
+      const icdDiagList = diagnosisItems
+        .filter((item) => item.icdDiagId)
+        .map((item) => ({
+          icdId: item.icdDiagId,
+          icdDiagnosisName: item.icdDiagnosis,
+          communicableDisease: item.communicableDisease || false,
+          infectiousDisease: item.infectiousDisease || false,
+        }));
 
-      const validInvestigationItems = investigationItems.filter(
-        (item) => item.investigationId,
-      );
+      // ===== 2. Investigations - All new =====
+      const investigationList = investigationItems
+        .filter((item) => item.investigationId)
+        .map((item) => ({
+          investigationId: item.investigationId,
+          investigationName: item.name,
+          investigationDate: item.date,
+        }));
 
+      // ===== 3. Treatments - All new =====
+      const treatmentList = treatmentItems
+        .filter((item) => item.drugId)
+        .map((item) => {
+          const freq = allFrequencies.find(
+            (f) =>
+              f.frequencyName?.toLowerCase() === item.frequency?.toLowerCase(),
+          );
+
+          return {
+            itemId: item.drugId,
+            itemName: item.drugName,
+            dosage: Number(item.dosage) || 0,
+            days: Number(item.days) || 0,
+            frequencyId: freq?.frequencyId || null,
+            instruction: item.instruction,
+            dispUnit: item.dispUnit,
+            itemClassId: item.itemClassId,
+            adispQty: item.aDispQty || 1,
+            total: calculateTotal(item),
+          };
+        });
+
+      // ===== 4. Procedure Care - All new =====
+      const procedureCareList = procedureCareItems
+        .filter((item) => item.procedureId)
+        .map((item) => ({
+          procedureId: item.procedureId,
+          procedureName: item.procedureName,
+          frequencyId: item.frequencyId ? Number(item.frequencyId) : null,
+          noOfDays: Number(item.noOfDays) || 0,
+          remarks: item.remarks,
+        }));
+
+      // ===== 5. Prepare Final Payload =====
       const payload = {
-        ...formData,
-        mlcCase: formData.mlcCase ? "y" : "n",
-        workingDiagnosis,
-        icdDiagnosis: icdDiagnosisStr,
-        icdObj: icdObjList,
-        doctorRemarks: doctorRemarksText,
-        treatments: treatmentItems,
-        // procedureCare: procedureCareItems,
+        patientId: selectedPatient.patientId,
+        visitId: selectedPatient.visitId,
+        departmentId: mappedDepartmentId,
+        hospitalId: mappedHospitalId,
+        doctorId: mappedDoctorId,
+        opdPatientDetailId: selectedPatient.opdPatientId,
+
+        // Clinical History
+        patientSignsSymptoms: formData.patientSymptoms || null,
+        clinicalExamination: formData.clinicalExamination || null,
+        pastMedicalHistory: formData.pastHistory || null,
+        familyHistory: formData.familyHistory || null,
+
+        // Vital Details
+        height: formData.height || null,
+        weight: formData.weight || null,
+        pulse: formData.pulse || null,
+        temperature: formData.temperature || null,
+        rr: formData.rr || null,
+        bmi: formData.bmi || null,
+        spo2: formData.spo2 || null,
+        bpSystolic: formData.systolicBP || null,
+        bpDiastolic: formData.diastolicBP || null,
+        mlcFlag: formData.mlcCase ? "y" : "n",
+
+        // Diagnosis (All new - backend will delete old ones)
+        workingDiagnosis: workingDiagnosis || null,
+        icdDiagnosisList: icdDiagList,
+
+        // Investigation (All new)
+        labFlag: labFlag || "n",
+        radioFlag: radioFlag || "n",
+        investigations: investigationList,
+
+        // Treatment (All new)
+        treatments: treatmentList,
+        treatmentAdvice: generalTreatmentAdvice || null,
+
+        // Procedure Care (All new)
+        procedureCare: procedureCareList,
+
+        // Doctor's Remarks
+        doctorRemarks: doctorRemarksText || null,
+
+        // Follow Up
         followUpFlag: followUps.followUpFlag ? "y" : "n",
-        followUpDate: followUps.FolloUpDate
-          ? new Date(followUps.FolloUpDate).toISOString()
-          : null,
-        followUpDays: Number(followUps.noOfFollowDays),
-        // ===== Admission Details =====
+        followUpDate:
+          followUps.followUpFlag && followUps.followUpDate
+            ? new Date(followUps.followUpDate).toISOString()
+            : null,
+        followUpDays: followUps.followUpFlag
+          ? Number(followUps.noOfFollowDays) || 0
+          : 0,
+
+        // Admission
         admissionFlag: admissionAdvised ? "y" : "n",
         admissionAdvisedDate:
           admissionAdvised && admissionDate
             ? new Date(admissionDate).toISOString()
             : null,
-        admissionRemarks: additionalAdvice || null,
+        admissionRemarks: admissionAdvised ? admissionRemarks : null,
         admissionCareLevel: admissionAdvised
           ? Number(admissionCareLevel)
           : null,
         admissionWardCategory: admissionAdvised ? Number(wardCategory) : null,
         admissionWard: admissionAdvised ? Number(wardName) : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
+
+        // Referral
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
-        referralRemarks: referralNotes,
-        referralDate: referralData.referralDate
-          ? new Date(referralData.referralDate).toISOString()
-          : null,
-        investigations: validInvestigationItems,
-        labFlag: labFlag,
-        radioFlag: radioFlag,
-        treatmentAdvice: generalTreatmentAdvice,
-        removeIcdIds,
-        removedTreatmentIds,
-        removedInvestigationIds,
-        removeprocedureCareIds: deletedProcedureCareIds,
-        opdPatientId: selectedPatient.opdPatientId,
-        patientId: selectedPatient.patientId,
-        visitId: selectedPatient.visitId,
-        departmentId: selectedPatient.deptId,
-        hospitalId: selectedPatient.hospitalId ?? null,
-        doctorId: selectedPatient.docterId,
+        referralRemarks: referralNotes || null,
+        referralDate:
+          referralData.referralDate && referralData.isReferred === "Yes"
+            ? new Date(referralData.referralDate).toISOString()
+            : null,
+        referTo:
+          referralData.isReferred === "Yes" ? referralData.referTo : null,
+        referredHospitalName:
+          referralData.isReferred === "Yes" &&
+          referralData.referTo === "External"
+            ? referralData.referredHospitalName
+            : null,
+        currentPriorityNo:
+          referralData.isReferred === "Yes" &&
+          referralData.referTo === "Internal"
+            ? referralData.currentPriorityNo
+            : null,
       };
 
-      const response = await putRequest(
-        `${OPD_PATIENT}/update-recall-patient`,
-        payload,
-      );
+      // Make the API call
+      const response = await putRequest(UPDATE_RECALL_PATIENT, payload);
 
       if (response?.status === 200 || response?.success === true) {
-        showPopup("Recall patient updated successfully!", "success", () =>
-          handleBackWithFatch(),
-        );
+        showPopup("Patient updated successfully!", "success", () => {
+          handleBackWithFatch();
+        });
       } else {
-        alert("Updated but unexpected response received.");
+        showPopup("Update failed. Please try again.", "error");
       }
     } catch (error) {
       console.error("Update Error:", error);
@@ -1007,6 +1131,15 @@ const handleWardNameChange = async (deptId) => {
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  // Helper function to get frequency ID by name
+  const getFrequencyIdByName = (frequencyName) => {
+    if (!frequencyName) return null;
+    const freq = allFrequencies.find(
+      (f) => f.frequencyName?.toLowerCase() === frequencyName?.toLowerCase(),
+    );
+    return freq?.frequencyId || null;
   };
 
   const handleBackWithFatch = async () => {
@@ -1141,6 +1274,24 @@ const handleWardNameChange = async (deptId) => {
     },
   ]);
 
+  const formatDateForDisplay = (value) => {
+    if (!value) return "";
+    const normalized = String(value).trim();
+    const datePart = normalized.includes("T")
+      ? normalized.split("T")[0]
+      : normalized;
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) return datePart;
+
+    const isoMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${day}/${month}/${year}`;
+    }
+
+    return normalized;
+  };
+
   console.log("treat", treatmentItems);
 
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("");
@@ -1167,11 +1318,6 @@ const handleWardNameChange = async (deptId) => {
       remarks: "",
     },
   ]);
-
-  // store deleted ids
-  const [deletedProcedureCareIds, setDeletedProcedureCareIds] = useState([]);
-
-  console.log("procedureCareItems", procedureCareItems);
 
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
@@ -1252,12 +1398,11 @@ const handleWardNameChange = async (deptId) => {
   //   setTreatmentModalType(type);
   //   setShowTreatmentModal(true);
   // };
-const handleOpenTreatmentModal = (type = "create", template = null) => {
-  setTreatmentModalType(type);
-  setSelectedTemplateForEdit(template);
-  setShowTreatmentModal(true);
-};
-
+  const handleOpenTreatmentModal = (type = "create", template = null) => {
+    setTreatmentModalType(type);
+    setSelectedTemplateForEdit(template);
+    setShowTreatmentModal(true);
+  };
 
   const handleCloseTreatmentModal = () => {
     setShowTreatmentModal(false);
@@ -1710,253 +1855,360 @@ const handleOpenTreatmentModal = (type = "create", template = null) => {
     handleFilterChange("mobileNumber", value);
   };
 
-const handleRowClick = async (patient) => {
-  setLoading(true);
+  const fetchCurrentMedicationsForRecall = async (patientId) => {
+    try {
+      const response = await getRequest(
+        `${GET_PATIENT_PRESCRIPTION_DETAILS}/${patientId}`,
+      );
+      if (response?.status === 200 && Array.isArray(response.response)) {
+        const medications = response.response.map((item, index) => ({
+          id: item.prescriptionDtId || index + 1,
+          drugId: item.drugId,
+          drugName: item.drugName,
+          dosage: item.dosage,
+          days: item.days,
+          frequency: item.frequency,
+          total: item.total,
+          instruction: item.instruction,
+          prescribedBy: item.doctorName,
+          department: item.departmentName,
+          prescribedDate: item.prescribedDate,
+          dispUnit: item.dispUnit,
+          stock: item.stock || "0",
+          itemClassId: item.itemClassId,
+          aDispQty: item.aDispQty || 1,
+        }));
 
-  try {
-    const response = await getRequest(
-      `${GET_RECALL_PATIENT_DETAILS}?visitId=${patient.visitId}`,
-    );
+        console.log("Fetched medications:", medications); // Debug log
+        return medications;
+      }
+      return [];
+    } catch (error) {
+      console.error("Error fetching current medications:", error);
+      return [];
+    }
+  };
 
-    if (response?.status === 200 && response?.response) {
-      const patientData = response.response;
-      setSelectedPatient(patientData);
-      const sectionsToExpand = {};
+  const handleRowClick = async (patient) => {
+    setLoading(true);
 
-      /* -------------------- VITALS / BASIC DATA -------------------- */
-      const hasVitalsData = patientData.height || 
-                           patientData.weight || 
-                           patientData.temperature || 
-                           patientData.bpSystolic || 
-                           patientData.bpDiastolic || 
-                           patientData.pulse || 
-                           patientData.bmi || 
-                           patientData.rr || 
-                           patientData.spo2;
-      
-      setFormData({
-        height: patientData.height || "",
-        weight: patientData.weight || "",
-        temperature: patientData.temperature || "",
-        systolicBP: patientData.bpSystolic || "",
-        diastolicBP: patientData.bpDiastolic || "",
-        pulse: patientData.pulse || "",
-        bmi: patientData.bmi || "",
-        rr: patientData.rr || "",
-        spo2: patientData.spo2 || "",
-        patientSymptoms: patientData.patientSignsSymptoms || "",
-        clinicalExamination: patientData.clinicalExamination || "",
-        pastHistory: patientData.pastMedicalHistory || "",
-        familyHistory: patientData.familyHistory || "",
-        mlcCase: patientData.mlcFlag === "y",
-      });
-      const hasClinicalData = patientData.patientSignsSymptoms || 
-                             patientData.clinicalExamination || 
-                             patientData.pastMedicalHistory || 
-                             patientData.familyHistory;
-      if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
+    try {
+      const response = await getRequest(
+        `${GET_RECALL_PATIENT_DETAILS}?visitId=${patient.visitId}`,
+      );
 
-      setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
-      setWorkingDiagnosis(patientData?.workingDiag || "");
+      if (response?.status === 200 && response?.response) {
+        const patientData = response.response;
 
-      /* -------------------- DIAGNOSIS -------------------- */
-      const hasDiagnosisData = patientData.icdDiag?.length > 0;
-      if (hasDiagnosisData) sectionsToExpand.diagnosis = true;
-      
-      setDiagnosisItems(
-        patientData.icdDiag?.length
-          ? patientData.icdDiag.map((item) => ({
-              id: item.id ?? null,
-              icdDiagId: item.icdId ?? "",
-              icdDiagnosis: item.icdDiagName ?? "",
-              communicableDisease: false,
-              infectiousDisease: false,
-            }))
-          : [
-              {
-                id: null,
-                icdDiagId: "",
-                icdDiagnosis: "",
+        const medications = await fetchCurrentMedicationsForRecall(
+          patientData.patientId,
+        );
+
+        setCurrentMedications(medications);
+
+        setSelectedPatient({
+          ...patientData,
+          currentMedications: medications,
+        });
+        const sectionsToExpand = {};
+
+        /* -------------------- VITALS / BASIC DATA -------------------- */
+        const hasVitalsData =
+          patientData.height ||
+          patientData.weight ||
+          patientData.temperature ||
+          patientData.bpSystolic ||
+          patientData.bpDiastolic ||
+          patientData.pulse ||
+          patientData.bmi ||
+          patientData.rr ||
+          patientData.spo2;
+
+        setFormData({
+          height: patientData.height || "",
+          weight: patientData.weight || "",
+          temperature: patientData.temperature || "",
+          systolicBP: patientData.bpSystolic || "",
+          diastolicBP: patientData.bpDiastolic || "",
+          pulse: patientData.pulse || "",
+          bmi: patientData.bmi || "",
+          rr: patientData.rr || "",
+          spo2: patientData.spo2 || "",
+          patientSymptoms: patientData.patientSignsSymptoms || "",
+          clinicalExamination: patientData.clinicalExamination || "",
+          pastHistory: patientData.pastMedicalHistory || "",
+          familyHistory: patientData.familyHistory || "",
+          mlcCase: patientData.mlcFlag === "y",
+        });
+
+        const hasClinicalData =
+          patientData.patientSignsSymptoms ||
+          patientData.clinicalExamination ||
+          patientData.pastMedicalHistory ||
+          patientData.familyHistory;
+        if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
+
+        setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
+
+        setWorkingDiagnosis(patientData?.workingDiag || "");
+
+        const hasDiagnosisData = patientData.icdDiag?.length > 0;
+        if (hasDiagnosisData) sectionsToExpand.diagnosis = true;
+
+        setDiagnosisItems(
+          patientData.icdDiag?.length
+            ? patientData.icdDiag.map((item) => ({
+                id: item.id ?? null,
+                icdDiagId: item.icdId ?? "",
+                icdDiagnosis: item.icdDiagName ?? "",
                 communicableDisease: false,
                 infectiousDisease: false,
-              },
-            ],
-      );
+              }))
+            : [
+                {
+                  id: null,
+                  icdDiagId: "",
+                  icdDiagnosis: "",
+                  communicableDisease: false,
+                  infectiousDisease: false,
+                },
+              ],
+        );
 
-      /* -------------------- INVESTIGATIONS -------------------- */
-      // Combine lab and radiology investigations
-      const labInvestigations = patientData.labOrderHds?.length
-        ? patientData.labOrderHds.flatMap((hd) =>
-            hd.labOrderDts.map((dt) => ({
-              id: dt.orderDtId || "",
-              name: dt.investigationName || "",
-              date: dt.appointmentDate || getToday(),
-              investigationId: dt.investigationId,
-              templateIds: [],
-            })),
-          )
-        : [];
+        const labInvestigations = patientData.labOrderHds?.length
+          ? patientData.labOrderHds.flatMap((hd) =>
+              hd.labOrderDts.map((dt) => ({
+                id: dt.orderDtId || "",
+                name: dt.investigationName || "",
+                date: dt.appointmentDate || getToday(),
+                investigationId: dt.investigationId,
+                templateIds: [],
+              })),
+            )
+          : [];
 
-      const radInvestigations = patientData.radOrderHds?.length
-        ? patientData.radOrderHds.flatMap((hd) =>
-            hd.radOrderDts.map((dt) => ({
-              id: dt.orderDtId || "",
-              name: dt.investigationName || "",
-              date: dt.appointmentDate || getToday(),
-              investigationId: dt.investigationId,
-              templateIds: [],
-            })),
-          )
-        : [];
+        const radInvestigations = patientData.radOrderHds?.length
+          ? patientData.radOrderHds.flatMap((hd) =>
+              hd.radOrderDts.map((dt) => ({
+                id: dt.orderDtId || "",
+                name: dt.investigationName || "",
+                date: dt.appointmentDate || getToday(),
+                investigationId: dt.investigationId,
+                templateIds: [],
+              })),
+            )
+          : [];
 
-      const allInvestigations = [...labInvestigations, ...radInvestigations];
-      const hasInvestigationData = allInvestigations.length > 0;
-      if (hasInvestigationData) sectionsToExpand.investigation = true;
+        const allInvestigations = [...labInvestigations, ...radInvestigations];
+        const hasInvestigationData = allInvestigations.length > 0;
+        if (hasInvestigationData) sectionsToExpand.investigation = true;
 
-      setInvestigationItems(
-        allInvestigations.length
-          ? allInvestigations
-          : [{ id: "", name: "", date: getToday(), templateIds: [] }],
-      );
+        setInvestigationItems(
+          allInvestigations.length
+            ? allInvestigations
+            : [{ id: "", name: "", date: getToday(), templateIds: [] }],
+        );
 
-      // Set lab and radio flags
-      setLabFlag(patientData.labFlag || "n");
-      setRadioFlag(patientData.radioFlag || "n");
+        setLabFlag(patientData.labFlag || "n");
+        setRadioFlag(patientData.radioFlag || "n");
 
-      /* -------------------- TREATMENT -------------------- */
-      const hasTreatmentData = patientData.patientPrescriptionDts?.length > 0;
-      if (hasTreatmentData) sectionsToExpand.treatment = true;
-      if (patientData.treatmentAdvice) sectionsToExpand.treatmentAdvice = true;
-      
-      setTreatmentItems(
-        patientData.patientPrescriptionDts?.length
-          ? patientData.patientPrescriptionDts.map((item) => {
-              const freq = getFreqDetails(item.frequencyId);
-              const obj = {
-                treatmentId: item.prescriptionDtId,
-                drugId: item.itemId,
-                drugName: item.itemName,
-                dispUnit: item.dispUnit ?? "",
-                dosage: Number(item.dosage) || "",
-                frequency: freq?.frequencyName ?? item.frequencyId ?? "",
-                days: Number(item.days) || "",
-                instruction: item.instraction ?? "",
-                stock: item.stocks ?? "",
-                itemClassId: item.itemClassId ?? null,
-                aDispQty: item.adispQty ?? 1,
-                templateId: "",
-              };
-              obj.total = calculateTotal(obj);
-              return obj;
-            })
-          : [
-              {
-                treatmentId: null,
-                drugId: "",
-                drugName: "",
-                dispUnit: "",
-                dosage: "",
-                frequency: "",
-                days: "",
-                total: "",
-                instruction: "",
-                stock: "",
-                templateId: "",
-              },
-            ],
-      );
+        /* -------------------- TREATMENT -------------------- */
+        const hasTreatmentData = patientData.patientPrescriptionDts?.length > 0;
+        if (hasTreatmentData) sectionsToExpand.treatment = true;
+        if (patientData.treatmentAdvice)
+          sectionsToExpand.treatmentAdvice = true;
 
-      /*-------------------- final remark --------------- */
-      const hasDoctorRemarks = patientData.doctorRemarks;
-      if (hasDoctorRemarks) sectionsToExpand.remarks = true;
-      
-      setDoctorRemarksText(patientData.doctorRemarks || "");
+        setTreatmentItems(
+          patientData.patientPrescriptionDts?.length
+            ? patientData.patientPrescriptionDts.map((item) => {
+                // ✅ Get frequencyId from API (it could be in frequency or frequencyId field)
+                const frequencyId = item.frequencyId || item.frequency || "";
 
-      /* -------------------- FOLLOW UP -------------------- */
-      const hasFollowUpData = patientData.followUpFlag === "y";
-      if (hasFollowUpData) sectionsToExpand.followUp = true;
-      
-      setFollowUps({
-        followUpFlag: patientData.followUpFlag === "y",
-        FolloUpDate: patientData.followUpDate
-          ? patientData.followUpDate.split("T")[0]
-          : "",
-        noOfFollowDays: patientData.followUpDays
-          ? String(patientData.followUpDays)
-          : "",
-      });
+                // ✅ Find the frequency name from allFrequencies using the ID
+                const matchedFrequency = allFrequencies.find(
+                  (f) => String(f.frequencyId) === String(frequencyId),
+                );
 
-      /* -------------------- REFERRAL -------------------- */
-      const hasReferralData = patientData.referralFlag === "y";
-      if (hasReferralData) sectionsToExpand.referral = true;
-      
-      setReferralData((prev) => ({
-        ...prev,
-        isReferred: patientData.referralFlag === "y" ? "Yes" : "No",
-        referralDate: patientData.referralDate
-          ? patientData.referralDate.split("T")[0]
-          : "",
-      }));
-      setReferralNotes(patientData.referralRemarks || "");
+                // ✅ Use the frequency name if found, otherwise use the ID as fallback
+                const frequencyName =
+                  matchedFrequency?.frequencyName || frequencyId;
 
+                console.log(
+                  `Mapping frequency ID ${frequencyId} to name: ${frequencyName}`,
+                );
 
-      /* -------------------- ADMISSION ADVICE -------------------- */
-  const admissionAdvised = patientData.admissionFlag === "y";
-      if (admissionAdvised) sectionsToExpand.admissionAdvice = true;
-      
-  setAdmissionAdvised(admissionAdvised);
+                const obj = {
+                  treatmentId: item.prescriptionDtId,
+                  drugId: item.itemId,
+                  drugName: item.itemName,
+                  dispUnit: item.dispUnit || item.depUnit || "",
+                  dosage: Number(item.dosage) || "",
+                  frequency: frequencyName, // Now this will be "10 TIMES" or "2 TIMES HR " etc.
+                  days: Number(item.days) || "",
+                  instruction: item.instraction || item.instruction || "",
+                  stock: item.stocks ?? "0",
+                  itemClassId: item.itemClassId ?? null,
+                  aDispQty: item.adispQty ?? 1,
+                  templateId: "",
+                };
+                obj.total = calculateTotal(obj);
+                return obj;
+              })
+            : [
+                {
+                  treatmentId: null,
+                  drugId: "",
+                  drugName: "",
+                  dispUnit: "",
+                  dosage: "",
+                  frequency: "",
+                  days: "",
+                  total: "",
+                  instruction: "",
+                  stock: "",
+                  templateId: "",
+                },
+              ],
+        );
 
-  if (admissionAdvised) {
-    setAdmissionDate(
-      patientData.admissionAdvisedDate
-        ? patientData.admissionAdvisedDate.split("T")[0]
-        : "",
-    );
-    setAdditionalAdvice(patientData.admissionRemarks || "");
-    setAdmissionPriority(patientData.admissionPriority || "Normal");
-    setWardCategory(patientData.admissionWardCategory || "");
-    setAdmissionCareLevel(patientData.admissionCareLevel || "");
-    setAdmissionCareLevelName(patientData.admissionCareLevelName || "");
+        /*-------------------- final remark --------------- */
+        const hasDoctorRemarks = patientData.doctorRemarks;
+        if (hasDoctorRemarks) sectionsToExpand.remarks = true;
 
-    if (patientData.admissionWardCategory) {
-      await fetchWardData(patientData.admissionWardCategory);
+        setDoctorRemarksText(patientData.doctorRemarks || "");
+
+        /* -------------------- FOLLOW UP -------------------- */
+        const hasFollowUpData = patientData.followUpFlag === "y";
+        if (hasFollowUpData) sectionsToExpand.followUp = true;
+
+        setFollowUps({
+          followUpFlag: patientData.followUpFlag === "y",
+          followUpDate: patientData.followUpDate
+            ? patientData.followUpDate.split("T")[0]
+            : "",
+          noOfFollowDays: patientData.followUpDays
+            ? String(patientData.followUpDays)
+            : "",
+        });
+
+        /* -------------------- REFERRAL -------------------- */
+        const hasReferralData = patientData.referralFlag === "y";
+        if (hasReferralData) sectionsToExpand.referral = true;
+
+        setReferralData((prev) => ({
+          ...prev,
+          isReferred: patientData.referralFlag === "y" ? "Yes" : "No",
+          referTo: patientData.referTo || "",
+          referralDate: patientData.referralDate
+            ? patientData.referralDate.split("T")[0]
+            : getToday(),
+          referredHospitalName: patientData.referredHospitalName || "",
+        }));
+        setReferralNotes(patientData.referralRemarks || "");
+
+        /* -------------------- ADMISSION ADVICE -------------------- */
+        const admissionAdvised = patientData.admissionFlag === "y";
+        if (admissionAdvised) sectionsToExpand.admissionAdvice = true;
+
+        setAdmissionAdvised(admissionAdvised);
+
+        if (admissionAdvised) {
+          setAdmissionDate(
+            patientData.admissionAdvisedDate
+              ? patientData.admissionAdvisedDate.split("T")[0]
+              : "",
+          );
+          setAdditionalAdvice(patientData.admissionRemarks || "");
+          setAdmissionPriority(patientData.admissionPriority || "Normal");
+
+          const wardCategoryId = patientData.admissionWardCategory || "";
+          setWardCategory(wardCategoryId);
+          setAdmissionCareLevel(patientData.admissionCareLevel || "");
+
+          setAdmissionCareLevelName(
+            patientData.admissionCareLevelName ||
+              patientData.careLevelName ||
+              "",
+          );
+
+          if (wardCategoryId) {
+            await fetchWardData(wardCategoryId);
+
+            const savedWardId = patientData.admissionWard || "";
+            setWardName(savedWardId);
+
+            if (savedWardId) {
+              try {
+                const bedResponse = await getRequest(
+                  `${MAS_BED_COUNT}/${savedWardId}`,
+                );
+                console.log("Bed Status Response:", bedResponse);
+
+                if (bedResponse?.status === 200 && bedResponse?.response) {
+                  const occupied =
+                    bedResponse.response.occupied ||
+                    bedResponse.response.occupiedBeds ||
+                    bedResponse.response.filledBeds ||
+                    "0";
+                  const vacant =
+                    bedResponse.response.available ||
+                    bedResponse.response.vacantBeds ||
+                    "0";
+
+                  setOccupiedBeds(String(occupied));
+                  setVacantBeds(String(vacant));
+                } else {
+                  // Fallback to ward data if bed count API fails
+                  const selectedWard = wardDepartments.find(
+                    (dept) => dept.id === savedWardId,
+                  );
+                  if (selectedWard) {
+                    setOccupiedBeds(
+                      String(
+                        selectedWard.occupiedBed ||
+                          selectedWard.occupied ||
+                          "0",
+                      ),
+                    );
+                    setVacantBeds(
+                      String(
+                        selectedWard.vacantBed || selectedWard.vacant || "0",
+                      ),
+                    );
+                  }
+                }
+              } catch (bedError) {
+                console.error("Error fetching bed status:", bedError);
+                setOccupiedBeds("0");
+                setVacantBeds("0");
+              }
+            }
+          }
+        }
+
+        /* -------------------- UPDATE EXPANDED SECTIONS -------------------- */
+        setExpandedSections((prev) => ({
+          ...prev,
+          ...sectionsToExpand,
+          vitalDetail: hasVitalsData || prev.vitalDetail,
+          clinicalHistory: hasClinicalData || prev.clinicalHistory,
+        }));
+
+        /* -------------------- SHOW DETAIL VIEW -------------------- */
+        setShowDetailView(true);
+      } else {
+        showPopup(
+          "Failed to fetch patient details. Please try again.",
+          "error",
+        );
+      }
+    } catch (error) {
+      console.error("Error fetching patient details:", error);
+      showPopup("Error fetching patient details. Please try again.", "error");
+    } finally {
+      setLoading(false);
     }
-
-    setWardName(patientData.admissionWard || "");
-    
-  const selectedWard = wardDepartments.find(dept => dept.id === patient.admissionWard);
-  if (selectedWard) {
-    setOccupiedBeds(String(selectedWard.occupiedBed || selectedWard.occupied || "0"));
-    setVacantBeds(String(selectedWard.vacantBed || selectedWard.vacant || "0"));
-  } else {
-    setOccupiedBeds(String(patientData.occupiedBed ?? "0"));
-      setVacantBeds(String(patientData.vacantBed ?? "0"));
-    }
-}
-
-      /* -------------------- UPDATE EXPANDED SECTIONS -------------------- */
-      setExpandedSections((prev) => ({
-        ...prev,
-        ...sectionsToExpand,
-        vitalDetail: hasVitalsData || prev.vitalDetail,
-        clinicalHistory: hasClinicalData || prev.clinicalHistory,
-      }));
-
-      /* -------------------- SHOW DETAIL VIEW -------------------- */
-      setShowDetailView(true);
-    } else {
-      showPopup(
-        "Failed to fetch patient details. Please try again.",
-        "error",
-      );
-    }
-  } catch (error) {
-    console.error("Error fetching patient details:", error);
-    showPopup("Error fetching patient details. Please try again.", "error");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const handleAdmissionAdvisedChange = (e) => {
     const checked = e.target.checked;
@@ -2071,10 +2323,9 @@ const handleRowClick = async (patient) => {
       referredFor: "",
       hospital: "",
     });
-    setDeletedProcedureCareIds([]);
+    // setDeletedProcedureCareIds([]);
 
     setSelectedHistoryType("");
-    setRemovedInvestigationIds([]);
     setSelectedTemplateIds(new Set());
     setSelectedTreatmentTemplateIds(new Set());
     setDoctorRemarksText("");
@@ -2157,6 +2408,116 @@ const handleRowClick = async (patient) => {
     }
   };
 
+  const addCurrentMedicationToTreatment = (medication) => {
+    if (!medication?.drugName) return;
+
+    setTreatmentItems((prev) => {
+      // Check if already added
+      const alreadyAdded = prev.some((item) => {
+        if (medication.drugId && item.drugId === medication.drugId) return true;
+        return (
+          item.drugName?.trim().toLowerCase() ===
+          medication.drugName.trim().toLowerCase()
+        );
+      });
+
+      if (alreadyAdded) {
+        showPopup("Selected medication is already added in treatment.", "info");
+        return prev;
+      }
+
+      const newItem = {
+        treatmentId: null,
+        drugId: medication.drugId,
+        drugName: medication.drugName,
+        dispUnit: medication.dispUnit || "",
+        dosage: medication.dosage || "",
+        frequency: medication.frequency || "",
+        days: medication.days || "",
+        total: medication.total || "",
+        instruction: medication.instruction || "",
+        stock: medication.stock || "0",
+        templateId: "",
+        itemClassId: medication.itemClassId,
+        aDispQty: medication.aDispQty || 1,
+      };
+
+      // Calculate total
+      newItem.total = calculateTotal(newItem);
+
+      // Check if it's the default empty row
+      if (isOnlyDefaultTreatmentRow(prev)) {
+        return [newItem];
+      }
+
+      return [...prev, newItem];
+    });
+  };
+
+  const handleCurrentMedicationAction = (medication, action) => {
+    setCurrentMedicationActions((prev) => ({
+      ...prev,
+      [medication.id]: prev[medication.id] === action ? "" : action,
+    }));
+
+    if (
+      action === "repeat" &&
+      currentMedicationActions[medication.id] !== action
+    ) {
+      addCurrentMedicationToTreatment(medication);
+    }
+
+    if (
+      action === "stop" &&
+      currentMedicationActions[medication.id] !== action
+    ) {
+      removeMedicationFromTreatment(medication);
+    }
+  };
+
+  const removeMedicationFromTreatment = (medication) => {
+    if (!medication?.drugName) return;
+
+    setTreatmentItems((prev) => {
+      const updatedItems = prev.filter((item) => {
+        if (medication.drugId && item.drugId === medication.drugId) {
+          return false;
+        }
+        if (
+          item.drugName?.trim().toLowerCase() ===
+          medication.drugName.trim().toLowerCase()
+        ) {
+          return false;
+        }
+        return true;
+      });
+
+      if (updatedItems.length === 0) {
+        return [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "0",
+            templateId: "",
+          },
+        ];
+      }
+
+      showPopup(
+        `${medication.drugName} has been removed from treatment.`,
+        "success",
+      );
+      return updatedItems;
+    });
+  };
+
   const handleResetForm = () => {
     // Reset main form data
     setFormData({
@@ -2198,7 +2559,7 @@ const handleRowClick = async (patient) => {
     setFollowUps({
       noOfFollowDays: "",
       followUpFlag: false,
-      FolloUpDate: getToday(),
+      followUpDate: getToday(),
     });
 
     // Important resets for templates
@@ -2274,26 +2635,21 @@ const handleRowClick = async (patient) => {
   const handleRemoveInvestigationItem = (index) => {
     const itemToRemove = investigationItems[index];
     const onlyOneRow = investigationItems.length === 1;
-    const isEmptyRow =
-      !itemToRemove.name &&
-      (!itemToRemove.templateIds || itemToRemove.templateIds.length === 0) &&
-      !itemToRemove.date;
+    const isEmptyRow = !itemToRemove.name && !itemToRemove.date;
 
-    if (onlyOneRow && isEmptyRow) {
-      // Only one row left and empty -> do nothing
-      return;
-    }
-
-    if (itemToRemove.id !== null) {
-      setRemovedInvestigationIds((prev) => [...prev, itemToRemove.id]);
-    }
+    if (onlyOneRow && isEmptyRow) return;
 
     let updatedItems = investigationItems.filter((_, i) => i !== index);
 
     if (onlyOneRow) {
-      // Only one row existed and had data -> reset to empty row
       updatedItems = [
-        { id: null, templateIds: [], name: "", date: getToday() },
+        {
+          id: null,
+          investigationId: "",
+          templateIds: [],
+          name: "",
+          date: getToday(),
+        },
       ];
     }
 
@@ -2348,19 +2704,9 @@ const handleRowClick = async (patient) => {
   const handleRemoveDiagnosisItem = (index) => {
     const itemToRemove = diagnosisItems[index];
     const onlyOneRow = diagnosisItems.length === 1;
-    const isEmptyRow =
-      !itemToRemove.icdDiagId &&
-      !itemToRemove.icdDiagnosis &&
-      !itemToRemove.communicableDisease &&
-      !itemToRemove.infectiousDisease;
+    const isEmptyRow = !itemToRemove.icdDiagId && !itemToRemove.icdDiagnosis;
 
-    if (onlyOneRow && isEmptyRow) {
-      return;
-    }
-
-    if (itemToRemove?.id != null) {
-      setRemoveIcdIds((prev) => [...prev, itemToRemove.id]);
-    }
+    if (onlyOneRow && isEmptyRow) return;
 
     let newItems = diagnosisItems.filter((_, i) => i !== index);
 
@@ -2403,50 +2749,6 @@ const handleRowClick = async (patient) => {
     ]);
   };
 
-  const handleRemoveTreatmentItem = (index) => {
-    const itemToRemove = treatmentItems[index];
-    const isLastRow = index === treatmentItems.length - 1;
-    const onlyOneRow = treatmentItems.length === 1;
-    const isEmptyRow =
-      !itemToRemove.drugName &&
-      !itemToRemove.dispUnit &&
-      !itemToRemove.dosage &&
-      !itemToRemove.frequency &&
-      !itemToRemove.days &&
-      !itemToRemove.total &&
-      !itemToRemove.instruction &&
-      itemToRemove.stock === "0" &&
-      !itemToRemove.treatmentId;
-
-    if (onlyOneRow && isEmptyRow) {
-      return;
-    }
-
-    if (itemToRemove.treatmentId) {
-      setRemovedTreatmentIds((prev) => [...prev, itemToRemove.treatmentId]);
-    }
-
-    let newItems = treatmentItems.filter((_, i) => i !== index);
-
-    if (onlyOneRow) {
-      newItems = [
-        {
-          drugName: "",
-          dispUnit: "",
-          dosage: "",
-          frequency: "",
-          days: "",
-          total: "",
-          instruction: "",
-          stock: "0",
-          treatmentId: "",
-        },
-      ];
-    }
-
-    setTreatmentItems(newItems);
-  };
-
   const getFreqDetails = (feqId) => {
     return allFrequencies.find((d) => d.frequencyId === feqId);
   };
@@ -2487,26 +2789,44 @@ const handleRowClick = async (patient) => {
       }
 
       const formattedNew = newItemsToAdd.map((t) => {
-        const freName = getFreqDetails(t.frequencyId);
+        // ✅ Find frequency by ID from allFrequencies
+        const freDetails = allFrequencies.find(
+          (f) => Number(f.frequencyId) === Number(t.frequencyId),
+        );
+
+        // ✅ Get frequency name or fallback to a default
+        let frequencyName = freDetails?.frequencyName;
+
+        // ✅ If frequency not found in allFrequencies, use the frequencyId as fallback
+        if (!frequencyName) {
+          console.warn(`Frequency not found for ID: ${t.frequencyId}`);
+          frequencyName = String(t.frequencyId);
+        }
+
+        console.log(
+          `Mapping frequencyId ${t.frequencyId} to "${frequencyName}"`,
+        );
+
         const newItem = {
           treatmentId: null,
           drugId: t.itemId,
           drugName: t.itemName,
-          dispUnit: t.dispUnit ?? "",
-          dosage: t.dosage ?? "",
-          frequency: freName?.frequencyName ?? "",
-          days: t.noOfDays ?? "",
-          instruction: t.instruction ?? "",
-          stock: t.stocks ?? "",
+          dispUnit: t.dispUnit || t.dispU || "",
+          dosage: t.dosage || "",
+          frequency: frequencyName, // Now this will have a valid value
+          days: t.noOfDays || "",
+          instruction: t.instruction || "",
+          stock: t.stocks ?? "0",
           templateId: String(templateId),
           itemClassId: t?.itemClassId ?? null,
-          aDispQty: t?.aDispQty ?? 1,
+          aDispQty: t?.adispQty ?? 1,
         };
         newItem.total = calculateTotal(newItem);
         return newItem;
       });
 
-      console.log("new  data", newItemsToAdd);
+      console.log("New items to add:", formattedNew);
+      console.log("Current allFrequencies:", allFrequencies);
 
       if (isOnlyDefaultTreatmentRow(updatedList)) {
         return formattedNew;
@@ -2535,9 +2855,11 @@ const handleRowClick = async (patient) => {
       return "0";
     }
 
+    // ✅ Find frequency by NAME (since we store the name)
     const selectedFrequency = allFrequencies.find(
-      (f) => Number(f.frequencyId) === Number(item.frequency),
+      (f) => f.frequencyName?.toLowerCase() === item.frequency?.toLowerCase(),
     );
+
     const frequencyMultiplier = selectedFrequency
       ? Number(selectedFrequency.feq)
       : 1;
@@ -2620,7 +2942,7 @@ const handleRowClick = async (patient) => {
     ]);
   };
 
-  const calculateFollowUpDate = (days) => {
+  const calculatefollowUpDate = (days) => {
     const date = new Date();
     date.setDate(date.getDate() + Number(days || 0));
     return date.toISOString().split("T")[0];
@@ -2629,26 +2951,12 @@ const handleRowClick = async (patient) => {
   const handleRemoveProcedureCareItem = (index) => {
     const itemToDelete = procedureCareItems[index];
     const onlyOneRow = procedureCareItems.length === 1;
+    const isEmptyRow = !itemToDelete.procedureId && !itemToDelete.procedureName;
 
-    const isEmptyRow =
-      !itemToDelete.procedureId &&
-      !itemToDelete.procedureName &&
-      !itemToDelete.frequencyId &&
-      !itemToDelete.noOfDays &&
-      !itemToDelete.remarks;
-
-    // Don't delete if it's the only row and it's empty
     if (onlyOneRow && isEmptyRow) return;
 
-    // Track deleted items if they have an ID
-    if (itemToDelete.id !== null) {
-      setDeletedProcedureCareIds((prev) => [...prev, itemToDelete.id]);
-    }
-
-    // Remove the selected item
     let newItems = procedureCareItems.filter((_, i) => i !== index);
 
-    // If it was the only row, reset to a blank row
     if (onlyOneRow) {
       newItems = [
         {
@@ -3855,9 +4163,6 @@ const handleRowClick = async (patient) => {
                                             style={{ fontSize: "0.7rem" }}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleRemoveTreatmentTemplateItems(
-                                                templateId,
-                                              );
                                             }}
                                             aria-label="Remove template"
                                           ></button>
@@ -5020,35 +5325,32 @@ const handleRowClick = async (patient) => {
                                 </div>
                               </div>
 
-                      
-                                <div className="row g-3 mt-3">
-                                  <div className="col-md-3">
-                                    <label className="form-label fw-bold">
-                                      Occupied Bed
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      // value={occupiedBeds}
-                                       value={occupiedBeds || "0"}
-                                      readOnly
-                                    />
-                                  </div>
-
-                                  <div className="col-md-3">
-                                    <label className="form-label fw-bold">
-                                      Vacant Bed
-                                    </label>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      // value={vacantBeds}
-                                      value={vacantBeds || "0"}  
-                                      readOnly
-                                    />
-                                  </div>
+                              {/* Bed Information */}
+                              <div className="row g-3 mt-3">
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">
+                                    Occupied Bed
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={occupiedBeds || "0"}
+                                    readOnly
+                                  />
                                 </div>
-                              
+
+                                <div className="col-md-3">
+                                  <label className="form-label fw-bold">
+                                    Vacant Bed
+                                  </label>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={vacantBeds || "0"}
+                                    readOnly
+                                  />
+                                </div>
+                              </div>
                             </div>
                           )}
                         </div>
@@ -5058,7 +5360,7 @@ const handleRowClick = async (patient) => {
                 </div>
 
                 {/* Referral Section */}
-                 <div className="card mb-3">
+                <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
@@ -5315,7 +5617,7 @@ const handleRowClick = async (patient) => {
                               <div className="row mb-3">
                                 <div className="col-md-2">
                                   <label className="form-label fw-bold">
-                                    Reffered Hospital Name
+                                    Referred Hospital Name
                                   </label>
                                   <input
                                     type="text"
@@ -5415,7 +5717,7 @@ const handleRowClick = async (patient) => {
                                 setFollowUps({
                                   ...followUps,
                                   noOfFollowDays: days,
-                                  followUpDate: calculateFollowUpDate(days),
+                                  followUpDate: calculatefollowUpDate(days),
                                 });
                               }}
                               style={{ width: "120px" }}
@@ -5537,16 +5839,16 @@ const handleRowClick = async (patient) => {
           onTemplateSaved={(template) => {}}
         /> */}
         <TreatmentModal
-  show={showTreatmentModal}
-  onClose={() => {
-    setShowTreatmentModal(false);
-    setSelectedTemplateForEdit(null);
-    setTreatmentModalType("create");
-  }}
-  templateType={treatmentModalType}
-  selectedTemplate={selectedTemplateForEdit}
-  onTemplateSaved={handleTreatmentTemplateSaved}
-/>
+          show={showTreatmentModal}
+          onClose={() => {
+            setShowTreatmentModal(false);
+            setSelectedTemplateForEdit(null);
+            setTreatmentModalType("create");
+          }}
+          templateType={treatmentModalType}
+          selectedTemplate={selectedTemplateForEdit}
+          onTemplateSaved={handleTreatmentTemplateSaved}
+        />
 
         {/* OT Calendar Modal */}
         {showOtCalendarModal && (
@@ -5611,7 +5913,7 @@ const handleRowClick = async (patient) => {
             style={{
               display: "block",
               backgroundColor: "rgba(0,0,0,0.5)",
-              zIndex: 0,
+              zIndex: 1055,
             }}
             tabIndex="-1"
             onClick={() => setShowCurrentMedicationModal(false)}
@@ -5629,7 +5931,16 @@ const handleRowClick = async (patient) => {
               onClick={(e) => e.stopPropagation()}
             >
               <div className="modal-content">
-                <div className="modal-header">
+                <div
+                  className="modal-header"
+                  style={{
+                    backgroundColor: "#6aab9c",
+                    color: "white",
+                    borderBottom: "1px solid #6aab9c",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "8px 8px 0 0",
+                  }}
+                >
                   <h5 className="modal-title">Current Medication</h5>
                   <button
                     type="button"
@@ -5680,31 +5991,107 @@ const handleRowClick = async (patient) => {
                         </tr>
                       </thead>
                       <tbody>
-                        <tr>
-                          <td>1</td>
-                          <td>CHOLECALCIFEROL (VITAMIN D3) 60000 IU TABLET</td>
-                          <td className="text-center">1</td>
-                          <td className="text-center">30</td>
-                          <td className="text-center">ONCE IN 7 DAYS</td>
-                          <td className="text-center">4</td>
-                          <td className="text-center">0</td>
-                          <td>Dr. M.G.Prashanth</td>
-                          <td>GENERAL MEDICINE</td>
-                          <td className="text-center">19/12/2020</td>
-                          <td className="text-center">
-                            <input type="checkbox" />
-                          </td>
-                          <td className="text-center">
-                            <input type="checkbox" />
-                          </td>
-                        </tr>
+                        {currentMedications && currentMedications.length > 0 ? (
+                          currentMedications.map((medication, index) => (
+                            <tr key={medication.id || index}>
+                              <td>{index + 1}</td>
+                              <td>{medication.drugName}</td>
+                              <td className="text-center">
+                                {medication.dosage}
+                              </td>
+                              <td className="text-center">{medication.days}</td>
+                              <td className="text-center">
+                                {medication.frequency}
+                              </td>
+                              <td className="text-center">
+                                {medication.total}
+                              </td>
+                              <td className="text-center">
+                                {medication.stock || 0}
+                              </td>
+                              <td>{medication.prescribedBy}</td>
+                              <td>{medication.department}</td>
+                              <td className="text-center">
+                                {formatDateForDisplay(
+                                  medication.prescribedDate,
+                                )}
+                              </td>
+                              <td className="text-center">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={
+                                    currentMedicationActions[medication.id] ===
+                                    "stop"
+                                  }
+                                  onChange={() =>
+                                    handleCurrentMedicationAction(
+                                      medication,
+                                      "stop",
+                                    )
+                                  }
+                                />
+                              </td>
+                              <td className="text-center">
+                                <input
+                                  type="checkbox"
+                                  className="form-check-input"
+                                  checked={
+                                    currentMedicationActions[medication.id] ===
+                                    "repeat"
+                                  }
+                                  onChange={() =>
+                                    handleCurrentMedicationAction(
+                                      medication,
+                                      "repeat",
+                                    )
+                                  }
+                                />
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="12" className="text-center text-muted">
+                              No current medication found
+                            </td>
+                          </tr>
+                        )}
                       </tbody>
                     </table>
                   </div>
-                  <div style={{ marginTop: "15px" }}>
-                    <button className="btn btn-primary me-2">STOP</button>
-                    <button className="btn btn-primary me-2">REPEAT</button>
-                  </div>
+                  {Object.values(currentMedicationActions).some(Boolean) && (
+                    <div className="card mt-3">
+                      <div className="card-header py-2">
+                        <h6 className="mb-0 fw-bold">Selected Medications</h6>
+                      </div>
+                      <div className="card-body">
+                        <div className="d-flex flex-wrap gap-2">
+                          {currentMedications
+                            .filter((medication) =>
+                              Boolean(currentMedicationActions[medication.id]),
+                            )
+                            .map((medication) => (
+                              <span
+                                key={medication.id}
+                                className={`badge ${
+                                  currentMedicationActions[medication.id] ===
+                                  "repeat"
+                                    ? "bg-primary"
+                                    : "bg-danger"
+                                }`}
+                              >
+                                {medication.drugName} -{" "}
+                                {currentMedicationActions[medication.id] ===
+                                "repeat"
+                                  ? "Repeat"
+                                  : "Stop"}
+                              </span>
+                            ))}
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
                 <div className="modal-footer">
                   <button
