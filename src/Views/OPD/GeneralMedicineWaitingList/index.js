@@ -37,6 +37,7 @@ import {
   MAS_BED_COUNT,
   ALL_REPORTS,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
+  GET_ALL_DRUGS_BY_SECTION,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -541,7 +542,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchDrugOptions = async (searchText = "", page = 0) => {
     try {
       const response = await getRequest(
-        `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`,
+        `${GET_ALL_DRUGS_BY_SECTION}?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`,
       );
 
       if (response.status === 200 && response.response?.content) {
@@ -1405,7 +1406,7 @@ const GeneralMedicineWaitingList = () => {
       );
       if (response?.status === 200 && Array.isArray(response.response)) {
         const medications = response.response.map((item, index) => ({
-          id: item.prescriptionDtId || index + 1, // Better to use actual ID if available
+          id: item.prescriptionDtId || index + 1, 
           drugId: item.drugId,
           drugName: item.drugName,
           dosage: item.dosage,
@@ -1424,11 +1425,11 @@ const GeneralMedicineWaitingList = () => {
 
         setCurrentMedications(medications);
       } else {
-        setCurrentMedications([]); // Set empty array, not empty string
+        setCurrentMedications([]); 
       }
     } catch (error) {
       console.error("Error fetching current medications:", error);
-      setCurrentMedications([]); // Set empty array, not empty string
+      setCurrentMedications([]); 
     }
   };
 
@@ -3156,17 +3157,14 @@ const GeneralMedicineWaitingList = () => {
     const dosage = Number(item.dosage);
     const days = Number(item.days);
 
-    // 👉 If dosage or days is zero → return 0
     if (dosage === 0 || days === 0) {
       return "0";
     }
 
-    // If empty OR invalid values
     if (isNaN(dosage) || isNaN(days)) {
       return "";
     }
 
-    // Get frequency multiplier
     const selectedFrequency = allFrequencies.find(
       (f) => Number(f.frequencyId) === Number(item.frequency),
     );
@@ -3177,16 +3175,10 @@ const GeneralMedicineWaitingList = () => {
 
     let total = 0;
 
-    // --------------------------
-    // SOLID ITEMS
-    // --------------------------
     if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
     }
 
-    // --------------------------
-    // LIQUID ITEMS
-    // --------------------------
     else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
       const qtyPerUnit = Number(item.aDispQty) || 1;
 

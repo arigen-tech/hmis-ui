@@ -23,6 +23,7 @@ import {
   GET_RECALL_PATIENT_DETAILS,
   UPDATE_RECALL_PATIENT,
   GET_PATIENT_PRESCRIPTION_DETAILS,
+  GET_ALL_DRUGS_BY_SECTION,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -235,7 +236,6 @@ const OpdRRecallPatient = () => {
       setVacantBeds(selectedWard.vacantBed || selectedWard.vacant || "0");
     }
 
-    // ✅ Always fetch fresh bed count from API
     if (deptId) {
       try {
         const response = await getRequest(`${MAS_BED_COUNT}/${deptId}`);
@@ -327,7 +327,7 @@ const OpdRRecallPatient = () => {
   const fetchDrugOptions = async (searchText = "", page = 0) => {
     try {
       const response = await getRequest(
-        `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`,
+        `${GET_ALL_DRUGS_BY_SECTION}?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`,
       );
 
       if (response.status === 200 && response.response?.content) {
@@ -904,7 +904,6 @@ const OpdRRecallPatient = () => {
   const validateSubmitForm = () => {
     const errors = {};
 
-    // Validate required fields
     if (!formData.patientSymptoms) {
       errors.patientSymptoms = "Patient signs & symptoms is required";
     }
@@ -933,6 +932,40 @@ const OpdRRecallPatient = () => {
 
     if (!hasWorkingDiagnosis && !hasIcdDiagnosis) {
       errors.diagnosis = "Working diagnosis or ICD diagnosis is required";
+    }
+
+    // Follow Up validation (if followUpFlag is true)
+    if (followUps.followUpFlag) {
+      if (!followUps.noOfFollowDays || followUps.noOfFollowDays <= 0) {
+        errors.followUpDays = "Number of follow-up days is required";
+      }
+      if (!followUps.followUpDate) {
+        errors.followUpDate = "Follow-up date is required";
+      }
+    }
+
+    if (referralData.isReferred === "Yes") {
+      if (!referralData.referTo) {
+        errors.referTo = "Refer To field is required";
+      }
+      if (!referralData.referralDate) {
+        errors.referralDate = "Referral date is required";
+      }
+      if (!referralNotes) {
+        errors.referralNotes = "Referral notes are required";
+      }
+      if (
+        referralData.referTo === "External" &&
+        !referralData.referredHospitalName
+      ) {
+        errors.referredHospitalName = "Referred hospital name is required";
+      }
+      if (
+        referralData.referTo === "Internal" &&
+        !referralData.currentPriorityNo
+      ) {
+        errors.currentPriorityNo = "Current priority number is required";
+      }
     }
 
     setErrors(errors);
@@ -1625,7 +1658,6 @@ const OpdRRecallPatient = () => {
   const handleInvestigationTemplateSelect = (template) => {
     const templateId = template.templateId;
 
-    // Prevent selecting same template twice
     if (selectedTemplateIds.has(templateId)) {
       alert("This template is already selected");
       setSelectedInvestigationTemplate("Select..");
@@ -1653,7 +1685,6 @@ const OpdRRecallPatient = () => {
         const existing = existingMap.get(item.investigationId);
 
         if (existing) {
-          // ✅ SAFE templateIds handling
           const templateIds = Array.isArray(existing.templateIds)
             ? existing.templateIds
             : [];
@@ -1674,7 +1705,6 @@ const OpdRRecallPatient = () => {
             investigationName: existing.name ?? item.investigationName,
           });
         } else {
-          // ✅ Always initialize templateIds
           updated.push({
             id: null,
             name:
@@ -1947,9 +1977,7 @@ const OpdRRecallPatient = () => {
           patientData.pastMedicalHistory ||
           patientData.familyHistory;
         if (hasClinicalData) sectionsToExpand.clinicalHistory = true;
-
         setGeneralTreatmentAdvice(patientData.treatmentAdvice || "");
-
         setWorkingDiagnosis(patientData?.workingDiag || "");
 
         const hasDiagnosisData = patientData.icdDiag?.length > 0;

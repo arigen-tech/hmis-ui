@@ -216,6 +216,7 @@ export const GET_PATIENT_PRESCRIPTION_DETAILS = `/opd/getPatientPrescriptionDeta
 export const GET_RECALL_OPD_PATIENTS_LIST = `/opd/getRecallOpdPatientVisitList`;
 export const GET_RECALL_PATIENT_DETAILS = `/opd/recallPatientDetailsByVisit`;
 export const UPDATE_RECALL_PATIENT = `/opd/update-recall-patient`;
+export const GET_ALL_DRUGS_BY_SECTION = `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic`;
 
 
 
