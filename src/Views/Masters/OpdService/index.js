@@ -29,6 +29,7 @@ const OPDServiceMaster = () => {
   const [currentItem, setCurrentItem] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
+  const [dateError, setDateError] = useState("")
   const [editingService, setEditingService] = useState(null)
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
@@ -342,6 +343,7 @@ const OPDServiceMaster = () => {
       toDate: "",
     });
     setIsFormValid(false);
+    setDateError("");
     setDoctorData([]);
     setFormLoading(false);
   };
@@ -388,20 +390,46 @@ const OPDServiceMaster = () => {
     setConfirmDialog({ isOpen: false, serviceId: null, newStatus: false, serviceName: "" });
   };
 
+  const isDateRangeValid = (fromDate, toDate) => {
+    if (!fromDate || !toDate) {
+      return true;
+    }
+
+    const from = new Date(fromDate);
+    const to = new Date(toDate);
+    return from <= to;
+  };
+
+  const validateForm = (data) => {
+    const hasRequiredFields =
+      !!data.baseTariff &&
+      !!data.serviceCategory &&
+      !!data.departmentId &&
+      !!data.doctorId &&
+      !!data.fromDate &&
+      !!data.toDate;
+
+    if (!hasRequiredFields) {
+      setDateError("");
+      return false;
+    }
+
+    if (!isDateRangeValid(data.fromDate, data.toDate)) {
+      setDateError("From Date must be before or equal to To Date.");
+      return false;
+    }
+
+    setDateError("");
+    return true;
+  };
+
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => {
       const updatedFormData = { ...prevData, [id]: value };
       
       // Validate form after update
-      setIsFormValid(
-        !!updatedFormData.baseTariff &&
-        !!updatedFormData.serviceCategory &&
-        !!updatedFormData.departmentId &&
-        !!updatedFormData.doctorId &&
-        !!updatedFormData.fromDate &&
-        !!updatedFormData.toDate
-      );
+      setIsFormValid(validateForm(updatedFormData));
       
       return updatedFormData;
     });
@@ -429,14 +457,7 @@ const OPDServiceMaster = () => {
       }
       
       // Validate form after update
-      setIsFormValid(
-        !!updatedFormData.baseTariff &&
-        !!updatedFormData.serviceCategory &&
-        !!updatedFormData.departmentId &&
-        !!updatedFormData.doctorId &&
-        !!updatedFormData.fromDate &&
-        !!updatedFormData.toDate
-      );
+      setIsFormValid(validateForm(updatedFormData));
       
       return updatedFormData;
     });
@@ -730,6 +751,14 @@ const OPDServiceMaster = () => {
                         />
                       </div>
                     </div>
+
+                    {dateError && (
+                      <div className="row">
+                        <div className="col-md-12">
+                          <p className="text-danger mb-0">{dateError}</p>
+                        </div>
+                      </div>
+                    )}
 
                     <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                       <button
