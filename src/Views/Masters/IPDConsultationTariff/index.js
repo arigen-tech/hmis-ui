@@ -372,7 +372,8 @@ const IPDConsultationTariff = () => {
   };
 
   const validateForm = (formDataToValidate) => {
-    const isValid = formDataToValidate.serviceCategoryId &&
+    // Check all required fields are filled
+    const requiredFieldsFilled = formDataToValidate.serviceCategoryId &&
       formDataToValidate.visitTypeId &&
       formDataToValidate.departmentId &&
       formDataToValidate.doctorId &&
@@ -380,7 +381,33 @@ const IPDConsultationTariff = () => {
       formDataToValidate.validFrom &&
       formDataToValidate.validTo;
 
-    setIsFormValid(!!isValid);
+    if (!requiredFieldsFilled) {
+      setIsFormValid(false);
+      return;
+    }
+
+    // Validate that validFrom is not empty
+    if (!formDataToValidate.validFrom || formDataToValidate.validFrom.trim() === "") {
+      setIsFormValid(false);
+      return;
+    }
+
+    // Validate that validTo is not empty
+    if (!formDataToValidate.validTo || formDataToValidate.validTo.trim() === "") {
+      setIsFormValid(false);
+      return;
+    }
+
+    // Validate that validFrom is before validTo
+    const fromDate = new Date(formDataToValidate.validFrom);
+    const toDate = new Date(formDataToValidate.validTo);
+
+    if (fromDate >= toDate) {
+      setIsFormValid(false);
+      return;
+    }
+
+    setIsFormValid(true);
   };
 
   const resetForm = () => {
@@ -413,16 +440,46 @@ const IPDConsultationTariff = () => {
       return;
     }
 
-    // Format dates properly - send as ISO string
-    const fromDateObj = new Date(formData.validFrom);
-    const toDateObj = new Date(formData.validTo);
+    // Validate date range
+    const fromDate = new Date(formData.validFrom);
+    const toDate = new Date(formData.validTo);
 
-    // Set time to start of day for fromDate and end of day for toDate
-    fromDateObj.setHours(0, 0, 0, 0);
-    toDateObj.setHours(23, 59, 59, 999);
+    if (fromDate >= toDate) {
+      setProcess(false);
+      showPopup("Valid From date must be before Valid To date", "error");
+      return;
+    }
 
-    const fromDate = fromDateObj.toISOString();
-    const toDate = toDateObj.toISOString();
+    // Check for duplicate records
+    try {
+      // Check if record already exists with same combination (only for new records)
+      if (!editingRecord) {
+        const existingRecords = data.filter(rec =>
+          rec.departmentId === parseInt(formData.departmentId) &&
+          rec.doctorId === parseInt(formData.doctorId) &&
+          rec.serviceCategoryId === parseInt(formData.serviceCategoryId) &&
+          rec.visitTypeId === parseInt(formData.visitTypeId)
+        );
+
+        if (existingRecords.length > 0) {
+          setProcess(false);
+          showPopup("A record with this combination of Department, Doctor, Service Category, and Visit Type already exists", "error");
+          return;
+        }
+      }
+    } catch (error) {
+      console.error("Error checking for duplicates:", error);
+    }
+
+    // Format dates properly - use local date without timezone conversion
+    // HTML date input gives us YYYY-MM-DD in local timezone
+    // We need to send it as ISO string preserving the local date
+    const fromDateStr = formData.validFrom; // This is already in YYYY-MM-DD format
+    const toDateStr = formData.validTo;     // This is already in YYYY-MM-DD format
+
+    // Create ISO strings that preserve the local date (add T00:00:00)
+    const fromDateISO = fromDateStr + "T00:00:00";
+    const toDateISO = toDateStr + "T23:59:59";
 
     const payload = {
       serviceCategoryId: parseInt(formData.serviceCategoryId, 10),
@@ -431,8 +488,8 @@ const IPDConsultationTariff = () => {
       doctorId: parseInt(formData.doctorId, 10),
       hospitalId: parseInt(hospitalId, 10),
       baseTariff: parseFloat(formData.charge),
-      fromDate: fromDate,
-      toDate: toDate
+      fromDate: fromDateISO,
+      toDate: toDateISO
     };
 
     try {
@@ -716,7 +773,7 @@ const IPDConsultationTariff = () => {
                                   onClick={() => handleEdit(rec)}
                                   disabled={rec.status !== "y"}
                                 >
-                                  <i className="fa fa-pencil"></i> Edit
+                                  <i className="fa fa-pencil"></i>
                                 </button>
                                </td>
                              </tr>
@@ -868,7 +925,12 @@ const IPDConsultationTariff = () => {
                           onChange={handleInputChange}
                           required
                           disabled={formLoading}
+                          max={formData.validTo || undefined}
+                          title="Select a valid from date (must be before Valid To date)"
                         />
+                        {formData.validFrom && formData.validTo && new Date(formData.validFrom) >= new Date(formData.validTo) && (
+                          <small className="text-danger">Valid From must be before Valid To</small>
+                        )}
                       </div>
 
                       <div className="form-group col-md-4 mt-3">
@@ -883,7 +945,12 @@ const IPDConsultationTariff = () => {
                           onChange={handleInputChange}
                           required
                           disabled={formLoading}
+                          min={formData.validFrom || undefined}
+                          title="Select a valid to date (must be after Valid From date)"
                         />
+                        {formData.validFrom && formData.validTo && new Date(formData.validFrom) >= new Date(formData.validTo) && (
+                          <small className="text-danger">Valid To must be after Valid From</small>
+                        )}
                       </div>
                     </div>
 

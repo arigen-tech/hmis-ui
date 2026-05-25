@@ -288,8 +288,8 @@ const PackageConfiguration = () => {
         updated.corporateId = "";
       }
       
-      // Validate form
-      const isValid = 
+      // Validate form with date range checks
+      const allFieldsFilled = 
         updated.packageId &&
         updated.billingTypeId &&
         updated.roomCategoryId &&
@@ -300,7 +300,19 @@ const PackageConfiguration = () => {
         updated.copayPercent !== "" &&
         updated.maxClaimAmount !== "";
       
-      setIsFormValid(!!isValid);
+      let isValid = !!allFieldsFilled;
+      
+      // Validate date range if both dates are filled
+      if (isValid && updated.effectiveFrom && updated.effectiveTo) {
+        const fromDate = new Date(updated.effectiveFrom);
+        const toDate = new Date(updated.effectiveTo);
+        
+        if (fromDate >= toDate) {
+          isValid = false;
+        }
+      }
+      
+      setIsFormValid(isValid);
       
       return updated;
     });
@@ -344,6 +356,16 @@ const PackageConfiguration = () => {
     
     if (!isFormValid) {
       showPopup("Please fill all required fields", "error");
+      setProcess(false);
+      return;
+    }
+    
+    // Validate date range
+    const fromDate = new Date(formData.effectiveFrom);
+    const toDate = new Date(formData.effectiveTo);
+    
+    if (fromDate >= toDate) {
+      showPopup("Effective From date must be before Effective To date", "error");
       setProcess(false);
       return;
     }
@@ -868,7 +890,12 @@ const PackageConfiguration = () => {
                           onChange={handleInputChange}
                           required
                           disabled={formLoading}
+                          max={formData.effectiveTo || undefined}
+                          title="Select an effective from date (must be before Effective To date)"
                         />
+                        {formData.effectiveFrom && formData.effectiveTo && new Date(formData.effectiveFrom) >= new Date(formData.effectiveTo) && (
+                          <small className="text-danger">Effective From must be before Effective To</small>
+                        )}
                       </div>
                       
                       <div className="form-group col-md-4 mt-3">
@@ -883,7 +910,12 @@ const PackageConfiguration = () => {
                           onChange={handleInputChange}
                           required
                           disabled={formLoading}
+                          min={formData.effectiveFrom || undefined}
+                          title="Select an effective to date (must be after Effective From date)"
                         />
+                        {formData.effectiveFrom && formData.effectiveTo && new Date(formData.effectiveFrom) >= new Date(formData.effectiveTo) && (
+                          <small className="text-danger">Effective To must be after Effective From</small>
+                        )}
                       </div>
                       
                       <div className="form-group col-md-4 mt-3">
