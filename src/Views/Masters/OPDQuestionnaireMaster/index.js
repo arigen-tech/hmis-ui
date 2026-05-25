@@ -66,7 +66,7 @@ const OPDQuestionnaireMaster = () => {
   };
 
 
-  const fetchHeadings = async (flag = 0) => {
+  const fetchHeadings = async (flag = 1) => {
     try {
       const { response } = await getRequest(`${MAS_QUESTION_HEADING}/getAll/${flag}`);
       setHeadings(response || []); 

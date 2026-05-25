@@ -188,12 +188,15 @@ const ProcedureTypeMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
+        if (onCloseCallback) {
+          onCloseCallback();
+        }
       }
     });
   };
@@ -211,8 +214,9 @@ const ProcedureTypeMaster = () => {
           `${MAS_PROCEDURE_TYPE}/status/${confirmDialog.procedureTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
-          // Update local state with formatted date
+        const responseData = response?.response ?? response?.data ?? response;
+
+        if (responseData) {
           setProcedureTypeData((prevData) =>
             prevData.map((procedureType) =>
               procedureType.id === confirmDialog.procedureTypeId
@@ -224,7 +228,11 @@ const ProcedureTypeMaster = () => {
                 : procedureType
             )
           );
-          showPopup(`Procedure type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(
+            `Procedure type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            "success",
+            fetchProcedureTypeData,
+          );
         }
       } catch (err) {
         console.error("Error updating procedure type status:", err);
@@ -257,7 +265,7 @@ const ProcedureTypeMaster = () => {
 
  
 
-  // Handle activate for inactive records in edit mode
+  // Handle activate for deactive records in edit mode
   const handleActivate = async () => {
     if (editingProcedureType && editingProcedureType.status === "n") {
       try {
@@ -381,7 +389,7 @@ const ProcedureTypeMaster = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${procedureType.id}`}
                                   >
-                                    {procedureType.status === "y" ? 'Active' : 'Inactive'}
+                                    {procedureType.status === "y" ? 'Active' : 'Deactive'}
                                   </label>
                                 </div>
                               </td>

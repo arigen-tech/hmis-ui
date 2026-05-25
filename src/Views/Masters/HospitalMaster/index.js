@@ -57,6 +57,9 @@ const HospitalMaster = () => {
     longitude: "",
     executive1Contact: "",
     executive2Contact: "",
+     laboratoryBilling: "",     
+  radiologyBilling: "",    
+
   });
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -71,7 +74,7 @@ const HospitalMaster = () => {
   const HOSPITAL_CODE_MAX_LENGTH = 8;
   const HOSPITAL_NAME_MAX_LENGTH = 30;
   const ADDRESS_MAX_LENGTH = 50;
-  const PINCODE_MAX_LENGTH = 10;
+  const PINCODE_MAX_LENGTH = 6;
   const CONTACT_NUMBER_MAX_LENGTH = 10;
   const EMAIL_MAX_LENGTH = 50;
   const LAT_LONG_MAX_LENGTH = 20;
@@ -251,8 +254,10 @@ const HospitalMaster = () => {
         (updatedFormData.city || "").trim() !== "" &&
         (updatedFormData.regCostApplicable || "").trim() !== "" &&
         (updatedFormData.appCostApplicable || "").trim() !== "" &&
-        (updatedFormData.preConsultationAvailable || "").trim() !== "";
-
+        (updatedFormData.preConsultationAvailable || "").trim() !== ""&&
+        (updatedFormData.laboratoryBilling || "").trim() !== "" &&  
+      (updatedFormData.radiologyBilling || "").trim() !== "";  
+ 
       setIsFormValid(isValid);
       return updatedFormData;
     });
@@ -263,7 +268,9 @@ const HospitalMaster = () => {
     const appCostValue = hospital.appCostApplicable === "y" ? "Yes" : "No";
     const preConsultationValue =
       hospital.preConsultationAvailable === "y" ? "Yes" : "No";
-
+const labBillingValue = hospital.labStatus === "y" ? "Yes" : "No";      
+  const radBillingValue = hospital.radioStatus === "y" ? "Yes" : "No";     
+  
     setEditingHospital(hospital);
 
     setFormData({
@@ -277,9 +284,9 @@ const HospitalMaster = () => {
       district: hospital.districtName,
       districtId: hospital.districtId,
       city: hospital.city,
-      pincode: hospital.pincode,
-      contactNumber1: hospital.contactNumber1,
-      contactNumber2: hospital.contactNumber2,
+      pincode: hospital.pinCode || "",
+      contactNumber1: hospital.contactNumber || "",
+      contactNumber2: hospital.contactNumber2 || "",
       email: hospital.email,
       regCostApplicable: regCostValue,
       appCostApplicable: appCostValue,
@@ -288,6 +295,8 @@ const HospitalMaster = () => {
       longitude: hospital.longitude || "",
       executive1Contact: hospital.executive1Contact || "",
       executive2Contact: hospital.executive2Contact || "",
+       laboratoryBilling: labBillingValue,     
+    radiologyBilling: radBillingValue, 
     });
 
     if (hospital.countryId) {
@@ -326,68 +335,50 @@ const HospitalMaster = () => {
       const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n";
       const preConsultationValue =
         formData.preConsultationAvailable === "Yes" ? "y" : "n";
+const labBillingValue = formData.laboratoryBilling === "Yes" ? "y" : "n";      
+    const radBillingValue = formData.radiologyBilling === "Yes" ? "y" : "n";      
+
+      // Build payload with correct field names matching backend
+      const payload = {
+        hospitalCode: formData.hospitalCode,
+        hospitalName: formData.hospitalName,
+        address: formData.address,
+        countryId: formData.countryId,
+        stateId: formData.stateId,
+        districtId: formData.districtId,
+        city: formData.city,
+        pinCode: formData.pincode,                    // Backend expects pinCode
+        contactNumber: formData.contactNumber1,        // Backend expects contactNumber
+        contactNumber2: formData.contactNumber2,
+        email: formData.email,
+        regCostApplicable: regCostValue,
+        appCostApplicable: appCostValue,
+        preConsultationAvailable: preConsultationValue,
+        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
+        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
+        executive1Contact: formData.executive1Contact,
+        executive2Contact: formData.executive2Contact,
+        labStatus: labBillingValue,                    // Backend expects labStatus
+        radioStatus: radBillingValue,                  // Backend expects radioStatus
+      };
 
       if (editingHospital) {
+        payload.status = editingHospital.status;
+        
         const response = await putRequest(
           `${MAS_HOSPITAL}/updateById/${editingHospital.id}`,
-          {
-            hospitalCode: formData.hospitalCode,
-            hospitalName: formData.hospitalName,
-            address: formData.address,
-            countryId: formData.countryId,
-            stateId: formData.stateId,
-            districtId: formData.districtId,
-            city: formData.city,
-            pincode: formData.pincode,
-            contactNumber1: formData.contactNumber1,
-            contactNumber2: formData.contactNumber2,
-            email: formData.email,
-            regCostApplicable: regCostValue,
-            appCostApplicable: appCostValue,
-            preConsultationAvailable: preConsultationValue,
-            status: editingHospital.status,
-            latitude: formData.latitude,
-            longitude: formData.longitude,
-            executive1Contact: formData.executive1Contact,
-            executive2Contact: formData.executive2Contact,
-          },
+          payload,
         );
 
-        if (response && response.response) {
-          setHospitals((prevData) =>
-            prevData.map((hospital) =>
-              hospital.id === editingHospital.id ? response.response : hospital,
-            ),
-          );
-          showPopup(UPDATE_HOSPITAL_SUCC_MSG, "success");
-        }
+        showPopup(UPDATE_HOSPITAL_SUCC_MSG, "success");
+        fetchHospitals();
       } else {
-        const response = await postRequest(`${MAS_HOSPITAL}/create`, {
-          hospitalCode: formData.hospitalCode,
-          hospitalName: formData.hospitalName,
-          address: formData.address,
-          countryId: formData.countryId,
-          stateId: formData.stateId,
-          districtId: formData.districtId,
-          city: formData.city,
-          pincode: formData.pincode,
-          contactNumber1: formData.contactNumber1,
-          contactNumber2: formData.contactNumber2,
-          email: formData.email,
-          regCostApplicable: regCostValue,
-          appCostApplicable: appCostValue,
-          preConsultationAvailable: preConsultationValue,
-          status: "y",
-          latitude: formData.latitude,
-          longitude: formData.longitude,
-          executive1Contact: formData.executive1Contact,
-          executive2Contact: formData.executive2Contact,
-        });
+        const response = await postRequest(`${MAS_HOSPITAL}/create`, payload);
 
         if (response && response.response) {
           setHospitals([...hospitals, response.response]);
-          showPopup(ADD_HOSPITAL_SUCC_MSG, "success");
         }
+        showPopup(ADD_HOSPITAL_SUCC_MSG, "success");
       }
 
       setEditingHospital(null);
@@ -413,9 +404,10 @@ const HospitalMaster = () => {
         longitude: "",
         executive1Contact: "",
         executive2Contact: "",
+         laboratoryBilling: "",     
+  radiologyBilling: "",    
       });
       setShowForm(false);
-      fetchHospitals();
     } catch (err) {
       console.error("Error saving hospital:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -531,6 +523,9 @@ const HospitalMaster = () => {
                             longitude: "",
                             executive1Contact: "",
                             executive2Contact: "",
+                            laboratoryBilling: "",     
+                            radiologyBilling: "",    
+                            
                           });
                           setIsFormValid(false);
                           setShowForm(true);
@@ -820,6 +815,9 @@ const HospitalMaster = () => {
                           onChange={handleInputChange}
                           placeholder="Enter pincode"
                           maxLength={PINCODE_MAX_LENGTH}
+                          onInput={(e) =>
+                            (e.target.value = e.target.value.replace(/\D/g, ""))
+                          }
                         />
                       </div>
                       <div className="col-md-6">
@@ -883,7 +881,7 @@ const HospitalMaster = () => {
                           <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="regCostApplicable"
                           name="regCostApplicable"
                           value={formData.regCostApplicable}
@@ -905,7 +903,7 @@ const HospitalMaster = () => {
                           <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="appCostApplicable"
                           name="appCostApplicable"
                           value={formData.appCostApplicable}
@@ -926,7 +924,7 @@ const HospitalMaster = () => {
                           <span className="text-danger">*</span>
                         </label>
                         <select
-                          className="form-control"
+                          className="form-select"
                           id="preConsultationAvailable"
                           name="preConsultationAvailable"
                           value={formData.preConsultationAvailable}
@@ -1012,21 +1010,59 @@ const HospitalMaster = () => {
                           }
                         />
                       </div>
-                    </div>
+                   
+                    {/* Laboratory Billing */}
+<div className="col-md-6">
+  <label htmlFor="laboratoryBilling" className="form-label">
+    Laboratory Billing <span className="text-danger">*</span>
+  </label>
+  <select
+    className="form-select"
+    id="laboratoryBilling"
+    name="laboratoryBilling"
+    value={formData.laboratoryBilling}
+    onChange={handleInputChange}
+    required
+  >
+    <option value="">Select</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+</div>
+
+{/* Radiology Billing */}
+<div className="col-md-6">
+  <label htmlFor="radiologyBilling" className="form-label">
+    Radiology Billing <span className="text-danger">*</span>
+  </label>
+  <select
+    className="form-select"
+    id="radiologyBilling"
+    name="radiologyBilling"
+    value={formData.radiologyBilling}
+    onChange={handleInputChange}
+    required
+  >
+    <option value="">Select</option>
+    <option value="Yes">Yes</option>
+    <option value="No">No</option>
+  </select>
+</div>
+</div>
                     <div className="d-flex justify-content-end mt-4">
                       <button
-                        type="button"
-                        className="btn btn-secondary me-2"
-                        onClick={() => setShowForm(false)}
-                      >
-                        Cancel
-                      </button>
-                      <button
                         type="submit"
-                        className="btn btn-success"
+                        className="btn btn-success me-2"
                         disabled={!isFormValid}
                       >
                         {editingHospital ? "Update" : "Save"}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={() => setShowForm(false)}
+                      >
+                        Cancel
                       </button>
                     </div>
                   </div>

@@ -39,6 +39,15 @@ const BloodCollectionTypeMaster = () => {
 
   const [showForm, setShowForm] = useState(false);
 
+  const DESCRIPTION_MAX_LENGTH = 50;
+
+  const truncateDescription = (description) => {
+    if (!description) return "N/A";
+    return description.length > DESCRIPTION_MAX_LENGTH
+      ? description.substring(0, DESCRIPTION_MAX_LENGTH) + "..."
+      : description;
+  };
+
   // format date
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
@@ -326,7 +335,7 @@ const BloodCollectionTypeMaster = () => {
                     <tr>
                       <th>Code</th>
                       <th>Name</th>
-                      <th>Description</th>
+                      <th style={{ width: "250px", maxWidth: "250px" }}>Description</th>
                       <th>Last Update</th>
                       <th>Status</th>
                       <th>Edit</th>
@@ -337,7 +346,9 @@ const BloodCollectionTypeMaster = () => {
                       <tr key={rec.collectionTypeId}>
                         <td>{rec.collectionTypeCode}</td>
                         <td>{rec.collectionTypeName}</td>
-                        <td>{rec.description}</td>
+                        <td style={{ maxWidth: "250px", wordBreak: "break-word" }}>
+                          {truncateDescription(rec.description)}
+                        </td>
                         <td>{formatDate(rec.lastUpdateDate)}</td>
                         <td>
                           <div className="form-check form-switch">

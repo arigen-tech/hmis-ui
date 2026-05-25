@@ -152,15 +152,21 @@ const BookingAppointmentHistory = () => {
   const [selectedReason, setSelectedReason] = useState("");
   const [loadingReasons, setLoadingReasons] = useState(false);
   const [patientToCancel, setPatientToCancel] = useState(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   // Functionality States
   const [newDate, setNewDate] = useState("");
   const [newSession, setNewSession] = useState("");
 
-  useEffect(() => {
-    fetchSessions();
-    fetchCancellationReasons();
-  }, []);
+useEffect(() => {
+  const initializeData = async () => {
+    setInitialLoading(true);
+    await Promise.all([fetchSessions(), fetchCancellationReasons()]);
+    setInitialLoading(false);
+  };
+  
+  initializeData();
+}, []);
 
   // Fetch sessions
   const fetchSessions = async () => {
@@ -779,6 +785,11 @@ const BookingAppointmentHistory = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
+  if (initialLoading) {
+  return <LoadingScreen />;
+}
+
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -790,6 +801,7 @@ const BookingAppointmentHistory = () => {
               </h4>
             </div>
             <div className="card-body">
+              {searchLoading && <LoadingScreen />}
               <div className="row mb-4">
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Mobile Number</label>
@@ -824,6 +836,7 @@ const BookingAppointmentHistory = () => {
                   </button>
                 </div>
               </div>
+
 
 
               {showReport && !searchLoading  && reportData.length > 0 && (
@@ -906,7 +919,7 @@ const BookingAppointmentHistory = () => {
                 </div>
               )}
 
-              {showReport && !isGenerating && reportData.length === 0 && (
+              {showReport && !searchLoading && reportData.length === 0 && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="alert alert-info">
@@ -1070,7 +1083,7 @@ const BookingAppointmentHistory = () => {
                               <h5 className="mb-0 fw-bold">
                                 Available Time Slots
                               </h5>
-                              <p class="h6" className="mb-0 text-muted small">
+                              <p className=" h6 mb-0 text-muted small">
                                 Date: {newDate.split("-").reverse().join("/")} |
                                 Session:{" "}
                                 {sessions.find(

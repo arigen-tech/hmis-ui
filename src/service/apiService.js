@@ -81,7 +81,7 @@ export const getImageRequest = async (
  * @param {object} headers - Optional headers
  * @returns {Promise<object>} - API response
  */
-export const postRequest = async (endpoint, data, headers = {}) => {
+export const postRequest = async (endpoint, data, options = {}) => {
   try {
     let token;
     if (localStorage.token) {
@@ -89,18 +89,22 @@ export const postRequest = async (endpoint, data, headers = {}) => {
     } else {
       token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
     }
+
+    const isMultipart = options.isMultipart;
+
     const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
         ...token,
-        ...headers,
+        ...(isMultipart ? {} : { "Content-Type": "application/json" }),
       },
-      body: JSON.stringify(data),
+      body: isMultipart ? data : JSON.stringify(data),
     });
+
     if (!response.ok) {
       throw new Error(`POST request failed: ${response.status}`);
     }
+
     return await response.json();
   } catch (error) {
     console.error("POST Error:", error);
@@ -195,6 +199,28 @@ export const putRequest = async (endpoint, data, headers = {}) => {
     console.error("PUT Error:", error);
     throw error;
   }
+};
+
+/**
+ * Fetch PDF report from the server
+ * @param {string} reportUrl - The base URL for the report endpoint
+ * @param {string} flag - The flag parameter ('d' for download/view, 'p' for print)
+ * @returns {Promise<Blob>} - Returns a promise that resolves to a PDF blob
+ * @throws {Error} - Throws an error if the request fails
+ */
+export const fetchPdfReportForViewAndPrint = async (reportUrl, flag) => {
+  const response = await fetch(`${reportUrl}&flag=${flag}`, {
+    method: "GET",
+    headers: {
+      Accept: "application/pdf",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Failed to fetch report: ${response.status} ${response.statusText}`);
+  }
+
+  return await response.blob();
 };
 
 const uploadFileWithJson = async (endpoint, jsonData, files) => {

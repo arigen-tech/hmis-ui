@@ -86,20 +86,28 @@ const CrossMatchType = () => {
       name: record.crossMatchName || "",
       turnaround: record.turnaroundTimeMin?.toString() || "",
       cost: record.chargeAmount?.toString() || "",
-      emergencyAllowed: record.isEmergencyAllowed || "",
+emergencyAllowed: record.isEmergencyAllowed?.toUpperCase() || "",
       description: record.description || "",
     });
     setShowForm(true);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
-    // Validate required fields: code and name
-    const code = name === "code" ? value : formData.code;
-    const nameVal = name === "name" ? value : formData.name;
-    setIsFormValid(code.trim() !== "" && nameVal.trim() !== "");
+ const handleInputChange = (e) => {
+  const { name, value } = e.target;
+
+  const updatedForm = {
+    ...formData,
+    [name]: value,
   };
+
+  setFormData(updatedForm);
+
+  setIsFormValid(
+    updatedForm.code.trim() !== "" &&
+    updatedForm.name.trim() !== "" &&
+    updatedForm.description.trim() !== ""
+  );
+};
 
   const resetForm = () => {
     setShowForm(false);
@@ -141,7 +149,7 @@ const CrossMatchType = () => {
         crossMatchName: formData.name.trim(),
         turnaroundTimeMin: parseInt(formData.turnaround, 10) || 0,
         chargeAmount: parseFloat(formData.cost) || 0,
-        isEmergencyAllowed: formData.emergencyAllowed,
+isEmergencyAllowed: formData.emergencyAllowed,
         description: formData.description.trim(),
       };
 
@@ -301,8 +309,8 @@ const CrossMatchType = () => {
                           <td>{item.crossMatchName}</td>
                           <td>{item.turnaroundTimeMin}</td>
                           <td>{item.chargeAmount}</td>
-                          <td>{formatEmergencyAllowed(item.isEmergencyAllowed)}</td>
-                          <td>{item.description}</td>
+<td>{item.isEmergencyAllowed === "Y" ? "Yes" : "No"}</td>
+                       <td>{item.description}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
@@ -415,7 +423,9 @@ const CrossMatchType = () => {
                     </select>
                   </div>
                   <div className="col-md-4">
-                    <label>Description</label>
+                   <label>
+  Description <span className="text-danger">*</span>
+</label>
                     <textarea
                       name="description"
                       className="form-control"

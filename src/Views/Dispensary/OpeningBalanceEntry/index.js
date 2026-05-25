@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { MAS_DEPARTMENT, MAS_BRAND, MAS_MANUFACTURE, ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig";
+import { ALL_REPORTS, SECTION_ID_FOR_DRUGS, GET_DEPARTMENT_BY_ID, GET_CURRENT_USER_PROFILE_BY_NAME, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_HOSPITAL_ID, GET_ITEM_DETAILS_BY_ID, SAVE_OPENING_BALANCE_ENTRY, SUBMIT_OPENING_BALANCE_ENTRY, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import {WARNING_DUPLICATE_BATCH_ENTRY,WARNING_CORRECT_ERRORS,CONFIRM_SAVE_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SAVED_PRINT,
@@ -11,6 +11,8 @@ import {WARNING_DUPLICATE_BATCH_ENTRY,WARNING_CORRECT_ERRORS,CONFIRM_SAVE_OPENIN
   ERROR_SAVE_DATA_FAILED,
   OPENING_BALANCE_ENTRY_TITLE,
   OPENING_BALANCE_ENTRY_FILE_NAME,
+  OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE,
+  OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME,
 }  from "../../../config/constants"
 import { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
@@ -65,7 +67,6 @@ const OpeningBalanceEntry = () => {
   const [manufacturerOptions, setManufacturerOptions] = useState([]);
   const [currentDept, setCurrentDept] = useState(null);
   const [currentLogUser, setCurrentLogUser] = useState(null);
-  const [processing, setProcessing] = useState(false);
   const [confirmationPopup, setConfirmationPopup] = useState(null);
 
   const [isSaving, setIsSaving] = useState(false);
@@ -133,7 +134,7 @@ const OpeningBalanceEntry = () => {
   const fetchDepartment = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_DEPARTMENT}/getById/${deptId}`);
+      const response = await getRequest(`${GET_DEPARTMENT_BY_ID}/${deptId}`);
       if (response && response.response) {
         setFormData((prev) => ({
           ...prev,
@@ -152,7 +153,7 @@ const OpeningBalanceEntry = () => {
     try {
       setLoading(true);
 
-      const response = await getRequest(`/authController/getUsersForProfile/${crUser}`);
+      const response = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${crUser}`);
 
       if (response && response.response) {
         const { firstName = "", middleName = "", lastName = "" } = response.response;
@@ -173,7 +174,7 @@ const OpeningBalanceEntry = () => {
   const fetchBrand = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_BRAND}/getAll/1`);
+      const response = await getRequest(`${GET_ALL_BRANDS_FOR_DROPDOWN}`);
       if (response && response.response) {
         setBrandOptions(response.response);
       }
@@ -187,7 +188,7 @@ const OpeningBalanceEntry = () => {
   const fetchManufacturer = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_MANUFACTURE}/getAll/1`);
+      const response = await getRequest(`${GET_ALL_MANUFACTURER_FOR_DROPDOWN}`);
       if (response && response.response) {
         setManufacturerOptions(response.response);
       }
@@ -204,14 +205,14 @@ const OpeningBalanceEntry = () => {
       const params = new URLSearchParams();
 
       if (balanceType === "drug") {
-        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+        params.append([REQUEST_PARAM_SECTION_ID], SECTION_ID_FOR_DRUGS);
       }
 
-      params.append("keyword", searchText);
-      params.append("page", page);
-      params.append("size", DEFAULT_ITEMS_PER_PAGE);
+      params.append([REQUEST_PARAM_KEYWORD], searchText);
+      params.append([REQUEST_PARAM_PAGE], page);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-      const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const url = `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -234,7 +235,7 @@ const OpeningBalanceEntry = () => {
   const fetchItemDetails = async (itemId) => {
     try {
       const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
-      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const url = `${GET_ITEM_DETAILS_BY_ID}/${itemId}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}`;
       const response = await getRequest(url);
       
       if (response.status === 200 && response.response) {
@@ -564,7 +565,7 @@ const OpeningBalanceEntry = () => {
         setIsSubmitting(true);
       }
       
-      const endpoint = isSave ? `${INVENTORY}/openingBalanceEntry/save` : `${INVENTORY}/openingBalanceEntry/submit`;
+      const endpoint = isSave ? `${SAVE_OPENING_BALANCE_ENTRY}` : `${SUBMIT_OPENING_BALANCE_ENTRY}`;
       const response = await postRequest(endpoint, payload);
 
       if (response?.status === 200 || response?.success) {
@@ -602,7 +603,7 @@ const OpeningBalanceEntry = () => {
               if (balanceId) {
                 navigate('/ViewDownloadReport', {
                   state: {
-                    reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
+                    reportUrl: `${OPENING_BALANCE_REPORT_URL}?${REQUEST_PARAM_BALANCE_M_ID}=${balanceId}`,
                     title: OPENING_BALANCE_ENTRY_TITLE,
                     fileName: OPENING_BALANCE_ENTRY_FILE_NAME,
                     returnPath: window.location.pathname
@@ -631,7 +632,7 @@ const OpeningBalanceEntry = () => {
       () => {
         console.log("Save cancelled by user");
       },
-      "Yes, Save",
+      "Save",
       "Cancel"
     );
   };
@@ -652,9 +653,9 @@ const OpeningBalanceEntry = () => {
             () => {
               navigate('/ViewDownloadReport', {
                 state: {
-                  reportUrl: `${ALL_REPORTS}/openingBalanceReport?balanceMId=${balanceId}`,
-                  title: 'Opening Balance Submit Report',
-                  fileName: 'Opening Balance Submit Report',
+                  reportUrl: `${OPENING_BALANCE_REPORT_URL}?${REQUEST_PARAM_BALANCE_M_ID}=${balanceId}`,
+                  title: OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE,
+                  fileName: OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME,
                   returnPath: window.location.pathname
                 }
               });
@@ -680,7 +681,7 @@ const OpeningBalanceEntry = () => {
       () => {
         console.log("Submit cancelled by user");
       },
-      "Yes, Submit",
+      "Submit",
       "Cancel"
     );
   };

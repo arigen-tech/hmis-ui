@@ -90,17 +90,23 @@ const BagTypeMaster = () => {
 
 
 
-  const handleEdit = (bagType) => {
-    setEditingBagType(bagType);
-    setFormData({
-      bagTypeCode: bagType.bagTypeCode || "",
-      bagTypeName: bagType.bagTypeName || "",
-      description: bagType.description || "",
-      maxComponents: bagType.maxComponents || "",
-    });
-    setShowForm(true);
+ const handleEdit = (bagType) => {
+  const updatedData = {
+    bagTypeCode: bagType.bagTypeCode || "",
+    bagTypeName: bagType.bagTypeName || "",
+    description: bagType.description || "",
+    maxComponents: bagType.maxComponents || "",
   };
 
+  setEditingBagType(bagType);
+  setFormData(updatedData);
+  setShowForm(true);
+
+  setIsFormValid(
+    updatedData.bagTypeCode.trim() !== "" &&
+    updatedData.bagTypeName.trim() !== ""
+  );
+};
 
 
   useEffect(() => {
@@ -109,19 +115,21 @@ const BagTypeMaster = () => {
 
 
 
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [id]: value,
-    }));
+const handleInputChange = (e) => {
+  const { id, value } = e.target;
 
-    const bagTypeCode = id === "bagTypeCode" ? value : formData.bagTypeCode;
-    const bagTypeName = id === "bagTypeName" ? value : formData.bagTypeName;
-    setIsFormValid(bagTypeCode.trim() !== "" && bagTypeName.trim() !== "");
+  const updated = {
+    ...formData,
+    [id]: value,
   };
 
+  setFormData(updated);
 
+  setIsFormValid(
+    updated.bagTypeCode.trim() !== "" &&
+    updated.bagTypeName.trim() !== ""
+  );
+};
 
   const resetForm = () => {
     setShowForm(false);
@@ -154,8 +162,15 @@ const BagTypeMaster = () => {
     setLoading(true);
     try {
       if (editingBagType) {
-        await putRequest(`${MAS_BLOOD_BAG_TYPE}/update/${editingBagType.bagTypeId}`, formData);
-        showPopup(UPDATE_BAG_TYPE_MASTER, "success");
+const payload = {
+  ...formData,
+  maxComponents: formData.maxComponents === "" ? null : Number(formData.maxComponents)
+};
+
+await putRequest(
+  `${MAS_BLOOD_BAG_TYPE}/update/${editingBagType.bagTypeId}`,
+  payload
+);        showPopup(UPDATE_BAG_TYPE_MASTER, "success");
       } else {
         await postRequest(`${MAS_BLOOD_BAG_TYPE}/create`, {
           ...formData,

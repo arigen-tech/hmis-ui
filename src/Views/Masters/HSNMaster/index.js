@@ -76,11 +76,20 @@ const HSNMaster = () => {
     setCurrentPage(1);
   };
 
-  const filteredHsnData = hsnData.filter(hsn =>
-    hsn.hsnCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hsn.hsnCategory.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    hsn.hsnSubcategory.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+ const filteredHsnData = hsnData
+  .filter((hsn) =>
+    hsn &&
+    (
+      hsn.hsnCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      hsn.hsnCategory?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      hsn.hsnSubcategory?.toLowerCase().includes(searchQuery.toLowerCase())
+    )
+  )
+  .sort((a, b) => {
+    if (a.status === "y" && b.status !== "y") return -1;
+    if (a.status !== "y" && b.status === "y") return 1;
+    return 0;
+  });
 
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
@@ -102,9 +111,20 @@ const HSNMaster = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-
-    // ✅ 1️⃣ Validate date fields first (your own function)
-    if (!validateDates()) return;
+if (
+  !editingHsn &&
+  formData.effectiveTo &&
+  formData.effectiveFrom &&
+  new Date(formData.effectiveTo) <
+    new Date(formData.effectiveFrom)
+) {
+  showPopup(
+    "Effective To date cannot be before Effective From date",
+    "error"
+  );
+  return;
+}
+   // if (!validateDates()) return;
 
     // ✅ 2️⃣ Validate GST rate
     const gstRateValue = parseFloat(formData.gstRate);
@@ -140,23 +160,40 @@ const HSNMaster = () => {
           payload
         );
 
-        if (response && response.response) {
-          setHsnData((prevData) =>
-            prevData.map((hsn) =>
-              hsn.hsnCode === editingHsn.hsnCode ? response.response : hsn
+      
+         setHsnData((prevData) =>
+  prevData.map((hsn) =>
+    hsn?.hsnCode === editingHsn?.hsnCode
+      ? {
+        ...hsn,
+        ...payload
+      }
+      : hsn
+  
             )
           );
           showPopup(UPDATE_HSN_SUCC_MSG, "success");
-        }
+        
       } else {
-        response = await postRequest(`${MAS_HSN}/create`, payload);
+  response = await postRequest(`${MAS_HSN}/create`, payload);
 
-        if (response && response.response) {
-          setHsnData((prevData) => [...prevData, response.response]);
-          showPopup(ADD_HSN_SUCC_MSG, "success");
-        }
-      }
+  setPopupMessage({
+    message: ADD_HSN_SUCC_MSG,
+    type: "success",
+    onClose: () => {
 
+      // popup OK ke baad record add hoga
+      setHsnData((prevData) => [
+        {
+          ...payload
+        },
+        ...prevData
+      ]);
+
+      setPopupMessage(null);
+    }
+  });
+}
       // ✅ 5️⃣ Reset form & close modal
       setEditingHsn(null);
       setFormData({
@@ -170,8 +207,7 @@ const HSNMaster = () => {
       });
       setShowForm(false);
 
-      // ✅ 6️⃣ Refresh table data
-      fetchHsnData();
+     
 
     } catch (err) {
       console.error("Error saving HSN data:", err);
@@ -200,37 +236,51 @@ const HSNMaster = () => {
     setConfirmDialog({ isOpen: true, hsnId: hsnCode, newStatus });
   };
 
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.hsnId !== null) {
-      try {
-        setLoading(true);
+ const handleConfirm = async (confirmed) => {
+  if (confirmed && confirmDialog.hsnId !== null) {
+    try {
+      setLoading(true);
 
-        const response = await putRequest(
-          `${MAS_HSN}/status/${confirmDialog.hsnId}?status=${confirmDialog.newStatus}`
-        );
+      await putRequest(
+        `${MAS_HSN}/status/${confirmDialog.hsnId}?status=${confirmDialog.newStatus}`
+      );
 
-        if (response && response.response) {
-          setHsnData(prevData =>
-            prevData.map(hsn =>
-              hsn.hsnCode === confirmDialog.hsnId ?
-                { ...hsn, status: confirmDialog.newStatus } :
-                hsn
-            )
-          );
-          showPopup(`HSN ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-        }
-      } catch (err) {
-        console.error("Error updating HSN status:", err);
-        const errorMessage = err.response?.data?.message ||
-          err.message ||
-          "Failed to update status due to server error";
-        showPopup(errorMessage, "error");
-      } finally {
-        setLoading(false);
-      }
+      // instant UI update
+      setHsnData((prevData) =>
+        prevData.map((hsn) =>
+          hsn.hsnCode === confirmDialog.hsnId
+            ? { ...hsn, status: confirmDialog.newStatus }
+            : hsn
+        )
+      );
+
+      showPopup(
+        `HSN ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+        } successfully!`,
+        "success"
+      );
+
+    } catch (err) {
+      console.error("Error updating HSN status:", err);
+
+      const errorMessage =
+        err.response?.data?.message ||
+        err.message ||
+        "Failed to update status";
+
+      showPopup(errorMessage, "error");
+
+    } finally {
+      setLoading(false);
     }
-    setConfirmDialog({ isOpen: false, hsnId: null, newStatus: null });
-  };
+  }
+
+  setConfirmDialog({
+    isOpen: false,
+    hsnId: null,
+    newStatus: null
+  });
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -242,12 +292,10 @@ const HSNMaster = () => {
     setFormData(prevData => ({ ...prevData, [id]: checked }));
   };
 
-  const handleDateChange = (e) => {
-    const { id, value } = e.target;
-    setFormData(prevData => ({ ...prevData, [id]: value }));
-    validateDates();
-  };
-
+ const handleDateChange = (e) => {
+  const { id, value } = e.target;
+  setFormData(prevData => ({ ...prevData, [id]: value }));
+};
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
@@ -347,7 +395,7 @@ const HSNMaster = () => {
                           <tr key={hsn.hsnCode}>
                             <td>{hsn.hsnCode}</td>
                             <td>{hsn.gstRate.toFixed(2)}</td>
-                            <td style={{ textTransform: "uppercase" }}>{hsn.isMedicine ? "TRUE" : "FALSE"}</td>
+                            <td>{hsn.isMedicine ? "Yes" : "No"}</td>
                             <td>{hsn.hsnCategory}</td>
                             <td>{hsn.hsnSubcategory}</td>
                             <td>{hsn.effectiveFrom}</td>

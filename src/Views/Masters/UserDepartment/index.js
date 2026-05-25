@@ -66,8 +66,7 @@ const Userdepartment = () => {
                     departmentName: userDept.departmentName,
 
                 }));
-
-                setUserDepartmentData(transformedData);
+setUserDepartmentData([...transformedData].reverse());
                 setTotalFilteredProducts(transformedData.length);
                 setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
             }
@@ -90,6 +89,9 @@ const Userdepartment = () => {
                 const mappedUsers = response.data.response.map(user => ({
                     userId: user.userId,
                     userName: user.userName,
+                    userFirstName: user.firstName,
+                    userMiddleName: user.middleName,
+                    userLastName: user.lastName,
                     email: user.email
                 }));
                 setUsers(mappedUsers);
@@ -147,156 +149,241 @@ const Userdepartment = () => {
         setShowForm(true);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+   
+   const handleSave = async (e) => {
+    e.preventDefault();
 
-        try {
-            setLoading(true);
+    if (!isFormValid) return;
 
-            if (editingDepartment) {
-                
-                const isDuplicate = userDepartmentData.some(
-                    (userDept) =>
-                        String(userDept.userId) === String(formData.userId) &&
-                        String(userDept.departmentId) === String(formData.departmentId) &&
-                        userDept.id !== editingDepartment.id
-                );
+    try {
+        setLoading(true);
 
-                if (isDuplicate) {
-                    showPopup(DUPLICATE_USER_DEPARTMENT, "error");
-                    setLoading(false);
-                    return;
-                }
+        if (editingDepartment) {
 
-               
-                const response = await putRequest(`${MAS_USER_DEPARTMENT}/updateById/${editingDepartment.id}`, {
+            const isDuplicate = userDepartmentData.some(
+                (userDept) =>
+                    String(userDept.userId) === String(formData.userId) &&
+                    String(userDept.departmentId) === String(formData.departmentId) &&
+                    userDept.id !== editingDepartment.id
+            );
+
+            if (isDuplicate) {
+                showPopup(DUPLICATE_USER_DEPARTMENT, "error");
+                setLoading(false);
+                return;
+            }
+
+            const response = await putRequest(
+                `${MAS_USER_DEPARTMENT}/updateById/${editingDepartment.id}`,
+                {
                     id: editingDepartment.id,
                     userId: formData.userId,
                     departmentId: formData.departmentId,
                     status: editingDepartment.status
-                });
-
-                if (response && response.response) {
-                    showPopup(UPDATE_USER_DEPARTMENT_SUCC_MSG, "success");
-                    fetchUserDepartmentData(1);
                 }
-            } else {
-                
-                const isDuplicate = userDepartmentData.some(
-                    (userDept) =>
-                        String(userDept.userId) === String(formData.userId) &&
-                        String(userDept.departmentId) === String(formData.departmentId)
-                );
+            );
 
-                if (isDuplicate) {
-                    showPopup(DUPLICATE_USER_DEPARTMENT, "error");
-                    setLoading(false);
-                    return;
-                }
+           if (response?.status === 200) {
 
-                
-                const response = await postRequest(`${MAS_USER_DEPARTMENT}/create`, {
-                    userId: formData.userId,
-                    departmentId: formData.departmentId,
-                });
-
-                if (response && response.response) {
-                    showPopup(ADD_USER_DEPARTMENT_SUCC_MSG, "success");
-                    fetchUserDepartmentData(1);
-                }
-            }
+    showPopup(
+        UPDATE_USER_DEPARTMENT_SUCC_MSG,
+        "success",
+        async () => {
 
            
+            await fetchUserDepartmentData();
+            setCurrentPage(1);
             setEditingDepartment(null);
+
             setFormData({
                 userId: "",
                 userName: "",
                 departmentId: "",
                 departmentName: ""
             });
+
             setShowForm(false);
-        } catch (err) {
-            console.error("Error saving user department data:", err);
-            showPopup(FAIL_TO_SAVE_CHANGES, "error");
-        } finally {
-            setLoading(false);
+        }
+    );
+}
+
+        } else {
+
+            const isDuplicate = userDepartmentData.some(
+                (userDept) =>
+                    String(userDept.userId) === String(formData.userId) &&
+                    String(userDept.departmentId) === String(formData.departmentId)
+            );
+
+            if (isDuplicate) {
+                showPopup(DUPLICATE_USER_DEPARTMENT, "error");
+                setLoading(false);
+                return;
+            }
+
+            const response = await postRequest(
+                `${MAS_USER_DEPARTMENT}/create`,
+                {
+                    userId: formData.userId,
+                    departmentId: formData.departmentId,
+                }
+            );
+
+            if (response && response.response) {
+
+                showPopup(
+                    ADD_USER_DEPARTMENT_SUCC_MSG,
+                    "success",
+                    async () => {
+                        
+                        await fetchUserDepartmentData();
+                        setCurrentPage(1);
+
+                        setEditingDepartment(null);
+
+                        setFormData({
+                            userId: "",
+                            userName: "",
+                            departmentId: "",
+                            departmentName: ""
+                        });
+
+                        setShowForm(false);
+                    }
+                );
+            }
+        }
+
+    } catch (err) {
+
+        console.error("Error saving user department data:", err);
+        showPopup(FAIL_TO_SAVE_CHANGES, "error");
+
+    } finally {
+
+        setLoading(false);
+    }
+};
+
+   const showPopup = (message, type = "info", callback = null) => {
+    setPopupMessage({
+        message,
+        type,
+        onClose: async () => {
+            setPopupMessage(null);
+
+            if (callback) {
+                await callback();
+            }
+        }
+    });
+};
+
+        const handlePageNavigation = () => {
+        const pageNumber = parseInt(pageInput);
+        if (pageNumber >= 1 && pageNumber <= filteredTotalPages) {
+            setCurrentPage(pageNumber);
+        } else {
+           
+            showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
         }
     };
 
-    const showPopup = (message, type = 'info') => {
-        setPopupMessage({
-            message,
-            type,
-            onClose: () => {
-                setPopupMessage(null);
-            }
-        });
+    
+   const handleUserSelect = (user) => {
+
+    const updatedFormData = {
+        ...formData,
+        userId: user.userId,
+        userName: user.userName
     };
 
-    // const handleSwitchChange = (id, newStatus) => {
-    //     setConfirmDialog({ isOpen: true, departmentId: id, newStatus });
-    // };
+    setFormData(updatedFormData);
 
-    // const handleConfirm = async (confirmed) => {
-    //     if (confirmed && confirmDialog.departmentId !== null) {
-    //         try {
-    //             setLoading(true);
-    //             // Update status via API
-    //             const response = await axios.put(
-    //                 `${API_HOST}/userDepartment/status/${confirmDialog.departmentId}?status=${confirmDialog.newStatus}`
-    //             );
+    setIsDropdownVisible(false);
 
-    //             if (response.data && response.data.response) {
-    //                 // Update local state
-    //                 setUserDepartmentData((prevData) =>
-    //                     prevData.map((userDept) =>
-    //                         userDept.id === confirmDialog.departmentId ? 
-    //                             { ...userDept, status: confirmDialog.newStatus } : 
-    //                             userDept
-    //                     )
-    //                 );
-    //                 showPopup(`User department ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-    //             }
-    //         } catch (err) {
-    //             console.error("Error updating user department status:", err);
-    //             showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
-    //         } finally {
-    //             setTimeout(() => {
-    //                 setLoading(false);
-    //             }, 1000);
-    //         }
-    //     }
-    //     setConfirmDialog({ isOpen: false, departmentId: null, newStatus: null });
-    // };
+    setIsFormValid(
+        updatedFormData.userId !== "" &&
+        updatedFormData.departmentId !== ""
+    );
+};
 
-    const handleUserSelect = (user) => {
-        setFormData({
-            ...formData,
-            userId: user.userId,
-            userName: user.userName
-        });
-        setIsDropdownVisible(false);
+   const handleDepartmentChange = (e) => {
+
+    const selectedDepartmentId = e.target.value;
+
+    const selectedDepartment = departments.find(
+        dept => dept.id.toString() === selectedDepartmentId
+    );
+
+    const updatedFormData = {
+        ...formData,
+        departmentId: selectedDepartmentId,
+        departmentName: selectedDepartment
+            ? selectedDepartment.departmentName
+            : ""
     };
 
-    const handleDepartmentChange = (e) => {
-        const selectedDepartmentId = e.target.value;
-        const selectedDepartment = departments.find(dept => dept.id.toString() === selectedDepartmentId);
+    setFormData(updatedFormData);
 
-        setFormData({
-            ...formData,
-            departmentId: selectedDepartmentId,
-            departmentName: selectedDepartment ? selectedDepartment.name : ""
-        });
-
-       
-        setIsFormValid(formData.userId !== "" && selectedDepartmentId !== "");
-    };
+    setIsFormValid(
+        updatedFormData.userId !== "" &&
+        updatedFormData.departmentId !== ""
+    );
+};
 
     const handleRefresh = () => {
         setSearchQuery("");
         setCurrentPage(1);
         fetchUserDepartmentData(0); 
+    };
+
+    const renderPagination = () => {
+        const pageNumbers = [];
+        const maxVisiblePages = 5; 
+        
+        let startPage = Math.max(1, currentPage - Math.floor(maxVisiblePages / 2));
+        let endPage = Math.min(filteredTotalPages, startPage + maxVisiblePages - 1);
+        
+        // Adjust startPage if we're near the end
+        if (endPage - startPage + 1 < maxVisiblePages) {
+            startPage = Math.max(1, endPage - maxVisiblePages + 1);
+        }
+        
+        // First page
+        if (startPage > 1) {
+            pageNumbers.push(
+                <li key={1} className="page-item">
+                    <button className="page-link" onClick={() => setCurrentPage(1)}>1</button>
+                </li>
+            );
+            if (startPage > 2) {
+                pageNumbers.push(<li key="ellipsis1" className="page-item disabled"><span className="page-link">...</span></li>);
+            }
+        }
+        
+        // Page numbers
+        for (let i = startPage; i <= endPage; i++) {
+            pageNumbers.push(
+                <li key={i} className={`page-item ${currentPage === i ? "active" : ""}`}>
+                    <button className="page-link" onClick={() => setCurrentPage(i)}>{i}</button>
+                </li>
+            );
+        }
+        
+        // Last page
+        if (endPage < filteredTotalPages) {
+            if (endPage < filteredTotalPages - 1) {
+                pageNumbers.push(<li key="ellipsis2" className="page-item disabled"><span className="page-link">...</span></li>);
+            }
+            pageNumbers.push(
+                <li key={filteredTotalPages} className="page-item">
+                    <button className="page-link" onClick={() => setCurrentPage(filteredTotalPages)}>{filteredTotalPages}</button>
+                </li>
+            );
+        }
+        
+        return pageNumbers;
     };
 
     
@@ -419,6 +506,54 @@ const Userdepartment = () => {
                                             )}
                                         </tbody>
                                     </table>
+
+                                     {filteredUserDepartmentData.length > 0 && (
+                                        <nav className="d-flex justify-content-between align-items-center mt-3">
+                                            <div>
+                                                <span>
+                                                    Page {currentPage} of {filteredTotalPages} | Total Records: {totalFilteredProducts}
+                                                </span>
+                                            </div>
+                                            <ul className="pagination mb-0">
+                                                <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage - 1)}
+                                                        disabled={currentPage === 1}
+                                                    >
+                                                        &laquo; Previous
+                                                    </button>
+                                                </li>
+                                                {renderPagination()}
+                                                <li className={`page-item ${currentPage === filteredTotalPages ? "disabled" : ""}`}>
+                                                    <button
+                                                        className="page-link"
+                                                        onClick={() => setCurrentPage(currentPage + 1)}
+                                                        disabled={currentPage === filteredTotalPages}
+                                                    >
+                                                        Next &raquo;
+                                                    </button>
+                                                </li>
+                                            </ul>
+                                            <div className="d-flex align-items-center">
+                                                <input
+                                                    type="number"
+                                                    min="1"
+                                                    max={filteredTotalPages}
+                                                    value={pageInput}
+                                                    onChange={(e) => setPageInput(e.target.value)}
+                                                    placeholder="Go to page"
+                                                    className="form-control me-2"
+                                                />
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={handlePageNavigation}
+                                                >
+                                                    Go
+                                                </button>
+                                            </div>
+                                        </nav>
+                                    )}
                                    
                                 </div>
                             ) : (
@@ -453,7 +588,7 @@ const Userdepartment = () => {
                                                             className="list-group-item list-group-item-action"
                                                             onClick={() => handleUserSelect(user)}
                                                         >
-                                                            {user.userName}  ({user.email})
+                                                            {user.userName} ({user.userFirstName} {user.userMiddleName} {user.userLastName})
                                                         </li>
                                                     ))}
                                             </ul>

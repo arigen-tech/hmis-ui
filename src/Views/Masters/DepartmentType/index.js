@@ -97,14 +97,9 @@ const Departmenttype = () => {
                     status: editingType.status,
                 });
 
-                if (response && response.response) {
-                    setDepartmentTypes((prevData) =>
-                        prevData.map((type) =>
-                            type.id === editingType.id ? response.response : type
-                        )
-                    );
-                    showPopup(UPDATE_DEPARTMENT_TYPE_SUCC_MSG, "success");
-                }
+                // Always show success popup and refresh data
+                showPopup(UPDATE_DEPARTMENT_TYPE_SUCC_MSG, "success");
+                fetchDepartmentTypes();
             } else {
                 if (isDuplicate) {
                     showPopup(DUPLICATE_DEPARTMENT_TYPE, "error");
@@ -120,14 +115,13 @@ const Departmenttype = () => {
 
                 if (response && response.response) {
                     setDepartmentTypes([...departmentTypes, response.response]);
-                    showPopup(ADD_DEPARTMENT_TYPE_SUCC_MSG, "success");
                 }
+                showPopup(ADD_DEPARTMENT_TYPE_SUCC_MSG, "success");
             }
 
             setEditingType(null);
             setFormData({ departmentTypeCode: "", departmentTypeName: "" });
             setShowForm(false);
-            fetchDepartmentTypes();
         } catch (err) {
             console.error("Error saving department type:", err);
             showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -154,22 +148,17 @@ const Departmenttype = () => {
         if (confirmed && confirmDialog.categoryId !== null) {
             try {
                 setLoading(true);
-                const response = await putRequest(
+                await putRequest(
                     `${MAS_DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
                 );
-                if (response && response.response) {
-                    setDepartmentTypes((prevData) =>
-                        prevData.map((type) =>
-                            type.id === confirmDialog.categoryId
-                                ? { ...type, status: confirmDialog.newStatus }
-                                : type
-                        )
-                    );
-                    showPopup(
-                        `Department type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
-                }
+                
+                // Call fetchDepartmentTypes to reload data from API
+                await fetchDepartmentTypes();
+                
+                showPopup(
+                    `Department type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                    "success"
+                );
             } catch (err) {
                 console.error("Error updating department type status:", err);
                 showPopup(FAIL_TO_UPDATE_STS, "error");
@@ -182,8 +171,11 @@ const Departmenttype = () => {
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
-        setFormData((prevData) => ({ ...prevData, [id]: value }));
-        setIsFormValid(formData.departmentTypeCode.trim() !== "" && formData.departmentTypeName.trim() !== "");
+        setFormData((prevData) => {
+            const newData = { ...prevData, [id]: value };
+            setIsFormValid(newData.departmentTypeCode.trim() !== "" && newData.departmentTypeName.trim() !== "");
+            return newData;
+        });
     };
 
     const handleRefresh = () => {
@@ -259,8 +251,8 @@ const Departmenttype = () => {
                                         <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
                                                 <tr>
-                                                    <th>Department Type Name</th>
                                                     <th>Department Type Code</th>
+                                                    <th>Department Type Name</th>
                                                     <th>Status</th>
                                                     <th>Edit</th>
                                                 </tr>
@@ -268,8 +260,8 @@ const Departmenttype = () => {
                                             <tbody>
                                                 {currentItems.map((type) => (
                                                     <tr key={type.id}>
-                                                        <td>{type.departmentTypeName}</td>
                                                         <td>{type.departmentTypeCode}</td>
+                                                        <td>{type.departmentTypeName}</td>
                                                         <td>
                                                             <div className="form-check form-switch">
                                                                 <input
@@ -325,6 +317,7 @@ const Departmenttype = () => {
                                             maxLength={DepartmentType_CODE_MAX_LENGTH}
                                             onChange={handleInputChange}
                                             required
+                                            disabled={editingType ? true : false}
                                         />
                                     </div>
                                     <div className="form-group col-md-4">

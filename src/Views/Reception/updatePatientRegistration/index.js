@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from "react";
+import LoadingScreen from "../../../Components/Loading";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import DatePicker from "../../../Components/DatePicker";
@@ -24,6 +25,8 @@ import {
   SEARCH_PATIENT,
   FOLLOWUP_PATIENTS_LIST,
   STATE_BY_COUNTRY,
+  MAS_BLOODGROUP,
+  MAS_GENDER,
 } from "../../../config/apiConfig";
 import {
   DEPARTMENT_CODE_OPD,
@@ -71,6 +74,7 @@ const UpdatePatientRegistration = () => {
   const navigate = useNavigate();
   async function fetchHospitalDetails() {
     try {
+      setLoading(true);
       const data = await getRequest(
         `${HOSPITAL}/${sessionStorage.getItem("hospitalId")}`,
       );
@@ -86,13 +90,15 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   }
 
   async function fetchAllStateData() {
     try {
+      setLoading(true);
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
@@ -102,13 +108,15 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+     finally {
       setLoading(false);
     }
   }
 
   async function fetchAllDistrictData() {
     try {
+      setLoading(true);
       const data = await getRequest(`${ALL_DISTRICT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
@@ -118,7 +126,8 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+     finally {
       setLoading(false);
     }
   }
@@ -126,7 +135,6 @@ const UpdatePatientRegistration = () => {
   const loadMasterData = async () => {
     setLoading(true);
     try {
-      // Fetch all master data in parallel with proper error handling
       await Promise.allSettled([
         fetchGenderData(),
         fetchRelationData(),
@@ -135,9 +143,6 @@ const UpdatePatientRegistration = () => {
         fetchAllSessions(),
         fetchHospitalDetails(),
       ]);
-
-      // Fetch state and district data after country is loaded
-      // Note: These will be called again when country selection changes
       await Promise.allSettled([
         fetchAllStateData(),
         fetchAllDistrictData(),
@@ -159,8 +164,8 @@ const UpdatePatientRegistration = () => {
   const [dateResetKey, setDateResetKey] = useState(0);
   const [errors, setErrors] = useState({});
   const [imageURL, setImageURL] = useState("");
-  const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [relationData, setRelationData] = useState([]);
   const [countryData, setCountryData] = useState([]);
   const [stateData, setStateData] = useState([]);
@@ -181,6 +186,7 @@ const UpdatePatientRegistration = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     mobileNo: "",
     patientName: "",
@@ -199,6 +205,7 @@ const UpdatePatientRegistration = () => {
   const [mobileQuery, setMobileQuery] = useState("");
   const [pageInput, setPageInput] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
+const [editLoadingId, setEditLoadingId] = useState(null);  
 
   const [appointments, setAppointments] = useState([
     {
@@ -221,6 +228,14 @@ const UpdatePatientRegistration = () => {
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
   const [doctorDataMap, setDoctorDataMap] = useState({});
   const [sessionDataMap, setSessionDataMap] = useState({});
+  const masterDataLoadedRef = useRef(false);
+  const patientDetailsCacheRef = useRef(new Map());
+  const patientDetailsInFlightRef = useRef(new Map());
+  const doctorsBySpecialityCacheRef = useRef(new Map());
+  const doctorsBySpecialityInFlightRef = useRef(new Map());
+  const statesByCountryCacheRef = useRef(new Map());
+  const districtsByStateCacheRef = useRef(new Map());
+  const tokenRequestsInFlightRef = useRef(new Set());
 
   const isPastDate = (dateStr) => {
     const selected = new Date(dateStr);
@@ -283,6 +298,35 @@ const UpdatePatientRegistration = () => {
     });
   };
 
+  const getDoctorsBySpeciality = async (specialityId) => {
+    if (!specialityId) return [];
+
+    const cacheKey = String(specialityId);
+    if (doctorsBySpecialityCacheRef.current.has(cacheKey)) {
+      return doctorsBySpecialityCacheRef.current.get(cacheKey);
+    }
+
+    if (doctorsBySpecialityInFlightRef.current.has(cacheKey)) {
+      return doctorsBySpecialityInFlightRef.current.get(cacheKey);
+    }
+
+    const request = getRequest(`${DOCTOR_BY_SPECIALITY}${specialityId}`)
+      .then((data) => {
+        const doctors =
+          data.status === 200 && Array.isArray(data.response)
+            ? data.response
+            : [];
+        doctorsBySpecialityCacheRef.current.set(cacheKey, doctors);
+        return doctors;
+      })
+      .finally(() => {
+        doctorsBySpecialityInFlightRef.current.delete(cacheKey);
+      });
+
+    doctorsBySpecialityInFlightRef.current.set(cacheKey, request);
+    return request;
+  };
+
   const handleSpecialityChange = async (rowId, value) => {
     const selectedDepartment = departmentData.find((d) => d.id == value);
 
@@ -308,10 +352,8 @@ const UpdatePatientRegistration = () => {
     );
 
     try {
-      const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
-      if (data.status === 200) {
-        setDoctorDataMap((prev) => ({ ...prev, [rowId]: data.response }));
-      }
+      const doctors = await getDoctorsBySpeciality(value);
+      setDoctorDataMap((prev) => ({ ...prev, [rowId]: doctors }));
     } catch (err) {
       console.error(err);
     }
@@ -542,7 +584,7 @@ const UpdatePatientRegistration = () => {
     setPatientDetailForm(next);
   };
 
-  const handleSearch= async (page = 0) => {
+  const handleSearch = async (page = 0) => {
     setCurrentPage(page + 1);
 
     if (typeof page !== "number") {
@@ -719,16 +761,38 @@ const UpdatePatientRegistration = () => {
   };
 
   useEffect(() => {
+    if (masterDataLoadedRef.current) return;
+    masterDataLoadedRef.current = true;
     loadMasterData();
-  }, []); 
+  }, []);
 
   const handleEdit = async (patient) => {
-
     try {
       const patientId = patient.id;
-      const response = await getRequest(
-        `${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`,
-      );
+      if (!patientId) return;
+
+      setEditLoadingId(patientId);
+
+      let response = patientDetailsCacheRef.current.get(patientId);
+      if (!response) {
+        if (patientDetailsInFlightRef.current.has(patientId)) {
+          response = await patientDetailsInFlightRef.current.get(patientId);
+        } else {
+          const request = getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`)
+            .then((res) => {
+              if (res.status === 200) {
+                patientDetailsCacheRef.current.set(patientId, res);
+              }
+              return res;
+            })
+            .finally(() => {
+              patientDetailsInFlightRef.current.delete(patientId);
+            });
+
+          patientDetailsInFlightRef.current.set(patientId, request);
+          response = await request;
+        }
+      }
 
       if (response.status === 200) {
         const data = response.response;
@@ -852,25 +916,30 @@ const UpdatePatientRegistration = () => {
           setNextAppointmentId(mappedAppointments.length);
           setAppointmentFlag(true);
 
-          mappedAppointments.forEach(async (appt) => {
-            if (appt.speciality) {
-              try {
-                const doctorData = await getRequest(
-                  `${DOCTOR_BY_SPECIALITY}${appt.speciality}`,
-                );
-                if (doctorData.status === 200) {
-                  setDoctorDataMap((prev) => ({
-                    ...prev,
-                    [appt.id]: doctorData.response,
-                  }));
-                }
-              } catch (err) {
-                console.error(
-                  `Error fetching doctors for speciality ${appt.speciality}:`,
-                  err,
-                );
+          const uniqueSpecialities = [
+            ...new Set(
+              mappedAppointments
+                .map((appt) => appt.speciality)
+                .filter(Boolean),
+            ),
+          ];
+
+          const doctorsBySpeciality = await Promise.all(
+            uniqueSpecialities.map(async (speciality) => [
+              speciality,
+              await getDoctorsBySpeciality(speciality),
+            ]),
+          );
+          const doctorMap = Object.fromEntries(doctorsBySpeciality);
+
+          setDoctorDataMap((prev) => {
+            const next = { ...prev };
+            mappedAppointments.forEach((appt) => {
+              if (appt.speciality) {
+                next[appt.id] = doctorMap[appt.speciality] || [];
               }
-            }
+            });
+            return next;
           });
         } else {
           setAppointments([
@@ -905,13 +974,15 @@ const UpdatePatientRegistration = () => {
     } catch (err) {
       console.error(err);
       Swal.fire("Error", UNABLE_TO_LOAD_PATIENT_DETAILS, "error");
+    } finally {
+      setEditLoadingId(null);
     }
   };
-  async function fetchGenderData() {
-    setLoading(true);
 
+  async function fetchGenderData() {
     try {
-      const data = await getRequest(`${ALL_GENDER}/1`);
+      
+      const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
       } else {
@@ -920,15 +991,17 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
+    }
+    finally {
       setLoading(false);
     }
   }
 
   async function fetchRelationData() {
-    setLoading(true);
+    // setLoading(true);
 
     try {
+      
       const data = await getRequest(`${ALL_RELATION}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response);
@@ -938,15 +1011,17 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchCountryData() {
-    setLoading(true);
+    // setLoading(true);
 
     try {
+      
       const data = await getRequest(`${ALL_COUNTRY}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
@@ -956,15 +1031,25 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchStates(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (statesByCountryCacheRef.current.has(cacheKey)) {
+      setStateData(statesByCountryCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
+      setLoading(true);
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        statesByCountryCacheRef.current.set(cacheKey, data.response);
         setStateData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -972,13 +1057,15 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchAllSessions() {
     try {
+      setLoading(true);
       const data = await getRequest(`${GET_SESSION}1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSession(data.response);
@@ -988,15 +1075,25 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchDistrict(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (districtsByStateCacheRef.current.has(cacheKey)) {
+      setDistrictData(districtsByStateCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
+      setLoading(true);
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        districtsByStateCacheRef.current.set(cacheKey, data.response);
         setDistrictData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1004,15 +1101,25 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchNokStates(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (statesByCountryCacheRef.current.has(cacheKey)) {
+      setNokStateData(statesByCountryCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
+      setLoading(true);
       const data = await getRequest(`${STATE_BY_COUNTRY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        statesByCountryCacheRef.current.set(cacheKey, data.response);
         setNokStateData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1020,13 +1127,15 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchNokAllStates(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -1036,15 +1145,25 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchNokDistrict(value) {
+    if (!value) return;
+    const cacheKey = String(value);
+    if (districtsByStateCacheRef.current.has(cacheKey)) {
+      setNokDistrictData(districtsByStateCacheRef.current.get(cacheKey));
+      return;
+    }
+
     try {
+      setLoading(true);
       const data = await getRequest(`${DISTRICT_BY_STATE}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
+        districtsByStateCacheRef.current.set(cacheKey, data.response);
         setNokDistrictData(data.response);
       } else {
         console.error(UNEXPECTED_API_RESPONSE_ERR, data);
@@ -1052,14 +1171,15 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    //  finally {
+    //   setLoading(false);
+    // }
   }
-
 
   async function fetchDepartment() {
     try {
+       setLoading(true);
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
@@ -1072,9 +1192,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   const handleAddChange = (e) => {
@@ -1110,6 +1231,7 @@ const UpdatePatientRegistration = () => {
 
   async function fetchDoctor(value) {
     try {
+      setLoading(true);
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
@@ -1119,9 +1241,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
+    // finally {
+    //   setLoading(false);
+    // }
   }
 
   async function fetchSession(doc) {
@@ -1402,7 +1525,6 @@ const UpdatePatientRegistration = () => {
       nokRelationId: null,
     };
 
-    // 2. Prepare OPD detail request
     const opdPatientDetailRequest = {
       height: patientDetailForm.height || "0",
       idealWeight: patientDetailForm.idealWeight || "0",
@@ -1443,7 +1565,6 @@ const UpdatePatientRegistration = () => {
       lastChgBy: username,
     };
 
-    // 3. Prepare visits array
     const visitsArray = appointmentFlag
       ? appointments
           .filter(
@@ -1474,7 +1595,6 @@ const UpdatePatientRegistration = () => {
           })
       : [];
 
-    // 4. Create the final request and apply automatic validation
     const finalRequest = prepareData({
       appointmentFlag: appointmentFlag,
       patientDetails: {
@@ -1501,21 +1621,16 @@ const UpdatePatientRegistration = () => {
       Swal.close();
 
       if (response.status === 200) {
-        const message = appointmentFlag
-          ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS
-          : PATIENT_UPDATE_SUCCESS;
+        const message = appointmentFlag ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS : PATIENT_UPDATE_SUCCESS;
 
         const resp = response.response?.opdBillingPatientResponse;
         const patientResp = response.response?.patient || response.response;
 
-        // Get visit information
         const visits = patientResp?.visits || [];
         const hasBillingStatusY =
           visits.length > 0 && visits[0]?.billingStatus === "y";
 
-        // Handle different scenarios like in registration page
         if (hasBillingStatusY) {
-          // Direct redirect to PendingForBilling
           Swal.fire({
             title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>
@@ -1545,7 +1660,7 @@ const UpdatePatientRegistration = () => {
             if (result.isConfirmed) {
               navigate("/OPDBillingDetails", {
                 state: {
-                  source:"billing",
+                  source: "billing",
                   patientId: resp.patientid,
                 },
               });
@@ -1554,7 +1669,6 @@ const UpdatePatientRegistration = () => {
             }
           });
         } else if (patientResp) {
-          // Case: no billing response but patient saved (update without appointments)
           const displayName =
             patientResp.patientName ||
             `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim();
@@ -1566,16 +1680,15 @@ const UpdatePatientRegistration = () => {
             confirmButtonText: "OK",
             allowOutsideClick: false,
           }).then(() => {
-            handleReset(); // Go back to search
+            handleReset(); 
           });
         } else {
-          // Fallback success message
           Swal.fire({
             icon: "success",
             title: "Update Successful",
             text: PATIENT_UPDATE_SUCCESS,
           }).then(() => {
-            handleReset(); // Go back to search
+            handleReset();
           });
         }
       } else {
@@ -1612,6 +1725,8 @@ const UpdatePatientRegistration = () => {
           confirmButtonText: "OK",
         });
       }
+    }finally {
+      setLoading(false);
     }
   };
 
@@ -1740,19 +1855,19 @@ const UpdatePatientRegistration = () => {
     }
   };
 
-  if (loading) {
-    return (
-      <div
-        className="d-flex justify-content-center align-items-center"
-        style={{ height: "100vh" }}
-      >
-        <div className="spinner-border text-primary" role="status">
-          <span className="visually-hidden">Loading...</span>
-        </div>
-      </div>
-    );
-  }
-
+  // if (loading) {
+  //   return (
+  //     <div
+  //       className="d-flex justify-content-center align-items-center"
+  //       style={{ height: "100vh" }}
+  //     >
+  //       <div className="spinner-border text-primary" role="status">
+  //         <span className="visually-hidden">Loading...</span>
+  //       </div>
+  //     </div>
+  //   );
+  // }
+ 
   const onDateChange = (index, date) => {
     if (!date) return;
 
@@ -2106,6 +2221,13 @@ const UpdatePatientRegistration = () => {
   // };
 
   if (showPatientDetails) {
+     {loading && (
+                  <div className="text-center py-4">
+                    <LoadingScreen />
+                  </div>
+                )}
+
+
     return (
       <div className="body d-flex py-3">
         <div className="container-xxl">
@@ -3256,6 +3378,10 @@ const UpdatePatientRegistration = () => {
     );
   }
 
+  if (loading) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="body d-flex py-3">
       <div className="container-fluid">
@@ -3335,7 +3461,11 @@ const UpdatePatientRegistration = () => {
                     >
                       {searchLoading ? (
                         <>
-                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          ></span>
                           Searching...
                         </>
                       ) : (
@@ -3376,7 +3506,7 @@ const UpdatePatientRegistration = () => {
                                 <td>{patient.gender || ""}</td>
                                 <td>{patient.patientEmailId || ""}</td>
                                 <td>
-                                  <button
+                                  {/* <button
                                     type="button"
                                     className="btn btn-primary btn-sm"
                                     onClick={() => handleEdit(patient)}
@@ -3386,7 +3516,39 @@ const UpdatePatientRegistration = () => {
                                     <span className="ms-2">
                                       <i className="icofont-edit"></i>
                                     </span>
-                                  </button>
+                                  </button> */}
+                                <button
+  type="button"
+  className="btn btn-primary btn-sm"
+  onClick={async () => {
+    setEditLoadingId(patient.id);
+
+    try {
+      await handleEdit(patient);
+    } finally {
+      setEditLoadingId(null);
+    }
+  }}
+  disabled={editLoadingId === patient.id}
+>
+  {editLoadingId === patient.id ? (
+    <>
+      <span
+        className="spinner-border spinner-border-sm me-2"
+        role="status"
+        aria-hidden="true"
+      ></span>
+      Editing...
+    </>
+  ) : (
+    <>
+      Edit
+      <span className="ms-2">
+        <i className="icofont-edit"></i>
+      </span>
+    </>
+  )}
+</button>
                                 </td>
                               </tr>
                             ))}

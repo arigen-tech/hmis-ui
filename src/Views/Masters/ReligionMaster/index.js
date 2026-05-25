@@ -38,7 +38,6 @@ const Religionmaster = () => {
         fetchReligionData(0);
     }, []);
 
-    // FIXED: Added useEffect to reset page when search changes
     useEffect(() => {
         setCurrentPage(1);
     }, [searchQuery]);
@@ -83,7 +82,6 @@ const Religionmaster = () => {
     const currentItems = filteredReligions.length > 0 ?
         filteredReligions.slice(indexOfFirst, indexOfLast) : [];
 
-    // FIXED: Removed handlePageNavigation function (handled by Pagination component)
 
     const handleEdit = (religion) => {
         setEditingReligion(religion);
@@ -101,20 +99,19 @@ const Religionmaster = () => {
         try {
             setLoading(true);
 
-            // FIXED: Check duplicate including editing case
-            const isDuplicate = religionData.some(
-                (religion) =>
-                    religion.id !== (editingReligion ? editingReligion.id : null) &&
-                    religion.religionName.toLowerCase() === formData.religionName.toLowerCase()
-            );
+    
+          const isDuplicate = religionData.some(
+    (religion) =>
+        religion.id !== (editingReligion?.id || null) &&
+        religion.religionName.trim().toLowerCase() === formData.religionName.trim().toLowerCase()
+);
 
-            if (isDuplicate && !editingReligion) {
-                showPopup(DUPLICATE_RELIGION, "error");
-                setLoading(false);
-                return;
-            }
-
-            if (editingReligion) {
+if (isDuplicate) {
+    showPopup(DUPLICATE_RELIGION, "error");
+    setLoading(false);
+    return;
+}
+            
 
                 const response = await putRequest(`${MAS_RELIGION}/updateById/${editingReligion.id}`, {
                     name: formData.religionName,
@@ -126,6 +123,19 @@ const Religionmaster = () => {
                     fetchReligionData();
                     showPopup(UPDATE_RELIGION_SUCC_MSG, "success");
                 }
+          if (editingReligion) {
+    await putRequest(
+        `${MAS_RELIGION}/updateById/${editingReligion.id}`,
+        {
+            name: formData.religionName,
+            status: editingReligion.status,
+        }
+    );
+
+    showPopup(UPDATE_RELIGION_SUCC_MSG, "success");
+
+    fetchReligionData();
+
             } else {
 
                 const response = await postRequest(`${MAS_RELIGION}/create`, {
@@ -166,36 +176,43 @@ const Religionmaster = () => {
         setConfirmDialog({ isOpen: true, religionId: id, newStatus });
     };
 
-    const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.religionId !== null) {
-            try {
-                setLoading(true);
-                const response = await putRequest(
-                    `${MAS_RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
-                );
-                if (response && response.response) {
-                    setReligionData((prevData) =>
-                        prevData.map((religion) =>
-                            religion.id === confirmDialog.religionId
-                                ? { ...religion, status: confirmDialog.newStatus }
-                                : religion
-                        )
-                    );
-                    showPopup(
-                        `Religion ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
-                }
-            } catch (err) {
-                console.error("Error updating religion status:", err);
-                showPopup(FAIL_TO_UPDATE_STS, "error");
-            } finally {
-                setLoading(false);
-            }
-        }
-        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
-    };
 
+const handleConfirm = async (confirmed) => {
+    if (!confirmed || confirmDialog.religionId === null) {
+        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
+        return;
+    }
+
+    try {
+        setLoading(true);
+
+        await putRequest(
+            `${MAS_RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
+        );
+
+        setReligionData((prev) =>
+            prev.map((item) =>
+                item.id === confirmDialog.religionId
+                    ? { ...item, status: confirmDialog.newStatus }
+                    : item
+            )
+        );
+
+        setTimeout(() => {
+            showPopup(
+                `Religion ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                "success"
+            );
+        }, 100);
+
+    } catch (err) {
+        console.error(err);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+    } finally {
+        setLoading(false);
+        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
+    }
+};
     const handleInputChange = (e) => {
         const { id, value } = e.target;
         const updatedFormData = { ...formData, [id]: value };

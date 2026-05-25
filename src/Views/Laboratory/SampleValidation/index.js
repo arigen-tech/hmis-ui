@@ -27,19 +27,16 @@ const SampleValidation = () => {
   const hospitalId = sessionStorage.getItem("hospitalId")
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE
 
-  // Fetch pending validation samples headers on component mount
   useEffect(() => {
     fetchPendingValidationHeaders()
-  }, []) // Only run once on mount
+  }, [])
 
-  // Separate effect for page changes without loading screen
   useEffect(() => {
-    if (!loading) { // Only fetch if initial load is complete
+    if (!loading) {
       fetchPendingValidationHeadersForPageChange()
     }
   }, [currentPage])
 
-  // API call for headers with search filters and pagination (with loading)
   const fetchPendingValidationHeaders = async (isSearchAction = false) => {
     try {
       if (isSearchAction) {
@@ -66,7 +63,6 @@ const SampleValidation = () => {
         setSampleList(formattedData);
         setTotalPages(data.response.totalPages || 0);
         setTotalElements(data.response.totalElements || 0);
-        // Check if any search filters are applied
         const hasFilters = searchData.patientName || searchData.mobileNo
         setIsShowingAll(!hasFilters)
       } else {
@@ -85,7 +81,6 @@ const SampleValidation = () => {
     }
   };
 
-  // New function for page changes without loading screen
   const fetchPendingValidationHeadersForPageChange = async () => {
     try {
       let url = `${GET_PENDING_SAMPLE_HEADERS_FOR_SAMPLE_VALIDATION_END_URL}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_PAGE}=${currentPage - 1}&${REQUEST_PARAM_SIZE}=${itemsPerPage}`
@@ -106,7 +101,6 @@ const SampleValidation = () => {
         setSampleList(formattedData);
         setTotalPages(data.response.totalPages || 0);
         setTotalElements(data.response.totalElements || 0);
-        // Check if any search filters are applied
         const hasFilters = searchData.patientName || searchData.mobileNo
         setIsShowingAll(!hasFilters)
       } else {
@@ -119,10 +113,8 @@ const SampleValidation = () => {
     }
   };
 
-  // API call for details when row is clicked
   const fetchSampleDetails = async (sampleCollectionHeaderId) => {
     try {
-      // setLoading(true);
       const data = await getRequest(`${GET_PENDING_SAMPLE_DEATAILS_FOR_SAMPLE_VALIDATION_END_URL}?${REQUEST_PARAM_SAMPLE_COLLECTION_HD_ID}=${sampleCollectionHeaderId}`);
 
       console.log("Details API Response:", data);
@@ -139,9 +131,6 @@ const SampleValidation = () => {
       showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
       return [];
     }
-    // finally {
-    //   setLoading(false);
-    // }
   };
 
   const formatHeaderData = (apiData) => {
@@ -232,11 +221,8 @@ const SampleValidation = () => {
 
   const handleRowClick = async (sample) => {
     try {
-      // setLoading(true)
-      // Fetch details for the selected sampleCollectionHeaderId
       const details = await fetchSampleDetails(sample.sampleCollectionHeaderId)
 
-      // Combine header data with details - set accepted: true by default
       const completeSampleData = {
         ...sample,
         investigations: details.map((detail, index) => ({
@@ -251,8 +237,8 @@ const SampleValidation = () => {
           quantity: detail.quantity || '',
           empanelled_lab: detail.empanelledLab || 'n',
           date_time: formatDateTime(detail.sampleCollectedDatetime),
-          accepted: true, // Changed: default to true
-          rejected: false, // Default to false
+          accepted: true,
+          rejected: false,
           reason: detail.rejectedReason || '',
           additional_remarks: detail.remarks || '',
           detailsId: detail.sampleDetailsId || 0,
@@ -262,15 +248,12 @@ const SampleValidation = () => {
       }
 
       setSelectedSample(completeSampleData)
-      setMasterAccept(true) // Set master accept to true since all are accepted by default
+      setMasterAccept(true)
       setShowDetailView(true)
     } catch (error) {
       console.error('Error fetching sample details:', error)
       showPopup(FETCH_SAMPLE_VALIDATIONS_ERR_MSG, 'error')
     }
-    //  finally {
-    //   setLoading(false)
-    // }
   }
 
   const handleBackToList = () => {
@@ -285,13 +268,19 @@ const SampleValidation = () => {
         if (inv.id === investigationId) {
           const updatedInv = { ...inv, [field]: value }
 
-          // If accepted is checked, ensure rejected is unchecked and vice versa
+          // Clicking Accept ON → uncheck Reject, clear reason
           if (field === 'accepted' && value === true) {
             updatedInv.rejected = false
-            updatedInv.reason = '' // Clear reason when accepted
-          } else if (field === 'rejected' && value === true) {
+            updatedInv.reason = ''
+          }
+
+          // Clicking Reject ON → uncheck Accept
+          if (field === 'rejected' && value === true) {
             updatedInv.accepted = false
           }
+
+          // Clicking Accept OFF (unchecking) → just uncheck accept, leave reject as-is
+          // Clicking Reject OFF (unchecking) → just uncheck reject, leave accept as-is
 
           return updatedInv
         }
@@ -300,18 +289,16 @@ const SampleValidation = () => {
 
       setSelectedSample({ ...selectedSample, investigations: updatedInvestigations })
 
-      // Update masterAccept based on all investigations' accepted status
-      const allAccepted = updatedInvestigations.every(inv => inv.accepted === true);
-      setMasterAccept(allAccepted);
+      // masterAccept = true only when ALL rows are accepted
+      const allAccepted = updatedInvestigations.every(inv => inv.accepted === true)
+      setMasterAccept(allAccepted)
     }
   }
 
-  // Check if all investigations have a decision (either accepted or rejected)
   const areAllInvestigationsDecided = () => {
     if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
       return false;
     }
-
     return selectedSample.investigations.every(inv => inv.accepted === true || inv.rejected === true);
   }
 
@@ -321,7 +308,6 @@ const SampleValidation = () => {
       type,
       onClose: () => {
         setPopupMessage(null)
-        // Only refresh data if shouldRefreshData is true AND when popup closes
         if (shouldRefreshData) {
           fetchPendingValidationHeaders()
         }
@@ -334,14 +320,12 @@ const SampleValidation = () => {
       try {
         setLoading(true)
 
-        // Check if all investigations have a decision
         if (!areAllInvestigationsDecided()) {
           showPopup(VALIDATION_WARN_MSG, "warning")
           setLoading(false)
           return
         }
 
-        // Validate that rejected investigations have a reason
         const rejectedWithoutReason = selectedSample.investigations.filter(
           inv => inv.rejected && (!inv.reason || inv.reason.trim() === '')
         )
@@ -352,7 +336,6 @@ const SampleValidation = () => {
           return
         }
 
-        // Prepare the request payload according to your API
         const requestPayload = selectedSample.investigations.map(inv => ({
           sampleHeaderId: selectedSample.sampleCollectionHeaderId,
           detailId: inv.detailsId,
@@ -362,10 +345,8 @@ const SampleValidation = () => {
 
         console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
 
-        // Make the API call to your validation endpoint
         const response = await postRequest(`${SAMPLE_VALIDATION_END_URL}`, requestPayload)
 
-        // Handle both JSON and plain text responses
         if (response.status === 200 || response.ok) {
           showPopup(VALIDATION_SUCC_MSG, "success", true)
           setShowDetailView(false)
@@ -376,7 +357,6 @@ const SampleValidation = () => {
         }
       } catch (error) {
         console.error('Error validating investigations:', error)
-        // Check if it's a JSON parse error and show appropriate message
         if (error.message.includes('JSON') || error.message.includes('Unexpected token')) {
           showPopup(VALIDATION_SUCC_MSG, "success", true)
           setShowDetailView(false)
@@ -393,7 +373,6 @@ const SampleValidation = () => {
 
   const handleReset = () => {
     if (selectedSample) {
-      // Refetch details to reset to original state
       fetchSampleDetails(selectedSample.sampleCollectionHeaderId).then(details => {
         const refreshedSampleData = {
           ...selectedSample,
@@ -409,7 +388,7 @@ const SampleValidation = () => {
             quantity: detail.quantity || '',
             empanelled_lab: detail.empanelledLab || 'n',
             date_time: formatDateTime(detail.sampleCollectedDatetime),
-            accepted: true, // Reset to true
+            accepted: true,
             rejected: false,
             reason: detail.rejectedReason || '',
             additional_remarks: detail.remarks || '',
@@ -419,12 +398,11 @@ const SampleValidation = () => {
           }))
         }
         setSelectedSample(refreshedSampleData)
-        setMasterAccept(true) // Reset master accept to true
+        setMasterAccept(true)
       })
     }
   }
 
-  // Handle "Accept All" from column header checkbox
   const handleAcceptAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
@@ -433,16 +411,11 @@ const SampleValidation = () => {
         rejected: false,
         reason: ''
       }))
-
-      setSelectedSample({
-        ...selectedSample,
-        investigations: updatedInvestigations
-      })
+      setSelectedSample({ ...selectedSample, investigations: updatedInvestigations })
       setMasterAccept(true)
     }
   }
 
-  // Handle "Reject All" from column header checkbox
   const handleRejectAll = () => {
     if (selectedSample) {
       const updatedInvestigations = selectedSample.investigations.map(inv => ({
@@ -451,24 +424,11 @@ const SampleValidation = () => {
         rejected: true,
         reason: 'Sample not suitable for testing'
       }))
-
-      setSelectedSample({
-        ...selectedSample,
-        investigations: updatedInvestigations
-      })
+      setSelectedSample({ ...selectedSample, investigations: updatedInvestigations })
       setMasterAccept(false)
     }
   }
 
-  // Check if all investigations are accepted
-  const areAllAccepted = () => {
-    if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
-      return false;
-    }
-    return selectedSample.investigations.every(inv => inv.accepted === true);
-  }
-
-  // Check if all investigations are rejected
   const areAllRejected = () => {
     if (!selectedSample || !selectedSample.investigations || selectedSample.investigations.length === 0) {
       return false;
@@ -518,58 +478,27 @@ const SampleValidation = () => {
                     <div className="row">
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Patient Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.patient_name}
-                          readOnly
-                        />
+                        <input type="text" className="form-control" value={selectedSample.patient_name} readOnly />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Mobile No.</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.mobile_no}
-                          readOnly
-                        />
+                        <input type="text" className="form-control" value={selectedSample.mobile_no} readOnly />
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Relation</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.relation}
-                          readOnly
-                        />
+                        <input type="text" className="form-control" value={selectedSample.relation} readOnly />
                       </div>
-
                       <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Age</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.age}
-                          readOnly
-                        />
+                        <input type="text" className="form-control" value={selectedSample.age} readOnly />
                       </div>
                       <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Gender</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.gender}
-                          readOnly
-                        />
+                        <input type="text" className="form-control" value={selectedSample.gender} readOnly />
                       </div>
                       <div className="col-md-12 mt-3">
                         <label className="form-label fw-bold">Brief Clinical Notes</label>
-                        <textarea
-                          className="form-control"
-                          rows="2"
-                          value={selectedSample.clinical_notes}
-                          readOnly
-                        ></textarea>
+                        <textarea className="form-control" rows="2" value={selectedSample.clinical_notes} readOnly></textarea>
                       </div>
                     </div>
                   </div>
@@ -593,12 +522,7 @@ const SampleValidation = () => {
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Collected By</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={selectedSample.collected_by}
-                          readOnly
-                        />
+                        <input type="text" className="form-control" value={selectedSample.collected_by} readOnly />
                       </div>
                     </div>
                   </div>
@@ -630,15 +554,12 @@ const SampleValidation = () => {
                                   if (e.target.checked) {
                                     handleAcceptAll();
                                   } else {
-                                    // If unchecking master accept, uncheck all accepts
+                                    // Uncheck all accepts but don't touch reject state
                                     const updatedInvestigations = selectedSample.investigations.map(inv => ({
                                       ...inv,
                                       accepted: false
                                     }));
-                                    setSelectedSample({
-                                      ...selectedSample,
-                                      investigations: updatedInvestigations
-                                    });
+                                    setSelectedSample({ ...selectedSample, investigations: updatedInvestigations });
                                     setMasterAccept(false);
                                   }
                                 }}
@@ -681,28 +602,13 @@ const SampleValidation = () => {
                             />
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={investigation.container_name}
-                              readOnly
-                            />
+                            <input type="text" className="form-control" value={investigation.container_name} readOnly />
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={investigation.test_name}
-                              readOnly
-                            />
+                            <input type="text" className="form-control" value={investigation.test_name} readOnly />
                           </td>
                           <td>
-                            <input
-                              type="text"
-                              className="form-control"
-                              value={investigation.sample}
-                              readOnly
-                            />
+                            <input type="text" className="form-control" value={investigation.sample} readOnly />
                           </td>
                           <td>
                             <input
@@ -722,6 +628,8 @@ const SampleValidation = () => {
                               readOnly
                             />
                           </td>
+
+                          {/* ✅ FIX: Removed disabled prop — handleInvestigationChange handles mutual exclusion */}
                           <td>
                             <div className="form-check d-flex justify-content-center">
                               <input
@@ -732,7 +640,6 @@ const SampleValidation = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "accepted", e.target.checked)
                                 }
-                                disabled={investigation.rejected}
                               />
                             </div>
                           </td>
@@ -746,10 +653,10 @@ const SampleValidation = () => {
                                 onChange={(e) =>
                                   handleInvestigationChange(investigation.id, "rejected", e.target.checked)
                                 }
-                                disabled={investigation.accepted}
                               />
                             </div>
                           </td>
+                          {/* ✅ FIX: Reason field enabled when rejected, disabled otherwise */}
                           <td>
                             <input
                               type="text"
@@ -783,7 +690,6 @@ const SampleValidation = () => {
                   </button>
                 </div>
 
-                {/* Submission Requirement Notice */}
                 {!allDecided && (
                   <div className="alert alert-warning mt-3">
                     <i className="mdi mdi-alert-circle-outline"></i>
@@ -859,13 +765,8 @@ const SampleValidation = () => {
                             pattern="[0-9]*"
                             value={searchData.mobileNo}
                             onChange={(e) => {
-                              const value = e.target.value.replace(/\D/g, ""); // allow only digits
-                              handleSearchChange({
-                                target: {
-                                  id: "mobileNo",
-                                  value
-                                }
-                              });
+                              const value = e.target.value.replace(/\D/g, "");
+                              handleSearchChange({ target: { id: "mobileNo", value } });
                             }}
                           />
                         </div>
@@ -882,9 +783,7 @@ const SampleValidation = () => {
                                 Searching...
                               </>
                             ) : (
-                              <>
-                                Search
-                              </>
+                              <>Search</>
                             )}
                           </button>
                           <button

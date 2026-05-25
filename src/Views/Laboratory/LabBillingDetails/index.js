@@ -556,30 +556,6 @@ const LabBillingDetails = () => {
 
           let registrationResponse;
 
-          if (data?.orderhdid) {
-            console.log("=== USING EXISTING ORDER API ===");
-            const labBillingData = {
-              patientId: Number(patientId),
-              orderhdid: data.orderhdid,
-              labInvestigationReq: allItemsForRegistration,
-            };
-
-            registrationResponse = await postRequest(
-              "/lab/registration/billing",
-              labBillingData,
-            );
-          } else {
-            console.log("=== USING FRESH REGISTRATION API ===");
-            const labRegistrationData = {
-              patientId: Number(patientId),
-              labInvestigationReq: allItemsForRegistration,
-            };
-
-            registrationResponse = await postRequest(
-              "/lab/registration",
-              labRegistrationData,
-            );
-          }
 
           console.log("=== REGISTRATION RESPONSE ===");
           console.log("Response:", registrationResponse);
@@ -601,7 +577,7 @@ const LabBillingDetails = () => {
           }
 
           console.log(
-            "✓ NEW Registration successful. Billing Header ID:",
+            "NEW Registration successful. Billing Header ID:",
             billingHeaderId,
           );
 
@@ -612,14 +588,14 @@ const LabBillingDetails = () => {
             confirmButtonText: "Continue to Payment",
           });
         } catch (registrationError) {
-          console.error("❌ Registration error:", registrationError);
+          console.error("Registration error:", registrationError);
           Swal.fire(REGISTRATION_ERR_MSG, registrationError.message, "error");
           setIsLoading(false);
           return;
         }
       } else {
-        console.log("✓ USING EXISTING Billing Header ID:", billingHeaderId);
-        console.log("🚫 SKIPPING REGISTRATION - Using existing billing header");
+        console.log("USING EXISTING Billing Header ID:", billingHeaderId);
+        console.log("SKIPPING REGISTRATION - Using existing billing header");
       }
 
       const totalFinalAmount = formData.rows
@@ -645,7 +621,7 @@ const LabBillingDetails = () => {
         return;
       }
 
-      // ✅ Prepare payment data - ONLY payment update, no registration
+      //Prepare payment data - ONLY payment update, no registration
       const paymentData = {
         billHeaderId: Number(billingHeaderId), // Use existing or newly created billing header
         amount: totalFinalAmount,
@@ -665,7 +641,7 @@ const LabBillingDetails = () => {
         data?.billinghdid ? "EXISTING" : "NEW",
       );
 
-      // ✅ Prepare labData for payment page
+      // Prepare labData for payment page
       const labData = {
         response: {
           billinghdId: billingHeaderId,
@@ -676,7 +652,7 @@ const LabBillingDetails = () => {
         },
       };
 
-      // ✅ Final confirmation with clear billing header info
+      // Final confirmation with clear billing header info
       Swal.fire({
         title: "Confirm Payment",
         icon: "question",
@@ -710,7 +686,7 @@ const LabBillingDetails = () => {
         }
       });
     } catch (error) {
-      console.error("❌ Error:", error);
+      console.error(" Error:", error);
       Swal.fire("Error!", error.message || UNEXPECTED_ERROR, "error");
     } finally {
       setIsLoading(false);
@@ -1059,9 +1035,7 @@ const LabBillingDetails = () => {
                       <div className="card-header">
                         <h5 className="mb-0">
                           <i className="mdi mdi-test-tube"></i>{" "}
-                          {formData.type === "investigation"
-                            ? "Investigation Details"
-                            : "Package Details"}
+                          Investigation or Package Details
                         </h5>
                       </div>
                       <div className="card-body">
@@ -1121,6 +1095,7 @@ const LabBillingDetails = () => {
                                     type="date"
                                     className="form-control"
                                     value={row.date}
+                                    disabled
                                     onChange={(e) =>
                                       handleRowChange(
                                         index,
@@ -1135,6 +1110,7 @@ const LabBillingDetails = () => {
                                     type="number"
                                     className="form-control"
                                     value={row.originalAmount}
+                                    disabled
                                     onChange={(e) =>
                                       handleRowChange(
                                         index,
@@ -1151,6 +1127,7 @@ const LabBillingDetails = () => {
                                     type="number"
                                     className="form-control"
                                     value={row.discountAmount}
+                                    disabled
                                     onChange={(e) =>
                                       handleRowChange(
                                         index,

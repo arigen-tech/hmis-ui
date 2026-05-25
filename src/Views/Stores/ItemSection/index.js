@@ -132,23 +132,31 @@ const ItemSection = () => {
         response = await postRequest(`${MAS_ITEM_SECTION}/create`, payload);
       }
 
-      if (response.status === 200) {
-        showPopup(
-          editingSection
-            ? "Section updated successfully!"
-            : "New section added successfully!",
-          "success"
-        );
+   if (response.status === 200) {
 
-        await fetchItemSection();
+  setPopupMessage({
+    message: editingSection
+      ? "Section updated successfully!"
+      : "New section added successfully!",
+    type: "success",
+    onClose: async () => {
 
-        setEditingSection(null);
-        setShowForm(false);
-        setFormData({
-          sectionCode: "",
-          sectionName: "",
-          itemType: ""
-        });
+      await fetchItemSection();
+
+      setEditingSection(null);
+      setShowForm(false);
+
+      setFormData({
+        sectionCode: "",
+        sectionName: "",
+        itemType: ""
+      });
+
+      setPopupMessage(null);
+    }
+  });
+
+
       } else {
         throw new Error(response.message || 'Failed to save section');
       }
@@ -259,10 +267,12 @@ const ItemSection = () => {
                   }}>
                     <i className="mdi mdi-plus"></i> Add
                   </button>
+                  
                   {/* <button type="button" className="btn btn-success me-2">
                       <i className="mdi mdi-plus"></i> Generate Report
                     </button> */}
                 </>
+                
               )}
             </div>
         </div>
@@ -378,9 +388,9 @@ const ItemSection = () => {
                 </div>
               </div>
               <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                <button type="submit" className="btn btn-primary me-2">
-                  {editingSection ? "Update" : "Add"}
-                </button>
+               <button type="submit" className="btn btn-primary me-2">
+  {editingSection ? "Update" : "Save"}
+</button>
                 <button className="btn btn-danger me-2" onClick={() => setShowForm(false)}>
                   Cancel
                 </button>

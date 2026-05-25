@@ -227,37 +227,35 @@ const UpdateLabRegistration = () => {
   //   fetchGstConfiguration();
   // }, []);
 
-  
+  useEffect(() => {
+    if (formData.country) {
+      fetchStates(formData.country);
+    }
+  }, [formData.country]);
 
   useEffect(() => {
-  if (formData.country) {
-    fetchStates(formData.country);
-  }
-}, [formData.country]);
+    if (formData.state) {
+      fetchDistrict(formData.state);
+    }
+  }, [formData.state]);
 
-useEffect(() => {
-  if (formData.state) {
-    fetchDistrict(formData.state);
-  }
-}, [formData.state]);
+  useEffect(() => {
+    if (formData.nokCountry) {
+      fetchNokStates(formData.nokCountry);
+    }
+  }, [formData.nokCountry]);
 
-useEffect(() => {
-  if (formData.nokCountry) {
-    fetchNokStates(formData.nokCountry);
-  }
-}, [formData.nokCountry]);
+  useEffect(() => {
+    if (formData.nokState) {
+      fetchNokDistrict(formData.nokState);
+    }
+  }, [formData.nokState]);
 
-useEffect(() => {
-  if (formData.nokState) {
-    fetchNokDistrict(formData.nokState);
-  }
-}, [formData.nokState]);
-
-useEffect(() => {
-  if (formData.gender && genderData.length > 0) {
-    fetchInvestigationDetails(formData.gender).then(setInvestigationItems);
-  }
-}, [formData.gender, genderData]);
+  useEffect(() => {
+    if (formData.gender && genderData.length > 0) {
+      fetchInvestigationDetails(formData.gender).then(setInvestigationItems);
+    }
+  }, [formData.gender, genderData]);
 
   const calculatePaymentBreakdown = () => {
     const checkedItems = formData.rows.filter((_, index) => checkedRows[index]);
@@ -961,7 +959,6 @@ useEffect(() => {
   const handleBook = async (patient) => {
     try {
       // setLoading(true);
-      
 
       const res = await getRequest(
         `${PATIENT_FOLLOW_UP_DETAILS}/${patient.id}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
@@ -1025,14 +1022,14 @@ useEffect(() => {
         ],
       };
 
-    setFormData(mappedData);
+      setFormData(mappedData);
 
-    await Promise.all([
-      fetchGenderData(),
-      fetchRelationData(),
-      fetchCountryData(),
-      fetchGstConfiguration(),
-    ]);
+      await Promise.all([
+        fetchGenderData(),
+        fetchRelationData(),
+        fetchCountryData(),
+        fetchGstConfiguration(),
+      ]);
 
       setShowPatientDetails(true);
     } catch (e) {
@@ -2187,10 +2184,17 @@ useEffect(() => {
                                       : "Package Name"
                                   }
                                   onChange={(e) => {
+                                    const value = e.target.value;
+
+                                    const sanitizedValue = value.replace(
+                                      /[^a-zA-Z0-9 ]/g,
+                                      "",
+                                    );
+
                                     handleRowChange(
                                       index,
                                       "name",
-                                      e.target.value,
+                                      sanitizedValue,
                                     );
                                     if (e.target.value.trim() !== "") {
                                       setActiveRowIndex(index);
@@ -2582,6 +2586,7 @@ useEffect(() => {
                               type="number"
                               className="form-control"
                               value={row.originalAmount}
+                              disabled
                               onChange={(e) =>
                                 handleRowChange(
                                   index,
@@ -2598,6 +2603,7 @@ useEffect(() => {
                               type="number"
                               className="form-control"
                               value={row.discountAmount}
+                              disabled
                               onChange={(e) =>
                                 handleRowChange(
                                   index,
@@ -3036,9 +3042,7 @@ useEffect(() => {
                                 <td>{patient.patientMobileNumber || ""}</td>
                                 <td>{patient.uhidNo || ""}</td>
                                 <td>{patient.patientAge || ""}</td>
-                                <td>
-                                  {patient.gender || ""}
-                                </td>
+                                <td>{patient.gender || ""}</td>
                                 <td>{patient.patientEmailId || ""}</td>
                                 <td>
                                   <button

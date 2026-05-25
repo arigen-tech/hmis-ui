@@ -128,12 +128,34 @@ const PackageInvestigationMaster = () => {
     setSearchQuery(e.target.value)
   }
 
-  const filteredMappingList = mappingList.filter((item) => {
-    const searchTerm = searchQuery.toLowerCase()
-    return (
-      item.packName?.toLowerCase().includes(searchTerm) || item.investigationName?.toLowerCase().includes(searchTerm)
-    )
-  })
+ const groupedMappingList = Object.values(
+  mappingList.reduce((acc, item) => {
+    const key = item.packageId;
+
+    if (!acc[key]) {
+      acc[key] = {
+        ...item,
+        investigationName: item.investigationName ? [item.investigationName] : [],
+      };
+    } else {
+      if (item.investigationName) {
+        acc[key].investigationName.push(item.investigationName);
+      }
+    }
+
+    return acc;
+  }, {})
+);
+ const searchTerm = searchQuery.toLowerCase();
+
+const filteredMappingList = groupedMappingList.filter((item) => {
+  return (
+    item.packName?.toLowerCase().includes(searchTerm) ||
+    (Array.isArray(item.investigationName) &&
+      item.investigationName.join(", ").toLowerCase().includes(searchTerm))
+  );
+});
+
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
@@ -466,50 +488,69 @@ const PackageInvestigationMaster = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((item) => (
-                            <tr key={item.pimId}>
-                              <td>
-                                <strong>{item.packName || "N/A"}</strong>
-                              </td>
-                              <td>{item.investigationName || "No investigation"}</td>
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={item.status === "y"}
-                                    onChange={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
-                                    id={`switch-${item.pimId}`}
-                                  />
-                                  <label
-                                    className="form-check-label px-0"
-                                    htmlFor={`switch-${item.pimId}`}
-                                    onClick={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
-                                  >
-                                    {item.status === "y" ? "Active" : "Deactivated"}
-                                  </label>
-                                </div>
-                              </td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-primary"
-                                  onClick={() => handleManageInvestigations(item)}
-                                  disabled={item.status !== "y"}
-                                >
-                                  <i className="fa fa-pencil"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="4" className="text-center">
-                              No package investigation mappings found
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
+  {currentItems.length > 0 ? (
+    currentItems.map((item) => {
+      return (
+        <tr key={item.pimId}>
+          <td>
+            <strong>{item.packName || "N/A"}</strong>
+          </td>
+
+         <td>
+  {Array.isArray(item.investigationName) &&
+  item.investigationName.length > 0
+    ? item.investigationName[0]
+    : "No investigation"}
+</td>
+
+          <td>
+            <div className="form-check form-switch">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                checked={item.status === "y"}
+                onChange={() =>
+                  handleSwitchChange(
+                    item,
+                    item.status === "y" ? "n" : "y"
+                  )
+                }
+                id={`switch-${item.pimId}`}
+              />
+
+              <label
+                className="form-check-label px-0"
+                htmlFor={`switch-${item.pimId}`}
+              >
+                {item.status === "y"
+                  ? "Active"
+                  : "Deactivated"}
+              </label>
+            </div>
+          </td>
+
+          <td>
+            <button
+              className="btn btn-sm btn-primary"
+              onClick={() =>
+                handleManageInvestigations(item)
+              }
+              disabled={item.status !== "y"}
+            >
+              <i className="fa fa-pencil"></i>
+            </button>
+          </td>
+        </tr>
+      )
+    })
+  ) : (
+    <tr>
+      <td colSpan="4" className="text-center">
+        No package investigation mappings found
+      </td>
+    </tr>
+  )}
+</tbody>
                     </table>
                   </div>
                   
@@ -627,7 +668,14 @@ const PackageInvestigationMaster = () => {
                 </form>
               ) : (
                 <div className="investigation-management">
-                  
+                   <div className="mb-3">
+    <h5>
+      Package Name :
+      <span className="ms-2">
+        {selectedMapping?.packName}
+      </span>
+    </h5>
+  </div>
 
                   <div className="row">
                     <div className="col-md-6">

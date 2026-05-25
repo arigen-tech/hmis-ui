@@ -4,6 +4,8 @@ import ClinicalDashboard from "../ClinicalDashboard"
 import BedTransfer from "../BedTransfer"
 import VitalsandMonitoring from "../VitalsandMonitoring"
 import InvestigationOrderandTracking from "../Investigations"
+import DietOrderHistory from "../Diet"
+import MedicationModule from "./../MAR"
 
 
 const WardManagement = () => {
@@ -365,7 +367,7 @@ const WardManagement = () => {
                         </div>
                       </div>
 
-                      <div className="card-body">
+                      <div className="">
                         {/* Case Sheet Tabs Bar */}
                         <div className="card mb-1">
                           <div className="card-body p-2">
@@ -385,13 +387,16 @@ const WardManagement = () => {
                         </div>
 
                         {/* Tab Content */}
-                        <div className="card mt-1">
+                        <div className="">
                           <div className="card-header bg-light">
                             <h6 className="mb-0">{activeTab}</h6>
                           </div>
                           <div className="card-body">
                             {activeTab === "Clinical Dashboard" && (
                               <ClinicalDashboard selectedPatient={selectedPatient} />
+                            )}
+                            {activeTab === "Medication & Treatment (MAR)" && (
+                              <MedicationModule selectedPatient={selectedPatient} />
                             )}
 
                             {activeTab === "Doctor Visit / Case Notes" && (
@@ -410,6 +415,14 @@ const WardManagement = () => {
     <InvestigationOrderandTracking selectedPatient={selectedPatient}/>
   )
 }
+{
+  activeTab === "Diet" && (
+    <DietOrderHistory selectedPatient={selectedPatient}/>
+  )
+}
+
+
+
 
                             {activeTab !== "Clinical Dashboard" && activeTab !== "Doctor Visit / Case Notes" && (
                               <div>

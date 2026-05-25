@@ -5,15 +5,14 @@ import LoadingScreen from "../../../Components/Loading";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
-
-import { MAS_QUESTION_OPTION_VALUE } from "../../../config/apiConfig";
+ import { MAS_QUESTION_OPTION_VALUE, MAS_OPD_QUESTION,} from "../../../config/apiConfig";
 import {
-  getRequest,
-  postRequest,
+    getRequest,
+   postRequest,
   putRequest,
-} from "../../../service/apiService";
+ } from "../../../service/apiService";
 
-import {
+ import {
   FETCH_OPTION_VALUE,
   CREATE_OPTION_VALUE,
   UPDATE_OPTION_VALUE ,
@@ -21,7 +20,9 @@ import {
   DUPLICATE_OPTION_VALUE ,
   STATUS_UPDATED,
   UPDATE_STATUS,
+   STATUS,
 } from "../../../config/constants";
+
 
 const OptionValueMaster = () => {
   const [loading, setLoading] = useState(false);
@@ -29,11 +30,10 @@ const OptionValueMaster = () => {
   const [formData, setFormData] = useState({
     optionCode: "",
     optionValue: "",
-    optionName: "",
     optionScore: "",
+    questionId: ""
   });
-
-  const [showForm, setShowForm] = useState(false);
+   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -44,12 +44,11 @@ const OptionValueMaster = () => {
     record: null,
     newStatus: "",
   });
-
+const [questions, setQuestions] = useState([]);
 
   const MAX_LENGTH = 50;
 
-
-  const formatDate = (dateString) => {
+    const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
@@ -62,6 +61,12 @@ const OptionValueMaster = () => {
       return "N/A";
     }
   };
+
+   // Show popup
+  const showPopup = (message, type = "success") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
 
   const fetchData = async (flag = 0) => {
     setLoading(true);
@@ -78,40 +83,50 @@ const OptionValueMaster = () => {
     }
   };
 
+  const fetchQuestions = async (flag = 0) => {
+  try {
+    const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
+    setQuestions(res?.response || res?.data?.response || []);
+  } catch {
+    setQuestions([]);
+  }
+};
+
   useEffect(() => {
     fetchData();
+    fetchQuestions();
   }, []);
 
 
-  const filteredData = data.filter(
-    (rec) =>
-      (rec?.optionCode ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-      (rec?.optionValue ?? "").toLowerCase().includes(searchQuery.toLowerCase()),
-  );
 
+  // ================= SEARCH =================
+  const filteredData = data.filter((rec) =>
+  rec.optionCode?.toLowerCase().includes(searchQuery.toLowerCase())
+);
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
-    currentPage * DEFAULT_ITEMS_PER_PAGE
-  );
+   const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(
+  updated.optionCode?.trim() !== "" &&
+  updated.optionValue?.trim() !== "" &&
+  updated.questionId !== "" &&
+  updated.optionScore !== "" &&
+  !isNaN(updated.optionScore)
+);
+     
+    };
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
-  };
-
-  // ================= POPUP =================
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
-
-  // ================= FORM =================
   const resetForm = () => {
     setFormData({
       optionCode: "",
       optionValue: "",
-      optionName: "",
       optionScore: "",
+      questionId:"",
     });
     setIsFormValid(false);
     setEditingRecord(null);
@@ -122,19 +137,9 @@ const OptionValueMaster = () => {
     setShowForm(false);
   };
 
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    const updated = { ...formData, [name]: value };
-    setFormData(updated);
-    setIsFormValid(
-      updated.optionCode.trim() !== "" &&
-        updated.optionValue.trim() !== "" &&
-        updated.optionName.trim() !== "" &&
-        updated.optionScore !== ""
-    );
-  };
 
   // ================= SAVE =================
+ 
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
@@ -161,7 +166,7 @@ const OptionValueMaster = () => {
       } else {
         await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
           ...formData,
-          status: "Y",
+          status: "y",
         });
 
         showPopup(CREATE_OPTION_VALUE , "success");
@@ -175,25 +180,25 @@ const OptionValueMaster = () => {
   };
 
   // ================= EDIT =================
- const handleEdit = (rec) => {
-  setEditingRecord(rec);
-  setFormData({
-    optionCode: rec.optionCode,
-    optionValue: rec.optionValue,
-    optionName: rec.questionName,
-    optionScore: rec.optionScore,
-  });
+  const handleEdit = (rec) => {
+    setEditingRecord(rec);
+    setFormData({
+  optionCode: rec.optionCode,
+  optionValue: rec.optionValue,
+  optionScore: rec.optionScore,
+  questionId: rec.questionId,
+});
+    setShowForm(true);
+    setIsFormValid(true);
+  };
 
-  setIsFormValid(true);
-  setShowForm(true);
-};
   // ================= STATUS =================
-  const handleSwitchChange = (rec) => {
+    const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
-    });
+ newStatus:
+        rec.status === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE,    });
   };
 
   const handleConfirm = async (confirmed) => {
@@ -215,32 +220,28 @@ const OptionValueMaster = () => {
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
   };
-
-  // ================= REFRESH =================
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    fetchData();
-  };
-
   // ================= UI =================
   return (
     <div className="content-wrapper">
       <div className="card form-card">
-        <div className="card-header d-flex justify-content-between">
+        {/* HEADER */}
+        <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Option Value Master</h4>
-
           <div className="d-flex">
             {!showForm && (
               <input
-                className="form-control me-2"
+                type="text"
                 style={{ width: "220px" }}
-                placeholder="Search"
+                className="form-control me-2"
+                placeholder="Search..."
                 value={searchQuery}
-                onChange={handleSearchChange}
+                onChange={(e) => {
+                  setSearchQuery(e.target.value);
+                  setCurrentPage(1);
+                }}
               />
             )}
-
+ 
             {!showForm ? (
               <>
                 <button
@@ -252,58 +253,73 @@ const OptionValueMaster = () => {
                 >
                   Add
                 </button>
-
-                <button className="btn btn-success" onClick={handleRefresh}>
-                  Show All
-                </button>
+                <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setSearchQuery("");
+                          fetchData(1);
+                        }}
+                      >
+                        <i className="mdi mdi-view-list"></i> Show All
+                      </button>
               </>
             ) : (
-              <button className="btn btn-secondary" onClick={handleCancel}>
+              <button
+                className="btn btn-secondary"
+                onClick={() => setShowForm(false)}
+              >
                 Back
               </button>
             )}
           </div>
         </div>
-
         <div className="card-body">
-          {loading ? (
-            <LoadingScreen />
-          ) : !showForm ? (
+          {/* ================= LIST ================= */}
+          {!showForm && (
             <>
-              <table className="table table-bordered">
-                <thead>
+              <table className="table table-bordered table-hover">
+                <thead className="table-light">
                   <tr>
                     <th>Option Code</th>
                     <th>Option Value</th>
                     <th>Option Score</th>
-                    <th>Option Name</th>
+                    <th>Question Name</th>
                     <th>Status</th>
                     <th>Edit</th>
                   </tr>
                 </thead>
-
                 <tbody>
                   {currentItems.map((rec) => (
                     <tr key={rec.id}>
-                     <td>{rec.optionCode}</td>
-<td>{rec.optionValue}</td>
-<td>{rec.optionScore}</td>
-<td>{rec.optionName}</td>
+                      <td>{rec.optionCode}</td>
+                      <td>{rec.optionValue}</td>
+                      <td>{rec.optionScore}</td>
+                      <td>{rec.questionName}</td>
 
                       <td>
-                        <input
-                          type="checkbox"
-checked={rec.status?.toLowerCase() === "y"}
-                          onChange={() => handleSwitchChange(rec)}
-                        />
+                        <div className="form-check form-switch">
+                          <input
+                            className="form-check-input"
+                            type="checkbox"
+                            checked={rec.status === STATUS.ACTIVE}
+                           onChange={() => handleSwitchChange(rec)}
+                           
+                          />
+                          <label className="form-check-label ms-2">
+                            {rec.status === STATUS.ACTIVE
+                            ? "Active" : "Inactive"}
+                          </label>
+                        </div>
                       </td>
 
                       <td>
                         <button
                           className="btn btn-success btn-sm"
+                          disabled={rec.status !== STATUS.ACTIVE}
                           onClick={() => handleEdit(rec)}
-disabled={rec.status?.toLowerCase() !== "y"}                        >
-                          Edit
+                        >
+                          <i className="fa fa-pencil"></i>
                         </button>
                       </td>
                     </tr>
@@ -311,6 +327,7 @@ disabled={rec.status?.toLowerCase() !== "y"}                        >
                 </tbody>
               </table>
 
+              {/* PAGINATION */}
               <Pagination
                 totalItems={filteredData.length}
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
@@ -318,36 +335,83 @@ disabled={rec.status?.toLowerCase() !== "y"}                        >
                 onPageChange={setCurrentPage}
               />
             </>
-          ) : (
-            <form onSubmit={handleSave}>
-              <input
-                name="optionCode"
-                placeholder="Code"
-                value={formData.optionCode}
-                onChange={handleInputChange}
-              />
-              <input
-                name="optionValue"
-                placeholder="Value"
-                value={formData.optionValue}
-                onChange={handleInputChange}
-              />
-              <input
-                name=" optionScore"
-                placeholder="Score"
-                value={formData.optionScore}
-                onChange={handleInputChange}
-              />
-              <input
-                name="optionName"
-                placeholder="Name"
-                value={formData.optionName}
-                onChange={handleInputChange}
-              />
+          )}
 
-              <button disabled={!isFormValid}>
-                {editingRecord ? "Update" : "Save"}
-              </button>
+          {/* ================= FORM ================= */}
+          {showForm && (
+            <form onSubmit={handleSave} className="row g-3">
+              <div className="col-md-4">
+                <label>
+                Option  Code <span className="text-danger">*</span>
+                </label>
+                <input
+                  name="optionCode"
+                  className="form-control"
+                  value={formData.optionCode}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="col-md-4">
+                <label>
+                 Option Value<span className="text-danger">*</span>
+                </label>
+                <input
+                  name="optionValue"
+                  className="form-control"
+                  value={formData.optionValue}
+                  onChange={handleInputChange}
+                />
+              </div>
+              <div className="col-md-4">
+                <label>
+                 Option Score <span className="text-danger">*</span>
+                </label>
+                <input
+                  name="optionScore"
+                  type="number"
+                  className="form-control"
+                  value={formData.optionScore}
+                  onChange={handleInputChange}
+                />
+              </div>
+
+              <div className="col-md-4">
+  <label>
+    Question Name <span className="text-danger">*</span>
+  </label>
+
+ <select
+  name="questionId"
+  className="form-select"
+  value={formData.questionId}
+  onChange={handleInputChange}
+>
+  <option value="">Select Question</option>
+  {questions.map((q) => (
+    <option key={q.id} value={q.id}>
+      {q.question}
+    </option>
+  ))}
+</select>
+</div>
+
+              <div className="col-12 text-end">
+<button
+                  type="submit"
+                  className="btn btn-primary me-2"
+                  disabled={!isFormValid || loading}
+                >
+                  {editingRecord ? "Update" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                 onClick={handleCancel}
+                >
+                  Cancel
+                </button>
+              </div>
             </form>
           )}
 
@@ -355,17 +419,29 @@ disabled={rec.status?.toLowerCase() !== "y"}                        >
 
           {confirmDialog.isOpen && (
             <div className="modal d-block">
-              <div className="modal-content p-3">
-                <p>
-                  Are you sure to{" "}
-                  {confirmDialog.newStatus === "y"
-                    ? "Activate"
-                    : "Deactivate"}{" "}
-                  ?
-                </p>
-
-                <button onClick={() => handleConfirm(true)}>Yes</button>
-                <button onClick={() => handleConfirm(false)}>No</button>
+              <div className="modal-dialog">
+                <div className="modal-content">
+                  <div className="modal-body">
+                    Are you sure you want to{" "}
+                    {confirmDialog.newStatus === STATUS.ACTIVE
+                      ? "activate"
+                      : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.optionCode}</strong></div>
+                  <div className="modal-footer">
+                    <button
+                      className="btn btn-secondary"
+                      onClick={() => handleConfirm(false)}
+                    >
+                      No
+                    </button>
+                    <button
+                      className="btn btn-primary"
+                      onClick={() => handleConfirm(true)}
+                    >
+                      Yes
+                    </button>
+                  </div>
+                </div>
               </div>
             </div>
           )}

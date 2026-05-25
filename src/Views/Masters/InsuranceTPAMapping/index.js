@@ -1,49 +1,123 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
+import {
+  INSURANCE_TPA_MAPPING,
+  MAS_INSURANCE,
+  MAS_TPA,
+} from "../../../config/apiConfig";
+import {
+  REQUIRED_FIELDS_ERROR,
+  DUPLICATE_INSURANCE_TPA_MAPPING,
+  RECORD_ADDED_SUCCESSFULLY,
+  RECORD_UPDATED_SUCCESSFULLY,
+   STATUS_UPDATED_SUCCESSFULLY,
+   FAILED_TO_UPDATE_STATUS,
+} from "../../../config/constants";
+
 
 const InsuranceTPAMapping = () => {
   const [data, setData] = useState([]);
-  const [formData, setFormData] = useState({
-    insurance: "",
-    tpa: "",
-    effFrom: "",
-    effTo: "",
-    mode: "",
-  });
-
+  const [insuranceOptions, setInsuranceOptions] = useState([]);
+  const [tpaOptions, setTpaOptions] = useState([]);
+ const [formData, setFormData] = useState({
+    mappingId: "",
+  insuranceId: "",
+  tpaId: "",
+  effFrom: "",
+  effTo: "",
+  mode: "",
+});
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    record: null,
+    newStatus: "",
+  });
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    const d = new Date(dateString);
-    return `${String(d.getDate()).padStart(2, "0")}/${String(
-      d.getMonth() + 1
-    ).padStart(2, "0")}/${d.getFullYear()}`;
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const fetchData = async (flag = 0) => {
+  try {
+    const res = await getRequest(`${INSURANCE_TPA_MAPPING}/getAll/${flag}`
+    );
+
+    console.log("API RESPONSE =>", res);
+
+    if (Array.isArray(res)) {
+      setData(res);
+    }
+    else if (Array.isArray(res?.response)) {
+      setData(res.response);
+    }
+    else if (Array.isArray(res?.data)) {
+      setData(res.data);
+    }
+    else {
+      setData([]);
+    }
+
+  } catch (error) {
+    console.log(error);
+    setData([]);
+  }
+};
+
+
+  const fetchInsuranceOptions = async () => {
+    try {
+      const res = await getRequest(`${MAS_INSURANCE}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setInsuranceOptions(res.response);
+      } else {
+        setInsuranceOptions([]);
+      }
+    } catch (error) {
+      console.error("Insurance fetch error:", error);
+      setInsuranceOptions([]);
+    }
+  };
+
+  const fetchTPAOptions = async () => {
+    try {
+      const res = await getRequest(`${MAS_TPA}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setTpaOptions(res.response);
+      } else {
+        setTpaOptions([]);
+      }
+    } catch (error) {
+      console.error("TPA fetch error:", error);
+      setTpaOptions([]);
+    }
   };
 
   useEffect(() => {
-    setData([
-      {
-        id: 1,
-        insurance: "ICICI",
-        tpa: "TPA1",
-        effFrom: new Date(),
-        effTo: new Date(new Date().setMonth(new Date().getMonth() + 6)),
-        mode: "Online",
-        status: "y",
-      },
-    ]);
+    fetchData(0);
+    fetchInsuranceOptions();
+    fetchTPAOptions();
   }, []);
 
-  const filteredData = data.filter((rec) =>
-    rec.insurance.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredData = (data || []).filter((rec) =>
+    (rec?.insuranceName || "")
+      .toLowerCase()
+      .includes((searchQuery || "").toLowerCase())
   );
 
   const currentItems = filteredData.slice(
@@ -51,18 +125,26 @@ const InsuranceTPAMapping = () => {
     currentPage * itemsPerPage
   );
 
+ const validateForm = (values) => {
+  return (
+    values.insuranceId &&
+    values.tpaId &&
+    values.mode
+  );
+};
+
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const updatedForm = { ...formData, [name]: value };
     setFormData(updatedForm);
-    const valid = updatedForm.insurance || updatedForm.tpa || updatedForm.mode;
-    setIsFormValid(valid !== "");
+    setIsFormValid(validateForm(updatedForm));
   };
 
   const resetForm = () => {
     setFormData({
-      insurance: "",
-      tpa: "",
+       mappingId: "",
+      insuranceId: "",
+      tpaId: "",
       effFrom: "",
       effTo: "",
       mode: "",
@@ -70,44 +152,154 @@ const InsuranceTPAMapping = () => {
     setIsFormValid(false);
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
+const isDuplicate = () => {
+  return data.some((rec) => {
+    if (
+      editingRecord &&
+      rec.mappingId === editingRecord.mappingId
+    )
+      return false;
+
+    return (
+      String(rec.insuranceId) ===
+        String(formData.insuranceId) &&
+      String(rec.tpaId) ===
+        String(formData.tpaId)
+    );
+  });
+};
+
+ const handleSave = async (e) => {
+  e.preventDefault();
+
+  if (!isFormValid) return;
+
+  if (isDuplicate()) {
+    showPopup(DUPLICATE_INSURANCE_TPA_MAPPING, "error");
+    return;
+  }
+
+  setLoading(true);
+
+  try {
+    const payload = {
+      insuranceId: Number(formData.insuranceId),
+      tpaId: Number(formData.tpaId),
+      effectiveFrom: formData.effFrom,
+      effectiveTo: formData.effTo,
+      mode: formData.mode,
+    };
 
     if (editingRecord) {
-      const updated = data.map((item) =>
-        item.id === editingRecord.id ? { ...editingRecord, ...formData } : item
+      await putRequest(
+        `${INSURANCE_TPA_MAPPING}/update/${editingRecord.mappingId}`,
+        payload
       );
-      setData(updated);
-      showPopup("Updated Successfully", "success");
+
+      showPopup(RECORD_UPDATED_SUCCESSFULLY, "success", () => {
+    
+        setData((prev) =>
+          prev.map((item) =>
+            item.mappingId === editingRecord.mappingId
+              ? { ...item, ...payload }
+              : item
+          )
+        );
+
+        handleCancel();
+      });
+
     } else {
+      const res = await postRequest(
+        `${INSURANCE_TPA_MAPPING}/create`,
+        payload
+      );
+
       const newRecord = {
-        ...formData,
-        id: Date.now(),
+        mappingId: res?.response?.mappingId || Date.now(),
+        ...payload,
+        insuranceName:
+          insuranceOptions.find(i => i.insuranceId == payload.insuranceId)?.insuranceName,
+        tpaName:
+          tpaOptions.find(t => t.tpaId == payload.tpaId)?.tpaName,
         status: "y",
       };
-      setData([...data, newRecord]);
-      showPopup("Added Successfully", "success");
+
+      showPopup(RECORD_ADDED_SUCCESSFULLY, "success", () => {
+  
+       setData((prev) => [newRecord, ...prev]);
+        handleCancel();
+      });
     }
 
-    handleCancel();
-  };
+  } catch (error) {
+    console.error(error);
+    showPopup("Save Failed", "error");
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleEdit = (rec) => {
-    setEditingRecord(rec);
-    setFormData(rec);
-    setShowForm(true);
-    setIsFormValid(true);
+  console.log("EDIT RECORD =>", rec);
+  setEditingRecord(rec);
+
+  setFormData({
+    mappingId: rec.mappingId || "",
+    insuranceId: rec.insuranceId || "",
+    tpaId: rec.tpaId || "",
+    effFrom: rec.effectiveFrom
+      ? rec.effectiveFrom.split("T")[0]
+      : "",
+    effTo: rec.effectiveTo
+      ? rec.effectiveTo.split("T")[0]
+      : "",
+    mode: rec.mode || "",
+  });
+
+  setShowForm(true);
+  setIsFormValid(true);
+};
+
+  const handleStatusChange = (rec) => {
+    setConfirmDialog({
+      isOpen: true,
+      record: rec,
+      newStatus: rec.status === "y" ? "n" : "y",
+    });
   };
 
-  const toggleStatus = (rec) => {
-    const updated = data.map((item) =>
-      item.id === rec.id ? { ...item, status: item.status === "y" ? "n" : "y" } : item
-    );
-    setData(updated);
-  };
+ const showPopup = (message, type, onClose) => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: () => {
+      setPopupMessage(null);
+      if (onClose) onClose();
+    },
+  });
+};
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      await putRequest(
+        `${INSURANCE_TPA_MAPPING}/status/${confirmDialog.record.mappingId}?status=${confirmDialog.newStatus}`
+      );
+      showPopup( STATUS_UPDATED_SUCCESSFULLY, "success");
+      await fetchData();
+    } catch (error) {
+      console.error("Status update error:", error);
+      showPopup(FAILED_TO_UPDATE_STATUS, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
   };
 
   const handleCancel = () => {
@@ -119,6 +311,7 @@ const InsuranceTPAMapping = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
+    fetchData();
   };
 
   return (
@@ -155,19 +348,28 @@ const InsuranceTPAMapping = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={() => setShowForm(true)}
+                        disabled={loading}
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-success me-2 flex-shrink-0" 
-                        onClick={handleRefresh}
+                      <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setSearchQuery("");
+                          fetchData(1);
+                        }}
                       >
-                        <i className="mdi mdi-refresh"></i> Show All
+                        <i className="mdi mdi-view-list"></i> Show All
                       </button>
                     </>
                   ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                    <button
+                      type="button"
+                      className="btn btn-secondary"
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
                       <i className="mdi mdi-arrow-left"></i> Back
                     </button>
                   )}
@@ -178,6 +380,7 @@ const InsuranceTPAMapping = () => {
             <div className="card-body">
               {!showForm ? (
                 <>
+                  {loading && <div className="text-center">Loading...</div>}
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -193,11 +396,11 @@ const InsuranceTPAMapping = () => {
                       </thead>
                       <tbody>
                         {currentItems.map((rec) => (
-                          <tr key={rec.id}>
-                            <td>{rec.insurance}</td>
-                            <td>{rec.tpa}</td>
-                            <td>{formatDate(rec.effFrom)}</td>
-                            <td>{formatDate(rec.effTo)}</td>
+                          <tr key={rec.mappingId}>
+                            <td>{rec.insuranceName}</td>
+                            <td>{rec.tpaName}</td>
+                            <td>{formatDate(rec.effectiveFrom)}</td>
+                            <td>{formatDate(rec.effectiveTo)}</td>
                             <td>{rec.mode}</td>
                             <td>
                               <div className="form-check form-switch">
@@ -205,10 +408,11 @@ const InsuranceTPAMapping = () => {
                                   className="form-check-input"
                                   type="checkbox"
                                   checked={rec.status === "y"}
-                                  onChange={() => toggleStatus(rec)}
-                                  id={`switch-${rec.id}`}
+                                  onChange={() => handleStatusChange(rec)}
+                                  id={`switch-${rec.mappingId}`}
+                                  disabled={loading}
                                 />
-                                <label className="form-check-label px-0" htmlFor={`switch-${rec.id}`}>
+                                <label className="form-check-label px-0" htmlFor={`switch-${rec.mappingId}`}>
                                   {rec.status === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
@@ -217,7 +421,7 @@ const InsuranceTPAMapping = () => {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y"}
+                                disabled={rec.status !== "y" || loading}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -236,28 +440,49 @@ const InsuranceTPAMapping = () => {
                       onPageChange={setCurrentPage}
                     />
                   )}
+                  {filteredData.length === 0 && !loading && (
+                    <div className="text-center mt-3">No records found</div>
+                  )}
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
                     <div className="form-group col-md-4">
-                      <label>Insurance</label>
-                      <input
-                        className="form-control mt-1"
-                        name="insurance"
-                        value={formData.insurance}
+                      <label>Insurance <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select mt-1"
+                        name="insuranceId"
+                        value={formData.insuranceId}
                         onChange={handleInputChange}
-                      />
+                        required
+                        disabled={loading}
+                      >
+                        <option value="">Select Insurance</option>
+                        {insuranceOptions.map((option) => (
+                          <option key={option.insuranceId} value={option.insuranceId}>
+  {option.insuranceName}
+</option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="form-group col-md-4">
-                      <label>TPA</label>
-                      <input
-                        className="form-control mt-1"
-                        name="tpa"
-                        value={formData.tpa}
+                      <label>TPA <span className="text-danger">*</span></label>
+                      <select
+                        className="form-select mt-1"
+                        name="tpaId"
+                        value={formData.tpaId}
                         onChange={handleInputChange}
-                      />
+                        required
+                        disabled={loading}
+                      >
+                        <option value="">Select TPA</option>
+                        {tpaOptions.map((option) => (
+                          <option key={option.tpaId} value={option.tpaId}>
+                            {option.tpaName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
 
                     <div className="form-group col-md-4">
@@ -268,6 +493,7 @@ const InsuranceTPAMapping = () => {
                         type="date"
                         value={formData.effFrom}
                         onChange={handleInputChange}
+                        disabled={loading}
                       />
                     </div>
 
@@ -279,36 +505,96 @@ const InsuranceTPAMapping = () => {
                         type="date"
                         value={formData.effTo}
                         onChange={handleInputChange}
+                        disabled={loading}
                       />
                     </div>
 
                     <div className="form-group col-md-4">
-                      <label>Mode</label>
-                      <input
+                      <label>Mode <span className="text-danger">*</span></label>
+                      <select
                         className="form-control mt-1"
                         name="mode"
                         value={formData.mode}
                         onChange={handleInputChange}
-                      />
+                        required
+                        disabled={loading}
+                      >
+                        <option value="">Select Mode</option>
+                        <option value="Online">Online</option>
+                        <option value="Offline">Offline</option>
+                        <option value="Both">Both</option>
+                      </select>
                     </div>
                   </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2">
-                      {editingRecord ? "Update" : "Save"}
+                  <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : editingRecord ? "Update" : "Save"}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={handleCancel}>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
                       Cancel
                     </button>
                   </div>
                 </form>
               )}
-              
+
               {popupMessage && <Popup {...popupMessage} />}
             </div>
           </div>
         </div>
       </div>
+
+      
+      {confirmDialog.isOpen && (
+                 <div className="modal d-block">
+                   <div className="modal-dialog">
+                     <div className="modal-content">
+                       <div className="modal-header">
+                         <h5 className="modal-title">Confirm Status Change</h5>
+                         <button
+                           type="button"
+                           className="close"
+                           onClick={() => handleConfirm(false)}
+                         >
+                           <span>&times;</span>
+                         </button>
+                       </div>
+                       <div className="modal-body">
+                         <p>
+                           Are you sure you want to{" "}
+                           {confirmDialog.newStatus === "y"
+                             ? "activate"
+                             : "deactivate"}{" "}
+                           <strong>{confirmDialog.record?.insuranceName}</strong>?
+                         </p>
+                       </div>
+                       <div className="modal-footer">
+                         <button
+                           className="btn btn-secondary"
+                           onClick={() => handleConfirm(false)}
+                         >
+                           No
+                         </button>
+                         <button
+                           className="btn btn-primary"
+                           onClick={() => handleConfirm(true)}
+                         >
+                           Yes
+                         </button>
+                       </div>
+                     </div>
+                   </div>
+                 </div>
+               )}
     </div>
   );
 };

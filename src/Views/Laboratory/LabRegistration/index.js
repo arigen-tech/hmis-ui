@@ -882,7 +882,9 @@ const LabRegistration = () => {
     try {
       console.log("=== FETCHING GST CONFIGURATION ===");
 
-      const data = await getRequest(`${MAS_SERVICE_CATEGORY}/getGstConfig/1?categoryCode=${LAB_SERVICE_CATAGORY}`);
+      const data = await getRequest(
+        `${MAS_SERVICE_CATEGORY}/getGstConfig/1?categoryCode=${LAB_SERVICE_CATAGORY}`,
+      );
 
       console.log("GST API Response:", JSON.stringify(data, null, 2));
 
@@ -1128,7 +1130,10 @@ const LabRegistration = () => {
 
         console.log("FINAL LAB DATA:", labData);
 
-        const labResult = await postRequest("/lab/laboratoryRegistration", labData);
+        const labResult = await postRequest(
+          "/lab/laboratoryRegistration",
+          labData,
+        );
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Lab registration failed.");
         }
@@ -1987,12 +1992,20 @@ const LabRegistration = () => {
                                     : "Package Name"
                                 }
                                 onChange={(e) => {
+                                  const value = e.target.value;
+
+                                  const sanitizedValue = value.replace(
+                                    /[^a-zA-Z0-9 ]/g,
+                                    "",
+                                  );
+
                                   handleRowChange(
                                     index,
                                     "name",
-                                    e.target.value,
+                                    sanitizedValue,
                                   );
-                                  if (e.target.value.trim() !== "") {
+
+                                  if (sanitizedValue.trim() !== "") {
                                     setActiveRowIndex(index);
                                   } else {
                                     setActiveRowIndex(null);
@@ -2386,6 +2399,7 @@ const LabRegistration = () => {
                             type="number"
                             className="form-control"
                             value={row.originalAmount}
+                            disabled
                             onChange={(e) =>
                               handleRowChange(
                                 index,
@@ -2402,6 +2416,7 @@ const LabRegistration = () => {
                             type="number"
                             className="form-control"
                             value={row.discountAmount}
+                            disabled
                             onChange={(e) =>
                               handleRowChange(
                                 index,

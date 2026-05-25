@@ -38,18 +38,18 @@ const PackageMaster = () => {
     fetchPackageData(0)
   }, [])
 
-  const fetchPackageData = async (flag = 0) => {
+ const fetchPackageData = async (flag = 0, showLoader = true) => {
     try {
-      setLoading(true)
+          if (showLoader) setLoading(true)
       const response = await getRequest(`${INVESTIGATION_PACKAGE_API}/getAllPackInvestigation/${flag}`)
       if (response && response.response) {
-        setPackageData(response.response)
-      }
+        
+      }setPackageData(response.response)
     } catch (err) {
       console.error("Error fetching Package data:", err)
       showPopup(FETCH_PACKAGE_ERR_MSG, "error")
     } finally {
-      setLoading(false)
+      if (showLoader) setLoading(false)
     }
   }
 
@@ -110,132 +110,184 @@ const PackageMaster = () => {
     setShowForm(true)
   }
 
-  const handleSave = async (e) => {
-    e.preventDefault()
+ const handleSave = async (e) => {
+  e.preventDefault();
 
-    if (!validateDates()) return
+  if (!validateDates()) return;
 
-    // Validate costs
-    const baseCostValue = Number.parseFloat(formData.baseCost)
-    const discValue = Number.parseFloat(formData.disc) || 0
-    const discPerValue = Number.parseFloat(formData.discPer) || 0
+  const baseCostValue = Number.parseFloat(formData.baseCost);
+  const discValue = Number.parseFloat(formData.disc) || 0;
+  const discPerValue = Number.parseFloat(formData.discPer) || 0;
 
-    if (isNaN(baseCostValue) || baseCostValue < 0) {
-      showPopup(VALID_BASE_COST, "error")
-      return
-    }
-
-    if (discValue < 0) {
-      showPopup(DISCOUNT_CANOT_NAGATIVE, "error")
-      return
-    }
-
-    if (discPerValue < 0 || discPerValue > 100) {
-      showPopup(DISCOUNT_PERCENTAGE, "error")
-      return
-    }
-
-    try {
-      setLoading(true)
-
-      const actualCost = calculateActualCost(formData.baseCost, formData.disc, formData.discPer)
-
-      const payload = {
-        packName: formData.packName,
-        descrp: formData.descrp,
-        baseCost: baseCostValue,
-        disc: discValue,
-        discPer: discPerValue,
-        actualCost: Number.parseFloat(actualCost),
-        fromDt: formData.fromDt,
-        toDt: formData.toDt || null,
-        category: formData.category,
-        discFlag: formData.discFlag,
-        status: editingPackage ? editingPackage.status : "y",
-      }
-
-      let response
-      if (editingPackage) {
-        response = await putRequest(`${INVESTIGATION_PACKAGE_API}/update/${editingPackage.packId}`, payload)
-        if (response && response.response) {
-          setPackageData((prevData) =>
-            prevData.map((pkg) => (pkg.packId === editingPackage.packId ? response.response : pkg)),
-          )
-          showPopup(UPDATE_PACKAGE_SUCC_MSG, "success")
-        }
-      } else {
-        response = await postRequest(`${INVESTIGATION_PACKAGE_API}/add`, payload)
-        if (response && response.response) {
-          setPackageData((prevData) => [...prevData, response.response])
-          showPopup(ADD_PACKAGE_SUCC_MSG, "success")
-        }
-      }
-
-      setEditingPackage(null)
-      setFormData({
-        packName: "",
-        descrp: "",
-        baseCost: "",
-        disc: "",
-        discPer: "",
-        actualCost: "",
-        fromDt: "",
-        toDt: "",
-        category: "",
-        discFlag: "y",
-      })
-      setShowForm(false)
-      fetchPackageData()
-    } catch (err) {
-      console.error("Error saving Package data:", err)
-      const errorMessage = err.response?.data?.message || err.message || "Failed to save changes due to server error"
-      showPopup(errorMessage, "error")
-    } finally {
-      setLoading(false)
-    }
+  if (isNaN(baseCostValue) || baseCostValue < 0) {
+    showPopup(VALID_BASE_COST, "error");
+    return;
   }
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
-    })
+  if (discValue < 0) {
+    showPopup(DISCOUNT_CANOT_NAGATIVE, "error");
+    return;
   }
+
+  if (discPerValue < 0 || discPerValue > 100) {
+    showPopup(DISCOUNT_PERCENTAGE, "error");
+    return;
+  }
+
+  try {
+    setLoading(true);
+
+    const actualCost = calculateActualCost(
+      formData.baseCost,
+      formData.disc,
+      formData.discPer
+    );
+
+    const payload = {
+      packName: formData.packName,
+      descrp: formData.descrp,
+      baseCost: baseCostValue,
+      disc: discValue,
+      discPer: discPerValue,
+      actualCost: Number.parseFloat(actualCost),
+      fromDt: formData.fromDt,
+      toDt: formData.toDt || null,
+      category: formData.category,
+      discFlag: formData.discFlag,
+      status: editingPackage ? editingPackage.status : "y",
+    };
+
+    let response;
+
+    if (editingPackage) {
+      response = await putRequest(
+        `${INVESTIGATION_PACKAGE_API}/update/${editingPackage.packId}`,
+        payload
+      );
+
+      showPopup(UPDATE_PACKAGE_SUCC_MSG, "success");
+    } else {
+      response = await postRequest(
+        `${INVESTIGATION_PACKAGE_API}/add`,
+        payload
+      );
+
+      showPopup(ADD_PACKAGE_SUCC_MSG, "success");
+    }
+
+    await fetchPackageData(0, false);
+
+    setShowForm(false);
+    setEditingPackage(null);
+
+    setFormData({
+      packName: "",
+      descrp: "",
+      baseCost: "",
+      disc: "",
+      discPer: "",
+      actualCost: "",
+      fromDt: "",
+      toDt: "",
+      category: "",
+      discFlag: "y",
+    });
+
+  } catch (err) {
+    console.error("Error saving Package data:", err);
+
+    showPopup(
+      err.response?.data?.message ||
+        "Failed to save changes",
+      "error"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+ const showPopup = (message, type = "info") => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: () => setPopupMessage(null),
+  });
+
+  setTimeout(() => {
+    setPopupMessage(null);
+  }, 3000);
+};
 
   const handleSwitchChange = (packId, newStatus) => {
     setConfirmDialog({ isOpen: true, packageId: packId, newStatus })
   }
 
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.packageId !== null) {
-      try {
-        setLoading(true)
-
-        const response = await putRequest(
-          `${INVESTIGATION_PACKAGE_API}/status/${confirmDialog.packageId}?status=${confirmDialog.newStatus}`,
-        )
-
-        if (response && response.response) {
-          setPackageData((prevData) =>
-            prevData.map((pkg) =>
-              pkg.packId === confirmDialog.packageId ? { ...pkg, status: confirmDialog.newStatus } : pkg,
-            ),
-          )
-          showPopup(`Package ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
-        }
-      } catch (err) {
-        console.error("Error updating Package status:", err)
-        const errorMessage = err.response?.data?.message || err.message || "Failed to update status due to server error"
-        showPopup(errorMessage, "error")
-      } finally {
-        setLoading(false)
-      }
-    }
-    setConfirmDialog({ isOpen: false, packageId: null, newStatus: null })
+ const handleConfirm = async (confirmed) => {
+  if (!confirmed) {
+    setConfirmDialog({
+      isOpen: false,
+      packageId: null,
+      newStatus: null,
+    });
+    return;
   }
+
+  try {
+    setLoading(true);
+
+    await putRequest(
+      `${INVESTIGATION_PACKAGE_API}/status/${confirmDialog.packageId}?status=${confirmDialog.newStatus}`
+    );
+
+    setPackageData((prevData) => {
+      const updatedItem = prevData.find(
+        (pkg) => pkg.packId === confirmDialog.packageId
+      );
+
+      const remainingItems = prevData.filter(
+        (pkg) => pkg.packId !== confirmDialog.packageId
+      );
+
+      const finalItem = {
+        ...updatedItem,
+        status: confirmDialog.newStatus,
+      };
+
+      // active => top
+      // inactive => bottom
+      if (confirmDialog.newStatus === "y") {
+        return [finalItem, ...remainingItems];
+      } else {
+        return [...remainingItems, finalItem];
+      }
+    });
+
+    showPopup(
+      `Package ${
+        confirmDialog.newStatus === "y"
+          ? "activated"
+          : "deactivated"
+      } successfully!`,
+      "success"
+    );
+
+  } catch (err) {
+    console.error("Error updating Package status:", err);
+
+    showPopup(
+      err.response?.data?.message ||
+      "Failed to update package status",
+      "error"
+    );
+  } finally {
+    setLoading(false);
+
+    setConfirmDialog({
+      isOpen: false,
+      packageId: null,
+      newStatus: null,
+    });
+  }
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target
@@ -340,9 +392,9 @@ const PackageMaster = () => {
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+             {loading ? (
+    <LoadingScreen />
+  ) : !showForm ? (
                 <>
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
@@ -408,6 +460,7 @@ const PackageMaster = () => {
                             </td>
                           </tr>
                         )}
+                        
                       </tbody>
                     </table>
                   </div>
@@ -574,9 +627,14 @@ const PackageMaster = () => {
                   </div>
                 </form>
               )}
-              {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
-              )}
+             
+ {popupMessage && (
+  <Popup
+    message={popupMessage.message}
+    type={popupMessage.type}
+    onClose={popupMessage.onClose}
+  />
+)}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog">
                   <div className="modal-dialog" role="document">

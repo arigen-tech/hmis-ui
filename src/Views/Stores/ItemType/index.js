@@ -4,13 +4,23 @@ import { ITEM_TYPE, MAS_ITEM_TYPE, MAS_STORE_GROUP } from "../../../config/apiCo
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
+import {
+  FETCH_ITEM_TYPE,
+  ADD_ITEM_TYPE_SUCCESS,
+  ADD_ITEM_TYPE_FAIL,
+  UPDATE_ITEM_TYPE_SUCCESS,
+  UPDATE_ITEM_TYPE_FAIL,
+  DUPLICATE_ITEM_TYPE,
+  STATUS_ITEM_TYPE_SUCCESS,
+  STATUS_ITEM_TYPE_FAIL,
+} from "../../../config/constants"
 
 const ItemTypeManagement = () => {
   const [itemTypes, setItemTypes] = useState([])
   const [storeGroups, setStoreGroups] = useState([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemTypeId: null, newStatus: false })
+  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, itemTypeId: null, newStatus: "" })
   const [popupMessage, setPopupMessage] = useState(null)
   const [showForm, setShowForm] = useState(false)
   const [editingType, setEditingType] = useState(null)
@@ -60,7 +70,7 @@ const ItemTypeManagement = () => {
           itemTypeId: item.id,
           itemTypeCode: item.code,
           itemTypeName: item.name,
-          itemGroup: item.masStoreGroupName || "",   // ✅ FIXED
+          itemGroup: item.masStoreGroupName || "",
           status: item.status.toLowerCase(),
           masStoreGroupId: item.masStoreGroupId,
         }))
@@ -68,7 +78,7 @@ const ItemTypeManagement = () => {
       }
     } catch (err) {
       console.error("Error fetching item types:", err)
-      showPopup("Failed to load item types", "error")
+      showPopup(FETCH_ITEM_TYPE || "Failed to load item types", "error")
     } finally {
       setLoading(false)
     }
@@ -97,12 +107,20 @@ const ItemTypeManagement = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
   const currentItems = filteredItemTypes.slice(indexOfFirst, indexOfLast)
 
+  const validateForm = (values) => {
+    return (
+      values.itemTypeCode?.trim() !== "" &&
+      values.itemTypeName?.trim() !== "" &&
+      values.itemGroup?.trim() !== ""
+    )
+  }
+
   const handleEdit = (type) => {
     setEditingType(type)
     setFormData({
       itemTypeCode: type.itemTypeCode,
       itemTypeName: type.itemTypeName,
-      itemGroup: type.masStoreGroupId.toString(),
+      itemGroup: type.masStoreGroupId?.toString() || "",
     })
     setIsFormValid(true)
     setShowForm(true)
@@ -112,31 +130,27 @@ const ItemTypeManagement = () => {
     const { id, value } = e.target
     const updated = { ...formData, [id]: value }
     setFormData(updated)
-    setIsFormValid(
-      updated.itemTypeCode.trim() !== "" &&
-      updated.itemTypeName.trim() !== "" &&
-      updated.itemGroup.trim() !== ""
-    )
+    setIsFormValid(validateForm(updated))
   }
 
   const handleSave = async (e) => {
     e.preventDefault()
     if (!isFormValid) return
 
+    const isDuplicate = itemTypes.some(
+      (type) =>
+        (type.itemTypeCode === formData.itemTypeCode ||
+          type.itemTypeName === formData.itemTypeName) &&
+        (!editingType || type.itemTypeId !== editingType.itemTypeId)
+    )
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_ITEM_TYPE || "Duplicate item type code or name!", "error")
+      return
+    }
+
     try {
       setLoading(true)
-
-      const isDuplicate = itemTypes.some(
-        (type) =>
-          (type.itemTypeCode === formData.itemTypeCode ||
-            type.itemTypeName === formData.itemTypeName) &&
-          (!editingType || type.itemTypeId !== editingType.itemTypeId)
-      )
-
-      if (isDuplicate) {
-        showPopup("Duplicate item type code or name!", "error")
-        return
-      }
 
       const requestData = {
         code: formData.itemTypeCode,
@@ -147,43 +161,41 @@ const ItemTypeManagement = () => {
 
       if (editingType) {
         const response = await putRequest(`${MAS_ITEM_TYPE}/updateById/${editingType.itemTypeId}`, requestData)
-        if (response && response.response) {
-          const updatedItem = {
-            itemTypeId: response.response.id,
-            itemTypeCode: response.response.code,
-            itemTypeName: response.response.name,
-            itemGroup: response.response.masStoreGroupName || "",  // ✅ FIXED
-            status: response.response.status.toLowerCase(),
-            masStoreGroupId: response.response.masStoreGroupId,
-          }
-          setItemTypes((prev) =>
-            prev.map((t) => (t.itemTypeId === editingType.itemTypeId ? updatedItem : t))
-          )
-          showPopup("Item Type updated successfully!", "success")
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_ITEM_TYPE_SUCCESS || "Item Type updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              handleCancel()
+              fetchItemTypes(0)
+              setCurrentPage(1)
+            }
+          })
         }
       } else {
         const response = await postRequest(`${MAS_ITEM_TYPE}/create`, requestData)
-        if (response && response.response) {
-          const newItem = {
-            itemTypeId: response.response.id,
-            itemTypeCode: response.response.code,
-            itemTypeName: response.response.name,
-            itemGroup: response.response.masStoreGroupName || "",  // ✅ FIXED
-            status: response.response.status.toLowerCase(),
-            masStoreGroupId: response.response.masStoreGroupId,
-          }
-          setItemTypes([...itemTypes, newItem])
-          showPopup("New Item Type added successfully!", "success")
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_ITEM_TYPE_SUCCESS || "New Item Type added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              handleCancel()
+              fetchItemTypes(0)
+              setCurrentPage(1)
+            }
+          })
         }
       }
-
-      setShowForm(false)
-      setEditingType(null)
-      setFormData({ itemTypeCode: "", itemTypeName: "", itemGroup: "" })
-      fetchItemTypes()
     } catch (err) {
       console.error("Error saving:", err)
-      showPopup(err.response?.data?.message || err.message, "error")
+      showPopup(
+        editingType 
+          ? (UPDATE_ITEM_TYPE_FAIL || err.response?.data?.message || err.message)
+          : (ADD_ITEM_TYPE_FAIL || err.response?.data?.message || err.message), 
+        "error"
+      )
     } finally {
       setLoading(false)
     }
@@ -193,39 +205,56 @@ const ItemTypeManagement = () => {
     setConfirmDialog({ isOpen: true, itemTypeId: id, newStatus })
   }
 
-  const handleConfirm = async () => {
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, itemTypeId: null, newStatus: "" })
+      return
+    }
+
     try {
       setLoading(true)
       const response = await putRequest(
         `${MAS_ITEM_TYPE}/status/${confirmDialog.itemTypeId}?status=${confirmDialog.newStatus}`
       )
-      if (response && response.response) {
-        setItemTypes((prev) =>
-          prev.map((t) =>
-            t.itemTypeId === confirmDialog.itemTypeId
-              ? { ...t, status: confirmDialog.newStatus }
-              : t
-          )
-        )
-        showPopup("Status updated successfully!", "success")
+      if (response.status === 200) {
+        setPopupMessage({
+          message: STATUS_ITEM_TYPE_SUCCESS || "Status updated successfully!",
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null)
+            fetchItemTypes(0)
+            setCurrentPage(1)
+          }
+        })
       }
     } catch (err) {
       console.error("Status error:", err)
-      showPopup(err.response?.data?.message || err.message, "error")
+      showPopup(STATUS_ITEM_TYPE_FAIL || err.response?.data?.message || err.message, "error")
     } finally {
       setLoading(false)
-      setConfirmDialog({ isOpen: false })
+      setConfirmDialog({ isOpen: false, itemTypeId: null, newStatus: "" })
     }
   }
 
   const handleRefresh = () => {
     setSearchQuery("")
     setCurrentPage(1)
-    fetchItemTypes()
+    fetchItemTypes(0)
   }
 
   const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) })
+    setPopupMessage({ 
+      message, 
+      type, 
+      onClose: () => setPopupMessage(null) 
+    })
+  }
+
+  const handleCancel = () => {
+    setFormData({ itemTypeCode: "", itemTypeName: "", itemGroup: "" })
+    setIsFormValid(false)
+    setEditingType(null)
+    setShowForm(false)
   }
 
   return (
@@ -233,10 +262,9 @@ const ItemTypeManagement = () => {
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header  d-flex justify-content-between align-items-center">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Item Type Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-
                 {!showForm ? (
                   <>
                     <form className="d-inline-block searchform me-4" role="search">
@@ -254,20 +282,29 @@ const ItemTypeManagement = () => {
                       </div>
                     </form>
                     <div className="d-flex align-items-center ms-auto">
-                      <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                      <button 
+                        className="btn btn-success me-2" 
+                        onClick={() => setShowForm(true)}
+                        disabled={loading}
+                      >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
                       <button 
                         type="button" 
                         className="btn btn-success me-2 flex-shrink-0" 
                         onClick={handleRefresh}
+                        disabled={loading}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
                       </button>
                     </div>
                   </>
                 ) : (
-                  <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={handleCancel}
+                    disabled={loading}
+                  >
                     <i className="mdi mdi-arrow-left"></i> Back
                   </button>
                 )}
@@ -275,73 +312,76 @@ const ItemTypeManagement = () => {
             </div>
 
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {!showForm ? (
                 <>
-                  <div className="table-responsive packagelist">
-                    <table className="table table-bordered table-hover align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Item Type Code</th>
-                          <th>Item Type Name</th>
-                          <th>Item Group</th>
-                          <th>Status</th>
-                          <th>Edit</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((type) => (
-                            <tr key={type.itemTypeId}>
-                              <td>{type.itemTypeCode}</td>
-                              <td>{type.itemTypeName}</td>
-                              <td>{type.itemGroup}</td> {/* ✅ FIXED */}
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={type.status === "y"}
-                                    onChange={() =>
-                                      handleSwitchChange(type.itemTypeId, type.status === "y" ? "n" : "y")
-                                    }
-                                  />
-                                  <label className="form-check-label">
-                                    {type.status === "y" ? "Active" : "Deactivated"}
-                                  </label>
-                                </div>
-                              </td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-success"
-                                  onClick={() => handleEdit(type)}
-                                  disabled={type.status !== "y"}
-                                >
-                                  <i className="fa fa-pencil"></i>
-                                </button>
-                              </td>
+                  {loading && <LoadingScreen />}
+                  {!loading && (
+                    <>
+                      <div className="table-responsive packagelist">
+                        <table className="table table-bordered table-hover align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Item Type Code</th>
+                              <th>Item Type Name</th>
+                              <th>Item Group</th>
+                              <th>Status</th>
+                              <th>Edit</th>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan={5} className="text-center">
-                              No item types found
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
-                  </div>
-                  
-                  {/* PAGINATION USING REUSABLE COMPONENT */}
-                  {filteredItemTypes.length > 0 && (
-                    <Pagination
-                      totalItems={filteredItemTypes.length}
-                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
-                    />
+                          </thead>
+                          <tbody>
+                            {currentItems.length > 0 ? (
+                              currentItems.map((type) => (
+                                <tr key={type.itemTypeId}>
+                                  <td>{type.itemTypeCode}</td>
+                                  <td>{type.itemTypeName}</td>
+                                  <td>{type.itemGroup}</td>
+                                  <td>
+                                    <div className="form-check form-switch">
+                                      <input
+                                        className="form-check-input"
+                                        type="checkbox"
+                                        checked={type.status === "y"}
+                                        onChange={() =>
+                                          handleSwitchChange(type.itemTypeId, type.status === "y" ? "n" : "y")
+                                        }
+                                        disabled={loading}
+                                      />
+                                      <label className="form-check-label">
+                                        {type.status === "y" ? "Active" : "Deactivated"}
+                                      </label>
+                                    </div>
+                                  </td>
+                                  <td>
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={() => handleEdit(type)}
+                                      disabled={type.status !== "y" || loading}
+                                    >
+                                      <i className="fa fa-pencil"></i>
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={5} className="text-center">
+                                  No item types found
+                                </td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                      
+                      {filteredItemTypes.length > 0 && (
+                        <Pagination
+                          totalItems={filteredItemTypes.length}
+                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                          currentPage={currentPage}
+                          onPageChange={setCurrentPage}
+                        />
+                      )}
+                    </>
                   )}
                 </>
               ) : (
@@ -350,7 +390,7 @@ const ItemTypeManagement = () => {
                     <label>Item Type Code *</label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control mt-1"
                       id="itemTypeCode"
                       value={formData.itemTypeCode}
                       maxLength={ITEM_TYPE_CODE_MAX_LENGTH}
@@ -363,7 +403,7 @@ const ItemTypeManagement = () => {
                     <label>Item Type Name *</label>
                     <input
                       type="text"
-                      className="form-control"
+                      className="form-control mt-1"
                       id="itemTypeName"
                       value={formData.itemTypeName}
                       maxLength={ITEM_TYPE_NAME_MAX_LENGTH}
@@ -375,7 +415,7 @@ const ItemTypeManagement = () => {
                   <div className="form-group col-md-4">
                     <label>Item Group *</label>
                     <select
-                      className="form-select"
+                      className="form-select mt-1"
                       id="itemGroup"
                       value={formData.itemGroup}
                       onChange={handleInputChange}
@@ -395,10 +435,19 @@ const ItemTypeManagement = () => {
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
+                    <button 
+                      type="submit" 
+                      className="btn btn-primary me-2" 
+                      disabled={!isFormValid || loading}
+                    >
+                      {loading ? "Saving..." : editingType ? "Update" : "Save"}
                     </button>
-                    <button className="btn btn-danger" onClick={() => setShowForm(false)}>
+                    <button 
+                      type="button"
+                      className="btn btn-danger" 
+                      onClick={handleCancel}
+                      disabled={loading}
+                    >
                       Cancel
                     </button>
                   </div>
@@ -406,16 +455,28 @@ const ItemTypeManagement = () => {
               )}
 
               {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+                <Popup 
+                  message={popupMessage.message} 
+                  type={popupMessage.type} 
+                  onClose={popupMessage.onClose} 
+                />
               )}
 
               {confirmDialog.isOpen && (
-                <div className="modal d-block">
-                  <div className="modal-dialog">
+                <div 
+                  className="modal d-block" 
+                  tabIndex="-1" 
+                  role="dialog"
+                  style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+                >
+                  <div className="modal-dialog" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button className="close" onClick={() => setConfirmDialog({ isOpen: false })}>
+                        <button 
+                          className="close" 
+                          onClick={() => handleConfirm(false)}
+                        >
                           <span>&times;</span>
                         </button>
                       </div>
@@ -430,10 +491,18 @@ const ItemTypeManagement = () => {
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button className="btn btn-secondary" onClick={() => setConfirmDialog({ isOpen: false })}>
+                        <button 
+                          className="btn btn-secondary" 
+                          onClick={() => handleConfirm(false)}
+                          disabled={loading}
+                        >
                           No
                         </button>
-                        <button className="btn btn-primary" onClick={handleConfirm}>
+                        <button 
+                          className="btn btn-primary" 
+                          onClick={() => handleConfirm(true)}
+                          disabled={loading}
+                        >
                           Yes
                         </button>
                       </div>

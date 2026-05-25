@@ -241,6 +241,9 @@ const validRoutes = [
   "/SurgeryMaster",
   "/SurgeryPricing",
   "/BillingTemplate",
+  "/OpdVision",
+  "/OBGDetails",
+  "/EarExamination",
 ];
 
 const NotAuthorized = () => {

@@ -1,42 +1,70 @@
 import { useEffect, useState } from "react";
 import Swal from "sweetalert2";
 import Popup from "../../../Components/popup";
-import { GET_PRECONSULTATION, SET_VITALS } from "../../../config/apiConfig";
+import {
+  GET_PRECONSULTATION_LIST,
+  SET_VITALS,
+} from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
 
 const OpdPreconsultation = () => {
-  const setLoading = (b) => {};
+  const [loading, setLoading] = useState(true);
+  const [visits, setVisits] = useState([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalItems, setTotalItems] = useState(0);
+  const [isSearching, setIsSearching] = useState(false);
+  const [isSearchMode, setIsSearchMode] = useState(false);
 
-  async function fetchPendingPreconsultation() {
-    try {
-      const data = await getRequest(`${GET_PRECONSULTATION}`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        console.log(data.response);
-        setVisits(data.response);
-      } else {
-        console.error("Unexpected API response format:", data);
-      }
-    } catch (error) {
-      console.error("Error fetching Department data:", error);
-    } finally {
-      setLoading(false);
-    }
-  }
+  // ---------- Search State (similar to OPDReports) ----------
+  const [searchData, setSearchData] = useState({
+    mobileNo: "",
+    patientName: "",
+  });
 
   useEffect(() => {
-    // Fetching gender data (simulated API response)
-    fetchPendingPreconsultation();
-  }, []);
-  const [visits, setVisits] = useState([]);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [currentPage, setCurrentPage] = useState(1);
-  const [pageInput, setPageInput] = useState("");
-  const itemsPerPage = 5;
+    fetchPendingPreconsultation(currentPage - 1, DEFAULT_ITEMS_PER_PAGE);
+  }, [currentPage]);
 
-  const filteredVisits = visits;
+  const fetchPendingPreconsultation = async (
+    page = 0,
+    size = DEFAULT_ITEMS_PER_PAGE,
+    showFullLoader = true,
+  ) => {
+    try {
+      if (showFullLoader) setLoading(true);
+
+      const data = await getRequest(
+        `${GET_PRECONSULTATION_LIST}?page=${page}&size=${size}&mobileNumber=${searchData.mobileNo}&patientName=${searchData.patientName}`,
+      );
+
+      if (data.status === 200) {
+        setVisits(data.response.content);
+        setTotalItems(data.response.totalElements);
+      }
+    } catch (error) {
+      console.error(error);
+    } finally {
+      if (showFullLoader) setLoading(false);
+    }
+  };
+
+  // Filter visits based on search criteria (mobile number and patient name)
+  // const filteredVisits = visits.filter((item) => {
+  //   const mobileMatch =
+  //     searchData.mobileNo === "" ||
+  //     (item.mobleNumber && item.mobleNumber.includes(searchData.mobileNo));
+  //   const nameMatch =
+  //     searchData.patientName === "" ||
+  //     (item.patientName &&
+  //       item.patientName
+  //         .toLowerCase()
+  //         .includes(searchData.patientName.toLowerCase()));
+  //   return mobileMatch && nameMatch;
+  // });
 
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [vitalFormData, setVitalFormData] = useState({
@@ -62,18 +90,33 @@ const OpdPreconsultation = () => {
     });
   };
 
+  // Handle search input changes
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
+    const { id, value } = e.target;
+    setSearchData((prev) => ({ ...prev, [id]: value }));
     setCurrentPage(1);
   };
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredVisits.slice(indexOfFirst, indexOfLast);
+  const handleSearch = async () => {
+    setIsSearching(true);
+    setCurrentPage(1);
 
+    await fetchPendingPreconsultation(0, DEFAULT_ITEMS_PER_PAGE, false);
+
+    setIsSearching(false);
+  };
+
+  const handleReset = async () => {
+    setSearchData({ mobileNo: "", patientName: "" });
+    setCurrentPage(1);
+
+    await fetchPendingPreconsultation(0, DEFAULT_ITEMS_PER_PAGE, false);
+  };
+
+  const currentItems = visits;
   const handleRowClick = (patient) => {
     if (selectedPatient && selectedPatient.id === patient.id) {
-      setSelectedPatient(null); // Unselect if clicking the same patient
+      setSelectedPatient(null);
       setVitalFormData({
         height: "",
         weight: "",
@@ -133,9 +176,29 @@ const OpdPreconsultation = () => {
     }
   };
 
+  const handleSubmit = async (e) => {
+  e.preventDefault();
+
+  if (
+    !vitalFormData.height ||
+    !vitalFormData.weight ||
+    !vitalFormData.temperature ||
+    !vitalFormData.systolic ||
+    !vitalFormData.diastolic ||
+    !vitalFormData.pulse ||
+    !vitalFormData.rr ||
+    !vitalFormData.spo2
+
+  ) {
+    Swal.fire("Please fill all required fields", "", "warning");
+    return;
+  }
+
+  await submitvitals();
+};
+
   const handleSaveVitals = (e) => {
     e.preventDefault();
-
     const updatedPatients = visits.map((patient) => {
       if (patient.id === selectedPatient.id) {
         return {
@@ -145,9 +208,7 @@ const OpdPreconsultation = () => {
       }
       return patient;
     });
-
     setVisits(updatedPatients);
-    // showPopup(`Vital details for ${selectedPatient?.patientName} have been saved successfully!`, "success")
   };
 
   async function submitvitals() {
@@ -162,19 +223,27 @@ const OpdPreconsultation = () => {
       spo2: vitalFormData.spo2,
       bpSystolic: vitalFormData.systolic,
       bpDiastolic: vitalFormData.diastolic,
-      patientId: selectedPatient.patient.id,
-      visitId: selectedPatient.id,
-      departmentId: selectedPatient.department.id,
+      patientId: selectedPatient.patientId,
+      visitId: selectedPatient.visitId,
+      departmentId: selectedPatient.departmentId,
       hospitalId: sessionStorage.getItem("hospitalId"),
-      doctorId: selectedPatient.doctor.userId,
+      doctorId: selectedPatient.doctorId,
       lastChgBy: sessionStorage.getItem("username"),
     };
     try {
       const data = await postRequest(`${SET_VITALS}`, requestData);
+
       if (data.status === 200) {
-        fetchPendingPreconsultation();
-        await Swal.fire("Vitals saved for appointment", "", "success");
-        setSelectedPatient(null);
+        const result = await Swal.fire(
+          "Vitals saved for appointment",
+          "",
+          "success",
+        );
+
+        if (result.isConfirmed) {
+          fetchPendingPreconsultation();
+          setSelectedPatient(null);
+        }
       } else {
         console.error("Unexpected API response format:", data);
       }
@@ -182,41 +251,91 @@ const OpdPreconsultation = () => {
       console.error("Error:", error);
     }
   }
+  if (loading) {
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header  d-flex justify-content-between align-items-center">
+            <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">OPD Pre-consultation</h4>
               <div className="d-flex justify-content-end align-items-center">
-                <div className="d-flex align-items-center">
-                  <form
-                    className="d-inline-block searchform me-4"
-                    role="search"
-                  >
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                  <button type="button" className="btn btn-success me-2">
-                    <i className="mdi mdi-plus"></i> Generate Report
-                  </button>
-                </div>
+                <button type="button" className="btn btn-success me-2">
+                  <i className="mdi mdi-plus"></i> Generate Report
+                </button>
               </div>
             </div>
             <div className="card-body">
+              {/* New Search Section (matching OPDReports) */}
+              <div className="mb-4">
+                <div className="card-body">
+                  <div className="row g-4 align-items-end">
+                    <div className="col-md-3">
+                      <label className="form-label fw-semibold">
+                        Patient Mobile No.
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="mobileNo"
+                        placeholder="Enter mobile number"
+                        value={searchData.mobileNo}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-semibold">
+                        Patient Name
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="patientName"
+                        placeholder="Enter patient name"
+                        value={searchData.patientName}
+                        onChange={handleSearchChange}
+                      />
+                    </div>
+                    <div className="col-md-3">
+                      <div className="d-flex gap-2">
+                        <button
+                          type="button"
+                          className="btn btn-primary flex-fill"
+                          onClick={handleSearch}
+                          disabled={isSearching}
+                        >
+                          {isSearching ? (
+                            <>
+                              <span
+                                className="spinner-border spinner-border-sm me-2"
+                                role="status"
+                                aria-hidden="true"
+                              ></span>
+                              Searching...
+                            </>
+                          ) : (
+                            <>
+                              <i className="mdi mdi-magnify"></i> Search
+                            </>
+                          )}
+                        </button>
+                        <button
+                          type="button"
+                          className="btn btn-secondary flex-fill"
+                          onClick={handleReset}
+                        >
+                          Show All
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Patients Table */}
               <div className="table-responsive packagelist">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
@@ -269,7 +388,7 @@ const OpdPreconsultation = () => {
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
-                      <div className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center">
+                      <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
                         <h6 className="mb-0 fw-bold">
                           Vital Details for {selectedPatient.patientName}
                         </h6>
@@ -392,7 +511,7 @@ const OpdPreconsultation = () => {
                             </div>
 
                             <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">RR</label>
+                              <label className="form-label me-2">RR<span className="text-danger">*</span></label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -400,12 +519,13 @@ const OpdPreconsultation = () => {
                                 name="rr"
                                 value={vitalFormData.rr}
                                 onChange={handleVitalInputChange}
+                                required
                               />
                               <span className="input-group-text">/min</span>
                             </div>
 
                             <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">SpO2</label>
+                              <label className="form-label me-2">SpO2<span className="text-danger">*</span></label>
                               <input
                                 type="text"
                                 className="form-control"
@@ -413,6 +533,7 @@ const OpdPreconsultation = () => {
                                 name="spo2"
                                 value={vitalFormData.spo2}
                                 onChange={handleVitalInputChange}
+                                required
                               />
                               <span className="input-group-text">%</span>
                             </div>
@@ -421,7 +542,7 @@ const OpdPreconsultation = () => {
                               <button
                                 type="submit"
                                 className="btn btn-primary"
-                                onClick={submitvitals}
+                                onClick={handleSubmit}
                               >
                                 Save Vital Details
                               </button>
@@ -435,14 +556,12 @@ const OpdPreconsultation = () => {
               )}
 
               {/* PAGINATION */}
-              <>
-                <Pagination
-                  totalItems={filteredVisits.length}
-                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-              </>
+              <Pagination
+                totalItems={totalItems} // from backend
+                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                currentPage={currentPage}
+                onPageChange={setCurrentPage}
+              />
             </div>
           </div>
         </div>

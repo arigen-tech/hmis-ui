@@ -2,8 +2,9 @@ import { useState, useRef, useEffect } from "react"
 import { useNavigate } from 'react-router-dom'
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup"
-import { ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../config/apiConfig"
-import { getRequest, postRequest } from "../../../service/apiService"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
+import {GET_ALL_ITEMS_BY_NAME,REQUEST_PARAM_HOSPITAL_ID, GET_INDENT_DETAILS_FOR_VIEW_UPDATE, GET_INDENT_HEADERS_FOR_VIEW_UPDATE, GET_ITEM_DETAILS_BY_ID, INDENT_REPORT_URL, INVENTORY, REQUERST_PARAM_INDENT_M_ID, REQUEST_PARAM_CURRENT_DEPT_ID, REQUEST_PARAM_DEPARTMENT_ID, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_PAGE, REQUEST_PARAM_REQUESTED_DEPT_ID, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_SIZE, REQUEST_PARAM_STATUS, REQUEST_PARAM_TO_DATE, SAVE_INDENT, SECTION_ID_FOR_DRUGS, STATUS_D, SUBMIT_INDENT } from "../../../config/apiConfig"
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import { createPortal } from "react-dom"
 import DatePicker from "../../../Components/DatePicker"
@@ -85,6 +86,14 @@ const IndentViewUpdate = () => {
   // New state for button spinners
   const [isSearching, setIsSearching] = useState(false);
   const [isShowingAll, setIsShowingAll] = useState(false);
+  
+  // New state for Save/Submit spinners
+  const [isSaving, setIsSaving] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // New state for Report PDF
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   // New state for item search similar to IndentCreation
   const [itemSearch, setItemSearch] = useState("");
@@ -189,12 +198,6 @@ const IndentViewUpdate = () => {
     return displayValue;
   };
 
-  // Format date for API (YYYY-MM-DD)
-  const formatDateForAPI = (dateStr) => {
-    if (!dateStr) return null;
-    return dateStr; // Assuming dateStr is already in YYYY-MM-DD format from DatePicker
-  };
-
   // Convert status for API (S for Draft, Y for Pending)
   const getStatusForAPI = (status) => {
     if (!status) return null;
@@ -239,14 +242,14 @@ const IndentViewUpdate = () => {
       const params = new URLSearchParams();
 
       if (selectedRecord?.indentType === "Drug") {
-        params.append("sectionId", SECTION_ID_FOR_DRUGS);
+        params.append([REQUEST_PARAM_SECTION_ID], SECTION_ID_FOR_DRUGS);
       }
 
-      params.append("keyword", searchText);
-      params.append("page", page);
-      params.append("size", DEFAULT_ITEMS_PER_PAGE);
+      params.append([REQUEST_PARAM_KEYWORD], searchText);
+      params.append([REQUEST_PARAM_PAGE], page);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-      const url = `${INVENTORY}/item/search?${params.toString()}`;
+      const url = `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -270,7 +273,9 @@ const IndentViewUpdate = () => {
   const fetchItemDetails = async (itemId) => {
     try {
       const hospitalId = sessionStorage.getItem("hospitalId");
-      const url = `${INVENTORY}/item/${itemId}?hospitalId=${hospitalId}`;
+      const requestedDeptId = selectedRecord?.toDepartmentId || "";
+      const currentDeptId = userSessionData?.departmentId || "";
+      const url = `${GET_ITEM_DETAILS_BY_ID}/${itemId}?${REQUEST_PARAM_HOSPITAL_ID}=${hospitalId}&${REQUEST_PARAM_REQUESTED_DEPT_ID}=${requestedDeptId}&${REQUEST_PARAM_CURRENT_DEPT_ID}=${currentDeptId}`;
       const response = await getRequest(url);
       
       if (response.status === 200 && response.response) {
@@ -280,9 +285,8 @@ const IndentViewUpdate = () => {
           pvmsNo: itemData.pvmsNo || "",
           nomenclature: itemData.nomenclature || "",
           unitAuName: itemData.unitAuName || itemData.dispUnitName || "",
-          storestocks: itemData.storestocks || 0,
-          wardstocks: itemData.wardstocks || 0,
-          dispstocks: itemData.dispstocks || 0,
+          requestedDeptStocks: itemData.requestedDeptStocks || 0,
+          currentDeptStocks: itemData.currentDeptStocks || 0,
           reOrderLevelStore: itemData.reOrderLevelStore,
           reOrderLevelDispensary: itemData.reOrderLevelDispensary,
           adispQty: itemData.adispQty,
@@ -394,15 +398,14 @@ const IndentViewUpdate = () => {
         itemCode: itemDetails.pvmsNo || "",
         itemName: itemDetails.nomenclature || "",
         apu: itemDetails.unitAuName || "",
-        storeAvailableStock: itemDetails.storestocks || 0, // Store available stock from API
-        currentDeptAvailableStock: itemDetails.wardstocks || 0, // Current department available stock from API
+        storeAvailableStock: itemDetails.requestedDeptStocks || 0,
+        currentDeptAvailableStock: itemDetails.currentDeptStocks || 0,
         drugData: {
           reOrderLevelStore: itemDetails.reOrderLevelStore,
           reOrderLevelDispensary: itemDetails.reOrderLevelDispensary,
           adispQty: itemDetails.adispQty,
-          storestocks: itemDetails.storestocks,
-          wardstocks: itemDetails.wardstocks,
-          dispstocks: itemDetails.dispstocks,
+          requestedDeptStocks: itemDetails.requestedDeptStocks,
+          currentDeptStocks: itemDetails.currentDeptStocks,
           sectionName: itemDetails.sectionName,
           itemTypeName: itemDetails.itemTypeName,
           groupName: itemDetails.groupName,
@@ -468,19 +471,19 @@ const IndentViewUpdate = () => {
       }
 
       // Build URL with query parameters
-      let url = `${INVENTORY}/indents/viewUpdate?deptId=${deptId}&page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`
+      let url = `${GET_INDENT_HEADERS_FOR_VIEW_UPDATE}?${REQUEST_PARAM_DEPARTMENT_ID}=${deptId}&${REQUEST_PARAM_PAGE}=${page}&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`
       
       // Add date filters if they exist
       if (fromDate) {
-        url += `&fromDate=${formatDateForAPI(fromDate)}`
+        url += `&${REQUEST_PARAM_FROM_DATE}=${fromDate}`
       }
       if (toDate) {
-        url += `&toDate=${formatDateForAPI(toDate)}`
+        url += `&${REQUEST_PARAM_TO_DATE}=${toDate}`
       }
       // Add status filter if selected
       if (statusFilter) {
         const apiStatus = getStatusForAPI(statusFilter)
-        url += `&status=${apiStatus}`
+        url += `&${REQUEST_PARAM_STATUS}=${apiStatus}`
       }
 
       console.log("Fetching indents from URL:", url)
@@ -580,10 +583,10 @@ const IndentViewUpdate = () => {
   }
 
   // Fetch indent details by indentMId - UPDATED to include new stock fields
-  const fetchIndentDetails = async (indentMId) => {
+  const fetchIndentDetails = async (indentMId, requestedDeptId) => {
     try {
       setLoading(true)
-      const response = await getRequest(`${INVENTORY}/indents/viewUpdate/details/${indentMId}?currentDeptId=${userSessionData?.departmentId}`)
+      const response = await getRequest(`${GET_INDENT_DETAILS_FOR_VIEW_UPDATE}/${indentMId}?${REQUEST_PARAM_CURRENT_DEPT_ID}=${userSessionData?.departmentId}&${REQUEST_PARAM_REQUESTED_DEPT_ID}=${requestedDeptId}`)
       if (response && response.response && Array.isArray(response.response)) {
         return response.response.map(item => ({
           indentTId: item.indentTId,
@@ -616,7 +619,7 @@ const IndentViewUpdate = () => {
     setSelectedRecord(record)
 
     // Fetch indent details using indentMId
-    const items = await fetchIndentDetails(record.indentMId)
+    const items = await fetchIndentDetails(record.indentMId,record.toDepartmentId)
 
     // Initialize entries from the fetched items
     let entries = []
@@ -672,6 +675,7 @@ const IndentViewUpdate = () => {
     setItemDropdown([])
     setShowItemDropdown(false)
     setActiveRowIndex(null)
+    setReportPdfUrl(null) // Close PDF viewer if open
   }
 
  
@@ -698,7 +702,7 @@ const handleShowAll = async () => {
     }
 
     // Build URL without any date filters
-    let url = `${INVENTORY}/indents/viewUpdate?deptId=${deptId}&page=0&size=${DEFAULT_ITEMS_PER_PAGE}`;
+    let url = `${GET_INDENT_HEADERS_FOR_VIEW_UPDATE}?${REQUEST_PARAM_DEPARTMENT_ID}=${deptId}&${REQUEST_PARAM_PAGE}=0&${REQUEST_PARAM_SIZE}=${DEFAULT_ITEMS_PER_PAGE}`;
     
     console.log("Fetching all indents from URL:", url);
 
@@ -778,6 +782,27 @@ const handleShowAll = async () => {
     })
   }
 
+  // Handle Report button click - Generate PDF and show in viewer
+  const handleReportClick = async () => {
+    const indentMId = selectedRecord?.indentMId;
+    if (indentMId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showPopup("Unable to generate report", "error");
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      showPopup(INDENT_ID_NOT_FOUND, "error");
+    }
+  };
+
   // Handle save/submit - UPDATED to include storeAvailableStock in payload
   const handleSubmit = async (status) => {
     console.log("Submitting with status:", status);
@@ -794,6 +819,14 @@ const handleShowAll = async () => {
 
     // Convert status to uppercase for backend
     const backendStatus = status.toUpperCase()
+    
+    // Set appropriate spinner
+    if (backendStatus === "S") {
+      setIsSaving(true);
+    } else if (backendStatus === "Y") {
+      setIsSubmitting(true);
+    }
+    setProcessing(true);
 
     const payload = {
       indentMId: selectedRecord?.indentMId || null,
@@ -821,10 +854,8 @@ const handleShowAll = async () => {
     console.log("Submitting payload:", JSON.stringify(payload, null, 2))
 
     try {
-      setProcessing(true)
-
-      const endpoint = backendStatus === "S" ? "save" : "submit"
-      const response = await postRequest(`${INVENTORY}/indent/${endpoint}`, payload)
+      const url = backendStatus === "S" ? SAVE_INDENT :SUBMIT_INDENT;
+      const response = await postRequest(url, payload)
       
       const indentMId = response.response?.indentMId
       
@@ -837,7 +868,7 @@ const handleShowAll = async () => {
             // Navigate to report page for save
             navigate('/ViewDownloadReport', {
               state: {
-                reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+                reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`,
                 title: 'Indent Save Report',
                 fileName: 'Indent Save Report',
                 returnPath: window.location.pathname
@@ -862,7 +893,7 @@ const handleShowAll = async () => {
             // Navigate to report page for submit
             navigate('/ViewDownloadReport', {
               state: {
-                reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
+                reportUrl: `${INDENT_REPORT_URL}?${REQUERST_PARAM_INDENT_M_ID}=${indentMId}`,
                 title: 'Indent Submit Report',
                 fileName: 'Indent Submit Report',
                 returnPath: window.location.pathname
@@ -895,26 +926,14 @@ const handleShowAll = async () => {
       );
       
     } finally {
-      setProcessing(false)
+      setProcessing(false);
+      if (backendStatus === "S") {
+        setIsSaving(false);
+      } else if (backendStatus === "Y") {
+        setIsSubmitting(false);
+      }
     }
   }
-
-  // Handle Report button click - Navigate to report page
-  const handleReportClick = () => {
-    const indentMId = selectedRecord?.indentMId;
-    if (indentMId) {
-      navigate('/ViewDownloadReport', {
-        state: {
-          reportUrl: `${ALL_REPORTS}/indentReport?indentMId=${indentMId}`,
-          title: 'Indent Report',
-          fileName: 'Indent Report',
-          returnPath: window.location.pathname
-        }
-      });
-    } else {
-      showPopup(INDENT_ID_NOT_FOUND, "error");
-    }
-  };
 
   // Format date for display
   const formatDate = (dateStr) => {
@@ -935,6 +954,15 @@ const handleShowAll = async () => {
     return (
       <div className="content-wrapper">
         {loading && <LoadingScreen />}
+        
+        {/* PDF Viewer Modal */}
+        {reportPdfUrl && (
+          <PdfViewer
+            pdfUrl={reportPdfUrl}
+            name="Indent Report"
+            onClose={() => setReportPdfUrl(null)}
+          />
+        )}
         
         {/* Add ConfirmationPopup component */}
         <ConfirmationPopup
@@ -1053,7 +1081,7 @@ const handleShowAll = async () => {
                             textAlign: "center"
                           }}
                         >
-                         Store<br/> Avl <br /> Stk
+                         {selectedRecord?.toDepartmentName }<br/> Avl Stk
                         </th>
 
                         <th
@@ -1064,9 +1092,8 @@ const handleShowAll = async () => {
                             textAlign: "center"
                           }}
                         >
-                         {departmentName}<br/> Avl Stk
+                         {selectedRecord?.deptName }<br/> Avl Stk
                         </th>
-
                         <th style={{ width: "100px" }}>
                           Reason for Indent
                         </th>
@@ -1084,8 +1111,8 @@ const handleShowAll = async () => {
                         <tr>
                           <td colSpan={isRecordEditable ? 9 : 7} className="text-center text-muted">
                             No items found. {isRecordEditable && "Click 'Add' to add items."}
-                          </td>
-                        </tr>
+                           </td>
+                         </tr>
                       ) : (
                         indentEntries.map((entry, index) => (
                           <tr key={entry.id || index}>
@@ -1280,30 +1307,51 @@ const handleShowAll = async () => {
                 {/* Action buttons based on editability */}
                 {isRecordEditable ? (
                   <div className="d-flex justify-content-end gap-2 mt-4">
-                    {/* Report Button added before Save */}
+                    {/* Report Button with spinner */}
                     <button
                       type="button"
                       className="btn btn-info"
                       onClick={handleReportClick}
-                      disabled={processing}
+                      disabled={processing || isGeneratingReport}
                     >
-                      Report
+                      {isGeneratingReport ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Report"
+                      )}
                     </button>
                     <button
                       type="button"
                       className="btn btn-primary"
                       onClick={() => handleSubmit("s")}
-                      disabled={processing}
+                      disabled={processing || isGeneratingReport}
                     >
-                      {processing ? "Saving..." : "Save"}
+                      {isSaving ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Saving...
+                        </>
+                      ) : (
+                        "Save"
+                      )}
                     </button>
                     <button
                       type="button"
                       className="btn btn-warning"
                       onClick={() => handleSubmit("y")}
-                      disabled={processing}
+                      disabled={processing || isGeneratingReport}
                     >
-                      {processing ? "Submitting..." : "Submit"}
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Submitting...
+                        </>
+                      ) : (
+                        "Submit"
+                      )}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleBackToList}>
                       Cancel
@@ -1311,8 +1359,20 @@ const handleShowAll = async () => {
                   </div>
                 ) : (
                   <div className="d-flex justify-content-end gap-2 mt-4">
-                    <button type="button" className="btn btn-primary" onClick={() => window.print()}>
-                      Print
+                    <button
+                      type="button"
+                      className="btn btn-info"
+                      onClick={handleReportClick}
+                      disabled={processing || isGeneratingReport}
+                    >
+                      {isGeneratingReport ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                          Generating...
+                        </>
+                      ) : (
+                        "Report"
+                      )}
                     </button>
                     <button type="button" className="btn btn-danger" onClick={handleBackToList}>
                       Close
@@ -1413,17 +1473,19 @@ const handleShowAll = async () => {
                 <table className="table table-bordered table-hover align-middle">
                   <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                     <tr>
-                      <th>Indent Date</th>
-                      <th>Indent No</th>
-                      <th>Created By</th>
-                      <th>Status</th>
-                      <th>Drug/Non Drug</th>
-                    </tr>
+  <th>Indent Date</th>
+  <th>Indent No</th>
+  <th>From Dept</th>
+  <th>To Dept</th>
+  <th>Created By</th>
+  <th>Status</th>
+  <th>Drug/Non Drug</th>
+</tr>
                   </thead>
                   <tbody>
                     {indentData.length === 0 ? (
                       <tr>
-                        <td colSpan={5} className="text-center">
+                        <td colSpan={7} className="text-center">
                           {loading || searchLoading || isSearching || isShowingAll ? <LoadingScreen/> : "No records found."}
                         </td>
                       </tr>
@@ -1432,9 +1494,11 @@ const handleShowAll = async () => {
                         const statusInfo = getStatusInfo(item.statusName);
                         return (
                           <tr key={item.indentMId} onClick={(e) => handleEditClick(item, e)} style={{ cursor: "pointer" }}>
-                            <td>{formatDate(item.indentDate)}</td>
-                            <td>{item.indentNo}</td>
-                            <td>{item.createdBy}</td>
+  <td>{formatDate(item.indentDate)}</td>
+  <td>{item.indentNo}</td>
+  <td>{item.deptName}</td>
+  <td>{item.toDepartmentName}</td>
+  <td>{item.createdBy}</td>
                             <td>
                               <span
                                 className={`badge ${statusInfo.badge} ${statusInfo.textColor}`}

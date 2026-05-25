@@ -55,7 +55,7 @@ const DesignationMaster = () => {
                 designation_name: item.designationName, // use camelCase from API
                 userTypeName: item.userTypeName,
                 status: item.status,
-                lastUpdateDate: item.lastUpdateDate,
+                lastUpdatedDate: item.lastUpdatedDate,
             }));
             console.log("Normalized:", normalized);
             setData(normalized);
@@ -252,8 +252,8 @@ const DesignationMaster = () => {
                                         <thead className="table-light">
                                             <tr>
                                                 <th>Designation Name</th>
-                                                <th>User Type Name</th>
-                                                <th>Last Update Date</th>
+                                                <th>User Type</th>
+                                                <th>Last Updated Date</th>
                                                 <th>Status</th>
                                                 <th>Edit</th>
                                             </tr>

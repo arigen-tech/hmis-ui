@@ -146,7 +146,7 @@ const BloodTestMaster = () => {
       bloodTestId: rec.bloodTestId,
       testCode: rec.testCode,
       testName: rec.testName,
-      isMandatory: rec.isMandatory || "",
+      isMandatory: rec.isMandatory?.toLowerCase() || "",
       collectionType: rec.applicableCollectionTypeId || "",
     });
     setShowForm(true);
@@ -155,8 +155,15 @@ const BloodTestMaster = () => {
 
   // Save - POST/PUT
   const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+  e.preventDefault();
+
+  if (
+    !formData.testCode?.trim() ||
+    !formData.testName?.trim()
+  ) {
+    showPopup("Test Code and Test Name are required", "error");
+    return;
+  }
 
     // Duplicate check (case-insensitive)
     const normalized = formData.testName.trim().toLowerCase();
@@ -178,7 +185,7 @@ const BloodTestMaster = () => {
           {
             testCode: formData.testCode,
             testName: formData.testName,
-            isMandatory: formData.isMandatory,
+            isMandatory: formData.isMandatory || "n",
             applicableCollectionTypeId: formData.collectionType || null,
           },
         );
@@ -188,7 +195,7 @@ const BloodTestMaster = () => {
         await postRequest(`${MAS_BLOOD_TEST}/create`, {
           testCode: formData.testCode,
           testName: formData.testName,
-          isMandatory: formData.isMandatory,
+          isMandatory: formData.isMandatory || "n",
           applicableCollectionTypeId: formData.collectionType || null,
         });
         showPopup(ADD_BLOOD_TEST, "success");
@@ -269,15 +276,16 @@ const BloodTestMaster = () => {
                 >
                   Add
                 </button>
-                <button
-                  className="btn btn-success"
-                  onClick={() => {
-                    setSearchQuery("");
-                    fetchData();
-                  }}
-                >
-                  Show All
-                </button>
+                 <button
+                        type="button"
+                        className="btn btn-success me-2"
+                        onClick={() => {
+                          setSearchQuery("");
+                          fetchData(1);
+                        }}
+                      >
+                        <i className="mdi mdi-view-list"></i> Show All
+                      </button>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={handleCancel}>
@@ -318,8 +326,7 @@ const BloodTestMaster = () => {
                           )?.collectionTypeName || "N/A"}
                         </td>
                         <td>
-                          {item.isMandatory === STATUS.ACTIVE ? "Yes" : "No"}
-                        </td>
+{item.isMandatory?.toLowerCase() === "y" ? "Yes" : "No"}                        </td>
                         <td>{formatDate(item.createdDate)}</td>
                         <td>
                           <div className="form-check form-switch">
@@ -409,7 +416,7 @@ const BloodTestMaster = () => {
                     value={formData.isMandatory}
                     onChange={handleInputChange}
                   >
-                    <option value="">Select</option>
+                    
                     <option value="y">Yes</option>
                     <option value="n">No</option>
                   </select>

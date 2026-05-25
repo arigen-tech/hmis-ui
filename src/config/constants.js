@@ -12,6 +12,25 @@ export const FAIL_TO_SAVE_CHANGES = "Failed to save changes";
 export const FAIL_TO_UPDATE_STS = "Failed to update status";
 export const INVALID_PAGE_NO_WARN_MSG = "Please enter a valid page number.";
 
+//TrackIndent (Ward Pharmacy)
+export const TRACK_INDENT_SEARCH_CRITERIA_WARN = "Please select at least one search criteria (Department or Date)";
+export const TRACK_INDENT_FROM_DATE_GREATER_WARN = "From Date cannot be greater than To Date";
+export const TRACK_INDENT_DATE_RANGE_EXCEED_WARN = "Date range cannot be more than 1 year";
+export const TRACK_INDENT_FETCH_DATA_ERR = "Error fetching indent data";
+export const TRACK_INDENT_FETCH_DETAILS_ERR = "Error fetching indent details";
+export const TRACK_INDENT_FETCH_BATCH_ERR = "Error fetching batch details";
+export const TRACK_INDENT_FETCH_ISSUE_MID_ERR = "Error fetching issue MId";
+export const TRACK_INDENT_FETCH_RECEIVE_MID_ERR = "Error fetching receive MId";
+export const TRACK_INDENT_FETCH_RETURN_MID_ERR = "Error fetching return MId";
+export const TRACK_INDENT_SEARCH_ERR = "Error searching indent data";
+export const TRACK_INDENT_GENERATE_INDENT_REPORT_ERR = "Error generating indent report";
+export const TRACK_INDENT_GENERATE_ISSUE_REPORT_ERR = "Error generating issue report";
+export const TRACK_INDENT_GENERATE_RECEIVING_REPORT_ERR = "Error generating receiving report";
+export const TRACK_INDENT_GENERATE_RETURN_REPORT_ERR = "Error generating return report";
+export const TRACK_INDENT_ISSUE_REPORT_NOT_AVAILABLE = "Issue report not available for this indent";
+export const TRACK_INDENT_RECEIVING_REPORT_NOT_AVAILABLE = "Receiving report not available for this indent";
+export const TRACK_INDENT_RETURN_REPORT_NOT_AVAILABLE = "Return report not available for this indent";
+
 //Laboratory
 
 //LabBillingDetails
@@ -379,10 +398,28 @@ export const FETCH_ITEM_DETAILS_ERR_MSG = "Failed to load item details";
 export const INDENT_TYPE_CHANGE_WARN_MSG ="If you switch the indent type, your entered data will be lost. Do you want to continue?";
 export const INDENT_TYPE_MANDARORY_WARN_MSG = "Please select indent type before adding items";
 
-//Blood GAROUP Master
+// IndentApproval Messages
+export const INDENT_APPROVAL_DEPT_NOT_FOUND_ERR = "Department not found. Please login again.";
+export const INDENT_APPROVAL_FETCH_PENDING_ERR = "Error fetching pending indents. Please try again.";
+export const INDENT_APPROVAL_FETCH_DETAILS_ERR = "Error fetching indent details. Please try again.";
+export const INDENT_APPROVAL_EXCEED_STOCK_ERR = "Approve quantity cannot exceed available stock";
+export const INDENT_APPROVAL_EXCEED_REQUESTED_ERR = "Approve quantity cannot exceed requested quantity";
+export const INDENT_APPROVAL_NEGATIVE_QTY_ERR = "Approve quantity cannot be negative";
+export const INDENT_APPROVAL_SELECT_ACTION_ERR = "Please select an action (Approved or Rejected)";
+export const INDENT_APPROVAL_REMARKS_MANDATORY_ERR = "Remarks are mandatory";
+export const INDENT_APPROVAL_INVALID_QUANTITIES_ERR = "Please ensure all approve quantities are valid and do not exceed available stock or requested quantity";
+export const INDENT_APPROVAL_CONFIRM_APPROVE_MSG = "Are you sure you want to approve this indent for issue?";
+export const INDENT_APPROVAL_CONFIRM_REJECT_MSG = "Are you sure you want to reject this indent for issue?";
+export const INDENT_APPROVAL_APPROVE_SUCCESS_MSG = "Indent has been successfully approved for issue.";
+export const INDENT_APPROVAL_REJECT_SUCCESS_MSG = "Indent has been successfully rejected for issue.";
+export const INDENT_APPROVAL_PROCESS_ERR = "Failed to process indent. Please try again.";
+
+
+//Blood GROUP Master
 
 export const FETCH_BLOOD_GROUP_ERR_MSG = "Failed to load blood group data";
 export const DUPLICATE_BLOOD_GROUP ="Blood group with the same name already exists!";
+export const DUPLICATE_BLOOD_GROUP_MSG = "Blood Group Code or Name already exists";
 export const UPDATE_BLOOD_GROUP_SUCC_MSG = "Blood group updated successfully!";
 export const ADD_BLOOD_GROUP_SUCC_MSG = "New blood group added successfully!";
 export const INVALID_BLOOD_GROUP_ID = "Error: Invalid blood group ID";
@@ -394,7 +431,7 @@ export const UPDATE_COUNTRY_SUCC_MSG = "Country updated successfully!";
 export const ADD_COUNTRY_SUCC_MSG = "New country added successfully!";
 
 //Department Type Master
-export const DUPLICATE_DEPARTMENT_TYPE ="Department type with the same name already exists!";
+export const DUPLICATE_DEPARTMENT_TYPE ="Department type with the same name or code already exists!";
 export const UPDATE_DEPARTMENT_TYPE_SUCC_MSG ="Department type updated successfully!";
 export const ADD_DEPARTMENT_TYPE_SUCC_MSG ="New department type added successfully!";
 
@@ -412,9 +449,9 @@ export const ADD_FREQUENCY_SUCC_MSG = "New frequency added successfully!";
 
 //Gender Master
 export const FETCH_GENDER_ERR_MSG = "Failed to load gender data";
-export const DUPLICATE_GENDER = "Gender with the same name already exists!";
 export const UPDATE_GENDER_SUCC_MSG = "Gender updated successfully!";
 export const ADD_GENDER_SUCC_MSG = "New gender added successfully!";
+export const DUPLICATE_GENDER_MSG ="Gender Code or Gender Name already exists";
 
 //Hospital Master
 export const FETCH_HOSPITAL_ERR_MSG = "Failed to load hospital data";
@@ -432,7 +469,7 @@ export const VALID_GST_RATE ="Please enter a valid GST Rate between 0 and 100.";
 
 //Identification Master
 export const FETCH_IDENTIFICATION_ERR_MSG ="Failed to load identification data";
-export const DUPLICATE_IDENTIFICATION ="Identification with the same name already exists!";
+export const DUPLICATE_IDENTIFICATION ="Identification with the same name or code already exists!";
 export const UPDATE_IDENTIFICATION_SUCC_MSG ="Identification updated successfully!";
 export const ADD_IDENTIFICATION_SUCC_MSG ="New identification added successfully!";
 
@@ -479,9 +516,9 @@ export const DISCOUNT_PERCENTAGE ="Discount percentage must be between 0 and 100
 
 //Relationship Master
 export const FETCH_RELATIONSHIP_ERR_MSG = "Failed to load relationship data";
-export const DUPLICATE_RELATIONSHIP ="Relationship with the same name already exists!";
 export const UPDATE_RELATIONSHIP_SUCC_MSG ="Relationship updated successfully!";
 export const ADD_RELATIONSHIP_SUCC_MSG = "New relationship added successfully!";
+export const DUPLICATE_RELATION_CODE_NAME = "Relation Code or Relation Name already exists";
 
 //Religion Master
 export const FETCH_RELIGION_ERR_MSG = "Failed to load religion data";
@@ -788,7 +825,10 @@ export const UPDATE_BLOOD_DONATION = "Record updated successfully";
 export const ADD_BLOOD_DONATION = "Record added successfully";
 export const FAIL_BLOOD_DONATION = "Save failed";
 export const UPDATE_FAIL_BLOOD_DONATION = "Status update failed";
-
+export const SCREENING_RESULT_PASS = "P";
+export const SCREENING_RESULT_FAIL = "F";
+export const DEFERRAL_TYPE_TEMPORARY = "T";
+export const DEFERRAL_TYPE_PERMANENT = "P";
 //Bloodunitstaus
 export const FETCH_BLOOD_UNIT = "Failed to fetch Blood Unit records";
 export const DUPLICATE_BLOOD_UNIT = "Duplicate Unit Code or Status found";
@@ -910,6 +950,43 @@ export const ADD_DESIGNATION =  "Added successfully";
  
 
 
+//Insurance Master
+ export const FETCH_INSURANCE = "Failed to fetch Insurance data";
+export const ADD_INSURANCE_SUCCESS = "Insurance added successfully";
+export const ADD_INSURANCE_FAIL = "Failed to add Insurance";
+export const UPDATE_INSURANCE_SUCCESS = "Insurance updated successfully";
+export const UPDATE_INSURANCE_FAIL = "Failed to update Insurance";
+export const DUPLICATE_INSURANCE = "Insurance with same Name already exists!";
+export const ACTIVATE_INSURANCE_SUCCESS = "Insurance activated successfully!";
+export const DEACTIVATE_INSURANCE_SUCCESS = "Insurance deactivated successfully!";
+export const ACTIVATE_INSURANCE_FAIL = "Failed to activate Insurance";
+export const DEACTIVATE_INSURANCE_FAIL = "Failed to deactivate Insurance";
+
+
+
+// Corporate Master
+export const FETCH_CORPORATE = "Failed to fetch Corporate data";
+export const ADD_CORPORATE_SUCCESS = "Corporate added successfully";
+export const ADD_CORPORATE_FAIL = "Failed to add Corporate";
+export const UPDATE_CORPORATE_SUCCESS = "Corporate updated successfully";
+export const UPDATE_CORPORATE_FAIL = "Failed to update Corporate";
+export const DUPLICATE_CORPORATE = "Corporate with same Name already exists!";
+export const STATUS_CORPORATE_SUCCESS = "Status updated successfully";
+export const STATUS_CORPORATE_FAIL = "Failed to update status";
+
+
+
+
+
+// TPA Master
+export const FETCH_TPA = "Failed to fetch TPA data";
+export const ADD_TPA_SUCCESS = "TPA added successfully";
+export const ADD_TPA_FAIL = "Failed to add TPA";
+export const UPDATE_TPA_SUCCESS = "TPA updated successfully";
+export const UPDATE_TPA_FAIL = "Failed to update TPA";
+export const DUPLICATE_TPA = "TPA with same Name already exists!";
+export const STATUS_TPA_SUCCESS = "TPA activated successfully!";
+export const STATUS_TPA_FAIL = "Failed to update status";
 
 
 //updatepatientragistration
@@ -993,6 +1070,7 @@ export const REGISTERED_DONOR = "Donor registered successfully!";
 export const DEFERAL_REQUIRED_MSG ="Deferral Reason is required when screen fails";
 export const DEFERAL_TYPE_REQUIRED_MSG ="Deferral Type is required when screen fails";
 
+
 //indentissue
 export const ERROR_MESSAGES = {DEPARTMENT_NOT_FOUND: "Department not found. Please login again.",};
 export const ERROR_FETCHING_INDENTS ="Error fetching indents. Please try again.";
@@ -1040,6 +1118,11 @@ export const SUCCESS_RECEIVING_SAVED_PRINT ="Receiving saved successfully! Do yo
 export const ERROR_SAVE_RECEIVING_FAILED = "Failed to save receiving";
 export const ERROR_SAVING_RECEIVING ="Error saving receiving. Please try again.";
 export const ERROR_FETCH_INDENT_DETAILS ="Error fetching indent details. Please try again.";
+export const RECEIVED_QUANTITY_EXCEEDS_ISSUED = "Received quantity cannot exceed issued quantity";
+export const REJECT_QUANTITY_EXCEEDS_ISSUED = "Reject quantity cannot exceed issued quantity";
+export const VALIDATION_ERROR_HEADER = "Please fix the following items:";
+export const ITEM_RECEIVING_REPORT_TITLE = "Item Receiving Report";
+export const ITEM_RECEIVING_REPORT_FILENAME = "Item Receiving Report";
 
 //viewupdate
 export const WARNING_DRUG_ALREADY_ADDED ="This drug is already added in another row. Please select a different drug.";
@@ -1069,6 +1152,11 @@ export const STATUS = {
   INACTIVE: "n",
 };
 
+export const FLAG = {
+  FLAG_Y: "y",
+  FLAG_N: "n",
+};
+
 //Physical Stock Adjustment
 
 export const PHYSICAL_STOCK_SAVE_MSG ="Are you sure you want to save the stock adjustment?";
@@ -1082,7 +1170,7 @@ export const SELECT_DATES_ERR_MSG = "Please select both From Date and To Date";
 export const FROM_DATE_LATER_THAN_TO_DATE_ERR_MSG ="From Date cannot be later than To Date";
 export const FUTURE_DATE_ERR_MSG = "Dates cannot be in the future";
 export const HOSPITAL_DEPT_REQUIRED_ERR_MSG ="Hospital and Department must be selected.";
-export const REPORT_GEN_FAILED_ERR_MSG = "Report generation failed";
+export const REPORT_GEN_FAILED_ERR_MSG = "Report generation failed. Please try again.";
 export const PRINT_FAILED_ERR_MSG = "Report printing failed";
 export const SELECT_FROM_DATE_FIRST_ERR_MSG = "Please select From Date first";
 export const FROM_DATE_FUTURE_ERR_MSG = "From date cannot be in the future";
@@ -1146,3 +1234,85 @@ export const DUPLICATE_OPTION_VALUE = "Option code already exists";
 export const  SAVE_OPTION_VALUE = "Failed to save Option Value";
 
 export const HOSPITAL_ID_NOT_FOUND = "Hospital ID not found. Please login again.";
+
+
+
+// Package Configuration Messages
+export const ADD_PACKAGE_CONFIG_SUCC_MSG = "Package configuration added successfully!";
+export const UPDATE_PACKAGE_CONFIG_SUCC_MSG = "Package configuration updated successfully!";
+
+
+//View And Update Opening Balance Entry
+
+export const OPENING_BALANCE_ENTRY_SUBMIT_REPORT_TITLE = "Opening Balance Submit Report";
+export const OPENING_BALANCE_ENTRY_SUBMIT_REPORT_FILE_NAME = "Opening Balance Submit Report";
+export const OPENING_BALANCE_ENTRY_UPDATE_REPORT_TITLE = "Opening Balance Update Report";
+export const OPENING_BALANCE_ENTRY_UPDATE_REPORT_FILE_NAME = "Opening Balance Update Report";
+export const OPENING_BALANCE_NOT_FOUND ="Invalid Balance ID. Please try again.";
+
+//Opening balance approval
+
+export const FETCH_OPENING_BALANCE_DEATAILS_ERR_MSG = "Failed to fetch opening balance details. Please try again.";
+
+//create indent
+export const SELECT_INDENT_TYPE_WARN_MSG = "Please select indent type before creating indent";
+export const SELECT_REQ_DEPARTMENT_TYPE_WARN_MSG = "Please select requested department type before creating indent";
+export const SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG = "Please select both indent type and requested department type before creating indent";
+
+//Surgery Master
+export const ADD_SURGERY_SUCC_MSG = "Surgery added successfully!";
+export const UPDATE_SURGERY_SUCC_MSG = "Surgery updated successfully!";
+
+
+//treatment modal 
+export const FAILED_TO_LOAD_DATA = "Failed to load data";
+export const FAILED_TO_LOAD_FREQUENCIES ="Failed to load frequencies";
+export const DRUG_ALREADY_ADDED = "This drug is already added to the template";
+export const ADD_AT_LEAST_ONE_TREATMENT_ITEM ="Please add at least one treatment item";
+export const DUPLICATE_DRUGS_FOUND = "Duplicate drugs found. Please remove duplicates before saving.";
+
+
+//common 
+export const NO_TEMPLATES_FOUND ="No templates found";
+export const FAILED_TO_LOAD_TEMPLATES = "Failed to load templates";
+export const INVESTIGATION_ALREADY_ADDED = "This investigation is already added to the template";
+export const FILL_TEMPLATE_NAME_AND_CODE ="Please fill in template name and code";
+export const TEMPLATE_NAME_ALREADY_EXISTS ="Template name already exists. Please use a different name.";
+export const TEMPLATE_CODE_ALREADY_EXISTS = "Template code already exists. Please use a different code.";
+export const TEMPLATE_NAME_OR_CODE_EXISTS ="Template name or code already exists. Please use different values.";
+export const SELECT_TEMPLATE_TO_UPDATE = "Please select a template to update";
+
+
+
+//investigation modal
+export const ADD_AT_LEAST_ONE_INVESTIGATION = "Please add at least one investigation";
+export const DUPLICATE_INVESTIGATIONS_FOUND ="Duplicate investigations found. Please remove duplicates before saving.";
+export const TEMPLATE_CREATED_SUCCESS ="Template created successfully!";
+export const TEMPLATE_UPDATED_SUCCESS ="Template updated successfully!";
+
+//opd holiday master
+export const FETCH_HOLIDAY = "Failed to fetch OPD holiday data";
+export const ADD_HOLIDAY_SUCCESS = "OPD holiday added successfully!";
+export const ADD_HOLIDAY_FAIL = "Failed to add OPD holiday";
+export const UPDATE_HOLIDAY_FAIL = "Failed to update OPD holiday";
+export const UPDATE_HOLIDAY_SUCCESS = "OPD holiday updated successfully!";
+export const DUPLICATE_HOLIDAY = "OPD holiday with the same date already exists";
+
+//tpamapping
+export const REQUIRED_FIELDS_ERROR = "Please fill all required fieldss";
+export const DUPLICATE_INSURANCE_TPA_MAPPING ="Duplicate Insurance TPA Mapping";
+export const RECORD_ADDED_SUCCESSFULLY = "Record Added Successfully";
+export const RECORD_UPDATED_SUCCESSFULLY = "Record Updated Successfully";
+export const STATUS_UPDATED_SUCCESSFULLY = "Status updated successfully";
+export const FAILED_TO_UPDATE_STATUS = "Failed to update status";
+
+
+//ItemTypeManagement
+export const FETCH_ITEM_TYPE = "Failed to fetch Item Type data";
+export const ADD_ITEM_TYPE_SUCCESS = "Item Type added successfully!";
+export const ADD_ITEM_TYPE_FAIL = "Failed to add Item Type";
+export const UPDATE_ITEM_TYPE_SUCCESS = "Item Type updated successfully!";
+export const UPDATE_ITEM_TYPE_FAIL = "Failed to update Item Type";
+export const DUPLICATE_ITEM_TYPE = "Item Type with the same code or name already exists";
+export const STATUS_ITEM_TYPE_SUCCESS = "Item Type status updated successfully!";
+export const STATUS_ITEM_TYPE_FAIL = "Failed to update Item Type status";
