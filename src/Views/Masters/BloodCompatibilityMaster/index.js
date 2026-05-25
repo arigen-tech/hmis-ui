@@ -68,7 +68,7 @@ const BloodCompatibilityMaster = () => {
 
   
 
-  const fetchComponentOptions = async (flag = 0) => {
+  const fetchComponentOptions = async (flag = 1) => {
     try {
       const response = await getRequest(`${MAS_BLOOD_COMPONENT}/getAll/${flag}`);
       if (response && response.response) {
@@ -86,7 +86,7 @@ const BloodCompatibilityMaster = () => {
 
 
 
-const fetchBloodGroupOptions = async (flag = 0) => {
+const fetchBloodGroupOptions = async (flag = 1) => {
   try {
     const response = await getRequest(`${MAS_BLOODGROUP}/getAll/${flag}`);
     console.log("API Response:", response); // Debug
@@ -112,8 +112,8 @@ const fetchBloodGroupOptions = async (flag = 0) => {
 
   useEffect(() => {
     fetchData();
-    fetchComponentOptions(0);
-    fetchBloodGroupOptions(0); 
+    fetchComponentOptions(1);
+    fetchBloodGroupOptions(1); 
   }, []);
 
 
