@@ -30,6 +30,11 @@ const BillingPolicyMaster = () => {
     discountPercentage: "",
   });
   const [loading, setLoading] = useState(true);
+  const [confirmDialog, setConfirmDialog] = useState({
+  isOpen: false,
+  policyId: null,
+  newStatus: null
+});
 
   const POLICY_CODE_MAX_LENGTH = 50;
   const DESCRIPTION_MAX_LENGTH = 500;
@@ -65,7 +70,7 @@ const BillingPolicyMaster = () => {
   const fetchBillingPolicyData = async () => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_BILLING_POLICY}/getAll`);
+      const response = await getRequest(`${MAS_BILLING_POLICY}/getAll/0`);
       if (response && response.response) {
         const mappedData = response.response.map(item => ({
           id: item.billingPolicyId,
@@ -74,6 +79,7 @@ const BillingPolicyMaster = () => {
           applicableBillingType: item.applicableBillingType,
           followupDaysAllowed: item.followupDaysAllowed || "",
           discountPercentage: item.discountPercentage || "",
+          status: (item.status || "").toLowerCase() === "y" ? "y" : "n",
           lastUpdated: formatDate(item.lastUpdateDate)
         }));
         setBillingPolicyData(mappedData);
@@ -116,84 +122,230 @@ const BillingPolicyMaster = () => {
     setShowForm(true);
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+const handleSave = async (e) => {
+  e.preventDefault();
+
+  if (!isFormValid) return;
+
+  try {
+    setLoading(true);
+
+    const isDuplicate = billingPolicyData.some(
+      (policy) =>
+        policy.policyCode.toLowerCase() ===
+          formData.policyCode.toLowerCase() &&
+        (!editingRecord || editingRecord.id !== policy.id)
+    );
+
+    if (isDuplicate && !editingRecord) {
+      showPopup(DUPLICATE_BILLING_POLICY, "error");
+      setLoading(false);
+      return;
+    }
+
+    const requestData = {
+      policyCode: formData.policyCode.trim(),
+      description: formData.description?.trim() || "",
+      applicableBillingType:
+        formData.applicableBillingType.trim(),
+
+      followupDaysAllowed:
+        formData.followupDaysAllowed !== ""
+          ? parseInt(formData.followupDaysAllowed)
+          : 0,
+
+      discountPercentage:
+        formData.discountPercentage !== ""
+          ? parseInt(formData.discountPercentage)
+          : 0,
+    };
+
+    let response;
+
+    if (editingRecord) {
+
+      response = await putRequest(
+        `${MAS_BILLING_POLICY}/update/${editingRecord.id}`,
+        requestData
+      );
+
+    } else {
+
+      response = await postRequest(
+        `${MAS_BILLING_POLICY}/create`,
+        requestData
+      );
+    }
+
+    if (response && response.status === 200) {
+
+      showPopup(
+        editingRecord
+          ? UPDATE_BILLING_POLICY_SUCC_MSG
+          : ADD_BILLING_POLICY_SUCC_MSG,
+        "success",
+
+        async () => {
+
+          await fetchBillingPolicyData();
+
+          setEditingRecord(null);
+
+          setFormData({
+            policyCode: "",
+            description: "",
+            applicableBillingType: "",
+            followupDaysAllowed: "",
+            discountPercentage: "",
+          });
+
+          setShowForm(false);
+        }
+      );
+    }
+
+  } catch (err) {
+
+    console.error("Error saving billing policy:", err);
+
+    showPopup(
+      FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+
+    setLoading(false);
+  }
+};
+
+ const showPopup = (
+  message,
+  type = "info",
+  callback = null
+) => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: async () => {
+
+      setPopupMessage(null);
+
+      if (callback) {
+        await callback();
+      }
+    },
+  });
+};
+
+  
+const handleInputChange = (e) => {
+  const { id, value } = e.target;
+
+  const updatedFormData = {
+    ...formData,
+    [id]: value,
+  };
+
+  setFormData(updatedFormData);
+
+  setIsFormValid(
+    updatedFormData.policyCode.trim() !== "" &&
+    updatedFormData.applicableBillingType.trim() !== ""
+  );
+};
+
+const handleSwitchChange = (id, newStatus) => {
+  setConfirmDialog({
+    isOpen: true,
+    policyId: id,
+    newStatus
+  });
+};
+
+const handleConfirm = async (confirmed) => {
+
+  if (confirmed && confirmDialog.policyId !== null) {
 
     try {
       setLoading(true);
 
-      const isDuplicate = billingPolicyData.some(
-        (policy) =>
-          policy.policyCode.toLowerCase() === formData.policyCode.toLowerCase() &&
-          (!editingRecord || editingRecord.id !== policy.id)
+      const selectedPolicy = billingPolicyData.find(
+  (policy) => policy.id === confirmDialog.policyId
+);
+
+const response = await putRequest(
+  `${MAS_BILLING_POLICY}/status/${confirmDialog.policyId}?status=${confirmDialog.newStatus}`,
+  {
+    billingPolicyId: selectedPolicy.id,
+    policyCode: selectedPolicy.policyCode,
+    description: selectedPolicy.description || "",
+    applicableBillingType: selectedPolicy.applicableBillingType,
+    followupDaysAllowed: Number(selectedPolicy.followupDaysAllowed) || 0,
+    discountPercentage: Number(selectedPolicy.discountPercentage) || 0,
+    status: confirmDialog.newStatus
+  }
+);
+
+     if (response && response.status === 200) {
+
+  showPopup(
+    `Billing Policy ${
+      confirmDialog.newStatus === "y"
+        ? "activated"
+        : "deactivated"
+    } successfully!`,
+    "success",
+    async () => {
+
+      setBillingPolicyData((prevData) =>
+        prevData.map((policy) =>
+          policy.id === confirmDialog.policyId
+            ? {
+                ...policy,
+                status: confirmDialog.newStatus,
+                lastUpdated: formatDate(new Date().toISOString())
+              }
+            : policy
+        )
       );
 
-      if (isDuplicate && !editingRecord) {
-        showPopup(DUPLICATE_BILLING_POLICY, "error");
-        setLoading(false);
-        return;
-      }
-
-      const requestData = {
-        policyCode: formData.policyCode,
-        description: formData.description,
-        applicableBillingType: formData.applicableBillingType,
-        followupDaysAllowed: formData.followupDaysAllowed ? parseInt(formData.followupDaysAllowed) : null,
-        discountPercentage: formData.discountPercentage ? parseInt(formData.discountPercentage) : null,
-      };
-
-      if (editingRecord) {
-        const response = await putRequest(`${MAS_BILLING_POLICY}/update/${editingRecord.id}`, requestData);
-
-        if (response && response.status === 200) {
-          fetchBillingPolicyData();
-          showPopup(UPDATE_BILLING_POLICY_SUCC_MSG, "success");
-        }
-      } else {
-        const response = await postRequest(`${MAS_BILLING_POLICY}/create`, requestData);
-
-        if (response && response.status === 200) {
-          fetchBillingPolicyData();
-          showPopup(ADD_BILLING_POLICY_SUCC_MSG, "success");
-        }
-      }
-
-      setEditingRecord(null);
-      setFormData({
-        policyCode: "",
-        description: "",
-        applicableBillingType: "",
-        followupDaysAllowed: "",
-        discountPercentage: "",
+      setConfirmDialog({
+        isOpen: false,
+        policyId: null,
+        newStatus: null
       });
-      setShowForm(false);
-    } catch (err) {
-      console.error("Error saving billing policy:", err);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
-    } finally {
-      setLoading(false);
     }
-  };
+  );
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
+} else {
+  showPopup("Failed to update status", "error");
+}
+    } catch (err) {
+
+      console.error(err);
+      showPopup("Failed to update status", "error");
+
+    } finally {
+
+      setLoading(false);
+
+      setConfirmDialog({
+        isOpen: false,
+        policyId: null,
+        newStatus: null
+      });
+    }
+
+  } else {
+
+    setConfirmDialog({
+      isOpen: false,
+      policyId: null,
+      newStatus: null
     });
-  };
-
-  const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [id]: value }));
-    setIsFormValid(
-      formData.policyCode.trim() !== "" &&
-      formData.applicableBillingType.trim() !== ""
-    );
-  };
+  }
+};
 
   const handleRefresh = () => {
     setSearchQuery("");
@@ -265,6 +417,7 @@ const BillingPolicyMaster = () => {
                           <th>Follow-up Days Allowed</th>
                           <th>Discount Percentage</th>
                           <th>Last Updated</th>
+                          <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
@@ -278,11 +431,39 @@ const BillingPolicyMaster = () => {
                               <td>{policy.followupDaysAllowed}</td>
                               <td>{policy.discountPercentage}</td>
                               <td>{policy.lastUpdated}</td>
+                                     <td>
+  <div className="form-check form-switch">
+    <input
+      className="form-check-input"
+      type="checkbox"
+      checked={policy.status === "y"}
+      onChange={() =>
+        handleSwitchChange(
+          policy.id,
+          policy.status === "y" ? "n" : "y"
+        )
+      }
+      id={`switch-${policy.id}`}
+    />
+
+    <label
+      className="form-check-label px-0"
+      htmlFor={`switch-${policy.id}`}
+    >
+      {policy.status === "y"
+        ? "Active"
+        : "Inactive"}
+    </label>
+  </div>
+</td>
+
+
                               <td>
-                                <button
-                                  className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(policy)}
-                                >
+                               <button
+  className="btn btn-sm btn-success me-2"
+  onClick={() => handleEdit(policy)}
+  disabled={policy.status !== "y"}
+>
                                   <i className="fa fa-pencil"></i>
                                 </button>
                               </td>
@@ -376,9 +557,13 @@ const BillingPolicyMaster = () => {
                     />
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
-                    </button>
+                   <button 
+  type="submit" 
+  className="btn btn-primary me-2" 
+  disabled={!isFormValid}
+>
+  {editingRecord ? "Update" : "Save"}
+</button>
                     <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
                       Cancel
                     </button>
@@ -405,6 +590,78 @@ const BillingPolicyMaster = () => {
                   </div>
                 </div>
               )}
+              {confirmDialog.isOpen && (
+  <div
+    className="modal d-block"
+    tabIndex="-1"
+    role="dialog"
+    style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+  >
+    <div
+      className="modal-dialog modal-dialog-centered"
+      role="document"
+    >
+      <div className="modal-content">
+
+        <div className="modal-header">
+          <h5 className="modal-title">
+            Confirm Status Change
+          </h5>
+
+          <button
+            type="button"
+            className="btn-close"
+            onClick={() => handleConfirm(false)}
+            aria-label="Close"
+            disabled={loading}
+          ></button>
+        </div>
+
+        <div className="modal-body">
+          <p>
+            Are you sure you want to{" "}
+            {confirmDialog.newStatus === "y"
+              ? "activate"
+              : "deactivate"}
+
+            <strong>
+              {" "}
+              {
+                billingPolicyData.find(
+                  (policy) =>
+                    policy.id === confirmDialog.policyId
+                )?.policyCode
+              }
+            </strong>
+            {" "}billing policy?
+          </p>
+        </div>
+
+        <div className="modal-footer">
+
+          <button
+            type="button"
+            className="btn btn-secondary"
+            onClick={() => handleConfirm(false)}
+            disabled={loading}
+          >
+            Cancel
+          </button>
+
+          <button
+            type="button"
+            className="btn btn-primary"
+            onClick={() => handleConfirm(true)}
+            disabled={loading}
+          >
+            {loading ? "Processing..." : "Confirm"}
+          </button>
+
+        </div>
+      </div>
+    </div>
+  </div>
+)}
               {popupMessage && (
                 <Popup
                   message={popupMessage.message}
