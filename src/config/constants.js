@@ -1316,3 +1316,9 @@ export const UPDATE_ITEM_TYPE_FAIL = "Failed to update Item Type";
 export const DUPLICATE_ITEM_TYPE = "Item Type with the same code or name already exists";
 export const STATUS_ITEM_TYPE_SUCCESS = "Item Type status updated successfully!";
 export const STATUS_ITEM_TYPE_FAIL = "Failed to update Item Type status";
+
+
+//item facility
+export const ADD_FACILITY_SUCC_MSG = "Facility added successfully!";
+export const UPDATE_FACILITY_SUCC_MSG = "Facility updated successfully!";
+export const FETCH_FACILITY_ERR_MSG = "Failed to fetch facility data";

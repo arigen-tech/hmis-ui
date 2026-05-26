@@ -1,242 +1,284 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
-import LoadingScreen from "../../../Components/Loading";
-import axios from "axios";
-import { postRequest, putRequest, getRequest } from "../../../service/apiService";
+import LoadingScreen from "../../../Components/Loading/index";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_DEPARTMENT, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-
-// Constants - You'll need to update these with actual API endpoints and messages
-const MAS_ITEM_FACILITY = "/api/item-facility"; // Update with your actual API endpoint
-const FETCH_FACILITY_ERR_MSG = "Failed to fetch facility data";
-const DUPLICATE_FACILITY = "Facility code or name already exists";
-const UPDATE_FACILITY_SUCC_MSG = "Facility updated successfully";
-const ADD_FACILITY_SUCC_MSG = "Facility added successfully";
-const FAIL_TO_SAVE_CHANGES = "Failed to save changes";
-const FAIL_TO_UPDATE_STS = "Failed to update status";
-const DEPARTMENT_LIST = ["Cardiology", "Radiology", "Emergency", "ICU", "Oncology", "Orthopedics", "Pediatrics"];
+import { MAS_ITEM_FACILITY } from "../../../config/apiConfig";
+import { ADD_FACILITY_SUCC_MSG, UPDATE_FACILITY_SUCC_MSG, FETCH_FACILITY_ERR_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants";
 
 const ItemFacility = () => {
-  const [facilityData, setFacilityData] = useState([]);
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, facilityId: null, newStatus: false });
-  const [loading, setLoading] = useState(true);
-
   const [formData, setFormData] = useState({
     facilityCode: "",
     facilityName: "",
-    departmentName: "",
+    departmentId: ""
+  });
+
+  const [confirmDialog, setConfirmDialog] = useState({ 
+    isOpen: false, 
+    facilityId: null, 
+    newStatus: "", 
+    facilityName: "" 
   });
 
   const [searchQuery, setSearchQuery] = useState("");
+  const [facilityData, setFacilityData] = useState([]);
+  const [departmentData, setDepartmentData] = useState([]);
+  const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [editingFacility, setEditingFacility] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalItems, setTotalItems] = useState(0);
+  const [process, setProcess] = useState(false);
 
-  const FACILITY_NAME_MAX_LENGTH = 100;
+  // Constants for validation
   const FACILITY_CODE_MAX_LENGTH = 10;
+  const FACILITY_NAME_MAX_LENGTH = 100;
 
   useEffect(() => {
     fetchFacilityData(0);
+    fetchDepartmentData();
   }, []);
 
+  useEffect(() => {
+    if (showForm) {
+      fetchDepartmentData();
+    }
+  }, [showForm]);
+
+  // Validate form
+  useEffect(() => {
+    const { facilityCode, facilityName, departmentId } = formData;
+    if (editingFacility) {
+      setIsFormValid(
+        facilityName.trim() !== "" &&
+        departmentId !== ""
+      );
+    } else {
+      setIsFormValid(
+        facilityCode.trim() !== "" &&
+        facilityName.trim() !== "" &&
+        departmentId !== ""
+      );
+    }
+  }, [formData, editingFacility]);
+
+  // Filter data based on search query
+  const filteredFacilityData = facilityData.filter(facility =>
+    facility.facilityCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    facility.facilityName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    facility.departmentName?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   const fetchFacilityData = async (flag = 0) => {
+    setLoading(true);
     try {
-      setLoading(true);
-      // Replace with your actual API call
-      // const response = await getRequest(`${MAS_ITEM_FACILITY}/getAll/${flag}`);
-
-      // For now, using mock data
-      const mockData = [
-        { id: 1, facilityCode: "FAC001", facilityName: "Main Operation Theater", departmentName: "Cardiology", status: "y" },
-        { id: 2, facilityCode: "FAC002", facilityName: "MRI Room", departmentName: "Radiology", status: "y" },
-        { id: 3, facilityCode: "FAC003", facilityName: "Emergency Ward", departmentName: "Emergency", status: "n" },
-        { id: 4, facilityCode: "FAC004", facilityName: "ICU Unit", departmentName: "ICU", status: "y" },
-        { id: 5, facilityCode: "FAC005", facilityName: "Chemotherapy Room", departmentName: "Oncology", status: "y" },
-      ];
-
-      const transformedData = mockData.map(facility => ({
-        id: facility.id,
-        facilityCode: facility.facilityCode,
-        facilityName: facility.facilityName,
-        departmentName: facility.departmentName,
-        status: facility.status
-      }));
-
-      setFacilityData(transformedData);
-    } catch (err) {
-      console.error("Error fetching facility data:", err);
+      const data = await getRequest(`${MAS_ITEM_FACILITY}/getAll/${flag}`);
+      
+      if (data.status === 200 && data.response) {
+        setFacilityData(data.response);
+        setTotalItems(data.response.length);
+        setTotalPages(Math.ceil(data.response.length / DEFAULT_ITEMS_PER_PAGE));
+      } else {
+        console.error("Unexpected API response format:", data);
+        setFacilityData([]);
+        setTotalItems(0);
+        setTotalPages(0);
+      }
+    } catch (error) {
+      console.error("Error fetching Facility data:", error);
+      setFacilityData([]);
       showPopup(FETCH_FACILITY_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
+  const fetchDepartmentData = async () => {
+    try {
+      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      if (data.status === 200 && Array.isArray(data.response)) {
+        setDepartmentData(data.response);
+        return data.response;
+      } else {
+        console.error("Unexpected API response format:", data);
+        setDepartmentData([]);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching Department data:", error);
+      return [];
+    }
   };
 
-  const filteredFacilityData = facilityData.filter(facility =>
-    facility.facilityName.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    facility.facilityCode.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    facility.departmentName.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
 
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery]);
-
-  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredFacilityData.slice(indexOfFirstItem, indexOfLastItem);
-
-  const handleEdit = (facility) => {
-    setEditingFacility(facility);
+  const handleEdit = async (item) => {
+    setEditingFacility(item);
+    
+    // Fetch departments first to ensure dropdown is populated
+    await fetchDepartmentData();
+    
+    // Set form data from the selected item
     setFormData({
-      facilityCode: facility.facilityCode,
-      facilityName: facility.facilityName,
-      departmentName: facility.departmentName
+      facilityCode: item.facilityCode || "",
+      facilityName: item.facilityName || "",
+      departmentId: item.departmentId?.toString() || ""
     });
-    setIsFormValid(true);
+    
     setShowForm(true);
   };
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    setProcess(true);
+    if (!isFormValid) {
+      setProcess(false);
+      return;
+    }
+
+    const payload = {
+      facilityCode: formData.facilityCode,
+      facilityName: formData.facilityName,
+      departmentId: formData.departmentId ? parseInt(formData.departmentId, 10) : null
+    };
 
     try {
-      setLoading(true);
-
+      let response;
       if (editingFacility) {
-        // Update existing facility
-        // const response = await axios.put(`${MAS_ITEM_FACILITY}/updateById/${editingFacility.id}`, {
-        //   id: editingFacility.id,
-        //   facilityCode: formData.facilityCode,
-        //   facilityName: formData.facilityName,
-        //   departmentName: formData.departmentName,
-        //   status: editingFacility.status
-        // });
-
-        // Mock update
-        const updatedFacility = {
-          id: editingFacility.id,
-          facilityCode: formData.facilityCode,
-          facilityName: formData.facilityName,
-          departmentName: formData.departmentName,
-          status: editingFacility.status
-        };
-
-        setFacilityData(facilityData.map(facility =>
-          facility.id === editingFacility.id ? updatedFacility : facility
-        ));
-        showPopup(UPDATE_FACILITY_SUCC_MSG, "success");
-      } else {
-        // Create new facility
-        // const response = await postRequest(`${MAS_ITEM_FACILITY}/create`, {
-        //   facilityCode: formData.facilityCode,
-        //   facilityName: formData.facilityName,
-        //   departmentName: formData.departmentName,
-        //   status: "y"
-        // });
-
-        const isDuplicate = facilityData.some(
-          (facility) =>
-            facility.facilityCode === formData.facilityCode ||
-            facility.facilityName === formData.facilityName
+        response = await putRequest(
+          `${MAS_ITEM_FACILITY}/update/${editingFacility.facilityId}`,
+          payload
         );
-
-        if (isDuplicate) {
-          showPopup(DUPLICATE_FACILITY, "error");
-          setLoading(false);
-          return;
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_FACILITY_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchFacilityData();
+              setCurrentPage(1);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
         }
-
-        // Mock create
-        const newFacility = {
-          id: facilityData.length + 1,
-          facilityCode: formData.facilityCode,
-          facilityName: formData.facilityName,
-          departmentName: formData.departmentName,
-          status: "y"
-        };
-
-        setFacilityData([...facilityData, newFacility]);
-        showPopup(ADD_FACILITY_SUCC_MSG, "success");
+      } else {
+        response = await postRequest(`${MAS_ITEM_FACILITY}/create`, payload);
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_FACILITY_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchFacilityData();
+              setCurrentPage(1);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-
-      setEditingFacility(null);
-      setFormData({ facilityCode: "", facilityName: "", departmentName: "" });
-      setShowForm(false);
-      fetchFacilityData();
-    } catch (err) {
-      console.error("Error saving facility data:", err);
+    } catch (error) {
+      console.error("Error saving Facility:", error);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
-      setLoading(false);
+      setProcess(false);
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const resetForm = () => {
+    setEditingFacility(null);
+    setShowForm(false);
+    setFormData({
+      facilityCode: "",
+      facilityName: "",
+      departmentId: ""
+    });
+  };
+
+  const showPopup = (message, type = "info") => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-      }
+      },
     });
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, facilityId: id, newStatus });
+  const handleSwitchChange = (id, name, newStatus) => {
+    setConfirmDialog({ 
+      isOpen: true, 
+      facilityId: id, 
+      newStatus, 
+      facilityName: name 
+    });
   };
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.facilityId !== null) {
+      setProcess(true);
       try {
-        setLoading(true);
-
-        // const response = await putRequest(
-        //   `${MAS_ITEM_FACILITY}/status/${confirmDialog.facilityId}?status=${confirmDialog.newStatus}`
-        // );
-
-        // Mock status update
-        setFacilityData((prevData) =>
-          prevData.map((facility) =>
-            facility.id === confirmDialog.facilityId ?
-              { ...facility, status: confirmDialog.newStatus } :
-              facility
-          )
+        const response = await putRequest(
+          `${MAS_ITEM_FACILITY}/status/${confirmDialog.facilityId}?status=${confirmDialog.newStatus}`
         );
-        showPopup(`Facility ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-      } catch (err) {
-        console.error("Error updating facility status:", err);
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Facility master ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchFacilityData();
+              setCurrentPage(1);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
         showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
-        setTimeout(() => {
-          setLoading(false);
-        }, 2000);
+        setProcess(false);
       }
     }
-    setConfirmDialog({ isOpen: false, facilityId: null, newStatus: null });
+    setConfirmDialog({ 
+      isOpen: false, 
+      facilityId: null, 
+      newStatus: "", 
+      facilityName: "" 
+    });
   };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [id]: value }));
+    setFormData((prevData) => ({
+      ...prevData,
+      [id]: value
+    }));
+  };
 
-    // Validate form
-    const isFacilityCodeValid = formData.facilityCode.trim() !== "";
-    const isFacilityNameValid = formData.facilityName.trim() !== "";
-    const isDepartmentValid = formData.departmentName.trim() !== "";
+  const handleSelectChange = (e) => {
+    const { id, value } = e.target;
+    setFormData((prevData) => ({
+      ...prevData,
+      [id]: value
+    }));
+  };
 
-    if (id === "facilityCode") {
-      setIsFormValid(isFacilityNameValid && isDepartmentValid);
-    } else if (id === "facilityName") {
-      setIsFormValid(isFacilityCodeValid && isDepartmentValid);
-    } else if (id === "departmentName") {
-      setIsFormValid(isFacilityCodeValid && isFacilityNameValid);
-    }
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
   };
 
   const handleRefresh = () => {
@@ -245,69 +287,91 @@ const ItemFacility = () => {
     fetchFacilityData();
   };
 
+  const handleActivate = async () => {
+    if (editingFacility && editingFacility.status === "n") {
+      setProcess(true);
+      try {
+        const response = await putRequest(
+          `${MAS_ITEM_FACILITY}/status/${editingFacility.facilityId}?status=y`
+        );
+
+        if (response.status === 200) {
+          showPopup("Facility activated successfully!", "success");
+          resetForm();
+          await fetchFacilityData();
+          setCurrentPage(1);
+        } else {
+          throw new Error(response.message || "Failed to activate");
+        }
+      } catch (error) {
+        console.error("Error activating facility:", error);
+        showPopup("Failed to activate facility", "error");
+      } finally {
+        setProcess(false);
+      }
+    }
+  };
+
+  // Get current page items
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredFacilityData.slice(indexOfFirstItem, indexOfLastItem);
+
   return (
     <div className="content-wrapper">
       <div className="row">
+        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Item Facility Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search by Facility Code, Name or Department"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
-                )}
+              <h4 className="card-title p-2">Item Facility Master</h4>
 
-                <div className="d-flex align-items-center">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setEditingFacility(null);
-                          setFormData({ facilityCode: "", facilityName: "", departmentName: "" });
-                          setIsFormValid(false);
-                          setShowForm(true);
-                        }}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                        onClick={handleRefresh}
-                      >
-                        <i className="mdi mdi-refresh"></i> Show All
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
+              <div className="d-flex justify-content-between align-items-center gap-2">
+                {!showForm && (
+                  <>
+                    <form className="d-inline-block searchform me-2" role="search">
+                      <div className="input-group searchinput">
+                        <input
+                          type="search"
+                          className="form-control"
+                          placeholder="Search by code, name or department"
+                          aria-label="Search"
+                          value={searchQuery}
+                          onChange={handleSearchChange}
+                        />
+                        <span className="input-group-text" id="search-icon">
+                          <i className="fa fa-search"></i>
+                        </span>
+                      </div>
+                    </form>
+                    <button
+                      type="button"
+                      className="btn btn-success"
+                      onClick={handleRefresh}
+                    >
+                      <i className="mdi mdi-refresh"></i> Show All
                     </button>
-                  )}
-                </div>
+                    <button
+                      type="button"
+                      className="btn btn-success"
+                      onClick={() => {
+                        setEditingFacility(null);
+                        setFormData({
+                          facilityCode: "",
+                          facilityName: "",
+                          departmentId: ""
+                        });
+                        setShowForm(true);
+                      }}
+                    >
+                      <i className="mdi mdi-plus"></i> Add
+                    </button>
+                  </>
+                )}
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {!showForm ? (
                 <>
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
@@ -315,147 +379,192 @@ const ItemFacility = () => {
                         <tr>
                           <th>Facility Code</th>
                           <th>Facility Name</th>
-                          <th>Department Name</th>
+                          <th>Department</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
                         {currentItems.length > 0 ? (
-                          currentItems.map((facility) => (
-                            <tr key={facility.id}>
-                              <td>{facility.facilityCode}</td>
-                              <td>{facility.facilityName}</td>
-                              <td>{facility.departmentName}</td>
-                              <td>
-                                <div className="form-check form-switch">
-                                  <input
-                                    className="form-check-input"
-                                    type="checkbox"
-                                    checked={facility.status === "y"}
-                                    onChange={() => handleSwitchChange(facility.id, facility.status === "y" ? "n" : "y")}
-                                    id={`switch-${facility.id}`}
-                                  />
-                                  <label
-                                    className="form-check-label px-0"
-                                    htmlFor={`switch-${facility.id}`}
+                          currentItems.map((item) => {
+                            return (
+                              <tr key={item.facilityId}>
+                                <td>{item.facilityCode || '-'}</td>
+                                <td style={{ textTransform: "capitalize" }}>{item.facilityName || '-'}</td>
+                                <td>{item.departmentName || '-'}</td>
+                                <td>
+                                  <div className="form-check form-switch">
+                                    <input
+                                      className="form-check-input"
+                                      type="checkbox"
+                                      checked={item.status === "y"}
+                                      onChange={() => handleSwitchChange(
+                                        item.facilityId, 
+                                        item.facilityName, 
+                                        item.status === "y" ? "n" : "y"
+                                      )}
+                                      id={`switch-${item.facilityId}`}
+                                    />
+                                    <label
+                                      className="form-check-label px-0"
+                                      htmlFor={`switch-${item.facilityId}`}
+                                    >
+                                      {item.status === "y" ? "Active" : "Deactivated"}
+                                    </label>
+                                  </div>
+                                </td>
+                                <td>
+                                  <button
+                                    className="btn btn-sm btn-success me-2"
+                                    onClick={() => handleEdit(item)}
+                                    disabled={item.status !== "y"}
                                   >
-                                    {facility.status === "y" ? 'Active' : 'Deactivated'}
-                                  </label>
-                                </div>
-                              </td>
-                              <td>
-                                <button
-                                  className="btn btn-sm btn-success me-2"
-                                  onClick={() => handleEdit(facility)}
-                                  disabled={facility.status !== "y"}
-                                >
-                                  <i className="fa fa-pencil"></i>
-                                </button>
-                              </td>
-                            </tr>
-                          ))
+                                    <i className="fa fa-pencil"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            );
+                          })
                         ) : (
                           <tr>
-                            <td colSpan="5" className="text-center">No facility data found</td>
+                            <td colSpan="5" className="text-center">No records found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
-                  {/* PAGINATION USING REUSABLE COMPONENT */}
+
                   {filteredFacilityData.length > 0 && (
                     <Pagination
                       totalItems={filteredFacilityData.length}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
-                      onPageChange={setCurrentPage}
+                      onPageChange={handlePageChange}
                     />
                   )}
                 </>
               ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                  {!editingFacility && (
-                    <div className="form-group col-md-4">
-                      <label>Facility Code <span className="text-danger">*</span></label>
-                      <input
-                        type="text"
-                        className="form-control mt-1"
-                        id="facilityCode"
-                        name="facilityCode"
-                        placeholder="Facility Code"
-                        value={formData.facilityCode}
-                        onChange={handleInputChange}
-                        maxLength={FACILITY_CODE_MAX_LENGTH}
-                        required
-                      />
+                <>
+                  <form className="forms row" onSubmit={handleSave}>
+                    <div className="d-flex justify-content-end mb-3">
+                      <button type="button" className="btn btn-secondary" onClick={resetForm}>
+                        <i className="mdi mdi-arrow-left"></i> Back
+                      </button>
                     </div>
-                  )}
-                  <div className="form-group col-md-4">
-                    <label>Facility Name <span className="text-danger">*</span></label>
-                    <input
-                      type="text"
-                      className="form-control mt-1"
-                      id="facilityName"
-                      name="facilityName"
-                      placeholder="Facility Name"
-                      value={formData.facilityName}
-                      onChange={handleInputChange}
-                      maxLength={FACILITY_NAME_MAX_LENGTH}
-                      required
-                    />
-                  </div>
-                  <div className="form-group col-md-4">
-                    <label>Department Name <span className="text-danger">*</span></label>
-                    <select
-                      className="form-select mt-1"
-                      id="departmentName"
-                      name="departmentName"
-                      value={formData.departmentName}
-                      onChange={handleInputChange}
-                      required
-                    >
-                      <option value="">Select Department</option>
-                      {DEPARTMENT_LIST.map((dept, index) => (
-                        <option key={index} value={dept}>{dept}</option>
-                      ))}
-                    </select>
-                  </div>
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      {editingFacility ? "Update" : "Save"}
-                    </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                      Cancel
-                    </button>
-                  </div>
-                </form>
+                    <div className="row">
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Facility Code <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="facilityCode"
+                          placeholder="Enter facility code"
+                          onChange={handleInputChange}
+                          value={formData.facilityCode}
+                          maxLength={FACILITY_CODE_MAX_LENGTH}
+                          required
+                          disabled={process || editingFacility}
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Facility Name <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="facilityName"
+                          placeholder="Enter facility name"
+                          onChange={handleInputChange}
+                          value={formData.facilityName}
+                          maxLength={FACILITY_NAME_MAX_LENGTH}
+                          required
+                          disabled={process}
+                        />
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Department <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="departmentId"
+                          onChange={handleSelectChange}
+                          value={formData.departmentId}
+                          required
+                          disabled={process}
+                        >
+                          <option value="">Select Department</option>
+                          {departmentData.map((department) => (
+                            <option key={department.id} value={department.id}>
+                              {department.departmentName}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                    </div>
+
+                    <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                      <button
+                        type="submit"
+                        className="btn btn-primary me-2"
+                        disabled={process || !isFormValid}
+                      >
+                        {process ? "Processing..." : (editingFacility ? 'Update' : 'Save')}
+                      </button>
+                      
+                      {editingFacility && editingFacility.status === "n" && (
+                        <button
+                          type="button"
+                          className="btn btn-success me-2"
+                          onClick={handleActivate}
+                          disabled={process}
+                        >
+                          Activate
+                        </button>
+                      )}
+                      
+                      <button
+                        type="button"
+                        className="btn btn-danger"
+                        onClick={resetForm}
+                        disabled={process}
+                      >
+                        Cancel
+                      </button>
+                    </div>
+                  </form>
+                </>
               )}
               {popupMessage && (
-                <Popup
-                  message={popupMessage.message}
-                  type={popupMessage.type}
-                  onClose={popupMessage.onClose}
-                />
+                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{facilityData.find(facility => facility.id === confirmDialog.facilityId)?.facilityName}</strong>?
+                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          <strong>
+                            {confirmDialog.facilityName}
+                          </strong>
+                          {" "}facility?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={process}>
+                          Cancel
+                        </button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={process}>
+                          {process ? "Processing..." : "Confirm"}
+                        </button>
                       </div>
                     </div>
                   </div>
