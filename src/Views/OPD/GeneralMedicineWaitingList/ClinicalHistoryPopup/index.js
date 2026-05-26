@@ -9,6 +9,9 @@ const ClinicalHistoryPopup = ({
   visitsData,
   vitalsData,
   popupType,
+  currentPage,
+  totalPages,
+  onPageChange,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
@@ -108,6 +111,12 @@ const ClinicalHistoryPopup = ({
       setLoading("printing", null);
     }
   };
+
+  const formatDate = (date) => {
+  if (!date) return "-";
+
+  return new Date(date).toLocaleDateString("en-GB");
+};
 
   const handleDownloadPdf = () => {
     if (pdfUrl) {
@@ -251,22 +260,59 @@ const ClinicalHistoryPopup = ({
                       >
                         <thead className="table-light">
                           <tr>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
                               Visit Date
                             </th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
                               Doctor Name
                             </th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
                               Department
                             </th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
                               ICD Diagnosis
                             </th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
                               Working Diagnosis
                             </th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold", textAlign: "center" }}>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                                textAlign: "center",
+                              }}
+                            >
                               Actions
                             </th>
                           </tr>
@@ -274,33 +320,72 @@ const ClinicalHistoryPopup = ({
                         <tbody>
                           {visitsData.map((visit, index) => (
                             <tr key={visit.visitId || index}>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
-                                {visit.visitDate || "-"}
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {formatDate(visit.visitDate)}
                               </td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
                                 {visit.doctorName || "-"}
                               </td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
                                 {visit.department || "-"}
                               </td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
                                 <span style={{ color: "#0d6efd" }}>
                                   {visit.icdDiag || "-"}
                                 </span>
                               </td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
                                 {visit.workingDiag || "-"}
                               </td>
-                              <td style={{ padding: "8px", verticalAlign: "middle", textAlign: "center" }}>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                  textAlign: "center",
+                                }}
+                              >
                                 <div className="d-flex gap-2 justify-content-center">
                                   <button
                                     className="btn btn-sm btn-primary d-flex align-items-center gap-1"
-                                    onClick={() => handleViewDownloadCaseSheet(visit.visitId)}
-                                    disabled={isGenerating(visit.visitId) || isPrinting(visit.visitId)}
+                                    onClick={() =>
+                                      handleViewDownloadCaseSheet(visit.visitId)
+                                    }
+                                    disabled={
+                                      isGenerating(visit.visitId) ||
+                                      isPrinting(visit.visitId)
+                                    }
                                   >
                                     {isGenerating(visit.visitId) ? (
                                       <>
-                                        <span className="spinner-border spinner-border-sm" role="status"></span>
+                                        <span
+                                          className="spinner-border spinner-border-sm"
+                                          role="status"
+                                        ></span>
                                         <span className="ms-1">Loading...</span>
                                       </>
                                     ) : (
@@ -312,13 +397,23 @@ const ClinicalHistoryPopup = ({
                                   </button>
                                   <button
                                     className="btn btn-sm btn-warning d-flex align-items-center gap-1"
-                                    onClick={() => handlePrintCaseSheet(visit.visitId)}
-                                    disabled={isPrinting(visit.visitId) || isGenerating(visit.visitId)}
+                                    onClick={() =>
+                                      handlePrintCaseSheet(visit.visitId)
+                                    }
+                                    disabled={
+                                      isPrinting(visit.visitId) ||
+                                      isGenerating(visit.visitId)
+                                    }
                                   >
                                     {isPrinting(visit.visitId) ? (
                                       <>
-                                        <span className="spinner-border spinner-border-sm" role="status"></span>
-                                        <span className="ms-1">Printing...</span>
+                                        <span
+                                          className="spinner-border spinner-border-sm"
+                                          role="status"
+                                        ></span>
+                                        <span className="ms-1">
+                                          Printing...
+                                        </span>
                                       </>
                                     ) : (
                                       <>
@@ -333,11 +428,55 @@ const ClinicalHistoryPopup = ({
                           ))}
                         </tbody>
                       </table>
+
+                      {/* Pagination */}
+                      <div className="d-flex justify-content-between align-items-center mt-3">
+                        <div className="small text-muted">
+                          Page {currentPage + 1} of {totalPages}
+                        </div>
+
+                        <div className="d-flex gap-2">
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            disabled={currentPage === 0}
+                            onClick={() => onPageChange(currentPage - 1)}
+                          >
+                            Previous
+                          </button>
+
+                          {[...Array(totalPages)].map((_, index) => (
+                            <button
+                              key={index}
+                              className={`btn btn-sm ${
+                                currentPage === index
+                                  ? "btn-primary"
+                                  : "btn-outline-primary"
+                              }`}
+                              onClick={() => onPageChange(index)}
+                            >
+                              {index + 1}
+                            </button>
+                          ))}
+
+                          <button
+                            className="btn btn-sm btn-secondary"
+                            disabled={currentPage === totalPages - 1}
+                            onClick={() => onPageChange(currentPage + 1)}
+                          >
+                            Next
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ) : (
                     <div className="text-center py-5">
-                      <i className="mdi mdi-inbox" style={{ fontSize: "48px", color: "#6c757d" }} />
-                      <p className="mt-2 mb-0 text-muted">No Previous Visits Found</p>
+                      <i
+                        className="mdi mdi-inbox"
+                        style={{ fontSize: "48px", color: "#6c757d" }}
+                      />
+                      <p className="mt-2 mb-0 text-muted">
+                        No Previous Visits Found
+                      </p>
                     </div>
                   )}
                 </>
@@ -348,34 +487,172 @@ const ClinicalHistoryPopup = ({
                 <>
                   {vitalsData?.length > 0 ? (
                     <div className="table-responsive">
-                      <table className="table table-bordered table-sm" style={{ marginBottom: 0 }}>
+                      <table
+                        className="table table-bordered table-sm"
+                        style={{ marginBottom: 0 }}
+                      >
                         <thead className="table-light">
                           <tr>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Visit Date</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Height (cm)</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Weight (kg)</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>BMI (kg/m²)</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>BP (mmHg)</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Pulse (bpm)</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>Temp (°F)</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>RR</th>
-                            <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>SpO₂ (%)</th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Visit Date
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Height (cm)
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Weight (kg)
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              BMI (kg/m²)
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              BP (mmHg)
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Pulse (bpm)
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              Temp (°F)
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              RR
+                            </th>
+                            <th
+                              style={{
+                                padding: "8px",
+                                fontSize: "0.750rem",
+                                fontWeight: "bold",
+                              }}
+                            >
+                              SpO₂ (%)
+                            </th>
                           </tr>
                         </thead>
                         <tbody>
                           {vitalsData.map((vital, idx) => (
                             <tr key={idx}>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.visitDate || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.height || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.weight || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.bmi || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
-                                {vital.bpSystolic && vital.bpDiastolic ? `${vital.bpSystolic}/${vital.bpDiastolic}` : "-"}
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {formatDate(vital.visitDate)}
                               </td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.pulse || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.temperature || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.rr || "-"}</td>
-                              <td style={{ padding: "8px", verticalAlign: "middle" }}>{vital.spo2 || "-"}</td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.height || "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.weight || "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.bmi || "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.bpSystolic && vital.bpDiastolic
+                                  ? `${vital.bpSystolic}/${vital.bpDiastolic}`
+                                  : "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.pulse || "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.temperature || "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.rr || "-"}
+                              </td>
+                              <td
+                                style={{
+                                  padding: "8px",
+                                  verticalAlign: "middle",
+                                }}
+                              >
+                                {vital.spo2 || "-"}
+                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -383,8 +660,13 @@ const ClinicalHistoryPopup = ({
                     </div>
                   ) : (
                     <div className="text-center py-5">
-                      <i className="mdi mdi-heart-pulse" style={{ fontSize: "48px", color: "#6c757d" }} />
-                      <p className="mt-2 mb-0 text-muted">No Previous Vitals Found</p>
+                      <i
+                        className="mdi mdi-heart-pulse"
+                        style={{ fontSize: "48px", color: "#6c757d" }}
+                      />
+                      <p className="mt-2 mb-0 text-muted">
+                        No Previous Vitals Found
+                      </p>
                     </div>
                   )}
                 </>
@@ -404,13 +686,21 @@ const ClinicalHistoryPopup = ({
               <div className="d-flex justify-content-between align-items-center">
                 <div className="text-muted small">
                   <i className="mdi mdi-information-outline me-1" />
-                  Total: {popupType === "vitals" ? vitalsData?.length || 0 : visitsData?.length || 0} record(s)
+                  Total:{" "}
+                  {popupType === "vitals"
+                    ? vitalsData?.length || 0
+                    : visitsData?.length || 0}{" "}
+                  record(s)
                 </div>
                 <div className="d-flex gap-2">
                   <button
                     className="btn btn-primary btn-sm px-3"
                     onClick={onClose}
-                    style={{ borderRadius: "4px", backgroundColor: "#6aab9c", border: "none" }}
+                    style={{
+                      borderRadius: "4px",
+                      backgroundColor: "#6aab9c",
+                      border: "none",
+                    }}
                   >
                     <i className="mdi mdi-check-circle me-2" />
                     CLOSE
@@ -452,7 +742,10 @@ const ClinicalHistoryPopup = ({
             }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="modal-content" style={{ height: "100%", border: "none", borderRadius: "8px" }}>
+            <div
+              className="modal-content"
+              style={{ height: "100%", border: "none", borderRadius: "8px" }}
+            >
               <div
                 className="modal-header"
                 style={{
@@ -508,7 +801,7 @@ const ClinicalHistoryPopup = ({
         </div>
       )}
     </>,
-    document.body
+    document.body,
   );
 };
 
