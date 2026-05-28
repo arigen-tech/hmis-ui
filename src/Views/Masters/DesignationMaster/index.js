@@ -9,6 +9,7 @@ import {
     ADD_DESIGNATION,
     UPDATE_DESIGNATION,
     STATUS_UPDATE_DESIGNATION,
+    FAIL_TO_SAVE_CHANGES,
 } from "../../../config/constants";
 
 const DesignationMaster = () => {
@@ -104,45 +105,82 @@ const DesignationMaster = () => {
         setEditingRecord(null);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+   const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
 
-        setSaving(true);
-        try {
-            // ✅ Use designationName (camelCase) as expected by backend
-            const payload = {
-                designationName: formData.designation_name.trim(),
-                userTypeId: formData.userTypeId,
-            };
-            console.log("Saving payload:", payload);
+    if (!isFormValid) {
+        setSaving(false);
+        return;
+    }
 
-            let url, method;
-            if (editingRecord) {
-                url = `${MAS_DESIGNATION}/update/${editingRecord.id}`;
-                method = putRequest;
+    try {
+        const payload = {
+            designationName: formData.designation_name.trim(),
+            userTypeId: parseInt(formData.userTypeId, 10),
+        };
+
+        // For new record only
+        if (!editingRecord) {
+            payload.status = "n";
+        }
+
+        let response;
+
+        if (editingRecord) {
+            response = await putRequest(
+                `${MAS_DESIGNATION}/update/${editingRecord.id}`,
+                payload
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: "Designation updated successfully!",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchData();
+                        setShowForm(false);
+                    }
+                });
             } else {
-                url = `${MAS_DESIGNATION}/create`;
-                method = postRequest;
-                // For new records, we add status: "n" as per original
-                payload.status = "n";
+                throw new Error(response.message || "Update failed");
             }
 
-            const response = await method(url, payload);
-            console.log("Save response:", response);
+        } else {
+            response = await postRequest(
+                `${MAS_DESIGNATION}/create`,
+                payload
+            );
 
-            showPopup(editingRecord ? UPDATE_DESIGNATION : ADD_DESIGNATION, "success");
-            await fetchData(); // refresh the list
-            resetForm();
-            setShowForm(false);
-        } catch (error) {
-            console.error("Save error:", error);
-            const errorMsg = error.response?.data?.message || (editingRecord ? "Update failed" : "Add failed");
-            showPopup(errorMsg, "error");
-        } finally {
-            setSaving(false);
+            if (response.status === 201 || response.status === 200) {
+                setPopupMessage({
+                    message: "Designation added successfully!",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchData();
+                        setShowForm(false);
+                    }
+                });
+            } else {
+                throw new Error(response.message || "Save failed");
+            }
         }
-    };
+
+    } catch (error) {
+        console.error("Save error:", error);
+
+        showPopup(
+            error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+            "error"
+        );
+    } finally {
+        setSaving(false);
+    }
+};
 
     const handleEdit = (rec) => {
         setEditingRecord(rec);
@@ -159,27 +197,52 @@ const DesignationMaster = () => {
         setConfirmDialog({ isOpen: true, id, newStatus, name });
     };
 
-    const handleConfirm = async (confirmed) => {
-        const { id, newStatus, name } = confirmDialog;
-        setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
-
-        if (!confirmed || !id) return;
-
+   const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.id !== null) {
         setSaving(true);
+
         try {
-            await putRequest(`${MAS_DESIGNATION}/status/${id}?status=${newStatus}`);
-            showPopup(
-                `Designation "${name}" ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                "success"
+            const response = await putRequest(
+                `${MAS_DESIGNATION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
             );
-            await fetchData();
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Designation "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
         } catch (error) {
-            console.error(error);
+            console.error("Error updating status:", error);
             showPopup(STATUS_UPDATE_DESIGNATION, "error");
         } finally {
             setSaving(false);
         }
-    };
+    }
+
+    setConfirmDialog({
+        isOpen: false,
+        id: null,
+        newStatus: "",
+        name: "",
+    });
+};
 
     const handleRefresh = () => {
         setSearchQuery("");
