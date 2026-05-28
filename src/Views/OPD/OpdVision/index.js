@@ -10,7 +10,7 @@ const anteriorApiKeys = {
   sclera: "Sclera", anteriorChamber: "Ant. Chamber", iris: "Iris",
   pupil: "Pupils",
 };
-
+ 
 const posteriorApiKeys = {
   opticDisc: "Optic Disc", foveaMacula: "Fovea & Macula",
   vitreousPosterior: "Vitreous",
@@ -68,8 +68,8 @@ const mapApiResponseToForm = (data) => {
   return mapped;
 };
 
-const OpdVision = () => {
-  const [waitingList, setWaitingList] = useState([]);
+const OpdVision = ({ patientId, visitId, hideHeader = false, hideButtons = false }) =>{
+ const [waitingList, setWaitingList] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchData, setSearchData] = useState({ mobileNumber: "", patientName: "" });
   const [currentPage, setCurrentPage] = useState(1);
@@ -152,7 +152,7 @@ const OpdVision = () => {
 
   useEffect(() => {
     fetchWaitingList();
-    fetchDistanceVision();
+    fetchDistanceVision(); 
     fetchNearVision();
     fetchColorVision();
     fetchSpectacleUse();
@@ -309,30 +309,47 @@ const OpdVision = () => {
     }
   };
 
+  useEffect(() => {
+  if (patientId && visitId) {
+    setSelectedPatient({ patientId, visitId });
+    setShowForm(true);
+  }
+}, [patientId, visitId]);
+
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2 mb-0">
-                {departmentName ? `${departmentName} - Vision Examination` : "OPD Vision Examination"}
-              </h4>
-              {showForm && (
-                <button type="button" className="btn btn-secondary me-2" onClick={closeForm}>
-                  Back
-                </button>
-              )}
-            </div>
+            {!hideHeader && (
+  <div className="card-header d-flex justify-content-between align-items-center">
 
-            <div className="card-body">
+    <h4 className="card-title p-2 mb-0">
+      {departmentName
+        ? `${departmentName} - Vision Examination`
+        : "OPD Vision Examination"}
+    </h4>
+
+    {showForm && (
+      <button
+        type="button"
+        className="btn btn-secondary me-2"
+        onClick={closeForm}
+      >
+        Back
+      </button>
+    )}
+
+  </div>
+)}
+            <div className="card-body p-2 pb-0">
               {loading && <LoadingScreen />}
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
 
               {/* ── WAITING LIST ─────────────────────────────────────────── */}
-              {!showForm && (
+              {!patientId && !visitId && !showForm && (
                 <>
                   <div className="mb-4">
                     <div className="row g-4 align-items-end">
@@ -408,8 +425,7 @@ const OpdVision = () => {
               {showForm && selectedPatient && (
                 <div className="row mb-3 mt-3">
                   <div className="col-sm-12">
-                    <div className="card shadow mb-3">
-                      <div className="card-body">
+                      <div className="card-body p-2 pb-0">
 
                         {formLoading ? (
                           <div className="text-center py-5">
@@ -432,7 +448,7 @@ const OpdVision = () => {
                             {/* ── VISION ── */}
                             <div className="row mb-3">
                               <div className="col-12">
-                                <h6 className="fw-bold bg-light text-primary border-bottom pb-1">Vision</h6>
+                                <h6 className="fw-bold bg-light text-primary border-bottom pb-1">VISION</h6>
                               </div>
                               <div className="col-12">
                                 <div className="table-responsive">
@@ -785,20 +801,22 @@ const OpdVision = () => {
                             </div>
 
                             {/* ── SUBMIT ── */}
-                            <div className="col-12 mt-3 d-flex justify-content-end">
-                              <button type="button" className="btn btn-secondary me-2" onClick={closeForm}>
-                                Cancel
-                              </button>
-                              <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                                {isSubmitting ? "Saving..." : "Save Examination"}
-                              </button>
-                            </div>
+                           {!hideButtons && (
+  <div className="col-12 mt-3 d-flex justify-content-end">
+    <button type="button" className="btn btn-secondary me-2" onClick={closeForm}>
+      Cancel
+    </button>
+    <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
+      {isSubmitting ? "Saving..." : "Save Examination"}
+    </button>
+  </div>
+)}
 
                           </form>
                         )}
 
                       </div>
-                    </div>
+                    
                   </div>
                 </div>
               )}
