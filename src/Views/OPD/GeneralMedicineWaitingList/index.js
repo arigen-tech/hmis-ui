@@ -4295,8 +4295,12 @@ const GeneralMedicineWaitingList = () => {
   </div>
   {expandedSections.obgDetails && (
     <div className="card-body">
-      <OBGDetails patientId={selectedPatient?.patientId} visitId={selectedPatient?.visitId} />
-    </div>
+<OBGDetails 
+  patientId={selectedPatient?.patientId} 
+  visitId={selectedPatient?.visitId}
+  hideHeader={true}
+  hideButtons={true}
+/>    </div>
   )}
 </div> */}
 {/* Ear Examination Section */}
@@ -4311,7 +4315,12 @@ const GeneralMedicineWaitingList = () => {
   </div>
   {expandedSections.earExamination && (
     <div className="card-body">
-      <EarExamination />
+     <EarExamination 
+  patientId={selectedPatient?.patientId} 
+  visitId={selectedPatient?.visitId}
+  hideHeader={true}
+  hideButtons={true}
+/>
     </div>
   )}
 </div> */}

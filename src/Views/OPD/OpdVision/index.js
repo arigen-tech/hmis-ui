@@ -438,12 +438,14 @@ const OpdVision = ({ patientId, visitId, hideHeader = false, hideButtons = false
                           <form onSubmit={handleSave}>
 
                             {/* Patient Info Banner */}
-                            <div className="alert alert-info mb-4">
-                              <strong>Patient:</strong> {selectedPatient.patientName} |&nbsp;
-                              <strong>Mobile:</strong> {selectedPatient.mobileNo} |&nbsp;
-                              <strong>Age:</strong> {selectedPatient.age} |&nbsp;
-                              <strong>Token:</strong> {selectedPatient.tokenNo}
-                            </div>
+                        {!patientId && !visitId && (
+                          <div className="alert alert-info mb-4">
+                            <strong>Patient:</strong> {selectedPatient.patientName} |&nbsp;
+                            <strong>Mobile:</strong> {selectedPatient.mobileNo} |&nbsp;
+                            <strong>Age:</strong> {selectedPatient.age} |&nbsp;
+                            <strong>Token:</strong> {selectedPatient.tokenNo}
+                          </div>
+                        )}
 
                             {/* ── VISION ── */}
                             <div className="row mb-3">
