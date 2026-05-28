@@ -6,9 +6,9 @@ import TreatmentModal from "./TreatmentModal";
 import ClinicalHistoryPopup from "./ClinicalHistoryPopup";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-import OBGDetails from "../OBGDetails";
-import EarExamination from "../EarExamination";
-import GynaMaster from "../GynaMaster";
+// import OBGDetails from "../OBGDetails";
+// import EarExamination from "../EarExamination";
+// import GynaMaster from "../GynaMaster";
 
 import {
   OPD_TEMPLATE,
@@ -4283,7 +4283,7 @@ const GeneralMedicineWaitingList = () => {
     </div>
   )}
 </div>
-{/* OBG Details Section */}
+{/* OBG Details Section
 <div className="card mb-3">
   <div
     className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
@@ -4298,9 +4298,9 @@ const GeneralMedicineWaitingList = () => {
       <OBGDetails patientId={selectedPatient?.patientId} visitId={selectedPatient?.visitId} />
     </div>
   )}
-</div>
+</div> */}
 {/* Ear Examination Section */}
-<div className="card mb-3">
+{/* <div className="card mb-3">
   <div
     className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
     style={{ cursor: "pointer" }}
@@ -4314,7 +4314,7 @@ const GeneralMedicineWaitingList = () => {
       <EarExamination />
     </div>
   )}
-</div>
+</div> */}
 
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
