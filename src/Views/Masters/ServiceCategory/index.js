@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
-import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
+import { MAS_SERVICE_CATEGORY, SAC_CODE_REGISTRATION } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import {
   UPDATE_SERVICE_CATEGORY_SUCC_MSG,
@@ -430,7 +430,7 @@ const ServiceCategoryMaster = () => {
                         />
                       </div>
                     )}
-
+                  {formData.sacCode === SAC_CODE_REGISTRATION && (
                     <div className="form-group col-md-4 mt-3">
                       <label>
                         Registration Cost <span className="text-danger">*</span>
@@ -447,6 +447,7 @@ const ServiceCategoryMaster = () => {
                         required
                       />
                     </div>
+                  )}
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">

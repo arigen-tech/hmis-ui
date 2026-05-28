@@ -259,6 +259,7 @@ const GeneralMedicineWaitingList = () => {
 
     try {
       setLoading(true);
+      debugger
       const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
       console.log("Fetching vitals from URL:", url);
 
@@ -2101,7 +2102,7 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const handleRowClick = async (patient) => {
-    await checkVitalPresent(patient.visitId);
+    //await checkVitalPresent(patient.visitId);
     await fetchCurrentMedications(patient.patientId);
     setSelectedPatient(patient);
     setCurrentMedicationActions({});
@@ -2113,6 +2114,7 @@ const GeneralMedicineWaitingList = () => {
         sessionStorage.getItem("hospitalId") ||
         localStorage.getItem("hospitalId");
       await fetchPreviousVisits(patient.patientId, hospitalId);
+      await fetchPreviousVitals(patient.patientId, hospitalId);
     }
   };
 
@@ -3157,6 +3159,7 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const calculateTotal = (item) => {
+    debugger
     if (!item.frequency || item.itemClassId == null) {
       return "";
     }
@@ -3172,20 +3175,21 @@ const GeneralMedicineWaitingList = () => {
       return "";
     }
 
-    const selectedFrequency = allFrequencies.find(
-      (f) => Number(f.frequencyId) === Number(item.frequency),
-    );
+  const selectedFrequency = allFrequencies.find(
+    (f) => f.frequencyName === item.frequency || Number(f.frequencyId) === Number(item.frequency)
+  );
 
     const frequencyMultiplier = selectedFrequency
       ? Number(selectedFrequency.feq)
       : 1;
 
     let total = 0;
-
+    // SOLID types: TABLET(1), CAPSULE(2)
     if (DRUG_TYPE.SOLID.includes(Number(item.itemClassId))) {
       total = Math.ceil(dosage * frequencyMultiplier * days);
     }
 
+    // LIQUID types: EARDROPS(7), LIQUID(15), EYEEARDROPS(52), SYRUP(57)
     else if (DRUG_TYPE.LIQUID.includes(Number(item.itemClassId))) {
       const qtyPerUnit = Number(item.aDispQty) || 1;
 
