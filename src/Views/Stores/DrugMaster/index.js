@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
@@ -22,7 +22,7 @@ const DrugMaster = () => {
         hsnCode: "",
         drugSchedule: "",
         isGeneric: "",
-        facilityCode: "",
+        facilityCode: [],   // array for multi-select
         dangerousDrug: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
@@ -50,9 +50,24 @@ const DrugMaster = () => {
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null, name: "" })
 
+    // State for custom multi-select dropdown
+    const [isFacilityDropdownOpen, setIsFacilityDropdownOpen] = useState(false);
+    const facilityDropdownRef = useRef(null);
+
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value)
     }
+
+    // Close dropdown when clicking outside
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (facilityDropdownRef.current && !facilityDropdownRef.current.contains(event.target)) {
+                setIsFacilityDropdownOpen(false);
+            }
+        };
+        document.addEventListener("mousedown", handleClickOutside);
+        return () => document.removeEventListener("mousedown", handleClickOutside);
+    }, []);
 
     useEffect(() => {
         fetchDrugMasterData();
@@ -107,7 +122,7 @@ const DrugMaster = () => {
             formData.unitAU !== "" &&
             formData.itemCategory !== "" &&
             formData.reorderLevel !== "" &&
-            formData.facilityCode !== "";
+            formData.facilityCode.length > 0;   // at least one selected
         
         setIsFormValid(isValid);
     };
@@ -227,11 +242,23 @@ const DrugMaster = () => {
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
-        const updatedFormData = {
-            ...formData,
-            [name]: type === "checkbox" ? checked : value,
+        
+        // Special handling for facilityCode checkboxes (multi-select inside dropdown)
+        if (name === "facilityCode") {
+            let updatedArray = [...formData.facilityCode];
+            if (checked) {
+                updatedArray.push(value);
+            } else {
+                updatedArray = updatedArray.filter(item => item !== value);
+            }
+            setFormData(prev => ({ ...prev, [name]: updatedArray }));
+        } else {
+            const updatedFormData = {
+                ...formData,
+                [name]: type === "checkbox" ? checked : value,
+            }
+            setFormData(updatedFormData)
         }
-        setFormData(updatedFormData)
     }
 
     const handleSwitchChange = (id, newStatus, name) => {
@@ -264,6 +291,16 @@ const DrugMaster = () => {
             setEditEnabled(true);
             setShowForm(true);
 
+            // Convert facilityCode from string (e.g., "option 1,option 2") to array
+            let facilityCodeArray = [];
+            if (drug.facilityCode) {
+                if (typeof drug.facilityCode === 'string') {
+                    facilityCodeArray = drug.facilityCode.split(',').map(s => s.trim());
+                } else if (Array.isArray(drug.facilityCode)) {
+                    facilityCodeArray = [...drug.facilityCode];
+                }
+            }
+
             // First set the form data with the drug's values
             setFormData({
                 drugCode: drug.pvmsNo || "",
@@ -281,7 +318,7 @@ const DrugMaster = () => {
                 hsnCode: drug.hsnCode || "",
                 drugSchedule: drug.masDrugScheduleRule || "",
                 isGeneric: drug.isGeneric || "",
-                facilityCode: drug.facilityCode || "",
+                facilityCode: facilityCodeArray,
                 dangerousDrug: drug.dangerousDrug || false,
             });
 
@@ -326,7 +363,7 @@ const DrugMaster = () => {
             hsnCode: "",
             drugSchedule: "",
             isGeneric: "",
-            facilityCode: "",
+            facilityCode: [],
             dangerousDrug: false,
         });
     }
@@ -335,13 +372,16 @@ const DrugMaster = () => {
         e.preventDefault();
         
         if (!isFormValid) {
-            showPopup("Please fill all required fields marked with *", "error");
+            showPopup("Please fill all required fields marked with * (select at least one Facility Code)", "error");
             return;
         }
 
         setProcess(true);
 
         try {
+            // Convert facilityCode array to comma-separated string for API
+            const facilityCodeString = formData.facilityCode.join(',');
+
             const payload = {
                 pvmsNo: formData.drugCode.trim(),
                 nomenclature: formData.drugName.trim(),
@@ -358,7 +398,7 @@ const DrugMaster = () => {
                 hsnCode: formData.hsnCode || "",
                 masDrugScheduleRule: formData.drugSchedule || "",
                 isGeneric: formData.isGeneric || "",
-                facilityCode: formData.facilityCode,
+                facilityCode: facilityCodeString,
                 dangerousDrug: formData.dangerousDrug,
                 status: "y"
             };
@@ -420,7 +460,7 @@ const DrugMaster = () => {
             hsnCode: "",
             drugSchedule: "",
             isGeneric: "",
-            facilityCode: "",
+            facilityCode: [],
             dangerousDrug: false,
         });
     };
@@ -461,6 +501,16 @@ const DrugMaster = () => {
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
+
+    // Options for Facility Code multi-select dropdown
+    const facilityOptions = ["option 1", "option 2", "option 3", "option 4", "option 5"];
+
+    // Helper to display selected options in the dropdown button
+    const getSelectedFacilityText = () => {
+        if (formData.facilityCode.length === 0) return "Select Facility Code(s)";
+        if (formData.facilityCode.length <= 2) return formData.facilityCode.join(", ");
+        return `${formData.facilityCode.slice(0, 2).join(", ")} +${formData.facilityCode.length - 2} more`;
+    };
 
     return (
         <div className="content-wrapper">
@@ -588,8 +638,6 @@ const DrugMaster = () => {
                                 </>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>
-                                   
-
                                     <div className="row">
                                         <div className="form-group col-md-4 mt-3">
                                             <label>
@@ -850,22 +898,44 @@ const DrugMaster = () => {
                                             </select>
                                         </div>
 
-                                        <div className="form-group col-md-4 mt-3">
+                                        {/* Facility Code - Custom multi-select dropdown with checkboxes */}
+                                        <div className="form-group col-md-4 mt-3" ref={facilityDropdownRef}>
                                             <label>
                                                 Facility Code <span className="text-danger">*</span>
                                             </label>
-                                            <select
-                                                className="form-select"
-                                                name="facilityCode"
-                                                value={formData.facilityCode}
-                                                onChange={handleInputChange}
-                                                required
-                                            >
-                                                <option value="">Select</option>
-                                                <option value="Primary">Primary</option>
-                                                <option value="Secondary">Secondary</option>
-                                                <option value="Tertiary">Tertiary</option>
-                                            </select>
+                                            <div className="dropdown" style={{ width: "100%" }}>
+                                                <button
+                                                    type="button"
+                                                    className="form-select text-start"
+                                                    onClick={() => setIsFacilityDropdownOpen(!isFacilityDropdownOpen)}
+                                                    style={{ background: "white", cursor: "pointer" }}
+                                                >
+                                                    {getSelectedFacilityText()}
+                                                </button>
+                                                {isFacilityDropdownOpen && (
+                                                    <div className="dropdown-menu show p-2" style={{ width: "100%", maxHeight: "200px", overflowY: "auto" }}>
+                                                        {facilityOptions.map(option => (
+                                                            <div className="form-check" key={option}>
+                                                                <input
+                                                                    className="form-check-input"
+                                                                    type="checkbox"
+                                                                    name="facilityCode"
+                                                                    value={option}
+                                                                    id={`facility_dropdown_${option}`}
+                                                                    checked={formData.facilityCode.includes(option)}
+                                                                    onChange={handleInputChange}
+                                                                />
+                                                                <label className="form-check-label" htmlFor={`facility_dropdown_${option}`}>
+                                                                    {option}
+                                                                </label>
+                                                            </div>
+                                                        ))}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            {formData.facilityCode.length === 0 && (
+                                                <small className="text-danger">Please select at least one option</small>
+                                            )}
                                         </div>
 
                                         <div className="form-group col-md-6 mt-3">
