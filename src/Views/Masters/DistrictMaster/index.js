@@ -122,7 +122,7 @@ const DistrictMaster = () => {
 
 const handleSave = async (e) => {
   e.preventDefault();
-  setLoading(true);
+//   setLoading(true);
 
   if (!isFormValid) {
     setLoading(false);
@@ -215,7 +215,7 @@ const handleSave = async (e) => {
     setLoading(false);
   }
 };
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", shouldRefresh = false) => {
         setPopupMessage({
             message,
             type,
@@ -232,22 +232,26 @@ const handleSave = async (e) => {
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.districtId !== null) {
             try {
-                setLoading(true);
+                // setLoading(true);
                 const response = await putRequest(
                     `${MAS_DISTRICT}/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
                 );
                 if (response && response.status === 200) {
-                    fetchDistricts();
-                    showPopup(
-                        `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
+                    // fetchDistricts();
+                    setPopupMessage({
+                        message: `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            fetchDistricts(0);
+                        },
+                    });
                 }
             } catch (err) {
                 console.error("Error updating district status:", err);
                 showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
-                setLoading(false);
+                // setLoading(false);
             }
         }
         setConfirmDialog({ isOpen: false, districtId: null, newStatus: null });
