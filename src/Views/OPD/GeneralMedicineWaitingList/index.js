@@ -35,6 +35,7 @@ import {
   OPD_CREATE_PATIENT_DETAILS,
   OPTH_MAS_DISTANCE_VISION,
   OPTH_MAS_NEAR_VISION,
+  OPHTHALMOLOGY_DEPARTMENT_ID,
   GET_PREVIOUS_OPD_VISIT_HISTORY,
   GET_PATIENT_PRESCRIPTION_DETAILS,
   MAS_BED_COUNT,
@@ -108,11 +109,18 @@ const GeneralMedicineWaitingList = () => {
   const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
+  const visionRef = useRef();
 
   const departmentName =
     localStorage.getItem("departmentName") ||
     sessionStorage.getItem("departmentName") ||
     "";
+  const loggedInDepartmentId =
+    sessionStorage.getItem("departmentId") ||
+    localStorage.getItem("departmentId") ||
+    "";
+  const isOphthalmologyDepartment =
+    Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -2189,6 +2197,7 @@ const GeneralMedicineWaitingList = () => {
         0,
         vitalsPageSize,
       );
+      await checkVitalPresent(patient.visitId);
     }
   };
 
@@ -2250,6 +2259,10 @@ const GeneralMedicineWaitingList = () => {
       followUp: false,
       doctorRemark: false,
       remarks: false,
+      visionExamination: false,
+      obgDetails: false,
+      earExamination: false,
+      gynaMaster: false,
     });
 
     // Reset Doctor's Remarks
@@ -2440,6 +2453,26 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const firstValue = (...values) => values.find((value) => hasValue(value));
+
+  const hasOphthalmologyExaminationData = (visionData) => {
+    if (!visionData || typeof visionData !== "object") return false;
+
+    return Object.values(visionData).some((value) => {
+      if (!hasValue(value)) return false;
+      return String(value).trim() !== "N";
+    });
+  };
+
+  const buildOphthalmologyExaminationPayload = (visionData) => {
+    if (!hasOphthalmologyExaminationData(visionData)) return null;
+
+    return {
+      patientId: selectedPatient.patientId,
+      visitId: selectedPatient.visitId,
+      opdDate: getToday(),
+      ...visionData,
+    };
+  };
 
   const validateSubmitForm = () => {
     const nextErrors = {};
@@ -2717,6 +2750,16 @@ const GeneralMedicineWaitingList = () => {
 
     try {
       setIsSubmitting(true);
+
+      let visionExaminationData = null;
+      if (visionRef.current && visionRef.current.getData) {
+        visionExaminationData = visionRef.current.getData();
+      }
+      const ophthalmologyExaminationDetails =
+        isOphthalmologyDepartment
+          ? buildOphthalmologyExaminationPayload(visionExaminationData)
+          : null;
+
       // ICD Diagnoses
       const icdDiagList = diagnosisItems
         .filter((item) => hasValue(item.icdDiagId))
@@ -2817,6 +2860,11 @@ const GeneralMedicineWaitingList = () => {
         pastMedicalHistory: formData.pastHistory ?? null,
         familyHistory: formData.familyHistory ?? null,
         // presentComplaints: formData.patientSymptoms ?? null,
+
+        ...(isOphthalmologyDepartment && {
+          // ===== Ophthalmology Examination =====
+          ophthalmologyExaminationDetails,
+        }),
 
         // ===== Vital =====
         height: formData.height,
@@ -4341,30 +4389,39 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
                 {/* Vision Examination Section */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("visionExamination")}
-                  >
-                    <h6 className="mb-0 fw-bold">Opthal Examination</h6>
+                {isOphthalmologyDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("visionExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">Opthal Examination</h6>
 
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.visionExamination ? "−" : "+"}
-                    </span>
-                  </div>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.visionExamination ? "−" : "+"}
+                      </span>
+                    </div>
 
-                  {expandedSections.visionExamination && (
-                    <div className="card-body">
+                    <div
+                      className="card-body"
+                      style={{
+                        display: expandedSections.visionExamination
+                          ? "block"
+                          : "none",
+                      }}
+                    >
                       <OpdVision
+                        ref={visionRef}
+                        key={`vision-${selectedPatient?.visitId}`}
                         patientId={selectedPatient?.patientId}
                         visitId={selectedPatient?.visitId}
                         hideHeader={true}
                         hideButtons={true}
                       />
                     </div>
-                  )}
-                </div>
+                  </div>
+                )}
                 {/* OBG Details Section */}
                 <div className="card mb-3">
                   <div
@@ -4402,11 +4459,12 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.earExamination && (
                     <div className="card-body">
-                      <EarExamination />
-                      patientId={selectedPatient?.patientId}
-                      visitId={selectedPatient?.visitId}
-                      hideHeader={true}
-                      hideButtons={true}
+                      <EarExamination
+                        patientId={selectedPatient?.patientId}
+                        visitId={selectedPatient?.visitId}
+                        hideHeader={true}
+                        hideButtons={true}
+                      />
                     </div>
                   )}
                 </div>

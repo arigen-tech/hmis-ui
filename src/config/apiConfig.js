@@ -1,5 +1,5 @@
 export const API_HOST =  'http://103.133.215.182:8081/hims';
- //export const API_HOST = 'http://localhost:8080';
+//  export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.17:8080';
  //export const API_HOST = 'http://192.168.1.29:8080';
 
@@ -364,6 +364,10 @@ export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
 export const OPD_SERVICE_CATAGORY = "SC001";
 export const LAB_SERVICE_CATAGORY = "SC002";
 export const SAC_CODE_REGISTRATION = "REG110";
+
+//OPTHOMOLOGY 
+export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
+export const GET_OPTHOMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
 
 export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
 export const PROCESS_LAB_PAYMENT = `/billing/processLabPayment`;
