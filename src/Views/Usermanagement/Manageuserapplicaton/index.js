@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
-import { API_HOST,ALL_USER_APPLICATION,USER_APPLICATION,CREATE_USER_APPLICATION,UPDATE_USER_APPLICATION,UPDATE_STATUS_USER_APPLICATION } from "../../../config/apiConfig";
+import { API_HOST, ALL_USER_APPLICATION, USER_APPLICATION, CREATE_USER_APPLICATION, UPDATE_USER_APPLICATION, UPDATE_STATUS_USER_APPLICATION } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading"
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
@@ -107,35 +107,36 @@ const Manageuserapplication = () => {
     const handleSave = async (e) => {
         e.preventDefault();
         if (!isFormValid) return;
-    
+
         try {
             setLoading(true);
-    
+
             // Check for duplicates excluding the current editing application
             const isDuplicate = userApplicationData.some(
                 (app) =>
                     (editingApplication ? app.id !== editingApplication.id : true) &&
                     (app.menuName === formData.menuName)
             );
-    
+
             if (isDuplicate) {
                 showPopup("Application with the same name already exists!", "error");
                 setLoading(false);
                 return;
             }
-    
+
             if (editingApplication) {
                 // Update existing application
                 const response = await putRequest(`${UPDATE_USER_APPLICATION}/${editingApplication.id}`, {
                     userAppName: formData.menuName,
                     url: formData.url
                 });
-    
+
                 console.log("Update Response:", response);
-    
-                if (response && response.response) {
-                    const updatedApplication = response.response;
-    
+
+                if (response && response.data && response.data.response) {
+
+                    const updatedApplication = response.data.response;
+
                     setUserApplicationData(prevData =>
                         prevData.map(app =>
                             app.id === editingApplication.id
@@ -148,7 +149,7 @@ const Manageuserapplication = () => {
                                 : app
                         )
                     );
-    
+
                     showPopup("Application updated successfully!", "success");
                 } else {
                     throw new Error("Invalid response from server");
@@ -160,12 +161,12 @@ const Manageuserapplication = () => {
                     url: formData.url,
                     status: "y"
                 });
-    
+
                 console.log("Create Response:", response);
-    
+
                 if (response && response.response) {
                     const newApplication = response.response;
-    
+
                     setUserApplicationData(prevData => [
                         ...prevData,
                         {
@@ -175,13 +176,13 @@ const Manageuserapplication = () => {
                             status: "y"
                         }
                     ]);
-    
+
                     showPopup("Application added successfully!", "success");
                 } else {
                     throw new Error("Invalid response from server");
                 }
             }
-    
+
             setFormData({ menuName: "", url: "" });
             setEditingApplication(null);
             setShowForm(false);
@@ -195,7 +196,7 @@ const Manageuserapplication = () => {
 
     const handleSwitchChange = (id, currentStatus) => {
         const newStatus = (currentStatus?.toLowerCase() === "y") ? "n" : "y";
-        
+
         setConfirmDialog({
             isOpen: true,
             applicationId: id,
@@ -207,13 +208,13 @@ const Manageuserapplication = () => {
         if (confirmed && confirmDialog.applicationId !== null) {
             try {
                 setLoading(true);
-                
+
                 const response = await putRequest(
                     `${UPDATE_STATUS_USER_APPLICATION}/${confirmDialog.applicationId}?status=${confirmDialog.newStatus}`
                 );
-                
+
                 if (response && response.status === 200) {
-                    
+
                     setUserApplicationData(prevData =>
                         prevData.map(app =>
                             app.id === confirmDialog.applicationId
@@ -221,7 +222,7 @@ const Manageuserapplication = () => {
                                 : app
                         )
                     );
-                    
+
                     showPopup(
                         `Application ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
                         "success"
@@ -237,12 +238,12 @@ const Manageuserapplication = () => {
         setConfirmDialog({ isOpen: false, applicationId: null, newStatus: null });
     };
 
-        const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
     const currentItems = filteredUserApplicationData.slice(indexOfFirst, indexOfLast)
 
-    
- 
+
+
 
     return (
         <div className="content-wrapper">
@@ -364,11 +365,11 @@ const Manageuserapplication = () => {
 
                                     {filteredUserApplicationData.length > 0 && (
                                         <Pagination
-                                        totalItems={filteredUserApplicationData.length}
-                                        itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                                        currentPage={currentPage}
-                                        onPageChange={setCurrentPage}
-                                      />
+                                            totalItems={filteredUserApplicationData.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            currentPage={currentPage}
+                                            onPageChange={setCurrentPage}
+                                        />
                                     )}
                                 </div>
                             ) : (
