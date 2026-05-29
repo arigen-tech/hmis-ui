@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
+import Pagination from "../../../../Components/Pagination"; 
 
 const ClinicalHistoryPopup = ({
   show,
@@ -11,7 +12,11 @@ const ClinicalHistoryPopup = ({
   popupType,
   currentPage,
   totalPages,
+  totalElements,
+  pageSize = 5,
   onPageChange,
+  onPageSizeChange,
+  isLoading = false,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
@@ -113,10 +118,9 @@ const ClinicalHistoryPopup = ({
   };
 
   const formatDate = (date) => {
-  if (!date) return "-";
-
-  return new Date(date).toLocaleDateString("en-GB");
-};
+    if (!date) return "-";
+    return new Date(date).toLocaleDateString("en-GB");
+  };
 
   const handleDownloadPdf = () => {
     if (pdfUrl) {
@@ -184,6 +188,12 @@ const ClinicalHistoryPopup = ({
   const isGenerating = (visitId) => loadingStates.generating === visitId;
   const isPrinting = (visitId) => loadingStates.printing === visitId;
 
+  // Convert 0-based page to 1-based for Pagination component
+  const handlePageChange = (newPage) => {
+    // Pagination component uses 1-based indexing, convert to 0-based
+    onPageChange(newPage - 1);
+  };
+
   return ReactDOM.createPortal(
     <>
       {/* Main Modal */}
@@ -249,224 +259,209 @@ const ClinicalHistoryPopup = ({
                 overflowX: "hidden",
               }}
             >
+              {/* Loading State */}
+              {isLoading && (
+                <div className="text-center py-5">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
+                  </div>
+                  <p className="mt-2 text-muted">Loading data...</p>
+                </div>
+              )}
+
               {/* Visits Table */}
-              {popupType === "visits" && (
+              {!isLoading && popupType === "visits" && (
                 <>
                   {visitsData?.length > 0 ? (
-                    <div className="table-responsive">
-                      <table
-                        className="table table-bordered table-sm"
-                        style={{ marginBottom: 0 }}
-                      >
-                        <thead className="table-light">
-                          <tr>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Visit Date
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Doctor Name
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Department
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              ICD Diagnosis
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Working Diagnosis
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                                textAlign: "center",
-                              }}
-                            >
-                              Actions
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {visitsData.map((visit, index) => (
-                            <tr key={visit.visitId || index}>
-                              <td
+                    <div>
+                      <div className="table-responsive">
+                        <table
+                          className="table table-bordered table-sm"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <thead className="table-light">
+                            <tr>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {formatDate(visit.visitDate)}
-                              </td>
-                              <td
+                                Visit Date
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {visit.doctorName || "-"}
-                              </td>
-                              <td
+                                Doctor Name
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {visit.department || "-"}
-                              </td>
-                              <td
+                                Department
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                <span style={{ color: "#0d6efd" }}>
-                                  {visit.icdDiag || "-"}
-                                </span>
-                              </td>
-                              <td
+                                ICD Diagnosis
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {visit.workingDiag || "-"}
-                              </td>
-                              <td
+                                Working Diagnosis
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                   textAlign: "center",
                                 }}
                               >
-                                <div className="d-flex gap-2 justify-content-center">
-                                  <button
-                                    className="btn btn-sm btn-primary d-flex align-items-center gap-1"
-                                    onClick={() =>
-                                      handleViewDownloadCaseSheet(visit.visitId)
-                                    }
-                                    disabled={
-                                      isGenerating(visit.visitId) ||
-                                      isPrinting(visit.visitId)
-                                    }
-                                  >
-                                    {isGenerating(visit.visitId) ? (
-                                      <>
-                                        <span
-                                          className="spinner-border spinner-border-sm"
-                                          role="status"
-                                        ></span>
-                                        <span className="ms-1">Loading...</span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <i className="fa fa-eye"></i>
-                                        <span>View</span>
-                                      </>
-                                    )}
-                                  </button>
-                                  <button
-                                    className="btn btn-sm btn-warning d-flex align-items-center gap-1"
-                                    onClick={() =>
-                                      handlePrintCaseSheet(visit.visitId)
-                                    }
-                                    disabled={
-                                      isPrinting(visit.visitId) ||
-                                      isGenerating(visit.visitId)
-                                    }
-                                  >
-                                    {isPrinting(visit.visitId) ? (
-                                      <>
-                                        <span
-                                          className="spinner-border spinner-border-sm"
-                                          role="status"
-                                        ></span>
-                                        <span className="ms-1">
-                                          Printing...
-                                        </span>
-                                      </>
-                                    ) : (
-                                      <>
-                                        <i className="fa fa-print"></i>
-                                        <span>Print</span>
-                                      </>
-                                    )}
-                                  </button>
-                                </div>
-                              </td>
+                                Actions
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-
-                      {/* Pagination */}
-                      <div className="d-flex justify-content-between align-items-center mt-3">
-                        <div className="small text-muted">
-                          Page {currentPage + 1} of {totalPages}
-                        </div>
-
-                        <div className="d-flex gap-2">
-                          <button
-                            className="btn btn-sm btn-secondary"
-                            disabled={currentPage === 0}
-                            onClick={() => onPageChange(currentPage - 1)}
-                          >
-                            Previous
-                          </button>
-
-                          {[...Array(totalPages)].map((_, index) => (
-                            <button
-                              key={index}
-                              className={`btn btn-sm ${
-                                currentPage === index
-                                  ? "btn-primary"
-                                  : "btn-outline-primary"
-                              }`}
-                              onClick={() => onPageChange(index)}
-                            >
-                              {index + 1}
-                            </button>
-                          ))}
-
-                          <button
-                            className="btn btn-sm btn-secondary"
-                            disabled={currentPage === totalPages - 1}
-                            onClick={() => onPageChange(currentPage + 1)}
-                          >
-                            Next
-                          </button>
-                        </div>
+                          </thead>
+                          <tbody>
+                            {visitsData.map((visit, index) => (
+                              <tr key={visit.visitId || index}>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {formatDate(visit.visitDate)}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {visit.doctorName || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {visit.department || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  <span style={{ color: "#0d6efd" }}>
+                                    {visit.icdDiag || "-"}
+                                  </span>
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {visit.workingDiag || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                    textAlign: "center",
+                                  }}
+                                >
+                                  <div className="d-flex gap-2 justify-content-center">
+                                    <button
+                                      className="btn btn-sm btn-primary d-flex align-items-center gap-1"
+                                      onClick={() =>
+                                        handleViewDownloadCaseSheet(visit.visitId)
+                                      }
+                                      disabled={
+                                        isGenerating(visit.visitId) ||
+                                        isPrinting(visit.visitId)
+                                      }
+                                    >
+                                      {isGenerating(visit.visitId) ? (
+                                        <>
+                                          <span
+                                            className="spinner-border spinner-border-sm"
+                                            role="status"
+                                          ></span>
+                                          <span className="ms-1">Loading...</span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <i className="fa fa-eye"></i>
+                                          <span>View</span>
+                                        </>
+                                      )}
+                                    </button>
+                                    <button
+                                      className="btn btn-sm btn-warning d-flex align-items-center gap-1"
+                                      onClick={() =>
+                                        handlePrintCaseSheet(visit.visitId)
+                                      }
+                                      disabled={
+                                        isPrinting(visit.visitId) ||
+                                        isGenerating(visit.visitId)
+                                      }
+                                    >
+                                      {isPrinting(visit.visitId) ? (
+                                        <>
+                                          <span
+                                            className="spinner-border spinner-border-sm"
+                                            role="status"
+                                          ></span>
+                                          <span className="ms-1">
+                                            Printing...
+                                          </span>
+                                        </>
+                                      ) : (
+                                        <>
+                                          <i className="fa fa-print"></i>
+                                          <span>Print</span>
+                                        </>
+                                      )}
+                                    </button>
+                                  </div>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
+
+                      {/* Pagination Component */}
+                      {totalElements > 0 && (
+                        <div className="mt-3">
+                          <Pagination
+                            totalItems={totalElements}
+                            itemsPerPage={pageSize}
+                            currentPage={currentPage + 1} // Convert to 1-based for component
+                            onPageChange={handlePageChange}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-5">
@@ -483,180 +478,194 @@ const ClinicalHistoryPopup = ({
               )}
 
               {/* Vitals Table */}
-              {popupType === "vitals" && (
+              {!isLoading && popupType === "vitals" && (
                 <>
                   {vitalsData?.length > 0 ? (
-                    <div className="table-responsive">
-                      <table
-                        className="table table-bordered table-sm"
-                        style={{ marginBottom: 0 }}
-                      >
-                        <thead className="table-light">
-                          <tr>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Visit Date
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Height (cm)
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Weight (kg)
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              BMI (kg/m²)
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              BP (mmHg)
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Pulse (bpm)
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              Temp (°F)
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              RR
-                            </th>
-                            <th
-                              style={{
-                                padding: "8px",
-                                fontSize: "0.750rem",
-                                fontWeight: "bold",
-                              }}
-                            >
-                              SpO₂ (%)
-                            </th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {vitalsData.map((vital, idx) => (
-                            <tr key={idx}>
-                              <td
+                    <div>
+                      <div className="table-responsive">
+                        <table
+                          className="table table-bordered table-sm"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <thead className="table-light">
+                            <tr>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {formatDate(vital.visitDate)}
-                              </td>
-                              <td
+                                Visit Date
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.height || "-"}
-                              </td>
-                              <td
+                                Height (cm)
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.weight || "-"}
-                              </td>
-                              <td
+                                Weight (kg)
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.bmi || "-"}
-                              </td>
-                              <td
+                                BMI (kg/m²)
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.bpSystolic && vital.bpDiastolic
-                                  ? `${vital.bpSystolic}/${vital.bpDiastolic}`
-                                  : "-"}
-                              </td>
-                              <td
+                                BP (mmHg)
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.pulse || "-"}
-                              </td>
-                              <td
+                                Pulse (bpm)
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.temperature || "-"}
-                              </td>
-                              <td
+                                Temp (°F)
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.rr || "-"}
-                              </td>
-                              <td
+                                RR
+                              </th>
+                              <th
                                 style={{
                                   padding: "8px",
-                                  verticalAlign: "middle",
+                                  fontSize: "0.750rem",
+                                  fontWeight: "bold",
                                 }}
                               >
-                                {vital.spo2 || "-"}
-                              </td>
+                                SpO₂ (%)
+                              </th>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {vitalsData.map((vital, idx) => (
+                              <tr key={idx}>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {formatDate(vital.visitDate)}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.height || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.weight || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.bmi || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.bpSystolic && vital.bpDiastolic
+                                    ? `${vital.bpSystolic}/${vital.bpDiastolic}`
+                                    : "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.pulse || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.temperature || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.rr || "-"}
+                                </td>
+                                <td
+                                  style={{
+                                    padding: "8px",
+                                    verticalAlign: "middle",
+                                  }}
+                                >
+                                  {vital.spo2 || "-"}
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {/* Pagination Component for Vitals */}
+                      {totalElements > 0 && (
+                        <div className="mt-3">
+                          <Pagination
+                            totalItems={totalElements}
+                            itemsPerPage={pageSize}
+                            currentPage={currentPage + 1} // Convert to 1-based for component
+                            onPageChange={handlePageChange}
+                          />
+                        </div>
+                      )}
                     </div>
                   ) : (
                     <div className="text-center py-5">
@@ -686,11 +695,7 @@ const ClinicalHistoryPopup = ({
               <div className="d-flex justify-content-between align-items-center">
                 <div className="text-muted small">
                   <i className="mdi mdi-information-outline me-1" />
-                  Total:{" "}
-                  {popupType === "vitals"
-                    ? vitalsData?.length || 0
-                    : visitsData?.length || 0}{" "}
-                  record(s)
+                  Total: {totalElements || 0} record(s)
                 </div>
                 <div className="d-flex gap-2">
                   <button

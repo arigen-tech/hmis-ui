@@ -6,9 +6,9 @@ import TreatmentModal from "./TreatmentModal";
 import ClinicalHistoryPopup from "./ClinicalHistoryPopup";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
-// import OBGDetails from "../OBGDetails";
-// import EarExamination from "../EarExamination";
-// import GynaMaster from "../GynaMaster";
+import OBGDetails from "../OBGDetails";
+import EarExamination from "../EarExamination";
+import GynaMaster from "../GynaMaster";
 
 import {
   OPD_TEMPLATE,
@@ -145,7 +145,6 @@ const GeneralMedicineWaitingList = () => {
     "Urgent",
     "Critical",
   ]);
-  
 
   const navigate = useNavigate();
   // const [showPreviousVisitsModal, setShowPreviousVisitsModal] = useState(false);
@@ -153,32 +152,20 @@ const GeneralMedicineWaitingList = () => {
   const [showPopup, setShowPopup] = useState(false);
   const [clinicalPopupType, setClinicalPopupType] = useState("visits");
 
-  const [previousVitalsData, setPreviousVitalsData] = useState([
-    {
-      visitDate: "06-05-2026",
-      height: "165",
-      weight: "65",
-      bmi: "23.9",
-      bpSystolic: "120",
-      bpDiastolic: "80",
-      pulse: "72",
-      temperature: "98.6",
-      rr: "16",
-      spo2: "98",
-    },
-    {
-      visitDate: "15-03-2026",
-      height: "165",
-      weight: "66",
-      bmi: "24.2",
-      bpSystolic: "118",
-      bpDiastolic: "78",
-      pulse: "70",
-      temperature: "98.4",
-      rr: "15",
-      spo2: "99",
-    },
-  ]);
+  const [previousVitalsData, setPreviousVitalsData] = useState([]);
+  const [previousVisitsData, setPreviousVisitsData] = useState([]);
+
+  const [visitsCurrentPage, setVisitsCurrentPage] = useState(0);
+  const [visitsTotalPages, setVisitsTotalPages] = useState(0);
+  const [visitsTotalElements, setVisitsTotalElements] = useState(0);
+  const [visitsPageSize, setVisitsPageSize] = useState(5);
+  const [visitsLoading, setVisitsLoading] = useState(false);
+
+  const [vitalsCurrentPage, setVitalsCurrentPage] = useState(0);
+  const [vitalsTotalPages, setVitalsTotalPages] = useState(0);
+  const [vitalsTotalElements, setVitalsTotalElements] = useState(0);
+  const [vitalsPageSize, setVitalsPageSize] = useState(5);
+  const [vitalsLoading, setVitalsLoading] = useState(false);
 
   const [confirmationPopup, setConfirmationPopup] = useState({
     show: false,
@@ -189,8 +176,6 @@ const GeneralMedicineWaitingList = () => {
     confirmText: "Yes",
     cancelText: "No",
   });
-
-  const [previousVisitsData, setPreviousVisitsData] = useState([]);
 
   const [distanceVisionData, setDistanceVisionData] = useState([]);
   const [nearVisionData, setNearVisionData] = useState([]);
@@ -225,57 +210,72 @@ const GeneralMedicineWaitingList = () => {
     }
   };
 
-  const fetchPreviousVisits = async (patientId, hospitalId) => {
+  const fetchPreviousVisits = async (
+    patientId,
+    hospitalId,
+    page = 0,
+    size = 5,
+  ) => {
     if (!patientId) return;
 
     try {
-      setLoading(true);
-      // const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=930&hospitalId=12&page=0&size=5`;
-      const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      setVisitsLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=${page}&size=${size}`;
       console.log("Calling API:", url);
 
       const response = await getRequest(url);
       console.log("Response:", response);
 
       if (response.status === 200 && response.response) {
-        const data = response.response.content || response.response;
+        const data = response.response.content || [];
         setPreviousVisitsData(data);
+        setVisitsTotalPages(response.response.totalPages || 0);
+        setVisitsTotalElements(response.response.totalElements || 0);
+        setVisitsCurrentPage(response.response.pageable?.pageNumber || page);
       } else {
         setPreviousVisitsData([]);
+        setVisitsTotalPages(0);
+        setVisitsTotalElements(0);
       }
     } catch (error) {
       console.error("Error fetching previous visits:", error);
       setPreviousVisitsData([]);
+      setVisitsTotalPages(0);
+      setVisitsTotalElements(0);
     } finally {
-      setLoading(false);
+      setVisitsLoading(false);
     }
   };
 
-  const fetchPreviousVitals = async (patientId, hospitalId) => {
+  const fetchPreviousVitals = async (
+    patientId,
+    hospitalId,
+    page = 0,
+    size = 5,
+  ) => {
     if (!patientId) {
       console.warn("fetchPreviousVitals: patientId is required");
       return;
     }
 
     try {
-      setLoading(true);
-      debugger
-      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      setVitalsLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=${page}&size=${size}`;
       console.log("Fetching vitals from URL:", url);
 
       const response = await getRequest(url);
       console.log("Vitals API response:", response);
 
       if (response?.status === 200 && response?.response) {
-        // Handle both possible response structures
         let vitalsData = response.response;
+        let paginationInfo = response.response;
 
-        // If response has content property (pagination)
+        // Handle paginated response
         if (vitalsData.content) {
           vitalsData = vitalsData.content;
+          paginationInfo = response.response;
         }
 
-        // Ensure it's an array
         const vitalsList = Array.isArray(vitalsData) ? vitalsData : [];
 
         const formattedVitals = vitalsList.map((vital) => ({
@@ -293,15 +293,22 @@ const GeneralMedicineWaitingList = () => {
 
         console.log("Formatted vitals:", formattedVitals);
         setPreviousVitalsData(formattedVitals);
+        setVitalsTotalPages(paginationInfo.totalPages || 0);
+        setVitalsTotalElements(paginationInfo.totalElements || 0);
+        setVitalsCurrentPage(paginationInfo.pageable?.pageNumber || page);
       } else {
         console.warn("No vitals data received or invalid response");
         setPreviousVitalsData([]);
+        setVitalsTotalPages(0);
+        setVitalsTotalElements(0);
       }
     } catch (error) {
       console.error("Error fetching previous vitals:", error);
       setPreviousVitalsData([]);
+      setVitalsTotalPages(0);
+      setVitalsTotalElements(0);
     } finally {
-      setLoading(false);
+      setVitalsLoading(false);
     }
   };
 
@@ -1063,8 +1070,8 @@ const GeneralMedicineWaitingList = () => {
     remarks: false,
     visionExamination: false,
     obgDetails: false,
-    earExamination : false,
-    gynaMaster : false,
+    earExamination: false,
+    gynaMaster: false,
   });
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("");
@@ -1414,7 +1421,7 @@ const GeneralMedicineWaitingList = () => {
       );
       if (response?.status === 200 && Array.isArray(response.response)) {
         const medications = response.response.map((item, index) => ({
-          id: item.prescriptionDtId || index + 1, 
+          id: item.prescriptionDtId || index + 1,
           drugId: item.drugId,
           drugName: item.drugName,
           dosage: item.dosage,
@@ -1433,11 +1440,11 @@ const GeneralMedicineWaitingList = () => {
 
         setCurrentMedications(medications);
       } else {
-        setCurrentMedications([]); 
+        setCurrentMedications([]);
       }
     } catch (error) {
       console.error("Error fetching current medications:", error);
-      setCurrentMedications([]); 
+      setCurrentMedications([]);
     }
   };
 
@@ -1777,6 +1784,62 @@ const GeneralMedicineWaitingList = () => {
     );
   };
 
+  // Handle visits page change
+  const handleVisitsPageChange = (newPage) => {
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVisits(
+        selectedPatient.patientId,
+        hospitalId,
+        newPage,
+        visitsPageSize,
+      );
+    }
+  };
+
+  // Handle vitals page change
+  const handleVitalsPageChange = (newPage) => {
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVitals(
+        selectedPatient.patientId,
+        hospitalId,
+        newPage,
+        vitalsPageSize,
+      );
+    }
+  };
+
+  // Handle visits page size change
+  const handleVisitsPageSizeChange = (newSize) => {
+    setVisitsPageSize(newSize);
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVisits(selectedPatient.patientId, hospitalId, 0, newSize);
+    }
+  };
+
+  // Handle vitals page size change
+  const handleVitalsPageSizeChange = (newSize) => {
+    setVitalsPageSize(newSize);
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVitals(selectedPatient.patientId, hospitalId, 0, newSize);
+    }
+  };
+
   const handleInvestigationSelect = (index, investigation) => {
     const duplicate = investigationItems.find(
       (item, idx) =>
@@ -2102,7 +2165,6 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const handleRowClick = async (patient) => {
-    //await checkVitalPresent(patient.visitId);
     await fetchCurrentMedications(patient.patientId);
     setSelectedPatient(patient);
     setCurrentMedicationActions({});
@@ -2113,8 +2175,20 @@ const GeneralMedicineWaitingList = () => {
         patient.hospitalId ||
         sessionStorage.getItem("hospitalId") ||
         localStorage.getItem("hospitalId");
-      await fetchPreviousVisits(patient.patientId, hospitalId);
-      await fetchPreviousVitals(patient.patientId, hospitalId);
+
+      // Reset to first page when opening new patient
+      await fetchPreviousVisits(
+        patient.patientId,
+        hospitalId,
+        0,
+        visitsPageSize,
+      );
+      await fetchPreviousVitals(
+        patient.patientId,
+        hospitalId,
+        0,
+        vitalsPageSize,
+      );
     }
   };
 
@@ -2217,7 +2291,6 @@ const GeneralMedicineWaitingList = () => {
     ]);
 
     setWorkingDiagnosis("");
-    // setTreat
 
     // Reset investigations / treatments with default one row each
     setInvestigationItems([
@@ -2265,6 +2338,14 @@ const GeneralMedicineWaitingList = () => {
     });
 
     setErrors({});
+
+    // Reset pagination states
+    setVisitsCurrentPage(0);
+    setVisitsTotalPages(0);
+    setVisitsTotalElements(0);
+    setVitalsCurrentPage(0);
+    setVitalsTotalPages(0);
+    setVitalsTotalElements(0);
   };
 
   const toggleSection = (section) => {
@@ -3159,7 +3240,7 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const calculateTotal = (item) => {
-    debugger
+    debugger;
     if (!item.frequency || item.itemClassId == null) {
       return "";
     }
@@ -3175,9 +3256,11 @@ const GeneralMedicineWaitingList = () => {
       return "";
     }
 
-  const selectedFrequency = allFrequencies.find(
-    (f) => f.frequencyName === item.frequency || Number(f.frequencyId) === Number(item.frequency)
-  );
+    const selectedFrequency = allFrequencies.find(
+      (f) =>
+        f.frequencyName === item.frequency ||
+        Number(f.frequencyId) === Number(item.frequency),
+    );
 
     const frequencyMultiplier = selectedFrequency
       ? Number(selectedFrequency.feq)
@@ -4047,7 +4130,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 <MasFamilyModel
                   show={showModelPopup}
                   popupType={popupType}
@@ -4056,7 +4138,6 @@ const GeneralMedicineWaitingList = () => {
                   onOk={handleOk}
                   selectedItems={selectedItems}
                 />
-
                 {/* Vital Detail Section */}
                 <div className="card mb-3">
                   <div
@@ -4259,76 +4340,76 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Vision Examination Section */}
-               <div className="card mb-3">
-  <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("visionExamination")}
-  >
-    <h6 className="mb-0 fw-bold">Opthal Examination</h6>
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("visionExamination")}
+                  >
+                    <h6 className="mb-0 fw-bold">Opthal Examination</h6>
 
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.visionExamination ? "−" : "+"}
-    </span>
-  </div>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.visionExamination ? "−" : "+"}
+                    </span>
+                  </div>
 
-  {expandedSections.visionExamination && (
-    <div className="card-body">
-
-     <OpdVision 
-  patientId={selectedPatient?.patientId} 
-  visitId={selectedPatient?.visitId}
-  hideHeader={true}
-   hideButtons={true}
-/>
-
-    </div>
-  )}
-</div>
-{/* OBG Details Section
-<div className="card mb-3">
-  <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("obgDetails")}
-  >
-    <h6 className="mb-0 fw-bold">OBG Details</h6>
-    <span style={{ fontSize: "18px" }}>{expandedSections.obgDetails ? "−" : "+"}</span>
-  </div>
-  {expandedSections.obgDetails && (
-    <div className="card-body">
-<OBGDetails 
-  patientId={selectedPatient?.patientId} 
-  visitId={selectedPatient?.visitId}
-  hideHeader={true}
-  hideButtons={true}
-/>    </div>
-  )}
-</div> */}
-{/* Ear Examination Section */}
-{/* <div className="card mb-3">
-  <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("earExamination")}
-  >
-    <h6 className="mb-0 fw-bold">ENT</h6>
-    <span style={{ fontSize: "18px" }}>{expandedSections.earExamination ? "−" : "+"}</span>
-  </div>
-  {expandedSections.earExamination && (
-    <div className="card-body">
-     <EarExamination 
-  patientId={selectedPatient?.patientId} 
-  visitId={selectedPatient?.visitId}
-  hideHeader={true}
-  hideButtons={true}
-/>
-    </div>
-  )}
-</div> */}
-
+                  {expandedSections.visionExamination && (
+                    <div className="card-body">
+                      <OpdVision
+                        patientId={selectedPatient?.patientId}
+                        visitId={selectedPatient?.visitId}
+                        hideHeader={true}
+                        hideButtons={true}
+                      />
+                    </div>
+                  )}
+                </div>
+                {/* OBG Details Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("obgDetails")}
+                  >
+                    <h6 className="mb-0 fw-bold">OBG Details</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.obgDetails ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.obgDetails && (
+                    <div className="card-body">
+                      <OBGDetails
+                        patientId={selectedPatient?.patientId}
+                        visitId={selectedPatient?.visitId}
+                        hideHeader={true}
+                        hideButtons={true}
+                      />
+                    </div>
+                  )}
+                </div>
+                {/* Ear Examination Section */}
+                <div className="card mb-3">
+                  <div
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                    style={{ cursor: "pointer" }}
+                    onClick={() => toggleSection("earExamination")}
+                  >
+                    <h6 className="mb-0 fw-bold">ENT</h6>
+                    <span style={{ fontSize: "18px" }}>
+                      {expandedSections.earExamination ? "−" : "+"}
+                    </span>
+                  </div>
+                  {expandedSections.earExamination && (
+                    <div className="card-body">
+                      <EarExamination />
+                      patientId={selectedPatient?.patientId}
+                      visitId={selectedPatient?.visitId}
+                      hideHeader={true}
+                      hideButtons={true}
+                    </div>
+                  )}
+                </div>
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -4539,7 +4620,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Investigation Section - UPDATED WITH MULTIPLE TEMPLATE SUPPORT */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -4866,7 +4946,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Treatment Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -5339,7 +5418,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Procedure Care Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -5782,7 +5860,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Surgery Advice Section */}
                 <div className="card mb-3">
                   <div
@@ -5945,7 +6022,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
@@ -6180,7 +6256,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -6493,7 +6568,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="card mb-3">
                   <div
                     className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
@@ -6578,7 +6652,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 {/* Doctor's Remarks Section */}
                 <div className="card mb-3">
                   <div
@@ -6622,7 +6695,6 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
-
                 <div className="text-center mt-4">
                   <button
                     className="btn btn-primary me-3"
@@ -7009,6 +7081,32 @@ const GeneralMedicineWaitingList = () => {
             visitsData={previousVisitsData}
             vitalsData={previousVitalsData}
             popupType={clinicalPopupType}
+            currentPage={
+              clinicalPopupType === "visits"
+                ? visitsCurrentPage
+                : vitalsCurrentPage
+            }
+            totalPages={
+              clinicalPopupType === "visits"
+                ? visitsTotalPages
+                : vitalsTotalPages
+            }
+            totalElements={
+              clinicalPopupType === "visits"
+                ? visitsTotalElements
+                : vitalsTotalElements
+            }
+            pageSize={
+              clinicalPopupType === "visits" ? visitsPageSize : vitalsPageSize
+            }
+            onPageChange={
+              clinicalPopupType === "visits"
+                ? handleVisitsPageChange
+                : handleVitalsPageChange
+            }
+            isLoading={
+              clinicalPopupType === "visits" ? visitsLoading : vitalsLoading
+            }
           />
         )}
 
