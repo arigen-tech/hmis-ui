@@ -100,84 +100,111 @@ const Relationmaster = () => {
     setShowForm(true);
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+ const resetForm = () => {
+  setFormData({
+    relationName: "",
+    code: "",
+  });
 
-    try {
-      setLoading(true);
+  setEditingRelation(null);
+};
 
-     if (editingRelation) {
-  try {
-    const response = await putRequest(
-      `${MAS_RELATION}/updateById/${editingRelation.id}`,
-      {
-        id: editingRelation.id,
-        relationName: formData.relationName,
-        code: editingRelation.code, 
-        status: editingRelation.status,
-      }
-    );
+const handleSave = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-    if (response) {
-      setRelationData((prevData) =>
-        prevData.map((relation) =>
-          relation.id === editingRelation.id
-            ? {
-                ...relation,
-                relationName: formData.relationName,
-                code: editingRelation.code, 
-              }
-            : relation
-        )
-      );
-
-      showPopup(UPDATE_RELATIONSHIP_SUCC_MSG, "success");
-    }
-  } catch (error) {
-    console.error("Update failed:", error);
-    showPopup(FAIL_TO_SAVE_CHANGES, "error");
-  }
-}else {
-  const isDuplicate = relationData.some(
-    (relation) =>
-      relation.relationName.trim().toLowerCase() === formData.relationName.trim().toLowerCase() ||
-      relation.code.trim().toLowerCase() === formData.code.trim().toLowerCase()
-  );
-
-  if (isDuplicate) {
-    showPopup(DUPLICATE_RELATION_CODE_NAME, "error");
+  if (!isFormValid) {
     setLoading(false);
     return;
   }
-        const response = await postRequest(`${MAS_RELATION}/create`, {
-          relationName: formData.relationName,
-          code: formData.code,
-          status: "y",
+
+  try {
+    const payload = {
+      relationName: formData.relationName.trim(),
+      code: formData.code.trim(),
+    };
+
+    // For new record only
+    if (!editingRelation) {
+      payload.status = "y";
+    } else {
+      payload.id = editingRelation.id;
+      payload.status = editingRelation.status;
+    }
+
+    let response;
+
+    if (editingRelation) {
+
+      response = await putRequest(
+        `${MAS_RELATION}/updateById/${editingRelation.id}`,
+        payload
+      );
+
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_RELATIONSHIP_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchRelationData();
+            setShowForm(false);
+          },
         });
-
-        if (response) {
-          setRelationData((prevData) => [...prevData, response.response]);
-          showPopup(ADD_RELATIONSHIP_SUCC_MSG, "success");
-        }
-
+      } else {
+        throw new Error(response.message || "Update failed");
       }
 
-      setEditingRelation(null);
-      setFormData({ relationName: "", code: "" });
-      setShowForm(false);
-      fetchRelationData();
-    } catch (err) {
-      console.error("Error saving relation data:", err);
-      showPopup(
-        FAIL_TO_SAVE_CHANGES,
-        "error"
-      );
-    } finally {
-      setLoading(false);
-    }
-  };
+    } else {
 
+      const isDuplicate = relationData.some(
+        (relation) =>
+          relation.relationName.trim().toLowerCase() ===
+            formData.relationName.trim().toLowerCase() ||
+          relation.code.trim().toLowerCase() ===
+            formData.code.trim().toLowerCase()
+      );
+
+      if (isDuplicate) {
+        showPopup(DUPLICATE_RELATION_CODE_NAME, "error");
+        setLoading(false);
+        return;
+      }
+
+      response = await postRequest(
+        `${MAS_RELATION}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_RELATIONSHIP_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchRelationData();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
+    }
+
+  } catch (error) {
+    console.error("Save error:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, relationId: id, newStatus });

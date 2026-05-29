@@ -92,75 +92,105 @@ const Religionmaster = () => {
         setShowForm(true);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+    const resetForm = () => {
+  setFormData({
+    religionName: "",
+  });
 
-        try {
-            setLoading(true);
+  setEditingReligion(null);
+};
 
-    
-          const isDuplicate = religionData.some(
-    (religion) =>
-        religion.id !== (editingReligion?.id || null) &&
-        religion.religionName.trim().toLowerCase() === formData.religionName.trim().toLowerCase()
-);
+const handleSave = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-if (isDuplicate) {
-    showPopup(DUPLICATE_RELIGION, "error");
+  if (!isFormValid) {
     setLoading(false);
     return;
-}
-            
+  }
 
-                const response = await putRequest(`${MAS_RELIGION}/updateById/${editingReligion.id}`, {
-                    name: formData.religionName,
-                    status: editingReligion.status,
-                });
+  try {
+    const payload = {
+      name: formData.religionName.trim(),
+    };
 
-                if (response && response.status === 200) {
-
-                    fetchReligionData();
-                    showPopup(UPDATE_RELIGION_SUCC_MSG, "success");
-                }
-          if (editingReligion) {
-    await putRequest(
-        `${MAS_RELIGION}/updateById/${editingReligion.id}`,
-        {
-            name: formData.religionName,
-            status: editingReligion.status,
-        }
+    // Duplicate check
+    const isDuplicate = religionData.some(
+      (religion) =>
+        religion.id !== (editingReligion?.id || null) &&
+        religion.religionName.trim().toLowerCase() ===
+          formData.religionName.trim().toLowerCase()
     );
 
-    showPopup(UPDATE_RELIGION_SUCC_MSG, "success");
+    if (isDuplicate) {
+      showPopup(DUPLICATE_RELIGION, "error");
+      setLoading(false);
+      return;
+    }
 
-    fetchReligionData();
+    let response;
 
-            } else {
+    if (editingReligion) {
 
-                const response = await postRequest(`${MAS_RELIGION}/create`, {
-                    name: formData.religionName,
-                    status: "y",
-                });
+      payload.status = editingReligion.status;
 
-                if (response && response.status === 200) {
+      response = await putRequest(
+        `${MAS_RELIGION}/updateById/${editingReligion.id}`,
+        payload
+      );
 
-                    fetchReligionData();
-                    showPopup(ADD_RELIGION_SUCC_MSG, "success");
-                }
-            }
-
-
-            setEditingReligion(null);
-            setFormData({ religionName: "" });
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_RELIGION_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchReligionData();
             setShowForm(false);
-        } catch (err) {
-            console.error("Error saving religion:", err);
-            showPopup(FAIL_TO_SAVE_CHANGES, "error");
-        } finally {
-            setLoading(false);
-        }
-    };
+          },
+        });
+      } else {
+        throw new Error(response.message || "Update failed");
+      }
+
+    } else {
+
+      payload.status = "y";
+
+      response = await postRequest(
+        `${MAS_RELIGION}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_RELIGION_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchReligionData();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
+    }
+
+  } catch (error) {
+    console.error("Error saving religion:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({

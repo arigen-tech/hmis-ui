@@ -101,62 +101,115 @@ const StateMaster = () => {
         setShowForm(true);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+   const resetForm = () => {
+  setFormData({
+    stateCode: "",
+    stateName: "",
+    country: "",
+    countryId: "",
+  });
 
-        try {
-            setLoading(true);
+  setEditingState(null);
+};
 
-            const isDuplicate = states.some(
-                (state) =>
-                    state.id !== (editingState ? editingState.id : null) &&
-                    (state.stateCode === formData.stateCode ||
-                        state.stateName === formData.stateName)
-            );
+const handleSave = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-            if (isDuplicate) {
-                showPopup(DUPLICATE_STATE, "error");
-                setLoading(false);
-                return;
-            }
+  if (!isFormValid) {
+    setLoading(false);
+    return;
+  }
 
-            if (editingState) {
-                const response = await putRequest(`${MAS_STATE}/updateById/${editingState.id}`, {
-                    stateCode: formData.stateCode,
-                    stateName: formData.stateName,
-                    countryId: formData.countryId,
-                    status: editingState.status,
-                });
+  try {
 
-                if (response && response.status === 200) {
-                    fetchStates();
-                    showPopup(UPDATE_STATE_SUCC_MSG, "success");
-                }
-            } else {
-                const response = await postRequest(`${MAS_STATE}/create`, {
-                    stateCode: formData.stateCode,
-                    stateName: formData.stateName,
-                    countryId: formData.countryId,
-                    status: "y",
-                });
-
-                if (response && response.status === 200) {
-                    fetchStates();
-                    showPopup(ADD_STATE_SUCC_MSG, "success");
-                }
-            }
-
-            setEditingState(null);
-            setFormData({ stateCode: "", stateName: "", country: "", countryId: "" });
-            setShowForm(false);
-        } catch (err) {
-            console.error("Error saving state:", err);
-            showPopup(FAIL_TO_SAVE_CHANGES, "error");
-        } finally {
-            setLoading(false);
-        }
+    const payload = {
+      stateCode: formData.stateCode.trim(),
+      stateName: formData.stateName.trim(),
+      countryId: formData.countryId,
     };
+
+    // Duplicate check
+    const isDuplicate = states.some(
+      (state) =>
+        state.id !== (editingState ? editingState.id : null) &&
+        (
+          state.stateCode.trim().toLowerCase() ===
+            formData.stateCode.trim().toLowerCase() ||
+          state.stateName.trim().toLowerCase() ===
+            formData.stateName.trim().toLowerCase()
+        )
+    );
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_STATE, "error");
+      setLoading(false);
+      return;
+    }
+
+    let response;
+
+    if (editingState) {
+
+      payload.status = editingState.status;
+
+      response = await putRequest(
+        `${MAS_STATE}/updateById/${editingState.id}`,
+        payload
+      );
+
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_STATE_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchStates();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Update failed");
+      }
+
+    } else {
+
+      payload.status = "y";
+
+      response = await postRequest(
+        `${MAS_STATE}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_STATE_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchStates();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
+    }
+
+  } catch (error) {
+    console.error("Error saving state:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
