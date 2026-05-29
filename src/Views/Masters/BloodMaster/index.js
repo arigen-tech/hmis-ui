@@ -211,34 +211,53 @@ const handleSave = async (e) => {
   });
 };
 
+const [saving, setSaving] = useState(false);
+
 const handleConfirm = async (confirmed) => {
-  if (!confirmed || confirmDialog.bloodGroupId === null) {
-    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-    return;
-  }
+    if (confirmed && confirmDialog.bloodGroupId !== null) {
+        setSaving(true);
 
-  try {
-    setLoading(true);
+        try {
+            const response = await putRequest(
+                `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
+            );
 
-    await putRequest(
-      `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
-    );
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Blood group "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchBloodGroups();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update blood group status"
+                );
+            }
+        } catch (err) {
+            console.error("Error updating blood group status:", err);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
+        }
+    }
 
-   await fetchBloodGroups();
-
-    showPopup(
-      `Blood group ${
-        confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-      } successfully!`,
-      "success"
-    );
-  } catch (err) {
-    console.error(err);
-    showPopup(FAIL_TO_UPDATE_STS, "error");
-  } finally {
-    setLoading(false);
-    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-  }
+    setConfirmDialog({
+        isOpen: false,
+        bloodGroupId: null,
+        newStatus: "",
+        name: "",
+    });
 };
 
  const handleInputChange = (e) => {

@@ -288,38 +288,54 @@ const handleSave = async (e) => {
     const handleSwitchChange = (id, newStatus) => {
         setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
     };
+const [saving, setSaving] = useState(false);
 
-    const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.categoryId !== null) {
-            try {
-                setLoading(true);
-                const status = confirmDialog.newStatus;
-                const response = await putRequest(
-                    `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
+   const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.categoryId !== null) {
+        setSaving(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Department "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchDepartments();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update department status"
                 );
-
-                if (response && response.status === 200) {
-                    setDepartments((prevData) =>
-                        prevData.map((dept) =>
-                            dept.id === confirmDialog.categoryId
-                                ? { ...dept, status: confirmDialog.newStatus }
-                                : dept
-                        )
-                    );
-                    showPopup(
-                        `Department ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
-                }
-            } catch (err) {
-                console.error("Error updating department status:", err);
-                showPopup(FAIL_TO_UPDATE_STS, "error");
-            } finally {
-                setLoading(false);
             }
+        } catch (error) {
+            console.error("Error updating department status:", error);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
         }
-        setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
-    };
+    }
+
+    setConfirmDialog({
+        isOpen: false,
+        categoryId: null,
+        newStatus: "",
+        name: "",
+    });
+};
 
     const handleRefresh = () => {
         setSearchQuery("");

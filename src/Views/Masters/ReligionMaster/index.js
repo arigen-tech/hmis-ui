@@ -206,42 +206,53 @@ const handleSave = async (e) => {
         setConfirmDialog({ isOpen: true, religionId: id, newStatus });
     };
 
+    const [saving, setSaving] = useState(false);
 
 const handleConfirm = async (confirmed) => {
-    if (!confirmed || confirmDialog.religionId === null) {
-        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
-        return;
-    }
+    if (confirmed && confirmDialog.religionId !== null) {
+        setSaving(true);
 
-    try {
-        setLoading(true);
-
-        await putRequest(
-            `${MAS_RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
-        );
-
-        setReligionData((prev) =>
-            prev.map((item) =>
-                item.id === confirmDialog.religionId
-                    ? { ...item, status: confirmDialog.newStatus }
-                    : item
-            )
-        );
-
-        setTimeout(() => {
-            showPopup(
-                `Religion ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                "success"
+        try {
+            const response = await putRequest(
+                `${MAS_RELIGION}/status/${confirmDialog.religionId}?status=${confirmDialog.newStatus}`
             );
-        }, 100);
 
-    } catch (err) {
-        console.error(err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-    } finally {
-        setLoading(false);
-        setConfirmDialog({ isOpen: false, religionId: null, newStatus: null });
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Religion "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchReligionData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update religion status"
+                );
+            }
+        } catch (err) {
+            console.error("Error updating religion status:", err);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
+        }
     }
+
+    setConfirmDialog({
+        isOpen: false,
+        religionId: null,
+        newStatus: "",
+        name: "",
+    });
 };
     const handleInputChange = (e) => {
         const { id, value } = e.target;

@@ -213,42 +213,54 @@ const Gendermaster = () => {
     setConfirmDialog({ isOpen: true, genderId: id, newStatus });
   };
 
-  const handleConfirm = async (confirmed) => {
+  const [saving, setSaving] = useState(false);
+  
+ const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.genderId !== null) {
-      try {
-        setLoading(true);
-await putRequest(
-  `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
-);
+        setSaving(true);
 
-showPopup(
-  `Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-  "success"
-);
+        try {
+            const response = await putRequest(
+                `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
+            );
 
-await fetchGenderData();
-       
-
-          setGenderData((prevData) =>
-            prevData.map((gender) =>
-              gender.id === confirmDialog.genderId ?
-                { ...gender, status: confirmDialog.newStatus } :
-                gender
-            )
-          );
-          showPopup(`Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Gender "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchGenderData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update gender status"
+                );
+            }
+        } catch (err) {
+            console.error("Error updating gender status:", err);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
         }
-       catch (err) {
-        console.error("Error updating gender status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setTimeout(() => {
-          setLoading(false);
-        }, 2000);
-      }
     }
-    setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
-  };
+
+    setConfirmDialog({
+        isOpen: false,
+        genderId: null,
+        newStatus: "",
+        name: "",
+    });
+};
 
  
   

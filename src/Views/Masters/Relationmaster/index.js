@@ -209,43 +209,53 @@ const handleSave = async (e) => {
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, relationId: id, newStatus });
   };
-
+const [saving, setSaving] = useState(false);
   
 const handleConfirm = async (confirmed) => {
-  if (!confirmed || confirmDialog.relationId === null) {
-    setConfirmDialog({ isOpen: false, relationId: null, newStatus: null });
-    return;
-  }
+    if (confirmed && confirmDialog.relationId !== null) {
+        setSaving(true);
 
-  try {
-    setLoading(true);
+        try {
+            const response = await putRequest(
+                `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
+            );
 
-    await putRequest(
-      `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
-    );
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Relation "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchRelationData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update relation status"
+                );
+            }
+        } catch (err) {
+            console.error("Status update error:", err);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
+        }
+    }
 
-    // UI update
-    setRelationData((prev) =>
-      prev.map((item) =>
-        item.id === confirmDialog.relationId
-          ? { ...item, status: confirmDialog.newStatus }
-          : item
-      )
-    );
-
-    showPopup(
-      `Relation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-      "success"
-    );
-
-  } catch (err) {
-    console.error("Status update error:", err);
-    showPopup(FAIL_TO_UPDATE_STS, "error");
-
-  } finally {
-    setLoading(false);
-    setConfirmDialog({ isOpen: false, relationId: null, newStatus: null });
-  }
+    setConfirmDialog({
+        isOpen: false,
+        relationId: null,
+        newStatus: "",
+        name: "",
+    });
 };
   const handleInputChange = (e) => {
     const { id, value } = e.target;
