@@ -2792,14 +2792,24 @@ const GeneralMedicineWaitingList = () => {
       //console.log("inv items", investigationItems)
 
       // Treatment mapping → backend format
-      const treatmentList = treatmentItems.map((item) => {
+    const treatmentList = treatmentItems
+      .filter((item) => {
+        const hasDrug = item.drugId || (item.drugName && item.drugName.trim());
+        const hasDosage = item.dosage && item.dosage.toString().trim();
+        const hasFrequency = item.frequency && item.frequency.trim();
+        const hasDays = item.days && item.days.toString().trim();
+        const hasInstruction = item.instruction && item.instruction.trim();
+        
+        return hasDrug && hasDosage && hasFrequency && hasDays && hasInstruction;
+      })
+      .map((item) => {
         const freq = allFrequencies.find(
-          (f) => f.frequencyId == item.frequency,
+          (f) => f.frequencyName == item.frequency || Number(f.frequencyId) == Number(item.frequency),
         );
         return {
           itemId: item.drugId,
           dosage: item.dosage,
-          frequency: item.frequency || "", // send NAME
+          frequency: item.frequency || "",
           days: item.days,
           total: item.total,
           instraction: item.instruction,
