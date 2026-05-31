@@ -9,6 +9,8 @@ import { useNavigate } from "react-router-dom";
 import OBGDetails from "../OBGDetails";
 import EarExamination from "../EarExamination";
 import GynaMaster from "../GynaMaster";
+import Dental from "../Dental";
+import Pregnancy from "../Pregnancy";
 
 import {
   OPD_TEMPLATE,
@@ -1080,6 +1082,8 @@ const GeneralMedicineWaitingList = () => {
     obgDetails: false,
     earExamination: false,
     gynaMaster: false,
+    dental: false,
+    pregnancy: false,
   });
 
   const [selectedHistoryType, setSelectedHistoryType] = useState("");
@@ -4469,15 +4473,82 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                   {expandedSections.earExamination && (
                     <div className="card-body">
-                      <EarExamination
-                        patientId={selectedPatient?.patientId}
-                        visitId={selectedPatient?.visitId}
-                        hideHeader={true}
-                        hideButtons={true}
+                      <EarExamination 
+                      patientId={selectedPatient?.patientId}
+                      visitId={selectedPatient?.visitId}
+                      hideHeader={true}
+                      hideButtons={true}
                       />
                     </div>
                   )}
                 </div>
+                {/* Dental Section */}
+  <div className="card mb-3">
+  <div
+    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+    style={{ cursor: "pointer" }}
+    onClick={() => toggleSection("dentalExamination")}
+  >
+    <h6 className="mb-0 fw-bold">Dental</h6>
+    <span style={{ fontSize: "18px" }}>
+      {expandedSections.dentalExamination ? "−" : "+"}
+    </span>
+  </div>
+  {expandedSections.dentalExamination && (
+    <div className="card-body">
+      <Dental
+        patientId={selectedPatient?.patientId}
+        visitId={selectedPatient?.visitId}
+        hideHeader={true}
+        hideButtons={true}
+      />
+    </div>
+  )}
+</div> 
+   {/* Pregnancy Section */}
+   {/* <div className="card mb-3">
+   <div
+    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+    style={{ cursor: "pointer" }}
+    onClick={() => toggleSection("pregnancy")}
+
+  >
+    <h6 className="mb-0 fw-bold">Pregnancy</h6>
+    <span style={{ fontSize: "18px" }}>
+      {expandedSections.pregnancy ? "−" : "+"}
+    </span>
+  </div>
+  {expandedSections.pregnancy && (
+    <div className="card-body">
+      <div className="text-center text-muted py-4">
+       Pregnancy form coming soon...
+      </div>
+    </div>
+  )}
+  </div>   */}
+  {/* Pregnancy Section */}
+<div className="card mb-3">
+  <div
+    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+    style={{ cursor: "pointer" }}
+    onClick={() => toggleSection("pregnancy")}
+  >
+    <h6 className="mb-0 fw-bold">Pregnancy</h6>
+    <span style={{ fontSize: "18px" }}>
+      {expandedSections.pregnancy ? "−" : "+"}
+    </span>
+  </div>
+  {expandedSections.pregnancy && (
+    <div className="card-body">
+      <Pregnancy 
+        patientId={selectedPatient?.patientId}
+        visitId={selectedPatient?.visitId}
+        hideHeader={true}
+        hideButtons={true}
+      />
+    </div>
+  )}
+</div>
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
