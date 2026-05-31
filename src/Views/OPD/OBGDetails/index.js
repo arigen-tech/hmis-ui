@@ -711,11 +711,7 @@ const OBGDetails = ({ patientId, visitId, hideHeader = false, hideButtons = fals
                     }
                   />
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Save Button */}
+                  {/* Save Button */}
          {!hideButtons && (
   <div className="col-12 mt-3 d-flex justify-content-end">
     <button type="submit" className="btn btn-primary" onClick={handleSave}>
@@ -723,6 +719,11 @@ const OBGDetails = ({ patientId, visitId, hideHeader = false, hideButtons = fals
     </button>
   </div>
 )}
+              </div>
+            </div>
+          </div>
+
+        
 
         </div>
       </div>

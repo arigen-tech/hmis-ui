@@ -495,129 +495,126 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
                       : "OPD Vision Examination"}
                   </h4>
 
-                  {showForm && (
-                    <button
-                      type="button"
-                      className="btn btn-secondary me-2"
-                      onClick={closeForm}
-                    >
-                      Back
-                    </button>
-                  )}
-                </div>
-              )}
-              <div className="card-body p-2 pb-0">
-                {loading && <LoadingScreen />}
-                {popupMessage && (
-                  <Popup
-                    message={popupMessage.message}
-                    type={popupMessage.type}
-                    onClose={popupMessage.onClose}
-                  />
+                {showForm && (
+                  <button
+                    type="button"
+                    className="btn btn-secondary me-2"
+                    onClick={closeForm}
+                  >
+                    Back
+                  </button>
                 )}
+              </div>
+            )}
+            <div className="card-body p-2 pb-0 pt-0">
+              {loading && <LoadingScreen />}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
 
-                {/* ── WAITING LIST ─────────────────────────────────────────── */}
-                {!patientId && !visitId && !showForm && (
-                  <>
-                    <div className="mb-4">
-                      <div className="row g-4 align-items-end">
-                        <div className="col-md-3">
-                          <label className="form-label fw-semibold">
-                            Patient Mobile No.
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="mobileNumber"
-                            placeholder="Enter mobile number"
-                            value={searchData.mobileNumber}
-                            onChange={handleSearchChange}
-                          />
-                        </div>
-                        <div className="col-md-3">
-                          <label className="form-label fw-semibold">
-                            Patient Name
-                          </label>
-                          <input
-                            type="text"
-                            className="form-control"
-                            id="patientName"
-                            placeholder="Enter patient name"
-                            value={searchData.patientName}
-                            onChange={handleSearchChange}
-                          />
-                        </div>
-                        <div className="col-md-2">
-                          <div className="d-flex gap-2">
-                            <button
-                              type="button"
-                              className="btn btn-primary flex-fill"
-                              onClick={handleSearch}
-                            >
-                              Search
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-secondary flex-fill"
-                              onClick={handleReset}
-                            >
-                              Reset
-                            </button>
-                          </div>
+              {/* ── WAITING LIST ─────────────────────────────────────────── */}
+              {!patientId && !visitId && !showForm && (
+                <>
+                  <div className="mb-2">
+                    <div className="row g-4 align-items-end">
+                      <div className="col-md-3">
+                        <label className="form-label fw-semibold">
+                          Patient Mobile No.
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="mobileNumber"
+                          placeholder="Enter mobile number"
+                          value={searchData.mobileNumber}
+                          onChange={handleSearchChange}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-semibold">
+                          Patient Name
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="patientName"
+                          placeholder="Enter patient name"
+                          value={searchData.patientName}
+                          onChange={handleSearchChange}
+                        />
+                      </div>
+                      <div className="col-md-2">
+                        <div className="d-flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-primary flex-fill"
+                            onClick={handleSearch}
+                          >
+                            Search
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary flex-fill"
+                            onClick={handleReset}
+                          >
+                            Reset
+                          </button>
                         </div>
                       </div>
                     </div>
+                  </div>
 
-                    <div className="table-responsive packagelist mb-3">
-                      <table className="table table-bordered table-hover align-middle">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Patient Name</th>
-                            <th>Mobile No</th>
-                            <th>Age</th>
-                            <th>Gender</th>
-                            <th>Relation</th>
-                            <th>Department</th>
-                            <th>Visit Type</th>
-                            <th>Token No</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {currentItems.length > 0 ? (
-                            currentItems.map((item) => (
-                              <tr
-                                key={item.visitId}
-                                onClick={() => handleRowClick(item)}
-                                className={
-                                  selectedPatient?.visitId === item.visitId
-                                    ? "table-primary"
-                                    : ""
-                                }
-                                style={{ cursor: "pointer" }}
-                              >
-                                <td>{item.patientName}</td>
-                                <td>{item.mobileNo}</td>
-                                <td>{item.age}</td>
-                                <td>{item.gender}</td>
-                                <td>{item.relation}</td>
-                                <td>{item.departmentName}</td>
-                                <td>{item.visitType}</td>
-                                <td>{item.tokenNo}</td>
-                              </tr>
-                            ))
-                          ) : (
-                            <tr>
-                              <td
-                                colSpan="8"
-                                className="text-center text-muted"
-                              >
-                                No records found
-                              </td>
+                  <div className="table-responsive packagelist mb-1">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Patient Name</th>
+                          <th>Mobile No</th>
+                          <th>Age</th>
+                          <th>Gender</th>
+                          <th>Relation</th>
+                          <th>Department</th>
+                          <th>Visit Type</th>
+                          <th>Token No</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((item) => (
+                            <tr
+                              key={item.visitId}
+                              onClick={() => handleRowClick(item)}
+                              className={
+                                selectedPatient?.visitId === item.visitId
+                                  ? "table-primary"
+                                  : ""
+                              }
+                              style={{ cursor: "pointer" }}
+                            >
+                              <td>{item.patientName}</td>
+                              <td>{item.mobileNo}</td>
+                              <td>{item.age}</td>
+                              <td>{item.gender}</td>
+                              <td>{item.relation}</td>
+                              <td>{item.departmentName}</td>
+                              <td>{item.visitType}</td>
+                              <td>{item.tokenNo}</td>
                             </tr>
-                          )}
-                        </tbody>
-                      </table>
-                    </div>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="text-center text-muted">
+                              No records found
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
                     {totalPages > 1 && (
                       <nav>
@@ -661,745 +658,726 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
                   </>
                 )}
 
-                {/* ── EXAMINATION FORM ──────────────────────────────────────── */}
-                {showForm && selectedPatient && (
-                  <div className="row mb-3 mt-3">
-                    <div className="col-sm-12">
-                      <div className="card-body p-2 pb-0">
-                        {formLoading ? (
-                          <div className="text-center py-5">
-                            <div
-                              className="spinner-border text-primary"
-                              role="status"
-                            >
-                              <span className="visually-hidden">
-                                Loading...
-                              </span>
-                            </div>
-                            <p className="mt-2 text-muted">
-                              Loading examination data...
-                            </p>
+              {/* ── EXAMINATION FORM ──────────────────────────────────────── */}
+              {showForm && selectedPatient && (
+                <div className="row mb-1 mt-3">
+                  <div className="col-sm-12">
+                    <div className="card-body p-2 pb-0 pt-0">
+                      {formLoading ? (
+                        <div className="text-center py-5">
+                          <div
+                            className="spinner-border text-primary"
+                            role="status"
+                          >
+                            <span className="visually-hidden">Loading...</span>
                           </div>
-                        ) : (
-                          <form onSubmit={handleSave}>
-                            {/* Patient Info Banner */}
-                            {!patientId && !visitId && (
-                              <div className="alert alert-info mb-4">
-                                <strong>Patient:</strong>{" "}
-                                {selectedPatient.patientName} |&nbsp;
-                                <strong>Mobile:</strong>{" "}
-                                {selectedPatient.mobileNo} |&nbsp;
-                                <strong>Age:</strong> {selectedPatient.age}{" "}
-                                |&nbsp;
-                                <strong>Token:</strong>{" "}
-                                {selectedPatient.tokenNo}
-                              </div>
-                            )}
+                          <p className="mt-2 text-muted">
+                            Loading examination data...
+                          </p>
+                        </div>
+                      ) : (
+                        <form onSubmit={handleSave}>
+                          {/* Patient Info Banner */}
+                          {!patientId && !visitId && (
+                            <div className="alert alert-info mb-2">
+                              <strong>Patient:</strong>{" "}
+                              {selectedPatient.patientName} |&nbsp;
+                              <strong>Mobile:</strong>{" "}
+                              {selectedPatient.mobileNo} |&nbsp;
+                              <strong>Age:</strong> {selectedPatient.age}{" "}
+                              |&nbsp;
+                              <strong>Token:</strong> {selectedPatient.tokenNo}
+                            </div>
+                          )}
 
-                            {/* ── VISION ── */}
-                            <div className="row mb-3">
-                              <div className="col-12">
-                                <h6 className="fw-bold bg-light text-primary border-bottom pb-1">
-                                  VISION
-                                </h6>
-                              </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm align-middle">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th style={{ width: "100px" }}></th>
-                                        <th colSpan="3" className="text-center">
-                                          R.E.
-                                        </th>
-                                        <th colSpan="3" className="text-center">
-                                          L.E.
-                                        </th>
-                                      </tr>
-                                      <tr>
-                                        <th></th>
-                                        <th className="text-center">
-                                          UNCORRECTED
-                                        </th>
-                                        <th className="text-center">PINHOLE</th>
-                                        <th className="text-center">
-                                          BEST CORRECTED
-                                        </th>
-                                        <th className="text-center">
-                                          UNCORRECTED
-                                        </th>
-                                        <th className="text-center">PINHOLE</th>
-                                        <th className="text-center">
-                                          BEST CORRECTED
-                                        </th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        <td className="fw-semibold">
-                                          Distance
-                                        </td>
-                                        {[
-                                          "reDistanceUnaided",
-                                          "reDistancePinhole",
-                                          "reDistanceBestCorrected",
-                                          "leDistanceUnaided",
-                                          "leDistancePinhole",
-                                          "leDistanceBestCorrected",
-                                        ].map((field, i) => (
-                                          <td key={field}>
-                                            <select
-                                              className="form-select form-select-sm"
-                                              name={field}
-                                              value={formData[field] || ""}
-                                              onChange={handleChange}
-                                              required={i === 0 || i === 3}
-                                            >
-                                              <option value="">Select</option>
-                                              {distanceVisionOptions.map(
-                                                (opt) => (
-                                                  <option
-                                                    key={opt.id}
-                                                    value={opt.visionValue}
-                                                  >
-                                                    {opt.visionValue}
-                                                  </option>
-                                                ),
-                                              )}
-                                            </select>
-                                          </td>
-                                        ))}
-                                      </tr>
-                                      <tr>
-                                        <td className="fw-semibold">Near</td>
-                                        {[
-                                          "reNearUnaided",
-                                          "reNearPinhole",
-                                          "reNearBestCorrected",
-                                          "leNearUnaided",
-                                          "leNearPinhole",
-                                          "leNearBestCorrected",
-                                        ].map((field, i) => (
-                                          <td key={field}>
-                                            <select
-                                              className="form-select form-select-sm"
-                                              name={field}
-                                              value={formData[field] || ""}
-                                              onChange={handleChange}
-                                              required={i === 0 || i === 3}
-                                            >
-                                              <option value="">Select</option>
-                                              {nearVisionOptions.map((opt) => (
+                          {/* ── VISION ── */}
+                          <div className="row mb-1">
+                            <div className="col-12">
+                              <h6 className="fw-bold bg-light text-primary border-bottom pb-1">
+                                VISION
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "100px" }}></th>
+                                      <th colSpan="3" className="text-center">
+                                        R.E.
+                                      </th>
+                                      <th colSpan="3" className="text-center">
+                                        L.E.
+                                      </th>
+                                    </tr>
+                                    <tr>
+                                      <th></th>
+                                      <th className="text-center">
+                                        UNCORRECTED
+                                      </th>
+                                      <th className="text-center">PINHOLE</th>
+                                      <th className="text-center">
+                                        BEST CORRECTED
+                                      </th>
+                                      <th className="text-center">
+                                        UNCORRECTED
+                                      </th>
+                                      <th className="text-center">PINHOLE</th>
+                                      <th className="text-center">
+                                        BEST CORRECTED
+                                      </th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">Distance</td>
+                                      {[
+                                        "reDistanceUnaided",
+                                        "reDistancePinhole",
+                                        "reDistanceBestCorrected",
+                                        "leDistanceUnaided",
+                                        "leDistancePinhole",
+                                        "leDistanceBestCorrected",
+                                      ].map((field, i) => (
+                                        <td key={field}>
+                                          <select
+                                            className="form-select form-select-sm"
+                                            name={field}
+                                            value={formData[field] || ""}
+                                            onChange={handleChange}
+                                            required={i === 0 || i === 3}
+                                          >
+                                            <option value="">Select</option>
+                                            {distanceVisionOptions.map(
+                                              (opt) => (
                                                 <option
                                                   key={opt.id}
-                                                  value={opt.nearValue}
+                                                  value={opt.visionValue}
                                                 >
-                                                  {opt.nearValue}
+                                                  {opt.visionValue}
                                                 </option>
-                                              ))}
-                                            </select>
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* ── FUNDUS GLOW ── */}
-                            <div className="row mb-3 align-items-center">
-                              <div className="col-md-2">
-                                <label className="form-label fw-semibold mb-0">
-                                  Fundus Glow
-                                </label>
-                              </div>
-                              <div className="col-md-6">
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  name="fundusGlow"
-                                  value={formData.fundusGlow || ""}
-                                  onChange={handleChange}
-                                  placeholder="Enter fundus glow findings"
-                                />
-                              </div>
-                            </div>
-
-                            {/* ── RETINOSCOPY ── */}
-                            <div className="row mb-4">
-                              <div className="col-12 mb-2">
-                                <h6 className="fw-bold text-primary border-bottom pb-1">
-                                  RETINOSCOPY
-                                </h6>
-                              </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm align-middle">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th style={{ width: "80px" }}></th>
-                                        <th colSpan="2" className="text-center">
-                                          R.E.
-                                        </th>
-                                        <th colSpan="2" className="text-center">
-                                          L.E.
-                                        </th>
-                                      </tr>
-                                      <tr>
-                                        <th></th>
-                                        <th className="text-center">AXIS</th>
-                                        <th className="text-center">AXIS</th>
-                                        <th className="text-center">AXIS</th>
-                                        <th className="text-center">AXIS</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        <td className="fw-semibold">V</td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="reRetinoscopyAxis"
-                                            value={
-                                              formData.reRetinoscopyAxis || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
+                                              ),
+                                            )}
+                                          </select>
                                         </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="reRetinoscopyV"
-                                            value={
-                                              formData.reRetinoscopyV || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="leRetinoscopyAxis"
-                                            value={
-                                              formData.leRetinoscopyAxis || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="leRetinoscopyV"
-                                            value={
-                                              formData.leRetinoscopyV || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                      </tr>
-                                      <tr>
-                                        <td className="fw-semibold">H</td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="reRetinoscopyH"
-                                            value={
-                                              formData.reRetinoscopyH || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="reRetinoscopyHValue"
-                                            value={
-                                              formData.reRetinoscopyHValue || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="leRetinoscopyH"
-                                            value={
-                                              formData.leRetinoscopyH || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="leRetinoscopyHValue"
-                                            value={
-                                              formData.leRetinoscopyHValue || ""
-                                            }
-                                            onChange={handleChange}
-                                            placeholder="Axis"
-                                          />
-                                        </td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* ── MEASUREMENTS ── */}
-                            <div className="row mb-4">
-                              <div className="col-12">
-                                <h6 className="fw-bold text-primary border-bottom pb-1">
-                                  MEASUREMENTS
-                                </h6>
-                              </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm align-middle">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th colSpan="5" className="text-center">
-                                          R.E.
-                                        </th>
-                                        <th colSpan="5" className="text-center">
-                                          L.E.
-                                        </th>
-                                      </tr>
-                                      <tr>
-                                        <th>Keratometry</th>
-                                        <th>Pachymetry</th>
-                                        <th>Non-Contact Tonometry</th>
-                                        <th>Field of VN</th>
-                                        <th>IOL</th>
-                                        <th>Keratometry</th>
-                                        <th>Pachymetry</th>
-                                        <th>Non-Contact Tonometry</th>
-                                        <th>Field of VN</th>
-                                        <th>ICL</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        {[
-                                          "reKeratometry",
-                                          "rePachymetry",
-                                          "reTonometry",
-                                          "reFieldOfVision",
-                                          "reIolPower",
-                                          "leKeratometry",
-                                          "lePachymetry",
-                                          "leTonometry",
-                                          "leFieldOfVision",
-                                          "leIolPower",
-                                        ].map((f) => (
-                                          <td key={f}>
-                                            <input
-                                              type="text"
-                                              className="form-control form-control-sm"
-                                              name={f}
-                                              value={formData[f] || ""}
-                                              onChange={handleChange}
-                                            />
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* ── SPECTACLE CORRECTION ── */}
-                            <div className="row mb-3">
-                              <div className="col-12 mb-2">
-                                <h6 className="fw-bold text-primary border-bottom pb-1">
-                                  Spectacle Correction
-                                </h6>
-                              </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm align-middle">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th style={{ width: "60px" }}></th>
-                                        <th colSpan="3" className="text-center">
-                                          R.E.
-                                        </th>
-                                        <th colSpan="3" className="text-center">
-                                          L.E.
-                                        </th>
-                                      </tr>
-                                      <tr>
-                                        <th></th>
-                                        <th>SPH</th>
-                                        <th>CYL</th>
-                                        <th>AXIS</th>
-                                        <th>SPH</th>
-                                        <th>CYL</th>
-                                        <th>AXIS</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        <td className="fw-semibold">Dist</td>
-                                        {[
-                                          "reSphDist",
-                                          "reCylDist",
-                                          "reAxisDist",
-                                          "leSphDist",
-                                          "leCylDist",
-                                          "leAxisDist",
-                                        ].map((f) => (
-                                          <td key={f}>
-                                            <input
-                                              type="text"
-                                              className="form-control form-control-sm"
-                                              name={f}
-                                              value={formData[f] || ""}
-                                              onChange={handleChange}
-                                            />
-                                          </td>
-                                        ))}
-                                      </tr>
-                                      <tr>
-                                        <td className="fw-semibold">Near</td>
-                                        {[
-                                          "reSphNear",
-                                          "reCylNear",
-                                          "reAxisNear",
-                                          "leSphNear",
-                                          "leCylNear",
-                                          "leAxisNear",
-                                        ].map((f, i) => (
-                                          <td key={f}>
-                                            <input
-                                              type="text"
-                                              className="form-control form-control-sm"
-                                              name={f}
-                                              value={formData[f] || ""}
-                                              onChange={handleChange}
-                                              placeholder={
-                                                i === 0 || i === 3 ? "Add" : ""
-                                              }
-                                            />
-                                          </td>
-                                        ))}
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
-                              </div>
-                            </div>
-
-                            {/* ── IPD ── */}
-                            <div className="row mb-4">
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm w-auto">
-                                    <tbody>
-                                      <tr>
-                                        <td className="fw-semibold">
-                                          IPD (50–70)
-                                        </td>
-                                        <td>
-                                          <input
-                                            type="text"
-                                            className="form-control form-control-sm"
-                                            name="ipdValue"
-                                            value={formData.ipdValue || ""}
-                                            onChange={handleChange}
-                                            placeholder="mm"
-                                          />
-                                        </td>
-                                        <td className="fw-semibold">Use</td>
-                                        <td>
+                                      ))}
+                                    </tr>
+                                    <tr>
+                                      <td className="fw-semibold">Near</td>
+                                      {[
+                                        "reNearUnaided",
+                                        "reNearPinhole",
+                                        "reNearBestCorrected",
+                                        "leNearUnaided",
+                                        "leNearPinhole",
+                                        "leNearBestCorrected",
+                                      ].map((field, i) => (
+                                        <td key={field}>
                                           <select
                                             className="form-select form-select-sm"
-                                            name="spectacleUse"
-                                            value={formData.spectacleUse || ""}
+                                            name={field}
+                                            value={formData[field] || ""}
                                             onChange={handleChange}
+                                            required={i === 0 || i === 3}
                                           >
                                             <option value="">Select</option>
-                                            {spectacleUseOptions.map((opt) => (
+                                            {nearVisionOptions.map((opt) => (
                                               <option
                                                 key={opt.id}
-                                                value={opt.useName}
+                                                value={opt.nearValue}
                                               >
-                                                {opt.useName}
+                                                {opt.nearValue}
                                               </option>
                                             ))}
                                           </select>
                                         </td>
-                                        <td className="fw-semibold">
-                                          Type of Lens
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select form-select-sm"
-                                            name="lensType"
-                                            value={formData.lensType || ""}
-                                            onChange={handleChange}
-                                          >
-                                            <option value="">Select</option>
-                                            {lensTypeOptions.map((opt) => (
-                                              <option
-                                                key={opt.id}
-                                                value={opt.lensType}
-                                              >
-                                                {opt.lensType}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        </td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
+                                      ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
+                          </div>
 
-                            {/* ── ANTERIOR SEGMENT ── */}
-                            <div className="row mb-4">
-                              <div className="col-12 mb-2">
-                                <h6 className="fw-bold text-primary border-bottom pb-1">
-                                  Anterior Segment
-                                </h6>
+                          {/* ── FUNDUS GLOW ── */}
+                          <div className="row mb-1 align-items-center">
+                            <div className="col-md-2">
+                              <label className="form-label fw-semibold mb-0">
+                                Fundus Glow
+                              </label>
+                            </div>
+                            <div className="col-md-6">
+                              <input
+                                type="text"
+                                className="form-control"
+                                name="fundusGlow"
+                                value={formData.fundusGlow || ""}
+                                onChange={handleChange}
+                                placeholder="Enter fundus glow findings"
+                              />
+                            </div>
+                          </div>
+
+                          {/* ── RETINOSCOPY ── */}
+                          <div className="row mb-2">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">
+                                RETINOSCOPY
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "80px" }}></th>
+                                      <th colSpan="2" className="text-center">
+                                        R.E.
+                                      </th>
+                                      <th colSpan="2" className="text-center">
+                                        L.E.
+                                      </th>
+                                    </tr>
+                                    <tr>
+                                      <th></th>
+                                      <th className="text-center">AXIS</th>
+                                      <th className="text-center">AXIS</th>
+                                      <th className="text-center">AXIS</th>
+                                      <th className="text-center">AXIS</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">V</td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="reRetinoscopyAxis"
+                                          value={
+                                            formData.reRetinoscopyAxis || ""
+                                          }
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="reRetinoscopyV"
+                                          value={formData.reRetinoscopyV || ""}
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="leRetinoscopyAxis"
+                                          value={
+                                            formData.leRetinoscopyAxis || ""
+                                          }
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="leRetinoscopyV"
+                                          value={formData.leRetinoscopyV || ""}
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                    </tr>
+                                    <tr>
+                                      <td className="fw-semibold">H</td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="reRetinoscopyH"
+                                          value={formData.reRetinoscopyH || ""}
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="reRetinoscopyHValue"
+                                          value={
+                                            formData.reRetinoscopyHValue || ""
+                                          }
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="leRetinoscopyH"
+                                          value={formData.leRetinoscopyH || ""}
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="leRetinoscopyHValue"
+                                          value={
+                                            formData.leRetinoscopyHValue || ""
+                                          }
+                                          onChange={handleChange}
+                                          placeholder="Axis"
+                                        />
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm align-middle">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th style={{ width: "60px" }}></th>
-                                        {Object.values(anteriorApiKeys).map(
-                                          (label, i) => (
-                                            <th
-                                              key={i}
-                                              className="text-center"
-                                              style={{ fontSize: "12px" }}
+                            </div>
+                          </div>
+
+                          {/* ── MEASUREMENTS ── */}
+                          <div className="row mb-2">
+                            <div className="col-12">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">
+                                MEASUREMENTS
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th colSpan="5" className="text-center">
+                                        R.E.
+                                      </th>
+                                      <th colSpan="5" className="text-center">
+                                        L.E.
+                                      </th>
+                                    </tr>
+                                    <tr>
+                                      <th>Keratometry</th>
+                                      <th>Pachymetry</th>
+                                      <th>Non-Contact Tonometry</th>
+                                      <th>Field of VN</th>
+                                      <th>IOL</th>
+                                      <th>Keratometry</th>
+                                      <th>Pachymetry</th>
+                                      <th>Non-Contact Tonometry</th>
+                                      <th>Field of VN</th>
+                                      <th>ICL</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      {[
+                                        "reKeratometry",
+                                        "rePachymetry",
+                                        "reTonometry",
+                                        "reFieldOfVision",
+                                        "reIolPower",
+                                        "leKeratometry",
+                                        "lePachymetry",
+                                        "leTonometry",
+                                        "leFieldOfVision",
+                                        "leIolPower",
+                                      ].map((f) => (
+                                        <td key={f}>
+                                          <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            name={f}
+                                            value={formData[f] || ""}
+                                            onChange={handleChange}
+                                          />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ── SPECTACLE CORRECTION ── */}
+                          <div className="row mb-1">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">
+                                Spectacle Correction
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "60px" }}></th>
+                                      <th colSpan="3" className="text-center">
+                                        R.E.
+                                      </th>
+                                      <th colSpan="3" className="text-center">
+                                        L.E.
+                                      </th>
+                                    </tr>
+                                    <tr>
+                                      <th></th>
+                                      <th>SPH</th>
+                                      <th>CYL</th>
+                                      <th>AXIS</th>
+                                      <th>SPH</th>
+                                      <th>CYL</th>
+                                      <th>AXIS</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">Dist</td>
+                                      {[
+                                        "reSphDist",
+                                        "reCylDist",
+                                        "reAxisDist",
+                                        "leSphDist",
+                                        "leCylDist",
+                                        "leAxisDist",
+                                      ].map((f) => (
+                                        <td key={f}>
+                                          <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            name={f}
+                                            value={formData[f] || ""}
+                                            onChange={handleChange}
+                                          />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                    <tr>
+                                      <td className="fw-semibold">Near</td>
+                                      {[
+                                        "reSphNear",
+                                        "reCylNear",
+                                        "reAxisNear",
+                                        "leSphNear",
+                                        "leCylNear",
+                                        "leAxisNear",
+                                      ].map((f, i) => (
+                                        <td key={f}>
+                                          <input
+                                            type="text"
+                                            className="form-control form-control-sm"
+                                            name={f}
+                                            value={formData[f] || ""}
+                                            onChange={handleChange}
+                                            placeholder={
+                                              i === 0 || i === 3 ? "Add" : ""
+                                            }
+                                          />
+                                        </td>
+                                      ))}
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ── IPD ── */}
+                          <div className="row mb-2">
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm w-auto">
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">
+                                        IPD (50–70)
+                                      </td>
+                                      <td>
+                                        <input
+                                          type="text"
+                                          className="form-control form-control-sm"
+                                          name="ipdValue"
+                                          value={formData.ipdValue || ""}
+                                          onChange={handleChange}
+                                          placeholder="mm"
+                                        />
+                                      </td>
+                                      <td className="fw-semibold">Use</td>
+                                      <td>
+                                        <select
+                                          className="form-select form-select-sm"
+                                          name="spectacleUse"
+                                          value={formData.spectacleUse || ""}
+                                          onChange={handleChange}
+                                        >
+                                          <option value="">Select</option>
+                                          {spectacleUseOptions.map((opt) => (
+                                            <option
+                                              key={opt.id}
+                                              value={opt.useName}
                                             >
-                                              {label.toUpperCase()}
-                                            </th>
-                                          ),
+                                              {opt.useName}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                      <td className="fw-semibold">
+                                        Type of Lens
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select form-select-sm"
+                                          name="lensType"
+                                          value={formData.lensType || ""}
+                                          onChange={handleChange}
+                                        >
+                                          <option value="">Select</option>
+                                          {lensTypeOptions.map((opt) => (
+                                            <option
+                                              key={opt.id}
+                                              value={opt.lensType}
+                                            >
+                                              {opt.lensType}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* ── ANTERIOR SEGMENT ── */}
+                          <div className="row mb-2">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">
+                                Anterior Segment
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "60px" }}></th>
+                                      {Object.values(anteriorApiKeys).map(
+                                        (label, i) => (
+                                          <th
+                                            key={i}
+                                            className="text-center"
+                                            style={{ fontSize: "12px" }}
+                                          >
+                                            {label.toUpperCase()}
+                                          </th>
+                                        ),
+                                      )}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {["re", "le"].map((eye) => (
+                                      <tr key={eye}>
+                                        <td className="fw-semibold">
+                                          {eye === "re" ? "R.E." : "L.E."}
+                                        </td>
+                                        {Object.keys(anteriorApiKeys).map(
+                                          (key) => {
+                                            const fieldName = `${eye}${key.charAt(0).toUpperCase() + key.slice(1)}`;
+                                            return (
+                                              <td key={key}>
+                                                <select
+                                                  className="form-select form-select-sm"
+                                                  name={fieldName}
+                                                  value={
+                                                    formData[fieldName] ?? "N"
+                                                  }
+                                                  onChange={handleChange}
+                                                >
+                                                  <option value="N">N</option>
+                                                  <option value="Abnormal">
+                                                    Abnormal
+                                                  </option>
+                                                </select>
+                                              </td>
+                                            );
+                                          },
                                         )}
                                       </tr>
-                                    </thead>
-                                    <tbody>
-                                      {["re", "le"].map((eye) => (
-                                        <tr key={eye}>
-                                          <td className="fw-semibold">
-                                            {eye === "re" ? "R.E." : "L.E."}
-                                          </td>
-                                          {Object.keys(anteriorApiKeys).map(
-                                            (key) => {
-                                              const fieldName = `${eye}${key.charAt(0).toUpperCase() + key.slice(1)}`;
-                                              return (
-                                                <td key={key}>
-                                                  <select
-                                                    className="form-select form-select-sm"
-                                                    name={fieldName}
-                                                    value={
-                                                      formData[fieldName] ?? "N"
-                                                    }
-                                                    onChange={handleChange}
-                                                  >
-                                                    <option value="N">N</option>
-                                                    <option value="Abnormal">
-                                                      Abnormal
-                                                    </option>
-                                                  </select>
-                                                </td>
-                                              );
-                                            },
-                                          )}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
+                          </div>
 
-                            {/* ── POSTERIOR SEGMENT ── */}
-                            <div className="row mb-4">
-                              <div className="col-12 mb-2">
-                                <h6 className="fw-bold text-primary border-bottom pb-1">
-                                  Posterior Segment
-                                </h6>
-                              </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm align-middle">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th style={{ width: "60px" }}></th>
-                                        {Object.values(posteriorApiKeys).map(
-                                          (label, i) => (
-                                            <th
-                                              key={i}
-                                              className="text-center"
-                                              style={{ fontSize: "12px" }}
-                                            >
-                                              {label.toUpperCase()}
-                                            </th>
-                                          ),
+                          {/* ── POSTERIOR SEGMENT ── */}
+                          <div className="row mb-2">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">
+                                Posterior Segment
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm align-middle">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "60px" }}></th>
+                                      {Object.values(posteriorApiKeys).map(
+                                        (label, i) => (
+                                          <th
+                                            key={i}
+                                            className="text-center"
+                                            style={{ fontSize: "12px" }}
+                                          >
+                                            {label.toUpperCase()}
+                                          </th>
+                                        ),
+                                      )}
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {["re", "le"].map((eye) => (
+                                      <tr key={eye}>
+                                        <td className="fw-semibold">
+                                          {eye === "re" ? "R.E." : "L.E."}
+                                        </td>
+                                        {Object.keys(posteriorApiKeys).map(
+                                          (key) => {
+                                            const fieldName = `${eye}${key.charAt(0).toUpperCase() + key.slice(1)}`;
+                                            return (
+                                              <td key={key}>
+                                                <select
+                                                  className="form-select form-select-sm"
+                                                  name={fieldName}
+                                                  value={
+                                                    formData[fieldName] ?? "N"
+                                                  }
+                                                  onChange={handleChange}
+                                                >
+                                                  <option value="N">N</option>
+                                                  <option value="Abnormal">
+                                                    Abnormal
+                                                  </option>
+                                                </select>
+                                              </td>
+                                            );
+                                          },
                                         )}
                                       </tr>
-                                    </thead>
-                                    <tbody>
-                                      {["re", "le"].map((eye) => (
-                                        <tr key={eye}>
-                                          <td className="fw-semibold">
-                                            {eye === "re" ? "R.E." : "L.E."}
-                                          </td>
-                                          {Object.keys(posteriorApiKeys).map(
-                                            (key) => {
-                                              const fieldName = `${eye}${key.charAt(0).toUpperCase() + key.slice(1)}`;
-                                              return (
-                                                <td key={key}>
-                                                  <select
-                                                    className="form-select form-select-sm"
-                                                    name={fieldName}
-                                                    value={
-                                                      formData[fieldName] ?? "N"
-                                                    }
-                                                    onChange={handleChange}
-                                                  >
-                                                    <option value="N">N</option>
-                                                    <option value="Abnormal">
-                                                      Abnormal
-                                                    </option>
-                                                  </select>
-                                                </td>
-                                              );
-                                            },
-                                          )}
-                                        </tr>
-                                      ))}
-                                    </tbody>
-                                  </table>
-                                </div>
+                                    ))}
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
+                          </div>
 
-                            {/* ── COLOUR VISION ── */}
-                            <div className="row mb-4">
-                              <div className="col-12 mb-2">
-                                <h6 className="fw-bold text-primary border-bottom pb-1">
-                                  Colour Vision
-                                </h6>
-                              </div>
-                              <div className="col-12">
-                                <div className="table-responsive">
-                                  <table className="table table-bordered table-sm w-auto">
-                                    <thead className="table-light">
-                                      <tr>
-                                        <th style={{ width: "80px" }}></th>
-                                        <th className="text-center">R.E.</th>
-                                        <th className="text-center">L.E.</th>
-                                      </tr>
-                                    </thead>
-                                    <tbody>
-                                      <tr>
-                                        <td className="fw-semibold">Select</td>
-                                        <td>
-                                          <select
-                                            className="form-select form-select-sm"
-                                            name="reColourVision"
-                                            value={
-                                              formData.reColourVision || ""
-                                            }
-                                            onChange={handleChange}
-                                          >
-                                            <option value="">Select</option>
-                                            {colorVisionOptions.map((opt) => (
-                                              <option
-                                                key={opt.id}
-                                                value={opt.colorValue}
-                                              >
-                                                {opt.colorValue}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        </td>
-                                        <td>
-                                          <select
-                                            className="form-select form-select-sm"
-                                            name="leColourVision"
-                                            value={
-                                              formData.leColourVision || ""
-                                            }
-                                            onChange={handleChange}
-                                          >
-                                            <option value="">Select</option>
-                                            {colorVisionOptions.map((opt) => (
-                                              <option
-                                                key={opt.id}
-                                                value={opt.colorValue}
-                                              >
-                                                {opt.colorValue}
-                                              </option>
-                                            ))}
-                                          </select>
-                                        </td>
-                                      </tr>
-                                    </tbody>
-                                  </table>
-                                </div>
+                          {/* ── COLOUR VISION ── */}
+                          <div className="row mb-2">
+                            <div className="col-12 mb-2">
+                              <h6 className="fw-bold text-primary border-bottom pb-1">
+                                Colour Vision
+                              </h6>
+                            </div>
+                            <div className="col-12">
+                              <div className="table-responsive">
+                                <table className="table table-bordered table-sm w-auto">
+                                  <thead className="table-light">
+                                    <tr>
+                                      <th style={{ width: "80px" }}></th>
+                                      <th className="text-center">R.E.</th>
+                                      <th className="text-center">L.E.</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    <tr>
+                                      <td className="fw-semibold">Select</td>
+                                      <td>
+                                        <select
+                                          className="form-select form-select-sm"
+                                          name="reColourVision"
+                                          value={formData.reColourVision || ""}
+                                          onChange={handleChange}
+                                        >
+                                          <option value="">Select</option>
+                                          {colorVisionOptions.map((opt) => (
+                                            <option
+                                              key={opt.id}
+                                              value={opt.colorValue}
+                                            >
+                                              {opt.colorValue}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                      <td>
+                                        <select
+                                          className="form-select form-select-sm"
+                                          name="leColourVision"
+                                          value={formData.leColourVision || ""}
+                                          onChange={handleChange}
+                                        >
+                                          <option value="">Select</option>
+                                          {colorVisionOptions.map((opt) => (
+                                            <option
+                                              key={opt.id}
+                                              value={opt.colorValue}
+                                            >
+                                              {opt.colorValue}
+                                            </option>
+                                          ))}
+                                        </select>
+                                      </td>
+                                    </tr>
+                                  </tbody>
+                                </table>
                               </div>
                             </div>
-
-                            {/* ── SUBMIT ── */}
-                            {!hideButtons && (
-                              <div className="col-12 mt-3 d-flex justify-content-end">
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary me-2"
-                                  onClick={closeForm}
-                                >
-                                  Cancel
-                                </button>
-                                <button
-                                  type="submit"
-                                  className="btn btn-primary"
-                                  disabled={isSubmitting}
-                                >
-                                  {isSubmitting
-                                    ? "Saving..."
-                                    : "Save Examination"}
-                                </button>
-                              </div>
-                            )}
-                          </form>
-                        )}
-                      </div>
+                             {/* ── SUBMIT ── */}
+                          {!hideButtons && (
+                            <div className="col-12 mt-3 d-flex justify-content-end">
+                              <button
+                                type="button"
+                                className="btn btn-secondary me-2"
+                                onClick={closeForm}
+                              >
+                                Cancel
+                              </button>
+                              <button
+                                type="submit"
+                                className="btn btn-primary"
+                                disabled={isSubmitting}
+                              >
+                                {isSubmitting
+                                  ? "Saving..."
+                                  : "Save Examination"}
+                              </button>
+                            </div>
+                          )}
+                          </div>
+                        </form>
+                      )}
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-    );
-  },
-);
+    </div>
+  );
+};
 
 export default OpdVision;
