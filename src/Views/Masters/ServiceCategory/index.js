@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
-import { MAS_SERVICE_CATEGORY } from "../../../config/apiConfig";
+import { MAS_SERVICE_CATEGORY, SAC_CODE_REGISTRATION } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 import {
   UPDATE_SERVICE_CATEGORY_SUCC_MSG,
@@ -11,17 +11,14 @@ import {
 } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
-
-
 const ServiceCategoryMaster = () => {
   const [formData, setFormData] = useState({
     serviceCatName: "",
     sacCode: "",
     gstApplicable: false,
-    registrationCost: "",   // NEW
+    registrationCost: "",
     gstPercent: ""
   });
-
 
   const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, serviceId: null, newStatus: false })
   const [loading, setLoading] = useState(false);
@@ -35,7 +32,6 @@ const ServiceCategoryMaster = () => {
   const [currentItem, setCurrentItem] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
   const [pageInput, setPageInput] = useState("")
-  const itemsPerPage = 5
 
   useEffect(() => {
     fetchServicecategoryData();
@@ -58,40 +54,34 @@ const ServiceCategoryMaster = () => {
     }
   };
 
-
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value)
     setCurrentPage(1)
   }
 
-const search = searchQuery.trim().toLowerCase();
+  const search = searchQuery.trim().toLowerCase();
 
-const filteredServiceList = serviceCategoryData.filter((item) => {
-  const name = item?.serviceCatName?.toLowerCase() || "";
-  const sacCode = item?.sacCode?.toLowerCase() || "";
-  const cateCode = item?.serviceCateCode?.toLowerCase() || "";
-
-  const status = item?.status === "y" ? "active" : "deactivated";
-
-  const dateObj = item?.lastChgDt ? new Date(item.lastChgDt) : null;
-  const dateUS = dateObj ? dateObj.toLocaleDateString("en-US") : ""; 
-  const dateUSNormalized = dateUS.replace(/0/g, ""); 
-  return (
-    name.includes(search) ||
-    sacCode.includes(search) ||
-    cateCode.includes(search) ||
-    status.includes(search) ||
-    dateUS.toLowerCase().includes(search) ||
-    dateUSNormalized.toLowerCase().includes(search)
-  );
-});
-
-
+  const filteredServiceList = serviceCategoryData.filter((item) => {
+    const name = item?.serviceCatName?.toLowerCase() || "";
+    const sacCode = item?.sacCode?.toLowerCase() || "";
+    const cateCode = item?.serviceCateCode?.toLowerCase() || "";
+    const status = item?.status === "y" ? "active" : "deactivated";
+    const dateObj = item?.lastChgDt ? new Date(item.lastChgDt) : null;
+    const dateUS = dateObj ? dateObj.toLocaleDateString("en-US") : "";
+    const dateUSNormalized = dateUS.replace(/0/g, "");
+    return (
+      name.includes(search) ||
+      sacCode.includes(search) ||
+      cateCode.includes(search) ||
+      status.includes(search) ||
+      dateUS.toLowerCase().includes(search) ||
+      dateUSNormalized.toLowerCase().includes(search)
+    );
+  });
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
   const currentItems = filteredServiceList.slice(indexOfFirst, indexOfLast)
-
 
   const handleEdit = (item) => {
     setEditingService(item);
@@ -105,7 +95,6 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
     });
     setIsFormValid(true);
   };
-
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -129,23 +118,23 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
       }
 
       if (response.status === 200) {
-        showPopup(
-          editingService
-            ? UPDATE_SERVICE_CATEGORY_SUCC_MSG
-            : ADD_SERVICE_CATEGORY_SUCC_MSG,
-          "success"
-        );
-
-        await fetchServicecategoryData();
-
-        setEditingService(null);
-        setShowForm(false);
-        setFormData({
-          serviceCatName: "",
-          sacCode: "",
-          gstApplicable: false,
-          gstPercent: Number(formData.gstPercent || 0),
-          registrationCost: Number(formData.registrationCost || 0),
+        setPopupMessage({
+          message: editingService ? UPDATE_SERVICE_CATEGORY_SUCC_MSG : ADD_SERVICE_CATEGORY_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            setEditingService(null);
+            setShowForm(false);
+            setFormData({
+              serviceCatName: "",
+              sacCode: "",
+              gstApplicable: false,
+              gstPercent: "",
+              registrationCost: "",
+            });
+            fetchServicecategoryData();
+            setCurrentPage(1);
+          }
         });
       } else {
         throw new Error(response.message || 'Failed to save service category');
@@ -157,7 +146,6 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
       setProcess(false);
     }
   };
-
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -183,11 +171,15 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
         );
 
         if (response.status === 200) {
-          showPopup(
-            `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-            "success"
-          );
-          await fetchServicecategoryData();
+          setPopupMessage({
+            message: `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchServicecategoryData();
+              setCurrentPage(1);
+            }
+          });
         } else {
           throw new Error(response.message || "Failed to update status");
         }
@@ -197,10 +189,8 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
       } finally {
         setProcess(false);
       }
-      setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
-    } else {
-      setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
     }
+    setConfirmDialog({ isOpen: false, serviceId: null, newStatus: null });
   }
 
   const handleInputChange = (e) => {
@@ -208,7 +198,7 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
     setFormData((prevData) => ({ ...prevData, [id]: value }))
 
     if (id === "registrationCost" && value !== "") {
-      if (!/^\d*\.?\d*$/.test(value)) return; // allow only numeric & decimals
+      if (!/^\d*\.?\d*$/.test(value)) return;
     }
 
     if (id === "gstApplicable") {
@@ -244,7 +234,6 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
     setSearchQuery("")
     setCurrentPage(1)
     fetchServicecategoryData()
-
   }
     
   return (
@@ -276,12 +265,22 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
                         </span>
                       </div>
                     </form>
-                    <button type="button" className="btn btn-success me-2" onClick={() => setShowForm(true)}>
+                    <button type="button" className="btn btn-success me-2" onClick={() => {
+                      setEditingService(null);
+                      setFormData({
+                        serviceCatName: "",
+                        sacCode: "",
+                        gstApplicable: false,
+                        registrationCost: "",
+                        gstPercent: ""
+                      });
+                      setShowForm(true);
+                    }}>
                       <i className="mdi mdi-plus"></i> Add
                     </button>
-                    {/* <button type="button" className="btn btn-success me-2">
-                      <i className="mdi mdi-plus"></i> Generate Report
-                    </button> */}
+                    <button type="button" className="btn btn-success me-2" onClick={handleRefresh}>
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
                   </>
                 )}
               </div>
@@ -351,13 +350,14 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="d-flex justify-content-end">
-
                     <button type="button" className="btn btn-secondary" onClick={() => {
                       setShowForm(false);
                       setFormData({
                         serviceCatName: "",
                         sacCode: "",
                         gstApplicable: false,
+                        registrationCost: "",
+                        gstPercent: ""
                       });
                       setEditingService(null);
                     }}>
@@ -413,26 +413,24 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
                       </select>
                     </div>
                     {formData.gstApplicable === true && (
-                      <>
-                        <div className="form-group col-md-4 mt-3">
-                          <label>
-                            GST Percent <span className="text-danger">*</span>
-                          </label>
-                          <input
-                            type="number"
-                            step="0.01"
-                            min="0"
-                            className="form-control"
-                            id="gstPercent"
-                            placeholder="GST Percent"
-                            onChange={handleInputChange}
-                            value={formData.gstPercent}
-                            required
-                          />
-                        </div>
-                      </>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          GST Percent <span className="text-danger">*</span>
+                        </label>
+                        <input
+                          type="number"
+                          step="0.01"
+                          min="0"
+                          className="form-control"
+                          id="gstPercent"
+                          placeholder="GST Percent"
+                          onChange={handleInputChange}
+                          value={formData.gstPercent}
+                          required
+                        />
+                      </div>
                     )}
-
+                  {formData.sacCode === SAC_CODE_REGISTRATION && (
                     <div className="form-group col-md-4 mt-3">
                       <label>
                         Registration Cost <span className="text-danger">*</span>
@@ -449,8 +447,7 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
                         required
                       />
                     </div>
-
-
+                  )}
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
@@ -471,6 +468,8 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
                           serviceCatName: "",
                           sacCode: "",
                           gstApplicable: false,
+                          registrationCost: "",
+                          gstPercent: ""
                         });
                         setEditingService(null);
                       }}
@@ -479,21 +478,18 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
                       Cancel
                     </button>
                   </div>
-
                 </form>
               )}
               {popupMessage && (
                 <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
               )}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog modal-dialog-centered" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
+                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close"></button>
                       </div>
                       <div className="modal-body">
                         <p>
@@ -505,11 +501,11 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={process}>
                           No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Yes
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={process}>
+                          {process ? "Processing..." : "Yes"}
                         </button>
                       </div>
                     </div>
@@ -519,12 +515,11 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
 
               {!showForm && (
                 <Pagination
-               totalItems={filteredServiceList.length}
-               itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-               currentPage={currentPage}
-               onPageChange={setCurrentPage}
-             /> 
-
+                  totalItems={filteredServiceList.length}
+                  itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                  currentPage={currentPage}
+                  onPageChange={setCurrentPage}
+                />
               )}
             </div>
           </div>
@@ -534,4 +529,4 @@ const filteredServiceList = serviceCategoryData.filter((item) => {
   )
 }
 
-export default ServiceCategoryMaster
+export default ServiceCategoryMaster;

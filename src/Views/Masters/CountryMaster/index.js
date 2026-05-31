@@ -75,18 +75,41 @@ const CountryMaster = () => {
         setShowForm(true);
     };
 
+    const resetForm = () => {
+        setFormData({
+            countryCode: "",
+            countryName: "",
+        });
+
+        setEditingCountry(null);
+    };
+
     const handleSave = async (e) => {
         e.preventDefault();
-        if (!isFormValid) return;
-
         setIsLoading(true);
+
+        if (!isFormValid) {
+            setIsLoading(false);
+            return;
+        }
+
         try {
 
+            const payload = {
+                countryCode: formData.countryCode.trim(),
+                countryName: formData.countryName.trim(),
+            };
+
+            // Duplicate check
             const isDuplicate = countries.some(
                 (country) =>
                     country.id !== (editingCountry ? editingCountry.id : null) &&
-                    (country.countryCode === formData.countryCode ||
-                        country.countryName === formData.countryName)
+                    (
+                        country.countryCode.trim().toLowerCase() ===
+                        formData.countryCode.trim().toLowerCase() ||
+                        country.countryName.trim().toLowerCase() ===
+                        formData.countryName.trim().toLowerCase()
+                    )
             );
 
             if (isDuplicate) {
@@ -95,39 +118,66 @@ const CountryMaster = () => {
                 return;
             }
 
+            let response;
+
             if (editingCountry) {
 
-                const response = await putRequest(`${MAS_COUNTRY}/updateById/${editingCountry.id}`, {
-                    countryCode: formData.countryCode,
-                    countryName: formData.countryName,
-                    status: editingCountry.status,
-                });
+                payload.status = editingCountry.status;
 
-                if (response && response.status === 200) {
-                    fetchCountries();
-                    showPopup(UPDATE_COUNTRY_SUCC_MSG, "success");
+                response = await putRequest(
+                    `${MAS_COUNTRY}/updateById/${editingCountry.id}`,
+                    payload
+                );
+
+                if (response.status === 200) {
+                    setPopupMessage({
+                        message: UPDATE_COUNTRY_SUCC_MSG,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            resetForm();
+                            fetchCountries();
+                            setShowForm(false);
+                        },
+                    });
+                } else {
+                    throw new Error(response.message || "Update failed");
                 }
-            } else {
-                // Add new country
-                const response = await postRequest(`${MAS_COUNTRY}/create`, {
-                    countryCode: formData.countryCode,
-                    countryName: formData.countryName,
-                    status: "y",
-                });
 
-                if (response && response.status === 200) {
-                    fetchCountries();
-                    showPopup(ADD_COUNTRY_SUCC_MSG, "success");
+            } else {
+
+                payload.status = "y";
+
+                response = await postRequest(
+                    `${MAS_COUNTRY}/create`,
+                    payload
+                );
+
+                if (response.status === 201 || response.status === 200) {
+                    setPopupMessage({
+                        message: ADD_COUNTRY_SUCC_MSG,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            resetForm();
+                            fetchCountries();
+                            setShowForm(false);
+                        },
+                    });
+                } else {
+                    throw new Error(response.message || "Save failed");
                 }
             }
 
+        } catch (error) {
+            console.error("Error saving country:", error);
 
-            setEditingCountry(null);
-            setFormData({ countryCode: "", countryName: "" });
-            setShowForm(false);
-        } catch (err) {
-            console.error("Error saving country:", err);
-            showPopup(FAIL_TO_SAVE_CHANGES, "error");
+            showPopup(
+                error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+                "error"
+            );
+
+        } finally {
             setIsLoading(false);
         }
     };

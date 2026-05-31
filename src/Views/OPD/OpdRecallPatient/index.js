@@ -137,6 +137,18 @@ const OpdRRecallPatient = () => {
   const drugDropdownRef = useRef(null);
   const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
 
+  const [visitsCurrentPage, setVisitsCurrentPage] = useState(0);
+  const [visitsTotalPages, setVisitsTotalPages] = useState(0);
+  const [visitsTotalElements, setVisitsTotalElements] = useState(0);
+  const [visitsPageSize, setVisitsPageSize] = useState(5);
+  const [visitsLoading, setVisitsLoading] = useState(false);
+
+  const [vitalsCurrentPage, setVitalsCurrentPage] = useState(0);
+  const [vitalsTotalPages, setVitalsTotalPages] = useState(0);
+  const [vitalsTotalElements, setVitalsTotalElements] = useState(0);
+  const [vitalsPageSize, setVitalsPageSize] = useState(5);
+  const [vitalsLoading, setVitalsLoading] = useState(false);
+
   // const fetchWardCategoryData = async () => {
   //   try {
   //     const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
@@ -259,45 +271,74 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const fetchPreviousVisits = async (patientId, hospitalId) => {
+  const fetchPreviousVisits = async (
+    patientId,
+    hospitalId,
+    page = 0,
+    size = 5,
+  ) => {
     if (!patientId) return;
 
     try {
-      setLoading(true);
-      const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      setVisitsLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VISIT_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=${page}&size=${size}`;
+      console.log("Calling API:", url);
+
       const response = await getRequest(url);
+      console.log("Response:", response);
 
       if (response.status === 200 && response.response) {
-        const data = response.response.content || response.response;
+        const data = response.response.content || [];
         setPreviousVisitsData(data);
+        setVisitsTotalPages(response.response.totalPages || 0);
+        setVisitsTotalElements(response.response.totalElements || 0);
+        setVisitsCurrentPage(response.response.pageable?.pageNumber || page);
       } else {
         setPreviousVisitsData([]);
+        setVisitsTotalPages(0);
+        setVisitsTotalElements(0);
       }
     } catch (error) {
       console.error("Error fetching previous visits:", error);
       setPreviousVisitsData([]);
+      setVisitsTotalPages(0);
+      setVisitsTotalElements(0);
     } finally {
-      setLoading(false);
+      setVisitsLoading(false);
     }
   };
 
-  const fetchPreviousVitals = async (patientId, hospitalId) => {
+  const fetchPreviousVitals = async (
+    patientId,
+    hospitalId,
+    page = 0,
+    size = 5,
+  ) => {
     if (!patientId) {
       console.warn("fetchPreviousVitals: patientId is required");
       return;
     }
 
     try {
-      setLoading(true);
-      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=0&size=5`;
+      setVitalsLoading(true);
+      const url = `${GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=${page}&size=${size}`;
       console.log("Fetching vitals from URL:", url);
 
       const response = await getRequest(url);
       console.log("Vitals API response:", response);
 
       if (response?.status === 200 && response?.response) {
-        const vitalsData = response.response.content || response.response;
+        let vitalsData = response.response;
+        let paginationInfo = response.response;
+
+        // Handle paginated response
+        if (vitalsData.content) {
+          vitalsData = vitalsData.content;
+          paginationInfo = response.response;
+        }
+
         const vitalsList = Array.isArray(vitalsData) ? vitalsData : [];
+
         const formattedVitals = vitalsList.map((vital) => ({
           visitDate: vital.visitDate || vital.createdDate || "",
           height: vital.height || "",
@@ -311,16 +352,80 @@ const OpdRRecallPatient = () => {
           spo2: vital.spo2 || "",
         }));
 
+        console.log("Formatted vitals:", formattedVitals);
         setPreviousVitalsData(formattedVitals);
+        setVitalsTotalPages(paginationInfo.totalPages || 0);
+        setVitalsTotalElements(paginationInfo.totalElements || 0);
+        setVitalsCurrentPage(paginationInfo.pageable?.pageNumber || page);
       } else {
         console.warn("No vitals data received or invalid response");
         setPreviousVitalsData([]);
+        setVitalsTotalPages(0);
+        setVitalsTotalElements(0);
       }
     } catch (error) {
       console.error("Error fetching previous vitals:", error);
       setPreviousVitalsData([]);
+      setVitalsTotalPages(0);
+      setVitalsTotalElements(0);
     } finally {
-      setLoading(false);
+      setVitalsLoading(false);
+    }
+  };
+
+  // Handle visits page change
+  const handleVisitsPageChange = (newPage) => {
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVisits(
+        selectedPatient.patientId,
+        hospitalId,
+        newPage,
+        visitsPageSize,
+      );
+    }
+  };
+
+  // Handle vitals page change
+  const handleVitalsPageChange = (newPage) => {
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVitals(
+        selectedPatient.patientId,
+        hospitalId,
+        newPage,
+        vitalsPageSize,
+      );
+    }
+  };
+
+  // Handle visits page size change
+  const handleVisitsPageSizeChange = (newSize) => {
+    setVisitsPageSize(newSize);
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVisits(selectedPatient.patientId, hospitalId, 0, newSize);
+    }
+  };
+
+  // Handle vitals page size change
+  const handleVitalsPageSizeChange = (newSize) => {
+    setVitalsPageSize(newSize);
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousVitals(selectedPatient.patientId, hospitalId, 0, newSize);
     }
   };
 
@@ -2366,6 +2471,12 @@ const OpdRRecallPatient = () => {
     setAdmissionPriority("Normal");
     setOccupiedBeds(0);
     setVacantBeds(0);
+    setVisitsCurrentPage(0);
+    setVisitsTotalPages(0);
+    setVisitsTotalElements(0);
+    setVitalsCurrentPage(0);
+    setVitalsTotalPages(0);
+    setVitalsTotalElements(0);
   };
 
   const toggleSection = (section) => {
@@ -2383,7 +2494,12 @@ const OpdRRecallPatient = () => {
           selectedPatient.hospitalId ||
           sessionStorage.getItem("hospitalId") ||
           localStorage.getItem("hospitalId");
-        await fetchPreviousVisits(selectedPatient.patientId, hospitalId);
+        await fetchPreviousVisits(
+          selectedPatient.patientId,
+          hospitalId,
+          0,
+          visitsPageSize,
+        );
       }
       setShowClinicalPopup(true);
     } else if (historyType === "previous-vitals") {
@@ -2393,7 +2509,12 @@ const OpdRRecallPatient = () => {
           selectedPatient.hospitalId ||
           sessionStorage.getItem("hospitalId") ||
           localStorage.getItem("hospitalId");
-        await fetchPreviousVitals(selectedPatient.patientId, hospitalId);
+        await fetchPreviousVitals(
+          selectedPatient.patientId,
+          hospitalId,
+          0,
+          vitalsPageSize,
+        );
       }
       setShowClinicalPopup(true);
     } else {
@@ -6142,6 +6263,37 @@ const OpdRRecallPatient = () => {
             visitsData={previousVisitsData}
             vitalsData={previousVitalsData}
             popupType={clinicalPopupType}
+            currentPage={
+              clinicalPopupType === "visits"
+                ? visitsCurrentPage
+                : vitalsCurrentPage
+            }
+            totalPages={
+              clinicalPopupType === "visits"
+                ? visitsTotalPages
+                : vitalsTotalPages
+            }
+            totalElements={
+              clinicalPopupType === "visits"
+                ? visitsTotalElements
+                : vitalsTotalElements
+            }
+            pageSize={
+              clinicalPopupType === "visits" ? visitsPageSize : vitalsPageSize
+            }
+            onPageChange={
+              clinicalPopupType === "visits"
+                ? handleVisitsPageChange
+                : handleVitalsPageChange
+            }
+            onPageSizeChange={
+              clinicalPopupType === "visits"
+                ? handleVisitsPageSizeChange
+                : handleVitalsPageSizeChange
+            }
+            isLoading={
+              clinicalPopupType === "visits" ? visitsLoading : vitalsLoading
+            }
           />
         )}
 

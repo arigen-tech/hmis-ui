@@ -32,6 +32,17 @@ const Departmenttype = () => {
         fetchDepartmentTypes(0);
     }, []);
 
+    const [saving, setSaving] = useState(false);
+
+const resetForm = () => {
+    setFormData({
+        departmentTypeCode: "",
+        departmentTypeName: "",
+    });
+
+    setEditingType(null);
+};
+
     const fetchDepartmentTypes = async (flag = 0) => {
         try {
             setLoading(true);
@@ -77,58 +88,99 @@ const Departmenttype = () => {
         setShowForm(true);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+ const handleSave = async (e) => {
+    e.preventDefault();
+    setSaving(true);
 
-        try {
-            setLoading(true);
+    if (!isFormValid) {
+        setSaving(false);
+        return;
+    }
 
-            const isDuplicate = departmentTypes.some(
-                (type) =>
-                    type.departmentTypeCode === formData.departmentTypeCode ||
-                    type.departmentTypeName === formData.departmentTypeName
+    try {
+        const payload = {
+            departmentTypeCode: formData.departmentTypeCode.trim(),
+            departmentTypeName: formData.departmentTypeName.trim(),
+        };
+
+        // For new record only
+        if (!editingType) {
+            payload.status = "y";
+        }
+
+        let response;
+
+        if (editingType) {
+            response = await putRequest(
+                `${MAS_DEPARTMENT_TYPE}/updateById/${editingType.id}`,
+                {
+                    ...payload,
+                    status: editingType.status,
+                }
             );
 
-            if (editingType) {
-                const response = await putRequest(`${MAS_DEPARTMENT_TYPE}/updateById/${editingType.id}`, {
-                    departmentTypeCode: formData.departmentTypeCode,
-                    departmentTypeName: formData.departmentTypeName,
-                    status: editingType.status,
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: "Department type updated successfully!",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchDepartmentTypes();
+                        setShowForm(false);
+                    }
                 });
-
-                // Always show success popup and refresh data
-                showPopup(UPDATE_DEPARTMENT_TYPE_SUCC_MSG, "success");
-                fetchDepartmentTypes();
             } else {
-                if (isDuplicate) {
-                    showPopup(DUPLICATE_DEPARTMENT_TYPE, "error");
-                    setLoading(false);
-                    return;
-                }
-
-                const response = await postRequest(`${MAS_DEPARTMENT_TYPE}/create`, {
-                    departmentTypeCode: formData.departmentTypeCode,
-                    departmentTypeName: formData.departmentTypeName,
-                    status: "y",
-                });
-
-                if (response && response.response) {
-                    setDepartmentTypes([...departmentTypes, response.response]);
-                }
-                showPopup(ADD_DEPARTMENT_TYPE_SUCC_MSG, "success");
+                throw new Error(response.message || "Update failed");
             }
 
-            setEditingType(null);
-            setFormData({ departmentTypeCode: "", departmentTypeName: "" });
-            setShowForm(false);
-        } catch (err) {
-            console.error("Error saving department type:", err);
-            showPopup(FAIL_TO_SAVE_CHANGES, "error");
-        } finally {
-            setLoading(false);
+        } else {
+
+            // Duplicate check
+            const isDuplicate = departmentTypes.some(
+                (type) =>
+                    type.departmentTypeCode === payload.departmentTypeCode ||
+                    type.departmentTypeName === payload.departmentTypeName
+            );
+
+            if (isDuplicate) {
+                showPopup(DUPLICATE_DEPARTMENT_TYPE, "error");
+                setSaving(false);
+                return;
+            }
+
+            response = await postRequest(
+                `${MAS_DEPARTMENT_TYPE}/create`,
+                payload
+            );
+
+            if (response.status === 201 || response.status === 200) {
+                setPopupMessage({
+                    message: "Department type added successfully!",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchDepartmentTypes();
+                        setShowForm(false);
+                    }
+                });
+            } else {
+                throw new Error(response.message || "Save failed");
+            }
         }
-    };
+
+    } catch (error) {
+        console.error("Save error:", error);
+
+        showPopup(
+            error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+            "error"
+        );
+    } finally {
+        setSaving(false);
+    }
+};
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -144,30 +196,55 @@ const Departmenttype = () => {
         setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
     };
 
-    const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.categoryId !== null) {
-            try {
-                setLoading(true);
-                await putRequest(
-                    `${MAS_DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
-                );
-                
-                // Call fetchDepartmentTypes to reload data from API
-                await fetchDepartmentTypes();
-                
-                showPopup(
-                    `Department type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                    "success"
-                );
-            } catch (err) {
-                console.error("Error updating department type status:", err);
-                showPopup(FAIL_TO_UPDATE_STS, "error");
-            } finally {
-                setLoading(false);
+   const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.categoryId !== null) {
+        setLoading(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Department type ${confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                        } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchDepartmentTypes();
+                    }
+                });
+            } else {
+                throw new Error(response.message || "Status update failed");
             }
+
+        } catch (err) {
+            console.error("Error updating department type status:", err);
+
+            showPopup(
+                err.response?.data?.message || FAIL_TO_UPDATE_STS,
+                "error"
+            );
+        } finally {
+            setLoading(false);
+
+            setConfirmDialog({
+                isOpen: false,
+                categoryId: null,
+                newStatus: null
+            });
         }
-        setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
-    };
+    } else {
+        setConfirmDialog({
+            isOpen: false,
+            categoryId: null,
+            newStatus: null
+        });
+    }
+};
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;

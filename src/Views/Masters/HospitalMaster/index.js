@@ -310,111 +310,173 @@ const labBillingValue = hospital.labStatus === "y" ? "Yes" : "No";
     setShowForm(true);
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+ const resetForm = () => {
+  setFormData({
+    hospitalCode: "",
+    hospitalName: "",
+    address: "",
+    country: "",
+    countryId: "",
+    state: "",
+    stateId: "",
+    district: "",
+    districtId: "",
+    city: "",
+    pincode: "",
+    contactNumber1: "",
+    contactNumber2: "",
+    email: "",
+    regCostApplicable: "",
+    appCostApplicable: "",
+    preConsultationAvailable: "",
+    latitude: "",
+    longitude: "",
+    executive1Contact: "",
+    executive2Contact: "",
+    laboratoryBilling: "",
+    radiologyBilling: "",
+  });
 
-    try {
-      setLoading(true);
+  setEditingHospital(null);
+};
 
-      const isDuplicate = hospitals.some(
-        (hospital) =>
-          hospital.id !== (editingHospital ? editingHospital.id : null) &&
-          (hospital.hospitalCode === formData.hospitalCode ||
-            hospital.hospitalName === formData.hospitalName ||
-            hospital.email === formData.email),
+const handleSave = async (e) => {
+  e.preventDefault();
+  setLoading(true);
+
+  if (!isFormValid) {
+    setLoading(false);
+    return;
+  }
+
+  try {
+
+    // Duplicate check
+    const isDuplicate = hospitals.some(
+      (hospital) =>
+        hospital.id !== (editingHospital ? editingHospital.id : null) &&
+        (
+          hospital.hospitalCode?.trim().toLowerCase() ===
+            formData.hospitalCode.trim().toLowerCase() ||
+          hospital.hospitalName?.trim().toLowerCase() ===
+            formData.hospitalName.trim().toLowerCase() ||
+          hospital.email?.trim().toLowerCase() ===
+            formData.email.trim().toLowerCase()
+        )
+    );
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_HOSPITAL, "error");
+      setLoading(false);
+      return;
+    }
+
+    const regCostValue =
+      formData.regCostApplicable === "Yes" ? "y" : "n";
+
+    const appCostValue =
+      formData.appCostApplicable === "Yes" ? "y" : "n";
+
+    const preConsultationValue =
+      formData.preConsultationAvailable === "Yes" ? "y" : "n";
+
+    const labBillingValue =
+      formData.laboratoryBilling === "Yes" ? "y" : "n";
+
+    const radBillingValue =
+      formData.radiologyBilling === "Yes" ? "y" : "n";
+
+    // Payload
+    const payload = {
+      hospitalCode: formData.hospitalCode.trim(),
+      hospitalName: formData.hospitalName.trim(),
+      address: formData.address.trim(),
+      countryId: formData.countryId,
+      stateId: formData.stateId,
+      districtId: formData.districtId,
+      city: formData.city.trim(),
+      pinCode: formData.pincode.trim(),
+      contactNumber: formData.contactNumber1.trim(),
+      contactNumber2: formData.contactNumber2.trim(),
+      email: formData.email.trim(),
+      regCostApplicable: regCostValue,
+      appCostApplicable: appCostValue,
+      preConsultationAvailable: preConsultationValue,
+      latitude: formData.latitude
+        ? parseFloat(formData.latitude)
+        : null,
+      longitude: formData.longitude
+        ? parseFloat(formData.longitude)
+        : null,
+      executive1Contact: formData.executive1Contact.trim(),
+      executive2Contact: formData.executive2Contact.trim(),
+      labStatus: labBillingValue,
+      radioStatus: radBillingValue,
+    };
+
+    let response;
+
+    if (editingHospital) {
+
+      payload.status = editingHospital.status;
+
+      response = await putRequest(
+        `${MAS_HOSPITAL}/updateById/${editingHospital.id}`,
+        payload
       );
 
-      if (isDuplicate) {
-        showPopup(DUPLICATE_HOSPITAL, "error");
-        setLoading(false);
-        return;
-      }
-
-      const regCostValue = formData.regCostApplicable === "Yes" ? "y" : "n";
-      const appCostValue = formData.appCostApplicable === "Yes" ? "y" : "n";
-      const preConsultationValue =
-        formData.preConsultationAvailable === "Yes" ? "y" : "n";
-const labBillingValue = formData.laboratoryBilling === "Yes" ? "y" : "n";      
-    const radBillingValue = formData.radiologyBilling === "Yes" ? "y" : "n";      
-
-      // Build payload with correct field names matching backend
-      const payload = {
-        hospitalCode: formData.hospitalCode,
-        hospitalName: formData.hospitalName,
-        address: formData.address,
-        countryId: formData.countryId,
-        stateId: formData.stateId,
-        districtId: formData.districtId,
-        city: formData.city,
-        pinCode: formData.pincode,                    // Backend expects pinCode
-        contactNumber: formData.contactNumber1,        // Backend expects contactNumber
-        contactNumber2: formData.contactNumber2,
-        email: formData.email,
-        regCostApplicable: regCostValue,
-        appCostApplicable: appCostValue,
-        preConsultationAvailable: preConsultationValue,
-        latitude: formData.latitude ? parseFloat(formData.latitude) : null,
-        longitude: formData.longitude ? parseFloat(formData.longitude) : null,
-        executive1Contact: formData.executive1Contact,
-        executive2Contact: formData.executive2Contact,
-        labStatus: labBillingValue,                    // Backend expects labStatus
-        radioStatus: radBillingValue,                  // Backend expects radioStatus
-      };
-
-      if (editingHospital) {
-        payload.status = editingHospital.status;
-        
-        const response = await putRequest(
-          `${MAS_HOSPITAL}/updateById/${editingHospital.id}`,
-          payload,
-        );
-
-        showPopup(UPDATE_HOSPITAL_SUCC_MSG, "success");
-        fetchHospitals();
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_HOSPITAL_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchHospitals();
+            setShowForm(false);
+          },
+        });
       } else {
-        const response = await postRequest(`${MAS_HOSPITAL}/create`, payload);
-
-        if (response && response.response) {
-          setHospitals([...hospitals, response.response]);
-        }
-        showPopup(ADD_HOSPITAL_SUCC_MSG, "success");
+        throw new Error(response.message || "Update failed");
       }
 
-      setEditingHospital(null);
-      setFormData({
-        hospitalCode: "",
-        hospitalName: "",
-        address: "",
-        country: "",
-        countryId: "",
-        state: "",
-        stateId: "",
-        district: "",
-        districtId: "",
-        city: "",
-        pincode: "",
-        contactNumber1: "",
-        contactNumber2: "",
-        email: "",
-        regCostApplicable: "",
-        appCostApplicable: "",
-        preConsultationAvailable: "",
-        latitude: "",
-        longitude: "",
-        executive1Contact: "",
-        executive2Contact: "",
-         laboratoryBilling: "",     
-  radiologyBilling: "",    
-      });
-      setShowForm(false);
-    } catch (err) {
-      console.error("Error saving hospital:", err);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
-    } finally {
-      setLoading(false);
+    } else {
+
+      payload.status = "y";
+
+      response = await postRequest(
+        `${MAS_HOSPITAL}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_HOSPITAL_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchHospitals();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
     }
-  };
+
+  } catch (error) {
+    console.error("Error saving hospital:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({

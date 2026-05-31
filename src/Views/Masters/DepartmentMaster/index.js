@@ -145,76 +145,135 @@ const DepartmentMaster = () => {
         setShowForm(true);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+    const resetForm = () => {
+  setFormData({
+    departmentCode: "",
+    departmentName: "",
+    departmentType: "",
+    departmentTypeId: "",
+    departmentNo: "",
+    wardCategoryId: "",
+    indentApplicable: "n",
+  });
 
-        try {
-            setLoading(true);
+  setEditingDepartment(null);
+};
 
-            const isDuplicate = departments.some(
-                (dept) =>
-                    dept.id !== (editingDepartment ? editingDepartment.id : null) &&
-                    (dept.departmentCode === formData.departmentCode ||
-                        // dept.departmentName === formData.departmentName ||
-                        (formData.departmentNo && dept.departmentNo === formData.departmentNo))
-            );
+const handleSave = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-            if (isDuplicate) {
-                showPopup(DUPLICATE_DEPARTMENT, "error");
-                setLoading(false);
-                return;
-            }
+  if (!isFormValid) {
+    setLoading(false);
+    return;
+  }
 
-            // Prepare data to send
-            const departmentData = {
-                departmentCode: formData.departmentCode,
-                departmentName: formData.departmentName,
-                departmentTypeId: formData.departmentTypeId,
-                departmentNo: formData.departmentNo || null,
-                indentApplicable: formData.indentApplicable, // Add indentApplicable field
-                status: editingDepartment ? editingDepartment.status : "y",
-            };
+  try {
 
-            // Add wardCategoryId only if department type ID is WARD_ID (10)
-            if (parseInt(formData.departmentTypeId) === WARD_ID && formData.wardCategoryId) {
-                departmentData.wardCategoryId = formData.wardCategoryId;
-            } else {
-                departmentData.wardCategoryId = null;
-            }
-
-if (editingDepartment) {
-    await putRequest(
-        `${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`,
-        departmentData
+    // Duplicate check
+    const isDuplicate = departments.some(
+      (dept) =>
+        dept.id !== (editingDepartment ? editingDepartment.id : null) &&
+        (
+          dept.departmentCode?.trim().toLowerCase() ===
+            formData.departmentCode.trim().toLowerCase() ||
+          (
+            formData.departmentNo &&
+            dept.departmentNo === formData.departmentNo
+          )
+        )
     );
-    showPopup(UPDATE_DEPARTMENT_SUCC_MSG, "success");
-} else {
-    await postRequest(`${MAS_DEPARTMENT}/create`, departmentData);
-    showPopup(ADD_DEPARTMENT_SUCC_MSG, "success");
-}
 
-await fetchDepartments();
- 
-            setEditingDepartment(null);
-            setFormData({
-                departmentCode: "",
-                departmentName: "",
-                departmentType: "",
-                departmentTypeId: "",
-                departmentNo: "",
-                wardCategoryId: "",
-                indentApplicable: "n"
-            });
-            setShowForm(false);
-            fetchDepartments();
-        } catch (err) {
-            console.error("Error saving department:", err);
-            showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
-        } finally {
-            setLoading(false);
-        }
+    if (isDuplicate) {
+      showPopup(DUPLICATE_DEPARTMENT, "error");
+      setLoading(false);
+      return;
+    }
+
+    // Payload
+    const payload = {
+      departmentCode: formData.departmentCode.trim(),
+      departmentName: formData.departmentName.trim(),
+      departmentTypeId: formData.departmentTypeId,
+      departmentNo: formData.departmentNo || null,
+      indentApplicable: formData.indentApplicable,
     };
+
+    // Add wardCategoryId only for ward department type
+    if (
+      parseInt(formData.departmentTypeId) === WARD_ID &&
+      formData.wardCategoryId
+    ) {
+      payload.wardCategoryId = formData.wardCategoryId;
+    } else {
+      payload.wardCategoryId = null;
+    }
+
+    let response;
+
+    if (editingDepartment) {
+
+      payload.status = editingDepartment.status;
+
+      response = await putRequest(
+        `${MAS_DEPARTMENT}/updateById/${editingDepartment.id}`,
+        payload
+      );
+
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_DEPARTMENT_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchDepartments();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Update failed");
+      }
+
+    } else {
+
+      payload.status = "y";
+
+      response = await postRequest(
+        `${MAS_DEPARTMENT}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_DEPARTMENT_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchDepartments();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
+    }
+
+  } catch (error) {
+    console.error("Error saving department:", error);
+
+    showPopup(
+      `${FAIL_TO_SAVE_CHANGES} ${
+        error.response?.data?.message || error.message
+      }`,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -229,38 +288,54 @@ await fetchDepartments();
     const handleSwitchChange = (id, newStatus) => {
         setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
     };
+const [saving, setSaving] = useState(false);
 
-    const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.categoryId !== null) {
-            try {
-                setLoading(true);
-                const status = confirmDialog.newStatus;
-                const response = await putRequest(
-                    `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${status}`
+   const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.categoryId !== null) {
+        setSaving(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Department "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchDepartments();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update department status"
                 );
-
-                if (response && response.status === 200) {
-                    setDepartments((prevData) =>
-                        prevData.map((dept) =>
-                            dept.id === confirmDialog.categoryId
-                                ? { ...dept, status: confirmDialog.newStatus }
-                                : dept
-                        )
-                    );
-                    showPopup(
-                        `Department ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
-                }
-            } catch (err) {
-                console.error("Error updating department status:", err);
-                showPopup(FAIL_TO_UPDATE_STS, "error");
-            } finally {
-                setLoading(false);
             }
+        } catch (error) {
+            console.error("Error updating department status:", error);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
         }
-        setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
-    };
+    }
+
+    setConfirmDialog({
+        isOpen: false,
+        categoryId: null,
+        newStatus: "",
+        name: "",
+    });
+};
 
     const handleRefresh = () => {
         setSearchQuery("");

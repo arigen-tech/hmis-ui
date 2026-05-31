@@ -240,7 +240,10 @@ import SurgeryMaster from './Views/Masters/SurgeryMaster';
 import SurgeryPricing from './Views/Masters/SurgeryPricing';
 import BillingTemplate from './Views/Masters/BillingTemplate';
 import OpdVision from './Views/OPD/OpdVision';
-import OBGDetails from './Views/OPD/OBGDetails';
+// import OBGDetails from './Views/OPD/OBGDetails';
+// import EarExamination from './Views/OPD/EarExamination';
+// import GynaMaster from './Views/OPD/GynaMaster';
+import { GET_ALL_ITEMS_BY_NAME } from './config/apiConfig';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -512,7 +515,9 @@ function App() {
                 <Route path="/SurgeryPricing" element={<SurgeryPricing/>} />
                 <Route path="/BillingTemplate" element={<BillingTemplate/>} />
                 <Route path="/OpdVision" element={<OpdVision/>} />
-                <Route path="/OBGDetails" element={<OBGDetails/>} />
+                {/* <Route path="/OBGDetails" element={<OBGDetails/>} /> */}
+                {/* <Route path="/EarExamination" element={<EarExamination/>} /> */}
+                {/* <Route path="/GynaMaster" element={<GynaMaster/>} /> */}
                 </Route>
             </Route>
 

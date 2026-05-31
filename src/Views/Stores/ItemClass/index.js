@@ -129,21 +129,22 @@ const Itemclass = () => {
             }
 
             if (response.status === 200) {
-                showPopup(
-                    editingClass
+                setPopupMessage({
+                    message: editingClass
                         ? "Item Class updated successfully!"
                         : "New Item Class added successfully!",
-                    "success"
-                );
-
-                await fetchItemClassData();
-
-                setEditingClass(null);
-                setShowForm(false);
-                setFormData({
-                    serviceCatName: "",
-                    sacCode: "",
-                    gstApplicable: false,
+                    type: "success",
+                    onClose: async () => {
+                        setPopupMessage(null);
+                        await fetchItemClassData();
+                        setEditingClass(null);
+                        setShowForm(false);
+                        setFormData({
+                            ClassCode: "",
+                            ClassName: "",
+                            Section: "",
+                        });
+                    }
                 });
             } else {
                 throw new Error(response.message || 'Failed to save item class');
@@ -185,11 +186,15 @@ const Itemclass = () => {
                 );
 
                 if (response.status === 200) {
-                   showPopup(
-    `Item Class ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-    "success"
-);
-                    await fetchItemClassData();
+                    setPopupMessage({
+                        message: `Item Class ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+                        type: "success",
+                        onClose: async () => {
+                            setPopupMessage(null);
+                            await fetchItemClassData();
+                            setCurrentPage(1);
+                        }
+                    });
                 } else {
                     throw new Error(response.message || "Failed to update status");
                 }
@@ -199,10 +204,8 @@ const Itemclass = () => {
             } finally {
                 setProcess(false);
             }
-            setConfirmDialog({ isOpen: false, ClassId: null, newStatus: null });
-        } else {
-            setConfirmDialog({ isOpen: false, ClassId: null, newStatus: null });
         }
+        setConfirmDialog({ isOpen: false, ClassId: null, newStatus: null });
     }
 
 
@@ -473,4 +476,3 @@ const Itemclass = () => {
 }
 
 export default Itemclass
-

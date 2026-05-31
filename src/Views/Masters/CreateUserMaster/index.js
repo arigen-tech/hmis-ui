@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_USER_TYPE, MAS_ROLES, MAS_DEPARTMENT, API_HOST, MAS_USER_DEPARTMENT } from "../../../config/apiConfig";
+import { MAS_USER_TYPE, MAS_ROLES, MAS_DEPARTMENT, MAS_USER_DEPARTMENT } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading/index";
 
 const Createusermaster = () => {
@@ -264,14 +264,12 @@ const Createusermaster = () => {
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.userId !== null && confirmDialog.action === "status") {
             try {
-                const response = await fetch(
-                    `${API_HOST}/authController/updateStatus/${confirmDialog.userId}?status=${confirmDialog.newStatus}`,
-                    {
-                        method: "PUT",
-                    }
+                const response = await putRequest(
+                    `/authController/updateStatus/${confirmDialog.userId}?status=${confirmDialog.newStatus}`,
+                    {}
                 );
 
-                if (!response.ok) {
+                if (response.status !== 200) {
                     throw new Error("Failed to update status");
                 }
 
@@ -587,7 +585,7 @@ const Createusermaster = () => {
                                 </>
                             ) : (
                                 <form className="forms row">
-                                    <div className="card-header d-flex justify-content-between align-items-center mb-3">
+                                    {/* <div className="card-header d-flex justify-content-between align-items-center mb-3">
                                         <h5 className="card-title mb-0">{editMode ? "Edit User" : "Add New User"}</h5>
                                         <button
                                             type="button"
@@ -600,7 +598,7 @@ const Createusermaster = () => {
                                         >
                                             <i className="mdi mdi-arrow-left"></i> Back
                                         </button>
-                                    </div>
+                                    </div> */}
 
                                     <div className="card-body">
                                         <div className="row g-3 align-items-center">
@@ -805,7 +803,7 @@ const Createusermaster = () => {
                                                     No
                                                 </button>
                                                 <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                                                    Yes
+                                                    OK
                                                 </button>
                                             </div>
                                         </div>
