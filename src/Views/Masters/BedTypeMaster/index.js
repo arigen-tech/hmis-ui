@@ -3,16 +3,18 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_BED_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { ADD_BED_TYPE_SUCC_MSG, DUPLICATE_BED_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_BED_TYPE_SUCC_MSG } from "../../../config/constants";
+import { ADD_BED_TYPE_SUCC_MSG, DUPLICATE_BED_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_TYPE_ERR_MSG, UPDATE_BED_TYPE_SUCC_MSG } from "../../../config/constants";
 import Pagination, {DEFAULT_ITEMS_PER_PAGE} from "../../../Components/Pagination";
 
 const BedTypeMaster = () => {
   const [bedTypeData, setBedTypeData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     typeId: null,
-    newStatus: false
+    newStatus: "",
+    name: ""
   });
 
   const [formData, setFormData] = useState({
@@ -26,13 +28,11 @@ const BedTypeMaster = () => {
   const [editingType, setEditingType] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("1");
 
   const BED_TYPE_NAME_MAX_LENGTH = 50;
   const DESCRIPTION_MAX_LENGTH = 200;
 
-  // Function to format date as dd-MM-YYYY
+  // Function to format date as dd/MM/YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
 
@@ -45,7 +45,7 @@ const BedTypeMaster = () => {
       }
 
       const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
 
       return `${day}/${month}/${year}`;
@@ -91,21 +91,14 @@ const BedTypeMaster = () => {
   );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredBedTypeData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredBedTypeData.slice(indexOfFirstItem, indexOfLastItem);
 
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-    setPageInput("1");
   }, [searchQuery]);
-
-  // Update page input when current page changes
-  useEffect(() => {
-    setPageInput(currentPage.toString());
-  }, [currentPage]);
 
   // Validate form whenever formData changes
   useEffect(() => {
@@ -118,6 +111,12 @@ const BedTypeMaster = () => {
     };
     setIsFormValid(validateForm());
   }, [formData]);
+
+  const resetForm = () => {
+    setFormData({ bedTypeName: "", description: "" });
+    setIsFormValid(false);
+    setEditingType(null);
+  };
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -134,11 +133,14 @@ const BedTypeMaster = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    
+    if (!isFormValid) {
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      setLoading(true);
-
       // Check for duplicates
       const isDuplicate = bedTypeData.some(
         (type) =>
@@ -148,7 +150,6 @@ const BedTypeMaster = () => {
 
       if (isDuplicate) {
         showPopup(DUPLICATE_BED_TYPE, "error");
-        setLoading(false);
         return;
       }
 
@@ -160,8 +161,18 @@ const BedTypeMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchBedTypeData();
-          showPopup(UPDATE_BED_TYPE_SUCC_MSG, "success");
+          setPopupMessage({
+            message: UPDATE_BED_TYPE_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchBedTypeData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
         }
       } else {
         // Add new bed type
@@ -170,20 +181,29 @@ const BedTypeMaster = () => {
           description: formData.description,
         });
 
-        if (response && response.status === 200) {
-          fetchBedTypeData();
-          showPopup(ADD_BED_TYPE_SUCC_MSG, "success");
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BED_TYPE_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchBedTypeData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
         }
       }
-
-      setEditingType(null);
-      setFormData({ bedTypeName: "", description: "" });
-      setShowForm(false);
     } catch (err) {
       console.error("Error saving bed type data:", err);
-      showPopup(`${FAIL_TO_SAVE_CHANGES} ${err.response?.data?.message || err.message}`, "error");
+      showPopup(
+        err.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+        "error"
+      );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -197,63 +217,51 @@ const BedTypeMaster = () => {
     });
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, typeId: id, newStatus });
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
+    setConfirmDialog({ isOpen: true, typeId: id, newStatus, name });
   };
 
- const handleConfirm = async (confirmed) => {
-  if (confirmed && confirmDialog.typeId !== null) {
-    try {
-      setLoading(true);
+  const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.typeId !== null) {
+      setSaving(true);
 
-      const response = await putRequest(
-        `${MAS_BED_TYPE}/status/${confirmDialog.typeId}?status=${confirmDialog.newStatus}`
-      );
-
-      if (response && response.status === 200) {
-
-        // ONLY local update (no API refresh)
-        setBedTypeData((prevData) =>
-          prevData.map((type) =>
-            type.id === confirmDialog.typeId
-              ? {
-                  ...type,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-              : type
-          )
+      try {
+        const response = await putRequest(
+          `${MAS_BED_TYPE}/status/${confirmDialog.typeId}?status=${confirmDialog.newStatus}`
         );
 
-        showPopup(
-          `Bed type ${
-            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-          } successfully!`,
-          "success"
-        );
-      } else {
+        if (response && response.status === 200) {
+          setPopupMessage({
+            message: `Bed type "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchBedTypeData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (err) {
+        console.error("Error updating bed type status:", err);
         showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setSaving(false);
       }
-
-    } catch (err) {
-      console.error("Error updating bed type status:", err);
-      showPopup(FAIL_TO_UPDATE_STS, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({
-        isOpen: false,
-        typeId: null,
-        newStatus: null
-      });
     }
-  } else {
+
     setConfirmDialog({
       isOpen: false,
       typeId: null,
-      newStatus: null
+      newStatus: "",
+      name: "",
     });
-  }
-};
+  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -263,13 +271,7 @@ const BedTypeMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setPageInput("1");
-    fetchBedTypeData(); // Refresh from API
-  };
-
-
-  const handlePageInputChange = (e) => {
-    setPageInput(e.target.value);
+    fetchBedTypeData();
   };
 
   return (
@@ -279,70 +281,61 @@ const BedTypeMaster = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Bed Type Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
+              <div className="d-flex align-items-center">
+                {!showForm && (
+                  <input
+                    className="form-control w-50 me-2"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
                 )}
 
-                <div className="d-flex align-items-center">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setEditingType(null);
-                          setFormData({ bedTypeName: "", description: "" });
-                          setShowForm(true);
-                        }}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                        onClick={handleRefresh}
-                      >
-                        <i className="mdi mdi-refresh"></i> Show All
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
+                {!showForm ? (
+                  <>
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
                     </button>
-                  )}
-                </div>
+                    <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      resetForm();
+                      setShowForm(false);
+                    }}
+                  >
+                    Back
+                  </button>
+                )}
               </div>
             </div>
+
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {loading && !showForm && <LoadingScreen />}
+
+              {!showForm && !loading && (
                 <>
-                  <div className="table-responsive packagelist">
+                  <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
                           <th>Bed Type Name</th>
                           <th>Description</th>
-                          <th>Status</th>
                           <th>Last Updated</th>
+                          <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
@@ -352,27 +345,27 @@ const BedTypeMaster = () => {
                             <tr key={type.id}>
                               <td>{type.bedTypeName}</td>
                               <td>{type.description || "N/A"}</td>
+                              <td>{type.lastUpdated}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={type.status === "y"}
-                                    onChange={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
+                                    onChange={() => handleSwitchChange(type.id, type.status, type.bedTypeName)}
                                     id={`switch-${type.id}`}
                                   />
                                   <label
-                                    className="form-check-label px-0"
+                                    className="form-check-label ms-2"
                                     htmlFor={`switch-${type.id}`}
                                   >
                                     {type.status === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
-                              <td>{type.lastUpdated}</td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(type)}
                                   disabled={type.status !== "y"}
                                 >
@@ -383,23 +376,24 @@ const BedTypeMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="5" className="text-center">No bed type data found</td>
+                            <td colSpan="5" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
 
-                   {/* Pagination */}
-                                                     <Pagination
-                                                       totalItems={filteredBedTypeData.length}
-                                                       itemsPerPage={itemsPerPage}
-                                                       currentPage={currentPage}
-                                                       onPageChange={setCurrentPage}
-                                                     />
+                  <Pagination
+                    totalItems={filteredBedTypeData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
+              )}
+
+              {showForm && (
+                <form className="row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
                     <label>Bed Type Name <span className="text-danger">*</span></label>
                     <input
@@ -407,15 +401,12 @@ const BedTypeMaster = () => {
                       className="form-control mt-1"
                       id="bedTypeName"
                       name="bedTypeName"
-                      placeholder="Enter bed type name (e.g., ICU Bed, General Ward)"
+                      placeholder="Enter bed type name"
                       value={formData.bedTypeName}
                       onChange={handleInputChange}
                       maxLength={BED_TYPE_NAME_MAX_LENGTH}
                       required
                     />
-                    {/* <small className="text-muted">
-                      {formData.bedTypeName.length}/{BED_TYPE_NAME_MAX_LENGTH} characters
-                    </small> */}
                   </div>
 
                   <div className="form-group col-md-6">
@@ -431,24 +422,23 @@ const BedTypeMaster = () => {
                       rows="2"
                       required
                     />
-                    {/* <small className="text-muted">
-                      {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small> */}
                   </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                  <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid || saving}
                     >
-                      {loading ? "Saving..." : (editingType ? 'Update' : 'Save')}
+                      {saving ? "Saving..." : editingType ? 'Update' : 'Save'}
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
-                      disabled={loading}
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(false);
+                      }}
                     >
                       Cancel
                     </button>
@@ -465,28 +455,26 @@ const BedTypeMaster = () => {
               )}
 
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog modal-dialog-centered" role="document">
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
-                          <strong> {bedTypeData.find(type => type.id === confirmDialog.typeId)?.bedTypeName}</strong> bed type?
-                        </p>
-                        {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the bed type available for use." 
-                            : "This will hide the bed type from selection."}
-                        </p> */}
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
-                          {loading ? "Processing..." : "Confirm"}
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
                         </button>
                       </div>
                     </div>

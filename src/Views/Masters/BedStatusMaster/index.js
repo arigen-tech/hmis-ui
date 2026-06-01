@@ -3,17 +3,18 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_BED_STATUS } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { ADD_BED_STATUS_SUCC_MSG, DUPLICATE_BED_STATUS, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_STATUS_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_BED_STATUS_SUCC_MSG } from "../../../config/constants";
+import { ADD_BED_STATUS_SUCC_MSG, DUPLICATE_BED_STATUS, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_STATUS_ERR_MSG, UPDATE_BED_STATUS_SUCC_MSG } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";  
- 
 
 const BedStatusMaster = () => {
   const [bedStatusData, setBedStatusData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     statusId: null,
-    newStatus: false
+    newStatus: "",
+    name: ""
   });
 
   const [formData, setFormData] = useState({
@@ -26,12 +27,10 @@ const BedStatusMaster = () => {
   const [editingStatus, setEditingStatus] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("1");
 
   const STATUS_NAME_MAX_LENGTH = 50;
 
-  // Function to format date as dd-MM-YYYY
+  // Function to format date as dd/MM/YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
 
@@ -44,7 +43,7 @@ const BedStatusMaster = () => {
       }
 
       const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
 
       return `${day}/${month}/${year}`;
@@ -86,21 +85,14 @@ const BedStatusMaster = () => {
   );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredBedStatusData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredBedStatusData.slice(indexOfFirstItem, indexOfLastItem);
 
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-    setPageInput("1");
   }, [searchQuery]);
-
-  // Update page input when current page changes
-  useEffect(() => {
-    setPageInput(currentPage.toString());
-  }, [currentPage]);
 
   // Validate form whenever formData changes
   useEffect(() => {
@@ -109,6 +101,12 @@ const BedStatusMaster = () => {
     };
     setIsFormValid(validateForm());
   }, [formData]);
+
+  const resetForm = () => {
+    setFormData({ statusName: "" });
+    setIsFormValid(false);
+    setEditingStatus(null);
+  };
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -123,55 +121,72 @@ const BedStatusMaster = () => {
   };
 
   const handleSave = async (e) => {
-  e.preventDefault();
-  if (!isFormValid) return;
-
-  try {
-    setLoading(true);
-
-    const payload = {
-      bedStatusName: formData.statusName,
-    };
-
-    let response;
-
-    if (editingStatus) {
-      response = await putRequest(
-        `${MAS_BED_STATUS}/update/${editingStatus.id}`,
-        payload
-      );
-    } else {
-      response = await postRequest(
-        `${MAS_BED_STATUS}/create`,
-        payload
-      );
+    e.preventDefault();
+    
+    if (!isFormValid) {
+      return;
     }
 
-    if (response && response.status === 200) {
+    setSaving(true);
 
+    try {
+      const payload = {
+        bedStatusName: formData.statusName,
+      };
+
+      let response;
+
+      if (editingStatus) {
+        response = await putRequest(
+          `${MAS_BED_STATUS}/update/${editingStatus.id}`,
+          payload
+        );
+
+        if (response && response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BED_STATUS_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchBedStatusData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
+      } else {
+        response = await postRequest(
+          `${MAS_BED_STATUS}/create`,
+          payload
+        );
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BED_STATUS_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchBedStatusData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
+      }
+    } catch (err) {
+      console.error("Error saving bed status data:", err);
       showPopup(
-        editingStatus
-          ? UPDATE_BED_STATUS_SUCC_MSG
-          : ADD_BED_STATUS_SUCC_MSG,
-        "success"
+        err.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+        "error"
       );
-
-      await fetchBedStatusData(0);
-
-      setEditingStatus(null);
-      setFormData({ statusName: "" });
-      setShowForm(false);
-    } else {
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+    } finally {
+      setSaving(false);
     }
-
-  } catch (err) {
-    console.error(err);
-    showPopup(FAIL_TO_SAVE_CHANGES, "error");
-  } finally {
-    setLoading(false);
-  }
-};
+  };
 
   const showPopup = (message, type = 'info') => {
     setPopupMessage({
@@ -183,80 +198,58 @@ const BedStatusMaster = () => {
     });
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, statusId: id, newStatus });
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
+    setConfirmDialog({ isOpen: true, statusId: id, newStatus, name });
   };
 
   const handleConfirm = async (confirmed) => {
-  if (!confirmed || confirmDialog.statusId === null) return;
+    if (confirmed && confirmDialog.statusId !== null) {
+      setSaving(true);
 
-  try {
-    setLoading(true);
+      try {
+        const response = await putRequest(
+          `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
+        );
 
-    const response = await putRequest(
-      `${MAS_BED_STATUS}/status/${confirmDialog.statusId}?status=${confirmDialog.newStatus}`
-    );
-
-    if (response && response.status === 200) {
-
-      setBedStatusData((prev) =>
-        prev.map((item) =>
-          item.id === confirmDialog.statusId
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
-        )
-      );
-
-      showPopup(
-        `Bed status ${
-          confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-        } successfully!`,
-        "success"
-      );
-    } else {
-      showPopup(FAIL_TO_UPDATE_STS, "error");
+        if (response && response.status === 200) {
+          setPopupMessage({
+            message: `Bed status "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchBedStatusData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (err) {
+        console.error("Error updating bed status:", err);
+        showPopup(FAIL_TO_UPDATE_STS, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-  } catch (err) {
-    showPopup(FAIL_TO_UPDATE_STS, "error");
-  } finally {
-    setLoading(false);
-    setConfirmDialog({ isOpen: false, statusId: null, newStatus: null });
-  }
-};
-  /*const handleInputChange = (e) => {
-    const { id, value } = e.target;
-    setFormData((prevData) => ({ ...prevData, [id]: value }));
-  };*/
+    setConfirmDialog({
+      isOpen: false,
+      statusId: null,
+      newStatus: "",
+      name: "",
+    });
+  };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setPageInput("1");
-    fetchBedStatusData(); // Refresh from API
+    fetchBedStatusData();
   };
 
- /* const handlePageNavigation = () => {
-    const pageNumber = parseInt(pageInput);
-    if (!isNaN(pageNumber) && pageNumber >= 1 && pageNumber <= totalPages) {
-      setCurrentPage(pageNumber);
-    } else {
-      showPopup(INVALID_PAGE_NO_WARN_MSG, "error");
-      setPageInput(currentPage.toString());
-    }
-  };*/
-
-  const handlePageInputChange = (e) => {
-    setPageInput(e.target.value);
-  };
-
- /* const handleKeyPress = (e) => {
-    if (e.key === 'Enter') {
-      handlePageNavigation();
-    }
-  };*/
-
- 
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -264,69 +257,60 @@ const BedStatusMaster = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Bed Status Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
+              <div className="d-flex align-items-center">
+                {!showForm && (
+                  <input
+                    className="form-control w-50 me-2"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
                 )}
 
-                <div className="d-flex align-items-center">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setEditingStatus(null);
-                          setFormData({ statusName: "" });
-                          setShowForm(true);
-                        }}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                        onClick={handleRefresh}
-                      >
-                        <i className="mdi mdi-refresh"></i> Show All
-                      </button>
-                    </>
-                  ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
+                {!showForm ? (
+                  <>
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
                     </button>
-                  )}
-                </div>
+                    <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      resetForm();
+                      setShowForm(false);
+                    }}
+                  >
+                    Back
+                  </button>
+                )}
               </div>
             </div>
+
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {loading && !showForm && <LoadingScreen />}
+
+              {!showForm && !loading && (
                 <>
-                  <div className="table-responsive packagelist">
+                  <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
                           <th>Bed Status Name</th>
-                          <th>Status</th>
                           <th>Last Updated</th>
+                          <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
@@ -335,27 +319,27 @@ const BedStatusMaster = () => {
                           currentItems.map((status) => (
                             <tr key={status.id}>
                               <td>{status.statusName}</td>
+                              <td>{status.lastUpdated}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={status.status === "y"}
-                                    onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+                                    onChange={() => handleSwitchChange(status.id, status.status, status.statusName)}
                                     id={`switch-${status.id}`}
                                   />
                                   <label
-                                    className="form-check-label px-0"
+                                    className="form-check-label ms-2"
                                     htmlFor={`switch-${status.id}`}
                                   >
                                     {status.status === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
-                              <td>{status.lastUpdated}</td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(status)}
                                   disabled={status.status !== "y"}
                                 >
@@ -366,57 +350,55 @@ const BedStatusMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="4" className="text-center">No bed status data found</td>
+                            <td colSpan="4" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
-     
-           {/* Pagination */}                
-                      <div>
-                        <Pagination
-                          totalItems={filteredBedStatusData.length}
-                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                          currentPage={currentPage}
-                          onPageChange={setCurrentPage}
-                        />
-                      </div>           
+
+                  <Pagination
+                    totalItems={filteredBedStatusData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
+              )}
+
+              {showForm && (
+                <form className="row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
                     <label>Bed Status Name <span className="text-danger">*</span></label>
                     <input
-  type="text"
-  className="form-control mt-1"
-  id="statusName"
-  name="statusName"
-  value={formData.statusName}
-  onChange={(e) =>
-    setFormData({ ...formData, statusName: e.target.value })
-  }
-  maxLength={STATUS_NAME_MAX_LENGTH}
-  required
-/>
-                    {/* <small className="text-muted">
-                      {formData.statusName.length}/{STATUS_NAME_MAX_LENGTH} characters
-                    </small> */}
+                      type="text"
+                      className="form-control mt-1"
+                      id="statusName"
+                      name="statusName"
+                      value={formData.statusName}
+                      onChange={(e) =>
+                        setFormData({ ...formData, statusName: e.target.value })
+                      }
+                      maxLength={STATUS_NAME_MAX_LENGTH}
+                      required
+                    />
                   </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                  <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid || saving}
                     >
-                      {loading ? "Saving..." : (editingStatus ? 'Update' : 'Save')}
+                      {saving ? "Saving..." : editingStatus ? 'Update' : 'Save'}
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
-                      disabled={loading}
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(false);
+                      }}
                     >
                       Cancel
                     </button>
@@ -433,28 +415,26 @@ const BedStatusMaster = () => {
               )}
 
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog modal-dialog-centered" role="document">
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
-                          <strong> {bedStatusData.find(status => status.id === confirmDialog.statusId)?.statusName}</strong> status?
-                        </p>
-                        {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the bed status available for use." 
-                            : "This will hide the bed status from selection."}
-                        </p> */}
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
-                          {loading ? "Processing..." : "Confirm"}
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
                         </button>
                       </div>
                     </div>
