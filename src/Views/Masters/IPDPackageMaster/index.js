@@ -26,16 +26,16 @@ const IPDPackageMaster = () => {
   
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    recordId: null,
-    newStatus: false,
-    recordName: ""
+    id: null,
+    newStatus: "",
+    name: ""
   });
 
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [process, setProcess] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   
@@ -55,7 +55,7 @@ const IPDPackageMaster = () => {
   // Fetch Admission Categories
   const fetchAdmissionCategories = async () => {
     try {
-      const response = await getRequest("/master/masAdmissionCategory/getAll/1");
+      const response = await getRequest("/master/masAdmissionCategory/getAll/0");
       if (response.status === 200 && Array.isArray(response.response)) {
         const activeCategories = response.response.filter(
           (cat) => cat.status === "y"
@@ -98,7 +98,7 @@ const IPDPackageMaster = () => {
   const fetchIPDPackages = async (page = 0) => {
     setLoading(true);
     try {
-      const response = await getRequest(`/master/ipdPackage/getAll/1?page=${page}&size=${itemsPerPage}`);
+      const response = await getRequest(`/master/ipdPackage/getAll/0?page=${page}&size=${itemsPerPage}`);
       
       if (response.status === 200 && response.response) {
         let packages = [];
@@ -222,7 +222,6 @@ const IPDPackageMaster = () => {
             return {
               serviceCategoryId: cat.categoryId,
               categoryName: cat.categoryName,
-              // Use limitQty for days (backend field name)
               days: existing?.limitQty?.toString() || "",
               limitAmount: existing?.limitAmount?.toString() || "",
               includedFlag: existing?.includedFlag || "n"
@@ -263,24 +262,6 @@ const IPDPackageMaster = () => {
     };
     loadInitialData();
   }, []);
-
-  useEffect(() => {
-    if (!showForm) {
-      fetchIPDPackages(currentPage - 1);
-    }
-  }, [searchQuery, showForm]);
-
-  // ================= SEARCH HANDLER =================
-  const handleSearch = () => {
-    setCurrentPage(1);
-    fetchIPDPackages(0);
-  };
-
-  const handleShowAll = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    fetchIPDPackages(0);
-  };
 
   // ================= FORM HANDLERS =================
   const handleInputChange = (e) => {
@@ -363,18 +344,19 @@ const IPDPackageMaster = () => {
     }));
     setCategoriesConfig(resetConfig);
     setIsFormValid(false);
+    setEditingRecord(null);
+    setFormLoading(false);
   };
   
   // ================= SAVE =================
   const handleSave = async (e) => {
     e.preventDefault();
-    setProcess(true);
     
-    if (!isFormValid) {
-      setProcess(false);
-      showPopup("Please fill all required fields", "error");
+    if (!isFormValid || saving) {
       return;
     }
+
+    setSaving(true);
     
     // Prepare inclusion list - send ALL categories with their includedFlag status
     const masIpdPackageInclusionRequestList = categoriesConfig.map(item => ({
@@ -402,28 +384,44 @@ const IPDPackageMaster = () => {
           payload
         );
         if (response.status === 200) {
-          showPopup("Updated Successfully", "success");
-          await fetchIPDPackages(currentPage - 1);
-          handleCancel();
+          setPopupMessage({
+            message: "Package updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchIPDPackages(currentPage - 1);
+              setShowForm(false);
+            }
+          });
         } else {
-          showPopup(response.message || "Update failed", "error");
+          throw new Error(response.message || "Update failed");
         }
       } else {
         response = await postRequest("/master/ipdPackage/create", payload);
         if (response.status === 200 || response.status === 201) {
-          showPopup("Added Successfully", "success");
-          await fetchIPDPackages(0);
-          handleCancel();
+          setPopupMessage({
+            message: "Package added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchIPDPackages(0);
+              setShowForm(false);
+            }
+          });
         } else {
-          showPopup(response.message || "Save failed", "error");
+          throw new Error(response.message || "Save failed");
         }
       }
     } catch (error) {
       console.error("Error saving record:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to save changes";
-      showPopup(errorMessage, "error");
+      showPopup(
+        error.response?.data?.message || error.message || "Failed to save changes",
+        "error"
+      );
     } finally {
-      setProcess(false);
+      setSaving(false);
     }
   };
   
@@ -435,40 +433,55 @@ const IPDPackageMaster = () => {
   };
   
   // ================= STATUS SWITCH =================
-  const handleSwitchChange = (id, name, newStatus) => {
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
-      recordId: id,
+      id: id,
       newStatus,
-      recordName: name
+      name: name
     });
   };
   
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.recordId !== null) {
-      setProcess(true);
+    if (confirmed && confirmDialog.id !== null) {
+      setSaving(true);
+      
       try {
         const response = await putRequest(
-          `/master/ipdPackage/status/${confirmDialog.recordId}?status=${confirmDialog.newStatus}`
+          `/master/ipdPackage/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
         
         if (response.status === 200) {
-          showPopup(
-            `Package ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
-          await fetchIPDPackages(currentPage - 1);
+          setPopupMessage({
+            message: `Package "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchIPDPackages(currentPage - 1);
+              setCurrentPage(1);
+            },
+          });
         } else {
-          showPopup(response.message || "Failed to update status", "error");
+          throw new Error(response.message || "Failed to update status");
         }
       } catch (error) {
         console.error("Error updating status:", error);
         showPopup("Failed to update status", "error");
       } finally {
-        setProcess(false);
+        setSaving(false);
       }
     }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: false, recordName: "" });
+    
+    setConfirmDialog({ 
+      isOpen: false, 
+      id: null, 
+      newStatus: "", 
+      name: "" 
+    });
   };
   
   const showPopup = (message, type) => {
@@ -477,8 +490,13 @@ const IPDPackageMaster = () => {
   
   const handleCancel = () => {
     resetForm();
-    setEditingRecord(null);
     setShowForm(false);
+  };
+  
+  const handleRefresh = () => {
+    setSearchQuery("");
+    setCurrentPage(1);
+    fetchIPDPackages(0);
   };
   
   const handlePageChange = (page) => {
@@ -498,7 +516,7 @@ const IPDPackageMaster = () => {
   // Live preview for form
   const livePreview = generateInclusionExclusionText();
   
-  // Filter data for display
+  // Filter and paginate data
   const filteredData = data.filter((rec) =>
     rec.packageName?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -516,43 +534,47 @@ const IPDPackageMaster = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">IPD Package Master</h4>
+              <h4 className="card-title">IPD Package Master</h4>
               
-              {!showForm ? (
-                <div className="d-flex gap-2">
-                  <input
-                    type="text"
-                    className="form-control me-2"
-                    placeholder="Search by package name..."
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    onKeyPress={(e) => e.key === 'Enter' && handleSearch()}
-                    style={{ width: "250px" }}
-                  />
-                  
-                  <button
-                    className="btn btn-success"
-                    onClick={() => {
-                      setEditingRecord(null);
-                      setIsFormValid(false);
-                      resetForm();
-                      setShowForm(true);
-                    }}
+              <div className="d-flex align-items-center">
+                {!showForm ? (
+                  <>
+                    <input
+                      type="text"
+                      className="form-control me-2"
+                      placeholder="Search by package name..."
+                      value={searchQuery}
+                      onChange={(e) => {
+                        setSearchQuery(e.target.value);
+                        setCurrentPage(1);
+                      }}
+                      style={{ width: "250px" }}
+                    />
+                    
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
+                    </button>
+                    
+                    <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={handleCancel}
                   >
-                    <i className="mdi mdi-plus"></i> Add
+                    Back
                   </button>
-                  
-                  <button className="btn btn-secondary" onClick={handleShowAll}>
-                    <i className="mdi mdi-refresh"></i> Show All
-                  </button>
-                </div>
-              ) : (
-                <div className="d-flex justify-content-end">
-                  <button type="button" className="btn btn-secondary" onClick={handleCancel}>
-                    <i className="mdi mdi-arrow-left"></i> Back
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
             
             <div className="card-body">
@@ -593,33 +615,33 @@ const IPDPackageMaster = () => {
                                     checked={rec.status === "y"}
                                     onChange={() => handleSwitchChange(
                                       rec.id,
-                                      rec.packageName,
-                                      rec.status === "y" ? "n" : "y"
+                                      rec.status,
+                                      rec.packageName
                                     )}
                                     id={`switch-${rec.id}`}
                                   />
                                   <label
-                                    className="form-check-label px-0"
+                                    className="form-check-label ms-2"
                                     htmlFor={`switch-${rec.id}`}
                                   >
-                                    {rec.status === "y" ? "Active" : "Deactivated"}
+                                    {rec.status === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
                               </td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(rec)}
                                   disabled={rec.status !== "y"}
                                 >
-                                  <i className="fa fa-pencil"></i> Edit
+                                  <i className="fa fa-pencil"></i>
                                 </button>
                               </td>
                             </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="9" className="text-center">No records found</td>
+                            <td colSpan="9" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
@@ -640,167 +662,161 @@ const IPDPackageMaster = () => {
                 /* Form Section */
                 <>
                   {formLoading && <LoadingScreen />}
-                  <form className="forms row" onSubmit={handleSave}>
-                    <div className="row">
-                      <div className="form-group col-md-6 mt-3">
-                        <label>
-                          Package Name <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          name="packageName"
-                          placeholder="Enter package name"
-                          value={formData.packageName}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        />
-                      </div>
-                      
-                      <div className="form-group col-md-6 mt-3">
-                        <label>
-                          Package Type <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="packageTypeId"
-                          value={formData.packageTypeId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Package Type</option>
-                          {admissionCategories.map((category) => (
-                            <option key={category.admissionCategoryId} value={category.admissionCategoryId}>
-                              {category.admissionCategoryName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-6 mt-3">
-                        <label>
-                          Department <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="departmentId"
-                          value={formData.departmentId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Department</option>
-                          {departmentData.map((dept) => (
-                            <option key={dept.id} value={dept.id.toString()}>
-                              {dept.departmentName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-6 mt-3">
-                        <label>
-                          Stay (Days) <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          className="form-control"
-                          name="stayDays"
-                          placeholder="Enter number of days"
-                          value={formData.stayDays}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        />
-                      </div>
+                  <form className="row" onSubmit={handleSave}>
+                    <div className="form-group col-md-6 mt-3">
+                      <label>
+                        Package Name <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        className="form-control mt-1"
+                        name="packageName"
+                        placeholder="Enter package name"
+                        value={formData.packageName}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      />
+                    </div>
+                    
+                    <div className="form-group col-md-6 mt-3">
+                      <label>
+                        Package Type <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="packageTypeId"
+                        value={formData.packageTypeId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Package Type</option>
+                        {admissionCategories.map((category) => (
+                          <option key={category.admissionCategoryId} value={category.admissionCategoryId}>
+                            {category.admissionCategoryName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-6 mt-3">
+                      <label>
+                        Department <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="departmentId"
+                        value={formData.departmentId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Department</option>
+                        {departmentData.map((dept) => (
+                          <option key={dept.id} value={dept.id.toString()}>
+                            {dept.departmentName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-6 mt-3">
+                      <label>
+                        Stay (Days) <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control mt-1"
+                        name="stayDays"
+                        placeholder="Enter number of days"
+                        value={formData.stayDays}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      />
                     </div>
                     
                     {/* Categories Table */}
-                    <div className="row mt-4">
-                      <div className="col-12">
-                        <label className="fw-bold mb-2">Package Components</label>
-                        <div className="table-responsive">
-                          <table className="table table-bordered align-middle">
-                            <thead className="table-light">
-                              <tr>
-                                <th style={{ width: "80px" }}>Include</th>
-                                <th>Category</th>
-                                <th>Limit Amount (₹)</th>
-                                <th>Limit Days</th>
+                    <div className="col-12 mt-4">
+                      <label className="fw-bold mb-2">Package Components</label>
+                      <div className="table-responsive">
+                        <table className="table table-bordered align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th style={{ width: "80px" }}>Include</th>
+                              <th>Category</th>
+                              <th>Limit Amount (₹)</th>
+                              <th>Limit Days</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {categoriesConfig.map((item, idx) => (
+                              <tr key={idx}>
+                                <td className="text-center">
+                                  <input
+                                    type="checkbox"
+                                    className="form-check-input"
+                                    checked={item.includedFlag === "y"}
+                                    onChange={(e) => handleCategoryIncludeChange(idx, e.target.checked)}
+                                    disabled={formLoading}
+                                  />
+                                </td>
+                                <td>{item.categoryName}</td>
+                                <td>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Enter limit amount"
+                                    value={item.limitAmount}
+                                    onChange={(e) => handleCategoryAmountChange(idx, e.target.value)}
+                                    disabled={formLoading}
+                                  />
+                                </td>
+                                <td>
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    placeholder="Enter days limit"
+                                    value={item.days}
+                                    onChange={(e) => handleCategoryDaysChange(idx, e.target.value)}
+                                    disabled={formLoading}
+                                  />
+                                </td>
                               </tr>
-                            </thead>
-                            <tbody>
-                              {categoriesConfig.map((item, idx) => (
-                                <tr key={idx}>
-                                  <td className="text-center">
-                                    <input
-                                      type="checkbox"
-                                      className="form-check-input"
-                                      checked={item.includedFlag === "y"}
-                                      onChange={(e) => handleCategoryIncludeChange(idx, e.target.checked)}
-                                      disabled={formLoading}
-                                    />
-                                  </td>
-                                  <td>{item.categoryName}</td>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Enter limit amount"
-                                      value={item.limitAmount}
-                                      onChange={(e) => handleCategoryAmountChange(idx, e.target.value)}
-                                      disabled={formLoading}
-                                    />
-                                  </td>
-                                  <td>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      placeholder="Enter days limit"
-                                      value={item.days}
-                                      onChange={(e) => handleCategoryDaysChange(idx, e.target.value)}
-                                      disabled={formLoading}
-                                    />
-                                  </td>
-                                </tr>
-                              ))}
-                            </tbody>
-                          </table>
-                        </div>
+                            ))}
+                          </tbody>
+                        </table>
                       </div>
                     </div>
                     
                     {/* Live Preview */}
-                    <div className="row mt-3">
-                      <div className="col-md-6">
-                        <div className="card p-3 bg-light">
-                          <strong>Generated Inclusions:</strong>
-                          <p className="mt-2 mb-0">{livePreview.inclusionsText || "None"}</p>
-                        </div>
+                    <div className="col-md-6 mt-3">
+                      <div className="card p-3 bg-light">
+                        <strong>Generated Inclusions:</strong>
+                        <p className="mt-2 mb-0">{livePreview.inclusionsText || "None"}</p>
                       </div>
-                      <div className="col-md-6">
-                        <div className="card p-3 bg-light">
-                          <strong>Generated Exclusions:</strong>
-                          <p className="mt-2 mb-0">{livePreview.exclusionsText || "None"}</p>
-                        </div>
+                    </div>
+                    <div className="col-md-6 mt-3">
+                      <div className="card p-3 bg-light">
+                        <strong>Generated Exclusions:</strong>
+                        <p className="mt-2 mb-0">{livePreview.exclusionsText || "None"}</p>
                       </div>
                     </div>
                     
-                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                       <button
                         type="submit"
                         className="btn btn-primary me-2"
-                        disabled={process || !isFormValid || formLoading}
+                        disabled={!isFormValid || saving || formLoading}
                       >
-                        {process ? "Processing..." : (editingRecord ? "Update" : "Save")}
+                        {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-danger"
                         onClick={handleCancel}
-                        disabled={process || formLoading}
+                        disabled={saving || formLoading}
                       >
                         Cancel
                       </button>
@@ -811,31 +827,34 @@ const IPDPackageMaster = () => {
               
               {/* Popup Message */}
               {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+                <Popup 
+                  message={popupMessage.message} 
+                  type={popupMessage.type} 
+                  onClose={popupMessage.onClose} 
+                />
               )}
               
               {/* Confirmation Dialog */}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{confirmDialog.recordName}</strong>?
-                        </p>
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
                           No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
                           Yes
                         </button>
                       </div>

@@ -30,12 +30,17 @@ const PackageConfiguration = () => {
   
   const [loading, setLoading] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [process, setProcess] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [editingConfig, setEditingConfig] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, configId: null, newStatus: false, packageName: "" });
+  const [confirmDialog, setConfirmDialog] = useState({ 
+    isOpen: false, 
+    configId: null, 
+    newStatus: "", 
+    name: "" 
+  });
   
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -149,19 +154,15 @@ const PackageConfiguration = () => {
   const fetchCorporate = async () => {
     try {
       const data = await getRequest(`${MAS_CORPORATE}/getAll/1`);
-      console.log("Corporate API Response:", data);
       
       if (data.status === 200) {
         if (Array.isArray(data.response) && data.response.length > 0) {
           setCorporateData(data.response);
-          console.log("Corporate Data loaded:", data.response.length, "records");
         } else {
           setCorporateData([]);
-          console.log("No corporate data available in the database");
         }
       } else {
         setCorporateData([]);
-        console.error("Failed to fetch corporate data:", data.message);
       }
     } catch (error) {
       console.error("Error fetching corporate:", error);
@@ -209,8 +210,6 @@ const PackageConfiguration = () => {
         url += `&search=${encodeURIComponent(searchFilters.search.trim())}`;
       }
       
-      console.log("Fetching URL:", url); // Debug log to check the URL
-      
       const data = await getRequest(url);
       
       if (data.status === 200 && data.response) {
@@ -237,16 +236,14 @@ const PackageConfiguration = () => {
     const value = e.target.value;
     setSearchInput(value);
     
-    // Clear previous timer
     if (debounceTimerRef.current) {
       clearTimeout(debounceTimerRef.current);
     }
     
-    // Set new timer for debounced search
     debounceTimerRef.current = setTimeout(() => {
       setSearchFilters(prev => ({ ...prev, search: value }));
       setCurrentPage(1);
-    }, 500); // 500ms delay
+    }, 500);
   };
 
   // Handle immediate search (for Enter key or search button)
@@ -281,14 +278,12 @@ const PackageConfiguration = () => {
     setFormData(prev => {
       const updated = { ...prev, [name]: value };
       
-      // Reset dependent fields when billing type changes
       if (name === "billingTypeId") {
         updated.insuranceId = "";
         updated.tpaId = "";
         updated.corporateId = "";
       }
       
-      // Validate form with date range checks
       const allFieldsFilled = 
         updated.packageId &&
         updated.billingTypeId &&
@@ -302,7 +297,6 @@ const PackageConfiguration = () => {
       
       let isValid = !!allFieldsFilled;
       
-      // Validate date range if both dates are filled
       if (isValid && updated.effectiveFrom && updated.effectiveTo) {
         const fromDate = new Date(updated.effectiveFrom);
         const toDate = new Date(updated.effectiveTo);
@@ -323,7 +317,6 @@ const PackageConfiguration = () => {
     setShowForm(true);
     
     try {
-      // Fetch all required master data
       await fetchMasterData();
       
       setFormData({
@@ -352,23 +345,20 @@ const PackageConfiguration = () => {
   
   const handleSave = async (e) => {
     e.preventDefault();
-    setProcess(true);
     
-    if (!isFormValid) {
-      showPopup("Please fill all required fields", "error");
-      setProcess(false);
+    if (!isFormValid || saving) {
       return;
     }
-    
-    // Validate date range
+
     const fromDate = new Date(formData.effectiveFrom);
     const toDate = new Date(formData.effectiveTo);
     
     if (fromDate >= toDate) {
       showPopup("Effective From date must be before Effective To date", "error");
-      setProcess(false);
       return;
     }
+
+    setSaving(true);
     
     const payload = {
       packageId: parseInt(formData.packageId, 10),
@@ -386,62 +376,85 @@ const PackageConfiguration = () => {
     };
     
     try {
-      let response;
       if (editingConfig) {
-        response = await putRequest(
+        const response = await putRequest(
           `${PACKAGE_RATE_CONFIG}/update/${editingConfig.configId}`,
           payload
         );
         if (response.status === 200) {
-          showPopup(UPDATE_PACKAGE_CONFIG_SUCC_MSG || "Package configuration updated successfully!", "success");
-          resetForm();
-          setCurrentPage(1);
-          await fetchPackageConfigData(0);
+          setPopupMessage({
+            message: UPDATE_PACKAGE_CONFIG_SUCC_MSG || "Package configuration updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchPackageConfigData(0);
+              setShowForm(false);
+            }
+          });
         } else {
           throw new Error(response.message || "Update failed");
         }
       } else {
-        response = await postRequest(`${PACKAGE_RATE_CONFIG}/create`, payload);
+        const response = await postRequest(`${PACKAGE_RATE_CONFIG}/create`, payload);
         if (response.status === 201 || response.status === 200) {
-          showPopup(ADD_PACKAGE_CONFIG_SUCC_MSG || "Package configuration added successfully!", "success");
-          resetForm();
-          setCurrentPage(1);
-          await fetchPackageConfigData(0);
+          setPopupMessage({
+            message: ADD_PACKAGE_CONFIG_SUCC_MSG || "Package configuration added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchPackageConfigData(0);
+              setShowForm(false);
+            }
+          });
         } else {
           throw new Error(response.message || "Save failed");
         }
       }
     } catch (error) {
       console.error("Error saving package configuration:", error);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      showPopup(
+        error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+        "error"
+      );
     } finally {
-      setProcess(false);
+      setSaving(false);
     }
   };
   
-  const handleStatusChange = (configId, packageName, currentStatus) => {
+  const handleSwitchChange = (configId, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
       configId: configId,
-      newStatus: currentStatus === "y" ? "n" : "y",
-      packageName: packageName
+      newStatus,
+      name: name
     });
   };
   
   const handleConfirmStatus = async (confirmed) => {
     if (confirmed && confirmDialog.configId !== null) {
-      setProcess(true);
+      setSaving(true);
+      
       try {
         const response = await putRequest(
           `${PACKAGE_RATE_CONFIG}/status/${confirmDialog.configId}?status=${confirmDialog.newStatus}`
         );
         
         if (response.status === 200) {
-          showPopup(
-            `Package ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-            "success"
-          );
-          await fetchPackageConfigData(currentPage - 1);
+          setPopupMessage({
+            message: `Package configuration "${confirmDialog.name}" ${
+              confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchPackageConfigData(currentPage - 1);
+              setCurrentPage(1);
+            },
+          });
         } else {
           throw new Error(response.message || "Failed to update status");
         }
@@ -449,10 +462,16 @@ const PackageConfiguration = () => {
         console.error("Error updating status:", error);
         showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
-        setProcess(false);
+        setSaving(false);
       }
     }
-    setConfirmDialog({ isOpen: false, configId: null, newStatus: false, packageName: "" });
+    
+    setConfirmDialog({ 
+      isOpen: false, 
+      configId: null, 
+      newStatus: "", 
+      name: "" 
+    });
   };
   
   const resetForm = () => {
@@ -498,7 +517,6 @@ const PackageConfiguration = () => {
   const billingTypeName = getBillingTypeName();
   const isInsuranceEnabled = billingTypeName === "INSURANCE";
   const isCorporateEnabled = billingTypeName === "CORPORATE";
-  const isCashSelected = billingTypeName === "CASH";
   
   return (
     <div className="content-wrapper">
@@ -507,34 +525,19 @@ const PackageConfiguration = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">Package Configuration</h4>
+              <h4 className="card-title">Package Configuration</h4>
               
-              <div className="d-flex justify-content-between align-items-center gap-2">
+              <div className="d-flex align-items-center">
                 {!showForm && (
                   <button
                     type="button"
                     className="btn btn-success"
                     onClick={() => {
-                      setEditingConfig(null);
-                      setIsFormValid(false);
-                      setFormData({
-                        packageId: "",
-                        billingTypeId: "",
-                        insuranceId: "",
-                        tpaId: "",
-                        corporateId: "",
-                        roomCategoryId: "",
-                        amount: "",
-                        effectiveFrom: "",
-                        effectiveTo: "",
-                        preAuthRequired: "",
-                        copayPercent: "",
-                        maxClaimAmount: ""
-                      });
+                      resetForm();
                       setShowForm(true);
                     }}
                   >
-                    <i className="mdi mdi-plus"></i> Add
+                    Add
                   </button>
                 )}
               </div>
@@ -561,13 +564,6 @@ const PackageConfiguration = () => {
                             }
                           }}
                         />
-                        {/* <button 
-                          className="btn btn-primary"  // Changed from btn-success to btn-primary
-                          type="button"
-                          onClick={handleImmediateSearch}
-                        >
-                          <i className="mdi mdi-magnify"></i>
-                        </button> */}
                       </div>
                     </div>
                     
@@ -627,7 +623,7 @@ const PackageConfiguration = () => {
                     </div>
                     
                     <div className="col-md-3 d-flex gap-2 align-items-end">
-                      <button className="btn btn-primary" onClick={() => fetchPackageConfigData(0)}> {/* Changed from btn-success to btn-primary */}
+                      <button className="btn btn-primary" onClick={() => fetchPackageConfigData(0)}>
                         <i className="mdi mdi-magnify"></i> Search
                       </button>
                       <button className="btn btn-secondary" onClick={handleClearFilters}>
@@ -691,17 +687,17 @@ const PackageConfiguration = () => {
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={item.status === "y"}
-                                    onChange={() => handleStatusChange(item.configId, item.packageName, item.status)}
+                                    onChange={() => handleSwitchChange(item.configId, item.status, item.packageName)}
                                     id={`switch-${item.configId}`}
                                   />
-                                  <label className="form-check-label px-0" htmlFor={`switch-${item.configId}`}>
-                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                  <label className="form-check-label ms-2" htmlFor={`switch-${item.configId}`}>
+                                    {item.status === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
                               </td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(item)}
                                   disabled={item.status !== "y"}
                                 >
@@ -712,7 +708,7 @@ const PackageConfiguration = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="14" className="text-center">No records found</td>
+                            <td colSpan="14" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
@@ -729,261 +725,256 @@ const PackageConfiguration = () => {
                   )}
                 </>
               ) : (
-                // Form section remains unchanged
                 <>
                   {formLoading && <LoadingScreen />}
-                  <form className="forms row" onSubmit={handleSave}>
+                  <form className="row" onSubmit={handleSave}>
                     <div className="d-flex justify-content-end mb-3">
                       <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                        <i className="mdi mdi-arrow-left"></i> Back
+                        Back
                       </button>
                     </div>
                     
-                    <div className="row">
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Package Name <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="packageId"
-                          value={formData.packageId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Package</option>
-                          {packageData.map(pkg => (
-                            <option key={pkg.packageId} value={pkg.packageId}>
-                              {pkg.packageName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Billing Type <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="billingTypeId"
-                          value={formData.billingTypeId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Billing Type</option>
-                          {billingTypeData.map(type => (
-                            <option key={type.billingTypeId} value={type.billingTypeId}>
-                              {type.billingTypeName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>Insurance</label>
-                        <select
-                          className="form-select"
-                          name="insuranceId"
-                          value={formData.insuranceId}
-                          onChange={handleInputChange}
-                          disabled={!isInsuranceEnabled || formLoading}
-                        >
-                          <option value="">Select Insurance</option>
-                          {insuranceData.map(ins => (
-                            <option key={ins.insuranceId} value={ins.insuranceId}>
-                              {ins.insuranceName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>TPA</label>
-                        <select
-                          className="form-select"
-                          name="tpaId"
-                          value={formData.tpaId}
-                          onChange={handleInputChange}
-                          disabled={!isInsuranceEnabled || formLoading}
-                        >
-                          <option value="">Select TPA</option>
-                          {tpaData.map(tpa => (
-                            <option key={tpa.tpaId} value={tpa.tpaId}>
-                              {tpa.tpaName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>Corporate</label>
-                        <select
-                          className="form-select"
-                          name="corporateId"
-                          value={formData.corporateId}
-                          onChange={handleInputChange}
-                          disabled={!isCorporateEnabled || formLoading}
-                        >
-                          <option value="">Select Corporate</option>
-                          {corporateData.length > 0 ? (
-                            corporateData.map(corp => (
-                              <option key={corp.corporateId} value={corp.corporateId}>
-                                {corp.corporateName}
-                              </option>
-                            ))
-                          ) : (
-                            <option value="" disabled>No corporate data available</option>
-                          )}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Room Category <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="roomCategoryId"
-                          value={formData.roomCategoryId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Room Category</option>
-                          {roomCategoryData.map(cat => (
-                            <option key={cat.roomCategoryId} value={cat.roomCategoryId}>
-                              {cat.roomCategoryName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Amount (₹) <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control"
-                          name="amount"
-                          placeholder="Enter amount"
-                          value={formData.amount}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        />
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Effective From <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          className="form-control"
-                          name="effectiveFrom"
-                          value={formData.effectiveFrom}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                          max={formData.effectiveTo || undefined}
-                          title="Select an effective from date (must be before Effective To date)"
-                        />
-                        {formData.effectiveFrom && formData.effectiveTo && new Date(formData.effectiveFrom) >= new Date(formData.effectiveTo) && (
-                          <small className="text-danger">Effective From must be before Effective To</small>
-                        )}
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Effective To <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          className="form-control"
-                          name="effectiveTo"
-                          value={formData.effectiveTo}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                          min={formData.effectiveFrom || undefined}
-                          title="Select an effective to date (must be after Effective From date)"
-                        />
-                        {formData.effectiveFrom && formData.effectiveTo && new Date(formData.effectiveFrom) >= new Date(formData.effectiveTo) && (
-                          <small className="text-danger">Effective To must be after Effective From</small>
-                        )}
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          PreAuth Required <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="preAuthRequired"
-                          value={formData.preAuthRequired}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select</option>
-                          <option value="y">Yes</option>
-                          <option value="n">No</option>
-                        </select>
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Co-pay (%) <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control"
-                          name="copayPercent"
-                          placeholder="Enter co-pay percentage"
-                          value={formData.copayPercent}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        />
-                      </div>
-                      
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Max Claim Amount (₹) <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control"
-                          name="maxClaimAmount"
-                          placeholder="Enter max claim amount"
-                          value={formData.maxClaimAmount}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        />
-                      </div>
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Package Name <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="packageId"
+                        value={formData.packageId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Package</option>
+                        {packageData.map(pkg => (
+                          <option key={pkg.packageId} value={pkg.packageId}>
+                            {pkg.packageName}
+                          </option>
+                        ))}
+                      </select>
                     </div>
                     
-                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Billing Type <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="billingTypeId"
+                        value={formData.billingTypeId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Billing Type</option>
+                        {billingTypeData.map(type => (
+                          <option key={type.billingTypeId} value={type.billingTypeId}>
+                            {type.billingTypeName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>Insurance</label>
+                      <select
+                        className="form-select mt-1"
+                        name="insuranceId"
+                        value={formData.insuranceId}
+                        onChange={handleInputChange}
+                        disabled={!isInsuranceEnabled || formLoading}
+                      >
+                        <option value="">Select Insurance</option>
+                        {insuranceData.map(ins => (
+                          <option key={ins.insuranceId} value={ins.insuranceId}>
+                            {ins.insuranceName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>TPA</label>
+                      <select
+                        className="form-select mt-1"
+                        name="tpaId"
+                        value={formData.tpaId}
+                        onChange={handleInputChange}
+                        disabled={!isInsuranceEnabled || formLoading}
+                      >
+                        <option value="">Select TPA</option>
+                        {tpaData.map(tpa => (
+                          <option key={tpa.tpaId} value={tpa.tpaId}>
+                            {tpa.tpaName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>Corporate</label>
+                      <select
+                        className="form-select mt-1"
+                        name="corporateId"
+                        value={formData.corporateId}
+                        onChange={handleInputChange}
+                        disabled={!isCorporateEnabled || formLoading}
+                      >
+                        <option value="">Select Corporate</option>
+                        {corporateData.length > 0 ? (
+                          corporateData.map(corp => (
+                            <option key={corp.corporateId} value={corp.corporateId}>
+                              {corp.corporateName}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>No corporate data available</option>
+                        )}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Room Category <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="roomCategoryId"
+                        value={formData.roomCategoryId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Room Category</option>
+                        {roomCategoryData.map(cat => (
+                          <option key={cat.roomCategoryId} value={cat.roomCategoryId}>
+                            {cat.roomCategoryName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Amount (₹) <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mt-1"
+                        name="amount"
+                        placeholder="Enter amount"
+                        value={formData.amount}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      />
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Effective From <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control mt-1"
+                        name="effectiveFrom"
+                        value={formData.effectiveFrom}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                        max={formData.effectiveTo || undefined}
+                      />
+                      {formData.effectiveFrom && formData.effectiveTo && new Date(formData.effectiveFrom) >= new Date(formData.effectiveTo) && (
+                        <small className="text-danger">Effective From must be before Effective To</small>
+                      )}
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Effective To <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control mt-1"
+                        name="effectiveTo"
+                        value={formData.effectiveTo}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                        min={formData.effectiveFrom || undefined}
+                      />
+                      {formData.effectiveFrom && formData.effectiveTo && new Date(formData.effectiveFrom) >= new Date(formData.effectiveTo) && (
+                        <small className="text-danger">Effective To must be after Effective From</small>
+                      )}
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        PreAuth Required <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="preAuthRequired"
+                        value={formData.preAuthRequired}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select</option>
+                        <option value="y">Yes</option>
+                        <option value="n">No</option>
+                      </select>
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Co-pay (%) <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mt-1"
+                        name="copayPercent"
+                        placeholder="Enter co-pay percentage"
+                        value={formData.copayPercent}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      />
+                    </div>
+                    
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Max Claim Amount (₹) <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mt-1"
+                        name="maxClaimAmount"
+                        placeholder="Enter max claim amount"
+                        value={formData.maxClaimAmount}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      />
+                    </div>
+
+                    <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                       <button
                         type="submit"
                         className="btn btn-primary me-2"
-                        disabled={process || !isFormValid || formLoading}
+                        disabled={!isFormValid || saving || formLoading}
                       >
-                        {process ? "Processing..." : (editingConfig ? 'Update' : 'Save')}
+                        {saving ? "Saving..." : editingConfig ? 'Update' : 'Save'}
                       </button>
                       <button
                         type="button"
                         className="btn btn-danger"
                         onClick={resetForm}
-                        disabled={process}
+                        disabled={saving}
                       >
                         Cancel
                       </button>
@@ -993,30 +984,33 @@ const PackageConfiguration = () => {
               )}
               
               {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+                <Popup 
+                  message={popupMessage.message} 
+                  type={popupMessage.type} 
+                  onClose={popupMessage.onClose} 
+                />
               )}
               
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirmStatus(false)}>
-                          <span>&times;</span>
-                        </button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{confirmDialog.packageName}</strong>?
-                        </p>
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirmStatus(false)}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
                           No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirmStatus(true)}>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirmStatus(true)}
+                        >
                           Yes
                         </button>
                       </div>
