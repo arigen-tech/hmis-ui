@@ -225,29 +225,53 @@ const handleSave = async (e) => {
         setConfirmDialog({ isOpen: true, stateId: id, newStatus });
     };
 
+    const [saving, setSaving] = useState(false);
+
     const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.stateId !== null) {
-            try {
-                setLoading(true);
-                const response = await putRequest(
-                    `${MAS_STATE}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
+    if (confirmed && confirmDialog.stateId !== null) {
+        setSaving(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_STATE}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `State "${
+                        confirmDialog.stateName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchStates();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
                 );
-                if (response && response.status === 200) {
-                    fetchStates();
-                    showPopup(
-                        `State ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
-                }
-            } catch (err) {
-                console.error("Error updating state status:", err);
-                showPopup(FAIL_TO_UPDATE_STS, "error");
-            } finally {
-                setLoading(false);
             }
+        } catch (error) {
+            console.error("Error updating state status:", error);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
         }
-        setConfirmDialog({ isOpen: false, stateId: null, newStatus: null });
-    };
+    }
+
+    setConfirmDialog({
+        isOpen: false,
+        stateId: null,
+        newStatus: "",
+        stateName: "",
+    });
+};
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;
