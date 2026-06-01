@@ -124,7 +124,6 @@ if (
   );
   return;
 }
-   // if (!validateDates()) return;
 
     // ✅ 2️⃣ Validate GST rate
     const gstRateValue = parseFloat(formData.gstRate);
@@ -138,18 +137,18 @@ if (
     }
 
     try {
-      setLoading(true);
+      // setLoading(true);
 
       // ✅ 3️⃣ Build payload
       const payload = {
         hsnCode: formData.hsnCode,
-        gstRate: gstRateValue, // use validated value
+        gstRate: gstRateValue,
         isMedicine: formData.isMedicine,
         hsnCategory: formData.hsnCategory,
         hsnSubcategory: formData.hsnSubcategory,
         effectiveFrom: formData.effectiveFrom,
         effectiveTo: formData.effectiveTo || null,
-        status: editingHsn ? editingHsn.status : "y", // preserve status if updating
+        status: editingHsn ? editingHsn.status : "y",
       };
 
       // ✅ 4️⃣ Make request: PUT for update, POST for create
@@ -160,54 +159,57 @@ if (
           payload
         );
 
-      
-         setHsnData((prevData) =>
-  prevData.map((hsn) =>
-    hsn?.hsnCode === editingHsn?.hsnCode
-      ? {
-        ...hsn,
-        ...payload
-      }
-      : hsn
-  
-            )
-          );
-          showPopup(UPDATE_HSN_SUCC_MSG, "success");
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_HSN_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              setEditingHsn(null);
+              setFormData({
+                hsnCode: "",
+                gstRate: "",
+                isMedicine: false,
+                hsnCategory: "",
+                hsnSubcategory: "",
+                effectiveFrom: "",
+                effectiveTo: "",
+              });
+              setShowForm(false);
+              fetchHsnData();
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
         
       } else {
-  response = await postRequest(`${MAS_HSN}/create`, payload);
+        response = await postRequest(`${MAS_HSN}/create`, payload);
 
-  setPopupMessage({
-    message: ADD_HSN_SUCC_MSG,
-    type: "success",
-    onClose: () => {
-
-      // popup OK ke baad record add hoga
-      setHsnData((prevData) => [
-        {
-          ...payload
-        },
-        ...prevData
-      ]);
-
-      setPopupMessage(null);
-    }
-  });
-}
-      // ✅ 5️⃣ Reset form & close modal
-      setEditingHsn(null);
-      setFormData({
-        hsnCode: "",
-        gstRate: "",
-        isMedicine: false,
-        hsnCategory: "",
-        hsnSubcategory: "",
-        effectiveFrom: "",
-        effectiveTo: "",
-      });
-      setShowForm(false);
-
-     
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_HSN_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              setEditingHsn(null);
+              setFormData({
+                hsnCode: "",
+                gstRate: "",
+                isMedicine: false,
+                hsnCategory: "",
+                hsnSubcategory: "",
+                effectiveFrom: "",
+                effectiveTo: "",
+              });
+              setShowForm(false);
+              fetchHsnData();
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
+      }
 
     } catch (err) {
       console.error("Error saving HSN data:", err);
@@ -239,26 +241,25 @@ if (
  const handleConfirm = async (confirmed) => {
   if (confirmed && confirmDialog.hsnId !== null) {
     try {
-      setLoading(true);
+      // setLoading(true);
 
-      await putRequest(
+      const response = await putRequest(
         `${MAS_HSN}/status/${confirmDialog.hsnId}?status=${confirmDialog.newStatus}`
       );
 
-      // instant UI update
-      setHsnData((prevData) =>
-        prevData.map((hsn) =>
-          hsn.hsnCode === confirmDialog.hsnId
-            ? { ...hsn, status: confirmDialog.newStatus }
-            : hsn
-        )
-      );
-
-      showPopup(
-        `HSN ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-        } successfully!`,
-        "success"
-      );
+      if (response.status === 200) {
+        setPopupMessage({
+          message: `HSN ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            fetchHsnData();
+            setCurrentPage(1);
+          }
+        });
+      } else {
+        throw new Error(response.message || "Failed to update status");
+      }
 
     } catch (err) {
       console.error("Error updating HSN status:", err);
@@ -271,7 +272,7 @@ if (
       showPopup(errorMessage, "error");
 
     } finally {
-      setLoading(false);
+      // setLoading(false);
     }
   }
 

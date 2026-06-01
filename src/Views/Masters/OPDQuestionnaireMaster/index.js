@@ -1,13 +1,10 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_OPD_QUESTION, MAS_QUESTION_HEADING } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-import { FETCH_OPD_QUESTION, DUPLICATE_OPD_QUESTION,FETCH_QUESTION_HEADING, UPDATE_OPD_QUESTION, ADD_OPD_QUESTION, STATUS_OPD_QUESTION, STATUS_UPDATE_OPD_QUESTION } from "../../../config/constants";
-
-
+import { FETCH_OPD_QUESTION, DUPLICATE_OPD_QUESTION, FETCH_QUESTION_HEADING, UPDATE_OPD_QUESTION, ADD_OPD_QUESTION, STATUS_UPDATE_OPD_QUESTION } from "../../../config/constants";
 
 const OPDQuestionnaireMaster = () => {
   const [data, setData] = useState([]);
@@ -22,12 +19,15 @@ const OPDQuestionnaireMaster = () => {
     id: null,
   });
 
-
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
+  
+  // Search states
   const [searchQuery, setSearchQuery] = useState("");
+  const [selectedHeadingId, setSelectedHeadingId] = useState("");
+  
   const [currentPage, setCurrentPage] = useState(1);
   const [formData, setFormData] = useState({
     headingId: "",
@@ -36,8 +36,6 @@ const OPDQuestionnaireMaster = () => {
 
   const itemsPerPage = 5;
 
-
-  // Format date
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
     const date = new Date(dateString);
@@ -48,10 +46,6 @@ const OPDQuestionnaireMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-
-
-
-  // Fetch questions
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -65,11 +59,10 @@ const OPDQuestionnaireMaster = () => {
     }
   };
 
-
   const fetchHeadings = async (flag = 1) => {
     try {
       const { response } = await getRequest(`${MAS_QUESTION_HEADING}/getAll/${flag}`);
-      setHeadings(response || []); 
+      setHeadings(response || []);
     } catch (error) {
       showPopup(FETCH_QUESTION_HEADING, "error");
       setHeadings([]);
@@ -81,18 +74,16 @@ const OPDQuestionnaireMaster = () => {
     fetchHeadings();
   }, []);
 
-
-
-  const filteredData = data.filter((rec) =>
-    rec.question?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
+  // Filter data by heading and question text
+  const filteredData = data.filter((rec) => {
+    const matchesText = rec.question?.toLowerCase().includes(searchQuery.toLowerCase());
+    const matchesHeading = selectedHeadingId ? rec.questionHeadingId?.toString() === selectedHeadingId : true;
+    return matchesText && matchesHeading;
+  });
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
-
-
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -107,59 +98,57 @@ const OPDQuestionnaireMaster = () => {
     setEditingRecord(null);
   };
 
-
   const handleSave = async (e) => {
-  e.preventDefault();
-  if (!isFormValid) return;
+    e.preventDefault();
+    if (!isFormValid) return;
 
-  // Duplicate check
-  const newQuestion = formData.question.trim().toLowerCase();
-  const newHeadingId = formData.headingId;
+    const newQuestion = formData.question.trim().toLowerCase();
+    const newHeadingId = formData.headingId;
 
-  const isDuplicate = data.some((item) => {
-    const match =
-      item.question?.trim().toLowerCase() === newQuestion &&
-      item.questionHeadingId?.toString() === newHeadingId;
-    // Exclude current record when editing
-    if (editingRecord) {
-      return match && item.id !== editingRecord.id;
-    }
-    return match;
-  });
+    const isDuplicate = data.some((item) => {
+      const match =
+        item.question?.trim().toLowerCase() === newQuestion &&
+        item.questionHeadingId?.toString() === newHeadingId;
+      if (editingRecord) {
+        return match && item.id !== editingRecord.id;
+      }
+      return match;
+    });
 
-  if (isDuplicate) {
-    showPopup(DUPLICATE_OPD_QUESTION, "error");
-    return;
-  }
-
-  setSaving(true);
-  try {
-    if (editingRecord) {
-      const payload = {
-        questionHeadingId: formData.headingId,
-        question: formData.question,
-      };
-      await putRequest(`${MAS_OPD_QUESTION}/update/${editingRecord.id}`, payload);
-      showPopup(UPDATE_OPD_QUESTION, "success");
-    } else {
-      const payload = {
-        questionHeadingId: formData.headingId,
-        question: formData.question,
-        status: "n",
-      };
-      await postRequest(`${MAS_OPD_QUESTION}/create`, payload);
-      showPopup(ADD_OPD_QUESTION, "success");
+    if (isDuplicate) {
+      showPopup(DUPLICATE_OPD_QUESTION, "error");
+      return;
     }
 
-    await fetchData(); // refresh list
-    resetForm();
-    setShowForm(false);
-  } catch (error) {
-    showPopup(editingRecord ? "Update failed" : "Add failed", "error");
-  } finally {
-    setSaving(false);
-  }
-};
+    setSaving(true);
+    try {
+      if (editingRecord) {
+        const payload = {
+          questionHeadingId: formData.headingId,
+          question: formData.question,
+        };
+        await putRequest(`${MAS_OPD_QUESTION}/update/${editingRecord.id}`, payload);
+        showPopup(UPDATE_OPD_QUESTION, "success");
+      } else {
+        const payload = {
+          questionHeadingId: formData.headingId,
+          question: formData.question,
+          status: "n",
+        };
+        await postRequest(`${MAS_OPD_QUESTION}/create`, payload);
+        showPopup(ADD_OPD_QUESTION, "success");
+      }
+
+      await fetchData();
+      resetForm();
+      setShowForm(false);
+    } catch (error) {
+      showPopup(editingRecord ? "Update failed" : "Add failed", "error");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -169,7 +158,6 @@ const OPDQuestionnaireMaster = () => {
     setShowForm(true);
     setIsFormValid(true);
   };
-
 
   const handleConfirm = async (confirmed) => {
     const { id, newStatus, question } = confirmDialog;
@@ -184,7 +172,7 @@ const OPDQuestionnaireMaster = () => {
         `Question "${question}" ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
         "success"
       );
-      await fetchData();  // refresh the list
+      await fetchData();
     } catch (error) {
       console.error("Status update error:", error);
       showPopup(STATUS_UPDATE_OPD_QUESTION, "error");
@@ -193,13 +181,11 @@ const OPDQuestionnaireMaster = () => {
     }
   };
 
-
   const handleRefresh = () => {
     setSearchQuery("");
+    setSelectedHeadingId("");
     setCurrentPage(1);
   };
-
-
 
   const handleSwitchChange = (id, question, newStatus) => {
     setConfirmDialog({ isOpen: true, question, newStatus, id });
@@ -209,39 +195,25 @@ const OPDQuestionnaireMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
+  const handleSearch = () => {
+    setCurrentPage(1);
+  };
+
   return (
     <div className="content-wrapper">
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>OPD Questionnaire Master</h4>
+          <h4>Questionnaire Question Master</h4>
           <div className="d-flex">
-            {!showForm && (
-              <input
-                type="text"
-                style={{ width: "220px" }}
-                className="form-control me-2"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            )}
-
             {!showForm ? (
               <>
                 <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
                   Add
                 </button>
-                
                 <button
                   type="button"
                   className="btn btn-success me-2"
-                  onClick={() => {
-                    setSearchQuery("");
-                    fetchData(1);
-                  }}
+                  onClick={handleRefresh}
                 >
                   <i className="mdi mdi-view-list"></i> Show All
                 </button>
@@ -259,11 +231,66 @@ const OPDQuestionnaireMaster = () => {
 
           {!showForm && !loading && (
             <>
+              {/* Filter row: Heading dropdown + Question text search + SEARCH button in one row */}
+              <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
+                <div className="col-md-3">
+                  <label className="fw-bold mb-1">Topic</label>
+                  <select
+                    className="form-select"
+                    value={selectedHeadingId}
+                    onChange={(e) => setSelectedHeadingId(e.target.value)}
+                  >
+                    <option value="">Select Name</option>
+                    {headings.map((item) => (
+                      <option key={item.questionHeadingId} value={item.questionHeadingId}>
+                        {item.questionHeadingName}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-3">
+                  <label className="fw-bold mb-1">Question</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Search Question text..."
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
+                </div>
+
+              
+                <div className="col-auto">
+                  <button
+                    className="btn btn-primary h-100"
+                    onClick={handleSearch}
+                  >
+                    SEARCH
+                  </button>
+                </div>
+
+
+
+
+                <div className="col-auto">
+                  <button
+                    className="btn btn-primary h-100"
+                    onClick={handleSearch}
+                  >
+                    RESET
+                  </button>
+                </div>
+              </div>
+
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>Question</th>
-                    <th>Heading</th>
+                    <th>TOPIC</th>
+                   <th>Question</th>
                     <th>Last Update Date</th>
                     <th>Status</th>
                     <th>Edit</th>
@@ -340,14 +367,12 @@ const OPDQuestionnaireMaster = () => {
                   required
                 >
                   <option value="">Select Heading</option>
-
                   {headings.map((item) => (
                     <option key={item.questionHeadingId} value={item.questionHeadingId}>
                       {item.questionHeadingName}
                     </option>
                   ))}
                 </select>
-
               </div>
 
               <div className="col-12 text-end">
@@ -356,7 +381,6 @@ const OPDQuestionnaireMaster = () => {
                   disabled={!isFormValid || saving}
                 >
                   {editingRecord ? "Update" : "Save"}
-
                 </button>
                 <button
                   type="button"

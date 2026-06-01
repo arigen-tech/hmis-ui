@@ -93,73 +93,116 @@ const BloodGroupMaster = () => {
 };
 
  
+const resetForm = () => {
+  setFormData({
+    bloodGroupCode: "",
+    bloodGroupName: "",
+  });
+
+  setEditingBloodGroup(null);
+};
+
 const handleSave = async (e) => {
   e.preventDefault();
-  if (!isFormValid) return;
+  setLoading(true);
+
+  if (!isFormValid) {
+    setLoading(false);
+    return;
+  }
 
   try {
-    setLoading(true);
+
+    const payload = {
+      bloodGroupCode: formData.bloodGroupCode.trim(),
+      bloodGroupName: formData.bloodGroupName.trim(),
+    };
+
+    // Duplicate check
+    const isDuplicate = bloodGroups.some(
+      (group) =>
+        group.bloodGroupId !==
+          (editingBloodGroup
+            ? editingBloodGroup.bloodGroupId
+            : null) &&
+        (
+          group.bloodGroupCode?.trim().toLowerCase() ===
+            formData.bloodGroupCode.trim().toLowerCase() ||
+          group.bloodGroupName?.trim().toLowerCase() ===
+            formData.bloodGroupName.trim().toLowerCase()
+        )
+    );
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_BLOOD_GROUP_MSG, "error");
+      setLoading(false);
+      return;
+    }
+
+    let response;
 
     if (editingBloodGroup) {
-      const response = await putRequest(
+
+      payload.status = editingBloodGroup.status;
+
+      response = await putRequest(
         `${MAS_BLOODGROUP}/updateById/${editingBloodGroup.bloodGroupId}`,
-        {
-          bloodGroupCode: formData.bloodGroupCode, 
-          bloodGroupName: formData.bloodGroupName,
-          status: editingBloodGroup.status,
-        }
+        payload
       );
 
-        if (response) {
-        setBloodGroups((prevData) =>
-          prevData.map((group) =>
-            group.bloodGroupId === editingBloodGroup.bloodGroupId
-              ? response.response
-              : group
-          )
-        );
-
-        showPopup(UPDATE_BLOOD_GROUP_SUCC_MSG, "success");
-        setEditingBloodGroup(null);
-        setFormData({ bloodGroupCode: "", bloodGroupName: "" });
-        setShowForm(false);
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_BLOOD_GROUP_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchBloodGroups();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Update failed");
       }
-    }
-    else {
-      const isDuplicate = bloodGroups.some(
-        (g) =>
-          g.bloodGroupCode?.toLowerCase() === formData.bloodGroupCode.toLowerCase() ||
-          g.bloodGroupName?.toLowerCase() === formData.bloodGroupName.toLowerCase()
+
+    } else {
+
+      payload.status = "y";
+
+      response = await postRequest(
+        `${MAS_BLOODGROUP}/create`,
+        payload
       );
 
-      if (isDuplicate) {
-        showPopup(DUPLICATE_BLOOD_GROUP_MSG, "error");
-        setLoading(false);
-        return;
-      }
-
-      const response = await postRequest(`${MAS_BLOODGROUP}/create`, {
-        bloodGroupCode: formData.bloodGroupCode,
-        bloodGroupName: formData.bloodGroupName,
-        status: "y",
-      });
-
-      if (response && response.response) {
-        setBloodGroups([...bloodGroups, response.response]);
-        showPopup(ADD_BLOOD_GROUP_SUCC_MSG, "success");
-        setFormData({ bloodGroupCode: "", bloodGroupName: "" });
-        setShowForm(false);
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_BLOOD_GROUP_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchBloodGroups();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
       }
     }
 
-    fetchBloodGroups();
-  } catch (err) {
-    console.error("Error saving blood group:", err);
-    showPopup(FAIL_TO_SAVE_CHANGES, "error");
+  } catch (error) {
+    console.error("Error saving blood group:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
   } finally {
     setLoading(false);
   }
 };
+
   const handleSwitchChange = (id, newStatus) => {
   setConfirmDialog({
     isOpen: true,
@@ -168,34 +211,53 @@ const handleSave = async (e) => {
   });
 };
 
+const [saving, setSaving] = useState(false);
+
 const handleConfirm = async (confirmed) => {
-  if (!confirmed || confirmDialog.bloodGroupId === null) {
-    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-    return;
-  }
+    if (confirmed && confirmDialog.bloodGroupId !== null) {
+        setSaving(true);
 
-  try {
-    setLoading(true);
+        try {
+            const response = await putRequest(
+                `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
+            );
 
-    await putRequest(
-      `${MAS_BLOODGROUP}/status/${confirmDialog.bloodGroupId}?status=${confirmDialog.newStatus}`
-    );
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Blood group "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchBloodGroups();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update blood group status"
+                );
+            }
+        } catch (err) {
+            console.error("Error updating blood group status:", err);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
+        }
+    }
 
-   await fetchBloodGroups();
-
-    showPopup(
-      `Blood group ${
-        confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-      } successfully!`,
-      "success"
-    );
-  } catch (err) {
-    console.error(err);
-    showPopup(FAIL_TO_UPDATE_STS, "error");
-  } finally {
-    setLoading(false);
-    setConfirmDialog({ isOpen: false, bloodGroupId: null, newStatus: null });
-  }
+    setConfirmDialog({
+        isOpen: false,
+        bloodGroupId: null,
+        newStatus: "",
+        name: "",
+    });
 };
 
  const handleInputChange = (e) => {

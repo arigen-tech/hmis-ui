@@ -693,10 +693,7 @@ const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = 
             </div>
 
           </div>
-        </div>
-
-
-        {/* Save Button */}
+           {/* Save Button */}
        {!hideButtons && (
                   <div className="d-flex justify-content-end mt-3">
                     <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
@@ -704,8 +701,7 @@ const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = 
                     </button>
                   </div>
                 )}
-                
-
+        </div>
       </form>
     </div>
     </div>

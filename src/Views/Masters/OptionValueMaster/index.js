@@ -1,28 +1,26 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
- import { MAS_QUESTION_OPTION_VALUE, MAS_OPD_QUESTION,} from "../../../config/apiConfig";
+import { MAS_QUESTION_OPTION_VALUE, MAS_OPD_QUESTION } from "../../../config/apiConfig";
 import {
-    getRequest,
-   postRequest,
+  getRequest,
+  postRequest,
   putRequest,
- } from "../../../service/apiService";
+} from "../../../service/apiService";
 
- import {
+import {
   FETCH_OPTION_VALUE,
   CREATE_OPTION_VALUE,
-  UPDATE_OPTION_VALUE ,
+  UPDATE_OPTION_VALUE,
   SAVE_OPTION_VALUE,
-  DUPLICATE_OPTION_VALUE ,
+  DUPLICATE_OPTION_VALUE,
   STATUS_UPDATED,
   UPDATE_STATUS,
-   STATUS,
+  STATUS,
 } from "../../../config/constants";
-
 
 const OptionValueMaster = () => {
   const [loading, setLoading] = useState(false);
@@ -33,22 +31,27 @@ const OptionValueMaster = () => {
     optionScore: "",
     questionId: ""
   });
-   const [showForm, setShowForm] = useState(false);
+  const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     record: null,
     newStatus: "",
   });
-const [questions, setQuestions] = useState([]);
+  const [questions, setQuestions] = useState([]);
+
+  // ================= NEW SEARCH DROPDOWN STATES =================
+  const [tempSelectedCode, setTempSelectedCode] = useState('');
+  const [tempSelectedValue, setTempSelectedValue] = useState('');
+  const [selectedCode, setSelectedCode] = useState('');
+  const [selectedValue, setSelectedValue] = useState('');
 
   const MAX_LENGTH = 50;
 
-    const formatDate = (dateString) => {
+  const formatDate = (dateString) => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
@@ -62,11 +65,10 @@ const [questions, setQuestions] = useState([]);
     }
   };
 
-   // Show popup
+  // Show popup
   const showPopup = (message, type = "success") => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
-
 
   const fetchData = async (flag = 0) => {
     setLoading(true);
@@ -76,7 +78,7 @@ const [questions, setQuestions] = useState([]);
       );
       setData(response || []);
     } catch {
-      showPopup(FETCH_OPTION_VALUE , "error");
+      showPopup(FETCH_OPTION_VALUE, "error");
       setData([]);
     } finally {
       setLoading(false);
@@ -84,49 +86,67 @@ const [questions, setQuestions] = useState([]);
   };
 
   const fetchQuestions = async (flag = 0) => {
-  try {
-    const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
-    setQuestions(res?.response || res?.data?.response || []);
-  } catch {
-    setQuestions([]);
-  }
-};
+    try {
+      const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
+      setQuestions(res?.response || res?.data?.response || []);
+    } catch {
+      setQuestions([]);
+    }
+  };
 
   useEffect(() => {
     fetchData();
     fetchQuestions();
   }, []);
 
+  // Get unique option codes and values for dropdowns
+  const uniqueOptionCodes = [...new Set(data.map(item => item.optionCode).filter(Boolean))];
+  const uniqueOptionValues = [...new Set(data.map(item => item.optionValue).filter(Boolean))];
 
+  // ================= FILTER LOGIC (TRIGGERED BY SEARCH BUTTON) =================
+  const filteredData = data.filter(rec => {
+    if (selectedCode && rec.optionCode !== selectedCode) return false;
+    if (selectedValue && rec.optionValue !== selectedValue) return false;
+    return true;
+  });
 
-  // ================= SEARCH =================
-  const filteredData = data.filter((rec) =>
-  rec.optionCode?.toLowerCase().includes(searchQuery.toLowerCase())
-);
+  const handleSearch = () => {
+    setSelectedCode(tempSelectedCode);
+    setSelectedValue(tempSelectedValue);
+    setCurrentPage(1);
+  };
+
+  const handleShowAll = () => {
+    setTempSelectedCode('');
+    setTempSelectedValue('');
+    setSelectedCode('');
+    setSelectedValue('');
+    setCurrentPage(1);
+  };
+
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
-   const handleInputChange = (e) => {
+  const handleInputChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
     setFormData(updated);
     setIsFormValid(
-  updated.optionCode?.trim() !== "" &&
-  updated.optionValue?.trim() !== "" &&
-  updated.questionId !== "" &&
-  updated.optionScore !== "" &&
-  !isNaN(updated.optionScore)
-);
-     
-    };
+      updated.optionCode?.trim() !== "" &&
+      updated.optionValue?.trim() !== "" &&
+      updated.questionId !== "" &&
+      updated.optionScore !== "" &&
+      !isNaN(updated.optionScore)
+    );
+  };
 
   const resetForm = () => {
     setFormData({
       optionCode: "",
       optionValue: "",
       optionScore: "",
-      questionId:"",
+      questionId: "",
     });
     setIsFormValid(false);
     setEditingRecord(null);
@@ -137,21 +157,19 @@ const [questions, setQuestions] = useState([]);
     setShowForm(false);
   };
 
-
   // ================= SAVE =================
- 
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
     const newCode = formData.optionCode.trim().toLowerCase();
-   const duplicate = data.find(
-  (rec) =>
-    rec.optionCode?.toLowerCase() === newCode &&
-    (!editingRecord || rec.id !== editingRecord.id)
-);
+    const duplicate = data.find(
+      (rec) =>
+        rec.optionCode?.toLowerCase() === newCode &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
 
     if (duplicate) {
-      showPopup(DUPLICATE_OPTION_VALUE , "error");
+      showPopup(DUPLICATE_OPTION_VALUE, "error");
       return;
     }
 
@@ -161,15 +179,13 @@ const [questions, setQuestions] = useState([]);
           `${MAS_QUESTION_OPTION_VALUE}/update/${editingRecord.id}`,
           formData
         );
-
-        showPopup(UPDATE_OPTION_VALUE , "success");
+        showPopup(UPDATE_OPTION_VALUE, "success");
       } else {
         await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
           ...formData,
           status: "y",
         });
-
-        showPopup(CREATE_OPTION_VALUE , "success");
+        showPopup(CREATE_OPTION_VALUE, "success");
       }
 
       fetchData();
@@ -183,22 +199,23 @@ const [questions, setQuestions] = useState([]);
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
-  optionCode: rec.optionCode,
-  optionValue: rec.optionValue,
-  optionScore: rec.optionScore,
-  questionId: rec.questionId,
-});
+      optionCode: rec.optionCode,
+      optionValue: rec.optionValue,
+      optionScore: rec.optionScore,
+      questionId: rec.questionId,
+    });
     setShowForm(true);
     setIsFormValid(true);
   };
 
   // ================= STATUS =================
-    const handleSwitchChange = (rec) => {
+  const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
- newStatus:
-        rec.status === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE,    });
+      newStatus:
+        rec.status === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE,
+    });
   };
 
   const handleConfirm = async (confirmed) => {
@@ -211,7 +228,6 @@ const [questions, setQuestions] = useState([]);
       await putRequest(
         `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
       );
-
       showPopup(STATUS_UPDATED, "success");
       fetchData();
     } catch {
@@ -220,6 +236,7 @@ const [questions, setQuestions] = useState([]);
       setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
     }
   };
+
   // ================= UI =================
   return (
     <div className="content-wrapper">
@@ -228,20 +245,6 @@ const [questions, setQuestions] = useState([]);
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4>Option Value Master</h4>
           <div className="d-flex">
-            {!showForm && (
-              <input
-                type="text"
-                style={{ width: "220px" }}
-                className="form-control me-2"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={(e) => {
-                  setSearchQuery(e.target.value);
-                  setCurrentPage(1);
-                }}
-              />
-            )}
- 
             {!showForm ? (
               <>
                 <button
@@ -254,15 +257,12 @@ const [questions, setQuestions] = useState([]);
                   Add
                 </button>
                 <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setSearchQuery("");
-                          fetchData(1);
-                        }}
-                      >
-                        <i className="mdi mdi-view-list"></i> Show All
-                      </button>
+                  type="button"
+                  className="btn btn-success"
+                  onClick={handleShowAll}
+                >
+                  <i className="mdi mdi-view-list"></i> Show All
+                </button>
               </>
             ) : (
               <button
@@ -274,10 +274,51 @@ const [questions, setQuestions] = useState([]);
             )}
           </div>
         </div>
+
         <div className="card-body">
           {/* ================= LIST ================= */}
           {!showForm && (
             <>
+              {/* SEARCH UI WITH DROPDOWNS + SEARCH BUTTON */}
+              <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
+                <div className="col-md-3">
+                  <label className="fw-bold mb-1">Option Code</label>
+                  <select
+                    className="form-select"
+                    value={tempSelectedCode}
+                    onChange={(e) => setTempSelectedCode(e.target.value)}
+                  >
+                    <option value="">Select Code</option>
+                    {uniqueOptionCodes.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-md-3">
+                  <label className="fw-bold mb-1">Option Value</label>
+                  <select
+                    className="form-select"
+                    value={tempSelectedValue}
+                    onChange={(e) => setTempSelectedValue(e.target.value)}
+                  >
+                    <option value="">Select Value</option>
+                    {uniqueOptionValues.map(value => (
+                      <option key={value} value={value}>{value}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-auto">
+                  <button
+                    className="btn btn-primary h-100"
+                    onClick={handleSearch}
+                  >
+                    SEARCH
+                  </button>
+                </div>
+              </div>
+
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
@@ -296,23 +337,19 @@ const [questions, setQuestions] = useState([]);
                       <td>{rec.optionValue}</td>
                       <td>{rec.optionScore}</td>
                       <td>{rec.questionName}</td>
-
                       <td>
                         <div className="form-check form-switch">
                           <input
                             className="form-check-input"
                             type="checkbox"
                             checked={rec.status === STATUS.ACTIVE}
-                           onChange={() => handleSwitchChange(rec)}
-                           
+                            onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === STATUS.ACTIVE
-                            ? "Active" : "Inactive"}
+                            {rec.status === STATUS.ACTIVE ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
-
                       <td>
                         <button
                           className="btn btn-success btn-sm"
@@ -342,7 +379,7 @@ const [questions, setQuestions] = useState([]);
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-4">
                 <label>
-                Option  Code <span className="text-danger">*</span>
+                  Option Code <span className="text-danger">*</span>
                 </label>
                 <input
                   name="optionCode"
@@ -354,7 +391,7 @@ const [questions, setQuestions] = useState([]);
 
               <div className="col-md-4">
                 <label>
-                 Option Value<span className="text-danger">*</span>
+                  Option Value <span className="text-danger">*</span>
                 </label>
                 <input
                   name="optionValue"
@@ -365,7 +402,7 @@ const [questions, setQuestions] = useState([]);
               </div>
               <div className="col-md-4">
                 <label>
-                 Option Score <span className="text-danger">*</span>
+                  Option Score <span className="text-danger">*</span>
                 </label>
                 <input
                   name="optionScore"
@@ -377,27 +414,26 @@ const [questions, setQuestions] = useState([]);
               </div>
 
               <div className="col-md-4">
-  <label>
-    Question Name <span className="text-danger">*</span>
-  </label>
-
- <select
-  name="questionId"
-  className="form-select"
-  value={formData.questionId}
-  onChange={handleInputChange}
->
-  <option value="">Select Question</option>
-  {questions.map((q) => (
-    <option key={q.id} value={q.id}>
-      {q.question}
-    </option>
-  ))}
-</select>
-</div>
+                <label>
+                  Question Name <span className="text-danger">*</span>
+                </label>
+                <select
+                  name="questionId"
+                  className="form-select"
+                  value={formData.questionId}
+                  onChange={handleInputChange}
+                >
+                  <option value="">Select Question</option>
+                  {questions.map((q) => (
+                    <option key={q.id} value={q.id}>
+                      {q.question}
+                    </option>
+                  ))}
+                </select>
+              </div>
 
               <div className="col-12 text-end">
-<button
+                <button
                   type="submit"
                   className="btn btn-primary me-2"
                   disabled={!isFormValid || loading}
@@ -407,7 +443,7 @@ const [questions, setQuestions] = useState([]);
                 <button
                   type="button"
                   className="btn btn-danger"
-                 onClick={handleCancel}
+                  onClick={handleCancel}
                 >
                   Cancel
                 </button>
@@ -426,7 +462,8 @@ const [questions, setQuestions] = useState([]);
                     {confirmDialog.newStatus === STATUS.ACTIVE
                       ? "activate"
                       : "deactivate"}{" "}
-                    <strong>{confirmDialog.record?.optionCode}</strong></div>
+                    <strong>{confirmDialog.record?.optionCode}</strong>
+                  </div>
                   <div className="modal-footer">
                     <button
                       className="btn btn-secondary"

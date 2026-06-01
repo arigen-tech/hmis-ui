@@ -164,38 +164,62 @@ const StoreUnitMaster = () => {
     }
     setConfirmDialog({ isOpen: true, unitId: id, newStatus });
   };
+const [saving, setSaving] = useState(false);
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.unitId !== null) {
-      try {
-        setLoading(true);
-        
-        if (confirmDialog.unitId === undefined) {
-          throw new Error("Unit ID is undefined");
-        }
+        setSaving(true);
 
-        const response = await putRequest(
-          `${MAS_STORE_UNIT}/status/${confirmDialog.unitId}?stat=${confirmDialog.newStatus}`
-        );
+        try {
+            if (confirmDialog.unitId === undefined) {
+                throw new Error("Unit ID is undefined");
+            }
 
-        if (response && (response.status === 200 || response.status === 201)) {
-          // Refresh the data after status change
-          await fetchStoreUnits(0);
-          setPopupMessage({
-            message: `Store unit ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            type: "success",
-            onClose: () => setPopupMessage(null)
-          });
+            const response = await putRequest(
+                `${MAS_STORE_UNIT}/status/${confirmDialog.unitId}?stat=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200 || response.status === 201) {
+                setPopupMessage({
+                    message: `Store Unit "${
+                        confirmDialog.unitName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: async () => {
+                        setPopupMessage(null);
+                        await fetchStoreUnits(0);
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
+        } catch (error) {
+            console.error("Error updating store unit status:", error);
+            showPopup(
+                `Failed to update status: ${
+                    error.response?.message || error.message
+                }`,
+                "error"
+            );
+        } finally {
+            setSaving(false);
         }
-      } catch (err) {
-        console.error("Error updating store unit status:", err);
-        showPopup(`Failed to update status: ${err.response?.message || err.message}`, "error");
-      } finally {
-        setLoading(false);
-      }
     }
-    setConfirmDialog({ isOpen: false, unitId: null, newStatus: null });
-  };
+
+    setConfirmDialog({
+        isOpen: false,
+        unitId: null,
+        newStatus: "",
+        unitName: "",
+    });
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;

@@ -124,8 +124,19 @@ const Identificationmaster = () => {
           status: editingType.status,
         });
 
-        showPopup(UPDATE_IDENTIFICATION_SUCC_MSG, "success");
-        fetchIdentificationTypes();
+        // Set popup with onClose callback that refreshes data and resets form
+        setPopupMessage({
+          message: UPDATE_IDENTIFICATION_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            setEditingType(null);
+            setFormData({ identificationCode: "", identificationName: "" });
+            setIsFormValid(false);
+            setShowForm(false);
+            fetchIdentificationTypes();
+          }
+        });
       } else {
         const response = await postRequest(`${MAS_IDENTIFICATION_TYPE}/create`, {
           identificationCode: formData.identificationCode,
@@ -134,20 +145,21 @@ const Identificationmaster = () => {
         });
 
         if (response && response.response) {
-          // Add new item and re-sort
-          const updatedTypes = [...identificationTypes, response.response].sort((a, b) => {
-            if (a.status === 'y' && b.status !== 'y') return -1;
-            if (a.status !== 'y' && b.status === 'y') return 1;
-            return 0;
+          // Set popup with onClose callback that refreshes data and resets form
+          setPopupMessage({
+            message: ADD_IDENTIFICATION_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              setEditingType(null);
+              setFormData({ identificationCode: "", identificationName: "" });
+              setIsFormValid(false);
+              setShowForm(false);
+              fetchIdentificationTypes();
+            }
           });
-          setIdentificationTypes(updatedTypes);
-          showPopup(ADD_IDENTIFICATION_SUCC_MSG, "success");
         }
       }
-
-      setEditingType(null);
-      setFormData({ identificationCode: "", identificationName: "" });
-      setShowForm(false);
     } catch (err) {
       console.error("Error saving identification type:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
@@ -179,26 +191,16 @@ const Identificationmaster = () => {
           `${MAS_IDENTIFICATION_TYPE}/status/${confirmDialog.identificationId}?status=${confirmDialog.newStatus}`
         );
         
-        // Update state and re-sort immediately
-        setIdentificationTypes((prevData) => {
-          const updatedData = prevData.map((type) =>
-            type.identificationTypeId === confirmDialog.identificationId
-              ? { ...type, status: confirmDialog.newStatus }
-              : type
-          );
-          
-          // Sort to move deactivated items to bottom
-          return updatedData.sort((a, b) => {
-            if (a.status === 'y' && b.status !== 'y') return -1;
-            if (a.status !== 'y' && b.status === 'y') return 1;
-            return 0;
-          });
+        // Set popup with onClose callback that refreshes data
+        setPopupMessage({
+          message: `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            fetchIdentificationTypes();
+            setCurrentPage(1);
+          }
         });
-        
-        showPopup(
-          `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-          "success"
-        );
       } catch (err) {
         console.error("Error updating identification type status:", err);
         showPopup(FAIL_TO_UPDATE_STS, "error");

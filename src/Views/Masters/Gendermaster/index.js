@@ -94,69 +94,111 @@ const Gendermaster = () => {
     setShowForm(true);
   };
 
-  const handleSave = async (e) => {
-    e.preventDefault();
-    if (!isFormValid) return;
+  const resetForm = () => {
+  setFormData({
+    genderCode: "",
+    genderName: "",
+  });
 
-    try {
-      setLoading(true);
-      setEditingGender(null);
-setFormData({ genderCode: "", genderName: "" });
-setShowForm(false);
+  setEditingGender(null);
+};
 
-      if (editingGender) {
+ const handleSave = async (e) => {
+  e.preventDefault();
+  setLoading(true);
 
-        await putRequest(
-  `${MAS_GENDER}/updateById/${editingGender.id}`,
-  {
-    id: editingGender.id,
-    genderCode: formData.genderCode,
-    genderName: formData.genderName,
-    code: null,
-    status: editingGender.status
+  if (!isFormValid) {
+    setLoading(false);
+    return;
   }
-);
 
-showPopup(UPDATE_GENDER_SUCC_MSG, "success");
-await fetchGenderData();
+  try {
+    const payload = {
+      genderCode: formData.genderCode.trim(),
+      genderName: formData.genderName.trim(),
+      code: null,
+    };
+
+    // For new record only
+    if (!editingGender) {
+      payload.status = "y";
+    } else {
+      payload.status = editingGender.status;
+      payload.id = editingGender.id;
+    }
+
+    let response;
+
+    if (editingGender) {
+      response = await putRequest(
+        `${MAS_GENDER}/updateById/${editingGender.id}`,
+        payload
+      );
+
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_GENDER_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchGenderData();
+            setShowForm(false);
+          },
+        });
       } else {
-
-const isDuplicate = genderData.some(
-  (gender) =>
-    gender.genderCode.toLowerCase() === formData.genderCode.toLowerCase() ||
-    gender.genderName.toLowerCase() === formData.genderName.toLowerCase()
-);
-
-if (isDuplicate) {
-  showPopup(DUPLICATE_GENDER_MSG , "error");
-  return;
-}
-
-const response = await postRequest(`${MAS_GENDER}/create`, {
-  genderCode: formData.genderCode,
-  genderName: formData.genderName,
-  code: null,
-  status: "y"
-});
-        if (response && response.response) {
-
-          setGenderData([...genderData, response.response]);
-          showPopup(ADD_GENDER_SUCC_MSG, "success");
-        }
+        throw new Error(response.message || "Update failed");
       }
 
-      setEditingGender(null);
-      setFormData({ genderCode: "", genderName: "" });
-      setShowForm(false);
-      fetchGenderData();
-    } catch (err) {
-      console.error("Error saving gender data:", err);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
-    } finally {
-      setLoading(false);
-    }
-  };
+    } else {
 
+      const isDuplicate = genderData.some(
+        (gender) =>
+          gender.genderCode.toLowerCase() ===
+            formData.genderCode.toLowerCase() ||
+          gender.genderName.toLowerCase() ===
+            formData.genderName.toLowerCase()
+      );
+
+      if (isDuplicate) {
+        showPopup(DUPLICATE_GENDER_MSG, "error");
+        setLoading(false);
+        return;
+      }
+
+      response = await postRequest(
+        `${MAS_GENDER}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_GENDER_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchGenderData();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
+    }
+
+  } catch (error) {
+    console.error("Save error:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
   const showPopup = (message, type = 'info') => {
     setPopupMessage({
       message,
@@ -171,42 +213,54 @@ const response = await postRequest(`${MAS_GENDER}/create`, {
     setConfirmDialog({ isOpen: true, genderId: id, newStatus });
   };
 
-  const handleConfirm = async (confirmed) => {
+  const [saving, setSaving] = useState(false);
+  
+ const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.genderId !== null) {
-      try {
-        setLoading(true);
-await putRequest(
-  `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
-);
+        setSaving(true);
 
-showPopup(
-  `Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-  "success"
-);
+        try {
+            const response = await putRequest(
+                `${MAS_GENDER}/status/${confirmDialog.genderId}?status=${confirmDialog.newStatus}`
+            );
 
-await fetchGenderData();
-       
-
-          setGenderData((prevData) =>
-            prevData.map((gender) =>
-              gender.id === confirmDialog.genderId ?
-                { ...gender, status: confirmDialog.newStatus } :
-                gender
-            )
-          );
-          showPopup(`Gender ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Gender "${
+                        confirmDialog.name
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchGenderData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update gender status"
+                );
+            }
+        } catch (err) {
+            console.error("Error updating gender status:", err);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
         }
-       catch (err) {
-        console.error("Error updating gender status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setTimeout(() => {
-          setLoading(false);
-        }, 2000);
-      }
     }
-    setConfirmDialog({ isOpen: false, genderId: null, newStatus: null });
-  };
+
+    setConfirmDialog({
+        isOpen: false,
+        genderId: null,
+        newStatus: "",
+        name: "",
+    });
+};
 
  
   

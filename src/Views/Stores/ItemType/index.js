@@ -212,7 +212,7 @@ const ItemTypeManagement = () => {
     }
 
     try {
-      setLoading(true)
+      // setLoading(true)
       const response = await putRequest(
         `${MAS_ITEM_TYPE}/status/${confirmDialog.itemTypeId}?status=${confirmDialog.newStatus}`
       )
@@ -231,7 +231,7 @@ const ItemTypeManagement = () => {
       console.error("Status error:", err)
       showPopup(STATUS_ITEM_TYPE_FAIL || err.response?.data?.message || err.message, "error")
     } finally {
-      setLoading(false)
+      // setLoading(false)
       setConfirmDialog({ isOpen: false, itemTypeId: null, newStatus: "" })
     }
   }

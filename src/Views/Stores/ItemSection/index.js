@@ -124,7 +124,7 @@ const ItemSection = () => {
       if (editingSection) {
         // PUT request for updating
         response = await putRequest(
-          `${MAS_ITEM_SECTION}/updateById/${editingSection.sectionId}`,  // This is correct
+          `${MAS_ITEM_SECTION}/updateById/${editingSection.sectionId}`,
           payload
         );
       } else {
@@ -189,15 +189,18 @@ const ItemSection = () => {
       try {
         const response = await putRequest(
           `${MAS_ITEM_SECTION}/status/${confirmDialog.sectionId}?status=${confirmDialog.newStatus}`
-
         );
 
         if (response.status === 200) {
-          showPopup(
-            `Section ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-            "success"
-          );
-          await fetchItemSection(); // Refresh the data
+          setPopupMessage({
+            message: `Section ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+            type: "success",
+            onClose: async () => {
+              setPopupMessage(null);
+              await fetchItemSection();
+              setCurrentPage(1);
+            }
+          });
         } else {
           throw new Error(response.message || "Failed to update status");
         }
@@ -257,20 +260,16 @@ const ItemSection = () => {
                   </form>
                   <button type="button" className="btn btn-success me-2" onClick={() => {
                     setShowForm(true);
-                    setEditingSection(null);  // Reset editing state
-                    setFormData({            // Reset form data
+                    setEditingSection(null);
+                    setFormData({
                       sectionCode: "",
                       sectionName: "",
                       itemType: ""
                     });
-                    setIsFormValid(false);   // Reset validation
+                    setIsFormValid(false);
                   }}>
                     <i className="mdi mdi-plus"></i> Add
                   </button>
-                  
-                  {/* <button type="button" className="btn btn-success me-2">
-                      <i className="mdi mdi-plus"></i> Generate Report
-                    </button> */}
                 </>
                 
               )}

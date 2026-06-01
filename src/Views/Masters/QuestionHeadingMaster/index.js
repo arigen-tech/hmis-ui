@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -6,7 +5,6 @@ import { MAS_QUESTION_HEADING } from "../../../config/apiConfig";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { FETCH_QUESTION_HEADING, DUPLICATE_QUESTION_HEADING, INVALID_QUESTION_HEADING, UPDATE_QUESTION_HEADING, ADD_QUESTION_HEADING, FAIL_QUESTION_HEADING } from "../../../config/constants";
-
 
 const QuestionHeadingMaster = () => {
   const [data, setData] = useState([]);
@@ -16,7 +14,12 @@ const QuestionHeadingMaster = () => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [searchQuery, setSearchQuery] = useState("");
+
+  // ================= DROPDOWN SEARCH STATES =================
+  const [tempSelectedCode, setTempSelectedCode] = useState('');
+  const [tempSelectedName, setTempSelectedName] = useState('');
+  const [selectedCode, setSelectedCode] = useState('');
+  const [selectedName, setSelectedName] = useState('');
 
   // ================= PAGINATION =================
   const [currentPage, setCurrentPage] = useState(1);
@@ -28,7 +31,7 @@ const QuestionHeadingMaster = () => {
     newStatus: ""
   });
 
-  const MAX_CODE_LENGTH = 8;
+  const MAX_CODE_LENGTH = 50;
 
   // Date formatter
   const formatDate = (dateString) => {
@@ -59,19 +62,34 @@ const QuestionHeadingMaster = () => {
     fetchData();
   }, []);
 
-  // ================= SEARCH =================
-  const filteredData = data.filter(rec =>
-    (rec?.questionHeadingCode ?? "").toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (rec?.questionHeadingName ?? "").toLowerCase().includes(searchQuery.toLowerCase())
-  );
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
+  // Get all unique codes and names for dropdowns (including empty values)
+  const uniqueCodes = [...new Set(data.map(item => item.questionHeadingCode))];
+  const uniqueNames = [...new Set(data.map(item => item.questionHeadingName))];
+
+  // ================= FILTER LOGIC (TRIGGERED BY SEARCH BUTTON) =================
+  const filteredData = data.filter(rec => {
+    if (selectedCode && rec.questionHeadingCode !== selectedCode) return false;
+    if (selectedName && rec.questionHeadingName !== selectedName) return false;
+    return true;
+  });
+
+  const handleSearch = () => {
+    setSelectedCode(tempSelectedCode);
+    setSelectedName(tempSelectedName);
     setCurrentPage(1);
   };
 
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
+  const handleShowAll = () => {
+    setTempSelectedCode('');
+    setTempSelectedName('');
+    setSelectedCode('');
+    setSelectedName('');
+    setCurrentPage(1);
+  };
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   // ================= FORM =================
   const handleInputChange = (e) => {
@@ -147,13 +165,10 @@ const QuestionHeadingMaster = () => {
           status: "y",
         });
         if (response && response.response && response.status === 200) {
-          console.log(response);
-
           showPopup(ADD_QUESTION_HEADING, "success");
         } else {
           showPopup(FAIL_QUESTION_HEADING, "error");
         }
-
       }
 
       fetchData();
@@ -222,12 +237,6 @@ const QuestionHeadingMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
-  const handleRefresh = () => {
-    setSearchQuery("");
-    setCurrentPage(1);
-    fetchData();
-  };
-
   // ================= UI =================
   return (
     <div className="content-wrapper">
@@ -235,23 +244,12 @@ const QuestionHeadingMaster = () => {
 
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Question Heading Master</h4>
+          <h4>Questionnaire Topic Master</h4>
           <div className="d-flex">
-            {!showForm && (
-              <input
-                type="text"
-                style={{ width: "220px" }}
-                className="form-control me-2"
-                placeholder="Search..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            )}
-
             {!showForm ? (
               <>
                 <button className="btn btn-success me-2" onClick={() => { resetForm(); setShowForm(true); setEditingRecord(null); }}>Add</button>
-                <button className="btn btn-success" onClick={handleRefresh}>Show All</button>
+                <button className="btn btn-success" onClick={handleShowAll}>Show All</button>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
@@ -264,6 +262,54 @@ const QuestionHeadingMaster = () => {
         <div className="card-body">
           {!showForm && (
             <>
+              {/* SEARCH UI - EXACT SAME AS OptionValueMaster */}
+              <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
+                
+                <div className="col-md-3">
+                  <label className="fw-bold mb-1">Question Topic Code</label>
+                  <select
+                    className="form-select"
+                    value={tempSelectedCode}
+                    onChange={(e) => setTempSelectedCode(e.target.value)}
+                  >
+                    <option value="">Select Code</option>
+                    {uniqueCodes.map(code => (
+                      <option key={code} value={code}>{code}</option>
+                    ))}
+                  </select>
+                </div>
+                
+                <div className="col-md-3">
+                  <label className="fw-bold mb-1">Question Topic Name</label>
+                  <select
+                    className="form-select"
+                    value={tempSelectedName}
+                    onChange={(e) => setTempSelectedName(e.target.value)}
+                  >
+                    <option value="">Select Name</option>
+                    {uniqueNames.map(name => (
+                      <option key={name} value={name}>{name}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="col-auto">
+                  <button
+                    className="btn btn-primary h-100"
+                    onClick={handleSearch}
+                  >
+                    SEARCH
+                  </button>
+                </div>
+                 <div className="col-auto">
+                  <button
+                    className="btn btn-secondary"
+                  >
+                    RESET
+                  </button>
+                </div>
+              </div>
+
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
@@ -355,8 +401,7 @@ const QuestionHeadingMaster = () => {
 
               <div className="col-12 text-end">
                 <button className="btn btn-primary me-2" disabled={!isFormValid}>
-                                                          {editingRecord ? "Update" : "Save"}
-
+                  {editingRecord ? "Update" : "Save"}
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>Cancel</button>
               </div>

@@ -110,64 +110,112 @@ const DistrictMaster = () => {
         setShowForm(true);
     };
 
-    const handleSave = async (e) => {
-        e.preventDefault();
-        if (!isFormValid) return;
+   const resetForm = () => {
+  setFormData({
+    districtName: "",
+    state: "",
+    stateId: "",
+  });
 
-        try {
-            setLoading(true);
-            
-            const isDuplicate = districts.some(
-                (district) =>
-                    district.id !== (editingDistrict ? editingDistrict.id : null) &&
-                    district.districtName === formData.districtName
-            );
+  setEditingDistrict(null);
+};
 
-            if (isDuplicate) {
-                showPopup(DUPLICATE_DISTRICT, "error");
-                setLoading(false);
-                return;
-            }
+const handleSave = async (e) => {
+  e.preventDefault();
+//   setLoading(true);
 
-            if (editingDistrict) {
-                const response = await putRequest(`${MAS_DISTRICT}/updateById/${editingDistrict.id}`, {
-                    districtCode: editingDistrict.districtCode,
-                    districtName: formData.districtName,
-                    stateId: formData.stateId,
-                    status: editingDistrict.status,
-                });
+  if (!isFormValid) {
+    setLoading(false);
+    return;
+  }
 
-                if (response && response.status === 200) {
-                    fetchDistricts();
-                    showPopup(UPDATE_DISTRICT_SUCC_MSG, "success");
-                }
-            } else {
-                const response = await postRequest(`${MAS_DISTRICT}/create`, {
-                    districtCode: Date.now().toString().slice(-8),
-                    districtName: formData.districtName,
-                    stateId: formData.stateId,
-                    status: "y",
-                });
+  try {
 
-                if (response && response.status === 200) {
-                    fetchDistricts();
-                    showPopup(ADD_DISTRICT_SUCC_MSG, "success");
-                }
-            }
-
-            
-            setEditingDistrict(null);
-            setFormData({ districtName: "", state: "", stateId: "" });
-            setShowForm(false);
-        } catch (err) {
-            console.error("Error saving district:", err);
-            showPopup(FAIL_TO_SAVE_CHANGES, "error");
-        } finally {
-            setLoading(false);
-        }
+    const payload = {
+      districtName: formData.districtName.trim(),
+      stateId: formData.stateId,
     };
 
-    const showPopup = (message, type = "info") => {
+    // Duplicate check
+    const isDuplicate = districts.some(
+      (district) =>
+        district.id !== (editingDistrict ? editingDistrict.id : null) &&
+        district.districtName.trim().toLowerCase() ===
+          formData.districtName.trim().toLowerCase()
+    );
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_DISTRICT, "error");
+      setLoading(false);
+      return;
+    }
+
+    let response;
+
+    if (editingDistrict) {
+
+      payload.districtCode = editingDistrict.districtCode;
+      payload.status = editingDistrict.status;
+
+      response = await putRequest(
+        `${MAS_DISTRICT}/updateById/${editingDistrict.id}`,
+        payload
+      );
+
+      if (response.status === 200) {
+        setPopupMessage({
+          message: UPDATE_DISTRICT_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchDistricts();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Update failed");
+      }
+
+    } else {
+
+      payload.districtCode = Date.now().toString().slice(-8);
+      payload.status = "y";
+
+      response = await postRequest(
+        `${MAS_DISTRICT}/create`,
+        payload
+      );
+
+      if (response.status === 201 || response.status === 200) {
+        setPopupMessage({
+          message: ADD_DISTRICT_SUCC_MSG,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null);
+            resetForm();
+            fetchDistricts();
+            setShowForm(false);
+          },
+        });
+      } else {
+        throw new Error(response.message || "Save failed");
+      }
+    }
+
+  } catch (error) {
+    console.error("Error saving district:", error);
+
+    showPopup(
+      error.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+      "error"
+    );
+
+  } finally {
+    setLoading(false);
+  }
+};
+    const showPopup = (message, type = "info", shouldRefresh = false) => {
         setPopupMessage({
             message,
             type,
@@ -184,22 +232,26 @@ const DistrictMaster = () => {
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.districtId !== null) {
             try {
-                setLoading(true);
+                // setLoading(true);
                 const response = await putRequest(
                     `${MAS_DISTRICT}/status/${confirmDialog.districtId}?status=${confirmDialog.newStatus}`
                 );
                 if (response && response.status === 200) {
-                    fetchDistricts();
-                    showPopup(
-                        `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
+                    // fetchDistricts();
+                    setPopupMessage({
+                        message: `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            fetchDistricts(0);
+                        },
+                    });
                 }
             } catch (err) {
                 console.error("Error updating district status:", err);
                 showPopup(FAIL_TO_UPDATE_STS, "error");
             } finally {
-                setLoading(false);
+                // setLoading(false);
             }
         }
         setConfirmDialog({ isOpen: false, districtId: null, newStatus: null });
