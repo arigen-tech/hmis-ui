@@ -280,27 +280,54 @@ const isDuplicate = () => {
   });
 };
 
-  const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+const [saving, setSaving] = useState(false);
+
+ const handleConfirm = async (confirmed) => {
+    if (
+        confirmed &&
+        confirmDialog.record &&
+        confirmDialog.record.mappingId !== null
+    ) {
+        setSaving(true);
+
+        try {
+            const response = await putRequest(
+                `${INSURANCE_TPA_MAPPING}/status/${confirmDialog.record.mappingId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Insurance-TPA Mapping ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
+        } catch (error) {
+            console.error("Status update error:", error);
+            showPopup(FAILED_TO_UPDATE_STATUS, "error");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    setLoading(true);
-    try {
-      await putRequest(
-        `${INSURANCE_TPA_MAPPING}/status/${confirmDialog.record.mappingId}?status=${confirmDialog.newStatus}`
-      );
-      showPopup( STATUS_UPDATED_SUCCESSFULLY, "success");
-      await fetchData();
-    } catch (error) {
-      console.error("Status update error:", error);
-      showPopup(FAILED_TO_UPDATE_STATUS, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
-  };
+    setConfirmDialog({
+        isOpen: false,
+        record: null,
+        newStatus: "",
+    });
+};
 
   const handleCancel = () => {
     resetForm();

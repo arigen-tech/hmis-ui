@@ -223,39 +223,62 @@ else {
     });
   };
 
+  const [saving, setSaving] = useState(false);
+  
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
-      return;
+    if (
+        confirmed &&
+        confirmDialog.reccord &&
+        confirmDialog.reccord.insuranceId !== null
+    ) {
+        setSaving(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_INSURANCE}/status/${confirmDialog.reccord.insuranceId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Insurance "${
+                        confirmDialog.reccord.insuranceName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchData();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
+        } catch (error) {
+            console.error("Status update error:", error);
+
+            const errorMsg =
+                confirmDialog.newStatus === "y"
+                    ? ACTIVATE_INSURANCE_FAIL
+                    : DEACTIVATE_INSURANCE_FAIL;
+
+            showPopup(errorMsg, "error");
+        } finally {
+            setSaving(false);
+        }
     }
 
-    try {
-      setLoading(true);
-      await putRequest(
-        `${MAS_INSURANCE}/status/${confirmDialog.reccord.insuranceId}?status=${confirmDialog.newStatus}`
-      );
-
-      // Use constants based on action
-      const successMsg =
-        confirmDialog.newStatus === "y"
-          ? ACTIVATE_INSURANCE_SUCCESS
-          : DEACTIVATE_INSURANCE_SUCCESS;
-      showPopup(successMsg, "success");
-
-      fetchData();
-    } catch (error) {
-      console.error("Status update error:", error);
-      const errorMsg =
-        confirmDialog.newStatus === "y"
-          ? ACTIVATE_INSURANCE_FAIL
-          : DEACTIVATE_INSURANCE_FAIL;
-      showPopup(errorMsg, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, reccord: null, newStatus: "" });
-    }
-  };
-
+    setConfirmDialog({
+        isOpen: false,
+        reccord: null,
+        newStatus: "",
+    });
+};
   const showPopup = (message, type) => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
