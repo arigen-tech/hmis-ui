@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {
@@ -24,6 +24,7 @@ import {
 
 const OptionValueMaster = () => {
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);          
   const [data, setData] = useState([]);
   const [formData, setFormData] = useState({
     optionCode: "",
@@ -43,7 +44,7 @@ const OptionValueMaster = () => {
   });
   const [questions, setQuestions] = useState([]);
 
-  // ================= NEW SEARCH DROPDOWN STATES =================
+  // Search dropdown states
   const [tempSelectedCode, setTempSelectedCode] = useState('');
   const [tempSelectedValue, setTempSelectedValue] = useState('');
   const [selectedCode, setSelectedCode] = useState('');
@@ -70,6 +71,7 @@ const OptionValueMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
+  // ========== Fetch all option values ==========
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -85,6 +87,7 @@ const OptionValueMaster = () => {
     }
   };
 
+  // ========== Fetch questions for dropdown ==========
   const fetchQuestions = async (flag = 0) => {
     try {
       const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
@@ -99,24 +102,31 @@ const OptionValueMaster = () => {
     fetchQuestions();
   }, []);
 
-  // Get unique option codes and values for dropdowns
-  const uniqueOptionCodes = [...new Set(data.map(item => item.optionCode).filter(Boolean))];
-  const uniqueOptionValues = [...new Set(data.map(item => item.optionValue).filter(Boolean))];
+  // ========== Unique options for search dropdowns (memoized) ==========
+  const uniqueOptionCodes = useMemo(
+    () => [...new Set(data.map(item => item.optionCode).filter(Boolean))],
+    [data]
+  );
+  const uniqueOptionValues = useMemo(
+    () => [...new Set(data.map(item => item.optionValue).filter(Boolean))],
+    [data]
+  );
 
-  // ================= FILTER LOGIC (TRIGGERED BY SEARCH BUTTON) =================
+  // ========== Filter data based on selected criteria ==========
   const filteredData = data.filter(rec => {
     if (selectedCode && rec.optionCode !== selectedCode) return false;
     if (selectedValue && rec.optionValue !== selectedValue) return false;
     return true;
   });
 
+  // ========== Search / Reset handlers ==========
   const handleSearch = () => {
     setSelectedCode(tempSelectedCode);
     setSelectedValue(tempSelectedValue);
     setCurrentPage(1);
   };
 
-  const handleShowAll = () => {
+  const handleReset = () => {
     setTempSelectedCode('');
     setTempSelectedValue('');
     setSelectedCode('');
@@ -124,21 +134,36 @@ const OptionValueMaster = () => {
     setCurrentPage(1);
   };
 
+  const handleShowAll = () => {
+    handleReset(); // reuse same logic
+  };
+
+  // ========== Pagination ==========
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
+  // ========== Form input handling with validation ==========
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
-    setFormData(updated);
-    setIsFormValid(
+
+    // Stricter validation: optionCode, optionValue, questionId non‑empty,
+    // and optionScore must be a non‑negative number.
+    const scoreValid = value => {
+      if (value === "") return false;
+      const num = Number(value);
+      return !isNaN(num) && num >= 0;
+    };
+
+    const isValid =
       updated.optionCode?.trim() !== "" &&
       updated.optionValue?.trim() !== "" &&
       updated.questionId !== "" &&
-      updated.optionScore !== "" &&
-      !isNaN(updated.optionScore)
-    );
+      scoreValid(updated.optionScore);
+
+    setFormData(updated);
+    setIsFormValid(isValid);
   };
 
   const resetForm = () => {
@@ -157,11 +182,15 @@ const OptionValueMaster = () => {
     setShowForm(false);
   };
 
-  // ================= SAVE =================
+  // ========== Save (Create or Update) ==========
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    if (!isFormValid || saving) return;
+
+    setSaving(true);
     const newCode = formData.optionCode.trim().toLowerCase();
+
+    // Check duplicate optionCode (case‑insensitive)
     const duplicate = data.find(
       (rec) =>
         rec.optionCode?.toLowerCase() === newCode &&
@@ -170,6 +199,7 @@ const OptionValueMaster = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_OPTION_VALUE, "error");
+      setSaving(false);
       return;
     }
 
@@ -187,15 +217,16 @@ const OptionValueMaster = () => {
         });
         showPopup(CREATE_OPTION_VALUE, "success");
       }
-
       fetchData();
       handleCancel();
     } catch {
       showPopup(SAVE_OPTION_VALUE, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // ================= EDIT =================
+  // ========== Edit ==========
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -208,7 +239,7 @@ const OptionValueMaster = () => {
     setIsFormValid(true);
   };
 
-  // ================= STATUS =================
+  // ========== Status toggle with confirmation ==========
   const handleSwitchChange = (rec) => {
     setConfirmDialog({
       isOpen: true,
@@ -237,7 +268,7 @@ const OptionValueMaster = () => {
     }
   };
 
-  // ================= UI =================
+  // ========== Render ==========
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -276,10 +307,12 @@ const OptionValueMaster = () => {
         </div>
 
         <div className="card-body">
-          {/* ================= LIST ================= */}
-          {!showForm && (
+          {loading && <LoadingScreen />}
+
+          {/* ================= LIST VIEW ================= */}
+          {!showForm && !loading && (
             <>
-              {/* SEARCH UI WITH DROPDOWNS + SEARCH BUTTON */}
+              {/* SEARCH UI */}
               <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
                 <div className="col-md-3">
                   <label className="fw-bold mb-1">Option Code</label>
@@ -310,11 +343,14 @@ const OptionValueMaster = () => {
                 </div>
 
                 <div className="col-auto">
-                  <button
-                    className="btn btn-primary h-100"
-                    onClick={handleSearch}
-                  >
+                  <button className="btn btn-primary" onClick={handleSearch}>
                     SEARCH
+                  </button>
+                </div>
+
+                <div className="col-auto">
+                  <button className="btn btn-secondary" onClick={handleReset}>
+                    RESET
                   </button>
                 </div>
               </div>
@@ -361,10 +397,14 @@ const OptionValueMaster = () => {
                       </td>
                     </tr>
                   ))}
+                  {currentItems.length === 0 && (
+                    <tr>
+                      <td colSpan="6" className="text-center">No records found</td>
+                    </tr>
+                  )}
                 </tbody>
               </table>
 
-              {/* PAGINATION */}
               <Pagination
                 totalItems={filteredData.length}
                 itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
@@ -374,7 +414,7 @@ const OptionValueMaster = () => {
             </>
           )}
 
-          {/* ================= FORM ================= */}
+          {/* ================= FORM VIEW ================= */}
           {showForm && (
             <form onSubmit={handleSave} className="row g-3">
               <div className="col-md-4">
@@ -386,6 +426,7 @@ const OptionValueMaster = () => {
                   className="form-control"
                   value={formData.optionCode}
                   onChange={handleInputChange}
+                  disabled={saving}
                 />
               </div>
 
@@ -398,8 +439,10 @@ const OptionValueMaster = () => {
                   className="form-control"
                   value={formData.optionValue}
                   onChange={handleInputChange}
+                  disabled={saving}
                 />
               </div>
+
               <div className="col-md-4">
                 <label>
                   Option Score <span className="text-danger">*</span>
@@ -407,9 +450,11 @@ const OptionValueMaster = () => {
                 <input
                   name="optionScore"
                   type="number"
+                  step="any"
                   className="form-control"
                   value={formData.optionScore}
                   onChange={handleInputChange}
+                  disabled={saving}
                 />
               </div>
 
@@ -422,6 +467,7 @@ const OptionValueMaster = () => {
                   className="form-select"
                   value={formData.questionId}
                   onChange={handleInputChange}
+                  disabled={saving}
                 >
                   <option value="">Select Question</option>
                   {questions.map((q) => (
@@ -436,14 +482,15 @@ const OptionValueMaster = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid || loading}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : (editingRecord ? "Update" : "Save")}
                 </button>
                 <button
                   type="button"
                   className="btn btn-danger"
                   onClick={handleCancel}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
@@ -453,6 +500,7 @@ const OptionValueMaster = () => {
 
           {popupMessage && <Popup {...popupMessage} />}
 
+          {/* Custom confirmation dialog */}
           {confirmDialog.isOpen && (
             <div className="modal d-block">
               <div className="modal-dialog">
@@ -462,7 +510,7 @@ const OptionValueMaster = () => {
                     {confirmDialog.newStatus === STATUS.ACTIVE
                       ? "activate"
                       : "deactivate"}{" "}
-                    <strong>{confirmDialog.record?.optionCode}</strong>
+                    <strong>{confirmDialog.record?.optionCode}</strong>?
                   </div>
                   <div className="modal-footer">
                     <button

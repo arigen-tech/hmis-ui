@@ -46,6 +46,8 @@ const OPDQuestionnaireMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
+  
+
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -199,6 +201,12 @@ const OPDQuestionnaireMaster = () => {
     setCurrentPage(1);
   };
 
+  const handleReset = () => {
+    setSearchQuery("");
+    setSelectedHeadingId("");
+    setCurrentPage(1);
+  };
+
   return (
     <div className="content-wrapper">
       <div className="card form-card">
@@ -231,7 +239,7 @@ const OPDQuestionnaireMaster = () => {
 
           {!showForm && !loading && (
             <>
-              {/* Filter row: Heading dropdown + Question text search + SEARCH button in one row */}
+              {/* Filter row */}
               <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
                 <div className="col-md-3">
                   <label className="fw-bold mb-1">Topic</label>
@@ -263,7 +271,6 @@ const OPDQuestionnaireMaster = () => {
                   />
                 </div>
 
-              
                 <div className="col-auto">
                   <button
                     className="btn btn-primary h-100"
@@ -273,35 +280,31 @@ const OPDQuestionnaireMaster = () => {
                   </button>
                 </div>
 
-
-
-
                 <div className="col-auto">
                   <button
-                    className="btn btn-primary h-100"
-                    onClick={handleSearch}
+                    className="btn btn-secondary h-100"
+                    onClick={handleReset}
                   >
                     RESET
                   </button>
                 </div>
               </div>
 
+              {/* Table with adjusted column widths and correct mapping */}
               <table className="table table-bordered table-hover">
                 <thead className="table-light">
                   <tr>
-                    <th>TOPIC</th>
-                   <th>Question</th>
-                    <th>Last Update Date</th>
-                    <th>Status</th>
-                    <th>Edit</th>
+                    <th style={{ width: "20%" }}>TOPIC</th>
+                    <th style={{ width: "50%" }}>QUESTION</th>
+                    <th style={{ width: "15%" }}>STATUS</th>
+                    <th style={{ width: "15%" }}>EDIT</th>
                   </tr>
                 </thead>
                 <tbody>
                   {currentItems.map((rec) => (
                     <tr key={rec.id}>
-                      <td>{rec.question}</td>
                       <td>{rec.questionHeadingName}</td>
-                      <td>{formatDate(rec.lastUpdateDate)}</td>
+                      <td>{rec.question}</td>
                       <td>
                         <div className="form-check form-switch">
                           <input
