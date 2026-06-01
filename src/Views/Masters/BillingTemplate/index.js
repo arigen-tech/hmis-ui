@@ -243,9 +243,17 @@ const BillingTemplate = () => {
       setLoading(true)
       const response = await postRequest(`${CREATE_BILLING_TEMPLATE_URL}`, templateData)
       if (response && (response.status === 200 || response.status === 201)) {
-        showPopup("Template saved successfully!", "success")
-        setShowForm(false)
-        fetchTemplates(0, false)
+        // Set popup with onClose callback that refreshes data and resets form
+        setPopupMessage({
+          message: "Template saved successfully!",
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null)
+            resetForm()
+            setShowForm(false)
+            fetchTemplates(0, false)
+          }
+        })
         return true
       } else {
         showPopup(response?.message || "Failed to save template", "error")
@@ -265,9 +273,17 @@ const BillingTemplate = () => {
       setLoading(true)
       const response = await putRequest(`${UPDATE_BILLING_TEMPLATE_URL}/${templateId}`, templateData)
       if (response?.status === 200) {
-        showPopup("Template updated successfully!", "success")
-        setShowForm(false)
-        fetchTemplates(0, false)
+        // Set popup with onClose callback that refreshes data and resets form
+        setPopupMessage({
+          message: "Template updated successfully!",
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null)
+            resetForm()
+            setShowForm(false)
+            fetchTemplates(0, false)
+          }
+        })
         return true
       } else {
         showPopup(response?.message || "Failed to update template", "error")
@@ -424,10 +440,15 @@ const BillingTemplate = () => {
     if (confirmed && confirmDialog.templateId) {
       const success = await updateTemplateStatus(confirmDialog.templateId, confirmDialog.newStatus)
       if (success) {
-        setTemplates(prev => prev.map(t =>
-          t.templateId === confirmDialog.templateId ? { ...t, status: confirmDialog.newStatus } : t
-        ))
-        showPopup(`Template ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success")
+        // Set popup with onClose callback that refreshes data
+        setPopupMessage({
+          message: `Template ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          type: "success",
+          onClose: () => {
+            setPopupMessage(null)
+            fetchTemplates(currentPage, false)
+          }
+        })
       } else {
         showPopup("Failed to update template status", "error")
       }
@@ -926,7 +947,7 @@ const BillingTemplate = () => {
 
                   <div className="d-flex justify-content-end mt-4">
                     <button type="submit" className="btn btn-success me-2" disabled={!isFormValid || loading}>
-                      {loading ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : "SAVE"}
+                      {loading ? <><span className="spinner-border spinner-border-sm me-2" />Saving...</> : "Update"}
                     </button>
                     <button type="button" className="btn btn-secondary" onClick={handleCancel} disabled={loading}>
                       CANCEL
