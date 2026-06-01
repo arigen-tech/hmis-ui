@@ -623,3 +623,4 @@ export const SEARCH_TEMPLATES_URL = `${MASTERS}/billingTemplate/searchTemplates`
 export const GET_TEMPLATE_BY_ID_URL = `${MASTERS}/billingTemplate/getById`;
 
 export const MAS_ITEM_FACILITY =  `${MASTERS}/masItemFacility`;
+export const ENT_MAS_PINNA = `${MASTERS}/entMasPinna`;

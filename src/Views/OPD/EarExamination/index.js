@@ -1,20 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { getRequest } from "../../../service/apiService";
+import { ENT_MAS_PINNA  } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
 
 const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = false }) => {
   const [form, setForm] = useState({
-    // ===== EAR EXAMINATION =====
-    // Right Ear
-    rightPinna: "",
-    rightEarCanal: "",
-    rightTmStatus: "",
-    
-    // Left Ear
-    leftPinna: "",
-    leftEarCanal: "",
-    leftTmStatus: "",
-    
+    // ===== EAR EXAMINATION =====//
     // Hearing Tests
     rinneTest: "",
     weberTest: "",
@@ -56,6 +48,7 @@ const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = 
 
   const [popupMessage, setPopupMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [pinnaList, setPinnaList] = useState([]);
 
   // Static options
   const pinnaOptions = ["Normal", "Swelling", "Tender", "Deformity"];
@@ -83,6 +76,19 @@ const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = 
       onClose: () => setPopupMessage(null),
     });
   };
+
+  useEffect(() => {
+  fetchPinna();
+}, []);
+
+const fetchPinna = async () => {
+  try {
+    const response = await getRequest(ENT_MAS_PINNA);
+    setPinnaList(response.data || response || []);
+  } catch (error) {
+    console.error("Pinna API Error:", error);
+  }
+};
 
   const handleChange = (e) => {
     const { name, value } = e.target;

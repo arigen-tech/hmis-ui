@@ -4187,6 +4187,22 @@ const GeneralMedicineWaitingList = () => {
                               placeholder="Enter Family History"
                             ></textarea>
                           </div>
+                             {/*PREGNANCy*/}
+<div className="mb-3">
+  <div className="d-flex justify-content-between align-items-center">
+    <label className="form-label fw-bold m-0">
+      Pregnancy Details
+    </label>
+  </div>
+  <div className="mt-2">
+    {selectedPatient?.gender?.toLowerCase() === "female" && (
+  <Pregnancy 
+    patientId={selectedPatient?.patientId}
+    visitId={selectedPatient?.visitId}
+  />
+)}
+  </div>
+</div>
                         </div>
                       </div>
                     </div>
@@ -4505,50 +4521,6 @@ const GeneralMedicineWaitingList = () => {
     </div>
   )}
 </div> 
-   {/* Pregnancy Section */}
-   {/* <div className="card mb-3">
-   <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("pregnancy")}
-
-  >
-    <h6 className="mb-0 fw-bold">Pregnancy</h6>
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.pregnancy ? "−" : "+"}
-    </span>
-  </div>
-  {expandedSections.pregnancy && (
-    <div className="card-body">
-      <div className="text-center text-muted py-4">
-       Pregnancy form coming soon...
-      </div>
-    </div>
-  )}
-  </div>   */}
-  {/* Pregnancy Section */}
-<div className="card mb-3">
-  <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("pregnancy")}
-  >
-    <h6 className="mb-0 fw-bold">Pregnancy</h6>
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.pregnancy ? "−" : "+"}
-    </span>
-  </div>
-  {expandedSections.pregnancy && (
-    <div className="card-body">
-      <Pregnancy 
-        patientId={selectedPatient?.patientId}
-        visitId={selectedPatient?.visitId}
-        hideHeader={true}
-        hideButtons={true}
-      />
-    </div>
-  )}
-</div>
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div

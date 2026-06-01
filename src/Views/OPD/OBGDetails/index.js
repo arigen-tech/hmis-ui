@@ -1,5 +1,6 @@
 
 import { useState } from "react";
+import Popup from "../../../Components/popup";
 
 const defaultOBGForm = {
   obstetricScore: { g: "", p: "", a: "", l: "" },
@@ -56,6 +57,8 @@ const defaultOBGForm = {
 
 
 const OBGDetails = ({ patientId, visitId, hideHeader = false, hideButtons = false }) => {
+  const [popupMessage, setPopupMessage] = useState(null);
+
     const [form, setForm] = useState(defaultOBGForm);
   const updateObstetricScore = (field, value) => {
     setForm((prev) => ({
@@ -63,6 +66,16 @@ const OBGDetails = ({ patientId, visitId, hideHeader = false, hideButtons = fals
       obstetricScore: { ...prev.obstetricScore, [field]: value },
     }));
   };
+
+  const showPopup = (message, type = "info") => {
+  setPopupMessage({
+    message,
+    type,
+    onClose: () => {
+      setPopupMessage(null);
+    },
+  });
+};
 
   const updateInspection = (field, value) => {
     setForm((prev) => ({
@@ -99,11 +112,101 @@ const OBGDetails = ({ patientId, visitId, hideHeader = false, hideButtons = fals
     }));
   };
 
-  const handleSave = (e) => {
-    e.preventDefault();
-    console.log("OBG Examination Data:", form);
-    alert("OBG examination data saved (logged to console).");
+ const handleSave = (e) => {
+  e.preventDefault();
+  
+  // Validation checks
+  const requiredFields = {
+    obstetricScore: ["g", "p", "a", "l"],
+    conception: "conception",
+    marriedLife: "marriedLife",
+    consanguinity: "consanguinity",
+    booked: "booked",
+    immunised: "immunised",
+    trimesters: "trimesters",
+    gc: "gc",
+    paA: "paA",
+    peA: "peA",
+    tt: "tt",
+    fhr: "fhr",
+    presentation: "presentation",
+    palpation: "palpation",
+    pv: "pv",
   };
+  
+  // Check obstetric score
+  const obsScore = form.obstetricScore;
+  if (!obsScore.g || !obsScore.p || !obsScore.a || !obsScore.l) {
+    showPopup("Please fill all Obstetric Score fields (G, P, A, L)", "error");
+    return;
+  }
+  
+  // Check main required fields
+  const missingFields = [];
+  for (const [key, value] of Object.entries(requiredFields)) {
+    if (key === "obstetricScore") continue;
+    if (!form[value]) {
+      missingFields.push(value.replace(/([A-Z])/g, ' $1').trim());
+    }
+  }
+  
+  if (missingFields.length > 0) {
+    showPopup(`Please fill: ${missingFields.join(", ")}`, "error");
+    return;
+  }
+  
+  // Check menstrual history
+  const menstrual = form.menstrual;
+  if (!menstrual.ageOfMenarche || !menstrual.cycles || !menstrual.rangeNoOfDays || 
+      !menstrual.interval || !menstrual.flow || !menstrual.menstrualPause) {
+    showPopup("Please fill all Menstrual History fields", "error");
+    return;
+  }
+  
+  // Check respiratory
+  if (!form.respiratory.system || !form.respiratory.breathSounds) {
+    showPopup("Please fill Respiratory System fields", "error");
+    return;
+  }
+  
+  // Check cardiovascular
+  if (!form.cardiovascular.s1 || !form.cardiovascular.s2 || !form.cardiovascular.murmurs) {
+    showPopup("Please fill Cardiovascular System fields", "error");
+    return;
+  }
+  
+  // Check PV Exam (at least some basic fields)
+  const pvExam = form.pvExam;
+  if (!pvExam.osDilatation || !pvExam.effacement || !pvExam.membrane || !pvExam.liquor) {
+    showPopup("Please fill Per Vaginal Examination basic fields", "error");
+    return;
+  }
+  
+  // Check head and pelvis
+  if (!form.head || !form.pelvis) {
+    showPopup("Please select Head and Pelvis", "error");
+    return;
+  }
+  
+  // Gynecology section validation
+  if (!form.menstrual?.flow || !form.menstrual?.ageOfMenarche || !form.lastMenstrualPeriod || 
+      !form.menstrualPattern || !form.cycle) {
+    showPopup("Please fill all Gynecology Menstrual History fields", "error");
+    return;
+  }
+  
+  if (!form.obstetricHistory || !form.sterilisation) {
+    showPopup("Please fill Obstetric History and Sterilisation", "error");
+    return;
+  }
+  
+  if (!form.perAbdomenInspection || !form.gynPalpation || !form.papSmear || 
+      !form.localExamination || !form.perSpeculum || !form.bimanualExamination) {
+    showPopup("Please fill all Gynecology Examination fields", "error");
+    return;
+  }
+  showPopup("OBG examination data saved successfully!", "success");
+};
 
   return (
     <div className="content-wrapper">
@@ -711,6 +814,13 @@ const OBGDetails = ({ patientId, visitId, hideHeader = false, hideButtons = fals
                     }
                   />
                 </div>
+                {popupMessage && (
+  <Popup
+    message={popupMessage.message}
+    type={popupMessage.type}
+    onClose={popupMessage.onClose}
+  />
+)}
                   {/* Save Button */}
          {!hideButtons && (
   <div className="col-12 mt-3 d-flex justify-content-end">
