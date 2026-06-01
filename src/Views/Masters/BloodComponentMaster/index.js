@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -17,6 +16,7 @@ import {
 const BloodComponentMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     componentCode: "",
     componentName: "",
@@ -115,7 +115,10 @@ const BloodComponentMaster = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const newCode = formData.componentCode.trim().toLowerCase();
     const newName = formData.componentName.trim().toLowerCase();
@@ -129,22 +132,57 @@ const BloodComponentMaster = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_BLOOD_COMPONENT, "error");
+      setSaving(false);
       return;
     }
 
     try {
       if (editingRecord) {
-        await putRequest(`${MAS_BLOOD_COMPONENT}/update/${editingRecord.componentId}`, { ...formData });
-        showPopup(UPDATE_BLOOD_COMPONENT, "success");
+        const response = await putRequest(
+          `${MAS_BLOOD_COMPONENT}/update/${editingRecord.componentId}`,
+          { ...formData }
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_COMPONENT,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_COMPONENT}/create`, { ...formData, status: "Y" });
-        showPopup(ADD_BLOOD_COMPONENT, "success");
+        const response = await postRequest(
+          `${MAS_BLOOD_COMPONENT}/create`,
+          { ...formData, status: "y" }
+        );
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_COMPONENT,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      fetchData();
-      resetForm();
-      setShowForm(false);
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(UPDATE_FAIL_BLOOD_COMPONENT, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -170,22 +208,44 @@ const BloodComponentMaster = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_COMPONENT}/status/${confirmDialog.record.componentId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Component "${
+              confirmDialog.record.componentName
+            }" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(FAIL_BLOOD_COMPONENT, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      await putRequest(
-        `${MAS_BLOOD_COMPONENT}/status/${confirmDialog.record.componentId}?status=${confirmDialog.newStatus}`
-      );
-      showPopup(UPDATE_BLOOD_COMPONENT, "success");
-      fetchData();
-    } catch {
-      showPopup(FAIL_BLOOD_COMPONENT, "error");
-    } finally {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   return (
@@ -371,9 +431,9 @@ const BloodComponentMaster = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
@@ -385,7 +445,7 @@ const BloodComponentMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">

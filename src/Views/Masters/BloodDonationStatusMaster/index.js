@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -18,6 +17,7 @@ import {
 const BloodDonationStatusMaster = () => {
     const [donationStatusData, setDonationStatusData] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [saving, setSaving] = useState(false);
 
     const [formData, setFormData] = useState({
         statusCode: "",
@@ -117,7 +117,10 @@ const BloodDonationStatusMaster = () => {
     // Save (Add / Update)
     const handleSave = async (e) => {
         e.preventDefault();
+        
         if (!isFormValid) return;
+        
+        setSaving(true);
 
         const newCode = formData.statusCode.trim().toLowerCase();
         const newName = formData.statusName.trim().toLowerCase();
@@ -131,34 +134,64 @@ const BloodDonationStatusMaster = () => {
 
         if (duplicate) {
             showPopup(DUPLICATE_BLOOD_DONATION_STATUS, "error");
+            setSaving(false);
             return;
         }
 
         try {
-            if (editingDonationStatus) {
-                await putRequest(
-                    `${MAS_BLOOD_DONATION_STATUS}/update/${editingDonationStatus.donationStatusId}`, {
-                        donationStatusCode: formData.statusCode.trim(),
-                        donationStatusName: formData.statusName.trim(),
-                        description: formData.description.trim(),
-                        isFinal: formData.isFinal,
-                    }
-                );
-                showPopup(UPDATE_BLOOD_DONATION_STATUS, "success");
-            } else {
-                await postRequest(`${MAS_BLOOD_DONATION_STATUS}/create`, {
-                    donationStatusCode: formData.statusCode.trim(),
-                    donationStatusName: formData.statusName.trim(),
-                    description: formData.description.trim(),
-                    isFinal: formData.isFinal,
-                });
-                showPopup(ADD_BLOOD_DONATION_STATUS, "success");
-            }
+            const payload = {
+                donationStatusCode: formData.statusCode.trim(),
+                donationStatusName: formData.statusName.trim(),
+                description: formData.description.trim(),
+                isFinal: formData.isFinal,
+            };
 
-            fetchData();
-            handleCancel();
-        } catch {
+            if (editingDonationStatus) {
+                const response = await putRequest(
+                    `${MAS_BLOOD_DONATION_STATUS}/update/${editingDonationStatus.donationStatusId}`,
+                    payload
+                );
+
+                if (response.status === 200) {
+                    setPopupMessage({
+                        message: UPDATE_BLOOD_DONATION_STATUS,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            resetForm();
+                            fetchData();
+                            setShowForm(false);
+                        }
+                    });
+                } else {
+                    throw new Error(response.message || "Update failed");
+                }
+            } else {
+                const response = await postRequest(
+                    `${MAS_BLOOD_DONATION_STATUS}/create`,
+                    payload
+                );
+
+                if (response.status === 201 || response.status === 200) {
+                    setPopupMessage({
+                        message: ADD_BLOOD_DONATION_STATUS,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            resetForm();
+                            fetchData();
+                            setShowForm(false);
+                        }
+                    });
+                } else {
+                    throw new Error(response.message || "Save failed");
+                }
+            }
+        } catch (error) {
+            console.error("Save error:", error);
             showPopup(FAIL_BLOOD_DONATION_STATUS, "error");
+        } finally {
+            setSaving(false);
         }
     };
 
@@ -190,21 +223,44 @@ const BloodDonationStatusMaster = () => {
     };
 
     const handleConfirm = async (confirmed) => {
-        if (!confirmed) {
-            setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-            return;
+        if (confirmed && confirmDialog.record) {
+            setSaving(true);
+
+            try {
+                const response = await putRequest(
+                    `${MAS_BLOOD_DONATION_STATUS}/status/${confirmDialog.record.donationStatusId}?status=${confirmDialog.newStatus}`
+                );
+
+                if (response.status === 200) {
+                    setPopupMessage({
+                        message: `Blood Donation Status "${
+                            confirmDialog.record.donationStatusName
+                        }" ${
+                            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+                        } successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            fetchData();
+                            setCurrentPage(1);
+                        },
+                    });
+                } else {
+                    throw new Error(response.message || "Failed to update status");
+                }
+            } catch (error) {
+                console.error("Error updating status:", error);
+                showPopup(FAIL_UPDATE_BLOOD_DONATION_STATUS, "error");
+            } finally {
+                setSaving(false);
+            }
         }
-        try {
-            setLoading(true);
-            await putRequest(`${MAS_BLOOD_DONATION_STATUS}/status/${confirmDialog.record.donationStatusId}?status=${confirmDialog.newStatus}`);
-            showPopup(UPDATE_STATUS_BLOOD_DONATION_STATUS, "success");
-            fetchData();
-        } catch {
-            showPopup(FAIL_UPDATE_BLOOD_DONATION_STATUS, "error");
-        } finally {
-            setLoading(false);
-            setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-        }
+
+        setConfirmDialog({
+            isOpen: false,
+            record: null,
+            newStatus: "",
+        });
     };
 
     const showPopup = (message, type) => {
@@ -234,7 +290,10 @@ const BloodDonationStatusMaster = () => {
                                 }}>
                                     Add
                                 </button>
-                                <button className="btn btn-success" onClick={fetchData}>
+                                <button className="btn btn-success" onClick={() => {
+                                    setSearchQuery("");
+                                    fetchData(1);
+                                }}>
                                     Show All
                                 </button>
                             </>
@@ -342,8 +401,12 @@ const BloodDonationStatusMaster = () => {
                             </div>
 
                             <div className="col-12 text-end">
-                                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                                    {editingDonationStatus ? "Update" : "Save"}
+                                <button 
+                                    type="submit" 
+                                    className="btn btn-primary me-2" 
+                                    disabled={!isFormValid || saving}
+                                >
+                                    {saving ? "Saving..." : editingDonationStatus ? "Update" : "Save"}
                                 </button>
                                 <button type="button" className="btn btn-danger" onClick={handleCancel}>
                                     Cancel
@@ -355,7 +418,7 @@ const BloodDonationStatusMaster = () => {
                     {popupMessage && <Popup {...popupMessage} />}
 
                     {confirmDialog.isOpen && (
-                        <div className="modal d-block">
+                        <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                             <div className="modal-dialog">
                                 <div className="modal-content">
                                     <div className="modal-body">
@@ -367,8 +430,12 @@ const BloodDonationStatusMaster = () => {
                                         <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
                                             No
                                         </button>
-                                        <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                                            Yes
+                                        <button 
+                                            className="btn btn-primary" 
+                                            onClick={() => handleConfirm(true)}
+                                            disabled={saving}
+                                        >
+                                            {saving ? "Processing..." : "Yes"}
                                         </button>
                                     </div>
                                 </div>

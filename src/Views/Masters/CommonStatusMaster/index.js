@@ -16,6 +16,7 @@ const CommonStatusMaster = () => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     entityName: "",
@@ -303,7 +304,10 @@ const CommonStatusMaster = () => {
   // Handle save (create/update)
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     try {
       // Check for duplicate entry before saving
@@ -312,15 +316,14 @@ const CommonStatusMaster = () => {
         formData.tableName,
         formData.columnName,
         formData.statusCode,
-        editingRecord?.id // Pass the ID when updating to exclude current record
+        editingRecord?.id
       );
 
       if (isDuplicate) {
         showPopup("Duplicate entry found! Combination of Entity Name, Table Name, Column Name and Status Code must be unique.", "error");
+        setSaving(false);
         return;
       }
-
-      setLoading(true);
 
       // Prepare request data according to API structure
       const requestData = {
@@ -341,8 +344,17 @@ const CommonStatusMaster = () => {
         );
 
         if (response && response.status === 200) {
-          fetchCommonStatusData();
-          showPopup("Common Status updated successfully", "success");
+          setPopupMessage({
+            message: "Common Status updated successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleBack();
+              fetchCommonStatusData();
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
         }
       } else {
         // Create new record
@@ -351,31 +363,25 @@ const CommonStatusMaster = () => {
           requestData
         );
 
-        if (response && response.status === 200) {
-          fetchCommonStatusData();
-          showPopup("Common Status added successfully", "success");
+        if (response && (response.status === 201 || response.status === 200)) {
+          setPopupMessage({
+            message: "Common Status added successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              handleBack();
+              fetchCommonStatusData();
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
         }
       }
-
-      setShowForm(false);
-      setEditingRecord(null);
-      setFormData({
-        entityName: "",
-        tableName: "",
-        columnName: "",
-        statusCode: "",
-        statusName: "",
-        statusDesc: "",
-        remarks: ""
-      });
-      setIsFormValid(false);
-      setColumnDropdown([]);
-      setShowColumnDropdown(false);
     } catch (err) {
       console.error("Error saving common status:", err);
       showPopup(`Failed to save changes: ${err.response?.data?.message || err.message}`, "error");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -772,15 +778,15 @@ const CommonStatusMaster = () => {
                 <button 
                   className="btn btn-primary me-2" 
                   type="submit"
-                  disabled={!isFormValid || loading}
+                  disabled={!isFormValid || saving}
                 >
-                  {loading ? "Saving..." : (editingRecord ? 'Update' : 'Save')}
+                  {saving ? "Saving..." : (editingRecord ? 'Update' : 'Save')}
                 </button>
                 <button 
                   className="btn btn-danger" 
                   type="button" 
                   onClick={handleBack}
-                  disabled={loading}
+                  disabled={saving}
                 >
                   Cancel
                 </button>

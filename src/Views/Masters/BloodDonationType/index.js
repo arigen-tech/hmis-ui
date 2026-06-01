@@ -16,6 +16,7 @@ import {
 const BloodDonationType = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     donationTypeCode: "",
@@ -106,7 +107,10 @@ const BloodDonationType = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const normalized = formData.donationTypeName.trim().toLowerCase();
     const duplicate = data.find(
@@ -117,26 +121,59 @@ const BloodDonationType = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_BLOOD_DONATION, "error");
+      setSaving(false);
       return;
     }
 
     try {
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_BLOOD_DONATION_TYPE}/update/${editingRecord.donationTypeId}`,
           { ...editingRecord, ...formData }
         );
-        showPopup(UPDATE_BLOOD_DONATION, "success");
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_DONATION,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_DONATION_TYPE}/create`, {
+        const response = await postRequest(`${MAS_BLOOD_DONATION_TYPE}/create`, {
           ...formData,
         });
-        showPopup(ADD_BLOOD_DONATION, "success");
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_DONATION,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      fetchData();
-      handleCancel();
-    } catch {
-      showPopup(FAIL_BLOOD_DONATION, "error");
+    } catch (error) {
+      console.error("Save error:", error);
+      showPopup(
+        editingRecord ? FAIL_BLOOD_DONATION : FAIL_BLOOD_DONATION,
+        "error"
+      );
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -160,28 +197,53 @@ const BloodDonationType = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_DONATION_TYPE}/status/${confirmDialog.record.donationTypeId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Donation Type "${
+              confirmDialog.record.donationTypeName
+            }" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(UPDATE_FAIL_BLOOD_DONATION, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      setLoading(true);
-      await putRequest(
-        `${MAS_BLOOD_DONATION_TYPE}/status/${confirmDialog.record.donationTypeId}?status=${confirmDialog.newStatus}`
-      );
-      showPopup(UPDATE_BLOOD_DONATION, "success");
-      fetchData();
-    } catch {
-      showPopup(UPDATE_FAIL_BLOOD_DONATION, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null)
+    });
   };
 
   return (
@@ -320,8 +382,12 @@ const BloodDonationType = () => {
               </div>
 
               <div className="col-12 text-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  {editingRecord ? "Update" : "Save"}
+                <button 
+                  type="submit" 
+                  className="btn btn-primary me-2" 
+                  disabled={!isFormValid || saving}
+                >
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
@@ -333,7 +399,7 @@ const BloodDonationType = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">

@@ -22,6 +22,7 @@ import {
 
 const BloodFailureReasonMaster = () => {
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     failureReasonCode: "",
     failureReasonName: "",
@@ -120,7 +121,10 @@ const BloodFailureReasonMaster = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const newCode = formData.failureReasonCode.trim().toLowerCase();
     const newName = formData.failureReasonName.trim().toLowerCase();
@@ -135,36 +139,66 @@ const BloodFailureReasonMaster = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_FAILURE_REASON, "error");
+      setSaving(false);
       return;
     }
 
     try {
+      const payload = {
+        failureReasonCode: formData.failureReasonCode.trim(),
+        failureReasonName: formData.failureReasonName.trim(),
+        description: formData.description.trim(),
+      };
+
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_COMPONENT_FAILURE_REASON}/update/${editingRecord.failureReasonId}`,
+          payload,
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_FAILURE_REASON,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
+      } else {
+        const response = await postRequest(
+          `${MAS_COMPONENT_FAILURE_REASON}/create`,
           {
-            failureReasonCode: formData.failureReasonCode.trim(),
-            failureReasonName: formData.failureReasonName.trim(),
-            description: formData.description.trim(),
+            ...payload,
+            status: "y",
           },
         );
 
-        showPopup(UPDATE_FAILURE_REASON, "success");
-      } else {
-        await postRequest(`${MAS_COMPONENT_FAILURE_REASON}/create`, {
-          failureReasonCode: formData.failureReasonCode.trim(),
-          failureReasonName: formData.failureReasonName.trim(),
-          description: formData.description.trim(),
-          status: "Y",
-        });
-
-        showPopup(CREATE_FAILURE_REASON, "success");
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: CREATE_FAILURE_REASON,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-
-      fetchData();
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(SAVE_FAILURE_REASON, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -189,33 +223,44 @@ const BloodFailureReasonMaster = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({
-        isOpen: false,
-        record: null,
-        newStatus: "",
-      });
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
 
-      return;
+      try {
+        const response = await putRequest(
+          `${MAS_COMPONENT_FAILURE_REASON}/status/${confirmDialog.record.failureReasonId}?status=${confirmDialog.newStatus}`,
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Failure Reason "${
+              confirmDialog.record.failureReasonName
+            }" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(UPDATE_STATUS, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      await putRequest(
-        `${MAS_COMPONENT_FAILURE_REASON}/status/${confirmDialog.record.failureReasonId}?status=${confirmDialog.newStatus}`,
-      );
-
-      showPopup(STATUS_UPDATED, "success");
-
-      fetchData();
-    } catch {
-      showPopup(UPDATE_STATUS, "error");
-    } finally {
-      setConfirmDialog({
-        isOpen: false,
-        record: null,
-        newStatus: "",
-      });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   const handleRefresh = () => {
@@ -253,16 +298,16 @@ const BloodFailureReasonMaster = () => {
                   Add
                 </button>
 
-                 <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setSearchQuery("");
-                          fetchData(1);
-                        }}
-                      >
-                        <i className="mdi mdi-view-list"></i> Show All
-                      </button>
+                <button
+                  type="button"
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    setSearchQuery("");
+                    fetchData(1);
+                  }}
+                >
+                  <i className="mdi mdi-view-list"></i> Show All
+                </button>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={handleCancel}>
@@ -380,9 +425,9 @@ const BloodFailureReasonMaster = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
 
                 <button
@@ -399,15 +444,15 @@ const BloodFailureReasonMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
                     {confirmDialog.newStatus === "y"
                       ? "activate"
-                      : "deactivate"}
-                    <strong> {confirmDialog.record?.failureReasonName}</strong>?
+                      : "deactivate"}{" "}
+                    <strong>{confirmDialog.record?.failureReasonName}</strong>?
                   </div>
 
                   <div className="modal-footer">
@@ -421,8 +466,9 @@ const BloodFailureReasonMaster = () => {
                     <button
                       className="btn btn-primary"
                       onClick={() => handleConfirm(true)}
+                      disabled={saving}
                     >
-                      Yes
+                      {saving ? "Processing..." : "Yes"}
                     </button>
                   </div>
                 </div>

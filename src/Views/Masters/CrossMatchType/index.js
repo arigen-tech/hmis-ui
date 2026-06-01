@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import { MAS_CROSS_MATCH_TYPE } from "../../../config/apiConfig";
@@ -10,6 +9,7 @@ const CrossMatchType = () => {
   const [data, setData] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -86,28 +86,29 @@ const CrossMatchType = () => {
       name: record.crossMatchName || "",
       turnaround: record.turnaroundTimeMin?.toString() || "",
       cost: record.chargeAmount?.toString() || "",
-emergencyAllowed: record.isEmergencyAllowed?.toUpperCase() || "",
+      emergencyAllowed: record.isEmergencyAllowed?.toUpperCase() || "",
       description: record.description || "",
     });
     setShowForm(true);
+    setIsFormValid(true);
   };
 
- const handleInputChange = (e) => {
-  const { name, value } = e.target;
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
 
-  const updatedForm = {
-    ...formData,
-    [name]: value,
+    const updatedForm = {
+      ...formData,
+      [name]: value,
+    };
+
+    setFormData(updatedForm);
+
+    setIsFormValid(
+      updatedForm.code.trim() !== "" &&
+      updatedForm.name.trim() !== "" &&
+      updatedForm.description.trim() !== ""
+    );
   };
-
-  setFormData(updatedForm);
-
-  setIsFormValid(
-    updatedForm.code.trim() !== "" &&
-    updatedForm.name.trim() !== "" &&
-    updatedForm.description.trim() !== ""
-  );
-};
 
   const resetForm = () => {
     setShowForm(false);
@@ -125,7 +126,10 @@ emergencyAllowed: record.isEmergencyAllowed?.toUpperCase() || "",
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const newCode = formData.code.trim().toLowerCase();
     const newName = formData.name.trim().toLowerCase();
@@ -139,36 +143,67 @@ emergencyAllowed: record.isEmergencyAllowed?.toUpperCase() || "",
 
     if (duplicate) {
       showPopup(DUPLICATE_CROSS_MATCH_TYPE, "error");
+      setSaving(false);
       return;
     }
 
-    setLoading(true);
     try {
       const payload = {
         crossMatchCode: formData.code.trim(),
         crossMatchName: formData.name.trim(),
         turnaroundTimeMin: parseInt(formData.turnaround, 10) || 0,
         chargeAmount: parseFloat(formData.cost) || 0,
-isEmergencyAllowed: formData.emergencyAllowed,
+        isEmergencyAllowed: formData.emergencyAllowed,
         description: formData.description.trim(),
       };
 
       if (editingRecord) {
-        await putRequest(`${MAS_CROSS_MATCH_TYPE}/update/${editingRecord.id}`, payload);
-        showPopup(UPDATE_CROSS_MATCH_TYPE, "success");
+        const response = await putRequest(
+          `${MAS_CROSS_MATCH_TYPE}/update/${editingRecord.id}`,
+          payload
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_CROSS_MATCH_TYPE,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_CROSS_MATCH_TYPE}/create`, {
-          ...payload,
-          status: "y",
-        });
-        showPopup(ADD_CROSS_MATCH_TYPE, "success");
+        const response = await postRequest(
+          `${MAS_CROSS_MATCH_TYPE}/create`,
+          {
+            ...payload,
+            status: "y",
+          }
+        );
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_CROSS_MATCH_TYPE,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      await fetchData(0);
-      resetForm();
     } catch (error) {
+      console.error("Save error:", error);
       showPopup(error.message || OPERATION_FAIL, "error");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -183,24 +218,43 @@ isEmergencyAllowed: formData.emergencyAllowed,
   };
 
   const handleConfirm = async (confirmed) => {
-    const { id, newStatus, name } = confirmDialog;
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
+    if (confirmed && confirmDialog.id) {
+      setSaving(true);
 
-    if (!confirmed || !id) return;
+      try {
+        const response = await putRequest(
+          `${MAS_CROSS_MATCH_TYPE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+        );
 
-    setLoading(true);
-    try {
-      await putRequest(`${MAS_CROSS_MATCH_TYPE}/status/${id}?status=${newStatus}`);
-      showPopup(
-        `Cross match type ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-        "success"
-      );
-      await fetchData(0);
-    } catch (error) {
-      showPopup(error.message || FAIL_UPDATE_STATUS, "error");
-    } finally {
-      setLoading(false);
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Cross match type "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData(0);
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(error.message || FAIL_UPDATE_STATUS, "error");
+      } finally {
+        setSaving(false);
+      }
     }
+
+    setConfirmDialog({
+      isOpen: false,
+      id: null,
+      newStatus: "",
+      name: "",
+    });
   };
 
   const showPopup = (message, type = "info") => {
@@ -309,8 +363,8 @@ isEmergencyAllowed: formData.emergencyAllowed,
                           <td>{item.crossMatchName}</td>
                           <td>{item.turnaroundTimeMin}</td>
                           <td>{item.chargeAmount}</td>
-<td>{item.isEmergencyAllowed === "Y" ? "Yes" : "No"}</td>
-                       <td>{item.description}</td>
+                          <td>{item.isEmergencyAllowed === "Y" ? "Yes" : "No"}</td>
+                          <td>{item.description}</td>
                           <td>
                             <div className="form-check form-switch">
                               <input
@@ -423,9 +477,9 @@ isEmergencyAllowed: formData.emergencyAllowed,
                     </select>
                   </div>
                   <div className="col-md-4">
-                   <label>
-  Description <span className="text-danger">*</span>
-</label>
+                    <label>
+                      Description <span className="text-danger">*</span>
+                    </label>
                     <textarea
                       name="description"
                       className="form-control"
@@ -440,9 +494,9 @@ isEmergencyAllowed: formData.emergencyAllowed,
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid || saving}
                     >
-                      {editingRecord ? "Update" : "Save"}
+                      {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                     </button>
                     <button
                       type="button"
@@ -464,7 +518,7 @@ isEmergencyAllowed: formData.emergencyAllowed,
               )}
 
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                   <div className="modal-dialog" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
@@ -496,9 +550,9 @@ isEmergencyAllowed: formData.emergencyAllowed,
                           type="button"
                           className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
-                          disabled={loading}
+                          disabled={saving}
                         >
-                          {loading ? "Processing..." : "Yes"}
+                          {saving ? "Processing..." : "Yes"}
                         </button>
                       </div>
                     </div>

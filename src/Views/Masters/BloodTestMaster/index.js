@@ -46,6 +46,7 @@ const BloodTestMaster = () => {
     collectionType: "",
   });
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const MAX_LENGTH = 50;
 
   // Date format function
@@ -155,15 +156,14 @@ const BloodTestMaster = () => {
 
   // Save - POST/PUT
   const handleSave = async (e) => {
-  e.preventDefault();
+    e.preventDefault();
 
-  if (
-    !formData.testCode?.trim() ||
-    !formData.testName?.trim()
-  ) {
-    showPopup("Test Code and Test Name are required", "error");
-    return;
-  }
+    if (!formData.testCode?.trim() || !formData.testName?.trim()) {
+      showPopup("Test Code and Test Name are required", "error");
+      return;
+    }
+
+    setSaving(true);
 
     // Duplicate check (case-insensitive)
     const normalized = formData.testName.trim().toLowerCase();
@@ -175,35 +175,64 @@ const BloodTestMaster = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_BLOOD_TEST, "error");
+      setSaving(false);
       return;
     }
 
     try {
+      const payload = {
+        testCode: formData.testCode,
+        testName: formData.testName,
+        isMandatory: formData.isMandatory || "n",
+        applicableCollectionTypeId: formData.collectionType || null,
+      };
+
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_BLOOD_TEST}/update/${editingRecord.bloodTestId}`,
-          {
-            testCode: formData.testCode,
-            testName: formData.testName,
-            isMandatory: formData.isMandatory || "n",
-            applicableCollectionTypeId: formData.collectionType || null,
-          },
+          payload,
         );
 
-        showPopup(UPDATE_BLOOD_TEST, "success");
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_TEST,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_TEST}/create`, {
-          testCode: formData.testCode,
-          testName: formData.testName,
-          isMandatory: formData.isMandatory || "n",
-          applicableCollectionTypeId: formData.collectionType || null,
-        });
-        showPopup(ADD_BLOOD_TEST, "success");
+        const response = await postRequest(
+          `${MAS_BLOOD_TEST}/create`,
+          payload,
+        );
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_TEST,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      fetchData();
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(FAIL_BLOOD_TEST, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -218,32 +247,55 @@ const BloodTestMaster = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
+
+      const recordId =
+        confirmDialog.record?.id || confirmDialog.record?.bloodTestId;
+      const status = confirmDialog.newStatus;
+
+      if (!recordId || !status) {
+        showPopup(UPDATE_FAIL_BLOOD_TEST, "error");
+        setSaving(false);
+        setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+        return;
+      }
+
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_TEST}/status/${recordId}?status=${status}`
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Test "${
+              confirmDialog.record.testName
+            }" ${
+              status === STATUS.ACTIVE ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(UPDATE_FAIL_BLOOD_TEST, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    const recordId =
-      confirmDialog.record?.id || confirmDialog.record?.bloodTestId;
-    const status = confirmDialog.newStatus;
-
-    if (!recordId || !status) {
-      showPopup(UPDATE_FAIL_BLOOD_TEST, "error");
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
-    }
-
-    setLoading(true);
-    try {
-      await putRequest(`${MAS_BLOOD_TEST}/status/${recordId}?status=${status}`);
-      showPopup(UPDATE_BLOOD_TEST, "success");
-      await fetchData();
-    } catch (error) {
-      showPopup(UPDATE_FAIL_BLOOD_TEST, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   // UI
@@ -276,16 +328,16 @@ const BloodTestMaster = () => {
                 >
                   Add
                 </button>
-                 <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setSearchQuery("");
-                          fetchData(1);
-                        }}
-                      >
-                        <i className="mdi mdi-view-list"></i> Show All
-                      </button>
+                <button
+                  type="button"
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    setSearchQuery("");
+                    fetchData(1);
+                  }}
+                >
+                  <i className="mdi mdi-view-list"></i> Show All
+                </button>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={handleCancel}>
@@ -326,7 +378,8 @@ const BloodTestMaster = () => {
                           )?.collectionTypeName || "N/A"}
                         </td>
                         <td>
-{item.isMandatory?.toLowerCase() === "y" ? "Yes" : "No"}                        </td>
+                          {item.isMandatory?.toLowerCase() === "y" ? "Yes" : "No"}
+                        </td>
                         <td>{formatDate(item.createdDate)}</td>
                         <td>
                           <div className="form-check form-switch">
@@ -356,7 +409,7 @@ const BloodTestMaster = () => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="text-center">
+                      <td colSpan="7" className="text-center">
                         No data found
                       </td>
                     </tr>
@@ -416,7 +469,6 @@ const BloodTestMaster = () => {
                     value={formData.isMandatory}
                     onChange={handleInputChange}
                   >
-                    
                     <option value="y">Yes</option>
                     <option value="n">No</option>
                   </select>
@@ -445,9 +497,9 @@ const BloodTestMaster = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid || loading}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -463,7 +515,7 @@ const BloodTestMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-header">
@@ -495,8 +547,9 @@ const BloodTestMaster = () => {
                     <button
                       className="btn btn-primary"
                       onClick={() => handleConfirm(true)}
+                      disabled={saving}
                     >
-                      Yes
+                      {saving ? "Processing..." : "Yes"}
                     </button>
                   </div>
                 </div>

@@ -17,6 +17,7 @@ import {
 const BloodCollectionTypeMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [formData, setFormData] = useState({
     collectionTypeCode: "",
@@ -200,7 +201,10 @@ const BloodCollectionTypeMaster = () => {
   // save
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const newCode = formData.collectionTypeCode.trim().toLowerCase();
     const newName = formData.collectionTypeName.trim().toLowerCase();
@@ -214,28 +218,57 @@ const BloodCollectionTypeMaster = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_BLOOD_COLLECTION, "error");
+      setSaving(false);
       return;
     }
 
     try {
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_BLOOD_COLLECTION}/update/${editingRecord.collectionTypeId}`,
           formData
         );
-        showPopup(UPDATE_BLOOD_COLLECTION, "success");
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_COLLECTION,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_COLLECTION}/create`, {
+        const response = await postRequest(`${MAS_BLOOD_COLLECTION}/create`, {
           ...formData,
-          status: "y",   // lowercase to match toggle logic
+          status: "y",
         });
-        showPopup(ADD_BLOOD_COLLECTION, "success");
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_COLLECTION,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      // After save, refresh the current view (full data)
-      fetchData(0);
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(FAIL_BLOOD_COLLECTION, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -261,22 +294,45 @@ const BloodCollectionTypeMaster = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_COLLECTION}/status/${confirmDialog.record.collectionTypeId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Collection Type "${
+              confirmDialog.record.collectionTypeName
+            }" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(UPDATE_FAIL_BLOOD_COLLECTION, "error");
+      } finally {
+        setSaving(false);
+      }
     }
-    try {
-      await putRequest(
-        `${MAS_BLOOD_COLLECTION}/status/${confirmDialog.record.collectionTypeId}?status=${confirmDialog.newStatus}`
-      );
-      showPopup(UPDATE_BLOOD_COLLECTION, "success");
-      // Refresh full data after status change
-      fetchData(0);
-    } catch {
-      showPopup(UPDATE_FAIL_BLOOD_COLLECTION, "error");
-    } finally {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   // Show All button: fetch only active records (flag = 1)
@@ -446,8 +502,12 @@ const BloodCollectionTypeMaster = () => {
                 />
               </div>
               <div className="col-12 text-end">
-                <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                  {editingRecord ? "Update" : "Save"}
+                <button 
+                  type="submit" 
+                  className="btn btn-primary me-2" 
+                  disabled={!isFormValid || saving}
+                >
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
                 <button type="button" className="btn btn-danger" onClick={handleCancel}>
                   Cancel
@@ -459,7 +519,7 @@ const BloodCollectionTypeMaster = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">

@@ -22,6 +22,7 @@ import {
 const BloodInventoryStatus = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     statusCode: "",
     description: "",
@@ -109,33 +110,66 @@ const BloodInventoryStatus = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     try {
+      const payload = {
+        statusCode: formData.statusCode.trim(),
+        description: formData.description.trim(),
+      };
+
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_BLOOD_INVENTORY_STATUS}/update/${editingRecord.inventoryStatusId}`,
+          payload,
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
+      } else {
+        const response = await postRequest(
+          `${MAS_BLOOD_INVENTORY_STATUS}/create`,
           {
-            statusCode: formData.statusCode.trim(),
-            description: formData.description.trim(),
+            ...payload,
+            status: "y",
           },
         );
 
-        showPopup(UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
-      } else {
-        await postRequest(`${MAS_BLOOD_INVENTORY_STATUS}/create`, {
-          statusCode: formData.statusCode.trim(),
-          description: formData.description.trim(),
-          status: "Y",
-        });
-
-        showPopup(ADD_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_INVENTORY_STATUS_SUCCESS,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-
-      fetchData();
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(OPERATION_FAILED, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -161,26 +195,44 @@ const BloodInventoryStatus = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_INVENTORY_STATUS}/status/${confirmDialog.record.inventoryStatusId}?status=${confirmDialog.newStatus}`,
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Inventory Status "${
+              confirmDialog.record.statusCode
+            }" ${
+              confirmDialog.newStatus === STATUS.ACTIVE ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(UPDATE_STATUS_FAILED, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      setLoading(true);
-
-      await putRequest(
-        `${MAS_BLOOD_INVENTORY_STATUS}/status/${confirmDialog.record.inventoryStatusId}?status=${confirmDialog.newStatus}`,
-      );
-
-      showPopup(UPDATE_BLOOD_INVENTORY_STATUS_SUCCESS, "success");
-      fetchData();
-    } catch {
-      showPopup(UPDATE_STATUS_FAILED, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   const handleRefresh = () => {
@@ -218,16 +270,16 @@ const BloodInventoryStatus = () => {
                   Add
                 </button>
 
-               <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setSearchQuery("");
-                          fetchData(1);
-                        }}
-                      >
-                        <i className="mdi mdi-view-list"></i> Show All
-                      </button>
+                <button
+                  type="button"
+                  className="btn btn-success me-2"
+                  onClick={() => {
+                    setSearchQuery("");
+                    fetchData(1);
+                  }}
+                >
+                  <i className="mdi mdi-view-list"></i> Show All
+                </button>
               </>
             ) : (
               <button className="btn btn-secondary" onClick={handleCancel}>
@@ -335,9 +387,9 @@ const BloodInventoryStatus = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
 
                 <button
@@ -354,7 +406,7 @@ const BloodInventoryStatus = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">
@@ -376,8 +428,9 @@ const BloodInventoryStatus = () => {
                     <button
                       className="btn btn-primary"
                       onClick={() => handleConfirm(true)}
+                      disabled={saving}
                     >
-                      Yes
+                      {saving ? "Processing..." : "Yes"}
                     </button>
                   </div>
                 </div>
