@@ -345,22 +345,12 @@ const OPDQuestionnaireMaster = () => {
 
           {showForm && (
             <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-6">
-                <label>
-                  Question <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="question"
-                  className="form-control"
-                  value={formData.question}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
 
-              <div className="col-md-6">
+
+
+               <div className="col-md-6">
                 <label>
-                  Heading <span className="text-danger">*</span>
+                  Topic <span className="text-danger">*</span>
                 </label>
                 <select
                   id="headingId"
@@ -377,6 +367,20 @@ const OPDQuestionnaireMaster = () => {
                   ))}
                 </select>
               </div>
+              <div className="col-md-6">
+                <label>
+                  Question <span className="text-danger">*</span>
+                </label>
+                <input
+                  id="question"
+                  className="form-control"
+                  value={formData.question}
+                  onChange={handleInputChange}
+                  required
+                />
+              </div>
+
+             
 
               <div className="col-12 text-end">
                 <button
