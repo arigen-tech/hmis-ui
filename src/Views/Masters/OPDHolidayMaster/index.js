@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { MAS_OPD_HOLIDAY } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
@@ -15,6 +16,7 @@ import {
 const OPDHolidayMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     holidayDate: "",
     holidayName: "",
@@ -29,11 +31,10 @@ const OPDHolidayMaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    record: null,
+    id: null,
     newStatus: "",
+    name: "",
   });
-
-  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
@@ -42,7 +43,7 @@ const OPDHolidayMaster = () => {
     const day = String(date.getDate()).padStart(2, "0");
     const month = String(date.getMonth() + 1).padStart(2, "0");
     const year = date.getFullYear();
-    return `${day}-${month}-${year}`;
+    return `${day}/${month}/${year}`;
   };
 
   const formatDateForInput = (dateString) => {
@@ -83,8 +84,8 @@ const OPDHolidayMaster = () => {
   );
 
   const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
+    (currentPage - 1) * DEFAULT_ITEMS_PER_PAGE,
+    currentPage * DEFAULT_ITEMS_PER_PAGE
   );
 
   const validateForm = (values) => {
@@ -108,6 +109,7 @@ const OPDHolidayMaster = () => {
       remarks: "",
     });
     setIsFormValid(false);
+    setEditingRecord(null);
   };
 
   const isDuplicate = () => {
@@ -124,14 +126,18 @@ const OPDHolidayMaster = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    
+    if (!isFormValid || saving) {
+      return;
+    }
 
     if (isDuplicate()) {
       showPopup(DUPLICATE_HOLIDAY, "error");
       return;
     }
 
-    setLoading(true);
+    setSaving(true);
+    
     try {
       if (editingRecord) {
         const payload = {
@@ -140,17 +146,20 @@ const OPDHolidayMaster = () => {
           remarks: formData.remarks,
         };
         const response = await putRequest(`${MAS_OPD_HOLIDAY}/update/${editingRecord.opdHolidayId}`, payload);
+        
         if (response.status === 200) {
           setPopupMessage({
             message: UPDATE_HOLIDAY_SUCCESS,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
-              handleCancel();
-              fetchData(0);
-              setCurrentPage(1);
+              resetForm();
+              fetchData();
+              setShowForm(false);
             }
           });
+        } else {
+          throw new Error(response.message || "Update failed");
         }
       } else {
         const payload = {
@@ -159,24 +168,30 @@ const OPDHolidayMaster = () => {
           remarks: formData.remarks,
         };
         const response = await postRequest(`${MAS_OPD_HOLIDAY}/create`, payload);
+        
         if (response.status === 201 || response.status === 200) {
           setPopupMessage({
             message: ADD_HOLIDAY_SUCCESS,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
-              handleCancel();
-              fetchData(0);
-              setCurrentPage(1);
+              resetForm();
+              fetchData();
+              setShowForm(false);
             }
           });
+        } else {
+          throw new Error(response.message || "Save failed");
         }
       }
     } catch (error) {
       console.error("Save error:", error);
-      showPopup(editingRecord ? UPDATE_HOLIDAY_FAIL : ADD_HOLIDAY_FAIL, "error");
+      showPopup(
+        error.response?.data?.message || (editingRecord ? UPDATE_HOLIDAY_FAIL : ADD_HOLIDAY_FAIL),
+        "error"
+      );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -191,46 +206,55 @@ const OPDHolidayMaster = () => {
     setIsFormValid(true);
   };
 
-  const handleStatusChange = (rec) => {
-    setConfirmDialog({
-      isOpen: true,
-      record: rec,
-      newStatus: rec.status === "y" ? "n" : "y",
-    });
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
+    setConfirmDialog({ isOpen: true, id, newStatus, name });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.id !== null) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_OPD_HOLIDAY}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+        );
+        
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Holiday "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Status update error:", error);
+        showPopup(
+          confirmDialog.newStatus === "y" 
+            ? "Failed to activate holiday" 
+            : "Failed to deactivate holiday",
+          "error"
+        );
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      setLoading(true);
-      const response = await putRequest(
-        `${MAS_OPD_HOLIDAY}/status/${confirmDialog.record.opdHolidayId}?status=${confirmDialog.newStatus}`
-      );
-      if (response.status === 200) {
-        setPopupMessage({
-          message: confirmDialog.newStatus === "y" ? "Holiday activated successfully!" : "Holiday deactivated successfully!",
-          type: "success",
-          onClose: () => {
-            setPopupMessage(null);
-            fetchData(0);
-            setCurrentPage(1);
-          }
-        });
-      }
-    } catch (error) {
-      console.error("Status update error:", error);
-      showPopup(
-        confirmDialog.newStatus === "y" ? "Failed to activate holiday" : "Failed to deactivate holiday",
-        "error"
-      );
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      id: null,
+      newStatus: "",
+      name: "",
+    });
   };
 
   const showPopup = (message, type) => {
@@ -239,14 +263,13 @@ const OPDHolidayMaster = () => {
 
   const handleCancel = () => {
     resetForm();
-    setEditingRecord(null);
     setShowForm(false);
   };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    fetchData(0);
+    fetchData();
   };
 
   return (
@@ -256,64 +279,50 @@ const OPDHolidayMaster = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">OPD Holiday Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
+              <div className="d-flex align-items-center">
+                {!showForm && (
+                  <input
+                    className="form-control w-50 me-2"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
                 )}
-                <div className="d-flex align-items-center ms-auto">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => setShowForm(true)}
-                        disabled={loading}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                        onClick={handleRefresh}
-                        disabled={loading}
-                      >
-                        <i className="mdi mdi-refresh"></i> Show All
-                      </button>
-                    </>
-                  ) : (
+
+                {!showForm ? (
+                  <>
                     <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={handleCancel}
-                      disabled={loading}
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
                     >
-                      <i className="mdi mdi-arrow-left"></i> Back
+                      Add
                     </button>
-                  )}
-                </div>
+                    <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={handleCancel}
+                  >
+                    Back
+                  </button>
+                )}
               </div>
             </div>
 
             <div className="card-body">
-              {!showForm ? (
+              {loading && !showForm && <LoadingScreen />}
+
+              {!showForm && !loading && (
                 <>
-                  {loading && <div className="text-center">Loading...</div>}
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
@@ -321,114 +330,120 @@ const OPDHolidayMaster = () => {
                           <th>Holiday Date</th>
                           <th>Holiday Name</th>
                           <th>Remarks</th>
-                          <th>Last Update</th>
+                          <th>Last Updated</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.map((rec) => (
-                          <tr key={rec.opdHolidayId}>
-                            <td>{formatDate(rec.holidayDate)}</td>
-                            <td>{rec.holidayName}</td>
-                            <td>{rec.remarks || "N/A"}</td>
-                            <td>{formatDate(rec.lastUpdatedDt)}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={rec.status === "y"}
-                                  onChange={() => handleStatusChange(rec)}
-                                  id={`switch-${rec.opdHolidayId}`}
-                                  disabled={loading}
-                                />
-                                <label className="form-check-label px-0" htmlFor={`switch-${rec.opdHolidayId}`}>
-                                  {rec.status === "y" ? "Active" : "Inactive"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y" || loading}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((rec) => (
+                            <tr key={rec.opdHolidayId}>
+                              <td>{formatDate(rec.holidayDate)}</td>
+                              <td>{rec.holidayName}</td>
+                              <td>{rec.remarks || "N/A"}</td>
+                              <td>{formatDate(rec.lastUpdatedDt)}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={rec.status === "y"}
+                                    onChange={() =>
+                                      handleSwitchChange(rec.opdHolidayId, rec.status, rec.holidayName)
+                                    }
+                                    id={`switch-${rec.opdHolidayId}`}
+                                  />
+                                  <label
+                                    className="form-check-label ms-2"
+                                    htmlFor={`switch-${rec.opdHolidayId}`}
+                                  >
+                                    {rec.status === "y" ? "Active" : "Inactive"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-success btn-sm"
+                                  onClick={() => handleEdit(rec)}
+                                  disabled={rec.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="6" className="text-center">
+                              No Records Found
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
 
-                  {filteredData.length > 0 && (
-                    <Pagination
-                      totalItems={filteredData.length}
-                      itemsPerPage={itemsPerPage}
-                      currentPage={currentPage}
-                      onPageChange={setCurrentPage}
-                    />
-                  )}
-                  {filteredData.length === 0 && !loading && (
-                    <div className="text-center mt-3">No records found</div>
-                  )}
+                  <Pagination
+                    totalItems={filteredData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
-                  <div className="row">
-                    <div className="form-group col-md-4">
-                      <label>Holiday Date *</label>
-                      <input
-                        type="date"
-                        className="form-control mt-1"
-                        name="holidayDate"
-                        value={formData.holidayDate}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
+              )}
 
-                    <div className="form-group col-md-4">
-                      <label>Holiday Name *</label>
-                      <input
-                        type="text"
-                        className="form-control mt-1"
-                        name="holidayName"
-                        placeholder="e.g., Republic Day"
-                        value={formData.holidayName}
-                        onChange={handleInputChange}
-                        required
-                      />
-                    </div>
-
-                    <div className="form-group col-md-4">
-                      <label>Remarks</label>
-                      <textarea
-                        className="form-control mt-1"
-                        name="remarks"
-                        placeholder="Optional remarks"
-                        rows="3"
-                        value={formData.remarks}
-                        onChange={handleInputChange}
-                      />
-                    </div>
+              {showForm && (
+                <form className="row" onSubmit={handleSave}>
+                  <div className="form-group col-md-4">
+                    <label>Holiday Date <span className="text-danger">*</span></label>
+                    <input
+                      type="date"
+                      className="form-control mt-1"
+                      name="holidayDate"
+                      value={formData.holidayDate}
+                      onChange={handleInputChange}
+                      required
+                    />
                   </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                  <div className="form-group col-md-4">
+                    <label>Holiday Name <span className="text-danger">*</span></label>
+                    <input
+                      type="text"
+                      className="form-control mt-1"
+                      name="holidayName"
+                      placeholder="e.g., Republic Day"
+                      value={formData.holidayName}
+                      onChange={handleInputChange}
+                      required
+                    />
+                  </div>
+
+                  <div className="form-group col-md-4">
+                    <label>Remarks</label>
+                    <textarea
+                      className="form-control mt-1"
+                      name="remarks"
+                      placeholder="Optional remarks"
+                      rows="3"
+                      value={formData.remarks}
+                      onChange={handleInputChange}
+                    />
+                  </div>
+
+                  <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid || saving}
                     >
-                      {loading ? "Saving..." : editingRecord ? "Update" : "Save"}
+                      {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                     </button>
                     <button
                       type="button"
                       className="btn btn-danger"
                       onClick={handleCancel}
-                      disabled={loading}
                     >
                       Cancel
                     </button>
@@ -436,59 +451,45 @@ const OPDHolidayMaster = () => {
                 </form>
               )}
 
-              {popupMessage && <Popup {...popupMessage} />}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-body">
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {confirmDialog.isOpen && (
-        <div
-          className="modal d-block"
-          tabIndex="-1"
-          role="dialog"
-          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-        >
-          <div className="modal-dialog" role="document">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Status Change</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => handleConfirm(false)}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                <p>
-                  Are you sure you want to{" "}
-                  {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  type="button"
-                  className="btn btn-secondary"
-                  onClick={() => handleConfirm(false)}
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-primary"
-                  onClick={() => handleConfirm(true)}
-                  disabled={loading}
-                >
-                  Confirm
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

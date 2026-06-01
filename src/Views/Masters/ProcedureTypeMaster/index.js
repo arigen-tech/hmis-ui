@@ -3,16 +3,18 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_PROCEDURE_TYPE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { ACTIVATE_PROCEDURE_TYPE_ERR_MSG, ACTIVATE_PROCEDURE_TYPE_SUCC_MSG, ADD_PROCEDURE_TYPE_SUCC_MSG, DUPLICATE_PROCEDURE_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PROCEDURE_TYPE_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_PROCEDURE_TYPE_SUCC_MSG } from "../../../config/constants";
+import { ACTIVATE_PROCEDURE_TYPE_ERR_MSG, ACTIVATE_PROCEDURE_TYPE_SUCC_MSG, ADD_PROCEDURE_TYPE_SUCC_MSG, DUPLICATE_PROCEDURE_TYPE, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_PROCEDURE_TYPE_ERR_MSG, UPDATE_PROCEDURE_TYPE_SUCC_MSG } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const ProcedureTypeMaster = () => {
   const [procedureTypeData, setProcedureTypeData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     procedureTypeId: null,
-    newStatus: false
+    newStatus: "",
+    name: ""
   });
 
   const [formData, setFormData] = useState({
@@ -26,25 +28,22 @@ const ProcedureTypeMaster = () => {
   const [editingProcedureType, setEditingProcedureType] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("1");
 
   const PROCEDURE_TYPE_NAME_MAX_LENGTH = 100;
 
-  // Function to format date as dd-MM-YYYY
+  // Function to format date as dd/MM/YYYY
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
 
     try {
       const date = new Date(dateString);
 
-      // Check if date is valid
       if (isNaN(date.getTime())) {
         return "N/A";
       }
 
       const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
+      const month = String(date.getMonth() + 1).padStart(2, '0');
       const year = date.getFullYear();
 
       return `${day}/${month}/${year}`;
@@ -88,25 +87,17 @@ const ProcedureTypeMaster = () => {
   const filteredProcedureTypeData = procedureTypeData.filter(procedureType =>
     procedureType.procedureTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     procedureType.description?.toLowerCase().includes(searchQuery.toLowerCase())
-
   );
 
   // Calculate pagination values
-  const totalPages = Math.ceil(filteredProcedureTypeData.length / itemsPerPage);
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredProcedureTypeData.slice(indexOfFirstItem, indexOfLastItem);
 
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-    setPageInput("1");
   }, [searchQuery]);
-
-  // Update page input when current page changes
-  useEffect(() => {
-    setPageInput(currentPage.toString());
-  }, [currentPage]);
 
   // Validate form whenever formData changes
   useEffect(() => {
@@ -119,6 +110,12 @@ const ProcedureTypeMaster = () => {
     };
     setIsFormValid(validateForm());
   }, [formData]);
+
+  const resetForm = () => {
+    setFormData({ procedureTypeName: "", description: "" });
+    setIsFormValid(false);
+    setEditingProcedureType(null);
+  };
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -135,25 +132,26 @@ const ProcedureTypeMaster = () => {
 
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    
+    if (!isFormValid || saving) {
+      return;
+    }
+
+    // Check for duplicates (case-insensitive)
+    const isDuplicate = procedureTypeData.some(
+      (procedureType) =>
+        procedureType.procedureTypeName.toLowerCase() === formData.procedureTypeName.toLowerCase() &&
+        (!editingProcedureType || editingProcedureType.id !== procedureType.id)
+    );
+
+    if (isDuplicate) {
+      showPopup(DUPLICATE_PROCEDURE_TYPE, "error");
+      return;
+    }
+
+    setSaving(true);
 
     try {
-      setLoading(true);
-
-      // Check for duplicates (case-insensitive)
-      const isDuplicate = procedureTypeData.some(
-        (procedureType) =>
-          procedureType.procedureTypeName.toLowerCase() === formData.procedureTypeName.toLowerCase() &&
-          (!editingProcedureType || editingProcedureType.id !== procedureType.id)
-      );
-
-      if (isDuplicate) {
-        showPopup(DUPLICATE_PROCEDURE_TYPE, "error");
-        setLoading(false);
-        return;
-      }
-
-      // Prepare request data
       const requestData = {
         procedureTypeName: formData.procedureTypeName,
         description: formData.description
@@ -164,84 +162,103 @@ const ProcedureTypeMaster = () => {
         const response = await putRequest(`${MAS_PROCEDURE_TYPE}/update/${editingProcedureType.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchProcedureTypeData();
-          showPopup(UPDATE_PROCEDURE_TYPE_SUCC_MSG, "success");
+          setPopupMessage({
+            message: UPDATE_PROCEDURE_TYPE_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchProcedureTypeData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
         }
       } else {
         // Add new procedure type
         const response = await postRequest(`${MAS_PROCEDURE_TYPE}/create`, requestData);
 
-        if ((response && response.status === 200) || (response && response.status === 201)) {
-          fetchProcedureTypeData();
-          showPopup(ADD_PROCEDURE_TYPE_SUCC_MSG, "success");
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_PROCEDURE_TYPE_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchProcedureTypeData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
         }
       }
-
-      setEditingProcedureType(null);
-      setFormData({ procedureTypeName: "", description: "" });
-      setShowForm(false);
     } catch (err) {
       console.error("Error saving procedure type data:", err);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      showPopup(
+        err.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+        "error"
+      );
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
-  const showPopup = (message, type = 'info', onCloseCallback) => {
+  const showPopup = (message, type = 'info') => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-        if (onCloseCallback) {
-          onCloseCallback();
-        }
       }
     });
   };
 
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, procedureTypeId: id, newStatus });
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
+    setConfirmDialog({ isOpen: true, procedureTypeId: id, newStatus, name });
   };
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.procedureTypeId !== null) {
-      try {
-        setLoading(true);
+      setSaving(true);
 
+      try {
         const response = await putRequest(
           `${MAS_PROCEDURE_TYPE}/status/${confirmDialog.procedureTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        const responseData = response?.response ?? response?.data ?? response;
-
-        if (responseData) {
-          setProcedureTypeData((prevData) =>
-            prevData.map((procedureType) =>
-              procedureType.id === confirmDialog.procedureTypeId
-                ? {
-                  ...procedureType,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-                : procedureType
-            )
-          );
-          showPopup(
-            `Procedure type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success",
-            fetchProcedureTypeData,
-          );
+        if (response && response.status === 200) {
+          setPopupMessage({
+            message: `Procedure type "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchProcedureTypeData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
         }
       } catch (err) {
         console.error("Error updating procedure type status:", err);
         showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
     }
-    setConfirmDialog({ isOpen: false, procedureTypeId: null, newStatus: null });
+
+    setConfirmDialog({
+      isOpen: false,
+      procedureTypeId: null,
+      newStatus: "",
+      name: "",
+    });
   };
 
   const handleInputChange = (e) => {
@@ -252,41 +269,38 @@ const ProcedureTypeMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setPageInput("1");
-    fetchProcedureTypeData(); // Refresh from API
+    fetchProcedureTypeData();
   };
-
-  
-  const handlePageInputChange = (e) => {
-    setPageInput(e.target.value);
-  };
-
-  
-
- 
 
   // Handle activate for deactive records in edit mode
   const handleActivate = async () => {
     if (editingProcedureType && editingProcedureType.status === "n") {
-      try {
-        setLoading(true);
+      setSaving(true);
 
+      try {
         const response = await putRequest(
           `${MAS_PROCEDURE_TYPE}/status/${editingProcedureType.id}?status=y`
         );
 
-        if (response && response.response) {
-          fetchProcedureTypeData();
-          showPopup(ACTIVATE_PROCEDURE_TYPE_SUCC_MSG, "success");
-          setEditingProcedureType(null);
-          setFormData({ procedureTypeName: "", description: "" });
-          setShowForm(false);
+        if (response && response.status === 200) {
+          setPopupMessage({
+            message: ACTIVATE_PROCEDURE_TYPE_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchProcedureTypeData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Activation failed");
         }
       } catch (err) {
         console.error("Error activating procedure type:", err);
         showPopup(ACTIVATE_PROCEDURE_TYPE_ERR_MSG, "error");
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
     }
   };
@@ -298,75 +312,61 @@ const ProcedureTypeMaster = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Procedure Type Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
+              <div className="d-flex align-items-center">
+                {!showForm && (
+                  <input
+                    className="form-control w-50 me-2"
+                    placeholder="Search"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
                 )}
 
-                <div className="d-flex align-items-center">
-                  {!showForm ? (
-                    <>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2"
-                        onClick={() => {
-                          setEditingProcedureType(null);
-                          setFormData({ procedureTypeName: "", description: "" });
-                          setShowForm(true);
-                        }}
-                      >
-                        <i className="mdi mdi-plus"></i> Add
-                      </button>
-                      <button
-                        type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
-                        onClick={handleRefresh}
-                      >
-                        <i className="mdi mdi-refresh"></i> Show All
-                      </button>
-                      {/* <button type="button" className="btn btn-success me-2">
-                        <i className="mdi mdi-file-document-outline"></i> Generate Report
-                      </button> */}
-                    </>
-                  ) : (
-                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                      <i className="mdi mdi-arrow-left"></i> Back
+                {!showForm ? (
+                  <>
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
                     </button>
-                  )}
-                </div>
+                    <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+                ) : (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={() => {
+                      resetForm();
+                      setShowForm(false);
+                    }}
+                  >
+                    Back
+                  </button>
+                )}
               </div>
             </div>
+
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {loading && !showForm && <LoadingScreen />}
+
+              {!showForm && !loading && (
                 <>
-                  <div className="table-responsive packagelist">
+                  <div className="table-responsive">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
                           <th>Procedure Type Name</th>
                           <th>Description</th>
-                          <th>Status</th>
-                          {/* <th>Created By</th> */}
-                          {/* <th>Last Updated By</th> */}
                           <th>Last Updated</th>
+                          <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
@@ -376,29 +376,27 @@ const ProcedureTypeMaster = () => {
                             <tr key={procedureType.id}>
                               <td>{procedureType.procedureTypeName || "N/A"}</td>
                               <td>{procedureType.description}</td>
+                              <td>{procedureType.lastUpdated}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={procedureType.status === "y"}
-                                    onChange={() => handleSwitchChange(procedureType.id, procedureType.status === "y" ? "n" : "y")}
+                                    onChange={() => handleSwitchChange(procedureType.id, procedureType.status, procedureType.procedureTypeName)}
                                     id={`switch-${procedureType.id}`}
                                   />
                                   <label
-                                    className="form-check-label px-0"
+                                    className="form-check-label ms-2"
                                     htmlFor={`switch-${procedureType.id}`}
                                   >
-                                    {procedureType.status === "y" ? 'Active' : 'Deactive'}
+                                    {procedureType.status === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
-                              {/* <td>{procedureType.createdBy}</td> */}
-                              {/* <td>{procedureType.lastUpdatedBy}</td> */}
-                              <td>{procedureType.lastUpdated}</td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(procedureType)}
                                   disabled={procedureType.status !== "y"}
                                 >
@@ -409,25 +407,24 @@ const ProcedureTypeMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="7" className="text-center">No procedure type data found</td>
+                            <td colSpan="5" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
 
-                   {/* Pagination */}                
-                      <div>
-                        <Pagination
-                          totalItems={filteredProcedureTypeData.length}
-                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                          currentPage={currentPage}
-                          onPageChange={setCurrentPage}
-                        />
-                      </div>  
+                  <Pagination
+                    totalItems={filteredProcedureTypeData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
+              )}
+
+              {showForm && (
+                <form className="row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
                     <label>Procedure Type Name <span className="text-danger">*</span></label>
                     <input
@@ -440,11 +437,7 @@ const ProcedureTypeMaster = () => {
                       onChange={handleInputChange}
                       maxLength={PROCEDURE_TYPE_NAME_MAX_LENGTH}
                       required
-                      disabled={loading}
                     />
-                    {/* <small className="text-muted">
-                      {formData.procedureTypeName.length}/{PROCEDURE_TYPE_NAME_MAX_LENGTH} characters
-                    </small> */}
                   </div>
 
                   <div className="form-group col-md-6">
@@ -458,18 +451,16 @@ const ProcedureTypeMaster = () => {
                       onChange={handleInputChange}
                       rows="3"
                       required
-                      disabled={loading}
                     />
-                    {/* <small className="text-muted">Enter detailed description of the procedure type</small> */}
                   </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                  <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid || saving}
                     >
-                      {loading ? "Saving..." : (editingProcedureType ? 'Update' : 'Save')}
+                      {saving ? "Saving..." : editingProcedureType ? 'Update' : 'Save'}
                     </button>
 
                     {editingProcedureType && editingProcedureType.status === "n" && (
@@ -477,17 +468,19 @@ const ProcedureTypeMaster = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={handleActivate}
-                        disabled={loading}
+                        disabled={saving}
                       >
-                        Activate
+                        {saving ? "Activating..." : "Activate"}
                       </button>
                     )}
 
                     <button
                       type="button"
                       className="btn btn-danger"
-                      onClick={() => setShowForm(false)}
-                      disabled={loading}
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(false);
+                      }}
                     >
                       Cancel
                     </button>
@@ -504,46 +497,26 @@ const ProcedureTypeMaster = () => {
               )}
 
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog modal-dialog-centered" role="document">
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button
-                          type="button"
-                          className="btn-close"
-                          onClick={() => handleConfirm(false)}
-                          aria-label="Close"
-                          disabled={loading}
-                        ></button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
-                          <strong> {procedureTypeData.find(pt => pt.id === confirmDialog.procedureTypeId)?.procedureTypeName}</strong> procedure type?
-                        </p>
-                        {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
-                            ? "This will make the procedure type available for use." 
-                            : "This will hide the procedure type from selection."}
-                        </p> */}
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
                         <button
-                          type="button"
                           className="btn btn-secondary"
                           onClick={() => handleConfirm(false)}
-                          disabled={loading}
                         >
-                          Cancel
+                          No
                         </button>
                         <button
-                          type="button"
                           className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
-                          disabled={loading}
                         >
-                          {loading ? "Processing..." : "Confirm"}
+                          Yes
                         </button>
                       </div>
                     </div>
