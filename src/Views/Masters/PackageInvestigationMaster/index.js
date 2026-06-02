@@ -11,7 +11,8 @@ import {
   FAIL_TO_SAVE_CHANGES,
   SOME_INVESTIGATIONS_INVALID,
   SELECT_A_PACKAGE_AT_LEAST_ONE_INVESTIGATION,
-  DUPLICATE_INV,FAIL_TO_UPDATE_STS} from "../../../config/constants"
+  DUPLICATE_INV, FAIL_TO_UPDATE_STS
+} from "../../../config/constants"
 
 const PackageInvestigationMaster = () => {
   const [mappingList, setMappingList] = useState([])
@@ -77,7 +78,6 @@ const PackageInvestigationMaster = () => {
     try {
       const response = await getRequest(`${INVESTIGATION_PACKAGE_Mapping}/getAll/0`)
       if (response && response.response) {
-        console.log("Mappings Data:", response.response)
         setMappingList(response.response)
       }
     } catch (error) {
@@ -90,7 +90,6 @@ const PackageInvestigationMaster = () => {
     try {
       const response = await getRequest(`${MAS_INVESTIGATION}/getAll/1`)
       if (response && response.response) {
-        console.log("Investigations Data:", response.response)
         setInvestigationList(response.response)
       }
     } catch (error) {
@@ -128,34 +127,35 @@ const PackageInvestigationMaster = () => {
     setSearchQuery(e.target.value)
   }
 
- const groupedMappingList = Object.values(
-  mappingList.reduce((acc, item) => {
-    const key = item.packageId;
-
-    if (!acc[key]) {
-      acc[key] = {
-        ...item,
-        investigationName: item.investigationName ? [item.investigationName] : [],
-      };
-    } else {
-      if (item.investigationName) {
-        acc[key].investigationName.push(item.investigationName);
+  const groupedMappingList = Object.values(
+    mappingList.reduce((acc, item) => {
+      const key = item.packageId;
+      if (!acc[key]) {
+        acc[key] = {
+          ...item,
+          investigationName: item.investigationName ? [item.investigationName] : [],
+        };
+      } else {
+        if (item.investigationName) {
+          acc[key].investigationName.push(item.investigationName);
+        }
       }
-    }
-
-    return acc;
-  }, {})
-);
- const searchTerm = searchQuery.toLowerCase();
-
-const filteredMappingList = groupedMappingList.filter((item) => {
-  return (
-    item.packName?.toLowerCase().includes(searchTerm) ||
-    (Array.isArray(item.investigationName) &&
-      item.investigationName.join(", ").toLowerCase().includes(searchTerm))
+      return acc;
+    }, {})
   );
-});
+  const searchTerm = searchQuery.toLowerCase();
 
+  const filteredMappingList = groupedMappingList.filter((item) => {
+    return (
+      item.packName?.toLowerCase().includes(searchTerm) ||
+      (Array.isArray(item.investigationName) &&
+        item.investigationName.join(", ").toLowerCase().includes(searchTerm))
+    );
+  }).sort((a, b) => {
+    if (a.status === "y" && b.status !== "y") return -1;
+    if (a.status !== "y" && b.status === "y") return 1;
+    return 0;
+  });
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
@@ -215,29 +215,26 @@ const filteredMappingList = groupedMappingList.filter((item) => {
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.mappingId !== null) {
       try {
-        setLoading(true)
+        //setLoading(true)
         await putRequest(
           `${INVESTIGATION_PACKAGE_Mapping}/updateStatus/${confirmDialog.mappingId}?status=${confirmDialog.newStatus}`,
         )
-
-        // Update all mappings for this package in the local state
-        setMappingList((prevData) =>
-          prevData.map((item) =>
-            item.packageId === confirmDialog.packageId ? { ...item, status: confirmDialog.newStatus } : item,
-          ),
-        )
-
-        showPopup(
-          `All investigations for package "${confirmDialog.packageName}" have been ${
-            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
-          } successfully!`,
-          "success",
-        )
+        // Show success popup – data refreshes only after OK click
+        setPopupMessage({
+          message: `All investigations for package "${confirmDialog.packageName}" have been ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+          type: "success",
+          onClose: async () => {
+            setPopupMessage(null)
+            await fetchMappings()
+            setCurrentPage(1)
+          }
+        })
       } catch (error) {
         console.error("Error updating status:", error)
         showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
-        setLoading(false)
+        //setLoading(false)
       }
     }
     setConfirmDialog({
@@ -298,9 +295,7 @@ const filteredMappingList = groupedMappingList.filter((item) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => {
-        setPopupMessage(null)
-      },
+      onClose: () => setPopupMessage(null),
     })
   }
 
@@ -328,12 +323,19 @@ const filteredMappingList = groupedMappingList.filter((item) => {
       )
 
       if (response && (response.response || response.status === 200)) {
-        await fetchMappings()
-        showPopup(UPDATE_PACKAGE_INV_SUCC_MSG, "success")
-        setShowInvestigationForm(false)
-        setSelectedMapping(null)
+        setPopupMessage({
+          message: UPDATE_PACKAGE_INV_SUCC_MSG,
+          type: "success",
+          onClose: async () => {
+            setPopupMessage(null);
+            await fetchMappings();
+            setShowInvestigationForm(false);
+            setSelectedMapping(null);
+            setCurrentPage(1);
+          }
+        });
       } else {
-        throw new Error(response?.message || "Failed to update investigations")
+        throw new Error(response?.message || "Failed to update investigations");
       }
     } catch (error) {
       console.error("Error updating investigations:", error)
@@ -381,13 +383,17 @@ const filteredMappingList = groupedMappingList.filter((item) => {
       const response = await postRequest(`${INVESTIGATION_PACKAGE_Mapping}/add`, mappingRequest)
 
       if (response && (response.response || response.status === 200)) {
-        await fetchMappings()
-        showPopup(ADD_PACKAGE_INV_SUCC_MSG, "success")
-        setShowAddForm(false)
-        setFormData({
-          packageId: "",
-          investigations: [],
-        })
+        setPopupMessage({
+          message: ADD_PACKAGE_INV_SUCC_MSG,
+          type: "success",
+          onClose: async () => {
+            setPopupMessage(null);
+            await fetchMappings();
+            setShowAddForm(false);
+            setFormData({ packageId: "", investigations: [] });
+            setCurrentPage(1);
+          }
+        });
       } else {
         throw new Error("Failed to save package mappings")
       }
@@ -438,9 +444,9 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                       <button type="button" className="btn btn-success me-2" onClick={handleAddPackage}>
                         <i className="mdi mdi-plus"></i> Add
                       </button>
-                      <button 
-                        type="button" 
-                        className="btn btn-success me-2 flex-shrink-0" 
+                      <button
+                        type="button"
+                        className="btn btn-success me-2 flex-shrink-0"
                         onClick={handleRefresh}
                       >
                         <i className="mdi mdi-refresh"></i> Show All
@@ -453,13 +459,11 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => {
-                        // Close the Add form if open
                         if (showAddForm) {
                           setShowAddForm(false);
                           setFormData({ packageId: "", investigations: [] });
                           setInvestigationSearchQuery("");
                         }
-                        // Close the Edit/Manage Investigations form if open
                         if (showInvestigationForm) {
                           setShowInvestigationForm(false);
                           setSelectedMapping(null);
@@ -488,73 +492,48 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                         </tr>
                       </thead>
                       <tbody>
-  {currentItems.length > 0 ? (
-    currentItems.map((item) => {
-      return (
-        <tr key={item.pimId}>
-          <td>
-            <strong>{item.packName || "N/A"}</strong>
-          </td>
-
-         <td>
-  {Array.isArray(item.investigationName) &&
-  item.investigationName.length > 0
-    ? item.investigationName[0]
-    : "No investigation"}
-</td>
-
-          <td>
-            <div className="form-check form-switch">
-              <input
-                className="form-check-input"
-                type="checkbox"
-                checked={item.status === "y"}
-                onChange={() =>
-                  handleSwitchChange(
-                    item,
-                    item.status === "y" ? "n" : "y"
-                  )
-                }
-                id={`switch-${item.pimId}`}
-              />
-
-              <label
-                className="form-check-label px-0"
-                htmlFor={`switch-${item.pimId}`}
-              >
-                {item.status === "y"
-                  ? "Active"
-                  : "Deactivated"}
-              </label>
-            </div>
-          </td>
-
-          <td>
-            <button
-              className="btn btn-sm btn-primary"
-              onClick={() =>
-                handleManageInvestigations(item)
-              }
-              disabled={item.status !== "y"}
-            >
-              <i className="fa fa-pencil"></i>
-            </button>
-          </td>
-        </tr>
-      )
-    })
-  ) : (
-    <tr>
-      <td colSpan="4" className="text-center">
-        No package investigation mappings found
-      </td>
-    </tr>
-  )}
-</tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((item) => (
+                            <tr key={item.pimId}>
+                              <td><strong>{item.packName || "N/A"}</strong></td>
+                              <td>
+                                {Array.isArray(item.investigationName) && item.investigationName.length > 0
+                                  ? item.investigationName[0]
+                                  : "No investigation"}
+                              </td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={item.status === "y"}
+                                    onChange={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
+                                    id={`switch-${item.pimId}`}
+                                  />
+                                  <label className="form-check-label px-0" htmlFor={`switch-${item.pimId}`}>
+                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success"
+                                  onClick={() => handleManageInvestigations(item)}
+                                  disabled={item.status !== "y"}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="text-center">No package investigation mappings found</td>
+                          </tr>
+                        )}
+                      </tbody>
                     </table>
                   </div>
-                  
-                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredMappingList.length > 0 && (
                     <Pagination
                       totalItems={filteredMappingList.length}
@@ -566,55 +545,33 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                 </>
               ) : showAddForm ? (
                 <form className="forms row" onSubmit={handleSavePackage}>
-                 
-
                   <div className="row">
                     <div className="form-group col-md-6 mt-3">
-                      <label>
-                        Package Name <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-control"
-                        id="packageId"
-                        onChange={handleInputChange}
-                        value={formData.packageId}
-                        required
-                      >
+                      <label>Package Name <span className="text-danger">*</span></label>
+                      <select className="form-control" id="packageId" onChange={handleInputChange} value={formData.packageId} required>
                         <option value="">Select Package</option>
                         {packageList.map((pkg) => (
-                          <option key={pkg.packId} value={pkg.packId}>
-                            {pkg.packName}
-                          </option>
+                          <option key={pkg.packId} value={pkg.packId}>{pkg.packName}</option>
                         ))}
                       </select>
                     </div>
                   </div>
-
                   <div className="row mt-4">
                     <div className="col-md-6">
                       <div className="card">
                         <div className="card-header">
                           <h6>Available Investigations</h6>
                           <div className="mt-2">
-                            <input
-                              type="search"
-                              className="form-control"
-                              placeholder="Search investigations..."
-                              value={investigationSearchQuery}
-                              onChange={(e) => setInvestigationSearchQuery(e.target.value)}
-                            />
+                            <input type="search" className="form-control" placeholder="Search investigations..."
+                              value={investigationSearchQuery} onChange={(e) => setInvestigationSearchQuery(e.target.value)} />
                           </div>
                         </div>
                         <div className="card-body" style={{ maxHeight: "300px", overflowY: "auto" }}>
                           {filteredInvestigations.map((investigation) => (
                             <div key={`add-inv-${investigation.investigationId}`} className="form-check mb-2">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`add-inv-${investigation.investigationId}`}
+                              <input className="form-check-input" type="checkbox" id={`add-inv-${investigation.investigationId}`}
                                 checked={formData.investigations.includes(Number(investigation.investigationId))}
-                                onChange={() => handleInvestigationToggle(investigation.investigationId)}
-                              />
+                                onChange={() => handleInvestigationToggle(investigation.investigationId)} />
                               <label className="form-check-label" htmlFor={`add-inv-${investigation.investigationId}`}>
                                 {investigation.investigationName}
                               </label>
@@ -623,7 +580,6 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                         </div>
                       </div>
                     </div>
-
                     <div className="col-md-6">
                       <div className="card">
                         <div className="card-header">
@@ -632,78 +588,39 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                         <div className="card-body" style={{ maxHeight: "300px", overflowY: "auto" }}>
                           {formData.investigations.length > 0 ? (
                             getSelectedInvestigations(formData.investigations).map((investigation, index) => (
-                              <div
-                                key={`selected-add-inv-${investigation.investigationId}`}
-                                className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
-                              >
-                                <div>
-                                  <span className="badge bg-primary me-2">{index + 1}</span>
-                                  {investigation.investigationName}
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={() => handleInvestigationToggle(investigation.investigationId)}
-                                >
+                              <div key={`selected-add-inv-${investigation.investigationId}`} className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                                <div><span className="badge bg-primary me-2">{index + 1}</span>{investigation.investigationName}</div>
+                                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleInvestigationToggle(investigation.investigationId)}>
                                   <i className="fa fa-times"></i>
                                 </button>
                               </div>
                             ))
-                          ) : (
-                            <p className="text-muted">No investigations selected</p>
-                          )}
+                          ) : <p className="text-muted">No investigations selected</p>}
                         </div>
                       </div>
                     </div>
                   </div>
-
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>
-                      Save
-                    </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowAddForm(false)}>
-                      Cancel
-                    </button>
+                    <button type="submit" className="btn btn-primary me-2" disabled={!isFormValid}>Save</button>
+                    <button type="button" className="btn btn-danger" onClick={() => setShowAddForm(false)}>Cancel</button>
                   </div>
                 </form>
               ) : (
                 <div className="investigation-management">
-                   <div className="mb-3">
-    <h5>
-      Package Name :
-      <span className="ms-2">
-        {selectedMapping?.packName}
-      </span>
-    </h5>
-  </div>
-
+                  <div className="mb-3"><h5>Package Name : <span className="ms-2">{selectedMapping?.packName}</span></h5></div>
                   <div className="row">
                     <div className="col-md-6">
                       <div className="card">
-                        <div className="card-header">
-                          <h6>Available Investigations</h6>
-                          <div className="mt-2">
-                            <input
-                              type="search"
-                              className="form-control"
-                              placeholder="Search investigations..."
-                              value={investigationSearchQuery}
-                              onChange={(e) => setInvestigationSearchQuery(e.target.value)}
-                            />
-                          </div>
+                        <div className="card-header"><h6>Available Investigations</h6>
+                          <div className="mt-2"><input type="search" className="form-control" placeholder="Search investigations..."
+                            value={investigationSearchQuery} onChange={(e) => setInvestigationSearchQuery(e.target.value)} /></div>
                         </div>
                         <div className="card-body" style={{ maxHeight: "400px", overflowY: "auto" }}>
                           {filteredInvestigations.map((investigation) => (
                             <div key={`inv-${investigation.investigationId}`} className="form-check mb-2">
-                              <input
-                                className="form-check-input"
-                                type="checkbox"
-                                id={`inv-${investigation.investigationId}`}
-                                checked={selectedMapping?.investigations?.includes(
-                                  Number(investigation.investigationId),
-                                )}
-                                onChange={() => handleInvestigationToggle(investigation.investigationId)}
-                              />
+                              <input className="form-check-input" type="checkbox" id={`inv-${investigation.investigationId}`}
+                                checked={selectedMapping?.investigations?.includes(Number(investigation.investigationId))}
+                                onChange={() => handleInvestigationToggle(investigation.investigationId)} />
                               <label className="form-check-label" htmlFor={`inv-${investigation.investigationId}`}>
                                 {investigation.investigationName}
                               </label>
@@ -712,61 +629,35 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                         </div>
                       </div>
                     </div>
-
                     <div className="col-md-6">
                       <div className="card">
-                        <div className="card-header">
-                          <h6>Selected Investigations ({selectedMapping?.investigations?.length || 0})</h6>
-                        </div>
+                        <div className="card-header"><h6>Selected Investigations ({selectedMapping?.investigations?.length || 0})</h6></div>
                         <div className="card-body" style={{ maxHeight: "400px", overflowY: "auto" }}>
                           {selectedMapping?.investigations?.length > 0 ? (
                             getSelectedInvestigations(selectedMapping.investigations).map((investigation, index) => (
-                              <div
-                                key={`selected-inv-${investigation.investigationId}`}
-                                className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded"
-                              >
-                                <div>
-                                  <span className="badge bg-primary me-2">{index + 1}</span>
-                                  {investigation.investigationName}
-                                </div>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-outline-danger"
-                                  onClick={() => handleInvestigationToggle(investigation.investigationId)}
-                                >
+                              <div key={`selected-inv-${investigation.investigationId}`} className="d-flex justify-content-between align-items-center mb-2 p-2 border rounded">
+                                <div><span className="badge bg-primary me-2">{index + 1}</span>{investigation.investigationName}</div>
+                                <button type="button" className="btn btn-sm btn-outline-danger" onClick={() => handleInvestigationToggle(investigation.investigationId)}>
                                   <i className="fa fa-times"></i>
                                 </button>
                               </div>
                             ))
-                          ) : (
-                            <p className="text-muted">No investigations selected</p>
-                          )}
+                          ) : <p className="text-muted">No investigations selected</p>}
                         </div>
                       </div>
                     </div>
                   </div>
-
                   <div className="d-flex justify-content-end mt-3">
-                    <button type="button" className="btn btn-primary me-2" onClick={handleSaveInvestigations}>
-                      Save Changes
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-danger"
-                      onClick={() => {
-                        setShowInvestigationForm(false)
-                        setSelectedMapping(null)
-                      }}
-                    >
-                      Cancel
-                    </button>
+                    <button type="button" className="btn btn-primary me-2" onClick={handleSaveInvestigations}>Update</button>
+                    <button type="button" className="btn btn-danger" onClick={() => { setShowInvestigationForm(false); setSelectedMapping(null); }}>Cancel</button>
                   </div>
                 </div>
               )}
 
+              {/* Status change confirmation dialog - exactly as in the image */}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
                       <div className="modal-header">
                         <h5 className="modal-title">Confirm Package Status Change</h5>
@@ -778,7 +669,7 @@ const filteredMappingList = groupedMappingList.filter((item) => {
                         <p>
                           <strong>Warning:</strong> This action will{" "}
                           {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}
-                          <strong> ALL investigations</strong> for the package "{confirmDialog.packageName}".
+                          <strong> ALL investigations</strong> for the package "<strong>{confirmDialog.packageName}</strong>".
                         </p>
                         <p>Are you sure you want to continue?</p>
                       </div>
