@@ -1,5 +1,11 @@
-import { useState } from "react";
+import { useState,useEffect } from "react";
 import Popup from "../../../Components/popup";
+import {getRequest} from "../../../service/apiService";
+import { MAS_OB_CONCEPTION,MAS_OB_CONSANGUINITY,OB_BOOKED_STATUS,
+  OB_MAS_IMMUNISED_STATUS,MAS_OB_TRIMESTER,MAS_PRESENTATION,MAS_OB_PVMEMBRANE,MAS_OB_PVLIQUOR,
+  MAS_CERVIX_CONSISTENCY,MAS_CERVIX_POSITION,MAS_STATION_PRESENTATION,MAS_OP_PELVIS_TYPE
+ } from "../../../config/apiConfig";
+
 
 const defaultOBGForm = {
   obstetricScore: { g: "", p: "", a: "", l: "" },
@@ -60,6 +66,18 @@ const OBGDetails = ({
   hideButtons = false,
 }) => {
   const [popupMessage, setPopupMessage] = useState(null);
+  const [conceptionOptions, setConceptionOptions] = useState([]);
+  const [consanguinityOptions, setConsanguinityOptions] = useState([]);
+  const [bookedStatusOptions, setBookedStatusOptions] = useState([]);
+  const [immunisedStatusOptions, setImmunisedStatusOptions] = useState([]);
+  const [trimesterOptions, setTrimesterOptions] = useState([]);
+  const [presentationOptions, setPresentationOptions] = useState([]);
+  const [pvmembraneOptions, setPvmembraneOptions] = useState([]);
+  const [pvliquorOptions, setPvliquorOptions] = useState([]);
+  const [consistencyOptions, setConsistencyOptions] = useState([]);
+  const [positionOptions, setPositionOptions] = useState([]);
+  const [stationOptions, setStationOptions] = useState([]);
+  const [pelvisTypeOptions, setPelvisTypeOptions] = useState([]);
 
   const [form, setForm] = useState(defaultOBGForm);
   const updateObstetricScore = (field, value) => {
@@ -68,6 +86,191 @@ const OBGDetails = ({
       obstetricScore: { ...prev.obstetricScore, [field]: value },
     }));
   };
+
+const fetchPelvisTypeOptions = async () => {
+  try {
+    const res = await getRequest(`${MAS_OP_PELVIS_TYPE}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setPelvisTypeOptions(res.response);
+    } else {
+      setPelvisTypeOptions([]);
+    }
+  } catch (error) {
+    console.error("Pelvis type options fetch error:", error);
+    setPelvisTypeOptions([]);
+  }
+};
+
+  const fetchStationOptions = async () => {
+    try {
+      const res = await getRequest(`${MAS_STATION_PRESENTATION}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setStationOptions(res.response);
+      } else {
+        setStationOptions([]);
+      }
+    } catch (error) {
+      console.error("Station options fetch error:", error);
+      setStationOptions([]);
+    }
+  };
+
+  const fetchPositionOptions = async () => {
+    try {
+      const res = await getRequest(`${MAS_CERVIX_POSITION}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setPositionOptions(res.response);
+      } else {
+        setPositionOptions([]);
+      }
+    } catch (error) {
+      console.error("Position options fetch error:", error);
+      setPositionOptions([]);
+    }
+  };
+
+  const fetchConsistencyOptions = async () => {
+    try {
+      const res = await getRequest(`${MAS_CERVIX_CONSISTENCY}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setConsistencyOptions(res.response);
+      } else {
+        setConsistencyOptions([]);
+      }
+    } catch (error) {
+      console.error("Consistency options fetch error:", error);
+      setConsistencyOptions([]);
+    }
+  };
+
+
+  const fetchPVMembraneOptions = async () => {
+  try {
+    const res = await getRequest(`${MAS_OB_PVMEMBRANE}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setPvmembraneOptions(res.response);
+    } else {
+      setPvmembraneOptions([]);
+    }
+  } catch (error) {
+    console.error("PVMembrane options fetch error:", error);
+    setPvmembraneOptions([]);
+  }
+};
+
+const fetchPVliquorOptions = async () => {
+  try {
+    const res = await getRequest(`${MAS_OB_PVLIQUOR}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setPvliquorOptions(res.response);
+    } else {
+      setPvliquorOptions([]);
+    }
+  } catch (error) {
+    console.error("PVliquor options fetch error:", error);
+    setPvliquorOptions([]);
+  }
+};
+
+const fetchPresentationOptions = async () => {
+  try {
+    const res = await getRequest(`${MAS_PRESENTATION}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setPresentationOptions(res.response);
+      } else {
+        setPresentationOptions([]);
+      }
+    } catch (error) {
+      console.error("Presentation options fetch error:", error);
+      setPresentationOptions([]);
+    }
+  };
+
+  const fetchTrimesterOptions = async () => {
+    try {
+      const res = await getRequest(`${MAS_OB_TRIMESTER}/getAll/1`); 
+      if (res?.status === 200 && res?.response) {
+        setTrimesterOptions(res.response);
+      } else {
+        setTrimesterOptions([]);
+      }
+    } catch (error) {
+      console.error("Trimester options fetch error:", error);
+      setTrimesterOptions([]);
+    }
+  };
+
+  const fetchImmunisedStatusOptions = async () => {
+    try {
+      const res = await getRequest(`${OB_MAS_IMMUNISED_STATUS}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setImmunisedStatusOptions(res.response);
+      } else {
+        setImmunisedStatusOptions([]);
+      }
+    } catch (error) {
+      console.error("Immunised status fetch error:", error);
+      setImmunisedStatusOptions([]);
+    }
+  };
+
+  const fetchBookedStatusOptions = async () => {
+    try {
+      const res = await getRequest(`${OB_BOOKED_STATUS}/getAll/1`);
+      if (res?.status === 200 && res?.response) {
+        setBookedStatusOptions(res.response);
+      } else {
+        setBookedStatusOptions([]);
+      }
+    } catch (error) {
+      console.error("Booked status fetch error:", error);
+      setBookedStatusOptions([]);
+    }
+  };
+
+  const fetchConsanguinityOptions = async () => {
+  try {
+    const res = await getRequest(`${MAS_OB_CONSANGUINITY}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setConsanguinityOptions(res.response);
+    } else {
+      setConsanguinityOptions([]);
+    }
+  } catch (error) {
+    console.error("Consanguinity fetch error:", error);
+    setConsanguinityOptions([]);
+  }
+};
+
+ const fetchConceptionOptions = async () => {
+  try {
+    const res = await getRequest(`${MAS_OB_CONCEPTION}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setConceptionOptions(res.response);
+    } else {
+      setConceptionOptions([]);
+    }
+  } catch (error) {
+    console.error("Conception fetch error:", error);
+    setConceptionOptions([]);
+  }
+};
+
+   useEffect(() => {
+    fetchConceptionOptions();
+    fetchConsanguinityOptions();
+    fetchBookedStatusOptions();
+    fetchImmunisedStatusOptions();
+    fetchTrimesterOptions();
+    fetchPresentationOptions();
+    fetchPVMembraneOptions();
+    fetchPVliquorOptions();
+    fetchConsistencyOptions();
+    fetchPositionOptions();
+    fetchStationOptions();
+    fetchPelvisTypeOptions();
+  }, []);
+
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -352,20 +555,18 @@ const OBGDetails = ({
               <div className="row mb-3">
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Conception</label>
-                  <select
-                    className="form-select"
-                    value={form.conception}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        conception: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">Select</option>
-                    <option value="Spontaneous">Spontaneous</option>
-                    <option value="Assisted">Assisted</option>
-                  </select>
+                 <select
+  className="form-select"
+  value={form.conception}
+  onChange={(e) => setForm((prev) => ({ ...prev, conception: e.target.value }))}
+>
+  <option value="">Select</option>
+  {conceptionOptions.map((opt) => (
+    <option key={opt.id} value={opt.conceptionType}>
+      {opt.conceptionType}
+    </option>
+  ))}
+</select>
                 </div>
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Married Life</label>
@@ -385,34 +586,40 @@ const OBGDetails = ({
                 <div className="col-md-3">
                   <label className="form-label fw-bold">Consanguinity</label>
                   <select
-                    className="form-select"
-                    value={form.consanguinity}
-                    onChange={(e) =>
-                      setForm((prev) => ({
-                        ...prev,
-                        consanguinity: e.target.value,
-                      }))
-                    }
-                  >
-                    <option value="">Select</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
+      className="form-select"
+      value={form.consanguinity}
+      onChange={(e) =>
+        setForm((prev) => ({
+          ...prev,
+          consanguinity: e.target.value,
+        }))
+      }
+    >
+      <option value="">Select</option>
+     {consanguinityOptions.map((opt) => (
+  <option key={opt.id} value={opt.consanguinityValue}>
+    {opt.consanguinityValue}
+  </option>
+))}
+    </select>
                 </div>
-                <div className="col-md-3">
-                  <label className="form-label fw-bold">Booked</label>
-                  <select
-                    className="form-select"
-                    value={form.booked}
-                    onChange={(e) =>
-                      setForm((prev) => ({ ...prev, booked: e.target.value }))
-                    }
-                  >
-                    <option value="">Select</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
-                  </select>
-                </div>
+               <div className="col-md-3">
+  <label className="form-label fw-bold">Booked</label>
+  <select
+    className="form-select"
+    value={form.booked}
+    onChange={(e) =>
+      setForm((prev) => ({ ...prev, booked: e.target.value }))
+    }
+  >
+    <option value="">Select</option>
+    {bookedStatusOptions.map((opt) => (
+      <option key={opt.id} value={opt.bookedStatus}>
+        {opt.bookedStatus}
+      </option>
+    ))}
+  </select>
+</div>
               </div>
 
               {/* Immunised, Trimesters, GC, Pa^A, Pe^A, TT, FHR, Presentation, Palpation, PV, Inspection */}
@@ -430,8 +637,12 @@ const OBGDetails = ({
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
+                  {immunisedStatusOptions.map((opt) => (
+  <option key={opt.id} value={opt.immunisationValue}>
+    {opt.immunisationValue}
+  </option>
+
+))}
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -449,9 +660,11 @@ const OBGDetails = ({
                     }
                   >
                     <option value="">Select</option>
-                    <option value="I">I</option>
-                    <option value="II">II</option>
-                    <option value="III">III</option>
+                   {trimesterOptions.map((opt) => (
+  <option key={opt.id} value={opt.trimesterValue}>
+    {opt.trimesterValue}
+  </option>
+))}
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -533,9 +746,11 @@ const OBGDetails = ({
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Cephalic">Cephalic</option>
-                    <option value="Breech">Breech</option>
-                    <option value="Transverse">Transverse</option>
+                    {presentationOptions.map((opt) => (
+  <option key={opt.id} value={opt.presentationValue}>
+    {opt.presentationValue}
+  </option>
+))}
                   </select>
                 </div>
                 <div className="col-md-3 mt-3">
@@ -824,8 +1039,11 @@ const OBGDetails = ({
                     onChange={(e) => updatePvExam("membrane", e.target.value)}
                   >
                     <option value="">Select</option>
-                    <option value="Intact">Intact</option>
-                    <option value="Ruptured">Ruptured</option>
+                    {pvmembraneOptions.map((opt) => (
+  <option key={opt.id} value={opt.membraneStatus}>
+    {opt.membraneStatus}
+  </option>
+))}
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -836,9 +1054,11 @@ const OBGDetails = ({
                     onChange={(e) => updatePvExam("liquor", e.target.value)}
                   >
                     <option value="">Select</option>
-                    <option value="Clear">Clear</option>
-                    <option value="Meconium stained">Meconium stained</option>
-                    <option value="Blood stained">Blood stained</option>
+                   {pvliquorOptions.map((opt) => (
+  <option key={opt.id} value={opt.liquorValue}>
+    {opt.liquorValue}
+  </option>
+))}
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -853,8 +1073,11 @@ const OBGDetails = ({
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Firm">Firm</option>
-                    <option value="Soft">Soft</option>
+                    {consistencyOptions.map((opt) => (
+  <option key={opt.id} value={opt.cervixConsistency}>
+    {opt.cervixConsistency}
+  </option>
+))}
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -867,9 +1090,11 @@ const OBGDetails = ({
                     onChange={(e) => updatePvExam("position", e.target.value)}
                   >
                     <option value="">Select</option>
-                    <option value="Posterior">Posterior</option>
-                    <option value="Mid">Mid</option>
-                    <option value="Anterior">Anterior</option>
+                   {positionOptions.map((opt) => (
+  <option key={opt.id} value={opt.cervixPosition}>
+    {opt.cervixPosition}
+  </option>
+))}
                   </select>
                 </div>
                 <div className="col-md-3">
@@ -892,9 +1117,12 @@ const OBGDetails = ({
                     onChange={(e) => updatePvExam("station", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {[-3, -2, -1, 0, 1, 2, 3].map((s) => (
-                      <option key={s}>{s}</option>
-                    ))}
+                   {stationOptions.map((opt) => (
+  <option key={opt.id} value={opt.stationValue}>
+    {opt.stationValue}
+  </option>
+))}
+                    
                   </select>
                 </div>
               </div>
@@ -925,10 +1153,11 @@ const OBGDetails = ({
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Gynecoid">Gynecoid</option>
-                    <option value="Android">Android</option>
-                    <option value="Anthropoid">Anthropoid</option>
-                    <option value="Platypelloid">Platypelloid</option>
+                   {pelvisTypeOptions.map((opt) => (
+  <option key={opt.id} value={opt.pelvisType}>
+    {opt.pelvisType}
+  </option>
+))}
                   </select>
                 </div>
               </div>

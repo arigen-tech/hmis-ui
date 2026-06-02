@@ -1,55 +1,60 @@
 
 import { useState, useEffect } from "react";
 import { getRequest } from "../../../service/apiService";
-import { ENT_MAS_PINNA  } from "../../../config/apiConfig";
+import { ENT_MAS_PINNA ,ENT_MAS_EAR_CANAL,ENT_MAS_TM_STATUS,MAS_ENT_RINNE,MAS_ENT_WEBER, MAS_EAR_CANAL } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
 
 const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = false }) => {
-  const [form, setForm] = useState({
-    // ===== EAR EXAMINATION =====//
-    // Hearing Tests
-    rinneTest: "",
-    weberTest: "",
-    abcTest: "",
-    audiometryFindings: "",
+ const [form, setForm] = useState({
+  // ===== EAR EXAMINATION =====//
+  rightPinna: "",
+  leftPinna: "",
+  rightEarCanal: "",
+  leftEarCanal: "",
+  rightTmStatus: "",
+  leftTmStatus: "",
+  
+  // Hearing Tests
+  rinneTest: "",
+  weberTest: "",
+  abcTest: "",
+  audiometryFindings: "",
 
-    // ===== NOSE & SINUSES (PNS) =====
-    // External Nose
-    externalNose: "",
-    
-    // Nasal Cavity Examination
-    mucosa: "",
-    septum: "",
-    turbinates: "",
-    nasalPolyp: "",
-    discharge: "",
-    
-    // Sinus Tenderness
-    maxillaryTenderness: "",
-    frontalTenderness: "",
+  // ===== NOSE & SINUSES (PNS) =====
+  externalNose: "",
+  mucosa: "",
+  septum: "",
+  turbinates: "",
+  nasalPolyp: "",
+  discharge: "",
+  maxillaryTenderness: "",
+  frontalTenderness: "",
 
-    // ===== THROAT / OROPHARYNX =====
-    oralCavity: "",
-    tonsilSize: "",
-    tonsilCongestion: "",
-    tonsilFollicles: "",
-    tonsilMembrane: "",
-    peritonsillarAbscess: "",
-    pharynx: "",
-    uvula: "",
-    voiceAssessment: "",
+  // ===== THROAT / OROPHARYNX =====
+  oralCavity: "",
+  tonsilSize: "",
+  tonsilCongestion: "",
+  tonsilFollicles: "",
+  tonsilMembrane: "",
+  peritonsillarAbscess: "",
+  pharynx: "",
+  uvula: "",
+  voiceAssessment: "",
 
-    // ===== NECK EXAMINATION =====
-    thyroidEnlargement: "",
-    cervicalNodes: "",
-    neckMass: "",
-    otherNeckFindings: "",
-  });
+  // ===== NECK EXAMINATION =====
+  thyroidEnlargement: "",
+  cervicalNodes: "",
+  neckMass: "",
+  otherNeckFindings: "",
+});
 
   const [popupMessage, setPopupMessage] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [pinnaList, setPinnaList] = useState([]);
-
+  const [earCanalList, setEarCanalList] = useState([]);
+  const [tmStatusList, setTmStatusList] = useState([]);
+  const [rinneList, setRinneList] = useState([]);
+  const [weberList, setWeberList] = useState([]);
   // Static options
   const pinnaOptions = ["Normal", "Swelling", "Tender", "Deformity"];
   const earCanalOptions = ["Normal", "Wax", "Discharge", "Fungal Infection", "Foreign Body"];
@@ -79,14 +84,99 @@ const EarExamination = ({ patientId, visitId, hideHeader = false, hideButtons = 
 
   useEffect(() => {
   fetchPinna();
+  fetchEarCanal();
+  fetchTmStatus();
+  fetchRinne();
+  fetchWeber();
 }, []);
 
-const fetchPinna = async () => {
+const fetchWeber = async () => {
   try {
-    const response = await getRequest(ENT_MAS_PINNA);
-    setPinnaList(response.data || response || []);
+    const response = await getRequest(MAS_ENT_WEBER);
+    // Handle different response structures
+    if (response?.status === 200) {
+      setWeberList(response.response || []);
+    } else if (Array.isArray(response)) {
+      setWeberList(response);
+    } else if (response?.data) {
+      setWeberList(response.data);
+    } else {
+      setWeberList([]);
+    }
   } catch (error) {
-    console.error("Pinna API Error:", error);
+    console.error("Weber Test API Error:", error);
+    setWeberList([]);
+  }
+};
+
+const fetchRinne = async () => {
+  try {
+    const response = await getRequest(MAS_ENT_RINNE);
+    // Handle different response structures
+    if (response?.status === 200) {
+      setRinneList(response.response || []);
+    } else if (Array.isArray(response)) {
+      setRinneList(response);
+    } else if (response?.data) {
+      setRinneList(response.data);
+    } else {
+      setRinneList([]);
+    }
+  } catch (error) {
+    console.error("Rinne Test API Error:", error);
+    setRinneList([]);
+  }
+};
+
+const fetchTmStatus = async () => {
+  try {
+    const response = await getRequest(ENT_MAS_TM_STATUS);
+    // Handle different response structures
+    if (response?.status === 200) {
+      setTmStatusList(response.response || []);
+    } else if (Array.isArray(response)) {
+      setTmStatusList(response);
+    } else if (response?.data) {
+      setTmStatusList(response.data);
+    } else {
+      setTmStatusList([]);
+    }
+} catch (error) {
+    console.error("TM Status API Error:", error);
+    setTmStatusList([]);
+  }
+};
+
+const fetchEarCanal = async () => {
+  try {
+    const response = await getRequest(`${MAS_EAR_CANAL}/getAll/1`);
+    // Handle different response structures
+    if (response?.status === 200 && response?.response) {
+      setEarCanalList(response.response || []);
+    } else if (Array.isArray(response)) {
+      setEarCanalList(response);
+    } else if (response?.data) {
+      setEarCanalList(response.data);
+    } else {
+      setEarCanalList([]);
+    }
+} catch (error) {
+    console.error("Ear Canal API Error:", error);
+    setEarCanalList([]);
+  }};
+
+
+ const fetchPinna = async () => {
+  try {
+    const response = await getRequest(`${ENT_MAS_PINNA}/getAll/1`);
+    if (response?.status === 200 && response?.response) {
+      setPinnaList(response.response);
+    } else {
+      setPinnaList([]);
+    }
+  } catch (error) {
+    console.error("Pinna fetch error:", error);
+    setPinnaList([]);
   }
 };
 
@@ -161,7 +251,7 @@ const fetchPinna = async () => {
           <h6 className="fw-bold bg-light text-primary border-bottom pb-1">EAR</h6>
   
     {/* Pinna */}
-    <div className="row mb-3">
+    {/* <div className="row mb-3">
       <div className="col-md-12">
         <label className="form-label fw-bold">Pinna <span className="text-danger">*</span></label>
       </div>
@@ -193,78 +283,102 @@ const fetchPinna = async () => {
           ))}
         </select>
       </div>
-    </div>
-
+    </div> */}
+<div className="row mb-3">
+  <div className="col-md-12">
+    <label className="form-label fw-bold">Pinna <span className="text-danger">*</span></label>
+  </div>
+  <div className="col-md-5">
+    <label className="form-label text-muted small">Right</label>
+    <select
+      className="form-select"
+      name="rightPinna"
+      value={form.rightPinna}
+      onChange={handleChange}
+    >
+      <option value="">Select</option>
+      {pinnaList.map(opt => (
+        <option key={opt.id || opt.pinnaId || opt} value={opt.pinnaStatus || opt}>
+          {opt.pinnaStatus || opt}
+        </option>
+      ))}
+    </select>
+  </div>
+  <div className="col-md-5">
+    <label className="form-label text-muted small">Left</label>
+    <select
+      className="form-select"
+      name="leftPinna"
+      value={form.leftPinna}
+      onChange={handleChange}
+    >
+      <option value="">Select</option>
+      {pinnaList.map(opt => (
+        <option key={opt.id || opt.pinnaId || opt} value={opt.pinnaStatus || opt}>
+          {opt.pinnaStatus || opt}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
     {/* Ear Canal */}
-    <div className="row mb-3">
-      <div className="col-md-12">
-        <label className="form-label fw-bold">Ear Canal <span className="text-danger">*</span></label>
-      </div>
-      <div className="col-md-5">
-        <label className="form-label text-muted small">Right</label>
-        <select
-          className="form-select"
-          name="rightEarCanal"
-          value={form.rightEarCanal}
-          onChange={handleChange}
-        >
-          <option value="">Select</option>
-          {earCanalOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-      <div className="col-md-5">
-        <label className="form-label text-muted small">Left</label>
-        <select
-          className="form-select"
-          name="leftEarCanal"
-          value={form.leftEarCanal}
-          onChange={handleChange}
-        >
-          <option value="">Select</option>
-          {earCanalOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-    </div>
+   
+<div className="row mb-3">
+  <div className="col-md-12">
+    <label className="form-label fw-bold">Ear Canal <span className="text-danger">*</span></label>
+  </div>
+  <div className="col-md-5">
+    <label className="form-label text-muted small">Right</label>
+    <select className="form-select" name="rightEarCanal" value={form.rightEarCanal} onChange={handleChange}>
+      <option value="">Select</option>
+      {earCanalList.map((opt) => (
+        <option key={opt.id} value={opt.earCanalCondition}>
+          {opt.earCanalCondition}
+        </option>
+      ))}
+    </select>
+  </div>
+  <div className="col-md-5">
+    <label className="form-label text-muted small">Left</label>
+    <select className="form-select" name="leftEarCanal" value={form.leftEarCanal} onChange={handleChange}>
+      <option value="">Select</option>
+      {earCanalList.map((opt) => (
+        <option key={opt.id} value={opt.earCanalCondition}>
+          {opt.earCanalCondition}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
 
-    {/* Tympanic Membrane (TM) Status */}
-    <div className="row mb-3">
-      <div className="col-md-12">
-        <label className="form-label fw-bold">Tympanic Membrane (TM) Status <span className="text-danger">*</span></label>
-      </div>
-      <div className="col-md-5">
-        <label className="form-label text-muted small">Right</label>
-        <select
-          className="form-select"
-          name="rightTmStatus"
-          value={form.rightTmStatus}
-          onChange={handleChange}
-        >
-          <option value="">Select</option>
-          {tmStatusOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-      <div className="col-md-5">
-        <label className="form-label text-muted small">Left</label>
-        <select
-          className="form-select"
-          name="leftTmStatus"
-          value={form.leftTmStatus}
-          onChange={handleChange}
-        >
-          <option value="">Select</option>
-          {tmStatusOptions.map(opt => (
-            <option key={opt} value={opt}>{opt}</option>
-          ))}
-        </select>
-      </div>
-    </div>
 
+<div className="row mb-3">
+  <div className="col-md-12">
+    <label className="form-label fw-bold">Tympanic Membrane (TM) Status <span className="text-danger">*</span></label>
+  </div>
+  <div className="col-md-5">
+    <label className="form-label text-muted small">Right</label>
+    <select className="form-select" name="rightTmStatus" value={form.rightTmStatus} onChange={handleChange}>
+      <option value="">Select</option>
+      {tmStatusList.map((opt) => (
+        <option key={opt.id} value={opt.tmStatusName || opt.status}>
+          {opt.tmStatusName || opt.status}
+        </option>
+      ))}
+    </select>
+  </div>
+  <div className="col-md-5">
+    <label className="form-label text-muted small">Left</label>
+    <select className="form-select" name="leftTmStatus" value={form.leftTmStatus} onChange={handleChange}>
+      <option value="">Select</option>
+      {tmStatusList.map((opt) => (
+        <option key={opt.id} value={opt.tmStatusName || opt.status}>
+          {opt.tmStatusName || opt.status}
+        </option>
+      ))}
+    </select>
+  </div>
+</div>
   
 </div>
 
@@ -275,20 +389,17 @@ const fetchPinna = async () => {
         <h6 className="fw-bold bg-light text-primary border-bottom pb-1">HEARING TESTS</h6>
           </div>
             <div className="row mb-3">
-              <div className="col-md-3">
-                <label className="form-label fw-bold">Rinne Test <span className="text-danger">*</span></label>
-                <select
-                  className="form-select"
-                  name="rinneTest"
-                  value={form.rinneTest}
-                  onChange={handleChange}
-                >
-                  <option value="">Select</option>
-                  {rinneOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
-                  ))}
-                </select>
-              </div>
+             <div className="col-md-3">
+  <label className="form-label fw-bold">Rinne Test <span className="text-danger">*</span></label>
+  <select className="form-select" name="rinneTest" value={form.rinneTest} onChange={handleChange}>
+    <option value="">Select</option>
+    {rinneList.map((opt) => (
+      <option key={opt.id} value={opt.rinneName || opt.name}>
+        {opt.rinneName || opt.name}
+      </option>
+    ))}
+  </select>
+</div>
 
               <div className="col-md-4">
                 <label className="form-label fw-bold">Weber Test <span className="text-danger">*</span></label>
@@ -299,8 +410,10 @@ const fetchPinna = async () => {
                   onChange={handleChange}
                 >
                   <option value="">Select</option>
-                  {weberOptions.map(opt => (
-                    <option key={opt} value={opt}>{opt}</option>
+                  {weberList.map((opt) => (
+                    <option key={opt.id} value={opt.weberName || opt.name}>
+                      {opt.weberName || opt.name}
+                        </option>
                   ))}
                 </select>
               </div>
