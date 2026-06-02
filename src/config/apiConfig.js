@@ -365,9 +365,18 @@ export const OPD_SERVICE_CATAGORY = "SC001";
 export const LAB_SERVICE_CATAGORY = "SC002";
 export const SAC_CODE_REGISTRATION = "REG110";
 
-//OPTHOMOLOGY 
+//ENT
+export const ENT_DEPARTMENT_ID = 859;
+export const GET_ENT_EXAMINATION_DETAIL = `/opd/getEntExaminationDetail`;
+
+
+//OB&G
+export const OBG_DEPARTMENT_ID = 860; //858
+export const GET_OBG_EXAMINATION_DETAIL = `/opd/getObgExaminationDetail`;
+
+//OPTHALMOLOGY 
 export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
-export const GET_OPTHOMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
+export const GET_OPTHALMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
 
 export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
 export const PROCESS_LAB_PAYMENT = `/billing/processLabPayment`;

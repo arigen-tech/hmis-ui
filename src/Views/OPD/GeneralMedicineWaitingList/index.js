@@ -45,6 +45,8 @@ import {
   ALL_REPORTS,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
   GET_ALL_DRUGS_BY_SECTION,
+  OBG_DEPARTMENT_ID,
+  ENT_DEPARTMENT_ID,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -122,8 +124,9 @@ const GeneralMedicineWaitingList = () => {
     sessionStorage.getItem("departmentId") ||
     localStorage.getItem("departmentId") ||
     "";
-  const isOphthalmologyDepartment =
-    Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
+  const isOphthalmologyDepartment = Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
+  const isObgynDepartment = Number(loggedInDepartmentId) === OBG_DEPARTMENT_ID;
+  const isEntDepartment = Number(loggedInDepartmentId) === ENT_DEPARTMENT_ID;
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -4460,6 +4463,7 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                 )}
                 {/* OBG Details Section */}
+                {isObgynDepartment && (
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
@@ -4481,8 +4485,9 @@ const GeneralMedicineWaitingList = () => {
                       />
                     </div>
                   )}
-                </div>
+                </div>)}
                 {/* Ear Examination Section */}
+                {isEntDepartment && (
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
@@ -4505,6 +4510,7 @@ const GeneralMedicineWaitingList = () => {
                     </div>
                   )}
                 </div>
+                )}
                 {/* Dental Section */}
   <div className="card mb-3">
   <div

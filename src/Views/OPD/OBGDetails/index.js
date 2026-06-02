@@ -744,7 +744,7 @@ const fetchPresentationOptions = async () => {
                   </select>
                 </div>
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">GC</label>
+                  <label className="form-label fw-bold">GC(Gestational Calculation / Gestational Age)</label>
                   <input
                     type="text"
                     className="form-control"
@@ -755,7 +755,7 @@ const fetchPresentationOptions = async () => {
                   />
                 </div>
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">Pa^</label>
+                  <label className="form-label fw-bold">Pa^(Palpation)</label>
                   <select
                     className="form-select"
                     value={form.paA}
@@ -769,7 +769,7 @@ const fetchPresentationOptions = async () => {
                   </select>
                 </div>
                 <div className="col-md-3 mt-3">
-                  <label className="form-label fw-bold">Pe^</label>
+                  <label className="form-label fw-bold">Pe^(Per Examination)</label>
                   <select
                     className="form-select"
                     value={form.peA}
@@ -783,7 +783,7 @@ const fetchPresentationOptions = async () => {
                   </select>
                 </div>
                 <div className="col-md-3 mt-3">
-                  <label className="form-label fw-bold">TT</label>
+                  <label className="form-label fw-bold">TT(Tetanus Toxoid Vaccination)</label>
                   <select
                     className="form-select"
                     value={form.tt}
@@ -798,7 +798,7 @@ const fetchPresentationOptions = async () => {
                   </select>
                 </div>
                 <div className="col-md-3 mt-3">
-                  <label className="form-label fw-bold">FHR</label>
+                  <label className="form-label fw-bold">FHR(Fetal Heart Rate) </label>
                   <input
                     type="text"
                     className="form-control"
@@ -847,7 +847,7 @@ const fetchPresentationOptions = async () => {
                   </select>
                 </div>
                 <div className="col-md-3 mt-3">
-                  <label className="form-label fw-bold">PV</label>
+                  <label className="form-label fw-bold">PV(Per Vaginal Examination)</label>
                   <input
                     type="text"
                     className="form-control"

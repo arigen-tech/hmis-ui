@@ -6,7 +6,7 @@ import {
   useImperativeHandle,
 } from "react";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { GET_OPTHOMOLOGY_EXAMINATION_DETAIL, GET_WAITING_LIST } from "../../../config/apiConfig";
+import { GET_OPTHALMOLOGY_EXAMINATION_DETAIL, GET_OPTHALOMOLOGY_EXAMINATION_DETAIL, GET_WAITING_LIST } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading/index";
 import Popup from "../../../Components/popup";
 
@@ -225,7 +225,7 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
 
           try {
             const res = await getRequest(
-              `${GET_OPTHOMOLOGY_EXAMINATION_DETAIL}?visitId=${visitId}`,
+              `${GET_OPTHALMOLOGY_EXAMINATION_DETAIL}?visitId=${visitId}`,
             );
 
             if (res?.status === 200) {
@@ -372,7 +372,7 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
 
       try {
         const res = await getRequest(
-          `${GET_OPTHOMOLOGY_EXAMINATION_DETAIL}?visitId=${patient.visitId}`,
+          `${GET_OPTHALMOLOGY_EXAMINATION_DETAIL}?visitId=${patient.visitId}`,
         );
 
         if (res?.status === 200) {
