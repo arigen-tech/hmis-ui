@@ -271,7 +271,7 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
 
     const fetchNearVision = async () => {
       try {
-        const res = await getRequest("/master/opthMasNearVision/getAll/0");
+        const res = await getRequest("/master/opthMasNearVision/getAll/1");
         if (res?.status === 200 && res?.response)
           setNearVisionOptions(res.response);
       } catch (e) {
@@ -281,7 +281,7 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
 
     const fetchColorVision = async () => {
       try {
-        const res = await getRequest("/master/opthMasColorVision/getAll/0");
+        const res = await getRequest("/master/opthMasColorVision/getAll/1");
         if (res?.status === 200 && res?.response)
           setColorVisionOptions(res.response);
       } catch (e) {
@@ -291,7 +291,7 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
 
     const fetchSpectacleUse = async () => {
       try {
-        const res = await getRequest("/master/opthMasSpectacleUse/getAll/0");
+        const res = await getRequest("/master/opthMasSpectacleUse/getAll/1");
         if (res?.status === 200 && res?.response)
           setSpectacleUseOptions(res.response);
       } catch (e) {
@@ -301,7 +301,7 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
 
     const fetchLensType = async () => {
       try {
-        const res = await getRequest("/master/opthMasLensType/getAll/0");
+        const res = await getRequest("/master/opthMasLensType/getAll/1");
         if (res?.status === 200 && res?.response)
           setLensTypeOptions(res.response);
       } catch (e) {
@@ -384,14 +384,12 @@ const OpdVision = forwardRef(({ patientId, visitId, hideHeader = false, hideButt
             );
 
             if (hasOphthFields) {
-              // Debug: Log the API response to see what keys are coming
               console.log("API Response Data:", data);
               console.log("All keys from API:", Object.keys(data));
 
               const mappedData = mapApiResponseToForm(data);
               console.log("Mapped Form Data:", mappedData);
 
-              // Specifically log the retinoscopy H fields
               console.log("Retinoscopy H fields from API:", {
                 reRetinoscopyH: data.reRetinoscopyH,
                 reRetinoscopyHValue: data.reRetinoscopyHValue,
