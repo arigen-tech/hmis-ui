@@ -269,9 +269,9 @@ const OBGDetails = ({
                   <label className="form-label fw-bold">Obstetric Score</label>
                   <div className="row">
                     <div className="col-3">
-                      <div className="d-flex align-items-center gap-2">
-                        <span className="fw-bold" style={{ minWidth: "25px" }}>
-                          G
+                      <div className="d-flex align-items-center gap-1">
+                        <span className="fw-bold" style={{ minWidth: "45px" }}>
+                          Gravida
                         </span>
                         <select
                           className="form-select"
@@ -290,7 +290,7 @@ const OBGDetails = ({
                     <div className="col-3">
                       <div className="d-flex align-items-center gap-2">
                         <span className="fw-bold" style={{ minWidth: "25px" }}>
-                          P
+                          Para
                         </span>
                         <select
                           className="form-select"
@@ -308,8 +308,8 @@ const OBGDetails = ({
                     </div>
                     <div className="col-3">
                       <div className="d-flex align-items-center gap-2">
-                        <span className="fw-bold" style={{ minWidth: "25px" }}>
-                          A
+                        <span className="fw-bold" style={{ minWidth: "50px" }}>
+                          Abortion
                         </span>
                         <select
                           className="form-select"
@@ -328,7 +328,7 @@ const OBGDetails = ({
                     <div className="col-3">
                       <div className="d-flex align-items-center gap-2">
                         <span className="fw-bold" style={{ minWidth: "25px" }}>
-                          L
+                          Living children
                         </span>
                         <select
                           className="form-select"
