@@ -3,7 +3,8 @@ import Popup from "../../../Components/popup";
 import {getRequest} from "../../../service/apiService";
 import { MAS_OB_CONCEPTION,MAS_OB_CONSANGUINITY,OB_BOOKED_STATUS,
   OB_MAS_IMMUNISED_STATUS,MAS_OB_TRIMESTER,MAS_PRESENTATION,MAS_OB_PVMEMBRANE,MAS_OB_PVLIQUOR,
-  MAS_CERVIX_CONSISTENCY,MAS_CERVIX_POSITION,MAS_STATION_PRESENTATION,MAS_OP_PELVIS_TYPE
+  MAS_CERVIX_CONSISTENCY,MAS_CERVIX_POSITION,MAS_STATION_PRESENTATION,MAS_OP_PELVIS_TYPE,
+  MAS_GYN_FLOW,MAS_MENARCHE_AGE,MAS_MENSTRUAl_PATTERN,MAS_STERILISATION,MAS_GYN_POPSMEAR
  } from "../../../config/apiConfig";
 
 
@@ -78,6 +79,11 @@ const OBGDetails = ({
   const [positionOptions, setPositionOptions] = useState([]);
   const [stationOptions, setStationOptions] = useState([]);
   const [pelvisTypeOptions, setPelvisTypeOptions] = useState([]);
+  const [flowOptions, setFlowOptions] = useState([]);
+  const [menarcheAgeOptions, setMenarcheAgeOptions] = useState([]);
+  const [menstrualOptions, setMenstrualOptions] = useState([]);
+  const [sterilisationOptions, setSterilisationOptions] = useState([]);
+  const [papSmearOptions, setPapSmearOptions] = useState([]);
 
   const [form, setForm] = useState(defaultOBGForm);
   const updateObstetricScore = (field, value) => {
@@ -86,6 +92,71 @@ const OBGDetails = ({
       obstetricScore: { ...prev.obstetricScore, [field]: value },
     }));
   };
+
+  const fetchPapSmearOptions = async () => {
+  try {    const res = await getRequest(`${MAS_GYN_POPSMEAR}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setPapSmearOptions(res.response);
+    } else {
+      setPapSmearOptions([]);
+    }
+  } catch (error) {
+    console.error("Pap smear options fetch error:", error);
+    setPapSmearOptions([]);
+  }
+};
+
+  const fetchSterilisationOptions = async () => {
+  try {    const res = await getRequest(`${MAS_STERILISATION}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setSterilisationOptions(res.response);
+    } else {
+      setSterilisationOptions([]);
+    }
+  } catch (error) {
+    console.error("Sterilisation options fetch error:", error);
+    setSterilisationOptions([]);
+  }
+};
+
+const fetchMenstrualOptions = async () => {
+  try {    const res = await getRequest(`${MAS_MENSTRUAl_PATTERN}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setMenstrualOptions(res.response);
+    } else {
+      setMenstrualOptions([]);
+    }
+  } catch (error) {
+    console.error("Menstrual options fetch error:", error);
+    setMenstrualOptions([]);
+  }
+};
+
+  const fetchMenarcheAgeOptions = async () => {
+  try {    const res = await getRequest(`${MAS_MENARCHE_AGE}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setMenarcheAgeOptions(res.response);
+    } else {
+      setMenarcheAgeOptions([]);
+    }
+  } catch (error) {
+    console.error("Menarche age options fetch error:", error);
+    setMenarcheAgeOptions([]);
+  }
+};
+
+  const fetchFlowOptions = async () => {
+  try {    const res = await getRequest(`${MAS_GYN_FLOW}/getAll/1`);
+    if (res?.status === 200 && res?.response) {
+      setFlowOptions(res.response);
+    } else {
+      setFlowOptions([]);
+    }
+  } catch (error) {
+    console.error("Flow options fetch error:", error);
+    setFlowOptions([]);
+  }
+};
 
 const fetchPelvisTypeOptions = async () => {
   try {
@@ -269,6 +340,11 @@ const fetchPresentationOptions = async () => {
     fetchPositionOptions();
     fetchStationOptions();
     fetchPelvisTypeOptions();
+    fetchFlowOptions();
+    fetchMenarcheAgeOptions();
+    fetchMenstrualOptions();
+    fetchSterilisationOptions();
+    fetchPapSmearOptions();
   }, []);
 
 
@@ -1183,9 +1259,11 @@ const fetchPresentationOptions = async () => {
                     onChange={(e) => updateMenstrual("flow", e.target.value)}
                   >
                     <option value="">Select</option>
-                    <option value="Scanty">Scanty</option>
-                    <option value="Moderate">Moderate</option>
-                    <option value="Heavy">Heavy</option>
+                      {flowOptions.map((opt) => (
+  <option key={opt.id} value={opt.flowValue}>
+    {opt.flowValue}
+  </option>
+))}
                   </select>
                 </div>
 
@@ -1199,9 +1277,11 @@ const fetchPresentationOptions = async () => {
                     }
                   >
                     <option value="">Select</option>
-                    {Array.from({ length: 20 }, (_, i) => i + 8).map((age) => (
-                      <option key={age}>{age}</option>
-                    ))}
+                   {menarcheAgeOptions.map((opt) => (
+  <option key={opt.id} value={opt.menarcheAge}>
+    {opt.menarcheAge}
+  </option>
+))}
                   </select>
                 </div>
 
@@ -1237,8 +1317,11 @@ const fetchPresentationOptions = async () => {
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Regular">Regular</option>
-                    <option value="Irregular">Irregular</option>
+                   {menstrualOptions.map((opt) => (
+  <option key={opt.id} value={opt.patternValue}>
+    {opt.patternValue}
+  </option>
+))}
                   </select>
                 </div>
 
@@ -1295,8 +1378,11 @@ const fetchPresentationOptions = async () => {
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Yes">Yes</option>
-                    <option value="No">No</option>
+                    {sterilisationOptions.map((opt) => (
+  <option key={opt.id} value={opt.sterilisationType}>
+    {opt.sterilisationType}
+  </option>
+))}
                   </select>
                 </div>
               </div>
@@ -1351,8 +1437,11 @@ const fetchPresentationOptions = async () => {
                     }
                   >
                     <option value="">Select</option>
-                    <option value="Normal">Normal</option>
-                    <option value="Abnormal">Abnormal</option>
+                  {papSmearOptions.map((opt) => (
+  <option key={opt.id} value={opt.papResult}>
+    {opt.papResult}
+  </option>
+))}
                   </select>
                 </div>
 
