@@ -51,6 +51,15 @@ const Userdepartment = () => {
         console.log("Departments:", departments);
     }, []);
 
+    useEffect(() => {
+    const filtered = userDepartmentData.filter(userDept =>
+        (userDept.userName?.toLowerCase() || "").includes(searchQuery.toLowerCase()) ||
+        (userDept.departmentName?.toLowerCase() || "").includes(searchQuery.toLowerCase())
+    );
+    setTotalFilteredProducts(filtered.length);
+    setFilteredTotalPages(Math.ceil(filtered.length / itemsPerPage));
+}, [userDepartmentData, searchQuery]);
+
 
     const fetchUserDepartmentData = async () => {
         try {
@@ -67,8 +76,8 @@ const Userdepartment = () => {
 
                 }));
 setUserDepartmentData([...transformedData].reverse());
-                setTotalFilteredProducts(transformedData.length);
-                setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
+                // setTotalFilteredProducts(transformedData.length);
+                // setFilteredTotalPages(Math.ceil(transformedData.length / itemsPerPage));
             }
         } catch (err) {
             console.error("Error fetching user department data:", err);
@@ -124,6 +133,11 @@ setUserDepartmentData([...transformedData].reverse());
     const handleSearchChange = (e) => {
         setSearchQuery(e.target.value);
         setCurrentPage(1);
+        const filtered = userDepartmentData.filter(userDept =>
+        (userDept.userName?.toLowerCase() || "").includes(e.target.value.toLowerCase()) ||
+        (userDept.departmentName?.toLowerCase() || "").includes(e.target.value.toLowerCase())
+    );
+    setFilteredTotalPages(Math.ceil(filtered.length / itemsPerPage));
     };
 
     const filteredUserDepartmentData = userDepartmentData.filter(userDept =>
