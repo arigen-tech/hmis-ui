@@ -23,9 +23,9 @@ const IPDConsultationTariff = () => {
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    recordId: null,
-    newStatus: false,
-    recordName: ""
+    id: null,
+    newStatus: "",
+    name: ""
   });
 
   const [serviceCategoryOptions, setServiceCategoryOptions] = useState([]);
@@ -38,7 +38,7 @@ const IPDConsultationTariff = () => {
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
-  const [process, setProcess] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [loading, setLoading] = useState(false);
   const [formLoading, setFormLoading] = useState(false);
   const [fetchingDoctors, setFetchingDoctors] = useState(false);
@@ -57,7 +57,6 @@ const IPDConsultationTariff = () => {
 
   // ================= API CALLS =================
 
-  // Fetch IPD Consultation Tariff data
   const fetchIPDTariffData = async (page = 0) => {
     setLoading(true);
     try {
@@ -118,7 +117,6 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch Service Categories
   const fetchServiceCategories = async () => {
     try {
       const response = await getRequest(`${MAS_SERVICE_CATEGORY}/getAll/1`);
@@ -149,12 +147,9 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch Visit Types
   const fetchVisitTypes = async () => {
     try {
-      console.log("Fetching visit types...");
       const response = await getRequest("/master/masVisitType/getAll/1");
-      console.log("Visit Types API Response:", response);
 
       if (response && response.status === 200 && response.response && Array.isArray(response.response)) {
         const visitTypeOptions = response.response
@@ -164,11 +159,9 @@ const IPDConsultationTariff = () => {
             name: type.visitTypeName
           }));
 
-        console.log("Processed Visit Types:", visitTypeOptions);
         setVisitTypeOptions(visitTypeOptions);
         return visitTypeOptions;
       } else {
-        console.error("Invalid response structure:", response);
         setVisitTypeOptions([]);
         return [];
       }
@@ -179,7 +172,6 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch Departments (OPD type)
   const fetchDepartments = async () => {
     try {
       const response = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
@@ -200,7 +192,6 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch doctors based on department for filter
   const fetchDoctorsForFilter = async (departmentId) => {
     if (!departmentId) {
       setFilterDoctorData([]);
@@ -219,7 +210,6 @@ const IPDConsultationTariff = () => {
     }
   };
 
-  // Fetch doctors for form
   const fetchDoctorsForForm = async (departmentId) => {
     if (!departmentId) {
       setDoctorData([]);
@@ -247,45 +237,34 @@ const IPDConsultationTariff = () => {
   // ================= EFFECTS =================
   useEffect(() => {
     const loadInitialData = async () => {
-      console.log("Loading initial data...");
       await fetchServiceCategories();
       await fetchVisitTypes();
       await fetchDepartments();
-      await fetchIPDTariffData(0); // Initial load
+      await fetchIPDTariffData(0);
     };
     loadInitialData();
   }, []);
-
-  // Remove the auto-search effect - now search only happens on button click
-  // useEffect(() => {
-  //   if (!showForm) {
-  //     fetchIPDTariffData(0);
-  //   }
-  // }, [departmentFilter, doctorFilter, showForm]);
 
   // ================= FILTER HANDLERS =================
   const handleDepartmentFilterChange = (e) => {
     const deptId = e.target.value;
     setDepartmentFilter(deptId);
-    setDoctorFilter(""); // Reset doctor filter when department changes
+    setDoctorFilter("");
     if (deptId) {
       fetchDoctorsForFilter(deptId);
     } else {
       setFilterDoctorData([]);
     }
-    // Don't fetch data here - wait for search button click
   };
 
   const handleDoctorFilterChange = (e) => {
     setDoctorFilter(e.target.value);
-    // Don't fetch data here - wait for search button click
   };
 
-  const handleShowAll = () => {
+  const handleRefresh = () => {
     setDepartmentFilter("");
     setDoctorFilter("");
     setFilterDoctorData([]);
-    // Fetch data immediately when showing all
     setCurrentPage(1);
     fetchIPDTariffData(0);
   };
@@ -372,7 +351,6 @@ const IPDConsultationTariff = () => {
   };
 
   const validateForm = (formDataToValidate) => {
-    // Check all required fields are filled
     const requiredFieldsFilled = formDataToValidate.serviceCategoryId &&
       formDataToValidate.visitTypeId &&
       formDataToValidate.departmentId &&
@@ -386,19 +364,16 @@ const IPDConsultationTariff = () => {
       return;
     }
 
-    // Validate that validFrom is not empty
     if (!formDataToValidate.validFrom || formDataToValidate.validFrom.trim() === "") {
       setIsFormValid(false);
       return;
     }
 
-    // Validate that validTo is not empty
     if (!formDataToValidate.validTo || formDataToValidate.validTo.trim() === "") {
       setIsFormValid(false);
       return;
     }
 
-    // Validate that validFrom is before validTo
     const fromDate = new Date(formDataToValidate.validFrom);
     const toDate = new Date(formDataToValidate.validTo);
 
@@ -427,57 +402,44 @@ const IPDConsultationTariff = () => {
     setDoctorData([]);
     setIsFormValid(false);
     setFormLoading(false);
+    setEditingRecord(null);
   };
 
   // ================= SAVE =================
   const handleSave = async (e) => {
     e.preventDefault();
-    setProcess(true);
-
-    if (!isFormValid) {
-      setProcess(false);
-      showPopup("Please fill all required fields", "error");
+    
+    if (!isFormValid || saving) {
       return;
     }
 
-    // Validate date range
     const fromDate = new Date(formData.validFrom);
     const toDate = new Date(formData.validTo);
 
     if (fromDate >= toDate) {
-      setProcess(false);
       showPopup("Valid From date must be before Valid To date", "error");
       return;
     }
 
-    // Check for duplicate records
-    try {
-      // Check if record already exists with same combination (only for new records)
-      if (!editingRecord) {
-        const existingRecords = data.filter(rec =>
-          rec.departmentId === parseInt(formData.departmentId) &&
-          rec.doctorId === parseInt(formData.doctorId) &&
-          rec.serviceCategoryId === parseInt(formData.serviceCategoryId) &&
-          rec.visitTypeId === parseInt(formData.visitTypeId)
-        );
+    if (!editingRecord) {
+      const existingRecords = data.filter(rec =>
+        rec.departmentId === parseInt(formData.departmentId) &&
+        rec.doctorId === parseInt(formData.doctorId) &&
+        rec.serviceCategoryId === parseInt(formData.serviceCategoryId) &&
+        rec.visitTypeId === parseInt(formData.visitTypeId)
+      );
 
-        if (existingRecords.length > 0) {
-          setProcess(false);
-          showPopup("A record with this combination of Department, Doctor, Service Category, and Visit Type already exists", "error");
-          return;
-        }
+      if (existingRecords.length > 0) {
+        showPopup("A record with this combination of Department, Doctor, Service Category, and Visit Type already exists", "error");
+        return;
       }
-    } catch (error) {
-      console.error("Error checking for duplicates:", error);
     }
 
-    // Format dates properly - use local date without timezone conversion
-    // HTML date input gives us YYYY-MM-DD in local timezone
-    // We need to send it as ISO string preserving the local date
-    const fromDateStr = formData.validFrom; // This is already in YYYY-MM-DD format
-    const toDateStr = formData.validTo;     // This is already in YYYY-MM-DD format
+    setSaving(true);
 
-    // Create ISO strings that preserve the local date (add T00:00:00)
+    const fromDateStr = formData.validFrom;
+    const toDateStr = formData.validTo;
+
     const fromDateISO = fromDateStr + "T00:00:00";
     const toDateISO = toDateStr + "T23:59:59";
 
@@ -493,35 +455,50 @@ const IPDConsultationTariff = () => {
     };
 
     try {
-      let response;
       if (editingRecord) {
-        response = await putRequest(
+        const response = await putRequest(
           `/master/ipdConsultationTariff/update/${editingRecord.id}`,
           payload
         );
         if (response.status === 200) {
-          showPopup("Updated Successfully", "success");
-          await fetchIPDTariffData(currentPage - 1);
-          handleCancel();
+          setPopupMessage({
+            message: "Updated Successfully",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchIPDTariffData(currentPage - 1);
+              setShowForm(false);
+            }
+          });
         } else {
-          showPopup(response.message || "Update failed", "error");
+          throw new Error(response.message || "Update failed");
         }
       } else {
-        response = await postRequest("/master/ipdConsultationTariff/create", payload);
+        const response = await postRequest("/master/ipdConsultationTariff/create", payload);
         if (response.status === 200 || response.status === 201) {
-          showPopup("Added Successfully", "success");
-          await fetchIPDTariffData(0);
-          handleCancel();
+          setPopupMessage({
+            message: "Added Successfully",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchIPDTariffData(0);
+              setShowForm(false);
+            }
+          });
         } else {
-          showPopup(response.message || "Save failed", "error");
+          throw new Error(response.message || "Save failed");
         }
       }
     } catch (error) {
       console.error("Error saving record:", error);
-      const errorMessage = error.response?.data?.message || error.message || "Failed to save changes";
-      showPopup(errorMessage, "error");
+      showPopup(
+        error.response?.data?.message || error.message || "Failed to save changes",
+        "error"
+      );
     } finally {
-      setProcess(false);
+      setSaving(false);
     }
   };
 
@@ -542,7 +519,6 @@ const IPDConsultationTariff = () => {
         await fetchDoctorsForForm(rec.departmentId);
       }
 
-      // Extract date from ISO string (format: "2026-04-13T07:02:28.484" -> "2026-04-13")
       const validFromDate = rec.validFrom ? rec.validFrom.split('T')[0] : "";
       const validToDate = rec.validTo ? rec.validTo.split('T')[0] : "";
 
@@ -572,40 +548,55 @@ const IPDConsultationTariff = () => {
   };
 
   // ================= STATUS SWITCH =================
-  const handleSwitchChange = (id, name, newStatus) => {
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
-      recordId: id,
+      id: id,
       newStatus,
-      recordName: name
+      name: name
     });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.recordId !== null) {
-      setProcess(true);
+    if (confirmed && confirmDialog.id !== null) {
+      setSaving(true);
+      
       try {
         const response = await putRequest(
-          `/master/ipdConsultationTariff/status/${confirmDialog.recordId}?status=${confirmDialog.newStatus}`
+          `/master/ipdConsultationTariff/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
         if (response.status === 200) {
-          showPopup(
-            `Record ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
-          await fetchIPDTariffData(currentPage - 1);
+          setPopupMessage({
+            message: `Record "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchIPDTariffData(currentPage - 1);
+              setCurrentPage(1);
+            },
+          });
         } else {
-          showPopup(response.message || "Failed to update status", "error");
+          throw new Error(response.message || "Failed to update status");
         }
       } catch (error) {
         console.error("Error updating status:", error);
         showPopup("Failed to update status", "error");
       } finally {
-        setProcess(false);
+        setSaving(false);
       }
     }
-    setConfirmDialog({ isOpen: false, recordId: null, newStatus: false, recordName: "" });
+    
+    setConfirmDialog({ 
+      isOpen: false, 
+      id: null, 
+      newStatus: "", 
+      name: "" 
+    });
   };
 
   const showPopup = (message, type) => {
@@ -614,7 +605,6 @@ const IPDConsultationTariff = () => {
 
   const handleCancel = () => {
     resetForm();
-    setEditingRecord(null);
     setShowForm(false);
   };
 
@@ -640,33 +630,35 @@ const IPDConsultationTariff = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">IPD Consultation Tariff</h4>
+              <h4 className="card-title">IPD Consultation Tariff</h4>
 
-              {!showForm ? (
-                <div className="d-flex gap-2">
-                  <button
-                    className="btn btn-success"
-                    onClick={() => {
-                      setEditingRecord(null);
-                      setIsFormValid(false);
-                      resetForm();
-                      setShowForm(true);
-                    }}
+              <div className="d-flex align-items-center">
+                {!showForm ? (
+                  <>
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
+                    </button>
+
+                    <button className="btn btn-success flex-shrink-0" onClick={handleRefresh}>
+                      Show All
+                    </button>
+                  </>
+                ) : (
+                  <button 
+                    type="button" 
+                    className="btn btn-secondary" 
+                    onClick={handleCancel}
                   >
-                    <i className="mdi mdi-plus"></i> Add
+                    Back
                   </button>
-
-                  <button className="btn btn-success" onClick={handleShowAll}>
-                    <i className="mdi mdi-refresh"></i> Show All
-                  </button>
-                </div>
-              ) : (
-                <div className="d-flex justify-content-end">
-                  <button type="button" className="btn btn-secondary" onClick={handleCancel}>
-                    <i className="mdi mdi-arrow-left"></i> Back
-                  </button>
-                </div>
-              )}
+                )}
+              </div>
             </div>
 
             <div className="card-body">
@@ -754,33 +746,33 @@ const IPDConsultationTariff = () => {
                                     checked={rec.status === "y"}
                                     onChange={() => handleSwitchChange(
                                       rec.id,
-                                      rec.serviceCategory,
-                                      rec.status === "y" ? "n" : "y"
+                                      rec.status,
+                                      rec.serviceCategory
                                     )}
                                     id={`switch-${rec.id}`}
                                   />
                                   <label
-                                    className="form-check-label px-0"
+                                    className="form-check-label ms-2"
                                     htmlFor={`switch-${rec.id}`}
                                   >
-                                    {rec.status === "y" ? "Active" : "Deactivated"}
+                                    {rec.status === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
-                               </td>
+                              </td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(rec)}
                                   disabled={rec.status !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
-                               </td>
-                             </tr>
+                              </td>
+                            </tr>
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="9" className="text-center">No records found</td>
+                            <td colSpan="9" className="text-center">No Records Found</td>
                           </tr>
                         )}
                       </tbody>
@@ -801,172 +793,168 @@ const IPDConsultationTariff = () => {
                 /* Form Section */
                 <>
                   {formLoading && <LoadingScreen />}
-                  <form className="forms row" onSubmit={handleSave}>
-                    <div className="row">
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Service Category <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="serviceCategory"
-                          value={formData.serviceCategoryId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Service Category</option>
-                          {serviceCategoryOptions.map((category) => (
-                            <option key={category.id} value={category.id}>
-                              {category.name}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Visit Type <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="visitType"
-                          value={formData.visitTypeId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Visit Type</option>
-                          {visitTypeOptions.length > 0 ? (
-                            visitTypeOptions.map((type) => (
-                              <option key={type.id} value={type.id.toString()}>
-                                {type.name}
-                              </option>
-                            ))
-                          ) : (
-                            <option value="" disabled>Loading visit types...</option>
-                          )}
-                        </select>
-                        {visitTypeOptions.length === 0 && !formLoading && (
-                          <small className="text-danger">No visit types available. Please check API connection.</small>
-                        )}
-                      </div>
-
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Department <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="department"
-                          value={formData.departmentId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        >
-                          <option value="">Select Department</option>
-                          {departmentData.map((dept) => (
-                            <option key={dept.id} value={dept.id}>
-                              {dept.departmentName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Doctor <span className="text-danger">*</span>
-                        </label>
-                        <select
-                          className="form-select"
-                          name="doctor"
-                          value={formData.doctorId}
-                          onChange={handleInputChange}
-                          required
-                          disabled={!formData.departmentId || formLoading || fetchingDoctors}
-                        >
-                          <option value="">
-                            {fetchingDoctors ? "Loading doctors..." : "Select Doctor"}
+                  <form className="row" onSubmit={handleSave}>
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Service Category <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="serviceCategory"
+                        value={formData.serviceCategoryId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Service Category</option>
+                        {serviceCategoryOptions.map((category) => (
+                          <option key={category.id} value={category.id}>
+                            {category.name}
                           </option>
-                          {doctorData.map((doc) => (
-                            <option key={doc.userId} value={doc.userId}>
-                              {doc.doctorName || `Dr. ${doc.firstName} ${doc.middleName || ''} ${doc.lastName || ''}`}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Charge <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="number"
-                          step="0.01"
-                          className="form-control"
-                          name="charge"
-                          placeholder="Enter charge amount"
-                          value={formData.charge}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                        />
-                      </div>
-
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Valid From <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          className="form-control"
-                          name="validFrom"
-                          value={formData.validFrom}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                          max={formData.validTo || undefined}
-                          title="Select a valid from date (must be before Valid To date)"
-                        />
-                        {formData.validFrom && formData.validTo && new Date(formData.validFrom) >= new Date(formData.validTo) && (
-                          <small className="text-danger">Valid From must be before Valid To</small>
-                        )}
-                      </div>
-
-                      <div className="form-group col-md-4 mt-3">
-                        <label>
-                          Valid To <span className="text-danger">*</span>
-                        </label>
-                        <input
-                          type="date"
-                          className="form-control"
-                          name="validTo"
-                          value={formData.validTo}
-                          onChange={handleInputChange}
-                          required
-                          disabled={formLoading}
-                          min={formData.validFrom || undefined}
-                          title="Select a valid to date (must be after Valid From date)"
-                        />
-                        {formData.validFrom && formData.validTo && new Date(formData.validFrom) >= new Date(formData.validTo) && (
-                          <small className="text-danger">Valid To must be after Valid From</small>
-                        )}
-                      </div>
+                        ))}
+                      </select>
                     </div>
 
-                    <div className="form-group col-md-12 d-flex justify-content-end mt-4">
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Visit Type <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="visitType"
+                        value={formData.visitTypeId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Visit Type</option>
+                        {visitTypeOptions.length > 0 ? (
+                          visitTypeOptions.map((type) => (
+                            <option key={type.id} value={type.id.toString()}>
+                              {type.name}
+                            </option>
+                          ))
+                        ) : (
+                          <option value="" disabled>Loading visit types...</option>
+                        )}
+                      </select>
+                      {visitTypeOptions.length === 0 && !formLoading && (
+                        <small className="text-danger">No visit types available. Please check API connection.</small>
+                      )}
+                    </div>
+
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Department <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="department"
+                        value={formData.departmentId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      >
+                        <option value="">Select Department</option>
+                        {departmentData.map((dept) => (
+                          <option key={dept.id} value={dept.id}>
+                            {dept.departmentName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Doctor <span className="text-danger">*</span>
+                      </label>
+                      <select
+                        className="form-select mt-1"
+                        name="doctor"
+                        value={formData.doctorId}
+                        onChange={handleInputChange}
+                        required
+                        disabled={!formData.departmentId || formLoading || fetchingDoctors}
+                      >
+                        <option value="">
+                          {fetchingDoctors ? "Loading doctors..." : "Select Doctor"}
+                        </option>
+                        {doctorData.map((doc) => (
+                          <option key={doc.userId} value={doc.userId}>
+                            {doc.doctorName || `Dr. ${doc.firstName} ${doc.middleName || ''} ${doc.lastName || ''}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Charge <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="number"
+                        step="0.01"
+                        className="form-control mt-1"
+                        name="charge"
+                        placeholder="Enter charge amount"
+                        value={formData.charge}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                      />
+                    </div>
+
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Valid From <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control mt-1"
+                        name="validFrom"
+                        value={formData.validFrom}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                        max={formData.validTo || undefined}
+                      />
+                      {formData.validFrom && formData.validTo && new Date(formData.validFrom) >= new Date(formData.validTo) && (
+                        <small className="text-danger">Valid From must be before Valid To</small>
+                      )}
+                    </div>
+
+                    <div className="form-group col-md-4 mt-3">
+                      <label>
+                        Valid To <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="date"
+                        className="form-control mt-1"
+                        name="validTo"
+                        value={formData.validTo}
+                        onChange={handleInputChange}
+                        required
+                        disabled={formLoading}
+                        min={formData.validFrom || undefined}
+                      />
+                      {formData.validFrom && formData.validTo && new Date(formData.validFrom) >= new Date(formData.validTo) && (
+                        <small className="text-danger">Valid To must be after Valid From</small>
+                      )}
+                    </div>
+
+                    <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                       <button
                         type="submit"
                         className="btn btn-primary me-2"
-                        disabled={process || !isFormValid || formLoading}
+                        disabled={!isFormValid || saving || formLoading}
                       >
-                        {process ? "Processing..." : (editingRecord ? "Update" : "Save")}
+                        {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                       </button>
                       <button
                         type="button"
                         className="btn btn-danger"
                         onClick={handleCancel}
-                        disabled={process || formLoading}
+                        disabled={saving || formLoading}
                       >
                         Cancel
                       </button>
@@ -977,31 +965,34 @@ const IPDConsultationTariff = () => {
 
               {/* Popup Message */}
               {popupMessage && (
-                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+                <Popup 
+                  message={popupMessage.message} 
+                  type={popupMessage.type} 
+                  onClose={popupMessage.onClose} 
+                />
               )}
 
               {/* Confirmation Dialog */}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog" role="document">
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                          <span>&times;</span>
-                        </button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{confirmDialog.recordName}</strong>?
-                        </p>
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
                           No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
                           Yes
                         </button>
                       </div>

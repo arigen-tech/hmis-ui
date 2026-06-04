@@ -473,12 +473,14 @@ const handleSave = async (e) => {
                                                 </>
                                             ) : (
                                                 <>
-                                                    <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
-                                                        Cancel
-                                                    </button>
-                                                    <button type="submit" className="btn btn-success" disabled={!isFormValid}>
+                                                 <button type="submit" className="btn btn-success me-2" disabled={!isFormValid}>
                                                         Save
                                                     </button>
+
+                                                 <button type="button" className="btn btn-secondary me-2" onClick={() => setShowForm(false)}>
+                                                        Cancel
+                                                    </button>
+                                                   
                                                 </>
                                             )}
                                         </div>

@@ -1,16 +1,16 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { MAS_BLOOD_COMPATIBILITY, MAS_BLOOD_COMPONENT, MAS_BLOODGROUP } from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-import { FETCH_BLOOD_COMPATIBILITY, UPDATE_BLOOD_COMPATIBILITY, ADD_BLOOD_COMPATIBILITY, FAIL_BLOOD_COMPATIBILITY, DUPLICATE_BLOOD_COMPATIBILITY, FAIL_TO_UPDATE_STS, INVALID_PAGE_NO_WARN_MSG,FAIL_LOAD_COMPONENTS,BLOOD_GROUP_DATA,FAIL_BLOOD_GROUP} from "../../../config/constants";
+import { FETCH_BLOOD_COMPATIBILITY, UPDATE_BLOOD_COMPATIBILITY, ADD_BLOOD_COMPATIBILITY, FAIL_BLOOD_COMPATIBILITY, DUPLICATE_BLOOD_COMPATIBILITY, FAIL_TO_UPDATE_STS, INVALID_PAGE_NO_WARN_MSG, FAIL_LOAD_COMPONENTS, BLOOD_GROUP_DATA, FAIL_BLOOD_GROUP } from "../../../config/constants";
 
 
 
 const BloodCompatibilityMaster = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [componentOptions, setComponentOptions] = useState([]);
   const [bloodGroupOptions, setBloodGroupOptions] = useState([]); 
   const [showForm, setShowForm] = useState(false);
@@ -186,10 +186,14 @@ const fetchBloodGroupOptions = async (flag = 1) => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     if (isDuplicate(formData, editingRecord?.compatibilityId)) {
       showPopup(DUPLICATE_BLOOD_COMPATIBILITY, "error");
+      setSaving(false);
       return;
     }
 
@@ -201,23 +205,52 @@ const fetchBloodGroupOptions = async (flag = 1) => {
     };
 
     try {
-      setLoading(true);
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_BLOOD_COMPATIBILITY}/update/${editingRecord.compatibilityId}`,
           payload
         );
-        showPopup(UPDATE_BLOOD_COMPATIBILITY, "success");
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_COMPATIBILITY,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_COMPATIBILITY}/create`, payload);
-        showPopup(ADD_BLOOD_COMPATIBILITY, "success");
+        const response = await postRequest(
+          `${MAS_BLOOD_COMPATIBILITY}/create`,
+          payload
+        );
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_COMPATIBILITY,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      await fetchData();
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(FAIL_BLOOD_COMPATIBILITY, "error");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -238,30 +271,42 @@ const fetchBloodGroupOptions = async (flag = 1) => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed) {
+    if (confirmed && confirmDialog.id) {
+      setSaving(true);
+
       try {
-        setLoading(true);
-        await putRequest(
+        const response = await putRequest(
           `${MAS_BLOOD_COMPATIBILITY}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
-        setData((prevData) =>
-          prevData.map((item) =>
-            item.compatibilityId === confirmDialog.id
-              ? { ...item, status: confirmDialog.newStatus, lastUpdateDate: new Date().toISOString() }
-              : item
-          )
-        );
-        showPopup(
-          `Record ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-          "success"
-        );
-      } catch {
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Compatibility record ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
         showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
-        setLoading(false);
+        setSaving(false);
       }
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "" });
+
+    setConfirmDialog({
+      isOpen: false,
+      id: null,
+      newStatus: "",
+    });
   };
 
   // Pagination handlers
@@ -298,8 +343,8 @@ const fetchBloodGroupOptions = async (flag = 1) => {
     setCurrentPage(1);
     setPageInput("1");
     fetchData();
-    fetchComponentOptions(0);
-    fetchBloodGroupOptions(0); // <-- also refresh blood groups
+    fetchComponentOptions(1);
+    fetchBloodGroupOptions(1);
   };
 
   // Render page numbers with ellipsis
@@ -525,7 +570,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                   value={formData.componentId}
                   onChange={handleInputChange}
                   required
-                  disabled={loading}
+                  disabled={saving}
                 >
                   <option value="">Select Component</option>
                   {componentOptions.map((comp) => (
@@ -581,7 +626,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                   className="form-select"
                   value={formData.isPreferred}
                   onChange={handleInputChange}
-                  disabled={loading}
+                  disabled={saving}
                 >
                   <option value="N">No</option>
                   <option value="Y">Yes</option>
@@ -592,15 +637,15 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid || loading}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
                   className="btn btn-danger"
                   onClick={handleCancel}
-                  disabled={loading}
+                  disabled={saving}
                 >
                   Cancel
                 </button>
@@ -627,7 +672,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                       className="btn-close"
                       onClick={() => handleConfirm(false)}
                       aria-label="Close"
-                      disabled={loading}
+                      disabled={saving}
                     ></button>
                   </div>
                   <div className="modal-body">
@@ -642,7 +687,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                       type="button"
                       className="btn btn-secondary"
                       onClick={() => setConfirmDialog({ isOpen: false, id: null, newStatus: "" })}
-                      disabled={loading}
+                      disabled={saving}
                     >
                       Cancel
                     </button>
@@ -650,9 +695,9 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                       type="button"
                       className="btn btn-primary"
                       onClick={() => handleConfirm(true)}
-                      disabled={loading}
+                      disabled={saving}
                     >
-                      Confirm
+                      {saving ? "Processing..." : "Confirm"}
                     </button>
                   </div>
                 </div>

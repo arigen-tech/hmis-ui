@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, {
@@ -24,6 +24,7 @@ import {
 
 const OptionValueMaster = () => {
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);          
   const [data, setData] = useState([]);
   const [formData, setFormData] = useState({
     optionCode: "",
@@ -38,12 +39,13 @@ const OptionValueMaster = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    record: null,
+    id: null,
     newStatus: "",
+    name: "",
   });
   const [questions, setQuestions] = useState([]);
 
-  // ================= NEW SEARCH DROPDOWN STATES =================
+  // Search dropdown states
   const [tempSelectedCode, setTempSelectedCode] = useState('');
   const [tempSelectedValue, setTempSelectedValue] = useState('');
   const [selectedCode, setSelectedCode] = useState('');
@@ -70,6 +72,7 @@ const OptionValueMaster = () => {
     setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
   };
 
+  // ========== Fetch all option values ==========
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
@@ -85,6 +88,7 @@ const OptionValueMaster = () => {
     }
   };
 
+  // ========== Fetch questions for dropdown ==========
   const fetchQuestions = async (flag = 0) => {
     try {
       const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
@@ -99,24 +103,31 @@ const OptionValueMaster = () => {
     fetchQuestions();
   }, []);
 
-  // Get unique option codes and values for dropdowns
-  const uniqueOptionCodes = [...new Set(data.map(item => item.optionCode).filter(Boolean))];
-  const uniqueOptionValues = [...new Set(data.map(item => item.optionValue).filter(Boolean))];
+  // ========== Unique options for search dropdowns (memoized) ==========
+  const uniqueOptionCodes = useMemo(
+    () => [...new Set(data.map(item => item.optionCode).filter(Boolean))],
+    [data]
+  );
+  const uniqueOptionValues = useMemo(
+    () => [...new Set(data.map(item => item.optionValue).filter(Boolean))],
+    [data]
+  );
 
-  // ================= FILTER LOGIC (TRIGGERED BY SEARCH BUTTON) =================
+  // ========== Filter data based on selected criteria ==========
   const filteredData = data.filter(rec => {
     if (selectedCode && rec.optionCode !== selectedCode) return false;
     if (selectedValue && rec.optionValue !== selectedValue) return false;
     return true;
   });
 
+  // ========== Search / Reset handlers ==========
   const handleSearch = () => {
     setSelectedCode(tempSelectedCode);
     setSelectedValue(tempSelectedValue);
     setCurrentPage(1);
   };
 
-  const handleShowAll = () => {
+  const handleReset = () => {
     setTempSelectedCode('');
     setTempSelectedValue('');
     setSelectedCode('');
@@ -124,21 +135,34 @@ const OptionValueMaster = () => {
     setCurrentPage(1);
   };
 
+  const handleShowAll = () => {
+    handleReset();
+  };
+
+  // ========== Pagination ==========
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
+  // ========== Form input handling with validation ==========
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
-    setFormData(updated);
-    setIsFormValid(
+
+    const scoreValid = value => {
+      if (value === "") return false;
+      const num = Number(value);
+      return !isNaN(num) && num >= 0;
+    };
+
+    const isValid =
       updated.optionCode?.trim() !== "" &&
       updated.optionValue?.trim() !== "" &&
       updated.questionId !== "" &&
-      updated.optionScore !== "" &&
-      !isNaN(updated.optionScore)
-    );
+      scoreValid(updated.optionScore);
+
+    setFormData(updated);
+    setIsFormValid(isValid);
   };
 
   const resetForm = () => {
@@ -157,11 +181,15 @@ const OptionValueMaster = () => {
     setShowForm(false);
   };
 
-  // ================= SAVE =================
+  // ========== Save (Create or Update) ==========
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    
+    if (!isFormValid || saving) return;
+
     const newCode = formData.optionCode.trim().toLowerCase();
+
+    // Check duplicate optionCode (case‑insensitive)
     const duplicate = data.find(
       (rec) =>
         rec.optionCode?.toLowerCase() === newCode &&
@@ -173,29 +201,59 @@ const OptionValueMaster = () => {
       return;
     }
 
+    setSaving(true);
+
     try {
       if (editingRecord) {
-        await putRequest(
+        const response = await putRequest(
           `${MAS_QUESTION_OPTION_VALUE}/update/${editingRecord.id}`,
           formData
         );
-        showPopup(UPDATE_OPTION_VALUE, "success");
+        
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_OPTION_VALUE,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
+        const response = await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
           ...formData,
           status: "y",
         });
-        showPopup(CREATE_OPTION_VALUE, "success");
+        
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: CREATE_OPTION_VALUE,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-
-      fetchData();
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(SAVE_OPTION_VALUE, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
-  // ================= EDIT =================
+  // ========== Edit ==========
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -208,280 +266,320 @@ const OptionValueMaster = () => {
     setIsFormValid(true);
   };
 
-  // ================= STATUS =================
-  const handleSwitchChange = (rec) => {
+  // ========== Status toggle with confirmation ==========
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE;
     setConfirmDialog({
       isOpen: true,
-      record: rec,
-      newStatus:
-        rec.status === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE,
+      id: id,
+      newStatus,
+      name: name,
     });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.id !== null) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+        );
+        
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Option value "${confirmDialog.name}" ${
+              confirmDialog.newStatus === STATUS.ACTIVE ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Status update error:", error);
+        showPopup(UPDATE_STATUS, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      await putRequest(
-        `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.record.id}?status=${confirmDialog.newStatus}`
-      );
-      showPopup(STATUS_UPDATED, "success");
-      fetchData();
-    } catch {
-      showPopup(UPDATE_STATUS, "error");
-    } finally {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
   };
 
-  // ================= UI =================
+  // ========== Render ==========
   return (
     <div className="content-wrapper">
-      <div className="card form-card">
-        {/* HEADER */}
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Option Value Master</h4>
-          <div className="d-flex">
-            {!showForm ? (
-              <>
-                <button
-                  className="btn btn-success me-2"
-                  onClick={() => {
-                    resetForm();
-                    setShowForm(true);
-                  }}
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-success"
-                  onClick={handleShowAll}
-                >
-                  <i className="mdi mdi-view-list"></i> Show All
-                </button>
-              </>
-            ) : (
-              <button
-                className="btn btn-secondary"
-                onClick={() => setShowForm(false)}
-              >
-                Back
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="card-body">
-          {/* ================= LIST ================= */}
-          {!showForm && (
-            <>
-              {/* SEARCH UI WITH DROPDOWNS + SEARCH BUTTON */}
-              <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
-                <div className="col-md-3">
-                  <label className="fw-bold mb-1">Option Code</label>
-                  <select
-                    className="form-select"
-                    value={tempSelectedCode}
-                    onChange={(e) => setTempSelectedCode(e.target.value)}
-                  >
-                    <option value="">Select Code</option>
-                    {uniqueOptionCodes.map(code => (
-                      <option key={code} value={code}>{code}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="col-md-3">
-                  <label className="fw-bold mb-1">Option Value</label>
-                  <select
-                    className="form-select"
-                    value={tempSelectedValue}
-                    onChange={(e) => setTempSelectedValue(e.target.value)}
-                  >
-                    <option value="">Select Value</option>
-                    {uniqueOptionValues.map(value => (
-                      <option key={value} value={value}>{value}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="col-auto">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            {/* HEADER */}
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title">Option Value Master</h4>
+              <div className="d-flex align-items-center">
+                {!showForm ? (
+                  <>
+                    <button
+                      className="btn btn-success me-2"
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
+                    >
+                      Add
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-success flex-shrink-0"
+                      onClick={handleShowAll}
+                    >
+                      Show All
+                    </button>
+                  </>
+                ) : (
                   <button
-                    className="btn btn-primary h-100"
-                    onClick={handleSearch}
+                    className="btn btn-secondary"
+                    onClick={handleCancel}
                   >
-                    SEARCH
+                    Back
                   </button>
-                </div>
-              </div>
-
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
-                  <tr>
-                    <th>Option Code</th>
-                    <th>Option Value</th>
-                    <th>Option Score</th>
-                    <th>Question Name</th>
-                    <th>Status</th>
-                    <th>Edit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentItems.map((rec) => (
-                    <tr key={rec.id}>
-                      <td>{rec.optionCode}</td>
-                      <td>{rec.optionValue}</td>
-                      <td>{rec.optionScore}</td>
-                      <td>{rec.questionName}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={rec.status === STATUS.ACTIVE}
-                            onChange={() => handleSwitchChange(rec)}
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status === STATUS.ACTIVE ? "Active" : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          disabled={rec.status !== STATUS.ACTIVE}
-                          onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              {/* PAGINATION */}
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
-            </>
-          )}
-
-          {/* ================= FORM ================= */}
-          {showForm && (
-            <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-4">
-                <label>
-                  Option Code <span className="text-danger">*</span>
-                </label>
-                <input
-                  name="optionCode"
-                  className="form-control"
-                  value={formData.optionCode}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="col-md-4">
-                <label>
-                  Option Value <span className="text-danger">*</span>
-                </label>
-                <input
-                  name="optionValue"
-                  className="form-control"
-                  value={formData.optionValue}
-                  onChange={handleInputChange}
-                />
-              </div>
-              <div className="col-md-4">
-                <label>
-                  Option Score <span className="text-danger">*</span>
-                </label>
-                <input
-                  name="optionScore"
-                  type="number"
-                  className="form-control"
-                  value={formData.optionScore}
-                  onChange={handleInputChange}
-                />
-              </div>
-
-              <div className="col-md-4">
-                <label>
-                  Question Name <span className="text-danger">*</span>
-                </label>
-                <select
-                  name="questionId"
-                  className="form-select"
-                  value={formData.questionId}
-                  onChange={handleInputChange}
-                >
-                  <option value="">Select Question</option>
-                  {questions.map((q) => (
-                    <option key={q.id} value={q.id}>
-                      {q.question}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-12 text-end">
-                <button
-                  type="submit"
-                  className="btn btn-primary me-2"
-                  disabled={!isFormValid || loading}
-                >
-                  {editingRecord ? "Update" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={handleCancel}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-
-          {popupMessage && <Popup {...popupMessage} />}
-
-          {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-body">
-                    Are you sure you want to{" "}
-                    {confirmDialog.newStatus === STATUS.ACTIVE
-                      ? "activate"
-                      : "deactivate"}{" "}
-                    <strong>{confirmDialog.record?.optionCode}</strong>
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
-                      No
-                    </button>
-                    <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
-                      Yes
-                    </button>
-                  </div>
-                </div>
+                )}
               </div>
             </div>
-          )}
+
+            <div className="card-body">
+              {loading && !showForm && <LoadingScreen />}
+
+              {/* ================= LIST VIEW ================= */}
+              {!showForm && !loading && (
+                <>
+                  {/* SEARCH UI */}
+                  <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
+                    <div className="col-md-3">
+                      <label className="fw-bold mb-1">Option Code</label>
+                      <select
+                        className="form-select"
+                        value={tempSelectedCode}
+                        onChange={(e) => setTempSelectedCode(e.target.value)}
+                      >
+                        <option value="">Select Code</option>
+                        {uniqueOptionCodes.map(code => (
+                          <option key={code} value={code}>{code}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-md-3">
+                      <label className="fw-bold mb-1">Option Value</label>
+                      <select
+                        className="form-select"
+                        value={tempSelectedValue}
+                        onChange={(e) => setTempSelectedValue(e.target.value)}
+                      >
+                        <option value="">Select Value</option>
+                        {uniqueOptionValues.map(value => (
+                          <option key={value} value={value}>{value}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-auto">
+                      <button className="btn btn-primary" onClick={handleSearch}>
+                        SEARCH
+                      </button>
+                    </div>
+
+                    <div className="col-auto">
+                      <button className="btn btn-secondary" onClick={handleReset}>
+                        RESET
+                      </button>
+                    </div>
+                  </div>
+
+                  <table className="table table-bordered table-hover">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Option Code</th>
+                        <th>Option Value</th>
+                        <th>Option Score</th>
+                        <th>Question Name</th>
+                        <th>Status</th>
+                        <th>Edit</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.length > 0 ? (
+                        currentItems.map((rec) => (
+                          <tr key={rec.id}>
+                            <td>{rec.optionCode}</td>
+                            <td>{rec.optionValue}</td>
+                            <td>{rec.optionScore}</td>
+                            <td>{rec.questionName}</td>
+                            <td>
+                              <div className="form-check form-switch">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={rec.status === STATUS.ACTIVE}
+                                  onChange={() => handleSwitchChange(rec.id, rec.status, rec.optionCode)}
+                                />
+                                <label className="form-check-label ms-2">
+                                  {rec.status === STATUS.ACTIVE ? "Active" : "Inactive"}
+                                </label>
+                              </div>
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-success btn-sm"
+                                disabled={rec.status !== STATUS.ACTIVE}
+                                onClick={() => handleEdit(rec)}
+                              >
+                                <i className="fa fa-pencil"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="6" className="text-center">No Records Found</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  <Pagination
+                    totalItems={filteredData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
+              )}
+
+              {/* ================= FORM VIEW ================= */}
+              {showForm && (
+                <form onSubmit={handleSave} className="row g-3">
+                  <div className="col-md-4">
+                    <label>
+                      Option Code <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      name="optionCode"
+                      className="form-control mt-1"
+                      value={formData.optionCode}
+                      onChange={handleInputChange}
+                      disabled={saving}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label>
+                      Option Value <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      name="optionValue"
+                      className="form-control mt-1"
+                      value={formData.optionValue}
+                      onChange={handleInputChange}
+                      disabled={saving}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label>
+                      Option Score <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      name="optionScore"
+                      type="number"
+                      step="any"
+                      className="form-control mt-1"
+                      value={formData.optionScore}
+                      onChange={handleInputChange}
+                      disabled={saving}
+                    />
+                  </div>
+
+                  <div className="col-md-4">
+                    <label>
+                      Question Name <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      name="questionId"
+                      className="form-select mt-1"
+                      value={formData.questionId}
+                      onChange={handleInputChange}
+                      disabled={saving}
+                    >
+                      <option value="">Select Question</option>
+                      {questions.map((q) => (
+                        <option key={q.id} value={q.id}>
+                          {q.question}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-12 text-end">
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || saving}
+                    >
+                      {saving ? "Saving..." : (editingRecord ? "Update" : "Save")}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleCancel}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {popupMessage && <Popup {...popupMessage} />}
+
+              {/* Custom confirmation dialog */}
+              {confirmDialog.isOpen && (
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-body">
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === STATUS.ACTIVE
+                          ? "activate"
+                          : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

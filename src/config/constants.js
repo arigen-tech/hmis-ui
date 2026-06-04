@@ -455,7 +455,7 @@ export const DUPLICATE_GENDER_MSG ="Gender Code or Gender Name already exists";
 
 //Hospital Master
 export const FETCH_HOSPITAL_ERR_MSG = "Failed to load hospital data";
-export const DUPLICATE_HOSPITAL = "Hospital with the same name already exists!";
+export const DUPLICATE_HOSPITAL = "Hospital with the same name or code or email already exists!";
 export const UPDATE_HOSPITAL_SUCC_MSG = "Hospital updated successfully!";
 export const ADD_HOSPITAL_SUCC_MSG = "New hospital added successfully!";
 export const FAILED_TO_LOAD_SELECTED_COUNTRY ="Failed to load states for selected country";

@@ -14,9 +14,9 @@ const OPDQuestionnaireMaster = () => {
 
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    question: null,
-    newStatus: "",
     id: null,
+    newStatus: "",
+    name: "",
   });
 
   const [showForm, setShowForm] = useState(false);
@@ -33,8 +33,6 @@ const OPDQuestionnaireMaster = () => {
     headingId: "",
     question: "",
   });
-
-  const itemsPerPage = 5;
 
   const formatDate = (dateString) => {
     if (!dateString?.trim()) return "N/A";
@@ -98,9 +96,15 @@ const OPDQuestionnaireMaster = () => {
     setEditingRecord(null);
   };
 
+  const handleCancel = () => {
+    resetForm();
+    setShowForm(false);
+  };
+
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!isFormValid) return;
+    
+    if (!isFormValid || saving) return;
 
     const newQuestion = formData.question.trim().toLowerCase();
     const newHeadingId = formData.headingId;
@@ -121,29 +125,58 @@ const OPDQuestionnaireMaster = () => {
     }
 
     setSaving(true);
+    
     try {
       if (editingRecord) {
         const payload = {
           questionHeadingId: formData.headingId,
           question: formData.question,
         };
-        await putRequest(`${MAS_OPD_QUESTION}/update/${editingRecord.id}`, payload);
-        showPopup(UPDATE_OPD_QUESTION, "success");
+        const response = await putRequest(`${MAS_OPD_QUESTION}/update/${editingRecord.id}`, payload);
+        
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_OPD_QUESTION,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
         const payload = {
           questionHeadingId: formData.headingId,
           question: formData.question,
           status: "n",
         };
-        await postRequest(`${MAS_OPD_QUESTION}/create`, payload);
-        showPopup(ADD_OPD_QUESTION, "success");
+        const response = await postRequest(`${MAS_OPD_QUESTION}/create`, payload);
+        
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_OPD_QUESTION,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-
-      await fetchData();
-      resetForm();
-      setShowForm(false);
     } catch (error) {
-      showPopup(editingRecord ? "Update failed" : "Add failed", "error");
+      console.error("Save error:", error);
+      showPopup(
+        editingRecord ? "Update failed" : "Add failed",
+        "error"
+      );
     } finally {
       setSaving(false);
     }
@@ -159,36 +192,52 @@ const OPDQuestionnaireMaster = () => {
     setIsFormValid(true);
   };
 
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y";
+    setConfirmDialog({ isOpen: true, id, newStatus, name });
+  };
+
   const handleConfirm = async (confirmed) => {
-    const { id, newStatus, question } = confirmDialog;
-    setConfirmDialog({ isOpen: false, question: null, newStatus: "", id: null });
+    if (confirmed && confirmDialog.id !== null) {
+      setSaving(true);
 
-    if (!confirmed || !id) return;
+      try {
+        const response = await putRequest(
+          `${MAS_OPD_QUESTION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+        );
 
-    setSaving(true);
-    try {
-      await putRequest(`${MAS_OPD_QUESTION}/status/${id}?status=${newStatus}`);
-      showPopup(
-        `Question "${question}" ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-        "success"
-      );
-      await fetchData();
-    } catch (error) {
-      console.error("Status update error:", error);
-      showPopup(STATUS_UPDATE_OPD_QUESTION, "error");
-    } finally {
-      setSaving(false);
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Question "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Status update error:", error);
+        showPopup(STATUS_UPDATE_OPD_QUESTION, "error");
+      } finally {
+        setSaving(false);
+      }
     }
+
+    setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
   };
 
   const handleRefresh = () => {
     setSearchQuery("");
     setSelectedHeadingId("");
     setCurrentPage(1);
-  };
-
-  const handleSwitchChange = (id, question, newStatus) => {
-    setConfirmDialog({ isOpen: true, question, newStatus, id });
+    fetchData();
   };
 
   const showPopup = (message, type) => {
@@ -199,229 +248,252 @@ const OPDQuestionnaireMaster = () => {
     setCurrentPage(1);
   };
 
+  const handleReset = () => {
+    setSearchQuery("");
+    setSelectedHeadingId("");
+    setCurrentPage(1);
+  };
+
   return (
     <div className="content-wrapper">
-      <div className="card form-card">
-        <div className="card-header d-flex justify-content-between align-items-center">
-          <h4>Questionnaire Question Master</h4>
-          <div className="d-flex">
-            {!showForm ? (
-              <>
-                <button className="btn btn-success me-2" onClick={() => setShowForm(true)}>
-                  Add
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-success me-2"
-                  onClick={handleRefresh}
-                >
-                  <i className="mdi mdi-view-list"></i> Show All
-                </button>
-              </>
-            ) : (
-              <button className="btn btn-secondary" onClick={() => setShowForm(false)}>
-                Back
-              </button>
-            )}
-          </div>
-        </div>
-
-        <div className="card-body">
-          {loading && <LoadingScreen />}
-
-          {!showForm && !loading && (
-            <>
-              {/* Filter row: Heading dropdown + Question text search + SEARCH button in one row */}
-              <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
-                <div className="col-md-3">
-                  <label className="fw-bold mb-1">Topic</label>
-                  <select
-                    className="form-select"
-                    value={selectedHeadingId}
-                    onChange={(e) => setSelectedHeadingId(e.target.value)}
-                  >
-                    <option value="">Select Name</option>
-                    {headings.map((item) => (
-                      <option key={item.questionHeadingId} value={item.questionHeadingId}>
-                        {item.questionHeadingName}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-
-                <div className="col-md-3">
-                  <label className="fw-bold mb-1">Question</label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Search Question text..."
-                    value={searchQuery}
-                    onChange={(e) => {
-                      setSearchQuery(e.target.value);
-                      setCurrentPage(1);
-                    }}
-                  />
-                </div>
-
-              
-                <div className="col-auto">
-                  <button
-                    className="btn btn-primary h-100"
-                    onClick={handleSearch}
-                  >
-                    SEARCH
-                  </button>
-                </div>
-
-
-
-
-                <div className="col-auto">
-                  <button
-                    className="btn btn-primary h-100"
-                    onClick={handleSearch}
-                  >
-                    RESET
-                  </button>
-                </div>
-              </div>
-
-              <table className="table table-bordered table-hover">
-                <thead className="table-light">
-                  <tr>
-                    <th>TOPIC</th>
-                   <th>Question</th>
-                    <th>Last Update Date</th>
-                    <th>Status</th>
-                    <th>Edit</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {currentItems.map((rec) => (
-                    <tr key={rec.id}>
-                      <td>{rec.question}</td>
-                      <td>{rec.questionHeadingName}</td>
-                      <td>{formatDate(rec.lastUpdateDate)}</td>
-                      <td>
-                        <div className="form-check form-switch">
-                          <input
-                            className="form-check-input"
-                            type="checkbox"
-                            checked={rec.status === "y"}
-                            onChange={() =>
-                              handleSwitchChange(rec.id, rec.question, rec.status === "y" ? "n" : "y")
-                            }
-                          />
-                          <label className="form-check-label ms-2">
-                            {rec.status === "y" ? "Active" : "Inactive"}
-                          </label>
-                        </div>
-                      </td>
-                      <td>
-                        <button
-                          className="btn btn-success btn-sm"
-                          disabled={rec.status !== "y"}
-                          onClick={() => handleEdit(rec)}
-                        >
-                          <i className="fa fa-pencil"></i>
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-
-              <Pagination
-                totalItems={filteredData.length}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={setCurrentPage}
-              />
-            </>
-          )}
-
-          {showForm && (
-            <form onSubmit={handleSave} className="row g-3">
-              <div className="col-md-6">
-                <label>
-                  Question <span className="text-danger">*</span>
-                </label>
-                <input
-                  id="question"
-                  className="form-control"
-                  value={formData.question}
-                  onChange={handleInputChange}
-                  required
-                />
-              </div>
-
-              <div className="col-md-6">
-                <label>
-                  Heading <span className="text-danger">*</span>
-                </label>
-                <select
-                  id="headingId"
-                  className="form-select"
-                  value={formData.headingId}
-                  onChange={handleInputChange}
-                  required
-                >
-                  <option value="">Select Heading</option>
-                  {headings.map((item) => (
-                    <option key={item.questionHeadingId} value={item.questionHeadingId}>
-                      {item.questionHeadingName}
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="col-12 text-end">
-                <button
-                  className="btn btn-primary me-2"
-                  disabled={!isFormValid || saving}
-                >
-                  {editingRecord ? "Update" : "Save"}
-                </button>
-                <button
-                  type="button"
-                  className="btn btn-danger"
-                  onClick={() => setShowForm(false)}
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          )}
-
-          {popupMessage && <Popup {...popupMessage} />}
-
-          {confirmDialog.isOpen && (
-            <div className="modal d-block">
-              <div className="modal-dialog">
-                <div className="modal-content">
-                  <div className="modal-body">
-                    Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                    <strong>{confirmDialog.question}</strong>?
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title">Questionnaire Question Master</h4>
+              <div className="d-flex align-items-center">
+                {!showForm ? (
+                  <>
+                    <button 
+                      className="btn btn-success me-2" 
+                      onClick={() => {
+                        resetForm();
+                        setShowForm(true);
+                      }}
                     >
-                      No
+                      Add
                     </button>
                     <button
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
+                      type="button"
+                      className="btn btn-success flex-shrink-0"
+                      onClick={handleRefresh}
                     >
-                      Yes
+                      Show All
                     </button>
-                  </div>
-                </div>
+                  </>
+                ) : (
+                  <button 
+                    className="btn btn-secondary" 
+                    onClick={handleCancel}
+                  >
+                    Back
+                  </button>
+                )}
               </div>
             </div>
-          )}
+
+            <div className="card-body">
+              {loading && !showForm && <LoadingScreen />}
+
+              {!showForm && !loading && (
+                <>
+                  {/* Filter row */}
+                  <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
+                    <div className="col-md-3">
+                      <label className="fw-bold mb-1">Topic</label>
+                      <select
+                        className="form-select"
+                        value={selectedHeadingId}
+                        onChange={(e) => setSelectedHeadingId(e.target.value)}
+                      >
+                        <option value="">Select Name</option>
+                        {headings.map((item) => (
+                          <option key={item.questionHeadingId} value={item.questionHeadingId}>
+                            {item.questionHeadingName}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="col-md-3">
+                      <label className="fw-bold mb-1">Question</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        placeholder="Search Question text..."
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setCurrentPage(1);
+                        }}
+                      />
+                    </div>
+
+                    <div className="col-auto">
+                      <button
+                        className="btn btn-primary"
+                        onClick={handleSearch}
+                      >
+                        SEARCH
+                      </button>
+                    </div>
+
+                    <div className="col-auto">
+                      <button
+                        className="btn btn-secondary"
+                        onClick={handleReset}
+                      >
+                        RESET
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <table className="table table-bordered table-hover">
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "20%" }}>TOPIC</th>
+                        <th style={{ width: "50%" }}>QUESTION</th>
+                        <th style={{ width: "15%" }}>STATUS</th>
+                        <th style={{ width: "15%" }}>EDIT</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {currentItems.length > 0 ? (
+                        currentItems.map((rec) => (
+                          <tr key={rec.id}>
+                            <td>{rec.questionHeadingName}</td>
+                            <td>{rec.question}</td>
+                            <td>
+                              <div className="form-check form-switch">
+                                <input
+                                  className="form-check-input"
+                                  type="checkbox"
+                                  checked={rec.status === "y"}
+                                  onChange={() =>
+                                    handleSwitchChange(rec.id, rec.status, rec.question)
+                                  }
+                                />
+                                <label className="form-check-label ms-2">
+                                  {rec.status === "y" ? "Active" : "Inactive"}
+                                </label>
+                              </div>
+                            </td>
+                            <td>
+                              <button
+                                className="btn btn-success btn-sm"
+                                disabled={rec.status !== "y"}
+                                onClick={() => handleEdit(rec)}
+                              >
+                                <i className="fa fa-pencil"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        ))
+                      ) : (
+                        <tr>
+                          <td colSpan="4" className="text-center">No Records Found</td>
+                        </tr>
+                      )}
+                    </tbody>
+                  </table>
+
+                  <Pagination
+                    totalItems={filteredData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
+                </>
+              )}
+
+              {showForm && (
+                <form onSubmit={handleSave} className="row g-3">
+                  <div className="col-md-6">
+                    <label>
+                      Topic <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      id="headingId"
+                      className="form-select mt-1"
+                      value={formData.headingId}
+                      onChange={handleInputChange}
+                      required
+                      disabled={saving}
+                    >
+                      <option value="">Select Heading</option>
+                      {headings.map((item) => (
+                        <option key={item.questionHeadingId} value={item.questionHeadingId}>
+                          {item.questionHeadingName}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="col-md-6">
+                    <label>
+                      Question <span className="text-danger">*</span>
+                    </label>
+                    <input
+                      id="question"
+                      className="form-control mt-1"
+                      value={formData.question}
+                      onChange={handleInputChange}
+                      required
+                      disabled={saving}
+                    />
+                  </div>
+
+                  <div className="col-12 text-end">
+                    <button
+                      type="submit"
+                      className="btn btn-primary me-2"
+                      disabled={!isFormValid || saving}
+                    >
+                      {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
+                    </button>
+                    <button
+                      type="button"
+                      className="btn btn-danger"
+                      onClick={handleCancel}
+                      disabled={saving}
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </form>
+              )}
+
+              {popupMessage && <Popup {...popupMessage} />}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-body">
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
     </div>

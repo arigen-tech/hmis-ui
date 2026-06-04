@@ -12,7 +12,8 @@ const WardCategoryMaster = () => {
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     categoryId: null,
-    newStatus: false
+    newStatus: false,
+    categoryName: ""  // Added to store category name
   });
 
   const [formData, setFormData] = useState({
@@ -27,8 +28,7 @@ const WardCategoryMaster = () => {
   const [editingCategory, setEditingCategory] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(5);
-  const [pageInput, setPageInput] = useState("1");
+  const [itemsPerPage] = useState(DEFAULT_ITEMS_PER_PAGE); // Changed to use constant
 
   // Dropdown options
   const [careLevelOptions, setCareLevelOptions] = useState([]);
@@ -36,35 +36,24 @@ const WardCategoryMaster = () => {
   const CATEGORY_NAME_MAX_LENGTH = 50;
   const DESCRIPTION_MAX_LENGTH = 200;
 
-  // Function to format date as dd-MM-YYYY
+  // Function to format date as dd/MM/yyyy (matching DesignationMaster format)
   const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-
-    try {
-      const date = new Date(dateString);
-
-      // Check if date is valid
-      if (isNaN(date.getTime())) {
-        return "N/A";
-      }
-
-      const day = String(date.getDate()).padStart(2, '0');
-      const month = String(date.getMonth() + 1).padStart(2, '0'); // Months are 0-indexed
-      const year = date.getFullYear();
-
-      return `${day}/${month}/${year}`;
-    } catch (error) {
-      console.error("Error formatting date:", error);
-      return "N/A";
-    }
+    if (!dateString?.trim()) return "N/A";
+    const date = new Date(dateString);
+    if (isNaN(date.getTime())) return "N/A";
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
   };
 
   // Fetch care level dropdown data
   const fetchCareLevelData = async () => {
     try {
-      const response = await getRequest(`${MAS_CARE_LEVEL}/getAll/1`);
-      if (response && response.response) {
-        const mappedData = response.response.map(item => ({
+      const { response } = await getRequest(`${MAS_CARE_LEVEL}/getAll/1`);
+      if (response) {
+        const list = Array.isArray(response) ? response : [];
+        const mappedData = list.map(item => ({
           id: item.careId,
           name: item.careLevelName
         }));
@@ -72,7 +61,12 @@ const WardCategoryMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching care level data:", err);
-      showPopup(FETCH_CARE_LEVEL_ERR_MSG, "error");
+      // Don't use showPopup here as it might conflict
+      setPopupMessage({
+        message: FETCH_CARE_LEVEL_ERR_MSG,
+        type: "error",
+        onClose: () => setPopupMessage(null)
+      });
     }
   };
 
@@ -80,9 +74,10 @@ const WardCategoryMaster = () => {
   const fetchWardCategoryData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_WARD_CATEGORY}/getAll/${flag}`);
-      if (response && response.response) {
-        const mappedData = response.response.map(item => ({
+      const { response } = await getRequest(`${MAS_WARD_CATEGORY}/getAll/${flag}`);
+      if (response) {
+        const list = Array.isArray(response) ? response : [];
+        const mappedData = list.map(item => ({
           id: item.categoryId,
           categoryName: item.categoryName,
           description: item.description,
@@ -97,7 +92,11 @@ const WardCategoryMaster = () => {
       }
     } catch (err) {
       console.error("Error fetching ward category data:", err);
-      showPopup(FETCH_WARD_CATEGORY_ERR_MSG, "error");
+      setPopupMessage({
+        message: FETCH_WARD_CATEGORY_ERR_MSG,
+        type: "error",
+        onClose: () => setPopupMessage(null)
+      });
     } finally {
       setLoading(false);
     }
@@ -124,13 +123,7 @@ const WardCategoryMaster = () => {
   // Reset to page 1 when search changes
   useEffect(() => {
     setCurrentPage(1);
-    setPageInput("1");
   }, [searchQuery]);
-
-  // Update page input when current page changes
-  useEffect(() => {
-    setPageInput(currentPage.toString());
-  }, [currentPage]);
 
   // Validate form whenever formData changes
   useEffect(() => {
@@ -180,7 +173,11 @@ const WardCategoryMaster = () => {
       );
 
       if (isDuplicate) {
-        showPopup(DUPLICATE_WARD_CATEGORY, "error");
+        setPopupMessage({
+          message: DUPLICATE_WARD_CATEGORY,
+          type: "error",
+          onClose: () => setPopupMessage(null)
+        });
         setLoading(false);
         return;
       }
@@ -201,6 +198,7 @@ const WardCategoryMaster = () => {
               setPopupMessage(null);
               handleCancel();
               fetchWardCategoryData(0);
+              setShowForm(false);
             }
           });
         }
@@ -220,59 +218,82 @@ const WardCategoryMaster = () => {
               setPopupMessage(null);
               handleCancel();
               fetchWardCategoryData(0);
+              setShowForm(false);
             }
           });
         }
       }
     } catch (err) {
       console.error("Error saving ward category data:", err);
-      showPopup(FAIL_TO_SAVE_CHANGES, "error");
+      setPopupMessage({
+        message: FAIL_TO_SAVE_CHANGES,
+        type: "error",
+        onClose: () => setPopupMessage(null)
+      });
     } finally {
       setLoading(false);
     }
   };
 
-  const showPopup = (message, type = 'info') => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      }
+  const handleSwitchChange = (id, newStatus, categoryName) => {
+    setConfirmDialog({ 
+      isOpen: true, 
+      categoryId: id, 
+      newStatus,
+      categoryName: categoryName
     });
-  };
-
-  const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, categoryId: id, newStatus });
   };
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.categoryId !== null) {
-      try {
         setLoading(true);
 
-        const response = await putRequest(
-          `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
-        );
+        try {
+            const response = await putRequest(
+                `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+            );
 
-        if (response && response.status === 200) {
-          // Refresh data from API after status change
-          await fetchWardCategoryData(0);
-          setPopupMessage({
-            message: `Ward category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            type: "success",
-            onClose: () => setPopupMessage(null)
-          });
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Ward category "${
+                        confirmDialog.categoryName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchWardCategoryData(0);
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
+        } catch (error) {
+            console.error("Error updating ward category status:", error);
+
+            setPopupMessage({
+                message: FAIL_TO_UPDATE_STS,
+                type: "error",
+                onClose: () => setPopupMessage(null),
+            });
+        } finally {
+            setLoading(false);
         }
-      } catch (err) {
-        console.error("Error updating ward category status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
-      }
     }
-    setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
-  };
+
+    setConfirmDialog({
+        isOpen: false,
+        categoryId: null,
+        newStatus: "",
+        categoryName: "",
+    });
+};
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
@@ -287,18 +308,9 @@ const WardCategoryMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setPageInput("1");
-    fetchWardCategoryData(0); // Refresh from API
+    fetchWardCategoryData(0);
   };
 
- 
-  const handlePageInputChange = (e) => {
-    setPageInput(e.target.value);
-  };
-
- 
-
-  
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -307,24 +319,16 @@ const WardCategoryMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Ward Category Master</h4>
               <div className="d-flex justify-content-between align-items-center">
-                {!showForm ? (
-                  <form className="d-inline-block searchform me-4" role="search">
-                    <div className="input-group searchinput">
-                      <input
-                        type="search"
-                        className="form-control"
-                        placeholder="Search"
-                        aria-label="Search"
-                        value={searchQuery}
-                        onChange={handleSearchChange}
-                      />
-                      <span className="input-group-text" id="search-icon">
-                        <i className="fa fa-search"></i>
-                      </span>
-                    </div>
-                  </form>
-                ) : (
-                  <></>
+                {!showForm && (
+                  <input
+                    className="form-control w-50 me-2"
+                    placeholder="Search by Name"
+                    value={searchQuery}
+                    onChange={(e) => {
+                      setSearchQuery(e.target.value);
+                      setCurrentPage(1);
+                    }}
+                  />
                 )}
 
                 <div className="d-flex align-items-center">
@@ -339,31 +343,31 @@ const WardCategoryMaster = () => {
                           setShowForm(true);
                         }}
                       >
-                        <i className="mdi mdi-plus"></i> Add
+                        Add
                       </button>
                       <button
                         type="button"
-                        className="btn btn-success me-2 flex-shrink-0"
+                        className="btn btn-success flex-shrink-0"
                         onClick={handleRefresh}
                       >
-                        <i className="mdi mdi-refresh"></i> Show All
+                        Show All
                       </button>
                     </>
                   ) : (
                     <button type="button" className="btn btn-secondary" onClick={handleCancel}>
-                      <i className="mdi mdi-arrow-left"></i> Back
+                      Back
                     </button>
                   )}
                 </div>
               </div>
             </div>
             <div className="card-body">
-              {loading ? (
-                <LoadingScreen />
-              ) : !showForm ? (
+              {loading && !showForm && <LoadingScreen />}
+
+              {!showForm && !loading && (
                 <>
-                  <div className="table-responsive packagelist">
-                    <table className="table table-bordered table-hover align-middle">
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-hover">
                       <thead className="table-light">
                         <tr>
                           <th>Ward Category Name</th>
@@ -379,9 +383,7 @@ const WardCategoryMaster = () => {
                           currentItems.map((category) => (
                             <tr key={category.id}>
                               <td>{category.categoryName}</td>
-                              <td className="text-truncate" style={{ maxWidth: "300px" }} title={category.description}>
-                                {category.description || "N/A"}
-                              </td>
+                              <td>{category.description || "N/A"}</td>
                               <td>{category.careLevel}</td>
                               <td>
                                 <div className="form-check form-switch">
@@ -389,21 +391,21 @@ const WardCategoryMaster = () => {
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={category.status === "y"}
-                                    onChange={() => handleSwitchChange(category.id, category.status === "y" ? "n" : "y")}
-                                    id={`switch-${category.id}`}
+                                    onChange={() => handleSwitchChange(
+                                      category.id, 
+                                      category.status === "y" ? "n" : "y",
+                                      category.categoryName
+                                    )}
                                   />
-                                  <label
-                                    className="form-check-label px-0"
-                                    htmlFor={`switch-${category.id}`}
-                                  >
-                                    {category.status === "y" ? 'Active' : 'Inactive'}
+                                  <label className="form-check-label ms-2">
+                                    {category.status === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
                               </td>
                               <td>{category.lastUpdated}</td>
                               <td>
                                 <button
-                                  className="btn btn-sm btn-success me-2"
+                                  className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(category)}
                                   disabled={category.status !== "y"}
                                 >
@@ -414,49 +416,43 @@ const WardCategoryMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">No ward category data found</td>
+                            <td colSpan="6" className="text-center">
+                              No Records Found
+                            </td>
                           </tr>
                         )}
                       </tbody>
                     </table>
                   </div>
 
-                  {/* Pagination */}
-                  <div>
-                        <Pagination
-                          totalItems={filteredWardCategoryData.length}
-                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                          currentPage={currentPage}
-                          onPageChange={setCurrentPage}
-                        />
-                      </div>        
-                  
+                  <Pagination
+                    totalItems={filteredWardCategoryData.length}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
-              ) : (
-                <form className="forms row" onSubmit={handleSave}>
+              )}
+
+              {showForm && (
+                <form className="row" onSubmit={handleSave}>
                   <div className="form-group col-md-4">
                     <label>Ward Category Name <span className="text-danger">*</span></label>
                     <input
                       type="text"
                       className="form-control mt-1"
                       id="categoryName"
-                      name="categoryName"
-                      placeholder="Enter ward category name"
                       value={formData.categoryName}
                       onChange={handleInputChange}
                       maxLength={CATEGORY_NAME_MAX_LENGTH}
                       required
                     />
-                    {/* <small className="text-muted">
-                      {formData.categoryName.length}/{CATEGORY_NAME_MAX_LENGTH} characters
-                    </small> */}
                   </div>
                   <div className="form-group col-md-4">
                     <label>Care Level Type <span className="text-danger">*</span></label>
                     <select
-                      className="form-select mt-1"
+                      className="form-control mt-1"
                       id="careId"
-                      name="careId"
                       value={formData.careId}
                       onChange={handleSelectChange}
                       required
@@ -469,33 +465,27 @@ const WardCategoryMaster = () => {
                         </option>
                       ))}
                     </select>
-                    {/* <small className="text-muted">Select care level type</small> */}
                   </div>
-                  <div className="form-group col-md-8 mt-3">
+                  <div className="form-group col-md-4">
                     <label>Description <span className="text-danger">*</span></label>
                     <textarea
                       className="form-control mt-1"
                       id="description"
-                      name="description"
-                      placeholder="Enter description"
                       value={formData.description}
                       onChange={handleInputChange}
                       rows="3"
                       maxLength={DESCRIPTION_MAX_LENGTH}
                       required
                     />
-                    {/* <small className="text-muted">
-                      {formData.description.length}/{DESCRIPTION_MAX_LENGTH} characters
-                    </small> */}
                   </div>
 
-                  <div className="form-group col-md-12 d-flex justify-content-end mt-3">
+                  <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
-                      {loading ? "Saving..." : (editingCategory ? 'Update' : 'Save')}
+                      {loading ? "Saving..." : editingCategory ? "Update" : "Save"}
                     </button>
                     <button
                       type="button"
@@ -518,23 +508,28 @@ const WardCategoryMaster = () => {
               )}
 
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog modal-dialog-centered" role="document">
+                <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)} aria-label="Close" disabled={loading}></button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
-                          <strong> {wardCategoryData.find(category => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
-                        </p>
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.categoryName}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)} disabled={loading}>Cancel</button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)} disabled={loading}>
-                          {loading ? "Processing..." : "Confirm"}
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                          disabled={loading}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                          disabled={loading}
+                        >
+                          {loading ? "Processing..." : "Yes"}
                         </button>
                       </div>
                     </div>
@@ -548,5 +543,5 @@ const WardCategoryMaster = () => {
     </div>
   );
 };
- 
+
 export default WardCategoryMaster;

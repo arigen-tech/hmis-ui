@@ -406,14 +406,14 @@ const ToothBox = ({
   const selectedConditions = toothData || [];
 
   return (
-    <div className="text-center mx-1 mb-2">
+    <div className="text-center mx-1 mb-1">
 
       <div
         className="d-flex align-items-center justify-content-center fw-bold"
         onClick={onClick}
         style={{
-          width: "50px",
-          height: "50px",
+          width: "42px",
+          height: "42px",
           borderRadius: "8px",
           backgroundColor: bgColor,
           color: "#fff",
@@ -454,10 +454,10 @@ const ToothBox = ({
   // ==================== RENDER FUNCTIONS ====================
   
   const renderAdultToothChart = () => (
-    <div className="mb-5">
-      <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+    <div className="mb-2">
+      <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap">
         <h6 className="fw-bold text-primary">Adult Teeth</h6>
-        <div className="d-flex gap-2 mt-2 mt-sm-0">
+        <div className="d-flex gap-1 mt-1 mt-sm-0">
           {showScheduleModal ? (
             <>
               <button className="btn btn-sm btn-secondary" onClick={cancelSelection}>
@@ -475,7 +475,7 @@ const ToothBox = ({
         </div>
       </div>
 
-      <div className="d-flex justify-content-center gap-3 mb-3 flex-wrap">
+      <div className="d-flex justify-content-center gap-2 mb-2 flex-wrap">
         <span><span className="badge bg-success">🟢</span> Normal</span>
         <span><span className="badge bg-warning">🟡</span> Condition</span>
         <span><span className="badge bg-danger">🔴</span> Missing</span>
@@ -488,7 +488,7 @@ const ToothBox = ({
         <span className="mx-4"></span>
         <span className="badge bg-secondary">Upper Left</span>
       </div>
-      <div className="d-flex justify-content-center mb-4 flex-wrap">
+      <div className="d-flex justify-content-center mb-2 flex-wrap">
         <div className="d-flex flex-wrap justify-content-center">
           {adultUpperRight.map(tooth => (
             <ToothBox
@@ -518,8 +518,9 @@ const ToothBox = ({
         </div>
       </div>
 
-      <div className="text-center text-muted my-2">━━━━━━━━━━━━ Midline ━━━━━━━━━━━━</div>
-
+<div className="text-center small text-muted mb-2">
+  Midline
+</div>
       <div className="text-center mb-2">
         <span className="badge bg-secondary">Lower Left</span>
         <span className="mx-4"></span>
@@ -561,7 +562,7 @@ const ToothBox = ({
     <div className="mb-4">
       <h6 className="fw-bold text-success mb-3">Child Teeth</h6>
 
-      <div className="d-flex justify-content-center gap-3 mb-3 flex-wrap">
+      <div className="d-flex justify-content-center gap-2 mb-2 flex-wrap">
         <span><span className="badge bg-success">🟢</span> Normal</span>
         <span><span className="badge bg-warning">🟡</span> Condition</span>
         <span><span className="badge bg-danger">🔴</span> Missing</span>
@@ -573,7 +574,7 @@ const ToothBox = ({
         <span className="mx-4"></span>
         <span className="badge bg-secondary">Upper Left</span>
       </div>
-      <div className="d-flex justify-content-center mb-4 flex-wrap">
+      <div className="d-flex justify-content-center mb-2 flex-wrap">
         <div className="d-flex flex-wrap justify-content-center">
           {childUpperRight.map(tooth => (
             <ToothBox
@@ -603,8 +604,9 @@ const ToothBox = ({
         </div>
       </div>
 
-      <div className="text-center text-muted my-2">━━━━━━━━━━━━ Midline ━━━━━━━━━━━━</div>
-
+<div className="text-center small text-muted mb-2">
+  Midline
+</div>
       <div className="text-center mb-2">
         <span className="badge bg-secondary">Lower Left</span>
         <span className="mx-4"></span>
@@ -643,7 +645,7 @@ const ToothBox = ({
   );
 
   const renderAdultSummaryCards = () => (
-    <div className="row mb-4">
+    <div className="row mb-2">
       <div className="col-md-3 col-6 mb-2">
         <div className="card bg-primary text-white">
           <div className="card-body p-2 p-md-3">
@@ -680,7 +682,7 @@ const ToothBox = ({
   );
 
   const renderChildSummaryCards = () => (
-    <div className="row mb-4">
+    <div className="row mb-2">
       <div className="col-md-3 col-6 mb-2">
         <div className="card bg-info text-white">
           <div className="card-body p-2 p-md-3">
@@ -703,7 +705,7 @@ const ToothBox = ({
             <h6 className="mb-0 small">Unsalvageable</h6>
             <h3 className="mb-0">{childDentalSummary.unsalvageableTeeth}</h3>
           </div>
-        </div>
+        </div>  
       </div>
       <div className="col-md-3 col-6 mb-2">
         <div className="card bg-success text-white">
@@ -722,7 +724,7 @@ const ToothBox = ({
     return (
       <div className="mt-4">
         <hr />
-        <div className="d-flex justify-content-between align-items-center mb-3 flex-wrap">
+        <div className="d-flex justify-content-between align-items-center mb-1 flex-wrap">
           <h6 className="fw-bold">{title}</h6>
           <button className="btn btn-sm btn-secondary" onClick={() => type === "adult" ? setShowAdultDashboard(false) : setShowChildDashboard(false)}>
             Hide Dashboard
@@ -812,7 +814,7 @@ const ToothBox = ({
   return (
     <div>
       {!hideHeader && (
-        <div className="d-flex justify-content-between align-items-center mb-4 flex-wrap">
+        <div className="d-flex justify-content-between align-items-center mb-2 flex-wrap">
           <h5 className="fw-bold mb-0">Dental Examination</h5>
           <div className="d-flex gap-2 mt-2 mt-sm-0 flex-wrap">
             <button 

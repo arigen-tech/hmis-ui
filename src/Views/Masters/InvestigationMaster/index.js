@@ -13,7 +13,7 @@ import {
   DG_MAS_INVESTIGATION_CATEGORY,
   DG_MAS_INVESTIGATION_METHODOLOGY,
 } from "../../../config/apiConfig"
-import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
+import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 // Import the Preparation Modal component
@@ -22,6 +22,7 @@ import MasPreparationModel from "./Masprep/masprep"
 const InvestigationMaster = () => {
   const [investigations, setInvestigations] = useState([])
   const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
   const [searchQuery, setSearchQuery] = useState("")
   const [currentPage, setCurrentPage] = useState(1)
   const [selectedInvestigation, setSelectedInvestigation] = useState(null)
@@ -62,7 +63,8 @@ const InvestigationMaster = () => {
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
     investigationId: null,
-    newStatus: null,
+    newStatus: "",
+    name: "",
   })
   const [dropdownOptions, setDropdownOptions] = useState({
     departments: [],
@@ -102,8 +104,7 @@ const InvestigationMaster = () => {
       try {
         setLoading(true)
 
-        // Fetch all data in parallel
-        const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes,methodologiesRes,categoriesRes] =
+        const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes, methodologiesRes, categoriesRes] =
           await Promise.all([
             getRequest(`${MAS_INVESTIGATION}/getAll/0`),
             getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
@@ -115,12 +116,11 @@ const InvestigationMaster = () => {
             getRequest(`${DG_MAS_INVESTIGATION_CATEGORY}/findAll`),
           ])
 
-        // Set investigations data
         if (investigationsRes && investigationsRes.response) {
           setInvestigations(
             investigationsRes.response.map((item) => ({
               ...item,
-              id: item.investigationId, // Add id for consistency
+              id: item.investigationId,
             })),
           )
         }
@@ -151,12 +151,12 @@ const InvestigationMaster = () => {
               id: uom.id,
               name: uom.name,
             })) || [],
-            methodologies:
+          methodologies:
             methodologiesRes?.response?.map((method) => ({
               id: method.methodId,
               name: method.methodName,
             })) || [],
-            categories:
+          categories:
             categoriesRes?.response?.map((category) => ({
               id: category.categoryId,
               name: category.categoryName,
@@ -194,11 +194,6 @@ const InvestigationMaster = () => {
     setCurrentPage(1)
   }
 
-  const handleSearch = () => {
-    // Search functionality - filtering happens automatically in the filteredInvestigations
-    // This function can be used for any additional search logic if needed
-  }
-
   const getSelectedOption = (prefix, value) => {
     const optionsMap = {
       department: dropdownOptions.departments,
@@ -212,7 +207,6 @@ const InvestigationMaster = () => {
 
     const options = optionsMap[prefix] || []
 
-    // Safely handle undefined or null values
     if (!value && value !== 0) {
       return null
     }
@@ -226,7 +220,6 @@ const InvestigationMaster = () => {
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target
 
-    // For dropdowns that need to update both ID and name
     if (name.endsWith("Id")) {
       const prefix = name.replace("Id", "")
       const selectedOption = getSelectedOption(prefix, value)
@@ -280,43 +273,33 @@ const InvestigationMaster = () => {
     setSubInvestigations([])
   }
 
-  const handleStatusToggle = (id) => {
-    const investigation = investigations.find((item) => item.investigationId === id)
-    if (investigation) {
-      const newStatus = investigation.status === "y" ? "n" : "y"
-      setConfirmDialog({ isOpen: true, investigationId: id, newStatus })
-    }
+  const handleSwitchChange = (id, currentStatus, name) => {
+    const newStatus = currentStatus === "y" ? "n" : "y"
+    setConfirmDialog({ isOpen: true, investigationId: id, newStatus, name })
   }
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.investigationId !== null) {
-      try {
-        setLoading(true)
+      setSaving(true)
 
-        // Call API to update status
-        const response = await putRequest(`${MAS_INVESTIGATION}/change-status/${confirmDialog.investigationId}?status=${confirmDialog.newStatus}`)
+      try {
+        const response = await putRequest(
+          `${MAS_INVESTIGATION}/change-status/${confirmDialog.investigationId}?status=${confirmDialog.newStatus}`
+        )
 
         if (response && response.status === 200) {
-          // Update local state
-          const updatedInvestigations = investigations.map((item) => {
-            if (item.investigationId === confirmDialog.investigationId) {
-              return { ...item, status: confirmDialog.newStatus }
-            }
-            return item
+          setPopupMessage({
+            message: `Investigation "${confirmDialog.name}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              // Refresh investigations list
+              fetchInvestigations()
+              setCurrentPage(1)
+            },
           })
-
-          setInvestigations(updatedInvestigations)
-
-          // Update the selected investigation and form data if it's currently selected
-          if (selectedInvestigation && selectedInvestigation.investigationId === confirmDialog.investigationId) {
-            setSelectedInvestigation({ ...selectedInvestigation, status: confirmDialog.newStatus })
-            setFormData({ ...formData, status: confirmDialog.newStatus })
-          }
-
-          showPopup(
-            `Investigation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success",
-          )
         } else {
           throw new Error(response?.message || "Failed to update status")
         }
@@ -324,10 +307,27 @@ const InvestigationMaster = () => {
         console.error("Error updating status:", error)
         showPopup(FAIL_TO_UPDATE_STS, "error")
       } finally {
-        setLoading(false)
+        setSaving(false)
       }
     }
-    setConfirmDialog({ isOpen: false, investigationId: null, newStatus: null })
+    
+    setConfirmDialog({ isOpen: false, investigationId: null, newStatus: "", name: "" })
+  }
+
+  const fetchInvestigations = async () => {
+    try {
+      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+      if (investigationsRes && investigationsRes.response) {
+        setInvestigations(
+          investigationsRes.response.map((item) => ({
+            ...item,
+            id: item.investigationId,
+          })),
+        )
+      }
+    } catch (error) {
+      console.error("Error fetching investigations:", error)
+    }
   }
 
   const handleRowClick = (investigation) => {
@@ -340,7 +340,6 @@ const InvestigationMaster = () => {
       return typeMap[investigationType?.toLowerCase()] || "Select"
     }
 
-    // Extract preparation details from the investigation
     const prepText = investigation.preparationText || ""
 
     setSelectedInvestigation(investigation)
@@ -376,25 +375,19 @@ const InvestigationMaster = () => {
       estimatedDays: investigation.estimatedDays || "",
     })
 
-    // Store sub-investigation data
     setSubInvestigations(investigation.subInvestigationResponseList || [])
   }
 
-  // Open preparation modal
   const handleOpenPreparationModal = () => {
     setShowPreparationModal(true)
   }
 
-  // Handle preparation modal close
   const handleClosePreparationModal = () => {
     setShowPreparationModal(false)
   }
 
-  // Handle preparation modal OK button
   const handlePreparationOk = (data) => {
-    // data is an array of selected items
     if (data && Array.isArray(data)) {
-      // Concatenate all selected preparation texts with line breaks
       const concatenatedText = data.map(item => item.preparationText).join('\n')
       
       setFormData(prev => ({
@@ -411,13 +404,11 @@ const InvestigationMaster = () => {
       return
     }
 
-    try {
-      setLoading(true)
+    setSaving(true)
 
-      // Map gender to code before sending to API
+    try {
       const genderCode = mapGenderToCode(formData.genderApplicable)
 
-      // Prepare the common request payload with correct API field names
       const commonPayload = {
         investigationName: formData.investigationName,
         mainChargeCodeId: Number.parseInt(formData.departmentId) || 0,
@@ -426,7 +417,6 @@ const InvestigationMaster = () => {
         collectionId: Number.parseInt(formData.containerId) || 0,
         methodId: Number.parseInt(formData.methodId) || 0,
         categoryId: Number.parseInt(formData.categoryId) || 0,
-        // For Multiple result type, UOM can be null, for others it's required
         uomId: formData.resultType === "Multiple" ? 
           (formData.uomId ? Number.parseInt(formData.uomId) : null) : 
           Number.parseInt(formData.uomId) || 0,
@@ -442,7 +432,6 @@ const InvestigationMaster = () => {
         preparationRequired: formData.preparationRequired || null,
         estimatedDays: formData.estimatedDays || null,
         tatHours: formData.turnaroundTime || null,
-        // Include additional fields that might be required
         appearInDischargeSummary: selectedInvestigation?.appearInDischargeSummary || null,
         testOrderNo: selectedInvestigation?.testOrderNo || null,
         numericOrString: selectedInvestigation?.numericOrString || null,
@@ -451,33 +440,34 @@ const InvestigationMaster = () => {
       let response
 
       if (selectedInvestigation) {
-        // Update existing investigation
         response = await putRequest(
           `${MAS_INVESTIGATION}/update-single-investigation/${selectedInvestigation.investigationId}`,
           commonPayload
         )
       } else {
-        // Create new investigation
         response = await postRequest(`${MAS_INVESTIGATION}/create-investigation`, commonPayload)
       }
 
       if (response && response.status === 200) {
-        // Refresh the investigations list
-        const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
-        if (investigationsRes && investigationsRes.response) {
-          setInvestigations(
-            investigationsRes.response.map((item) => ({
-              ...item,
-              id: item.investigationId,
-            })),
-          )
-        }
-
         if (selectedInvestigation) {
-          showPopup(UPDATE_INV_SUCC_MSG, "success")
+          setPopupMessage({
+            message: UPDATE_INV_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              fetchInvestigations()
+            }
+          })
         } else {
-          showPopup(ADD_INV_SUCC_MSG, "success")
-          handleReset() // Reset form after successful creation
+          setPopupMessage({
+            message: ADD_INV_SUCC_MSG,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null)
+              handleReset()
+              fetchInvestigations()
+            }
+          })
         }
       } else {
         throw new Error(response?.message || `Failed to ${selectedInvestigation ? "update" : "create"} investigation`)
@@ -486,7 +476,7 @@ const InvestigationMaster = () => {
       console.error("Error saving investigation:", error)
       showPopup(FAIL_TO_SAVE_CHANGES, "error")
     } finally {
-      setLoading(false)
+      setSaving(false)
     }
   }
 
@@ -511,7 +501,6 @@ const InvestigationMaster = () => {
       showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
     }
-    // Make UOM required only for Single and Range result types, optional for Multiple
     if (formData.resultType !== "Multiple" && !formData.uomId) {
       showPopup(MISSING_MANDOTORY_FIELD_MSG, "error")
       return false
@@ -588,42 +577,26 @@ const InvestigationMaster = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Investigation Master</h4>
-              <div className="d-flex justify-content-between align-items-center">
-                <form className="d-inline-block searchform me-4" role="search">
-                  <div className="input-group searchinput">
-                    <input
-                      type="search"
-                      className="form-control"
-                      placeholder="Search "
-                      aria-label="Search"
-                      value={searchQuery}
-                      onChange={handleSearchChange}
-                    />
-                    <span className="input-group-text" id="search-icon">
-                      <i className="fa fa-search"></i>
-                    </span>
-                  </div>
-                </form>
-
-                <div className="d-flex align-items-center">
-                  <button
-                    type="button"
-                    className="btn btn-success me-2"
-                    onClick={handleSearch}
-                  >
-                    <i className="mdi mdi-magnify"></i> Search
-                  </button>
-                  <button
-                    type="button"
-                    className="btn btn-success me-2 flex-shrink-0"
-                    onClick={handleRefresh}
-                  >
-                    <i className="mdi mdi-refresh"></i> Show All
-                  </button>
-                  <button type="button" className="btn btn-success d-flex align-items-center">
-                    <i className="mdi mdi-file-export d-sm-inlined-sm-inline ms-1"></i> Generate Report
-                  </button>
-                </div>
+              <div className="d-flex align-items-center">
+                <input
+                  className="form-control w-50 me-2"
+                  placeholder="Search"
+                  value={searchQuery}
+                  onChange={(e) => {
+                    setSearchQuery(e.target.value);
+                    setCurrentPage(1);
+                  }}
+                />
+                <button
+                  type="button"
+                  className="btn btn-success me-2 flex-shrink-0"
+                  onClick={handleRefresh}
+                >
+                  Show All
+                </button>
+                <button type="button" className="btn btn-success d-flex align-items-center">
+                  <i className="mdi mdi-file-export d-sm-inline ms-1"></i> Generate Report
+                </button>
               </div>
             </div>
             
@@ -664,11 +637,11 @@ const InvestigationMaster = () => {
                                 className="form-check-input"
                                 type="checkbox"
                                 checked={item.status === "y"}
-                                onChange={() => handleStatusToggle(item.investigationId)}
+                                onChange={() => handleSwitchChange(item.investigationId, item.status, item.investigationName)}
                                 id={`switch-${item.investigationId}`}
                               />
-                              <label className="form-check-label" htmlFor={`switch-${item.investigationId}`}>
-                                {item.status === "y" ? "Active" : "Deactivated"}
+                              <label className="form-check-label ms-2" htmlFor={`switch-${item.investigationId}`}>
+                                {item.status === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
@@ -677,13 +650,12 @@ const InvestigationMaster = () => {
                     ) : (
                       <tr>
                         <td colSpan="6" className="text-center py-4">
-                          {loading ? "Loading..." : "No investigations found"}
+                          {loading ? "Loading..." : "No Records Found"}
                         </td>
                       </tr>
                     )}
                   </tbody>
                 </table>
-                {/* PAGINATION USING REUSABLE COMPONENT */}
                 {filteredInvestigations.length > 0 && (
                     <Pagination
                         totalItems={filteredInvestigations.length}
@@ -693,8 +665,6 @@ const InvestigationMaster = () => {
                     />
                 )}
               </div>
-
-             
 
               {/* Form Section */}
               <div className="row mb-3 mt-3">
@@ -713,6 +683,7 @@ const InvestigationMaster = () => {
                               name="investigationName"
                               value={formData.investigationName}
                               onChange={handleInputChange}
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -726,6 +697,7 @@ const InvestigationMaster = () => {
                               name="departmentId"
                               value={formData.departmentId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select Department</option>
                               {dropdownOptions.departments.map((dept) => (
@@ -746,6 +718,7 @@ const InvestigationMaster = () => {
                               name="modalityId"
                               value={formData.modalityId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select Modality</option>
                               {dropdownOptions.modalities.map((mod) => (
@@ -767,6 +740,7 @@ const InvestigationMaster = () => {
                               name="sampleId"
                               value={formData.sampleId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select Sample</option>
                               {dropdownOptions.samples.map((sample) => (
@@ -787,6 +761,7 @@ const InvestigationMaster = () => {
                               name="containerId"
                               value={formData.containerId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select Container</option>
                               {dropdownOptions.containers.map((cont) => (
@@ -798,7 +773,6 @@ const InvestigationMaster = () => {
                           </div>
                         </div>
 
-
                         <div className="col-md-4">
                           <div className="mb-2">
                             <label className="form-label fw-bold mb-1">
@@ -809,6 +783,7 @@ const InvestigationMaster = () => {
                               name="methodId"
                               value={formData.methodId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select Methodology </option>
                               {dropdownOptions.methodologies.map((cont)=>(
@@ -831,6 +806,7 @@ const InvestigationMaster = () => {
                               name="categoryId"
                               value={formData.categoryId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select Category </option>
                               {dropdownOptions.categories.map((cont)=>(
@@ -842,7 +818,6 @@ const InvestigationMaster = () => {
                             </select>
                           </div>
                         </div>
-
 
                         <div className="col-md-4">
                           <div className="mb-2">
@@ -856,6 +831,7 @@ const InvestigationMaster = () => {
                               name="uomId"
                               value={formData.uomId}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="">Select UOM</option>
                               {dropdownOptions.uoms.map((uom) => (
@@ -878,6 +854,7 @@ const InvestigationMaster = () => {
                                 name="resultType"
                                 value={formData.resultType}
                                 onChange={handleInputChange}
+                                disabled={saving}
                               >
                                 <option value="Select">Select</option>
                                 <option value="Multiple">Multiple</option>
@@ -897,7 +874,6 @@ const InvestigationMaster = () => {
                           </div>
                         </div>
 
-
                         <div className="col-md-4">
                           <div className="mb-2">
                             <label className="form-label mb-1">Minimum Value</label>
@@ -908,6 +884,7 @@ const InvestigationMaster = () => {
                               name="minimumValue"
                               value={formData.minimumValue}
                               onChange={handleInputChange}
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -921,6 +898,7 @@ const InvestigationMaster = () => {
                               name="maximumValue"
                               value={formData.maximumValue}
                               onChange={handleInputChange}
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -934,6 +912,7 @@ const InvestigationMaster = () => {
                               name="genderApplicable"
                               value={formData.genderApplicable}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="Select">Select Gender</option>
                               <option value="Male">Male</option>
@@ -943,10 +922,6 @@ const InvestigationMaster = () => {
                           </div>
                         </div>
 
-
-                       
-
-                        {/* Preparation Required Section - After Gender Applicable */}
                         <div className="col-md-4">
                           <div className="mb-2">
                             <label className="form-label fw-bold mb-1">
@@ -960,12 +935,14 @@ const InvestigationMaster = () => {
                                 onChange={handleInputChange}
                                 placeholder="Select from preparation list"
                                 rows="2"
+                                disabled={saving}
                               />
                               <button
                                 type="button"
                                 className="btn btn-sm btn-outline-primary"
                                 onClick={handleOpenPreparationModal}
                                 title="Select Preparation"
+                                disabled={saving}
                               >
                                 <i className="icofont-search"></i>
                               </button>
@@ -986,6 +963,7 @@ const InvestigationMaster = () => {
                               onChange={handleInputChange}
                               placeholder="Enter hours"
                               min="0"
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -1003,6 +981,7 @@ const InvestigationMaster = () => {
                               onChange={handleInputChange}
                               placeholder="Enter days"
                               min="0"
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -1017,6 +996,7 @@ const InvestigationMaster = () => {
                               name="loincCode"
                               value={formData.loincCode}
                               onChange={handleInputChange}
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -1028,6 +1008,7 @@ const InvestigationMaster = () => {
                               name="flag"
                               value={formData.flag}
                               onChange={handleInputChange}
+                              disabled={saving}
                             >
                               <option value="Select">Select</option>
                               <option value="Critical">External</option>
@@ -1048,6 +1029,7 @@ const InvestigationMaster = () => {
                                   name="confidential"
                                   checked={formData.confidential}
                                   onChange={handleInputChange}
+                                  disabled={saving}
                                 />
                                 <label className="form-check-label" htmlFor="confidential">
                                   Confidential
@@ -1061,6 +1043,7 @@ const InvestigationMaster = () => {
                                   name="pandemic"
                                   checked={formData.pandemic}
                                   onChange={handleInputChange}
+                                  disabled={saving}
                                 />
                                 <label className="form-check-label" htmlFor="pandemic">
                                   Pandemic
@@ -1079,6 +1062,7 @@ const InvestigationMaster = () => {
                               name="pandemicCases"
                               value={formData.pandemicCases}
                               onChange={handleInputChange}
+                              disabled={saving}
                             />
                           </div>
                         </div>
@@ -1095,15 +1079,23 @@ const InvestigationMaster = () => {
                             rows="3"
                             value={formData.interpretation}
                             onChange={handleInputChange}
+                            disabled={saving}
                           />
                         </div>
-                                                
 
                         <div className="col-12 text-end mt-2 mb-3">
-                          <button className="btn btn-success me-2" onClick={handleSubmit} disabled={loading}>
-                            {loading ? "Saving..." : selectedInvestigation ? "Update" : "Save"}
+                          <button 
+                            className="btn btn-success me-2" 
+                            onClick={handleSubmit} 
+                            disabled={saving}
+                          >
+                            {saving ? "Saving..." : selectedInvestigation ? "Update" : "Save"}
                           </button>
-                          <button className="btn btn-secondary" onClick={handleReset} disabled={loading}>
+                          <button 
+                            className="btn btn-secondary" 
+                            onClick={handleReset} 
+                            disabled={saving}
+                          >
                             Reset
                           </button>
                         </div>
@@ -1117,42 +1109,33 @@ const InvestigationMaster = () => {
               {confirmDialog.isOpen && (
                 <div
                   className="modal d-block"
-                  tabIndex="-1"
-                  role="dialog"
                   style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
                 >
-                  <div className="modal-dialog" role="document">
+                  <div className="modal-dialog">
                     <div className="modal-content">
-                      <div className="modal-header">
-                        <h5 className="modal-title">Confirm Status Change</h5>
-                        <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
-                      </div>
                       <div className="modal-body">
-                        <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>
-                            {
-                              investigations.find((item) => item.investigationId === confirmDialog.investigationId)
-                                ?.investigationName
-                            }
-                          </strong>
-                          ?
-                        </p>
+                        Are you sure you want to{" "}
+                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                          Cancel
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirm(false)}
+                        >
+                          No
                         </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Confirm
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirm(true)}
+                        >
+                          Yes
                         </button>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-
-
             </div>
           </div>
         </div>

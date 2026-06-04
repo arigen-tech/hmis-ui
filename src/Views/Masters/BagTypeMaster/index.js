@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import { MAS_BLOOD_BAG_TYPE } from "../../../config/apiConfig";
@@ -17,6 +16,7 @@ const BagTypeMaster = () => {
   const [data, setData] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
   const [editingBagType, setEditingBagType] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -66,8 +66,6 @@ const BagTypeMaster = () => {
   useEffect(() => {
     fetchData(0);
   }, []);
-
-
 
 
   const filteredData = data.filter(
@@ -142,7 +140,10 @@ const handleInputChange = (e) => {
 
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const newCode = formData.bagTypeCode.trim().toLowerCase();
     const newName = formData.bagTypeName.trim().toLowerCase();
@@ -156,34 +157,60 @@ const handleInputChange = (e) => {
 
     if (duplicate) {
       showPopup(DUPLICATE_BAG_TYPE_MASTER, "error");
+      setSaving(false);
       return;
     }
 
-    setLoading(true);
     try {
       if (editingBagType) {
-const payload = {
-  ...formData,
-  maxComponents: formData.maxComponents === "" ? null : Number(formData.maxComponents)
-};
+        const payload = {
+          ...formData,
+          maxComponents: formData.maxComponents === "" ? null : Number(formData.maxComponents)
+        };
 
-await putRequest(
-  `${MAS_BLOOD_BAG_TYPE}/update/${editingBagType.bagTypeId}`,
-  payload
-);        showPopup(UPDATE_BAG_TYPE_MASTER, "success");
+        const response = await putRequest(
+          `${MAS_BLOOD_BAG_TYPE}/update/${editingBagType.bagTypeId}`,
+          payload
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BAG_TYPE_MASTER,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_BAG_TYPE}/create`, {
+        const response = await postRequest(`${MAS_BLOOD_BAG_TYPE}/create`, {
           ...formData,
           status: "y",
         });
-        showPopup(ADD_BAG_TYPE_MASTER, "success");
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BAG_TYPE_MASTER,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData(0);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      await fetchData(0);
-      resetForm();
     } catch (error) {
+      console.error("Save error:", error);
       showPopup(error.message || "Operation failed", "error");
     } finally {
-      setLoading(false);
+      setSaving(false);
     }
   };
 
@@ -202,26 +229,43 @@ await putRequest(
 
 
   const handleConfirm = async (confirmed) => {
-    const { bagTypeId, newStatus } = confirmDialog;
-    setConfirmDialog({ isOpen: false, bagTypeId: null, newStatus: "", bagTypeName: "" });
+    if (confirmed && confirmDialog.bagTypeId) {
+      setSaving(true);
 
-    if (!confirmed || !bagTypeId) return;
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_BAG_TYPE}/status/${confirmDialog.bagTypeId}?status=${confirmDialog.newStatus}`
+        );
 
-    setLoading(true);
-    try {
-      await putRequest(
-        `${MAS_BLOOD_BAG_TYPE}/status/${bagTypeId}?status=${newStatus}`
-      );
-      showPopup(
-        `Bag type ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-        "success"
-      );
-      await fetchData(0);
-    } catch (error) {
-      showPopup(error.message || UPDATE_FAIL_BAG_TYPE_MASTER, "error");
-    } finally {
-      setLoading(false);
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Bag type "${confirmDialog.bagTypeName}" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData(0);
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(error.message || UPDATE_FAIL_BAG_TYPE_MASTER, "error");
+      } finally {
+        setSaving(false);
+      }
     }
+
+    setConfirmDialog({
+      isOpen: false,
+      bagTypeId: null,
+      newStatus: "",
+      bagTypeName: "",
+    });
   };
 
 
@@ -419,9 +463,9 @@ await putRequest(
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid || loading}
+                      disabled={!isFormValid || saving}
                     >
-                      {editingBagType ? "Update" : "Save"}
+                      {saving ? "Saving..." : editingBagType ? "Update" : "Save"}
                     </button>
                     <button
                       type="button"
@@ -445,7 +489,7 @@ await putRequest(
 
               {/* Confirmation dialog for status change */}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" tabIndex="-1" role="dialog">
+                <div className="modal d-block" tabIndex="-1" role="dialog" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                   <div className="modal-dialog" role="document">
                     <div className="modal-content">
                       <div className="modal-header">
@@ -477,9 +521,9 @@ await putRequest(
                           type="button"
                           className="btn btn-primary"
                           onClick={() => handleConfirm(true)}
-                          disabled={loading}
+                          disabled={saving}
                         >
-                          {loading ? "Processing..." : "Yes"}
+                          {saving ? "Processing..." : "Yes"}
                         </button>
                       </div>
                     </div>

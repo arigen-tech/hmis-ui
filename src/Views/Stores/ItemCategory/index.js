@@ -121,21 +121,24 @@ const ItemCategory = () => {
             }
 
             if (response.status === 200) {
-                showPopup(
-                    editingCategory
+                // Set popup with onClose callback that refreshes data and resets form
+                setPopupMessage({
+                    message: editingCategory
                         ? "Item Category updated successfully!"
                         : "New Item Category added successfully!",
-                    "success"
-                );
-
-                await fetchItemCategoryData();
-
-                setEditingCategory(null);
-                setShowForm(false);
-                setFormData({
-                    categoryName: "",
-                    categoryCode: "",
-                    sectionType: "",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        setEditingCategory(null);
+                        setShowForm(false);
+                        setFormData({
+                            categoryName: "",
+                            categoryCode: "",
+                            sectionType: "",
+                        });
+                        setIsFormValid(false);
+                        fetchItemCategoryData();
+                    }
                 });
             } else {
                 throw new Error(response.message || 'Failed to save item Category');
@@ -172,11 +175,16 @@ const ItemCategory = () => {
                 );
 
                 if (response.status === 200) {
-                    showPopup(
-                        `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-                        "success"
-                    );
-                    await fetchItemCategoryData();
+                    // Set popup with onClose callback that refreshes data
+                    setPopupMessage({
+                        message: `Item Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            fetchItemCategoryData();
+                            setCurrentPage(1);
+                        }
+                    });
                 } else {
                     throw new Error(response.message || "Failed to update status");
                 }
@@ -186,10 +194,8 @@ const ItemCategory = () => {
             } finally {
                 setProcess(false);
             }
-            setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
-        } else {
-            setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
         }
+        setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
     }
 
     const handleInputChange = (e) => {

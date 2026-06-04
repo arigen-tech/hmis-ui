@@ -8,7 +8,9 @@ import {
   FETCH_PACKAGE_ERR_MSG,
   UPDATE_PACKAGE_SUCC_MSG,
   ADD_PACKAGE_SUCC_MSG,
-  VALID_BASE_COST,DISCOUNT_CANOT_NAGATIVE,DISCOUNT_PERCENTAGE
+  VALID_BASE_COST,
+  DISCOUNT_CANOT_NAGATIVE,
+  DISCOUNT_PERCENTAGE
 } from "../../../config/constants"
 
 const PackageMaster = () => {
@@ -34,17 +36,27 @@ const PackageMaster = () => {
   const [popupMessage, setPopupMessage] = useState(null)
   const [currentPage, setCurrentPage] = useState(1)
 
+  // Helper function to sort packages: Active first (status "y"), then Deactivated
+  const sortPackagesByStatus = (packages) => {
+    return [...packages].sort((a, b) => {
+      if (a.status === "y" && b.status !== "y") return -1;
+      if (a.status !== "y" && b.status === "y") return 1;
+      return 0;
+    });
+  };
+
   useEffect(() => {
     fetchPackageData(0)
   }, [])
 
- const fetchPackageData = async (flag = 0, showLoader = true) => {
+  const fetchPackageData = async (flag = 0, showLoader = true) => {
     try {
-          if (showLoader) setLoading(true)
+      if (showLoader) setLoading(true)
       const response = await getRequest(`${INVESTIGATION_PACKAGE_API}/getAllPackInvestigation/${flag}`)
       if (response && response.response) {
-        
-      }setPackageData(response.response)
+        const sortedData = sortPackagesByStatus(response.response);
+        setPackageData(sortedData);
+      }
     } catch (err) {
       console.error("Error fetching Package data:", err)
       showPopup(FETCH_PACKAGE_ERR_MSG, "error")
@@ -110,190 +122,150 @@ const PackageMaster = () => {
     setShowForm(true)
   }
 
- const handleSave = async (e) => {
-  e.preventDefault();
-
-  if (!validateDates()) return;
-
-  const baseCostValue = Number.parseFloat(formData.baseCost);
-  const discValue = Number.parseFloat(formData.disc) || 0;
-  const discPerValue = Number.parseFloat(formData.discPer) || 0;
-
-  if (isNaN(baseCostValue) || baseCostValue < 0) {
-    showPopup(VALID_BASE_COST, "error");
-    return;
-  }
-
-  if (discValue < 0) {
-    showPopup(DISCOUNT_CANOT_NAGATIVE, "error");
-    return;
-  }
-
-  if (discPerValue < 0 || discPerValue > 100) {
-    showPopup(DISCOUNT_PERCENTAGE, "error");
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    const actualCost = calculateActualCost(
-      formData.baseCost,
-      formData.disc,
-      formData.discPer
-    );
-
-    const payload = {
-      packName: formData.packName,
-      descrp: formData.descrp,
-      baseCost: baseCostValue,
-      disc: discValue,
-      discPer: discPerValue,
-      actualCost: Number.parseFloat(actualCost),
-      fromDt: formData.fromDt,
-      toDt: formData.toDt || null,
-      category: formData.category,
-      discFlag: formData.discFlag,
-      status: editingPackage ? editingPackage.status : "y",
-    };
-
-    let response;
-
-    if (editingPackage) {
-      response = await putRequest(
-        `${INVESTIGATION_PACKAGE_API}/update/${editingPackage.packId}`,
-        payload
-      );
-
-      showPopup(UPDATE_PACKAGE_SUCC_MSG, "success");
-    } else {
-      response = await postRequest(
-        `${INVESTIGATION_PACKAGE_API}/add`,
-        payload
-      );
-
-      showPopup(ADD_PACKAGE_SUCC_MSG, "success");
+  const handleSave = async (e) => {
+    e.preventDefault();
+    if (!validateDates()) return;
+    const baseCostValue = Number.parseFloat(formData.baseCost);
+    const discValue = Number.parseFloat(formData.disc) || 0;
+    const discPerValue = Number.parseFloat(formData.discPer) || 0;
+    if (isNaN(baseCostValue) || baseCostValue < 0) {
+      showPopup(VALID_BASE_COST, "error");
+      return;
     }
+    if (discValue < 0) {
+      showPopup(DISCOUNT_CANOT_NAGATIVE, "error");
+      return;
+    }
+    if (discPerValue < 0 || discPerValue > 100) {
+      showPopup(DISCOUNT_PERCENTAGE, "error");
+      return;
+    }
+    try {
+      setLoading(true);
+      const actualCost = calculateActualCost(formData.baseCost, formData.disc, formData.discPer);
+      const payload = {
+        packName: formData.packName,
+        descrp: formData.descrp,
+        baseCost: baseCostValue,
+        disc: discValue,
+        discPer: discPerValue,
+        actualCost: Number.parseFloat(actualCost),
+        fromDt: formData.fromDt,
+        toDt: formData.toDt || null,
+        category: formData.category,
+        discFlag: formData.discFlag,
+        status: editingPackage ? editingPackage.status : "y",
+      };
+      if (editingPackage) {
+        await putRequest(`${INVESTIGATION_PACKAGE_API}/update/${editingPackage.packId}`, payload);
+        // Show success popup, refresh only after OK
+        setPopupMessage({
+          message: UPDATE_PACKAGE_SUCC_MSG,
+          type: "success",
+          onClose: async () => {
+            setPopupMessage(null);
+            await fetchPackageData(0, true);
+            setShowForm(false);
+            setEditingPackage(null);
+            setFormData({
+              packName: "",
+              descrp: "",
+              baseCost: "",
+              disc: "",
+              discPer: "",
+              actualCost: "",
+              fromDt: "",
+              toDt: "",
+              category: "",
+              discFlag: "y",
+            });
+            setCurrentPage(1);
+          }
+        });
+      } else {
+        await postRequest(`${INVESTIGATION_PACKAGE_API}/add`, payload);
+        setPopupMessage({
+          message: ADD_PACKAGE_SUCC_MSG,
+          type: "success",
+          onClose: async () => {
+            setPopupMessage(null);
+            await fetchPackageData(0, true);
+            setShowForm(false);
+            setEditingPackage(null);
+            setFormData({
+              packName: "",
+              descrp: "",
+              baseCost: "",
+              disc: "",
+              discPer: "",
+              actualCost: "",
+              fromDt: "",
+              toDt: "",
+              category: "",
+              discFlag: "y",
+            });
+            setCurrentPage(1);
+          }
+        });
+      }
+    } catch (err) {
+      console.error("Error saving Package data:", err);
+      showPopup(err.response?.data?.message || "Failed to save changes", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    await fetchPackageData(0, false);
-
-    setShowForm(false);
-    setEditingPackage(null);
-
-    setFormData({
-      packName: "",
-      descrp: "",
-      baseCost: "",
-      disc: "",
-      discPer: "",
-      actualCost: "",
-      fromDt: "",
-      toDt: "",
-      category: "",
-      discFlag: "y",
+  const showPopup = (message, type = "info") => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => setPopupMessage(null),
     });
-
-  } catch (err) {
-    console.error("Error saving Package data:", err);
-
-    showPopup(
-      err.response?.data?.message ||
-        "Failed to save changes",
-      "error"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
- const showPopup = (message, type = "info") => {
-  setPopupMessage({
-    message,
-    type,
-    onClose: () => setPopupMessage(null),
-  });
-
-  setTimeout(() => {
-    setPopupMessage(null);
-  }, 3000);
-};
+    // Auto-close only non-success popups after 3 seconds
+    if (type !== "success") {
+      setTimeout(() => {
+        setPopupMessage(null);
+      }, 3000);
+    }
+  };
 
   const handleSwitchChange = (packId, newStatus) => {
     setConfirmDialog({ isOpen: true, packageId: packId, newStatus })
   }
 
- const handleConfirm = async (confirmed) => {
-  if (!confirmed) {
-    setConfirmDialog({
-      isOpen: false,
-      packageId: null,
-      newStatus: null,
-    });
-    return;
-  }
-
-  try {
-    setLoading(true);
-
-    await putRequest(
-      `${INVESTIGATION_PACKAGE_API}/status/${confirmDialog.packageId}?status=${confirmDialog.newStatus}`
-    );
-
-    setPackageData((prevData) => {
-      const updatedItem = prevData.find(
-        (pkg) => pkg.packId === confirmDialog.packageId
+  // Status change: refresh only after OK on success popup
+  const handleConfirm = async (confirmed) => {
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, packageId: null, newStatus: null });
+      return;
+    }
+    try {
+      setLoading(true);
+      await putRequest(
+        `${INVESTIGATION_PACKAGE_API}/status/${confirmDialog.packageId}?status=${confirmDialog.newStatus}`
       );
-
-      const remainingItems = prevData.filter(
-        (pkg) => pkg.packId !== confirmDialog.packageId
-      );
-
-      const finalItem = {
-        ...updatedItem,
-        status: confirmDialog.newStatus,
-      };
-
-      // active => top
-      // inactive => bottom
-      if (confirmDialog.newStatus === "y") {
-        return [finalItem, ...remainingItems];
-      } else {
-        return [...remainingItems, finalItem];
-      }
-    });
-
-    showPopup(
-      `Package ${
-        confirmDialog.newStatus === "y"
-          ? "activated"
-          : "deactivated"
-      } successfully!`,
-      "success"
-    );
-
-  } catch (err) {
-    console.error("Error updating Package status:", err);
-
-    showPopup(
-      err.response?.data?.message ||
-      "Failed to update package status",
-      "error"
-    );
-  } finally {
-    setLoading(false);
-
-    setConfirmDialog({
-      isOpen: false,
-      packageId: null,
-      newStatus: null,
-    });
-  }
-};
+      setPopupMessage({
+        message: `Package ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+        type: "success",
+        onClose: async () => {
+          setPopupMessage(null);
+          await fetchPackageData(0, true);
+          setCurrentPage(1);
+        }
+      });
+    } catch (err) {
+      console.error("Error updating Package status:", err);
+      showPopup(err.response?.data?.message || "Failed to update package status", "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, packageId: null, newStatus: null });
+    }
+  };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target
     const updatedFormData = { ...formData, [id]: value }
-
-    // Auto-calculate actual cost when base cost, discount, or discount percentage changes
     if (id === "baseCost" || id === "disc" || id === "discPer") {
       const actualCost = calculateActualCost(
         id === "baseCost" ? value : formData.baseCost,
@@ -302,7 +274,6 @@ const PackageMaster = () => {
       )
       updatedFormData.actualCost = actualCost
     }
-
     setFormData(updatedFormData)
   }
 
@@ -320,7 +291,7 @@ const PackageMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("")
     setCurrentPage(1)
-    fetchPackageData()
+    fetchPackageData(0)
   }
 
   return (
@@ -392,9 +363,9 @@ const PackageMaster = () => {
               </div>
             </div>
             <div className="card-body">
-             {loading ? (
-    <LoadingScreen />
-  ) : !showForm ? (
+              {loading ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <>
                   <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
@@ -409,7 +380,6 @@ const PackageMaster = () => {
                           <th>Actual Cost</th>
                           <th>From Date</th>
                           <th>To Date</th>
-                          {/* <th>Discount Flag</th> */}
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
@@ -427,7 +397,6 @@ const PackageMaster = () => {
                               <td>₹{pkg.actualCost.toFixed(2)}</td>
                               <td>{pkg.fromDt}</td>
                               <td>{pkg.toDt || "NULL"}</td>
-                              {/* <td style={{ textTransform: "uppercase" }}>{pkg.discFlag}</td> */}
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -455,17 +424,14 @@ const PackageMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="12" className="text-center">
+                            <td colSpan="11" className="text-center">
                               No Package data found
                             </td>
                           </tr>
                         )}
-                        
                       </tbody>
                     </table>
                   </div>
-                  
-                  {/* PAGINATION USING REUSABLE COMPONENT */}
                   {filteredPackageData.length > 0 && (
                     <Pagination
                       totalItems={filteredPackageData.length}
@@ -479,138 +445,45 @@ const PackageMaster = () => {
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
                     <div className="form-group col-md-4">
-                      <label>
-                        Package Name <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control mt-1"
-                        id="packName"
-                        placeholder="Package Name"
-                        value={formData.packName}
-                        onChange={handleInputChange}
-                        required
-                      />
+                      <label>Package Name <span className="text-danger">*</span></label>
+                      <input type="text" className="form-control mt-1" id="packName" placeholder="Package Name" value={formData.packName} onChange={handleInputChange} required />
                     </div>
                     <div className="form-group col-md-4">
-                      <label>
-                        Description <span className="text-danger">*</span>
-                      </label>
-                      <textarea
-                        className="form-control mt-1"
-                        id="descrp"
-                        placeholder="Package Description"
-                        value={formData.descrp}
-                        onChange={handleInputChange}
-                        rows="3"
-                        required
-                      />
+                      <label>Description <span className="text-danger">*</span></label>
+                      <textarea className="form-control mt-1" id="descrp" placeholder="Package Description" value={formData.descrp} onChange={handleInputChange} rows="3" required />
                     </div>
                     <div className="form-group col-md-4">
-                      <label>
-                        Category <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="text"
-                        className="form-control mt-1"
-                        id="category"
-                        placeholder="Package Category"
-                        value={formData.category}
-                        onChange={handleInputChange}
-                        required
-                      />
+                      <label>Category <span className="text-danger">*</span></label>
+                      <input type="text" className="form-control mt-1" id="category" placeholder="Package Category" value={formData.category} onChange={handleInputChange} required />
                     </div>
                     <div className="form-group col-md-4">
-                      <label>
-                        Base Cost <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mt-1"
-                        id="baseCost"
-                        placeholder="Base Cost"
-                        value={formData.baseCost}
-                        onChange={handleInputChange}
-                        min="0"
-                        required
-                      />
+                      <label>Base Cost <span className="text-danger">*</span></label>
+                      <input type="number" step="0.01" className="form-control mt-1" id="baseCost" placeholder="Base Cost" value={formData.baseCost} onChange={handleInputChange} min="0" required />
                     </div>
                     <div className="form-group col-md-4">
                       <label>Flat Discount</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mt-1"
-                        id="disc"
-                        placeholder="Flat Discount"
-                        value={formData.disc}
-                        onChange={handleInputChange}
-                        min="0"
-                      />
+                      <input type="number" step="0.01" className="form-control mt-1" id="disc" placeholder="Flat Discount" value={formData.disc} onChange={handleInputChange} min="0" />
                     </div>
                     <div className="form-group col-md-4">
                       <label>Discount Percentage</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mt-1"
-                        id="discPer"
-                        placeholder="Discount Percentage"
-                        value={formData.discPer}
-                        onChange={handleInputChange}
-                        min="0"
-                        max="100"
-                      />
+                      <input type="number" step="0.01" className="form-control mt-1" id="discPer" placeholder="Discount Percentage" value={formData.discPer} onChange={handleInputChange} min="0" max="100" />
                     </div>
                     <div className="form-group col-md-4">
                       <label>Actual Cost</label>
-                      <input
-                        type="number"
-                        step="0.01"
-                        className="form-control mt-1"
-                        id="actualCost"
-                        placeholder="Actual Cost"
-                        value={formData.actualCost}
-                        readOnly
-                      />
+                      <input type="number" step="0.01" className="form-control mt-1" id="actualCost" placeholder="Actual Cost" value={formData.actualCost} readOnly />
                     </div>
                     <div className="form-group col-md-4">
-                      <label>
-                        From Date <span className="text-danger">*</span>
-                      </label>
-                      <input
-                        type="date"
-                        className="form-control mt-1"
-                        id="fromDt"
-                        value={formData.fromDt}
-                        onChange={handleDateChange}
-                        required
-                      />
+                      <label>From Date <span className="text-danger">*</span></label>
+                      <input type="date" className="form-control mt-1" id="fromDt" value={formData.fromDt} onChange={handleDateChange} required />
                     </div>
                     <div className="form-group col-md-4">
                       <label>To Date</label>
-                      <input
-                        type="date"
-                        className={`form-control mt-1 ${dateError ? "is-invalid" : ""}`}
-                        id="toDt"
-                        value={formData.toDt}
-                        onChange={handleDateChange}
-                        min={formData.fromDt || undefined}
-                      />
+                      <input type="date" className={`form-control mt-1 ${dateError ? "is-invalid" : ""}`} id="toDt" value={formData.toDt} onChange={handleDateChange} min={formData.fromDt || undefined} />
                       {dateError && <div className="invalid-feedback">{dateError}</div>}
                     </div>
                     <div className="form-group col-md-4">
-                      <label>
-                        Discount Flag <span className="text-danger">*</span>
-                      </label>
-                      <select
-                        className="form-control mt-1"
-                        id="discFlag"
-                        value={formData.discFlag}
-                        onChange={handleSelectChange}
-                        required
-                      >
+                      <label>Discount Flag <span className="text-danger">*</span></label>
+                      <select className="form-control mt-1" id="discFlag" value={formData.discFlag} onChange={handleSelectChange} required>
                         <option value="y">Yes</option>
                         <option value="n">No</option>
                       </select>
@@ -618,23 +491,15 @@ const PackageMaster = () => {
                   </div>
                   <div className="form-group col-md-12 d-flex justify-content-end mt-2">
                     <button type="submit" className="btn btn-primary me-2">
-                                                              {editingPackage ? "Update" : "Save"}
-
+                      {editingPackage ? "Update" : "Save"}
                     </button>
-                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
-                      Cancel
-                    </button>
+                    <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>Cancel</button>
                   </div>
                 </form>
               )}
-             
- {popupMessage && (
-  <Popup
-    message={popupMessage.message}
-    type={popupMessage.type}
-    onClose={popupMessage.onClose}
-  />
-)}
+              {popupMessage && (
+                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+              )}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" tabIndex="-1" role="dialog">
                   <div className="modal-dialog" role="document">
@@ -648,17 +513,12 @@ const PackageMaster = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>{packageData.find((pkg) => pkg.packId === confirmDialog.packageId)?.packName}</strong>
-                          ?
+                          <strong>{packageData.find((pkg) => pkg.packId === confirmDialog.packageId)?.packName}</strong>?
                         </p>
                       </div>
                       <div className="modal-footer">
-                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
-                          No
-                        </button>
-                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
-                          Yes
-                        </button>
+                        <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button>
+                        <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button>
                       </div>
                     </div>
                   </div>

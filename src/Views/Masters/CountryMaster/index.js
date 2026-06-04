@@ -197,28 +197,58 @@ const CountryMaster = () => {
         setConfirmDialog({ isOpen: true, countryId: id, newStatus });
     };
 
-    const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.countryId !== null) {
-            setIsLoading(true);
-            try {
-                const response = await putRequest(
-                    `${MAS_COUNTRY}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
+    const [saving, setSaving] = useState(false);
+    
+   const handleConfirm = async (confirmed) => {
+    if (confirmed && confirmDialog.countryId !== null) {
+        setSaving(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_COUNTRY}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Country "${
+                        confirmDialog.countryName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchCountries();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
                 );
-                if (response && response.status === 200) {
-                    fetchCountries();
-                    showPopup(
-                        `Country ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
-                }
-            } catch (err) {
-                console.error("Error updating country status:", err);
-                showPopup(`Failed to update status: ${err.response?.data?.message || err.message}`, "error");
-                setIsLoading(false);
             }
+        } catch (error) {
+            console.error("Error updating country status:", error);
+            showPopup(
+                `Failed to update status: ${
+                    error.response?.data?.message || error.message
+                }`,
+                "error"
+            );
+        } finally {
+            setSaving(false);
         }
-        setConfirmDialog({ isOpen: false, countryId: null, newStatus: null });
-    };
+    }
+
+    setConfirmDialog({
+        isOpen: false,
+        countryId: null,
+        newStatus: "",
+        countryName: "",
+    });
+};
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;

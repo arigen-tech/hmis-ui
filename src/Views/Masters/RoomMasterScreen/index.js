@@ -263,32 +263,56 @@ const RoomMasterScreen = () => {
     setConfirmDialog({ isOpen: true, id, newStatus });
   };
 
-  const handleConfirm = async (confirmed) => {
+ const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.id !== null) {
-      try {
-        setLoading(true);
-        const response = await putRequest(
-          `${MAS_ROOM}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
-        );
+        //setLoading(true);
 
-        if (response && response.status === 200) {
-          // Refresh data from API after status change
-          await fetchRoomData(0);
-          setPopupMessage({
-            message: `Room ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            type: "success",
-            onClose: () => setPopupMessage(null)
-          });
+        try {
+            const response = await putRequest(
+                `${MAS_ROOM}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Room "${
+                        confirmDialog.roomName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchRoomData(0);
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
+        } catch (error) {
+            console.error("Error updating room status:", error);
+
+            setPopupMessage({
+                message: FAIL_TO_UPDATE_STS,
+                type: "error",
+                onClose: () => setPopupMessage(null),
+            });
+        } finally {
+           // setLoading(false);
         }
-      } catch (err) {
-        console.error("Error updating room status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
-      }
     }
-    setConfirmDialog({ isOpen: false, id: null, newStatus: "" });
-  };
+
+    setConfirmDialog({
+        isOpen: false,
+        id: null,
+        newStatus: "",
+        roomName: "",
+    });
+};
 
   // Popup
   const showPopup = (message, type) => {

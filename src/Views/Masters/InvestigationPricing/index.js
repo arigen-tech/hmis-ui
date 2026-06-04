@@ -14,7 +14,12 @@ const Investigationpricing = () => {
     const [investigationList, setInvestigationList] = useState([])
     const [investigationOptions, setInvestigationOptions] = useState([])
     const [dropdownOpen, setDropdownOpen] = useState(false)
-    const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, investigationId: null, newStatus: false })
+    const [confirmDialog, setConfirmDialog] = useState({ 
+        isOpen: false, 
+        investigationId: null, 
+        newStatus: "",
+        name: "" 
+    })
     const [formData, setFormData] = useState({
         investigationId: "",
         fromDate: "",
@@ -31,10 +36,10 @@ const Investigationpricing = () => {
     const [totalPages, setTotalPages] = useState(0)
     const [totalElements, setTotalElements] = useState(0)
     const [loading, setLoading] = useState(true)
+    const [saving, setSaving] = useState(false)
     const [isSearching, setIsSearching] = useState(false)
     const [isShowAllLoading, setIsShowAllLoading] = useState(false)
     const [searchText, setSearchText] = useState("")
-    const [paginationLoading,setPaginationLoading]= useState(false)
 
     // Search criteria
     const [investigationName, setInvestigationName] = useState("")
@@ -118,41 +123,39 @@ const Investigationpricing = () => {
     }
 
     // Handle show all button click
-const handleShowAll = async () => {
-    setIsShowAllLoading(true);
-    
-    // Clear search field
-    setInvestigationName("");
-    setCurrentPage(0);
-    
-    // Fetch all data without any search criteria from page 0
-    try {
-        const params = new URLSearchParams({
-            page: 0,
-            size: DEFAULT_ITEMS_PER_PAGE
-        });
+    const handleShowAll = async () => {
+        setIsShowAllLoading(true);
         
-        const response = await getRequest(`${ALL_INVESTIGATION_PRICE_DETAILS}/0?${params.toString()}`);
+        setInvestigationName("");
+        setCurrentPage(0);
         
-        if (response && response.status === 200 && response.response) {
-            setInvestigationList(response.response.content || []);
-            setTotalPages(response.response.totalPages || 0);
-            setTotalElements(response.response.totalElements || 0);
-        } else {
+        try {
+            const params = new URLSearchParams({
+                page: 0,
+                size: DEFAULT_ITEMS_PER_PAGE
+            });
+            
+            const response = await getRequest(`${ALL_INVESTIGATION_PRICE_DETAILS}/0?${params.toString()}`);
+            
+            if (response && response.status === 200 && response.response) {
+                setInvestigationList(response.response.content || []);
+                setTotalPages(response.response.totalPages || 0);
+                setTotalElements(response.response.totalElements || 0);
+            } else {
+                setInvestigationList([]);
+                setTotalPages(0);
+                setTotalElements(0);
+            }
+        } catch (error) {
+            console.error("Error fetching investigation price details:", error);
+            showPopup(FETCH_INV_PRICING_ERR_MSG, "error");
             setInvestigationList([]);
             setTotalPages(0);
             setTotalElements(0);
+        } finally {
+            setIsShowAllLoading(false);
         }
-    } catch (error) {
-        console.error("Error fetching investigation price details:", error);
-        showPopup(FETCH_INV_PRICING_ERR_MSG, "error");
-        setInvestigationList([]);
-        setTotalPages(0);
-        setTotalElements(0);
-    } finally {
-        setIsShowAllLoading(false);
-    }
-};
+    };
 
     // Handle pagination page change
     const handlePageChange = (page) => {
@@ -170,6 +173,7 @@ const handleShowAll = async () => {
             toDate: formatDateForInput(item.toDt) || "",
             price: item.price,
         })
+        setSearchText(item.investigationName || getInvestigationName(item.investigationId) || "")
         setIsFormValid(true)
     }
 
@@ -185,20 +189,28 @@ const handleShowAll = async () => {
     }
 
     const formatDateForDisplay = (dateString) => {
-    if (!dateString || dateString === "-") return "";
+        if (!dateString || dateString === "-") return "";
 
-    try {
-        const date = new Date(dateString);
+        try {
+            const date = new Date(dateString);
 
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-based
-        const year = date.getFullYear();
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const year = date.getFullYear();
 
-        return `${day}/${month}/${year}`;
-    } catch (e) {
-        return "";
+            return `${day}/${month}/${year}`;
+        } catch (e) {
+            return "";
+        }
+    };
+
+    const resetForm = () => {
+        setEditingInvestigation(null)
+        setShowForm(false)
+        setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
+        setSearchText("")
+        setIsFormValid(false)
     }
-};
 
     const handleSave = async (e) => {
         e.preventDefault()
@@ -213,9 +225,9 @@ const handleShowAll = async () => {
             return
         }
 
-        try {
-            setLoading(true)
+        setSaving(true)
 
+        try {
             const requestData = {
                 investigationId: parseInt(formData.investigationId),
                 fromDt: formData.fromDate,
@@ -224,55 +236,47 @@ const handleShowAll = async () => {
             }
 
             if (editingInvestigation) {
-                putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
-                    .then(response => {
-                        if (response && response.status === 200) {
-                            showPopup(UPDATE_INV_PRICING_SUCC_MSG, "success")
+                const response = await putRequest(`${INVESTIGATION_PRICE_DETAILS}/update/${editingInvestigation.id}`, requestData)
+                
+                if (response && response.status === 200) {
+                    setPopupMessage({
+                        message: UPDATE_INV_PRICING_SUCC_MSG,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null)
+                            resetForm()
                             fetchInvestigationPriceDetails(currentPage, false)
-                            resetForm()
-                        } else {
-                            showPopup(response.message || FAIL_TO_SAVE_CHANGES, "error")
                         }
                     })
-                    .catch(error => {
-                        console.error("Error updating investigation price:", error)
-                        const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
-                        showPopup(errorMessage, "error")
-                    })
-                    .finally(() => {
-                        setLoading(false)
-                    })
+                } else {
+                    throw new Error(response.message || FAIL_TO_SAVE_CHANGES)
+                }
             } else {
-                postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
-                    .then(response => {
-                        if (response && response.status === 200) {
-                            showPopup(ADD_INV_PRICING_SUCC_MSG, "success")
-                            fetchInvestigationPriceDetails(0, false)
+                const response = await postRequest(`${INVESTIGATION_PRICE_DETAILS}/add`, requestData)
+                
+                if (response.status === 201 || response.status === 200) {
+                    setPopupMessage({
+                        message: ADD_INV_PRICING_SUCC_MSG,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null)
                             resetForm()
-                        } else {
-                            showPopup(FAIL_TO_SAVE_CHANGES, "error")
+                            fetchInvestigationPriceDetails(0, false)
                         }
                     })
-                    .catch(error => {
-                        console.error("Error adding investigation price:", error)
-                        const errorMessage = error.response?.data?.message || error.message || "Unknown error occurred"
-                        showPopup(errorMessage, "error")
-                    })
-                    .finally(() => {
-                        setLoading(false)
-                    })
+                } else {
+                    throw new Error(response.message || FAIL_TO_SAVE_CHANGES)
+                }
             }
         } catch (err) {
             console.error("Error in save operation:", err)
-            showPopup(FAIL_TO_SAVE_CHANGES, "error")
-            setLoading(false)
+            showPopup(
+                err.response?.data?.message || FAIL_TO_SAVE_CHANGES,
+                "error"
+            )
+        } finally {
+            setSaving(false)
         }
-    }
-
-    const resetForm = () => {
-        setEditingInvestigation(null)
-        setShowForm(false)
-        setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
     }
 
     const showPopup = (message, type = "info") => {
@@ -285,39 +289,49 @@ const handleShowAll = async () => {
         })
     }
 
-    const handleSwitchChange = (id, newStatus) => {
-        setConfirmDialog({ isOpen: true, investigationId: id, newStatus })
+    const handleSwitchChange = (id, currentStatus, name) => {
+        const newStatus = currentStatus === "y" ? "n" : "y"
+        setConfirmDialog({ isOpen: true, investigationId: id, newStatus, name })
     }
 
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.investigationId !== null) {
-            try {
-                setLoading(true)
+            setSaving(true)
 
+            try {
                 const response = await putRequest(
                     `${INVESTIGATION_PRICE_DETAILS}/status/${confirmDialog.investigationId}?status=${confirmDialog.newStatus}`
                 )
 
                 if (response && response.status === 200) {
-                    setInvestigationList((prevData) =>
-                        prevData.map((item) =>
-                            item.id === confirmDialog.investigationId ? { ...item, status: confirmDialog.newStatus } : item
-                        )
-                    )
-                    showPopup(
-                        `Investigation price details ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    )
-                    fetchInvestigationPriceDetails(currentPage, false)
+                    setPopupMessage({
+                        message: `Investigation price "${confirmDialog.name}" ${
+                            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+                        } successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null)
+                            resetForm()
+                            fetchInvestigationPriceDetails(currentPage, false)
+                        },
+                    })
+                } else {
+                    throw new Error(response.message || "Failed to update status")
                 }
             } catch (err) {
                 console.error("Error updating investigation price details status:", err)
                 showPopup(FAIL_TO_UPDATE_STS, "error")
             } finally {
-                setLoading(false)
+                setSaving(false)
             }
         }
-        setConfirmDialog({ isOpen: false, investigationId: null, newStatus: null })
+
+        setConfirmDialog({
+            isOpen: false,
+            investigationId: null,
+            newStatus: "",
+            name: "",
+        })
     }
 
     const handleInputChange = (e) => {
@@ -331,23 +345,11 @@ const handleShowAll = async () => {
         }
 
         setFormData((prevData) => ({ ...prevData, [id]: value }))
-
-        setTimeout(() => {
-            const updatedFormData = { ...formData, [id]: value }
-            const isValid = !!updatedFormData.investigationId &&
-                !!updatedFormData.price &&
-                !!updatedFormData.fromDate &&
-                !!updatedFormData.toDate
-            setIsFormValid(isValid)
-        }, 0)
     }
 
     const handleAddClick = () => {
-        setFormData({ investigationId: "", fromDate: "", toDate: "", price: "" })
-        setEditingInvestigation(null)
+        resetForm()
         setShowForm(true)
-        setIsFormValid(false)
-        setSearchText("")
     }
 
     const handleInvestigationSearch = (e) => {
@@ -363,18 +365,6 @@ const handleShowAll = async () => {
         })
         setSearchText(investigation.investigationName || investigation.investigationId.toString())
         setDropdownOpen(false)
-
-        setTimeout(() => {
-            const updatedFormData = {
-                ...formData,
-                investigationId: investigation.investigationId.toString()
-            }
-            const isValid = !!updatedFormData.investigationId &&
-                !!updatedFormData.price &&
-                !!updatedFormData.fromDate &&
-                !!updatedFormData.toDate
-            setIsFormValid(isValid)
-        }, 0)
     }
 
     useEffect(() => {
@@ -398,30 +388,9 @@ const handleShowAll = async () => {
         setIsFormValid(isValid)
     }, [formData])
 
-    const formatDate = (dateString) => {
-    if (!dateString || dateString === "-") return "";
-
-    try {
-        const date = new Date(dateString);
-
-        const day = String(date.getDate()).padStart(2, '0');
-        const month = String(date.getMonth() + 1).padStart(2, '0'); // months are 0-based
-        const year = date.getFullYear();
-
-        return `${day}/${month}/${year}`;
-    } catch (e) {
-        return dateString;
-    }
-};
-
     const getInvestigationName = (id) => {
         const investigation = investigationOptions.find(item => item.investigationId?.toString() === id?.toString())
         return investigation ? investigation.investigationName : id
-    }
-
-    const debugFormState = () => {
-        console.log("Current form state:", formData)
-        console.log("Is form valid?", isFormValid)
     }
 
     return (
@@ -434,21 +403,21 @@ const handleShowAll = async () => {
 
                             <div className="d-flex align-items-center">
                                 {!showForm && (
-                                    <div className="d-flex align-items-center gap-2">
-                                        {/* Search Input */}
-
-                                        <button
-                                            type="button"
-                                            className="btn btn-success me-2"
-                                            onClick={handleAddClick}
-                                        >
-                                            <i className="mdi mdi-plus"></i> Add
-                                        </button>
-                                    </div>
+                                    <button
+                                        type="button"
+                                        className="btn btn-success me-2"
+                                        onClick={handleAddClick}
+                                    >
+                                        <i className="mdi mdi-plus"></i> Add
+                                    </button>
                                 )}
 
                                 {showForm && (
-                                    <button type="button" className="btn btn-secondary" onClick={() => setShowForm(false)}>
+                                    <button 
+                                        type="button" 
+                                        className="btn btn-secondary" 
+                                        onClick={resetForm}
+                                    >
                                         <i className="mdi mdi-arrow-left"></i> Back
                                     </button>
                                 )}
@@ -474,7 +443,7 @@ const handleShowAll = async () => {
                                         </div>
                                         <button
                                             type="button"
-                                            className="btn btn-primary "
+                                            className="btn btn-primary"
                                             onClick={handleSearch}
                                             disabled={isSearching || !isSearchEnabled()}
                                         >
@@ -484,16 +453,14 @@ const handleShowAll = async () => {
                                                     Searching...
                                                 </>
                                             ) : (
-                                                <>
-                                                    Search
-                                                </>
+                                                'Search'
                                             )}
                                         </button>
                                         <button
                                             type="button"
                                             className="btn btn-secondary"
                                             onClick={handleShowAll}
-                                            disabled={ isShowAllLoading}
+                                            disabled={isShowAllLoading}
                                         >
                                             {isShowAllLoading ? (
                                                 <>
@@ -501,9 +468,7 @@ const handleShowAll = async () => {
                                                     Showing All...
                                                 </>
                                             ) : (
-                                                <>
-                                                    Show All
-                                                </>
+                                                'Show All'
                                             )}
                                         </button>
                                     </div>
@@ -521,21 +486,12 @@ const handleShowAll = async () => {
                                                 </tr>
                                             </thead>
                                             <tbody>
-                                                {paginationLoading ? (
-                                                    <tr>
-                                                        <td colSpan="6" className="text-center py-4">
-                                                            <div className="spinner-border text-primary spinner-sm" role="status">
-                                                                <span className="visually-hidden">Loading...</span>
-                                                            </div>
-                                                            <span className="ms-2">Loading page...</span>
-                                                        </td>
-                                                    </tr>
-                                                ) : investigationList.length > 0 ? (
+                                                {investigationList.length > 0 ? (
                                                     investigationList.map((item) => (
                                                         <tr key={item.id}>
                                                             <td>{item.investigationName || getInvestigationName(item.investigationId)}</td>
-                                                            <td>{formatDate(item.fromDt)}</td>
-                                                            <td>{formatDate(item.toDt)}</td>
+                                                            <td>{formatDateForDisplay(item.fromDt)}</td>
+                                                            <td>{formatDateForDisplay(item.toDt)}</td>
                                                             <td>₹{item.price}</td>
                                                             <td>
                                                                 <div className="form-check form-switch">
@@ -543,21 +499,24 @@ const handleShowAll = async () => {
                                                                         className="form-check-input"
                                                                         type="checkbox"
                                                                         checked={item.status === "y"}
-                                                                        onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                                                        onChange={() => handleSwitchChange(
+                                                                            item.id, 
+                                                                            item.status, 
+                                                                            item.investigationName || getInvestigationName(item.investigationId)
+                                                                        )}
                                                                         id={`switch-${item.id}`}
                                                                     />
                                                                     <label
-                                                                        className="form-check-label px-0"
+                                                                        className="form-check-label ms-2"
                                                                         htmlFor={`switch-${item.id}`}
-                                                                        onClick={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
                                                                     >
-                                                                        {item.status === "y" ? "Active" : "Deactivated"}
+                                                                        {item.status === "y" ? "Active" : "Inactive"}
                                                                     </label>
                                                                 </div>
                                                             </td>
                                                             <td>
                                                                 <button
-                                                                    className="btn btn-sm btn-success me-2"
+                                                                    className="btn btn-success btn-sm"
                                                                     onClick={() => handleEdit(item)}
                                                                     disabled={item.status !== "y"}
                                                                 >
@@ -569,7 +528,7 @@ const handleShowAll = async () => {
                                                 ) : (
                                                     <tr>
                                                         <td colSpan="6" className="text-center py-4">
-                                                            No records found
+                                                            No Records Found
                                                         </td>
                                                     </tr>
                                                 )}
@@ -589,124 +548,120 @@ const handleShowAll = async () => {
                                     )}
                                 </>
                             ) : (
-                                <form className="forms row" onSubmit={handleSave}>
-                                    <div className="d-flex justify-content-end">
-                                       
-                                    </div>
-                                    <div className="row">
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                Investigation <span className="text-danger">*</span>
-                                            </label>
+                                <form className="row" onSubmit={handleSave}>
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>
+                                            Investigation <span className="text-danger">*</span>
+                                        </label>
 
-                                            <div className="dropdown-search-container position-relative">
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    id="investigationId"
-                                                    placeholder="Search Investigation"
-                                                    autoComplete="off"
-                                                    required
-                                                    value={searchText || getInvestigationName(formData.investigationId) || ""}
-                                                    onChange={handleInvestigationSearch}
-                                                    onFocus={(e) => {
-                                                        if (e.target.value.trim() !== "") {
-                                                            setDropdownOpen(true);
-                                                        }
+                                        <div className="dropdown-search-container position-relative">
+                                            <input
+                                                type="text"
+                                                className="form-control mt-1"
+                                                id="investigationId"
+                                                placeholder="Search Investigation"
+                                                autoComplete="off"
+                                                required
+                                                value={searchText || getInvestigationName(formData.investigationId) || ""}
+                                                onChange={handleInvestigationSearch}
+                                                onFocus={(e) => {
+                                                    if (e.target.value.trim() !== "") {
+                                                        setDropdownOpen(true);
+                                                    }
+                                                }}
+                                            />
+                                            {dropdownOpen && searchText.trim() !== "" && (
+                                                <ul
+                                                    className="list-group position-absolute w-100 mt-1"
+                                                    style={{
+                                                        zIndex: 1000,
+                                                        maxHeight: '200px',
+                                                        overflowY: 'auto',
+                                                        backgroundColor: '#fff',
+                                                        border: '1px solid #ccc',
                                                     }}
-                                                />
-                                                {dropdownOpen && searchText.trim() !== "" && (
-                                                    <ul
-                                                        className="list-group position-absolute w-100 mt-1"
-                                                        style={{
-                                                            zIndex: 1000,
-                                                            maxHeight: '200px',
-                                                            overflowY: 'auto',
-                                                            backgroundColor: '#fff',
-                                                            border: '1px solid #ccc',
-                                                        }}
-                                                    >
-                                                        {investigationOptions
-                                                            .filter(item =>
-                                                                item.investigationName &&
-                                                                (item.investigationName.toLowerCase().includes(searchText.toLowerCase()) ||
-                                                                    item.investigationId.toString().includes(searchText))
-                                                            )
-                                                            .map((item, index) => (
-                                                                <li
-                                                                    key={index}
-                                                                    className="list-group-item list-group-item-action"
-                                                                    style={{ backgroundColor: '#e3e8e6', cursor: 'pointer' }}
-                                                                    onClick={() => handleInvestigationSelect(item)}
-                                                                >
-                                                                    {item.investigationName || "N/A"}
-                                                                </li>
-                                                            ))}
-                                                    </ul>
-                                                )}
-                                            </div>
-                                        </div>
-
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                From Date <span className="text-danger">*</span>
-                                            </label>
-                                            <input
-                                                type="date"
-                                                className="form-control"
-                                                id="fromDate"
-                                                onChange={handleInputChange}
-                                                value={formData.fromDate}
-                                                required
-                                            />
-                                        </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                To Date <span className="text-danger">*</span>
-                                            </label>
-                                            <input
-                                                type="date"
-                                                className="form-control"
-                                                id="toDate"
-                                                onChange={handleInputChange}
-                                                value={formData.toDate}
-                                                required
-                                            />
-                                            {formData.fromDate && formData.toDate && new Date(formData.toDate) < new Date(formData.fromDate) && (
-                                                <div className="text-danger mt-1">To Date must be after From Date</div>
+                                                >
+                                                    {investigationOptions
+                                                        .filter(item =>
+                                                            item.investigationName &&
+                                                            (item.investigationName.toLowerCase().includes(searchText.toLowerCase()) ||
+                                                                item.investigationId.toString().includes(searchText))
+                                                        )
+                                                        .map((item, index) => (
+                                                            <li
+                                                                key={index}
+                                                                className="list-group-item list-group-item-action"
+                                                                style={{ backgroundColor: '#e3e8e6', cursor: 'pointer' }}
+                                                                onClick={() => handleInvestigationSelect(item)}
+                                                            >
+                                                                {item.investigationName || "N/A"}
+                                                            </li>
+                                                        ))}
+                                                </ul>
                                             )}
                                         </div>
-                                        <div className="form-group col-md-4 mt-3">
-                                            <label>
-                                                Price <span className="text-danger">*</span>
-                                            </label>
-                                            <div className="input-group">
-                                                <span className="input-group-text">₹</span>
-                                                <input
-                                                    type="text"
-                                                    className="form-control"
-                                                    id="price"
-                                                    placeholder="Price"
-                                                    onChange={handleInputChange}
-                                                    value={formData.price}
-                                                    required
-                                                />
-                                            </div>
+                                    </div>
+
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>
+                                            From Date <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            className="form-control mt-1"
+                                            id="fromDate"
+                                            onChange={handleInputChange}
+                                            value={formData.fromDate}
+                                            required
+                                        />
+                                    </div>
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>
+                                            To Date <span className="text-danger">*</span>
+                                        </label>
+                                        <input
+                                            type="date"
+                                            className="form-control mt-1"
+                                            id="toDate"
+                                            onChange={handleInputChange}
+                                            value={formData.toDate}
+                                            required
+                                        />
+                                        {formData.fromDate && formData.toDate && new Date(formData.toDate) < new Date(formData.fromDate) && (
+                                            <div className="text-danger mt-1">To Date must be after From Date</div>
+                                        )}
+                                    </div>
+                                    <div className="form-group col-md-4 mt-3">
+                                        <label>
+                                            Price <span className="text-danger">*</span>
+                                        </label>
+                                        <div className="input-group mt-1">
+                                            <span className="input-group-text">₹</span>
+                                            <input
+                                                type="text"
+                                                className="form-control"
+                                                id="price"
+                                                placeholder="Price"
+                                                onChange={handleInputChange}
+                                                value={formData.price}
+                                                required
+                                            />
                                         </div>
                                     </div>
 
-                                    <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                                    <div className="form-group col-md-12 mt-3 d-flex justify-content-end">
                                         <button
-                                            type="button"
+                                            type="submit"
                                             className="btn btn-primary me-2"
-                                            onClick={(e) => {
-                                                debugFormState();
-                                                handleSave(e);
-                                            }}
+                                            disabled={!isFormValid || saving}
                                         >
-                                            {editingInvestigation ? "Update" : "Save"}
+                                            {saving ? "Saving..." : editingInvestigation ? "Update" : "Save"}
                                         </button>
-                                        <button type="button" className="btn btn-danger" onClick={() => setShowForm(false)}>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-danger" 
+                                            onClick={resetForm}
+                                        >
                                             Cancel
                                         </button>
                                     </div>
@@ -714,36 +669,33 @@ const handleShowAll = async () => {
                             )}
 
                             {popupMessage && (
-                                <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />
+                                <Popup 
+                                    message={popupMessage.message} 
+                                    type={popupMessage.type} 
+                                    onClose={popupMessage.onClose} 
+                                />
                             )}
 
                             {confirmDialog.isOpen && (
-                                <div className="modal d-block" tabIndex="-1" role="dialog">
-                                    <div className="modal-dialog" role="document">
+                                <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+                                    <div className="modal-dialog">
                                         <div className="modal-content">
-                                            <div className="modal-header">
-                                                <h5 className="modal-title">Confirm Status Change</h5>
-                                                <button type="button" className="close" onClick={() => handleConfirm(false)}>
-                                                    <span>&times;</span>
-                                                </button>
-                                            </div>
                                             <div className="modal-body">
-                                                <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
-                                                    <strong>
-                                                        {getInvestigationName(
-                                                            investigationList.find((item) => item.id === confirmDialog.investigationId)
-                                                                ?.investigationId
-                                                        )}
-                                                    </strong>
-                                                    ?
-                                                </p>
+                                                Are you sure you want to{" "}
+                                                {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                <strong>{confirmDialog.name}</strong>?
                                             </div>
                                             <div className="modal-footer">
-                                                <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>
+                                                <button
+                                                    className="btn btn-secondary"
+                                                    onClick={() => handleConfirm(false)}
+                                                >
                                                     No
                                                 </button>
-                                                <button type="button" className="btn btn-primary" onClick={() => handleConfirm(true)}>
+                                                <button
+                                                    className="btn btn-primary"
+                                                    onClick={() => handleConfirm(true)}
+                                                >
                                                     Yes
                                                 </button>
                                             </div>

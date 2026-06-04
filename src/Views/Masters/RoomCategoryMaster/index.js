@@ -187,30 +187,55 @@ const RoomCategoryMaster = () => {
     };
 
     const handleConfirm = async (confirmed) => {
-        if (confirmed && confirmDialog.categoryId !== null) {
-            try {
-                setLoading(true);
-                const response = await putRequest(
-                    `${MAS_ROOM_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+    if (confirmed && confirmDialog.categoryId !== null) {
+       // setLoading(true);
+
+        try {
+            const response = await putRequest(
+                `${MAS_ROOM_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Room Category "${
+                        confirmDialog.categoryName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchCategoryData(0);
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
                 );
-                if (response && response.status === 200) {
-                    // Refresh data from API after status change
-                    await fetchCategoryData(0);
-                    setPopupMessage({
-                        message: `Room Category ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        type: "success",
-                        onClose: () => setPopupMessage(null)
-                    });
-                }
-            } catch (err) {
-                console.error("Error updating room category status:", err);
-                showPopup(FAIL_TO_UPDATE_STS, "error");
-            } finally {
-                setLoading(false);
             }
+        } catch (error) {
+            console.error("Error updating room category status:", error);
+
+            setPopupMessage({
+                message: FAIL_TO_UPDATE_STS,
+                type: "error",
+                onClose: () => setPopupMessage(null),
+            });
+        } finally {
+           // setLoading(false);
         }
-        setConfirmDialog({ isOpen: false, categoryId: null, newStatus: null });
-    };
+    }
+
+    setConfirmDialog({
+        isOpen: false,
+        categoryId: null,
+        newStatus: "",
+        categoryName: "",
+    });
+};
 
     const handleInputChange = (e) => {
         const { id, value } = e.target;

@@ -491,38 +491,53 @@ const handleSave = async (e) => {
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, hospitalId: id, newStatus });
   };
+const [saving, setSaving] = useState(false);
 
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.hospitalId !== null) {
-      try {
-        setLoading(true);
-        const status = confirmDialog.newStatus;
-        const response = await putRequest(
-          `${MAS_HOSPITAL}/status/${confirmDialog.hospitalId}?status=${status}`,
-        );
+        setSaving(true);
 
-        if (response && response.status === 200) {
-          setHospitals((prevData) =>
-            prevData.map((hospital) =>
-              hospital.id === confirmDialog.hospitalId
-                ? { ...hospital, status: confirmDialog.newStatus }
-                : hospital,
-            ),
-          );
-          showPopup(
-            `Hospital ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success",
-          );
+        try {
+            const response = await putRequest(
+                `${MAS_HOSPITAL}/status/${confirmDialog.hospitalId}?status=${confirmDialog.newStatus}`
+            );
+
+            if (response.status === 200) {
+                setPopupMessage({
+                    message: `Hospital "${
+                        confirmDialog.hospitalName
+                    }" ${
+                        confirmDialog.newStatus === "y"
+                            ? "activated"
+                            : "deactivated"
+                    } successfully!`,
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        fetchHospitals();
+                        setCurrentPage(1);
+                    },
+                });
+            } else {
+                throw new Error(
+                    response.message || "Failed to update status"
+                );
+            }
+        } catch (error) {
+            console.error("Error updating hospital status:", error);
+            showPopup(FAIL_TO_UPDATE_STS, "error");
+        } finally {
+            setSaving(false);
         }
-      } catch (err) {
-        console.error("Error updating hospital status:", err);
-        showPopup(FAIL_TO_UPDATE_STS, "error");
-      } finally {
-        setLoading(false);
-      }
     }
-    setConfirmDialog({ isOpen: false, hospitalId: null, newStatus: null });
-  };
+
+    setConfirmDialog({
+        isOpen: false,
+        hospitalId: null,
+        newStatus: "",
+        hospitalName: "",
+    });
+};
 
   return (
     <div className="content-wrapper">

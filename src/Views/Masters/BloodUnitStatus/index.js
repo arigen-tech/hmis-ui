@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
@@ -17,6 +16,7 @@ import {
 const BloodUnitStatus = () => {
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({
     statusCode: "",
     statusName: "",
@@ -107,7 +107,10 @@ const BloodUnitStatus = () => {
   // Save (Add or Update)
   const handleSave = async (e) => {
     e.preventDefault();
+    
     if (!isFormValid) return;
+    
+    setSaving(true);
 
     const newCode = formData.statusCode.trim().toLowerCase();
     const newName = formData.statusName.trim().toLowerCase();
@@ -121,30 +124,66 @@ const BloodUnitStatus = () => {
 
     if (duplicate) {
       showPopup(DUPLICATE_BLOOD_UNIT, "error");
+      setSaving(false);
       return;
     }
 
     try {
+      const payload = {
+        statusCode: formData.statusCode.trim(),
+        statusName: formData.statusName.trim(),
+        description: formData.description.trim(),
+      };
+
       if (editingRecord) {
-        await putRequest(`${MAS_BLOOD_UNIT}/update/${editingRecord.statusId}`, {
-          statusCode: formData.statusCode.trim(),
-          statusName: formData.statusName.trim(),
-          description: formData.description.trim(),
-        });
-        showPopup(UPDATE_BLOOD_UNIT, "success");
+        const response = await putRequest(
+          `${MAS_BLOOD_UNIT}/update/${editingRecord.statusId}`,
+          payload
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: UPDATE_BLOOD_UNIT,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Update failed");
+        }
       } else {
-        await postRequest(`${MAS_BLOOD_UNIT}/create`, {
-          statusCode: formData.statusCode.trim(),
-          statusName: formData.statusName.trim(),
-          description: formData.description.trim(),
-          status: "Y",
-        });
-        showPopup(ADD_BLOOD_UNIT, "success");
+        const response = await postRequest(
+          `${MAS_BLOOD_UNIT}/create`,
+          {
+            ...payload,
+            status: "y",
+          }
+        );
+
+        if (response.status === 201 || response.status === 200) {
+          setPopupMessage({
+            message: ADD_BLOOD_UNIT,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              resetForm();
+              fetchData();
+              setShowForm(false);
+            }
+          });
+        } else {
+          throw new Error(response.message || "Save failed");
+        }
       }
-      fetchData();
-      handleCancel();
-    } catch {
+    } catch (error) {
+      console.error("Save error:", error);
       showPopup(FAIL_BLOOD_UNIT, "error");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -170,24 +209,44 @@ const BloodUnitStatus = () => {
   };
 
   const handleConfirm = async (confirmed) => {
-    if (!confirmed) {
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-      return;
+    if (confirmed && confirmDialog.record) {
+      setSaving(true);
+
+      try {
+        const response = await putRequest(
+          `${MAS_BLOOD_UNIT}/status/${confirmDialog.record.statusId}?status=${confirmDialog.newStatus}`
+        );
+
+        if (response.status === 200) {
+          setPopupMessage({
+            message: `Blood Unit Status "${
+              confirmDialog.record.statusName
+            }" ${
+              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+            } successfully!`,
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              fetchData();
+              setCurrentPage(1);
+            },
+          });
+        } else {
+          throw new Error(response.message || "Failed to update status");
+        }
+      } catch (error) {
+        console.error("Error updating status:", error);
+        showPopup(UPDATE_FAIL_BLOOD_UNIT, "error");
+      } finally {
+        setSaving(false);
+      }
     }
 
-    try {
-      setLoading(true);
-      await putRequest(
-        `${MAS_BLOOD_UNIT}/status/${confirmDialog.record.statusId}?status=${confirmDialog.newStatus}`
-      );
-      showPopup(UPDATE_BLOOD_UNIT, "success");
-      fetchData();
-    } catch {
-      showPopup(UPDATE_FAIL_BLOOD_UNIT, "error");
-    } finally {
-      setLoading(false);
-      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
-    }
+    setConfirmDialog({
+      isOpen: false,
+      record: null,
+      newStatus: "",
+    });
   };
 
   const handleRefresh = () => {
@@ -330,9 +389,9 @@ const BloodUnitStatus = () => {
                 <button
                   type="submit"
                   className="btn btn-primary me-2"
-                  disabled={!isFormValid}
+                  disabled={!isFormValid || saving}
                 >
-                  {editingRecord ? "Update" : "Save"}
+                  {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                 </button>
                 <button
                   type="button"
@@ -348,7 +407,7 @@ const BloodUnitStatus = () => {
           {popupMessage && <Popup {...popupMessage} />}
 
           {confirmDialog.isOpen && (
-            <div className="modal d-block">
+            <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
               <div className="modal-dialog">
                 <div className="modal-content">
                   <div className="modal-body">
@@ -366,8 +425,9 @@ const BloodUnitStatus = () => {
                     <button
                       className="btn btn-primary"
                       onClick={() => handleConfirm(true)}
+                      disabled={saving}
                     >
-                      Yes
+                      {saving ? "Processing..." : "Yes"}
                     </button>
                   </div>
                 </div>
