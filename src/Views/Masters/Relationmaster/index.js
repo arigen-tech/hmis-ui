@@ -111,7 +111,7 @@ const Relationmaster = () => {
 
 const handleSave = async (e) => {
   e.preventDefault();
-  setLoading(true);
+  //setLoading(true);
 
   if (!isFormValid) {
     setLoading(false);
@@ -168,7 +168,7 @@ const handleSave = async (e) => {
 
       if (isDuplicate) {
         showPopup(DUPLICATE_RELATION_CODE_NAME, "error");
-        setLoading(false);
+        //setLoading(false);
         return;
       }
 

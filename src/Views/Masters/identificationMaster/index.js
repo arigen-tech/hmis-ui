@@ -102,7 +102,7 @@ const Identificationmaster = () => {
     if (!isFormValid) return;
 
     try {
-      setLoading(true);
+      //setLoading(true);
 
       const isDuplicate = identificationTypes.some(
         (type) =>
@@ -164,7 +164,7 @@ const Identificationmaster = () => {
       console.error("Error saving identification type:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
-      setLoading(false);
+      //setLoading(false);
     }
   };
 
