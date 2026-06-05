@@ -11,6 +11,7 @@ import EarExamination from "../EarExamination";
 import GynaMaster from "../GynaMaster";
 import Dental from "../Dental";
 import Pregnancy from "../Pregnancy";
+import Psychiatrist from "../Psychiatrist";
 
 import {
   OPD_TEMPLATE,
@@ -1104,6 +1105,7 @@ const GeneralMedicineWaitingList = () => {
     familyHistory: "",
     treatmentAdvice: "",
     mlcCase: false,
+    psychiatristAssessment: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -4062,6 +4064,7 @@ const GeneralMedicineWaitingList = () => {
                                 label: "Previous ECG Investigation",
                               },
                               { id: "audit-history", label: "Audit History" },
+                              { id: "psychiatrist", label: "Psychiatrist" }, 
                             ].map((btn) => (
                               <button
                                 key={btn.id}
@@ -4080,6 +4083,10 @@ const GeneralMedicineWaitingList = () => {
                                     );
                                     setClinicalPopupType("vitals");
                                     setShowPopup(true);
+                                    } else if (btn.id === "psychiatrist") { 
+            setClinicalPopupType("psychiatrist");
+            setShowPopup(true);
+            handleHistoryTypeClick(btn.id);
                                   } else {
                                     handleHistoryTypeClick(btn.id);
                                   }
@@ -7218,6 +7225,8 @@ const GeneralMedicineWaitingList = () => {
             isLoading={
               clinicalPopupType === "visits" ? visitsLoading : vitalsLoading
             }
+             patientId={selectedPatient?.patientId}     
+    visitId={selectedPatient?.visitId}  
           />
         )}
 
