@@ -124,7 +124,8 @@ const GeneralMedicineWaitingList = () => {
     sessionStorage.getItem("departmentId") ||
     localStorage.getItem("departmentId") ||
     "";
-  const isOphthalmologyDepartment = Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
+  const isOphthalmologyDepartment =
+    Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
   const isObgynDepartment = Number(loggedInDepartmentId) === OBG_DEPARTMENT_ID;
   const isEntDepartment = Number(loggedInDepartmentId) === ENT_DEPARTMENT_ID;
   const searchTimeoutRef = useRef(null);
@@ -193,6 +194,8 @@ const GeneralMedicineWaitingList = () => {
 
   const [distanceVisionData, setDistanceVisionData] = useState([]);
   const [nearVisionData, setNearVisionData] = useState([]);
+
+  const obgDetailsRef = useRef();
 
   const fetchDistanceVisionData = async () => {
     if (distanceVisionLoadedRef.current) return;
@@ -2752,11 +2755,8 @@ const GeneralMedicineWaitingList = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     if (isSubmitting) return;
-
     if (!validateSubmitForm()) return;
-
     try {
       setIsSubmitting(true);
 
@@ -2764,10 +2764,9 @@ const GeneralMedicineWaitingList = () => {
       if (visionRef.current && visionRef.current.getData) {
         visionExaminationData = visionRef.current.getData();
       }
-      const ophthalmologyExaminationDetails =
-        isOphthalmologyDepartment
-          ? buildOphthalmologyExaminationPayload(visionExaminationData)
-          : null;
+      const ophthalmologyExaminationDetails = isOphthalmologyDepartment
+        ? buildOphthalmologyExaminationPayload(visionExaminationData)
+        : null;
 
       // ICD Diagnoses
       const icdDiagList = diagnosisItems
@@ -2798,34 +2797,36 @@ const GeneralMedicineWaitingList = () => {
           investigationDate: item.date,
         }));
 
-      //console.log("inv items", investigationItems)
 
-      // Treatment mapping → backend format
-    const treatmentList = treatmentItems
-      .filter((item) => {
-        const hasDrug = item.drugId || (item.drugName && item.drugName.trim());
-        const hasDosage = item.dosage && item.dosage.toString().trim();
-        const hasFrequency = item.frequency && item.frequency.trim();
-        const hasDays = item.days && item.days.toString().trim();
-        const hasInstruction = item.instruction && item.instruction.trim();
-        
-        return hasDrug && hasDosage && hasFrequency && hasDays && hasInstruction;
-      })
-      .map((item) => {
-        const freq = allFrequencies.find(
-          (f) => f.frequencyName == item.frequency || Number(f.frequencyId) == Number(item.frequency),
-        );
-        return {
-          itemId: item.drugId,
-          dosage: item.dosage,
-          frequency: item.frequency || "",
-          days: item.days,
-          total: item.total,
-          instraction: item.instruction,
-        };
-      });
+      const treatmentList = treatmentItems
+        .filter((item) => {
+          const hasDrug =
+            item.drugId || (item.drugName && item.drugName.trim());
+          const hasDosage = item.dosage && item.dosage.toString().trim();
+          const hasFrequency = item.frequency && item.frequency.trim();
+          const hasDays = item.days && item.days.toString().trim();
+          const hasInstruction = item.instruction && item.instruction.trim();
 
-      //console.log("treatmentItems", treatmentItems)
+          return (
+            hasDrug && hasDosage && hasFrequency && hasDays && hasInstruction
+          );
+        })
+        .map((item) => {
+          const freq = allFrequencies.find(
+            (f) =>
+              f.frequencyName == item.frequency ||
+              Number(f.frequencyId) == Number(item.frequency),
+          );
+          return {
+            itemId: item.drugId,
+            dosage: item.dosage,
+            frequency: item.frequency || "",
+            days: item.days,
+            total: item.total,
+            instraction: item.instruction,
+          };
+        });
+
 
       const selectedWardCategory = wardCategories.find(
         (category) => Number(category.categoryId) === Number(wardCategory),
@@ -2833,7 +2834,6 @@ const GeneralMedicineWaitingList = () => {
       const selectedWard = wardDepartments.find(
         (ward) => Number(ward.id) === Number(wardName),
       );
-      debugger;
       const mappedDepartmentId = toNumberOrNull(
         firstValue(
           sessionStorage.getItem("departmentId"),
@@ -2861,6 +2861,19 @@ const GeneralMedicineWaitingList = () => {
         );
         return;
       }
+      let obgDetailsData = null;
+      if (isObgynDepartment && obgDetailsRef.current) {
+        obgDetailsData = obgDetailsRef.current.getData();
+
+        const validation = obgDetailsRef.current.validate();
+        if (!validation.isValid) {
+          showPopupMessage(
+            `Please fill OBG fields: ${validation.missingFields.join(", ")}`,
+            "error",
+          );
+          return;
+        }
+      }
 
       const payload = {
         // ===== Mapping IDs =====
@@ -2881,9 +2894,12 @@ const GeneralMedicineWaitingList = () => {
         // presentComplaints: formData.patientSymptoms ?? null,
 
         ...(isOphthalmologyDepartment && {
-          // ===== Ophthalmology Examination =====
           ophthalmologyExaminationDetails,
         }),
+
+        ...(isObgynDepartment &&obgDetailsData && {
+            opdObgDetailsRequest: obgDetailsData,
+          }),
 
         // ===== Vital =====
         height: formData.height,
@@ -3307,7 +3323,6 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const calculateTotal = (item) => {
-    debugger;
     if (!item.frequency || item.itemClassId == null) {
       return "";
     }
@@ -4197,22 +4212,23 @@ const GeneralMedicineWaitingList = () => {
                               placeholder="Enter Family History"
                             ></textarea>
                           </div>
-                             {/*PREGNANCy*/}
-<div className="mb-3">
-  <div className="d-flex justify-content-between align-items-center">
-    <label className="form-label fw-bold m-0">
-      Pregnancy Details
-    </label>
-  </div>
-  <div className="mt-2">
-    {selectedPatient?.gender?.toLowerCase() === "female" && (
-  <Pregnancy 
-    patientId={selectedPatient?.patientId}
-    visitId={selectedPatient?.visitId}
-  />
-)}
-  </div>
-</div>
+                          {/*PREGNANCy*/}
+                          {selectedPatient?.gender?.toLowerCase() ===
+                            "female" && (
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <label className="form-label fw-bold m-0">
+                                  Pregnancy Details
+                                </label>
+                              </div>
+                              <div className="mt-2">
+                                <Pregnancy
+                                  patientId={selectedPatient?.patientId}
+                                  visitId={selectedPatient?.visitId}
+                                />
+                              </div>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -4464,20 +4480,70 @@ const GeneralMedicineWaitingList = () => {
                 )}
                 {/* OBG Details Section */}
                 {isObgynDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("obgDetails")}
+                    >
+                      <h6 className="mb-0 fw-bold">OBG Details</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.obgDetails ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.obgDetails && (
+                      <div className="card-body">
+                        <OBGDetails
+                          ref={obgDetailsRef}
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Ear Examination Section */}
+                {isEntDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("earExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">ENT</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.earExamination ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.earExamination && (
+                      <div className="card-body">
+                        <EarExamination
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Dental Section */}
                 <div className="card mb-3">
                   <div
                     className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("obgDetails")}
+                    onClick={() => toggleSection("dentalExamination")}
                   >
-                    <h6 className="mb-0 fw-bold">OBG Details</h6>
+                    <h6 className="mb-0 fw-bold">Dental</h6>
                     <span style={{ fontSize: "18px" }}>
-                      {expandedSections.obgDetails ? "−" : "+"}
+                      {expandedSections.dentalExamination ? "−" : "+"}
                     </span>
                   </div>
-                  {expandedSections.obgDetails && (
+                  {expandedSections.dentalExamination && (
                     <div className="card-body">
-                      <OBGDetails
+                      <Dental
                         patientId={selectedPatient?.patientId}
                         visitId={selectedPatient?.visitId}
                         hideHeader={true}
@@ -4485,55 +4551,7 @@ const GeneralMedicineWaitingList = () => {
                       />
                     </div>
                   )}
-                </div>)}
-                {/* Ear Examination Section */}
-                {isEntDepartment && (
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("earExamination")}
-                  >
-                    <h6 className="mb-0 fw-bold">ENT</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.earExamination ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.earExamination && (
-                    <div className="card-body">
-                      <EarExamination 
-                      patientId={selectedPatient?.patientId}
-                      visitId={selectedPatient?.visitId}
-                      hideHeader={true}
-                      hideButtons={true}
-                      />
-                    </div>
-                  )}
                 </div>
-                )}
-                {/* Dental Section */}
-  <div className="card mb-3">
-  <div
-    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-    style={{ cursor: "pointer" }}
-    onClick={() => toggleSection("dentalExamination")}
-  >
-    <h6 className="mb-0 fw-bold">Dental</h6>
-    <span style={{ fontSize: "18px" }}>
-      {expandedSections.dentalExamination ? "−" : "+"}
-    </span>
-  </div>
-  {expandedSections.dentalExamination && (
-    <div className="card-body">
-      <Dental
-        patientId={selectedPatient?.patientId}
-        visitId={selectedPatient?.visitId}
-        hideHeader={true}
-        hideButtons={true}
-      />
-    </div>
-  )}
-</div> 
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
