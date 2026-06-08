@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN } from "../../../config/apiConfig";
+import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const DrugMaster = () => {
@@ -22,7 +22,7 @@ const DrugMaster = () => {
         hsnCode: "",
         drugSchedule: "",
         isGeneric: "",
-        facilityCode: [],   // array for multi-select
+        facilityCode: [],   // array for multi-select (will store facility IDs as numbers)
         dangerousDrug: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
@@ -35,6 +35,7 @@ const DrugMaster = () => {
     const [storeUnitData, setStoreUnitData] = useState([]);
     const [hsnList, setHsnList] = useState([]);
     const [drugScheduleData, setDrugScheduleData] = useState([]);
+    const [facilityOptions, setFacilityOptions] = useState([]);
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
@@ -74,6 +75,8 @@ const DrugMaster = () => {
         fetchMasStoreGroup();
         fetchStoreUnit();
         fetchHsnData();
+        fetchDrugScheduleData();
+        fetchFacilityData();
     }, []);
 
     useEffect(() => {
@@ -122,7 +125,7 @@ const DrugMaster = () => {
             formData.unitAU !== "" &&
             formData.itemCategory !== "" &&
             formData.reorderLevel !== "" &&
-            formData.facilityCode.length > 0;   // at least one selected
+            formData.facilityCode.length > 0;
         
         setIsFormValid(isValid);
     };
@@ -240,16 +243,51 @@ const DrugMaster = () => {
         }
     };
 
+    const fetchDrugScheduleData = async () => {
+        try {
+            const data = await getRequest(`${MAS_DRUGSCHEDULE}/getAll/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setDrugScheduleData(data.response);
+            } else {
+                setDrugScheduleData([]);
+                console.error("Unexpected API response format for drug schedule:", data);
+            }
+        } catch (error) {
+            console.error("Error fetching drug schedule data:", error);
+            setDrugScheduleData([]);
+        }
+    };
+
+    // Fetch facility data
+    const fetchFacilityData = async () => {
+        try {
+            const data = await getRequest(`/master/masItemFacility/getAll/1`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                // Filter only active facilities
+                const activeFacilities = data.response.filter(facility => facility.status === "y");
+                setFacilityOptions(activeFacilities);
+            } else {
+                setFacilityOptions([]);
+                console.error("Unexpected API response format for facilities:", data);
+            }
+        } catch (error) {
+            console.error("Error fetching facility data:", error);
+            setFacilityOptions([]);
+        }
+    };
+
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         
         // Special handling for facilityCode checkboxes (multi-select inside dropdown)
         if (name === "facilityCode") {
+            // Convert value to Long for API compatibility
+            const facilityId = Number(value);
             let updatedArray = [...formData.facilityCode];
             if (checked) {
-                updatedArray.push(value);
+                updatedArray.push(facilityId);
             } else {
-                updatedArray = updatedArray.filter(item => item !== value);
+                updatedArray = updatedArray.filter(item => item !== facilityId);
             }
             setFormData(prev => ({ ...prev, [name]: updatedArray }));
         } else {
@@ -291,13 +329,20 @@ const DrugMaster = () => {
             setEditEnabled(true);
             setShowForm(true);
 
-            // Convert facilityCode from string (e.g., "option 1,option 2") to array
+            // Convert facility data to array of Long IDs
             let facilityCodeArray = [];
             if (drug.facilityCode) {
                 if (typeof drug.facilityCode === 'string') {
-                    facilityCodeArray = drug.facilityCode.split(',').map(s => s.trim());
+                    // Handle if facilityCode is a comma-separated string
+                    facilityCodeArray = drug.facilityCode.split(',').map(s => Number(s.trim())).filter(id => !isNaN(id));
                 } else if (Array.isArray(drug.facilityCode)) {
-                    facilityCodeArray = [...drug.facilityCode];
+                    // Handle if facilityCode is already an array
+                    facilityCodeArray = drug.facilityCode.map(item => {
+                        if (typeof item === "object" && item.facilityId) {
+                            return Number(item.facilityId);
+                        }
+                        return Number(item);
+                    }).filter(id => !isNaN(id));
                 }
             }
 
@@ -316,7 +361,7 @@ const DrugMaster = () => {
                 reorderLevel: drug.reOrderLevelDispensary?.toString() || "",
                 reorderLevelStore: drug.reOrderLevelStore?.toString() || "",
                 hsnCode: drug.hsnCode || "",
-                drugSchedule: drug.masDrugScheduleRule || "",
+                drugSchedule: drug.masDrugScheduleRule || drug.drugSchedule || "",
                 isGeneric: drug.isGeneric || "",
                 facilityCode: facilityCodeArray,
                 dangerousDrug: drug.dangerousDrug || false,
@@ -379,15 +424,12 @@ const DrugMaster = () => {
         setProcess(true);
 
         try {
-            // Convert facilityCode array to comma-separated string for API
-            const facilityCodeString = formData.facilityCode.join(',');
-
             const payload = {
                 pvmsNo: formData.drugCode.trim(),
                 nomenclature: formData.drugName.trim(),
                 groupId: Number(formData.itemGroup),
                 itemTypeId: Number(formData.itemType),
-                dispUnit: formData.dispensingUnit,
+                dispUnit: Number(formData.dispensingUnit),
                 unitAU: Number(formData.unitAU) || 0,
                 sectionId: Number(formData.section),
                 itemClassId: Number(formData.itemClass),
@@ -395,11 +437,12 @@ const DrugMaster = () => {
                 adispQty: Number(formData.dispensingQty) || 0,
                 reOrderLevelDispensary: Number(formData.reorderLevel) || 0,
                 reOrderLevelStore: Number(formData.reorderLevelStore) || 0,
+                reOrderLevelWard: 0, // Add this field if needed
                 hsnCode: formData.hsnCode || "",
-                masDrugScheduleRule: formData.drugSchedule || "",
-                isGeneric: formData.isGeneric || "",
-                facilityCode: facilityCodeString,
-                dangerousDrug: formData.dangerousDrug,
+                drugSchedule: formData.drugSchedule || null,
+                isGeneric: formData.isGeneric || "n",
+                dangerousDrug: formData.dangerousDrug ? "y" : "n",
+                facility: formData.facilityCode, // Send as List<Long> directly
                 status: "y"
             };
 
@@ -461,7 +504,7 @@ const DrugMaster = () => {
             drugSchedule: "",
             isGeneric: "",
             facilityCode: [],
-            dangerousDrug: false,
+            dangerousDrug: "",
         });
     };
 
@@ -502,14 +545,19 @@ const DrugMaster = () => {
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
 
-    // Options for Facility Code multi-select dropdown
-    const facilityOptions = ["option 1", "option 2", "option 3", "option 4", "option 5"];
-
     // Helper to display selected options in the dropdown button
     const getSelectedFacilityText = () => {
         if (formData.facilityCode.length === 0) return "Select Facility Code(s)";
-        if (formData.facilityCode.length <= 2) return formData.facilityCode.join(", ");
-        return `${formData.facilityCode.slice(0, 2).join(", ")} +${formData.facilityCode.length - 2} more`;
+        if (formData.facilityCode.length <= 2) {
+            return formData.facilityCode.map(id => {
+                const facility = facilityOptions.find(f => f.facilityId === id);
+                return facility ? facility.facilityName : `ID: ${id}`;
+            }).join(", ");
+        }
+        return `${formData.facilityCode.slice(0, 2).map(id => {
+            const facility = facilityOptions.find(f => f.facilityId === id);
+            return facility ? facility.facilityName : `ID: ${id}`;
+        }).join(", ")} +${formData.facilityCode.length - 2} more`;
     };
 
     return (
@@ -877,7 +925,7 @@ const DrugMaster = () => {
                                             >
                                                 <option value="">Select Drug Schedule</option>
                                                 {drugScheduleData.map((schedule) => (
-                                                    <option key={schedule.scheduleId} value={schedule.scheduleName}>
+                                                    <option key={schedule.scheduleCode} value={schedule.scheduleCode}>
                                                         {schedule.scheduleName}
                                                     </option>
                                                 ))}
@@ -914,19 +962,19 @@ const DrugMaster = () => {
                                                 </button>
                                                 {isFacilityDropdownOpen && (
                                                     <div className="dropdown-menu show p-2" style={{ width: "100%", maxHeight: "200px", overflowY: "auto" }}>
-                                                        {facilityOptions.map(option => (
-                                                            <div className="form-check" key={option}>
+                                                        {facilityOptions.map(facility => (
+                                                            <div className="form-check" key={facility.facilityId}>
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
                                                                     name="facilityCode"
-                                                                    value={option}
-                                                                    id={`facility_dropdown_${option}`}
-                                                                    checked={formData.facilityCode.includes(option)}
+                                                                    value={facility.facilityId}
+                                                                    id={`facility_dropdown_${facility.facilityId}`}
+                                                                    checked={formData.facilityCode.includes(facility.facilityId)}
                                                                     onChange={handleInputChange}
                                                                 />
-                                                                <label className="form-check-label" htmlFor={`facility_dropdown_${option}`}>
-                                                                    {option}
+                                                                <label className="form-check-label" htmlFor={`facility_dropdown_${facility.facilityId}`}>
+                                                                    {facility.facilityName} ({facility.facilityCode})
                                                                 </label>
                                                             </div>
                                                         ))}
