@@ -22,7 +22,7 @@ const DrugMaster = () => {
         hsnCode: "",
         drugSchedule: "",
         isGeneric: "",
-        facilityCode: [],   // array for multi-select (will store facility IDs as numbers)
+        facilityCode: [],
         dangerousDrug: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
@@ -281,7 +281,6 @@ const DrugMaster = () => {
         
         // Special handling for facilityCode checkboxes (multi-select inside dropdown)
         if (name === "facilityCode") {
-            // Convert value to Long for API compatibility
             const facilityId = Number(value);
             let updatedArray = [...formData.facilityCode];
             if (checked) {
@@ -299,10 +298,12 @@ const DrugMaster = () => {
         }
     }
 
-    const handleSwitchChange = (id, newStatus, name) => {
-        setConfirmDialog({ isOpen: true, drugId: id, newStatus, name })
+    const handleSwitchChange = (id, currentStatus, name) => {
+        const newStatus = currentStatus === "y" ? "n" : "y";
+        setConfirmDialog({ isOpen: true, drugId: id, newStatus, name });
     }
 
+    // UPDATED: handleConfirm with proper popup pattern
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.drugId !== null) {
             try {
@@ -310,17 +311,25 @@ const DrugMaster = () => {
                     `${MAS_DRUG_MAS}/status/${confirmDialog.drugId}?status=${confirmDialog.newStatus}`,
                 );
                 if (response.status === 200) {
-                    showPopup("Status updated successfully!", "success");
-                    await fetchDrugMasterData();
+                    // Set popup with onClose callback to refresh data
+                    setPopupMessage({
+                        message: `Drug "${confirmDialog.name}" ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            fetchDrugMasterData(); // Refresh data after popup closes
+                            setCurrentPage(1);
+                        }
+                    });
                 } else {
-                    showPopup(response.message || "Failed to update status.", "error");
+                    throw new Error(response.message || "Failed to update status.");
                 }
             } catch (error) {
                 console.error("Error updating status:", error);
-                showPopup("Error updating status.", "error");
+                showPopup(error.message || "Error updating status.", "error");
             }
         }
-        setConfirmDialog({ isOpen: false, drugId: null, newStatus: null });
+        setConfirmDialog({ isOpen: false, drugId: null, newStatus: null, name: "" });
     }
 
     const handleEdit = async (drug) => {
@@ -333,10 +342,8 @@ const DrugMaster = () => {
             let facilityCodeArray = [];
             if (drug.facilityCode) {
                 if (typeof drug.facilityCode === 'string') {
-                    // Handle if facilityCode is a comma-separated string
                     facilityCodeArray = drug.facilityCode.split(',').map(s => Number(s.trim())).filter(id => !isNaN(id));
                 } else if (Array.isArray(drug.facilityCode)) {
-                    // Handle if facilityCode is already an array
                     facilityCodeArray = drug.facilityCode.map(item => {
                         if (typeof item === "object" && item.facilityId) {
                             return Number(item.facilityId);
@@ -413,6 +420,7 @@ const DrugMaster = () => {
         });
     }
 
+    // UPDATED: handleSave with proper popup pattern
     const handleSave = async (e) => {
         e.preventDefault();
         
@@ -437,40 +445,39 @@ const DrugMaster = () => {
                 adispQty: Number(formData.dispensingQty) || 0,
                 reOrderLevelDispensary: Number(formData.reorderLevel) || 0,
                 reOrderLevelStore: Number(formData.reorderLevelStore) || 0,
-                reOrderLevelWard: 0, // Add this field if needed
+                reOrderLevelWard: 0,
                 hsnCode: formData.hsnCode || "",
                 drugSchedule: formData.drugSchedule || null,
                 isGeneric: formData.isGeneric || "n",
                 dangerousDrug: formData.dangerousDrug ? "y" : "n",
-                facility: formData.facilityCode, // Send as List<Long> directly
+                facility: formData.facilityCode,
                 status: "y"
             };
 
             console.log("Saving payload:", payload);
-            console.log("Is edit mode:", editEnabled);
-            console.log("Editing drug ID:", editingDrug?.itemId);
 
             let response;
-            let url;
 
             if (editingDrug && editEnabled) {
-                // UPDATE operation
-                url = `${MAS_DRUG_MAS}/update/${editingDrug.itemId}`;
-                console.log("Update URL:", url);
-                response = await putRequest(url, payload);
+                response = await putRequest(`${MAS_DRUG_MAS}/update/${editingDrug.itemId}`, payload);
             } else {
-                // CREATE operation
-                url = `${MAS_DRUG_MAS}/create`;
-                console.log("Create URL:", url);
-                response = await postRequest(url, payload);
+                response = await postRequest(`${MAS_DRUG_MAS}/create`, payload);
             }
 
             console.log("API Response:", response);
 
             if (response.status === 200 || response.status === 201) {
-                showPopup(editEnabled ? "Drug updated successfully!" : "Drug added successfully!", "success");
-                resetForm();
-                await fetchDrugMasterData();
+                // KEY CHANGE: Set popup with onClose callback to handle everything after OK click
+                setPopupMessage({
+                    message: editEnabled ? "Drug updated successfully!" : "Drug added successfully!",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchDrugMasterData(); // Data refresh happens here
+                        setCurrentPage(1);
+                    }
+                });
             } else {
                 throw new Error(response.message || response.response?.message || "Failed to save drug");
             }
@@ -504,7 +511,7 @@ const DrugMaster = () => {
             drugSchedule: "",
             isGeneric: "",
             facilityCode: [],
-            dangerousDrug: "",
+            dangerousDrug: false,
         });
     };
 
@@ -518,14 +525,19 @@ const DrugMaster = () => {
         fetchDrugMasterData();
     };
 
+    // UPDATED: showPopup function with proper onClose pattern
     const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
-                setPopupMessage(null)
+                setPopupMessage(null);
+                // For error popups, we might want to refresh data
+                if (type === "error") {
+                    fetchDrugMasterData();
+                }
             },
-        })
+        });
     }
 
     const filteredDrugs = drugs.filter((item) => {
@@ -545,7 +557,6 @@ const DrugMaster = () => {
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
 
-    // Helper to display selected options in the dropdown button
     const getSelectedFacilityText = () => {
         if (formData.facilityCode.length === 0) return "Select Facility Code(s)";
         if (formData.facilityCode.length <= 2) {
@@ -641,7 +652,7 @@ const DrugMaster = () => {
                                                                         className="form-check-input"
                                                                         type="checkbox"
                                                                         checked={item.status === "y"}
-                                                                        onChange={() => handleSwitchChange(item.itemId, item.status === "y" ? "n" : "y", item.nomenclature)}
+                                                                        onChange={() => handleSwitchChange(item.itemId, item.status, item.nomenclature)}
                                                                         id={`switch-${item.itemId}`}
                                                                     />
                                                                     <label
@@ -674,7 +685,6 @@ const DrugMaster = () => {
                                         </table>
                                     </div>
                                     
-                                    {/* PAGINATION USING REUSABLE COMPONENT */}
                                     {filteredDrugs.length > 0 && (
                                         <Pagination
                                             totalItems={filteredDrugs.length}
@@ -946,7 +956,6 @@ const DrugMaster = () => {
                                             </select>
                                         </div>
 
-                                        {/* Facility Code - Custom multi-select dropdown with checkboxes */}
                                         <div className="form-group col-md-4 mt-3" ref={facilityDropdownRef}>
                                             <label>
                                                 Facility Code <span className="text-danger">*</span>
