@@ -1,5 +1,5 @@
-export const API_HOST =  'http://103.133.215.182:8081/hims';
-//  export const API_HOST = 'http://localhost:8080';
+//export const API_HOST =  'http://103.133.215.182:8081/hims';
+ export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.17:8080';
  //export const API_HOST = 'http://192.168.1.29:8080';
 
@@ -54,6 +54,7 @@ export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
 export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
 export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
+export const MAS_DRUGSCHEDULE = `${MASTERS}/masDrugSchedule`;
 
 export const DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
