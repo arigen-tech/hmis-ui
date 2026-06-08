@@ -2,7 +2,7 @@ import { useState, useEffect, useRef } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE } from "../../../config/apiConfig";
+import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE , MAS_ITEMFACILTY } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const DrugMaster = () => {
@@ -261,7 +261,7 @@ const DrugMaster = () => {
     // Fetch facility data
     const fetchFacilityData = async () => {
         try {
-            const data = await getRequest(`/master/masItemFacility/getAll/1`);
+            const data = await getRequest(`${MAS_ITEMFACILTY}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 // Filter only active facilities
                 const activeFacilities = data.response.filter(facility => facility.status === "y");

@@ -55,6 +55,7 @@ export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
 export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
 export const MAS_DRUGSCHEDULE = `${MASTERS}/masDrugSchedule`;
+export const MAS_ITEMFACILTY = `${MASTERS}/masItemFacility`;
 
 export const DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
