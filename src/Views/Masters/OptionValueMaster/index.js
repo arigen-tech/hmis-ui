@@ -1,15 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import Pagination, {
-  DEFAULT_ITEMS_PER_PAGE,
-} from "../../../Components/Pagination";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { MAS_QUESTION_OPTION_VALUE, MAS_OPD_QUESTION } from "../../../config/apiConfig";
-import {
-  getRequest,
-  postRequest,
-  putRequest,
-} from "../../../service/apiService";
+import { getRequest, postRequest, putRequest } from "../../../service/apiService";
 
 import {
   FETCH_OPTION_VALUE,
@@ -17,15 +11,21 @@ import {
   UPDATE_OPTION_VALUE,
   SAVE_OPTION_VALUE,
   DUPLICATE_OPTION_VALUE,
-  STATUS_UPDATED,
   UPDATE_STATUS,
   STATUS,
 } from "../../../config/constants";
 
+// ========== CONFIGURATION ==========
+// Set this to the actual field name in your question API that stores the heading/topic.
+// Common names: "topic", "scaleName", "category", "headingName", "section", "group"
+const HEADING_FIELD = "heading";   // CHANGE THIS TO MATCH YOUR API FIELD
+// ==================================
+
 const OptionValueMaster = () => {
   const [loading, setLoading] = useState(false);
-  const [saving, setSaving] = useState(false);          
+  const [saving, setSaving] = useState(false);
   const [data, setData] = useState([]);
+  const [rawData, setRawData] = useState([]);
   const [formData, setFormData] = useState({
     optionCode: "",
     optionValue: "",
@@ -44,56 +44,108 @@ const OptionValueMaster = () => {
     name: "",
   });
   const [questions, setQuestions] = useState([]);
+  const [debugInfo, setDebugInfo] = useState(null);
 
-  // Search dropdown states
-  const [tempSelectedCode, setTempSelectedCode] = useState('');
-  const [tempSelectedValue, setTempSelectedValue] = useState('');
-  const [selectedCode, setSelectedCode] = useState('');
-  const [selectedValue, setSelectedValue] = useState('');
+  // Filter states
+  const [tempSelectedHeading, setTempSelectedHeading] = useState('');
+  const [tempSelectedQuestion, setTempSelectedQuestion] = useState('');
+  const [selectedHeading, setSelectedHeading] = useState('');
+  const [selectedQuestion, setSelectedQuestion] = useState('');
 
-  const MAX_LENGTH = 50;
+  // Form dependent heading state
+  const [formSelectedHeading, setFormSelectedHeading] = useState('');
 
-  const formatDate = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      if (isNaN(date.getTime())) return "N/A";
-      const day = String(date.getDate()).padStart(2, "0");
-      const month = String(date.getMonth() + 1).padStart(2, "0");
-      const year = date.getFullYear();
-      return `${day}/${month}/${year}`;
-    } catch {
-      return "N/A";
+  // ---------- Helper: extract heading from question (flexible & robust) ----------
+  const getHeading = (q) => {
+    if (!q) return "";
+    
+    // Try the configured field first
+    if (q[HEADING_FIELD] && String(q[HEADING_FIELD]).trim()) {
+      return String(q[HEADING_FIELD]).trim();
     }
+    
+    // Fallback: try common alternative names
+    const alternatives = ["topic", "scaleName", "category", "headingName", "questionHeading", "section", "group", "title"];
+    for (let alt of alternatives) {
+      if (q[alt] && String(q[alt]).trim()) {
+        return String(q[alt]).trim();
+      }
+    }
+    
+    // Last resort: use first few words of the question text as heading
+    if (q.question) {
+      const short = q.question.substring(0, 40);
+      return short + (q.question.length > 40 ? "…" : "");
+    }
+    
+    return "Uncategorized";
   };
 
-  // Show popup
-  const showPopup = (message, type = "success") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  // Enrich option values with heading & question text
+  const enrichWithHeading = (optionValues, questionsList) => {
+    return optionValues.map(option => {
+      const question = questionsList.find(q => q.id === option.questionId);
+      return {
+        ...option,
+        headingName: getHeading(question) || "—",
+        questionText: option.questionName || question?.question || "—"
+      };
+    });
   };
 
-  // ========== Fetch all option values ==========
+  // Fetch option values
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
       const { response } = await getRequest(
         `${MAS_QUESTION_OPTION_VALUE}/getAll/${flag}`
       );
-      setData(response || []);
+      setRawData(response || []);
+      if (questions.length) {
+        setData(enrichWithHeading(response || [], questions));
+      } else {
+        setData(response || []);
+      }
     } catch {
       showPopup(FETCH_OPTION_VALUE, "error");
+      setRawData([]);
       setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // ========== Fetch questions for dropdown ==========
+  // Fetch questions with debugging (optional)
   const fetchQuestions = async (flag = 0) => {
     try {
       const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
-      setQuestions(res?.response || res?.data?.response || []);
-    } catch {
+      const qs = res?.response || res?.data?.response || [];
+      console.log("Questions API response:", qs);
+      
+      if (qs.length > 0) {
+        const sample = qs[0];
+        console.log("Sample question object:", sample);
+        console.log("Available fields in question:", Object.keys(sample));
+        console.log(`Value of configured heading field "${HEADING_FIELD}":`, sample[HEADING_FIELD]);
+        
+        // Optional debug info (can be shown in UI if needed)
+        setDebugInfo({
+          totalQuestions: qs.length,
+          sampleFields: Object.keys(sample),
+          headingValue: sample[HEADING_FIELD] || "NOT FOUND",
+          firstQuestion: sample.question?.substring(0, 50)
+        });
+      } else {
+        setDebugInfo({ totalQuestions: 0, error: "No questions found" });
+      }
+      
+      setQuestions(qs);
+      if (rawData.length) {
+        setData(enrichWithHeading(rawData, qs));
+      }
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      setDebugInfo({ error: error.message });
       setQuestions([]);
     }
   };
@@ -103,35 +155,46 @@ const OptionValueMaster = () => {
     fetchQuestions();
   }, []);
 
-  // ========== Unique options for search dropdowns (memoized) ==========
-  const uniqueOptionCodes = useMemo(
-    () => [...new Set(data.map(item => item.optionCode).filter(Boolean))],
-    [data]
-  );
-  const uniqueOptionValues = useMemo(
-    () => [...new Set(data.map(item => item.optionValue).filter(Boolean))],
-    [data]
-  );
+  useEffect(() => {
+    if (rawData.length && questions.length) {
+      setData(enrichWithHeading(rawData, questions));
+    }
+  }, [rawData, questions]);
 
-  // ========== Filter data based on selected criteria ==========
+  // Unique headings for dropdowns
+  const uniqueHeadings = useMemo(() => {
+    const headings = questions.map(q => getHeading(q)).filter(h => h && h.trim() !== "");
+    return [...new Set(headings)];
+  }, [questions]);
+
+  // Filter data based on selected heading & question
   const filteredData = data.filter(rec => {
-    if (selectedCode && rec.optionCode !== selectedCode) return false;
-    if (selectedValue && rec.optionValue !== selectedValue) return false;
+    if (selectedHeading && rec.headingName !== selectedHeading) return false;
+    if (selectedQuestion) {
+      const question = questions.find(q => q.id === rec.questionId);
+      const questionText = question?.question || rec.questionText;
+      if (questionText !== selectedQuestion) return false;
+    }
     return true;
   });
 
-  // ========== Search / Reset handlers ==========
+  // Pagination
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
+
+  // Search handlers
   const handleSearch = () => {
-    setSelectedCode(tempSelectedCode);
-    setSelectedValue(tempSelectedValue);
+    setSelectedHeading(tempSelectedHeading);
+    setSelectedQuestion(tempSelectedQuestion);
     setCurrentPage(1);
   };
 
   const handleReset = () => {
-    setTempSelectedCode('');
-    setTempSelectedValue('');
-    setSelectedCode('');
-    setSelectedValue('');
+    setTempSelectedHeading('');
+    setTempSelectedQuestion('');
+    setSelectedHeading('');
+    setSelectedQuestion('');
     setCurrentPage(1);
   };
 
@@ -139,19 +202,14 @@ const OptionValueMaster = () => {
     handleReset();
   };
 
-  // ========== Pagination ==========
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
-
-  // ========== Form input handling with validation ==========
+  // Form handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
 
-    const scoreValid = value => {
-      if (value === "") return false;
-      const num = Number(value);
+    const scoreValid = val => {
+      if (val === "") return false;
+      const num = Number(val);
       return !isNaN(num) && num >= 0;
     };
 
@@ -174,6 +232,7 @@ const OptionValueMaster = () => {
     });
     setIsFormValid(false);
     setEditingRecord(null);
+    setFormSelectedHeading('');
   };
 
   const handleCancel = () => {
@@ -181,15 +240,12 @@ const OptionValueMaster = () => {
     setShowForm(false);
   };
 
-  // ========== Save (Create or Update) ==========
+  // Save (create/update)
   const handleSave = async (e) => {
     e.preventDefault();
-    
     if (!isFormValid || saving) return;
 
     const newCode = formData.optionCode.trim().toLowerCase();
-
-    // Check duplicate optionCode (case‑insensitive)
     const duplicate = data.find(
       (rec) =>
         rec.optionCode?.toLowerCase() === newCode &&
@@ -202,48 +258,25 @@ const OptionValueMaster = () => {
     }
 
     setSaving(true);
-
     try {
       if (editingRecord) {
-        const response = await putRequest(
+        await putRequest(
           `${MAS_QUESTION_OPTION_VALUE}/update/${editingRecord.id}`,
           formData
         );
-        
-        if (response.status === 200) {
-          setPopupMessage({
-            message: UPDATE_OPTION_VALUE,
-            type: "success",
-            onClose: () => {
-              setPopupMessage(null);
-              resetForm();
-              fetchData();
-              setShowForm(false);
-            }
-          });
-        } else {
-          throw new Error(response.message || "Update failed");
-        }
+        showPopup(UPDATE_OPTION_VALUE, "success");
+        resetForm();
+        fetchData();
+        setShowForm(false);
       } else {
-        const response = await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
+        await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
           ...formData,
           status: "y",
         });
-        
-        if (response.status === 201 || response.status === 200) {
-          setPopupMessage({
-            message: CREATE_OPTION_VALUE,
-            type: "success",
-            onClose: () => {
-              setPopupMessage(null);
-              resetForm();
-              fetchData();
-              setShowForm(false);
-            }
-          });
-        } else {
-          throw new Error(response.message || "Save failed");
-        }
+        showPopup(CREATE_OPTION_VALUE, "success");
+        resetForm();
+        fetchData();
+        setShowForm(false);
       }
     } catch (error) {
       console.error("Save error:", error);
@@ -253,7 +286,6 @@ const OptionValueMaster = () => {
     }
   };
 
-  // ========== Edit ==========
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
@@ -262,11 +294,15 @@ const OptionValueMaster = () => {
       optionScore: rec.optionScore,
       questionId: rec.questionId,
     });
+    const questionObj = questions.find(q => q.id === rec.questionId);
+    if (questionObj) {
+      setFormSelectedHeading(getHeading(questionObj));
+    }
     setShowForm(true);
     setIsFormValid(true);
   };
 
-  // ========== Status toggle with confirmation ==========
+  // Status toggle
   const handleSwitchChange = (id, currentStatus, name) => {
     const newStatus = currentStatus === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE;
     setConfirmDialog({
@@ -280,28 +316,18 @@ const OptionValueMaster = () => {
   const handleConfirm = async (confirmed) => {
     if (confirmed && confirmDialog.id !== null) {
       setSaving(true);
-
       try {
-        const response = await putRequest(
+        await putRequest(
           `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
-        
-        if (response.status === 200) {
-          setPopupMessage({
-            message: `Option value "${confirmDialog.name}" ${
-              confirmDialog.newStatus === STATUS.ACTIVE ? "activated" : "deactivated"
-            } successfully!`,
-            type: "success",
-            onClose: () => {
-              setPopupMessage(null);
-              resetForm();
-              fetchData();
-              setCurrentPage(1);
-            },
-          });
-        } else {
-          throw new Error(response.message || "Failed to update status");
-        }
+        showPopup(
+          `Option value "${confirmDialog.name}" ${
+            confirmDialog.newStatus === STATUS.ACTIVE ? "activated" : "deactivated"
+          } successfully!`,
+          "success"
+        );
+        fetchData();
+        setCurrentPage(1);
       } catch (error) {
         console.error("Status update error:", error);
         showPopup(UPDATE_STATUS, "error");
@@ -309,17 +335,24 @@ const OptionValueMaster = () => {
         setSaving(false);
       }
     }
-
     setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
   };
 
-  // ========== Render ==========
+  const showPopup = (message, type = "success") => {
+    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  };
+
+  // Questions for form (dependent on formSelectedHeading)
+  const filteredQuestionsForForm = useMemo(() => {
+    if (!formSelectedHeading) return [];
+    return questions.filter(q => getHeading(q) === formSelectedHeading);
+  }, [questions, formSelectedHeading]);
+
   return (
     <div className="content-wrapper">
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
-            {/* HEADER */}
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title">Option Value Master</h4>
               <div className="d-flex align-items-center">
@@ -343,11 +376,7 @@ const OptionValueMaster = () => {
                     </button>
                   </>
                 ) : (
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleCancel}
-                  >
-                    Back
+                  <button className="btn btn-secondary" onClick={handleCancel}>                    Back
                   </button>
                 )}
               </div>
@@ -356,45 +385,48 @@ const OptionValueMaster = () => {
             <div className="card-body">
               {loading && !showForm && <LoadingScreen />}
 
-              {/* ================= LIST VIEW ================= */}
+              {/* LIST VIEW */}
               {!showForm && !loading && (
                 <>
-                  {/* SEARCH UI */}
+                  {/* FILTER SECTION */}
                   <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
-                    <div className="col-md-3">
-                      <label className="fw-bold mb-1">Option Code</label>
+                    <div className="col-md-4">
+                      <label className="fw-bold mb-1">Question Heading</label>
                       <select
                         className="form-select"
-                        value={tempSelectedCode}
-                        onChange={(e) => setTempSelectedCode(e.target.value)}
+                        value={tempSelectedHeading}
+                        onChange={(e) => {
+                          setTempSelectedHeading(e.target.value);
+                          setTempSelectedQuestion('');
+                        }}
                       >
-                        <option value="">Select Code</option>
-                        {uniqueOptionCodes.map(code => (
-                          <option key={code} value={code}>{code}</option>
+                        <option value="">Select Heading</option>
+                        {uniqueHeadings.map(heading => (
+                          <option key={heading} value={heading}>{heading}</option>
                         ))}
                       </select>
                     </div>
-
-                    <div className="col-md-3">
-                      <label className="fw-bold mb-1">Option Value</label>
+                    <div className="col-md-4">
+                      <label className="fw-bold mb-1">Question</label>
                       <select
                         className="form-select"
-                        value={tempSelectedValue}
-                        onChange={(e) => setTempSelectedValue(e.target.value)}
+                        value={tempSelectedQuestion}
+                        onChange={(e) => setTempSelectedQuestion(e.target.value)}
+                        disabled={!tempSelectedHeading}
                       >
-                        <option value="">Select Value</option>
-                        {uniqueOptionValues.map(value => (
-                          <option key={value} value={value}>{value}</option>
-                        ))}
+                        <option value="">Select Question</option>
+                        {questions
+                          .filter(q => getHeading(q) === tempSelectedHeading)
+                          .map(q => (
+                            <option key={q.id} value={q.question}>{q.question}</option>
+                          ))}
                       </select>
                     </div>
-
                     <div className="col-auto">
                       <button className="btn btn-primary" onClick={handleSearch}>
                         SEARCH
                       </button>
                     </div>
-
                     <div className="col-auto">
                       <button className="btn btn-secondary" onClick={handleReset}>
                         RESET
@@ -402,56 +434,61 @@ const OptionValueMaster = () => {
                     </div>
                   </div>
 
-                  <table className="table table-bordered table-hover">
-                    <thead className="table-light">
-                      <tr>
-                        <th>Option Code</th>
-                        <th>Option Value</th>
-                        <th>Option Score</th>
-                        <th>Question Name</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {currentItems.length > 0 ? (
-                        currentItems.map((rec) => (
-                          <tr key={rec.id}>
-                            <td>{rec.optionCode}</td>
-                            <td>{rec.optionValue}</td>
-                            <td>{rec.optionScore}</td>
-                            <td>{rec.questionName}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={rec.status === STATUS.ACTIVE}
-                                  onChange={() => handleSwitchChange(rec.id, rec.status, rec.optionCode)}
-                                />
-                                <label className="form-check-label ms-2">
-                                  {rec.status === STATUS.ACTIVE ? "Active" : "Inactive"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-success btn-sm"
-                                disabled={rec.status !== STATUS.ACTIVE}
-                                onClick={() => handleEdit(rec)}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
+                  {/* TABLE with fixed column widths */}
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-hover" style={{ minWidth: "800px" }}>
+                      <thead className="table-light">
                         <tr>
-                          <td colSpan="6" className="text-center">No Records Found</td>
+                          <th style={{ width: "15%" }}>Heading</th>
+                          <th style={{ width: "25%" }}>Question</th>
+                          <th style={{ width: "20%" }}>Option Value Name</th>
+                          <th style={{ width: "15%" }}>Option Value Code</th>
+                          <th style={{ width: "10%" }}>Score</th>
+                          <th style={{ width: "10%" }}>Status</th>
+                          <th style={{ width: "5%" }}>Edit</th>
                         </tr>
-                      )}
-                    </tbody>
-                  </table>
+                      </thead>
+                      <tbody>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((rec) => (
+                            <tr key={rec.id}>
+                              <td style={{ wordBreak: "break-word" }}>{rec.headingName}</td>
+                              <td style={{ wordBreak: "break-word" }}>{rec.questionText}</td>
+                              <td style={{ wordBreak: "break-word" }}>{rec.optionValue}</td>
+                              <td>{rec.optionCode}</td>
+                              <td>{rec.optionScore}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={rec.status === STATUS.ACTIVE}
+                                    onChange={() => handleSwitchChange(rec.id, rec.status, rec.optionCode)}
+                                  />
+                                  <label className="form-check-label ms-2">
+                                    {rec.status === STATUS.ACTIVE ? "Active" : "Inactive"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-success btn-sm"
+                                  disabled={rec.status !== STATUS.ACTIVE}
+                                  onClick={() => handleEdit(rec)}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="7" className="text-center">No Records Found</td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
                   <Pagination
                     totalItems={filteredData.length}
@@ -462,12 +499,52 @@ const OptionValueMaster = () => {
                 </>
               )}
 
-              {/* ================= FORM VIEW ================= */}
+              {/* FORM VIEW */}
               {showForm && (
                 <form onSubmit={handleSave} className="row g-3">
+                  <div className="col-md-6">
+                    <label>
+                      Question Heading <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      className="form-select mt-1"
+                      value={formSelectedHeading}
+                      onChange={(e) => {
+                        setFormSelectedHeading(e.target.value);
+                        setFormData(prev => ({ ...prev, questionId: "" }));
+                      }}
+                      disabled={saving}
+                    >
+                      <option value="">Select Heading</option>
+                      {uniqueHeadings.map(heading => (
+                        <option key={heading} value={heading}>{heading}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="col-md-6">
+                    <label>
+                      Question <span className="text-danger">*</span>
+                    </label>
+                    <select
+                      name="questionId"
+                      className="form-select mt-1"
+                      value={formData.questionId}
+                      onChange={handleInputChange}
+                      disabled={saving || !formSelectedHeading}
+                    >
+                      <option value="">Select Question</option>
+                      {filteredQuestionsForForm.map(q => (
+                        <option key={q.id} value={q.id}>
+                          {q.question}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
                   <div className="col-md-4">
                     <label>
-                      Option Code <span className="text-danger">*</span>
+                      Option Value Code <span className="text-danger">*</span>
                     </label>
                     <input
                       name="optionCode"
@@ -480,7 +557,7 @@ const OptionValueMaster = () => {
 
                   <div className="col-md-4">
                     <label>
-                      Option Value <span className="text-danger">*</span>
+                      Option Value Name <span className="text-danger">*</span>
                     </label>
                     <input
                       name="optionValue"
@@ -493,7 +570,7 @@ const OptionValueMaster = () => {
 
                   <div className="col-md-4">
                     <label>
-                      Option Score <span className="text-danger">*</span>
+                      Score <span className="text-danger">*</span>
                     </label>
                     <input
                       name="optionScore"
@@ -504,26 +581,6 @@ const OptionValueMaster = () => {
                       onChange={handleInputChange}
                       disabled={saving}
                     />
-                  </div>
-
-                  <div className="col-md-4">
-                    <label>
-                      Question Name <span className="text-danger">*</span>
-                    </label>
-                    <select
-                      name="questionId"
-                      className="form-select mt-1"
-                      value={formData.questionId}
-                      onChange={handleInputChange}
-                      disabled={saving}
-                    >
-                      <option value="">Select Question</option>
-                      {questions.map((q) => (
-                        <option key={q.id} value={q.id}>
-                          {q.question}
-                        </option>
-                      ))}
-                    </select>
                   </div>
 
                   <div className="col-12 text-end">
@@ -548,7 +605,7 @@ const OptionValueMaster = () => {
 
               {popupMessage && <Popup {...popupMessage} />}
 
-              {/* Custom confirmation dialog */}
+              {/* Confirmation Dialog */}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
                   <div className="modal-dialog">

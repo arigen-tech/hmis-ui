@@ -86,7 +86,7 @@ const CountryMaster = () => {
 
     const handleSave = async (e) => {
         e.preventDefault();
-        setIsLoading(true);
+        //setIsLoading(true);
 
         if (!isFormValid) {
             setIsLoading(false);
@@ -178,7 +178,7 @@ const CountryMaster = () => {
             );
 
         } finally {
-            setIsLoading(false);
+            //setIsLoading(false);
         }
     };
 

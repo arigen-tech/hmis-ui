@@ -1,5 +1,5 @@
-export const API_HOST =  'http://103.133.215.182:8081/hims';
-//  export const API_HOST = 'http://localhost:8080';
+//export const API_HOST =  'http://103.133.215.182:8081/hims';
+ export const API_HOST = 'http://localhost:8080';
 //  export const API_HOST = 'http://192.168.1.17:8080';
  //export const API_HOST = 'http://192.168.1.29:8080';
 
@@ -54,6 +54,8 @@ export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
 export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
 export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
+export const MAS_DRUGSCHEDULE = `${MASTERS}/masDrugSchedule`;
+export const MAS_ITEMFACILTY = `${MASTERS}/masItemFacility`;
 
 export const DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
@@ -365,9 +367,26 @@ export const OPD_SERVICE_CATAGORY = "SC001";
 export const LAB_SERVICE_CATAGORY = "SC002";
 export const SAC_CODE_REGISTRATION = "REG110";
 
-//OPTHOMOLOGY 
+//ENT
+export const ENT_DEPARTMENT_ID = 859;
+export const GET_ENT_EXAMINATION_DETAIL = `/opd/getEntExaminationDetail`;
+export const SAVE_ENT_DETAILS = "/opd/saveEntDetails";
+
+
+//OB&G
+export const OBG_DEPARTMENT_ID = 858;
+export const GET_OBG_EXAMINATION_DETAIL = `/opd/getObgExaminationDetail`;
+
+//OPTHALMOLOGY 
 export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
-export const GET_OPTHOMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
+export const GET_OPTHALMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
+
+//Dental
+export const DENTAL_DEPARTMENT_ID = 863;
+export const GET_DENTAL_EXAMINATION_DETAIL = `/opd/getDentalExaminationDetail`;
+
+
+
 
 export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
 export const PROCESS_LAB_PAYMENT = `/billing/processLabPayment`;

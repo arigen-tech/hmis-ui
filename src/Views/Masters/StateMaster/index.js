@@ -114,7 +114,7 @@ const StateMaster = () => {
 
 const handleSave = async (e) => {
   e.preventDefault();
-  setLoading(true);
+  //setLoading(true);
 
   if (!isFormValid) {
     setLoading(false);
@@ -207,7 +207,7 @@ const handleSave = async (e) => {
     );
 
   } finally {
-    setLoading(false);
+    //setLoading(false);
   }
 };
 

@@ -3,6 +3,7 @@ import ReactDOM from "react-dom";
 import axios from "axios";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
 import Pagination from "../../../../Components/Pagination"; 
+import Psychiatrist from "../../Psychiatrist";
 
 const ClinicalHistoryPopup = ({
   show,
@@ -17,6 +18,8 @@ const ClinicalHistoryPopup = ({
   onPageChange,
   onPageSizeChange,
   isLoading = false,
+   patientId,   
+  visitId,  
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
@@ -175,6 +178,9 @@ const ClinicalHistoryPopup = ({
     if (popupType === "vitals") {
       return "PREVIOUS VITALS HISTORY";
     }
+     if (popupType === "psychiatrist") {  // 👈 ADD THIS
+    return "PSYCHIATRIST ASSESSMENT";
+  }
     return "PREVIOUS VISITS HISTORY";
   };
 
@@ -182,6 +188,9 @@ const ClinicalHistoryPopup = ({
     if (popupType === "vitals") {
       return "mdi mdi-heart-pulse me-2";
     }
+     if (popupType === "psychiatrist") {  
+    return "mdi mdi-brain me-2";
+  }
     return "mdi mdi-clock-history me-2";
   };
 
@@ -217,7 +226,7 @@ const ClinicalHistoryPopup = ({
             maxHeight: "80vh",
             margin: "5vh auto",
             position: "fixed",
-            top: "20vh",
+            top: "5vh",
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -680,6 +689,17 @@ const ClinicalHistoryPopup = ({
                   )}
                 </>
               )}
+              {/* Psychiatrist Assessment */}
+{!isLoading && popupType === "psychiatrist" && (
+  <div>
+   <Psychiatrist 
+  onSave={(assessmentData) => {
+    console.log("Psychiatrist Assessment Saved:", assessmentData);
+  }}
+  readOnly={false}
+/>
+  </div>
+)}
             </div>
 
             {/* Footer */}

@@ -58,12 +58,15 @@ const Rolemaster = () => {
     
 
 
-    const showPopup = (message, type = 'info') => {
+    const showPopup = (message, type = 'info', onCloseCallback) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) {
+                    onCloseCallback();
+                }
             }
         });
     };
@@ -130,8 +133,8 @@ const Rolemaster = () => {
     
                 console.log("Update Response:", response);
     
-                if (response && response.response) {
-                    const updatedRole = response.response;
+                if (response && (response.status === 200 || response.status === 201)) {
+                    const updatedRole = response.data?.response || {};
     
                     setRoleData((prevData) =>
                         prevData.map((role) =>
@@ -146,7 +149,9 @@ const Rolemaster = () => {
                         )
                     );
     
-                    showPopup("Role updated successfully!", "success");
+                    showPopup("Role updated successfully!", "success", () => {
+                        setShowForm(false);
+                    });
                 } else {
                     throw new Error("Invalid response from server");
                 }
@@ -173,7 +178,9 @@ const Rolemaster = () => {
                         },
                     ]);
     
-                    showPopup("Role added successfully!", "success");
+                    showPopup("Role added successfully!", "success", () => {
+                        setShowForm(false);
+                    });
                 } else {
                     throw new Error("Invalid response from server");
                 }
@@ -212,18 +219,18 @@ const Rolemaster = () => {
                 );
                 
                 if (response && response.status === 200) {
-                    // Update the local state with the string value as received from the API
-                    setRoleData(prevData =>
-                        prevData.map(role =>
-                            role.id === confirmDialog.roleId
-                                ? { ...role, isActive: confirmDialog.newStatus }
-                                : role
-                        )
-                    );
-                    
                     showPopup(
                         `Role ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
+                        "success",
+                        () => {
+                            setRoleData(prevData =>
+                                prevData.map(role =>
+                                    role.id === confirmDialog.roleId
+                                        ? { ...role, isActive: confirmDialog.newStatus }
+                                        : role
+                                )
+                            );
+                        }
                     );
                 }
             } catch (err) {

@@ -105,7 +105,7 @@ const Gendermaster = () => {
 
  const handleSave = async (e) => {
   e.preventDefault();
-  setLoading(true);
+  //setLoading(true);
 
   if (!isFormValid) {
     setLoading(false);
@@ -196,7 +196,7 @@ const Gendermaster = () => {
     );
 
   } finally {
-    setLoading(false);
+    //setLoading(false);
   }
 };
   const showPopup = (message, type = 'info') => {

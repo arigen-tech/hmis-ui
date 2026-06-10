@@ -52,12 +52,15 @@ const Templatemaster = () => {
         fetchTemplates(0);
     }, []);
 
-    const showPopup = (message, type = 'info') => {
+    const showPopup = (message, type = 'info', onCloseCallback) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) {
+                    onCloseCallback();
+                }
             }
         });
     };
@@ -204,24 +207,25 @@ const Templatemaster = () => {
 
                 console.log("API Response:", response);
 
-                if (response && response.response) {
-                    const updatedTemplate = response.response;
+                if (response && (response.status === 200 || response.status === 201)) {
+                    const updatedTemplate = response.data?.response || {};
 
                    
-                    setTemplateData(prevData =>
-                        prevData.map(template =>
-                            template.id === confirmDialog.applicationId
-                                ? {
-                                    ...template,
-                                    status: updatedTemplate.status || confirmDialog.newStatus
-                                }
-                                : template
-                        )
-                    );
-
                     showPopup(
                         `Template ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
-                        "success"
+                        "success",
+                        () => {
+                            setTemplateData(prevData =>
+                                prevData.map(template =>
+                                    template.id === confirmDialog.applicationId
+                                        ? {
+                                            ...template,
+                                            status: updatedTemplate.status || confirmDialog.newStatus
+                                        }
+                                        : template
+                                )
+                            );
+                        }
                     );
                 } else {
                     throw new Error("Invalid response from server");
