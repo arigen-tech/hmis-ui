@@ -1,8 +1,6 @@
+import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
 
-import React, { useState, useEffect } from "react";
-
-const PregnancySection = () => {
-
+const PregnancySection = forwardRef((props, ref) => {
   const [pregnancyData, setPregnancyData] = useState({
     pregnant: false,
     lmpDate: "",
@@ -11,47 +9,84 @@ const PregnancySection = () => {
     gestationPeriod: "",
   });
 
- const handleChange = (e) => {
-  const { name, value, type, checked } = e.target;
-
-  if (name === "pregnant") {
-    setPregnancyData({
-      pregnant: checked,
-      lmpDate: checked ? pregnancyData.lmpDate : "",
-      edd: checked ? pregnancyData.edd : "",
-      currentEdd: checked ? pregnancyData.currentEdd : "",
-      gestationPeriod: "",
-    });
-    return;
-  }
-
-  setPregnancyData((prev) => ({
-    ...prev,
-    [name]: value,
+  // Expose methods to parent component
+  useImperativeHandle(ref, () => ({
+    getData: () => {
+      // Only return data if pregnant is true
+      if (!pregnancyData.pregnant) {
+        return null;
+      }
+      return {
+        isPregnant: pregnancyData.pregnant,
+        lmpDate: pregnancyData.lmpDate,
+        edd: pregnancyData.edd,
+        currentEdd: pregnancyData.currentEdd,
+        gestationPeriod: pregnancyData.gestationPeriod,
+      };
+    },
+    resetForm: () => {
+      setPregnancyData({
+        pregnant: false,
+        lmpDate: "",
+        edd: "",
+        currentEdd: "",
+        gestationPeriod: "",
+      });
+    },
+    setData: (data) => {
+      if (data) {
+        setPregnancyData({
+          pregnant: data.isPregnant || false,
+          lmpDate: data.lmpDate || "",
+          edd: data.edd || "",
+          currentEdd: data.currentEdd || "",
+          gestationPeriod: data.gestationPeriod || "",
+        });
+      }
+    }
   }));
-};
+
+  const handleChange = (e) => {
+    const { name, value, type, checked } = e.target;
+
+    if (name === "pregnant") {
+      setPregnancyData({
+        pregnant: checked,
+        lmpDate: checked ? pregnancyData.lmpDate : "",
+        edd: checked ? pregnancyData.edd : "",
+        currentEdd: checked ? pregnancyData.currentEdd : "",
+        gestationPeriod: "",
+      });
+      return;
+    }
+
+    setPregnancyData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
+  };
 
   return (
     <div className="container-fluid mt-3">
       <div className="card-body">
         <div className="row align-items-end">
           <div className="col-md-2 mb-3">
-         <div className="form-check mt-2">
-  <input
-    className="form-check-input"
-    type="checkbox"
-    name="pregnant"
-    checked={pregnancyData.pregnant}
-    onChange={handleChange}
-    id="pregnantCheck"
-  />
-  <label
-    className="form-check-label fw-bold"
-    htmlFor="pregnantCheck"
-  >
-    Pregnant
-  </label>
-</div>
+            <div className="form-check mt-2">
+              <input
+                className="form-check-input"
+                type="checkbox"
+                name="pregnant"
+                checked={pregnancyData.pregnant}
+                onChange={handleChange}
+                id="pregnantCheck"
+              />
+              <label
+                className="form-check-label fw-bold"
+                htmlFor="pregnantCheck"
+              >
+                Pregnant
+              </label>
+            </div>
           </div>
 
           <div className="col-md-2 mb-3">
@@ -80,14 +115,14 @@ const PregnancySection = () => {
 
           <div className="col-md-2 mb-3">
             <label className="form-label fw-bold">Current EDD</label>
-           <input
-  type="date"
-  className="form-control"
-  name="currentEdd"
-  value={pregnancyData.currentEdd}
-  onChange={handleChange}
-  disabled={!pregnancyData.pregnant}
-/>
+            <input
+              type="date"
+              className="form-control"
+              name="currentEdd"
+              value={pregnancyData.currentEdd}
+              onChange={handleChange}
+              disabled={!pregnancyData.pregnant}
+            />
           </div>
 
           <div className="col-md-4 mb-3">
@@ -101,16 +136,16 @@ const PregnancySection = () => {
               value={pregnancyData.gestationPeriod}
               onChange={handleChange}
               placeholder="Weeks / Days"
-               disabled={!pregnancyData.pregnant}
-                style={{
-    boxShadow: "none",
-  }}
+              disabled={!pregnancyData.pregnant}
+              style={{
+                boxShadow: "none",
+              }}
             />
           </div>
         </div>
       </div>
     </div>
   );
-};
+});
 
 export default PregnancySection;

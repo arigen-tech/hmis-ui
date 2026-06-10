@@ -10,7 +10,6 @@ import OBGDetails from "../OBGDetails";
 import EarExamination from "../EarExamination";
 import GynaMaster from "../GynaMaster";
 import Dental from "../Dental";
-import Pregnancy from "../Pregnancy";
 import Psychiatrist from "../Psychiatrist";
 
 import {
@@ -47,6 +46,7 @@ import {
   GET_ALL_DRUGS_BY_SECTION,
   OBG_DEPARTMENT_ID,
   ENT_DEPARTMENT_ID,
+  DENTAL_DEPARTMENT_ID,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -63,6 +63,7 @@ import Pagination, {
 import OpdVision from "../OpdVision";
 import { FLAG } from "../../../config/constants";
 import { data } from "react-router-dom";
+import PregnancySection from "../Pregnancy";
 
 const INDENT_SAVE_TITLE = "OPD Case Sheet";
 const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
@@ -115,7 +116,8 @@ const GeneralMedicineWaitingList = () => {
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
   const visionRef = useRef();
-
+  const earExaminationRef = useRef();
+  const pregnancyRef = useRef();
   const departmentName =
     localStorage.getItem("departmentName") ||
     sessionStorage.getItem("departmentName") ||
@@ -128,6 +130,8 @@ const GeneralMedicineWaitingList = () => {
     Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
   const isObgynDepartment = Number(loggedInDepartmentId) === OBG_DEPARTMENT_ID;
   const isEntDepartment = Number(loggedInDepartmentId) === ENT_DEPARTMENT_ID;
+  const isDentalDepartment =
+    Number(loggedInDepartmentId) === DENTAL_DEPARTMENT_ID;
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -2210,6 +2214,10 @@ const GeneralMedicineWaitingList = () => {
         vitalsPageSize,
       );
       await checkVitalPresent(patient.visitId);
+      
+      if (patient.pregnancyDetails && pregnancyRef.current) {
+      pregnancyRef.current.setData(patient.pregnancyDetails);
+    }
     }
   };
 
@@ -2256,6 +2264,12 @@ const GeneralMedicineWaitingList = () => {
   const handleBackToList = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
+    if (earExaminationRef.current) {
+      earExaminationRef.current.resetForm();
+    }
+    if (pregnancyRef.current) {
+      pregnancyRef.current.resetForm();
+    }
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
@@ -2760,6 +2774,15 @@ const GeneralMedicineWaitingList = () => {
     try {
       setIsSubmitting(true);
 
+      let pregnancyData = null;
+      if (
+        selectedPatient?.gender?.toLowerCase() === "female" &&
+        pregnancyRef.current &&
+        pregnancyRef.current.getData
+      ) {
+        pregnancyData = pregnancyRef.current.getData();
+      }
+
       let visionExaminationData = null;
       if (visionRef.current && visionRef.current.getData) {
         visionExaminationData = visionRef.current.getData();
@@ -2767,6 +2790,16 @@ const GeneralMedicineWaitingList = () => {
       const ophthalmologyExaminationDetails = isOphthalmologyDepartment
         ? buildOphthalmologyExaminationPayload(visionExaminationData)
         : null;
+
+      let entExaminationDetails = null;
+      if (isEntDepartment && earExaminationRef.current) {
+        entExaminationDetails = earExaminationRef.current.getData();
+      }
+
+      let obgDetailsData = null;
+      if (isObgynDepartment && obgDetailsRef.current) {
+        obgDetailsData = obgDetailsRef.current.getData();
+      }
 
       // ICD Diagnoses
       const icdDiagList = diagnosisItems
@@ -2797,7 +2830,6 @@ const GeneralMedicineWaitingList = () => {
           investigationDate: item.date,
         }));
 
-
       const treatmentList = treatmentItems
         .filter((item) => {
           const hasDrug =
@@ -2826,7 +2858,6 @@ const GeneralMedicineWaitingList = () => {
             instraction: item.instruction,
           };
         });
-
 
       const selectedWardCategory = wardCategories.find(
         (category) => Number(category.categoryId) === Number(wardCategory),
@@ -2861,19 +2892,6 @@ const GeneralMedicineWaitingList = () => {
         );
         return;
       }
-      let obgDetailsData = null;
-      if (isObgynDepartment && obgDetailsRef.current) {
-        obgDetailsData = obgDetailsRef.current.getData();
-
-        const validation = obgDetailsRef.current.validate();
-        if (!validation.isValid) {
-          showPopupMessage(
-            `Please fill OBG fields: ${validation.missingFields.join(", ")}`,
-            "error",
-          );
-          return;
-        }
-      }
 
       const payload = {
         // ===== Mapping IDs =====
@@ -2897,8 +2915,19 @@ const GeneralMedicineWaitingList = () => {
           ophthalmologyExaminationDetails,
         }),
 
-        ...(isObgynDepartment &&obgDetailsData && {
+        ...(isObgynDepartment &&
+          obgDetailsData && {
             opdObgDetailsRequest: obgDetailsData,
+          }),
+
+        ...(isEntDepartment &&
+          entExaminationDetails && {
+            entExaminationDetails: entExaminationDetails,
+          }),
+
+        ...(selectedPatient?.gender?.toLowerCase() === "female" &&
+          pregnancyData && {
+            pregnancyDetails: pregnancyData,
           }),
 
         // ===== Vital =====
@@ -3059,6 +3088,10 @@ const GeneralMedicineWaitingList = () => {
       presentComplaints: "",
       pastHistory: "",
     });
+
+    if (pregnancyRef.current) {
+      pregnancyRef.current.resetForm();
+    }
 
     // Reset diagnosis
     setDiagnosisItems([
@@ -4082,7 +4115,7 @@ const GeneralMedicineWaitingList = () => {
                                 label: "Previous ECG Investigation",
                               },
                               { id: "audit-history", label: "Audit History" },
-                              { id: "psychiatrist", label: "Psychiatrist" }, 
+                              { id: "psychiatrist", label: "Psychiatrist" },
                             ].map((btn) => (
                               <button
                                 key={btn.id}
@@ -4101,10 +4134,10 @@ const GeneralMedicineWaitingList = () => {
                                     );
                                     setClinicalPopupType("vitals");
                                     setShowPopup(true);
-                                    } else if (btn.id === "psychiatrist") { 
-            setClinicalPopupType("psychiatrist");
-            setShowPopup(true);
-            handleHistoryTypeClick(btn.id);
+                                  } else if (btn.id === "psychiatrist") {
+                                    setClinicalPopupType("psychiatrist");
+                                    setShowPopup(true);
+                                    handleHistoryTypeClick(btn.id);
                                   } else {
                                     handleHistoryTypeClick(btn.id);
                                   }
@@ -4212,7 +4245,7 @@ const GeneralMedicineWaitingList = () => {
                               placeholder="Enter Family History"
                             ></textarea>
                           </div>
-                          {/*PREGNANCy*/}
+                          {/*Pregnancy*/}
                           {selectedPatient?.gender?.toLowerCase() ===
                             "female" && (
                             <div className="mb-3">
@@ -4222,7 +4255,8 @@ const GeneralMedicineWaitingList = () => {
                                 </label>
                               </div>
                               <div className="mt-2">
-                                <Pregnancy
+                                <PregnancySection
+                                  ref={pregnancyRef} // ADD THIS REF
                                   patientId={selectedPatient?.patientId}
                                   visitId={selectedPatient?.visitId}
                                 />
@@ -4520,6 +4554,7 @@ const GeneralMedicineWaitingList = () => {
                     {expandedSections.earExamination && (
                       <div className="card-body">
                         <EarExamination
+                          ref={earExaminationRef}
                           patientId={selectedPatient?.patientId}
                           visitId={selectedPatient?.visitId}
                           hideHeader={true}
@@ -4530,28 +4565,30 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                 )}
                 {/* Dental Section */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("dentalExamination")}
-                  >
-                    <h6 className="mb-0 fw-bold">Dental</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.dentalExamination ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.dentalExamination && (
-                    <div className="card-body">
-                      <Dental
-                        patientId={selectedPatient?.patientId}
-                        visitId={selectedPatient?.visitId}
-                        hideHeader={true}
-                        hideButtons={true}
-                      />
+                {isDentalDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("dentalExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">Dental</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.dentalExamination ? "−" : "+"}
+                      </span>
                     </div>
-                  )}
-                </div>
+                    {expandedSections.dentalExamination && (
+                      <div className="card-body">
+                        <Dental
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 {/* Diagnosis Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
@@ -7249,8 +7286,8 @@ const GeneralMedicineWaitingList = () => {
             isLoading={
               clinicalPopupType === "visits" ? visitsLoading : vitalsLoading
             }
-             patientId={selectedPatient?.patientId}     
-    visitId={selectedPatient?.visitId}  
+            patientId={selectedPatient?.patientId}
+            visitId={selectedPatient?.visitId}
           />
         )}
 
