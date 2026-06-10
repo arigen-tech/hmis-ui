@@ -12,12 +12,11 @@ import {
   MAS_TONSIL_GRADE,
   SAVE_ENT_DETAILS,
   GET_WAITING_LIST,
+  GET_ENT_DETAILS_BY_VISIT,
 } from "../../../config/apiConfig";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 
-// API endpoint for fetching ENT examination details - replace with your actual endpoint
-const GET_ENT_EXAMINATION_DETAIL = "/opd/getEntExaminationDetails";
 
 const defaultEntForm = {
   // ===== EAR EXAMINATION =====//
@@ -274,7 +273,7 @@ const EarExamination = forwardRef(
           setFormLoading(true);
 
           try {
-            const res = await getRequest(`${GET_ENT_EXAMINATION_DETAIL}?visitId=${visitId}`);
+            const res = await getRequest(`${GET_ENT_DETAILS_BY_VISIT}?visitId=${visitId}`);
             if (res?.status === 200 && res?.response) {
               const mappedData = mapApiResponseToForm(res.response);
               setForm(mappedData);
@@ -283,7 +282,7 @@ const EarExamination = forwardRef(
             }
             initialLoadRef.current = true;
           } catch (error) {
-            console.error("Error fetching ENT examination detail:", error);
+            console.error("Error fetching ENT details by visit:", error);
             setForm(defaultEntForm);
           } finally {
             setFormLoading(false);
@@ -358,7 +357,7 @@ const EarExamination = forwardRef(
       setFormLoading(true);
 
       try {
-        const res = await getRequest(`${GET_ENT_EXAMINATION_DETAIL}?visitId=${patient.visitId}`);
+        const res = await getRequest(`${GET_ENT_DETAILS_BY_VISIT}?visitId=${patient.visitId}`);
         if (res?.status === 200 && res?.response) {
           const mappedData = mapApiResponseToForm(res.response);
           setForm(mappedData);
@@ -366,7 +365,7 @@ const EarExamination = forwardRef(
           setForm(defaultEntForm);
         }
       } catch (error) {
-        console.error("Error fetching ENT examination detail:", error);
+        console.error("Error fetching ENT details by visit:", error);
         setForm(defaultEntForm);
       } finally {
         setFormLoading(false);
@@ -450,7 +449,7 @@ const EarExamination = forwardRef(
           neckOtherFindings: form.neckOtherFindings,
         };
 
-        const response = await postRequest(SAVE_ENT_DETAILS, payload);
+        const response = await postRequest(`${SAVE_ENT_DETAILS}/${selectedPatient?.visitId}`, payload);
 
         if (response?.status === 200 || response?.success) {
           showPopup("ENT examination saved successfully!", "success");

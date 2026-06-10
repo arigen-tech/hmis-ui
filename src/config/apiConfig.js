@@ -369,13 +369,14 @@ export const SAC_CODE_REGISTRATION = "REG110";
 
 //ENT
 export const ENT_DEPARTMENT_ID = 859;
-export const GET_ENT_EXAMINATION_DETAIL = `/opd/getEntExaminationDetail`;
-export const SAVE_ENT_DETAILS = "/opd/saveEntDetails";
+export const GET_ENT_DETAILS_BY_VISIT = `/opd/getEntDetailsByVisit`;
+export const SAVE_ENT_DETAILS = "/opd/saveOrUpdateEntDetails";
 
 
 //OB&G
 export const OBG_DEPARTMENT_ID = 858;
-export const GET_OBG_EXAMINATION_DETAIL = `/opd/getObgExaminationDetail`;
+export const GET_OBG_EXAMINATION_DETAIL = "/opd/getOBGDetailsByVisit";
+export const SAVE_OBG_DETAILS = "/opd/saveOrUpdateOBGDetails";
 
 //OPTHALMOLOGY 
 export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
