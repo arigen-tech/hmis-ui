@@ -161,6 +161,8 @@ export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
 export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
 
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
+export const GET_PACS_BY_UHID_ORDER_API = `${RADIOLOGY}/getPacsStudiesByUhidAndOrderNo`;
+export const WEASIS_PACS_CONNECTOR_URL = `http://localhost:8080/weasis-pacs-connector/weasis`;
 
 export const ITEM_CLASS = {
   TABLET: 1,
