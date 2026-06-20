@@ -330,9 +330,11 @@ const RadiologyPACSStudyList = () => {
         `${GET_WEASIS_LAUNCH_URL_API}?${params.toString()}`
       );
 
-      const weasisUrl = response?.response?.weasisUrl;
+      const payload = response?.response ?? response;
+      const weasisUrl = payload?.weasisUrl;
 
       if (!weasisUrl) {
+        console.error("Weasis launch response missing weasisUrl:", response);
         showPopup(
           `No DICOM study found for ${item.patientName}.`,
           "info"
