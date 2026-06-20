@@ -20,7 +20,7 @@ import {
   CREATE_EMPLOYEE,
   CREATE_APPROVE_EMPLOYEE,
 } from "../../../../config/apiConfig";
-import { getRequest } from "../../../../service/apiService";
+import { getRequest ,postRequestWithFormData  } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import validateUploadedFile from "../../../../Components/FileSize";
 
@@ -428,18 +428,18 @@ const EmployeeRegistration = () => {
   const filteredSpecialtyCenters =
     specialtySearch && specialtySearch.value
       ? specialtyCenterData.filter((center) => {
-        const centerName = (
-          center.centerName ||
-          center.specialtyCenterName ||
-          ""
-        ).toLowerCase();
-        const centerCode = (center.centerCode || "").toLowerCase();
-        const searchTerm = specialtySearch.value.toLowerCase();
+          const centerName = (
+            center.centerName ||
+            center.specialtyCenterName ||
+            ""
+          ).toLowerCase();
+          const centerCode = (center.centerCode || "").toLowerCase();
+          const searchTerm = specialtySearch.value.toLowerCase();
 
-        return (
-          centerName.includes(searchTerm) || centerCode.includes(searchTerm)
-        );
-      })
+          return (
+            centerName.includes(searchTerm) || centerCode.includes(searchTerm)
+          );
+        })
       : [];
 
   const handleCountryChange = (countryCode, id) => {
@@ -485,12 +485,12 @@ const EmployeeRegistration = () => {
       languages: prev.languages.map((item, i) =>
         i === index
           ? {
-            ...item,
-            [field]: value,
-            ...(field === "languageName" && selectedLanguage
-              ? { languageIdValue: selectedLanguage }
-              : {}),
-          }
+              ...item,
+              [field]: value,
+              ...(field === "languageName" && selectedLanguage
+                ? { languageIdValue: selectedLanguage }
+                : {}),
+            }
           : item,
       ),
     }));
@@ -639,12 +639,12 @@ const EmployeeRegistration = () => {
             qualification: prev.qualification.map((item, i) =>
               i === index
                 ? {
-                  ...item,
-                  filePath: file,
-                  filePreview: reader.result,
-                  fileName: file.name,
-                  fileType: file.type,
-                }
+                    ...item,
+                    filePath: file,
+                    filePreview: reader.result,
+                    fileName: file.name,
+                    fileType: file.type,
+                  }
                 : item,
             ),
           }));
@@ -656,12 +656,12 @@ const EmployeeRegistration = () => {
             document: prev.document.map((item, i) =>
               i === index
                 ? {
-                  ...item,
-                  filePath: file,
-                  filePreview: reader.result,
-                  fileName: file.name,
-                  fileType: file.type,
-                }
+                    ...item,
+                    filePath: file,
+                    filePreview: reader.result,
+                    fileName: file.name,
+                    fileType: file.type,
+                  }
                 : item,
             ),
           }));
@@ -940,7 +940,10 @@ const EmployeeRegistration = () => {
       { field: "designationId", message: "Designation is required" },
       { field: "totalExperience", message: "Total Experience is required" },
       { field: "qualifications", message: "Qualifications is required" },
-      { field: "medicalRegistrationNo", message: "Medical Registration Number is required" },
+      {
+        field: "medicalRegistrationNo",
+        message: "Medical Registration Number is required",
+      },
     ];
 
     basicFields.forEach(({ field, message }) => {
@@ -1405,7 +1408,10 @@ const EmployeeRegistration = () => {
       : 0;
     formDataToSend.append("yearOfExperience", yearExp.toString());
     formDataToSend.append("qualifications", formData.qualifications || "");
-    formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo || "");
+    formDataToSend.append(
+      "medicalRegistrationNo",
+      formData.medicalRegistrationNo || "",
+    );
 
     formDataToSend.append(
       "masDesignationId",
@@ -1550,180 +1556,183 @@ const EmployeeRegistration = () => {
     return formDataToSend;
   };
 
-  const handleReset = () => {
-    setFormData(initialFormData);
-    setErrors({});
+const handleReset = () => {
+  setFormData({
+    ...initialFormData,
+    languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
+    qualification: [
+      {
+        employeeQualificationId: 1,
+        institutionName: "",
+        completionYear: "",
+        qualificationName: "",
+        filePath: null,
+      },
+    ],
+    document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
+    specialtyCenter: [
+      { specialtyCenterId: 1, specialtyCenterName: "", centerId: "" },
+    ],
+    workExperiences: [{ experienceId: 1, organizationName: "" }],
+    memberships: [{ membershipsId: 1, levelName: "" }],
+    specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
+    awardsDistinction: [{ awardId: 1, awardName: "" }],
+    profilePicPreview: null,
+    profilePicType: null,
+    idDocumentPreview: null,
+    idDocumentType: null,
+  });
 
-    if (profileEditorRef.current) {
-      profileEditorRef.current.setData("");
+  setErrors({});
+
+  if (profileEditorRef.current) {
+    profileEditorRef.current.setData("");
+  }
+
+  const fileInputs = [
+    "profilePicName",
+    "idDocumentName",
+    ...formData.qualification.map((_, index) => `qualification_${index}`),
+    ...formData.document.map((_, index) => `document_${index}`),
+  ];
+
+  fileInputs.forEach((id) => {
+    const input = document.getElementById(id);
+    if (input) input.value = "";
+  });
+
+  setPreviewModal({
+    show: false,
+    type: "",
+    url: "",
+    fileName: "",
+    section: "",
+  });
+
+  setSpecialtySearch(null);
+  setSelectedDesignationId("");
+  setDesignationData([]);
+};
+
+const handleCreate = async () => {
+  if (!validateForm()) {
+    return;
+  }
+
+  if (!validateAllFilesBeforeSubmit()) {
+    return;
+  }
+
+  const formDataToSend = prepareFormData();
+  if (!formDataToSend) return;
+
+  setLoading(true);
+  try {
+    const response = await postRequestWithFormData(
+      CREATE_EMPLOYEE,  
+      formDataToSend   
+    );
+
+    console.log("Success Response:", response);
+
+    if (response && (response.status === 200 || response.status === 201)) {
+      showPopup("Employee created successfully", "success");
+      handleReset();
+    } else {
+      const errorMessage = response?.message || "Unknown error occurred";
+      throw new Error(errorMessage);
     }
-
-    const fileInputs = [
-      "profilePicName",
-      "idDocumentName",
-      ...formData.qualification.map((_, index) => `qualification_${index}`),
-      ...formData.document.map((_, index) => `document_${index}`),
-    ];
-
-    fileInputs.forEach((id) => {
-      const input = document.getElementById(id);
-      if (input) input.value = "";
-    });
-    setPreviewModal({
-      show: false,
-      type: "",
-      url: "",
-      fileName: "",
-      section: "",
-    });
-    setSpecialtySearch(null);
-    setSelectedDesignationId("");
-    setDesignationData([]);
-  };
-
-  const handleCreate = async () => {
-    if (!validateForm()) {
-      return;
-    }
-
-    if (!validateAllFilesBeforeSubmit()) {
-      return;
-    }
-
-    const formDataToSend = prepareFormData();
-    if (!formDataToSend) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${API_HOST}${CREATE_EMPLOYEE}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formDataToSend,
-        },
-      );
-
-      const responseData = await response.json();
-
-      if (!response.ok) {
-        // Handle 409 Conflict (duplicate mobile number)
-        if (response.status === 409) {
-          showPopup(
-            responseData.message || "Mobile number already registered",
-            "error",
-          );
-          // Highlight the mobile number field
-          setErrors((prev) => ({
-            ...prev,
-            mobileNo:
-              responseData.message ||
-              "This mobile number is already registered",
-          }));
-          // Scroll to mobile number field
-          setTimeout(() => {
-            const mobileField = document.getElementById("mobileNo");
-            if (mobileField) {
-              mobileField.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-              mobileField.focus();
-            }
-          }, 100);
-          return;
-        }
-
-        // Handle other errors
-        let errorMessage = `HTTP error! status: ${response.status}`;
-        if (responseData.message) {
-          errorMessage = responseData.message;
-        }
-        throw new Error(errorMessage);
-      }
-
-      console.log("Success Response:", responseData);
-
-      if (responseData.status === 200 || responseData.status === 201) {
-        showPopup("Employee created successfully", "success");
-        handleReset();
-      } else {
-        throw new Error(responseData.message || "Unknown error occurred");
-      }
-    } catch (error) {
-      console.error("Error creating employee:", error);
+  } catch (error) {
+    console.error("Error creating employee:", error);
+    
+    if (error.message?.includes("Mobile number already registered") || 
+        error.message?.includes("409") ||
+        error.response?.status === 409) {
       showPopup(
-        error.message || "Error submitting form. Please try again.",
-        "error",
+        error.message || "Mobile number already registered",
+        "error"
       );
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCreateWithApprove = async () => {
-    const formDataToSend = prepareFormData();
-    if (!formDataToSend) return;
-
-    setLoading(true);
-    try {
-      const response = await fetch(
-        `${API_HOST}${CREATE_APPROVE_EMPLOYEE}`,
-        {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-          body: formDataToSend,
-        },
-      );
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        // Handle 409 Conflict (duplicate mobile number)
-        if (response.status === 409) {
-          showPopup(
-            data.message || "Mobile number already registered",
-            "error",
-          );
-          setErrors((prev) => ({
-            ...prev,
-            mobileNo:
-              data.message || "This mobile number is already registered",
-          }));
-          setTimeout(() => {
-            const mobileField = document.getElementById("mobileNo");
-            if (mobileField) {
-              mobileField.scrollIntoView({
-                behavior: "smooth",
-                block: "center",
-              });
-              mobileField.focus();
-            }
-          }, 100);
-          return;
+      setErrors((prev) => ({
+        ...prev,
+        mobileNo: error.message || "This mobile number is already registered",
+      }));
+      setTimeout(() => {
+        const mobileField = document.getElementById("mobileNo");
+        if (mobileField) {
+          mobileField.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          mobileField.focus();
         }
+      }, 100);
+      return;
+    }
 
-        throw new Error(
-          data.message || `Failed with status: ${response.status}`,
-        );
-      }
+    showPopup(
+      error.message || "Error submitting form. Please try again.",
+      "error"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
+const handleCreateWithApprove = async () => {
+  const formDataToSend = prepareFormData();
+  if (!formDataToSend) return;
+
+  setLoading(true);
+  try {
+    const response = await postRequestWithFormData(
+      CREATE_APPROVE_EMPLOYEE,
+      formDataToSend
+    );
+
+    console.log("Success Response:", response);
+
+    if (response && (response.status === 200 || response.status === 201)) {
       showPopup("Employee created and approved successfully", "success");
       handleReset();
-    } catch (error) {
-      console.error("Error creating and approving employee:", error);
-      showPopup(
-        error.message || "Error creating and approving employee",
-        "error",
-      );
-    } finally {
-      setLoading(false);
+    } else {
+      const errorMessage = response?.message || "Unknown error occurred";
+      throw new Error(errorMessage);
     }
-  };
+  } catch (error) {
+    console.error("Error creating and approving employee:", error);
+    
+    if (error.message?.includes("Mobile number already registered") || 
+        error.message?.includes("409") ||
+        error.response?.status === 409) {
+      showPopup(
+        error.message || "Mobile number already registered",
+        "error"
+      );
+      setErrors((prev) => ({
+        ...prev,
+        mobileNo: error.message || "This mobile number is already registered",
+      }));
+      setTimeout(() => {
+        const mobileField = document.getElementById("mobileNo");
+        if (mobileField) {
+          mobileField.scrollIntoView({
+            behavior: "smooth",
+            block: "center",
+          });
+          mobileField.focus();
+        }
+      }, 100);
+      return;
+    }
+    
+    showPopup(
+      error.message || "Error creating and approving employee",
+      "error"
+    );
+  } finally {
+    setLoading(false);
+  }
+};
 
   return (
     <>
@@ -2065,7 +2074,7 @@ const EmployeeRegistration = () => {
                                           ? "pdf"
                                           : "image",
                                         formData.idDocumentName?.name ||
-                                        "ID Document",
+                                          "ID Document",
                                         "idDocument",
                                       );
                                     }}
@@ -2314,7 +2323,8 @@ const EmployeeRegistration = () => {
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
-                              Medical Registration Number <span className="text-danger">*</span>
+                              Medical Registration Number{" "}
+                              <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
@@ -2329,7 +2339,8 @@ const EmployeeRegistration = () => {
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
-                              Qualifications <span className="text-danger">*</span>
+                              Qualifications{" "}
+                              <span className="text-danger">*</span>
                             </label>
                             <input
                               type="text"
@@ -2342,9 +2353,6 @@ const EmployeeRegistration = () => {
                               maxLength={mlenght}
                             />
                           </div>
-
-
-
                         </div>
                       </div>
                       <div className="col-md-3 d-flex flex-column">
@@ -2376,7 +2384,7 @@ const EmployeeRegistration = () => {
                                     ? "image"
                                     : "pdf",
                                   formData.profilePicName?.name ||
-                                  "Profile Image",
+                                    "Profile Image",
                                   "profile",
                                 );
                               }
@@ -2418,7 +2426,7 @@ const EmployeeRegistration = () => {
                                     formData.profilePicPreview,
                                     "image",
                                     formData.profilePicName?.name ||
-                                    "Profile Image",
+                                      "Profile Image",
                                     "profile",
                                   );
                                 }}
@@ -2573,14 +2581,14 @@ const EmployeeRegistration = () => {
                               index,
                               "qualificationName",
                             ) && (
-                                <div className="invalid-feedback">
-                                  {getErrorMessage(
-                                    "qualification",
-                                    index,
-                                    "qualificationName",
-                                  )}
-                                </div>
-                              )}
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "qualification",
+                                  index,
+                                  "qualificationName",
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td>
                             <input
@@ -2602,14 +2610,14 @@ const EmployeeRegistration = () => {
                               index,
                               "institutionName",
                             ) && (
-                                <div className="invalid-feedback">
-                                  {getErrorMessage(
-                                    "qualification",
-                                    index,
-                                    "institutionName",
-                                  )}
-                                </div>
-                              )}
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "qualification",
+                                  index,
+                                  "institutionName",
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td>
                             <input
@@ -2634,14 +2642,14 @@ const EmployeeRegistration = () => {
                               index,
                               "completionYear",
                             ) && (
-                                <div className="invalid-feedback">
-                                  {getErrorMessage(
-                                    "qualification",
-                                    index,
-                                    "completionYear",
-                                  )}
-                                </div>
-                              )}
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "qualification",
+                                  index,
+                                  "completionYear",
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td>
                             <div>
@@ -2743,12 +2751,12 @@ const EmployeeRegistration = () => {
                                                 (item, i) =>
                                                   i === index
                                                     ? {
-                                                      ...item,
-                                                      filePath: null,
-                                                      filePreview: null,
-                                                      fileName: "",
-                                                      fileType: "",
-                                                    }
+                                                        ...item,
+                                                        filePath: null,
+                                                        filePreview: null,
+                                                        fileName: "",
+                                                        fileType: "",
+                                                      }
                                                     : item,
                                               ),
                                           }));
@@ -2867,14 +2875,14 @@ const EmployeeRegistration = () => {
                                 index,
                                 "specialtyCenterName",
                               ) && (
-                                  <div className="invalid-feedback">
-                                    {getErrorMessage(
-                                      "specialtyCenter",
-                                      index,
-                                      "specialtyCenterName",
-                                    )}
-                                  </div>
-                                )}
+                                <div className="invalid-feedback">
+                                  {getErrorMessage(
+                                    "specialtyCenter",
+                                    index,
+                                    "specialtyCenterName",
+                                  )}
+                                </div>
+                              )}
 
                               {/* Dropdown only shows for the current row being edited */}
                               {specialtySearch &&
@@ -2902,8 +2910,8 @@ const EmployeeRegistration = () => {
                                             index,
                                             "specialtyCenterName",
                                             center.centerName ||
-                                            center.specialtyCenterName ||
-                                            "",
+                                              center.specialtyCenterName ||
+                                              "",
                                           );
                                           handleSpecialtyCenterChange(
                                             index,
@@ -3035,11 +3043,11 @@ const EmployeeRegistration = () => {
                                         (item, i) =>
                                           i === index
                                             ? {
-                                              ...item,
-                                              languageName: value,
-                                              languageIdValue:
-                                                selectedLang.id.toString(),
-                                            }
+                                                ...item,
+                                                languageName: value,
+                                                languageIdValue:
+                                                  selectedLang.id.toString(),
+                                              }
                                             : item,
                                       ),
                                     }));
@@ -3051,10 +3059,10 @@ const EmployeeRegistration = () => {
                                     languages: prev.languages.map((item, i) =>
                                       i === index
                                         ? {
-                                          ...item,
-                                          languageName: "",
-                                          languageIdValue: "",
-                                        }
+                                            ...item,
+                                            languageName: "",
+                                            languageIdValue: "",
+                                          }
                                         : item,
                                     ),
                                   }));
@@ -3176,14 +3184,14 @@ const EmployeeRegistration = () => {
                               index,
                               "organizationName",
                             ) && (
-                                <div className="invalid-feedback">
-                                  {getErrorMessage(
-                                    "workExperiences",
-                                    index,
-                                    "organizationName",
-                                  )}
-                                </div>
-                              )}
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "workExperiences",
+                                  index,
+                                  "organizationName",
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td>
                             {formData.workExperiences.length > 1 ? (
@@ -3409,14 +3417,14 @@ const EmployeeRegistration = () => {
                               index,
                               "specialtyInterestName",
                             ) && (
-                                <div className="invalid-feedback">
-                                  {getErrorMessage(
-                                    "specialtyInterest",
-                                    index,
-                                    "specialtyInterestName",
-                                  )}
-                                </div>
-                              )}
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "specialtyInterest",
+                                  index,
+                                  "specialtyInterestName",
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td>
                             {formData.specialtyInterest.length > 1 ? (
@@ -3530,14 +3538,14 @@ const EmployeeRegistration = () => {
                               index,
                               "awardName",
                             ) && (
-                                <div className="invalid-feedback">
-                                  {getErrorMessage(
-                                    "awardsDistinction",
-                                    index,
-                                    "awardName",
-                                  )}
-                                </div>
-                              )}
+                              <div className="invalid-feedback">
+                                {getErrorMessage(
+                                  "awardsDistinction",
+                                  index,
+                                  "awardName",
+                                )}
+                              </div>
+                            )}
                           </td>
                           <td>
                             {formData.awardsDistinction.length > 1 ? (
@@ -3739,12 +3747,12 @@ const EmployeeRegistration = () => {
                                                 (item, i) =>
                                                   i === index
                                                     ? {
-                                                      ...item,
-                                                      filePath: null,
-                                                      filePreview: null,
-                                                      fileName: "",
-                                                      fileType: "",
-                                                    }
+                                                        ...item,
+                                                        filePath: null,
+                                                        filePreview: null,
+                                                        fileName: "",
+                                                        fileType: "",
+                                                      }
                                                     : item,
                                               ),
                                           }));
@@ -3828,7 +3836,7 @@ const EmployeeRegistration = () => {
                 "Submit"
               )}
             </button>
-            <button
+  {/*          <button
               onClick={handleCreateWithApprove}
               type="button"
               className="btn btn-success"
@@ -3847,7 +3855,7 @@ const EmployeeRegistration = () => {
               ) : (
                 "Submit & Approve"
               )}
-            </button>
+            </button>*/}
           </div>
         </div>
       </div>

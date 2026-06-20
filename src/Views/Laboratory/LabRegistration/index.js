@@ -18,6 +18,7 @@ import {
   CHECH_DUPLICATE_PATIENT,
   PATIENT_REGISTRATION,
   LAB_SERVICE_CATAGORY,
+  LAB_REGISTRATION,
 } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import {
@@ -1131,9 +1132,8 @@ const LabRegistration = () => {
         console.log("FINAL LAB DATA:", labData);
 
         const labResult = await postRequest(
-          "/lab/laboratoryRegistration",
-          labData,
-        );
+          `${LAB_REGISTRATION}`,labData);
+        debugger
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Lab registration failed.");
         }

@@ -3,6 +3,7 @@ import { useNavigate } from "react-router-dom";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
+import { isValidAadhaarNumber } from "../../../utils/ABDMValidations";
 
 import DatePicker from "../../../Components/DatePicker";
 import {
@@ -66,6 +67,10 @@ import {
   MISSING_TIME_SLOTS_TITLE,
   NOT_AVAILABLE_TITLE,
 } from "../../../config/constants";
+import ConsentModal from "../ABHACreationModel";
+import { integrationService } from "../../../service/integrationService";
+import ABHACreationModal from "../ABHACreationModel";
+import ABHAVerificationModal from "../ABHAVerificationModel";
 
 const PatientRegistration = () => {
   const navigate = useNavigate();
@@ -84,7 +89,7 @@ const PatientRegistration = () => {
   const [registrationMode, setRegistrationMode] = useState("withAppointment"); // "registerOnly" or "withAppointment"
 
   const [errors, setErrors] = useState({});
-  const [loading,setLoading] = useState(false);
+  const [loading, setLoading] = useState(false);
   const [genderData, setGenderData] = useState([]);
   const [imageURL, setImageURL] = useState("");
   const [relationData, setRelationData] = useState([]);
@@ -176,10 +181,47 @@ const PatientRegistration = () => {
     selDoctorId: "",
     selSession: "",
     registrationCost: "",
+    abhaNumber: "",
   });
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
   const [preConsultationFlag, setPreConsultationFlag] = useState(false);
+
+  const [showAbhaCreationModal, setShowAbhaCreationModal] = useState(false);
+  const [showAbhaVerificationModal, setShowAbhaVerificationModal] =
+    useState(false);
+
+  const [abhaMode, setAbhaMode] = useState("existing");
+  const createInitialCreateState = () => ({
+    loading: false,
+    txnId: "",
+    xtoken: "",
+    isType: "",
+    needsMobileVerification: false,
+    mobileVerificationTxnId: "",
+    heldIsNew: null,
+    heldXtoken: "",
+    suggestions: [],
+    verifiedProfile: null,
+    createdAbha: null,
+    banner: null,
+  });
+  const [createState, setCreateState] = useState(createInitialCreateState);
+  const [abhaData, setAbhaData] = useState({
+    abhaNumber: "",
+    consentName: "",
+    aadhaarNo: "",
+    consent1: true,
+    consent2: true,
+    consent3: true,
+    consent4: true,
+    consent5: true,
+    consent6: true,
+    consent7: true,
+    otp: "",
+    verified: false,
+    abhaAddress: "",
+  });
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
   let stream = null;
@@ -188,6 +230,8 @@ const PatientRegistration = () => {
     gstApplicable: false,
     gstPercent: 0,
   });
+
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   const isFormValid = () => {
     // Required fields
@@ -200,7 +244,11 @@ const PatientRegistration = () => {
     ];
 
     for (let field of requiredFields) {
-      if (!formData[field] || formData[field].trim() === "") {
+      const value = formData[field];
+      if (!value || (typeof value === "string" && value.trim() === "")) {
+        return false;
+      }
+      if (typeof value !== "string" && !value) {
         return false;
       }
     }
@@ -234,13 +282,313 @@ const PatientRegistration = () => {
     return true;
   };
 
+  const formatAbhaNumber = (value = "") => {
+    if (!value) return "";
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 14) return value;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}-${digits.slice(10, 14)}`;
+  };
+
+  const handleAbhaCreationSuccess = (abhaData) => {
+    console.log("ABHA Data received:", abhaData);
+
+    // Auto-fill the form data with ABHA information
+    const updatedFormData = { ...formData };
+
+    if (abhaData.abhaNumber) {
+      updatedFormData.abhaNumber = abhaData.abhaNumber;
+    }
+
+    // Fill name
+    if (abhaData.consentName) {
+      const nameParts = abhaData.consentName.trim().split(/\s+/);
+      updatedFormData.firstName =
+        updatedFormData.firstName || nameParts[0] || "";
+      updatedFormData.lastName =
+        updatedFormData.lastName || nameParts.slice(1).join(" ") || "";
+    }
+
+    // Fill mobile
+    if (abhaData.mobileNumber) {
+      updatedFormData.mobileNo =
+        updatedFormData.mobileNo || abhaData.mobileNumber;
+    }
+
+    // Fill gender using the mapped ID from ABHA data
+    if (abhaData.genderId) {
+      updatedFormData.gender = updatedFormData.gender || abhaData.genderId;
+    } else if (abhaData.gender) {
+      // Fallback: Try to find gender ID from the master data
+      const genderMap = {
+        Male: 1,
+        Female: 2,
+        Other: 3,
+        Transgender: 3,
+      };
+      updatedFormData.gender =
+        updatedFormData.gender || genderMap[abhaData.gender] || "";
+    }
+
+    // Fill date of birth
+    if (abhaData.dateOfBirth) {
+      // Parse date from "10-02-2002" format to "YYYY-MM-DD" for the date input
+      const dateParts = abhaData.dateOfBirth.split("-");
+      if (dateParts.length === 3) {
+        const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, "0")}-${dateParts[0].padStart(2, "0")}`;
+        updatedFormData.dob = updatedFormData.dob || formattedDate;
+
+        // Calculate age from DOB
+        const birthDate = new Date(formattedDate);
+        const today = new Date();
+        let years = today.getFullYear() - birthDate.getFullYear();
+        let months = today.getMonth() - birthDate.getMonth();
+        let days = today.getDate() - birthDate.getDate();
+        if (days < 0) {
+          months--;
+          days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
+        }
+        if (months < 0) {
+          years--;
+          months += 12;
+        }
+        updatedFormData.age =
+          updatedFormData.age || `${years}Y ${months}M ${days}D`;
+      }
+    }
+
+    // Fill address
+    if (abhaData.address) {
+      const addressParts = abhaData.address.split(",");
+      updatedFormData.address1 =
+        updatedFormData.address1 || addressParts[0]?.trim() || "";
+      if (addressParts.length > 1) {
+        updatedFormData.address2 =
+          updatedFormData.address2 ||
+          addressParts.slice(1).join(",").trim() ||
+          "";
+      }
+    }
+
+    // Fill state using the mapped ID from ABHA data
+    if (abhaData.stateId) {
+      updatedFormData.state = updatedFormData.state || abhaData.stateId;
+    } else if (abhaData.stateName) {
+      // Fallback: Try to find state ID from the master data
+      const state = stateData.find(
+        (s) => s.stateName?.toLowerCase() === abhaData.stateName.toLowerCase(),
+      );
+      if (state) {
+        updatedFormData.state = updatedFormData.state || state.id;
+      }
+    }
+
+    if (abhaData.districtId) {
+      updatedFormData.district =
+        updatedFormData.district || abhaData.districtId;
+    } else if (abhaData.districtName) {
+      const district = districtData.find(
+        (d) =>
+          d.districtName?.toLowerCase() === abhaData.districtName.toLowerCase(),
+      );
+      if (district) {
+        updatedFormData.district = updatedFormData.district || district.id;
+      }
+    }
+
+    if (abhaData.pincode) {
+      updatedFormData.pinCode = updatedFormData.pinCode || abhaData.pincode;
+    }
+
+    if (abhaData.photo) {
+      const photoUrl = abhaData.photo.startsWith("data:")
+        ? abhaData.photo
+        : `data:image/jpeg;base64,${abhaData.photo}`;
+      setImage(photoUrl);
+    }
+
+    setFormData(updatedFormData);
+
+    setAbhaData((prev) => ({
+      ...prev,
+      abhaNumber: abhaData.abhaNumber,
+      abhaAddress: abhaData.abhaAddress,
+      consentName: abhaData.consentName || prev.consentName,
+      verified: true,
+    }));
+
+    const filledFields = [];
+    if (abhaData.consentName) filledFields.push("Name");
+    if (abhaData.mobileNumber) filledFields.push("Mobile");
+    if (abhaData.dateOfBirth) filledFields.push("DOB");
+    if (abhaData.address) filledFields.push("Address");
+    if (abhaData.gender) filledFields.push("Gender");
+    if (abhaData.stateName) filledFields.push("State");
+    if (abhaData.districtName) filledFields.push("District");
+    if (abhaData.pincode) filledFields.push("Pincode");
+    if (abhaData.abhaNumber) filledFields.push("ABHA Number");
+
+    Swal.fire({
+      icon: "success",
+      title: "ABHA Linked Successfully!",
+      html: `
+      <div>
+        <p><strong>ABHA Number:</strong> ${formatAbhaNumber(abhaData.abhaNumber)}</p>
+        <p><strong>ABHA Address:</strong> ${abhaData.abhaAddress || "Not set"}</p>
+        ${
+          abhaData.isExistingAbha
+            ? '<p class="text-info"><i class="fa fa-info-circle"></i> This is an existing ABHA profile.</p>'
+            : '<p class="text-success"><i class="fa fa-check-circle"></i> New ABHA created successfully.</p>'
+        }
+        <hr>
+        <p class="text-muted">The following fields have been auto-filled:</p>
+        <p><strong>${filledFields.join(", ") || "No fields were auto-filled"}</strong></p>
+        ${abhaData.genderId ? `<p class="text-muted small">Gender ID: ${abhaData.genderId}</p>` : ""}
+        ${abhaData.stateId ? `<p class="text-muted small">State ID: ${abhaData.stateId}</p>` : ""}
+        ${abhaData.districtId ? `<p class="text-muted small">District ID: ${abhaData.districtId}</p>` : ""}
+      </div>
+    `,
+      timer: 4000,
+      timerProgressBar: true,
+    });
+  };
+
+  const handleAbhaVerification = async () => {
+    if (!abhaData.abhaNumber) {
+      Swal.fire(
+        "Validation",
+        "Please enter an ABHA number to verify.",
+        "warning",
+      );
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const response = await integrationService.verifyAbdmHealthId({
+        healthId: abhaData.abhaNumber,
+      });
+
+      if (response?.status === false) {
+        throw new Error(response?.message || "Invalid ABHA number.");
+      }
+
+      setAbhaData((prev) => ({
+        ...prev,
+        verified: true,
+        consentName: response?.response?.name || "",
+      }));
+
+      Swal.fire({
+        icon: "success",
+        title: "ABHA Verified",
+        text: `ABHA ${abhaData.abhaNumber} has been verified successfully!`,
+        timer: 2000,
+      });
+    } catch (error) {
+      Swal.fire(
+        "Verification Failed",
+        error.message || "Unable to verify ABHA number.",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleAbhaVerificationSuccess = (abhaData) => {
+    console.log("ABHA Verification Data received:", abhaData);
+
+    const updatedFormData = { ...formData };
+
+    if (abhaData.abhaNumber) {
+      updatedFormData.abhaNumber = abhaData.abhaNumber;
+    }
+
+    if (abhaData.consentName) {
+      const nameParts = abhaData.consentName.trim().split(/\s+/);
+      updatedFormData.firstName =
+        updatedFormData.firstName || nameParts[0] || "";
+      updatedFormData.lastName =
+        updatedFormData.lastName || nameParts.slice(1).join(" ") || "";
+    }
+
+    if (abhaData.mobileNumber) {
+      updatedFormData.mobileNo =
+        updatedFormData.mobileNo || String(abhaData.mobileNumber);
+    }
+
+    if (abhaData.genderId) {
+      updatedFormData.gender =
+        updatedFormData.gender || Number(abhaData.genderId);
+    } else if (abhaData.gender) {
+      updatedFormData.gender = updatedFormData.gender || "";
+    }
+
+    if (abhaData.dateOfBirth) {
+      const dateParts = abhaData.dateOfBirth.split("-");
+      if (dateParts.length === 3) {
+        const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, "0")}-${dateParts[0].padStart(2, "0")}`;
+        updatedFormData.dob = updatedFormData.dob || formattedDate;
+        if (!updatedFormData.age) {
+          updatedFormData.age = calculateAgeFromDOB(formattedDate);
+        }
+      }
+    }
+
+    if (abhaData.pincode) {
+      updatedFormData.pinCode =
+        updatedFormData.pinCode || String(abhaData.pincode);
+    }
+
+    if (abhaData.photo) {
+      const photoUrl = abhaData.photo.startsWith("data:")
+        ? abhaData.photo
+        : `data:image/jpeg;base64,${abhaData.photo}`;
+      setImage(photoUrl);
+    }
+
+    setFormData(updatedFormData);
+
+    setAbhaData((prev) => ({
+      ...prev,
+      abhaNumber: abhaData.abhaNumber,
+      abhaAddress: abhaData.abhaAddress,
+      consentName: abhaData.consentName || prev.consentName,
+      verified: true,
+    }));
+
+    const filledFields = [];
+    if (abhaData.consentName) filledFields.push("Name");
+    if (abhaData.mobileNumber) filledFields.push("Mobile");
+    if (abhaData.dateOfBirth) filledFields.push("DOB");
+    if (abhaData.address) filledFields.push("Address");
+    if (abhaData.gender) filledFields.push("Gender");
+    if (abhaData.stateName) filledFields.push("State");
+    if (abhaData.districtName) filledFields.push("District");
+    if (abhaData.pincode) filledFields.push("Pincode");
+
+    Swal.fire({
+      icon: "success",
+      title: "ABHA Verified Successfully!",
+      html: `
+      <div>
+        <p><strong>ABHA Number:</strong> ${formatAbhaNumber(abhaData.abhaNumber)}</p>
+        <p><strong>ABHA Address:</strong> ${abhaData.abhaAddress || "Not set"}</p>
+        <hr>
+        <p class="text-muted">The following fields have been auto-filled:</p>
+        <p><strong>${filledFields.join(", ") || "No fields were auto-filled"}</strong></p>
+      </div>
+    `,
+      timer: 4000,
+      timerProgressBar: true,
+    });
+  };
+
   // Handle registration mode change
   const handleRegistrationModeChange = (mode) => {
     setRegistrationMode(mode);
 
-    // If switching to "registerOnly", clear any appointment data if needed
     if (mode === "registerOnly") {
-      // Optional: Reset appointments to empty state
       setAppointments([
         {
           id: 0,
@@ -1299,6 +1647,168 @@ const PatientRegistration = () => {
     );
   };
 
+  const useAbhaData = () => {
+    setFormData((prev) => ({
+      ...prev,
+    }));
+  };
+
+  const verifyAbha = () => {
+    Swal.fire({
+      title: "ABHA Verification",
+      text: "ABHA number verified successfully!",
+    });
+  };
+
+  const createAbha = () => {
+    if (!createState.txnId) {
+      Swal.fire("Validation", "Please send Aadhaar OTP first.", "warning");
+      return;
+    }
+
+    if (!abhaData.otp) {
+      Swal.fire("Validation", "Please enter OTP.", "warning");
+      return;
+    }
+
+    Swal.fire(
+      "ABHA OTP Verification",
+      "OTP verification can be connected after confirming the verify-otp-aadhaar request body from the backend.",
+      "info",
+    );
+  };
+
+  const handleConsentGiven = (consentInfo) => {
+    handleSendCreateOtp(consentInfo);
+  };
+
+  const validateCreateStepOne = () => {
+    if (!abhaData.consentName.trim()) {
+      return "Enter full name.";
+    }
+
+    if (!isValidAadhaarNumber(abhaData.aadhaarNo)) {
+      return "Enter a valid 12-digit Aadhaar number.";
+    }
+
+    // if (isPreauthCreateMode) {
+    //   if (!isValidMobileNumber(abhaData.mobileNumber)) {
+    //     return "Enter a valid 10-digit mobile number starting with 6, 7, 8, or 9.";
+    //   }
+
+    //   if (!isValidYearOfBirth(abhaData.yearOfBirth)) {
+    //     return `Enter a valid year of birth between 1900 and ${CURRENT_YEAR}.`;
+    //   }
+
+    //   if (!abhaData.gender) {
+    //     return "Select gender.";
+    //   }
+
+    //   if (!abhaData.stateName || !abhaData.districtName) {
+    //     return "Select state and district.";
+    //   }
+    // }
+
+    // if (!CONSENT_KEYS.every((key) => Boolean(abhaData[key]))) {
+    //   return "Select all declaration checkboxes.";
+    // }
+
+    // if (!isCaptchaAnswerCorrect(abhaData.captchaInput, createCaptchaState.answer)) {
+    //   return "Enter the correct captcha answer.";
+    // }
+
+    return "";
+  };
+
+  const maskMobile = (value = "") => {
+    // Get only digits and take first 10
+    const digits = value.replace(/\D/g, "").slice(0, 10);
+    if (digits.length < 4) {
+      return "registered mobile number";
+    }
+    return `******${digits.slice(-4)}`;
+  };
+
+  const openCreateAbhaConsent = () => {
+    const validationMessage = validateCreateStepOne();
+
+    if (validationMessage) {
+      Swal.fire("Validation", validationMessage, "warning");
+      return;
+    }
+
+    setShowConsentModal(true);
+  };
+
+  const handleSendCreateOtp = async (consentInfo = {}) => {
+    const consentPayload = {
+      consent1: String(consentInfo.consent1 ?? abhaData.consent1),
+      consent2: String(consentInfo.consent2 ?? abhaData.consent2),
+      consent3: String(consentInfo.consent3 ?? abhaData.consent3),
+      consent4: String(consentInfo.consent4 ?? abhaData.consent4),
+      consent5: String(consentInfo.consent5 ?? abhaData.consent5),
+      consent6: String(consentInfo.consent6 ?? abhaData.consent6),
+      consent7: String(consentInfo.consent7 ?? abhaData.consent7),
+    };
+
+    if (Object.values(consentPayload).some((value) => value !== "true")) {
+      Swal.fire(
+        "Consent Required",
+        "Please accept all ABHA creation consent declarations before sending OTP.",
+        "warning",
+      );
+      return;
+    }
+
+    setCreateState((prev) => ({ ...prev, loading: true }));
+
+    try {
+      const secureAadhaarField =
+        await integrationService.secureAbdmFieldPayload({
+          field: "aadhaarNumber",
+          value: abhaData.aadhaarNo,
+        });
+
+      const response = await integrationService.sendAbdmAadhaarOtp({
+        ...secureAadhaarField,
+        consentName: abhaData.consentName.trim(),
+        ...consentPayload,
+      });
+
+      if (response?.status === false) {
+        throw new Error(response?.message || "Unable to send OTP.");
+      }
+
+      setCreateState((prev) => ({
+        ...prev,
+        loading: false,
+        txnId:
+          response?.response?.txnId || response?.response?.tnxId || prev.txnId,
+        isType: response?.response?.isType || prev.isType,
+        needsMobileVerification: false,
+        mobileVerificationTxnId: "",
+        heldIsNew: null,
+        heldXtoken: "",
+        banner: {
+          tone: "success",
+          title: "OTP Sent",
+          message:
+            response?.message ||
+            `OTP has been sent to the Aadhaar-linked mobile number ${maskMobile(abhaData.mobileNumber)}.`,
+        },
+      }));
+      setAbhaData((prev) => ({ ...prev, captchaInput: "", otp: "" }));
+      Swal.fire(
+        "OTP Sent",
+        response?.message || "OTP sent successfully.",
+        "success",
+      );
+    } catch (error) {
+      setCreateState((prev) => ({ ...prev, loading: false }));
+      Swal.fire("ABDM Error", error.message || "Unable to send OTP.", "error");
+    }
+  };
+
   const sendPatientData = async () => {
     if (validateForm() && validateVitalDetails()) {
       const requestData = {
@@ -1307,6 +1817,7 @@ const PatientRegistration = () => {
           uhidNo: "",
           patientStatus: "",
           regDate: new Date(Date.now()).toJSON().split(".")[0].split("T")[0],
+          patientAbhaId: formData.abhaNumber || "",
           lastChgBy: sessionStorage.getItem("username"),
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
           patientFn: formData.firstName,
@@ -1388,7 +1899,6 @@ const PatientRegistration = () => {
         visits: visitList,
       };
 
-      // Filter out invalid visits (doctor/session empty) only if in "withAppointment" mode
       if (registrationMode === "withAppointment") {
         requestData.visits = visitList.filter(
           (v) => !isNaN(v.doctorId) && v.doctorId > 0 && !isNaN(v.departmentId),
@@ -1398,7 +1908,6 @@ const PatientRegistration = () => {
           requestData.visits = null;
         }
       } else {
-        // For register only mode, visits should be null
         requestData.visits = null;
       }
 
@@ -1416,7 +1925,6 @@ const PatientRegistration = () => {
             visits.length > 0 && visits[0]?.billingStatus === "y";
 
           if (hasBillingStatusY) {
-            // Direct redirect to PendingForBilling without showing dialog
             Swal.fire({
               title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p>Patient has been registered successfully.</p>
@@ -1445,7 +1953,7 @@ const PatientRegistration = () => {
               if (result.isConfirmed) {
                 navigate("/OPDBillingDetails", {
                   state: {
-                    source:"registration",
+                    source: "registration",
                     patientId: resp.patientid,
                   },
                 });
@@ -1454,7 +1962,6 @@ const PatientRegistration = () => {
               }
             });
           } else if (patientResp) {
-            // Case: no billing response but patient saved
             const displayName =
               patientResp.patientFn ||
               patientResp.patientName ||
@@ -1472,7 +1979,6 @@ const PatientRegistration = () => {
               window.location.reload();
             });
           } else {
-            // Fallback
             Swal.fire({
               icon: "success",
               title: "Patient Registered",
@@ -1824,6 +2330,154 @@ const PatientRegistration = () => {
             </div>
           </div>
         </div>
+
+        {/* ABHA Integration Section - Updated with Verify ABHA Button */}
+        <div className="row mb-3">
+          <div className="col-sm-12">
+            <div className="card shadow">
+              <div className="card-header py-3 border-bottom-1">
+                <h6 className="mb-0 fw-bold">ABHA Health ID Integration</h6>
+              </div>
+
+              <div className="card-body">
+                <div className="row">
+                  {/* Existing ABHA - Verify Section */}
+                  <div className="col-md-6 border-end">
+                    <div className="form-check mb-3">
+                      <input
+                        type="radio"
+                        name="abhaMode"
+                        checked={abhaMode === "existing"}
+                        onChange={() => setAbhaMode("existing")}
+                      />
+                      <label className="form-check-label fw-bold">
+                        I have ABHA
+                      </label>
+                    </div>
+
+                    <p className="text-muted small mb-3">
+                      Verify an existing ABHA Health ID. You can verify using
+                      Mobile Number, Aadhaar Number, ABHA Number, or ABHA
+                      Address.
+                    </p>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setShowAbhaVerificationModal(true)}
+                      disabled={abhaMode !== "existing"}
+                    >
+                      <i className="bi bi-check-circle me-2"></i>
+                      Verify ABHA
+                    </button>
+
+                    {abhaData.verified && (
+                      <div className="alert alert-success mt-3">
+                        <h6>✓ Verified Successfully</h6>
+                        {abhaData.consentName && (
+                          <div>
+                            <strong>Name:</strong> {abhaData.consentName}
+                          </div>
+                        )}
+                        <div>
+                          <strong>ABHA Number:</strong> {abhaData.abhaNumber}
+                        </div>
+                        {abhaData.abhaAddress && (
+                          <div>
+                            <strong>ABHA Address:</strong>{" "}
+                            {abhaData.abhaAddress}
+                          </div>
+                        )}
+                        <button
+                          className="btn btn-outline-primary btn-sm mt-2"
+                          onClick={useAbhaData}
+                        >
+                          <i className="bi bi-arrow-right me-1"></i>
+                          Use Details
+                        </button>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Create New ABHA */}
+                  <div className="col-md-6">
+                    <div className="form-check mb-3">
+                      <input
+                        type="radio"
+                        name="abhaMode"
+                        checked={abhaMode === "new"}
+                        onChange={() => setAbhaMode("new")}
+                      />
+                      <label className="form-check-label fw-bold">
+                        Create New ABHA
+                      </label>
+                    </div>
+
+                    <p className="text-muted small mb-3">
+                      Create a new ABHA Health ID for the patient. This will
+                      link their Aadhaar to create a unique health identifier.
+                    </p>
+
+                    <button
+                      type="button"
+                      className="btn btn-primary"
+                      onClick={() => setShowAbhaCreationModal(true)}
+                      disabled={abhaMode !== "new"}
+                    >
+                      <i className="bi bi-plus-circle me-2"></i>
+                      Create New ABHA
+                    </button>
+
+                    {abhaData.verified && abhaMode === "new" && (
+                      <div className="alert alert-success mt-3">
+                        <h6>✓ ABHA Created Successfully</h6>
+                        <div>
+                          <strong>ABHA Number:</strong> {abhaData.abhaNumber}
+                        </div>
+                        <div>
+                          <strong>ABHA Address:</strong> {abhaData.abhaAddress}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ABHA Verification Modal */}
+        <ABHAVerificationModal
+          show={showAbhaVerificationModal}
+          onClose={() => setShowAbhaVerificationModal(false)}
+          onSuccess={handleAbhaVerificationSuccess}
+          patientData={{
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            mobileNo: formData.mobileNo,
+            aadhaarNo: abhaData.aadhaarNo,
+            email: formData.email,
+          }}
+          genderData={genderData}
+          stateData={stateData}
+          districtData={districtData}
+        />
+
+        {/* ABHA Creation Modal */}
+        <ABHACreationModal
+          show={showAbhaCreationModal}
+          onClose={() => setShowAbhaCreationModal(false)}
+          onSuccess={handleAbhaCreationSuccess}
+          patientData={{
+            firstName: formData.firstName,
+            lastName: formData.lastName,
+            mobileNo: formData.mobileNo,
+            email: formData.email,
+          }}
+          genderData={genderData}
+          stateData={stateData}
+          districtData={districtData}
+        />
         {/* Patient Personal Details */}
         <div className="row mb-3">
           <div className="col-sm-12">
@@ -2020,6 +2674,25 @@ const PatientRegistration = () => {
                               {errors.email}
                             </div>
                           )}
+                        </div>
+                        <div className="col-md-4">
+                          <label className="form-label" htmlFor="abhaNumber">
+                            ABHA Number
+                          </label>
+                          <input
+                            type="text"
+                            id="abhaNumber"
+                            name="abhaNumber"
+                            className="form-control"
+                            value={formData.abhaNumber || ""}
+                            readOnly
+                            placeholder="Not linked"
+                            style={{ backgroundColor: "#f8f9fa" }}
+                          />
+                          <small className="text-muted">
+                            ABHA number will be auto-filled after verification
+                            or creation
+                          </small>
                         </div>
                       </div>
                     </div>

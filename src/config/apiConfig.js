@@ -1,10 +1,11 @@
 export const API_HOST =  'http://103.133.215.182:8081/hims';
-//  export const API_HOST = 'http://localhost:8080';
+// export const API_HOST = "http://localhost:8080";
+export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.1.17:8080';
- //export const API_HOST = 'http://192.168.1.29:8080';
+//export const API_HOST = 'http://192.168.1.29:8080';
 
-
-
+export const DEFAULT_RSA_PUBLIC_KEY =
+  "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8enYucaEeOKwsm2kUHfXeuS1uKgyLLTYeJRjYUXxxkYvBV3E7N/AhSUOOox5qLzH8iL+n/kBFVim3sNyIp0F6/UPj6Q9WkkqIJbxHSPbwwdDEV5rW6J4aEApGA0yQQ1W/J8nCg267Afk6MyfSt/XWAy67U/DGQ9aQEWB66B6KapbtqrTzsiXX4ogutU/+jcX3Eh+ivNAbE/p4Q+sGhJ2TiHm1uhDPd0Ui1EtoQMcqTG8Iu/Riogam/foXhqRIwNHZJ4XrWbLfISU2km/mvhOTCVxJYEoA7m2G9lIuUWmdlCjDykiR9ZrBTSJ2yep8Zv5N9Br+bc77HwzCb3VcxMYjwIDAQAB";
 
 //common Apis Endponints
 export const MASTERS = `/master`;
@@ -148,7 +149,8 @@ export const ALL_INVESTIGATION = `/DgMasInvestigation/getAll`;
 export const ALL_INVESTIGATION_PRICE_DETAILS = `/investigation-price-details/getAllPriceDetails`;
 export const MAS_INVESTIGATION = `/DgMasInvestigation`;
 export const MAS_PACKAGE_INVESTIGATION = `/investigation-package`;
-export const LAB_REGISTRATION = `/lab/registration`;
+export const LAB_REGISTRATION = `/lab/laboratoryRegistration`;
+export const UPDATE_LAB_REGISTRATION = `/lab/updateDetailsAndBookingLaboratory`;
 export const INVESTIGATION_PACKAGE_Mapping = `/package-investigation-mapping`;
 export const INVESTIGATION_PACKAGE_API = `/investigation-package`;
 export const LAB = `/lab`;
@@ -222,8 +224,6 @@ export const GET_RECALL_OPD_PATIENTS_LIST = `/opd/getRecallOpdPatientVisitList`;
 export const GET_RECALL_PATIENT_DETAILS = `/opd/recallPatientDetailsByVisit`;
 export const UPDATE_RECALL_PATIENT = `/opd/update-recall-patient`;
 export const GET_ALL_DRUGS_BY_SECTION = `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic`;
-
-
 
 export const MAS_CARE_LEVEL = `${MASTERS}/mas-care-level`;
 export const MAS_BED_TYPE = `${MASTERS}/masBedType`;
@@ -353,13 +353,10 @@ export const GET_CANCELLED_APPOINTMENTS =
 export const GET_TOKENS = `/registration/getAppointmentSlots`;
 export const SET_VITALS = `/patient/saveVitalDetails`;
 
-
-
 //OPD
 export const GET_PRECONSULTATION_LIST = `/opd/getPendingPreConsultations`;
 export const GET_WAITING_LIST = `/opd/getOpdWaitingList`;
 export const OPD_CREATE_PATIENT_DETAILS = `/opd/createOpdPatientDetails`;
-
 
 //billing
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
@@ -378,16 +375,13 @@ export const OBG_DEPARTMENT_ID = 858;
 export const GET_OBG_EXAMINATION_DETAIL = "/opd/getOBGDetailsByVisit";
 export const SAVE_OBG_DETAILS = "/opd/saveOrUpdateOBGDetails";
 
-//OPTHALMOLOGY 
+//OPTHALMOLOGY
 export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
 export const GET_OPTHALMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
 
 //Dental
 export const DENTAL_DEPARTMENT_ID = 863;
 export const GET_DENTAL_EXAMINATION_DETAIL = `/opd/getDentalExaminationDetail`;
-
-
-
 
 export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
 export const PROCESS_LAB_PAYMENT = `/billing/processLabPayment`;
@@ -642,6 +636,10 @@ export const UPDATE_TEMPLATE_STATUS_URL = `${MASTERS}/billingTemplate/status`;
 export const SEARCH_TEMPLATES_URL = `${MASTERS}/billingTemplate/searchTemplates`;
 export const GET_TEMPLATE_BY_ID_URL = `${MASTERS}/billingTemplate/getById`;
 
-export const MAS_ITEM_FACILITY =  `${MASTERS}/masItemFacility`;
+export const MAS_ITEM_FACILITY = `${MASTERS}/masItemFacility`;
 
 export const ENT_MAS_PINNA = `${MASTERS}/entMasPinna`;
+
+//ABHA INTEGRATION URLS
+// ABDM APIs
+export const ABDM_SEND_AADHAAR_OTP = `${ABDM_API}/api/v1/abdm/create/send-otp-aadhaar`;

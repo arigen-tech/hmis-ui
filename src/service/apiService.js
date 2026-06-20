@@ -15,7 +15,7 @@ export const getRequest = async (endpoint, headers = {}) => {
     } else {
       token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
     }
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_HOST}${endpoint}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -92,7 +92,7 @@ export const postRequest = async (endpoint, data, options = {}) => {
 
     const isMultipart = options.isMultipart;
 
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_HOST}${endpoint}`, {
       method: "POST",
       headers: {
         ...token,
@@ -123,17 +123,16 @@ export const postRequestWithFormData = async (endpoint, formData) => {
     let token =
       localStorage.getItem("token") || sessionStorage.getItem("token");
 
-    console.log(`Sending request to: ${BASE_URL}${endpoint}`);
+    console.log(`Sending request to: ${endpoint}`);
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
-
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_HOST}${endpoint}`, {
       method: "POST",
       headers: {
-        Authorization: `Bearer ${token}`, // ✅ Keep only this
+        Authorization: `Bearer ${token}`, 
       },
-      body: formData, // ✅ Browser sets Content-Type automatically
+      body: formData,
     });
 
     clearTimeout(timeoutId);
@@ -179,7 +178,7 @@ export const putRequest = async (endpoint, data, headers = {}) => {
     } else {
       token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
     }
-    const response = await fetch(`${BASE_URL}${endpoint}`, {
+    const response = await fetch(`${API_HOST}${endpoint}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

@@ -269,8 +269,8 @@ const ViewSearchEmployee = () => {
       { field: "employmentTypeId", label: "Employment Type" },
       { field: "roleId", label: "Role" },
       { field: "designationId", label: "Designation" },
-       { field: "qualifications", label: "Qualifications" },
-    { field: "medicalRegistrationNo", label: "Medical Registration Number" }, 
+      { field: "qualifications", label: "Qualifications" },
+      { field: "medicalRegistrationNo", label: "Medical Registration Number" },
     ];
 
     // Check basic fields
@@ -769,14 +769,20 @@ const ViewSearchEmployee = () => {
   const fetchImageSrc = async (empId) => {
     try {
       const imageBlob = await getImageRequest(
-        `${GET_EMPLOYEE_PROFILE}${empId}`,
+        `${GET_EMPLOYEE_PROFILE}/${empId}`,
         {},
         "blob",
       );
+      // Revoke old URL if it exists
+      if (imageSrc) {
+        URL.revokeObjectURL(imageSrc);
+      }
       const imageUrl = URL.createObjectURL(imageBlob);
       setImageSrc(imageUrl);
     } catch (error) {
-      console.error("Error fetching image source", error);
+      console.error("Error fetching image source:", error);
+      // If image fetch fails, don't show broken image
+      setImageSrc(null);
     }
   };
 
@@ -795,6 +801,7 @@ const ViewSearchEmployee = () => {
       if (data?.status === 200 && Array.isArray(data.response)) {
         setDesignationData(data.response);
 
+        // Set the designation ID if provided
         if (designationId) {
           const exists = data.response.find(
             (d) => d.designationId === designationId,
@@ -805,16 +812,24 @@ const ViewSearchEmployee = () => {
               ...prev,
               designationId: designationId,
             }));
+            setSelectedDesignationId(designationId);
+          } else {
+            // If the designation doesn't exist in the list, still try to set it
+            // It might be a valid ID but not in the current list
+            setFormData((prev) => ({
+              ...prev,
+              designationId: designationId,
+            }));
+            setSelectedDesignationId(designationId);
           }
         }
       }
     } catch (e) {
-      console.error(e);
+      console.error("Error fetching designations:", e);
     } finally {
       setLoading(false);
     }
   };
-
   const fetchSpecialtyCenterData = async () => {
     setLoading(true);
     try {
@@ -1418,6 +1433,15 @@ const ViewSearchEmployee = () => {
 
     console.log("Complete employee data:", completeEmployeeData);
 
+    // Fetch profile image for display
+    if (completeEmployeeData.profilePicName) {
+      try {
+        await fetchImageSrc(employee.employeeId);
+      } catch (error) {
+        console.error("Error fetching profile image:", error);
+      }
+    }
+
     // Fetch and store ACTUAL FILES (not just paths)
     const [profilePicFile, idDocumentFile] = await Promise.all([
       completeEmployeeData.profilePicName
@@ -1477,13 +1501,13 @@ const ViewSearchEmployee = () => {
         ? completeEmployeeData.fromDate.slice(0, 10)
         : "",
       designationId:
-        completeEmployeeData.masDesignationId ||
         completeEmployeeData.designationId ||
+        completeEmployeeData.masDesignationId ||
         "",
       yearOfExperience: completeEmployeeData.yearOfExperience ?? "",
       profileDescription: completeEmployeeData.profileDescription || "",
       qualifications: completeEmployeeData.qualification || "",
-    medicalRegistrationNo: completeEmployeeData.medicalRegistrationNo || "",
+      medicalRegistrationNo: completeEmployeeData.medicalRegistrationNo || "",
     };
 
     // Set specialty centers if available
@@ -1611,11 +1635,14 @@ const ViewSearchEmployee = () => {
       }
     }
 
+    // FIX: Use designationId from API response
     if (completeEmployeeData.employeeTypeId) {
+      const designationIdToUse =
+        completeEmployeeData.designationId ||
+        completeEmployeeData.masDesignationId;
       await fetchDesignationByEmpTypeData(
         completeEmployeeData.employeeTypeId,
-        completeEmployeeData.masDesignationId ||
-          completeEmployeeData.designationId,
+        designationIdToUse,
       );
     }
   };
@@ -1627,6 +1654,7 @@ const ViewSearchEmployee = () => {
     try {
       const filename = filePath.split("/").pop();
 
+      // Use the VIEW_EMPLOYEE_DOCUMENT from config
       const response = await fetch(
         `${API_HOST}${VIEW_EMPLOYEE_DOCUMENT}?filePath=${encodeURIComponent(filePath)}`,
         {
@@ -1650,7 +1678,6 @@ const ViewSearchEmployee = () => {
       return null;
     }
   };
-
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
@@ -1718,17 +1745,83 @@ const ViewSearchEmployee = () => {
   const currentItems = filteredEmployees.slice(indexOfFirst, indexOfLast);
 
   const resetForm = () => {
-    setFormData(initialFormData);
+    setFormData({
+      ...initialFormData,
+      qualification: [
+        {
+          employeeQualificationId: null,
+          institutionName: "",
+          completionYear: "",
+          qualificationName: "",
+          filePath: null,
+        },
+      ],
+      document: [
+        {
+          employeeDocumentId: null,
+          documentName: "",
+          filePath: null,
+        },
+      ],
+      languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
+      specialtyCenter: [
+        {
+          specialtyCenterId: 1,
+          specialtyCenterName: "",
+          centerId: "",
+          isPrimary: true,
+        },
+      ],
+      workExperiences: [
+        {
+          experienceId: 1,
+          experienceSummary: "",
+        },
+      ],
+      memberships: [
+        {
+          membershipsId: 1,
+          membershipSummary: "",
+        },
+      ],
+      specialtyInterest: [
+        {
+          interestId: 1,
+          interestSummary: "",
+        },
+      ],
+      awardsDistinction: [
+        {
+          awardId: 1,
+          awardName: "",
+        },
+      ],
+      profilePicName: null,
+      profilePicPreview: null,
+      idDocumentName: null,
+    });
+
     setExistingFiles({
       profilePic: null,
       idDocument: null,
       qualifications: [],
       documents: [],
     });
+
     setErrors({});
     setShowForm(false);
     setEditingEmployee(null);
-    setImageSrc(null);
+
+    if (imageSrc) {
+      URL.revokeObjectURL(imageSrc);
+      setImageSrc(null);
+    }
+
+    // Reset all file inputs
+    const fileInputs = document.querySelectorAll('input[type="file"]');
+    fileInputs.forEach((input) => {
+      input.value = "";
+    });
   };
 
   const prepareFormData = () => {
@@ -1741,11 +1834,12 @@ const ViewSearchEmployee = () => {
     console.log("=== PREPARING FORM DATA ===");
     console.log("Existing files:", existingFiles);
 
-    // Basic info
+    // Basic info - these match your DTO exactly
     formDataToSend.append("firstName", formData.firstName);
     formDataToSend.append("lastName", formData.lastName);
-    if (formData.middleName)
+    if (formData.middleName) {
       formDataToSend.append("middleName", formData.middleName);
+    }
     formDataToSend.append(
       "dob",
       new Date(formData.dob).toISOString().split("T")[0],
@@ -1763,54 +1857,53 @@ const ViewSearchEmployee = () => {
     formDataToSend.append("employeeTypeId", formData.employeeTypeId);
     formDataToSend.append("employmentTypeId", formData.employmentTypeId);
     formDataToSend.append("roleId", formData.roleId);
+    formDataToSend.append("qualifications", formData.qualifications || "");
     formDataToSend.append(
-      "fromDate",
-      new Date(formData.fromDate).toISOString(),
+      "medicalRegistrationNo",
+      formData.medicalRegistrationNo || "",
     );
+
+    // ✅ FIX: Use the correct field name from your DTO - masDesignationId
+    if (formData.designationId) {
+      formDataToSend.append("masDesignationId", formData.designationId);
+    }
+
+    // fromDate handling
+    if (formData.fromDate) {
+      formDataToSend.append(
+        "fromDate",
+        new Date(formData.fromDate).toISOString(),
+      );
+    }
+
     formDataToSend.append(
       "profileDescription",
       formData.profileDescription || "",
     );
     formDataToSend.append("yearOfExperience", formData.yearOfExperience || "");
 
-    formDataToSend.append("qualifications", formData.qualifications || "");
-formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo || "");
-    if (formData.designationId) {
-      formDataToSend.append("masDesignationId", formData.designationId);
-    }
-
     // ========== HANDLE FILES ==========
 
-    // 1. Profile Picture
+    // Profile Picture
     if (formData.profilePicName instanceof File) {
       console.log("Adding new profile pic file");
       formDataToSend.append("profilePicName", formData.profilePicName);
-    } else if (existingFiles.profilePic) {
-      console.log(
-        "Sending existing profile pic path:",
-        existingFiles.profilePic,
-      );
-      // Send the file path as a string - NOT as a file
-      formDataToSend.append("profilePicPath", existingFiles.profilePic);
     }
 
-    // 2. ID Document
+    // ID Document
     if (formData.idDocumentName instanceof File) {
       console.log("Adding new ID document file");
       formDataToSend.append("idDocumentName", formData.idDocumentName);
-    } else if (existingFiles.idDocument) {
-      console.log(
-        "Sending existing ID document path:",
-        existingFiles.idDocument,
-      );
-      // Send the file path as a string - NOT as a file
-      formDataToSend.append("idDocumentPath", existingFiles.idDocument);
     }
 
     // ========== QUALIFICATIONS ==========
+    // Your DTO uses EmployeeQualificationReq
     formData.qualification.forEach((qual, index) => {
-      // Send existing ID if available
-      if (qual.employeeQualificationId && qual.employeeQualificationId !== 1) {
+      if (
+        qual.employeeQualificationId &&
+        qual.employeeQualificationId !== 1 &&
+        qual.employeeQualificationId !== null
+      ) {
         formDataToSend.append(
           `qualification[${index}].employeeQualificationId`,
           qual.employeeQualificationId.toString(),
@@ -1837,19 +1930,11 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
           `qualification[${index}].filePath`,
           qual.filePath,
         );
-      } else if (qual.filePath && typeof qual.filePath === "string") {
-        // Existing file path - send as string
-        console.log(
-          `Sending existing qualification file path at index ${index}:`,
-          qual.filePath,
-        );
-        formDataToSend.append(
-          `qualification[${index}].filePath`,
-          qual.filePath,
-        );
       }
     });
 
+    // ========== LANGUAGES ==========
+    // Your DTO uses EmployeeLanguageRequest
     formData.languages.forEach((language, index) => {
       if (language.languageIdValue) {
         formDataToSend.append(
@@ -1857,7 +1942,6 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
           language.languageIdValue.toString(),
         );
       }
-
       formDataToSend.append(
         `languages[${index}].languageName`,
         language.languageName || "",
@@ -1865,9 +1949,13 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
     });
 
     // ========== DOCUMENTS ==========
+    // Your DTO uses EmployeeDocumentReq
     formData.document.forEach((doc, index) => {
-      // Send existing ID if available
-      if (doc.employeeDocumentId && doc.employeeDocumentId !== 1) {
+      if (
+        doc.employeeDocumentId &&
+        doc.employeeDocumentId !== 1 &&
+        doc.employeeDocumentId !== null
+      ) {
         formDataToSend.append(
           `document[${index}].employeeDocumentId`,
           doc.employeeDocumentId.toString(),
@@ -1879,23 +1967,14 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
         doc.documentName || "",
       );
 
-      // Handle document file
       if (doc.filePath instanceof File) {
         console.log(`Adding new document file at index ${index}`);
-        formDataToSend.append(`document[${index}].filePath`, doc.filePath);
-      } else if (doc.filePath && typeof doc.filePath === "string") {
-        // Existing file path - send as string
-        console.log(
-          `Sending existing document file path at index ${index}:`,
-          doc.filePath,
-        );
         formDataToSend.append(`document[${index}].filePath`, doc.filePath);
       }
     });
 
-    // ========== OTHER ARRAYS ==========
-
-    // Specialty Center
+    // ========== SPECIALTY CENTER ==========
+    // Your DTO uses EmployeeSpecialtyCenterRequest
     formData.specialtyCenter.forEach((center, index) => {
       formDataToSend.append(
         `specialtyCenter[${index}].specialtyCenterName`,
@@ -1911,72 +1990,69 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
       );
     });
 
-    // Work Experiences
+    // ========== WORK EXPERIENCES ==========
+    // Your DTO uses EmployeeWorkExperienceRequest
     formData.workExperiences.forEach((exp, index) => {
-      // Send existing ID if available
-      if (exp.experienceId && exp.experienceId !== 1) {
+      if (
+        exp.experienceId &&
+        exp.experienceId !== 1 &&
+        exp.experienceId !== null
+      ) {
         formDataToSend.append(
           `workExperiences[${index}].experienceId`,
           exp.experienceId.toString(),
         );
       }
-
       formDataToSend.append(
         `workExperiences[${index}].experienceSummary`,
         exp.experienceSummary || "",
       );
     });
 
-    // Memberships
+    // ========== MEMBERSHIPS ==========
+    // Your DTO uses EmployeeMembershipRequest
     formData.memberships.forEach((mem, index) => {
-      // Send existing ID if available
       const existingId = mem.membershipId || mem.membershipsId;
-
-      if (existingId && existingId !== 1) {
+      if (existingId && existingId !== 1 && existingId !== null) {
         formDataToSend.append(
           `employeeMemberships[${index}].membershipId`,
           existingId.toString(),
         );
       }
-
-      const membershipSummary = mem.membershipSummary || "";
-      console.log(`Membership ${index}: summary = "${membershipSummary}"`);
       formDataToSend.append(
         `employeeMemberships[${index}].membershipSummary`,
-        membershipSummary,
+        mem.membershipSummary || "",
       );
     });
 
-    // Specialty Interest
+    // ========== SPECIALTY INTEREST ==========
+    // Your DTO uses EmployeeSpecialtyInterestRequest
     formData.specialtyInterest.forEach((interest, index) => {
-      // Send existing ID if available
-      if (interest.interestId && interest.interestId !== 1) {
+      if (
+        interest.interestId &&
+        interest.interestId !== 1 &&
+        interest.interestId !== null
+      ) {
         formDataToSend.append(
           `employeeSpecialtyInterests[${index}].interestId`,
           interest.interestId.toString(),
         );
       }
-
-      const interestSummary = interest.interestSummary || "";
-      console.log(
-        `Specialty Interest ${index}: summary = "${interestSummary}"`,
-      );
       formDataToSend.append(
         `employeeSpecialtyInterests[${index}].interestSummary`,
-        interestSummary,
+        interest.interestSummary || "",
       );
     });
 
-    // Awards
+    // ========== AWARDS ==========
+    // Your DTO uses EmployeeAwardRequest
     formData.awardsDistinction.forEach((award, index) => {
-      // Send existing ID if available
-      if (award.awardId && award.awardId !== 1) {
+      if (award.awardId && award.awardId !== 1 && award.awardId !== null) {
         formDataToSend.append(
           `employeeAwards[${index}].awardId`,
           award.awardId.toString(),
         );
       }
-
       formDataToSend.append(
         `employeeAwards[${index}].awardSummary`,
         award.awardName || "",
@@ -1992,35 +2068,57 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
   const handleSave = async () => {
     const formDataToSend = prepareFormData();
     if (!formDataToSend) return;
+
     console.log("Form data to send:", formDataToSend);
     setLoading(true);
+
     try {
-      const response = await fetch(
-        `${API_HOST}${UPDATE_EMPLOYEE}/${empUpdateId}`,
-        {
-          method: "PUT",
-          headers: {
-            Authorization: `Bearer ${token}`,
-            Accept: "application/json",
-          },
-          body: formDataToSend,
-        },
+      // Use the correct API endpoint path
+      const response = await postRequestWithFormData(
+        `${UPDATE_EMPLOYEE}/${empUpdateId}`,
+        formDataToSend,
       );
 
-      const data = await response.json();
+      console.log("Update Response:", response);
 
-      if (response.ok) {
+      if (response && (response.status === 200 || response.status === 201)) {
         showPopup("Employee updated successfully", "success");
         resetForm();
+        await fetchEmployeesData();
       } else {
-        showPopup(
-          `Error: ${data.message || "Failed to update employee"}`,
-          "error",
-        );
+        const errorMessage = response?.message || "Failed to update employee";
+        showPopup(errorMessage, "error");
       }
     } catch (error) {
       console.error("Error updating employee:", error);
-      showPopup("Error submitting form. Please try again.", "error");
+
+      if (
+        error.message?.includes("Mobile number already registered") ||
+        error.message?.includes("409") ||
+        error.response?.status === 409
+      ) {
+        showPopup(error.message || "Mobile number already registered", "error");
+        setErrors((prev) => ({
+          ...prev,
+          mobileNo: error.message || "This mobile number is already registered",
+        }));
+        setTimeout(() => {
+          const mobileField = document.getElementById("mobileNo");
+          if (mobileField) {
+            mobileField.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            mobileField.focus();
+          }
+        }, 100);
+        return;
+      }
+
+      showPopup(
+        error.message || "Error updating employee. Please try again.",
+        "error",
+      );
     } finally {
       setLoading(false);
     }
@@ -2138,8 +2236,8 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
                             <td>
                               <button
                                 className="btn btn-sm btn-success"
-                                onClick={() => handleAnotherAction(employee)}
                                 onClick={() => {
+                                  // Set view mode based on status
                                   if (employee.status === "S") {
                                     setIsViewMode(false);
                                   } else {
@@ -2181,1010 +2279,1803 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
             }}
             className="forms row"
           >
-             <fieldset disabled={isViewMode}>
-            <div className="g-3 row">
-              <div className="col-md-9">
-                <div className="g-3 row">
-                  <div className="col-md-4">
-                    <label className="form-label">First Name *</label>
-                    <input
-                      type="text"
-                      required
-                      className={`form-control ${hasError("firstName")}`}
-                      id="firstName"
-                      placeholder="First Name"
-                      onChange={handleInputChange}
-                      value={formData.firstName}
-                      maxLength={mlenght}
-                    />
-                    {getErrorMessage("firstName") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("firstName")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Middle Name</label>
-                    <input
-                      type="text"
-                      className="form-control"
-                      id="middleName"
-                      placeholder="Middle Name"
-                      onChange={handleInputChange}
-                      value={formData.middleName}
-                      maxLength={mlenght}
-                    />
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Last Name *</label>
-                    <input
-                      type="text"
-                      required
-                      className={`form-control ${hasError("lastName")}`}
-                      id="lastName"
-                      placeholder="Last Name"
-                      onChange={handleInputChange}
-                      value={formData.lastName}
-                      maxLength={mlenght}
-                    />
-                    {getErrorMessage("lastName") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("lastName")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Date of Birth *</label>
-                    <input
-                      type="date"
-                      required
-                      id="dob"
-                      value={formData.dob}
-                      className={`form-control ${hasError("dob")}`}
-                      onChange={handleInputChange}
-                    />
-                    {getErrorMessage("dob") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("dob")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Gender *</label>
-                    <select
-                      className={`form-select ${hasError("genderId")}`}
-                      style={{ paddingRight: "40px" }}
-                      value={formData.genderId}
-                      onChange={(e) =>
-                        handleGenderChange(parseInt(e.target.value, 10))
-                      }
-                      disabled={loading}
-                    >
-                      <option value="">Select Gender</option>
-                      {genderData.map((gender) => (
-                        <option key={gender.id} value={gender.id}>
-                          {gender.genderName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("genderId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("genderId")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Address *</label>
-                    <textarea
-                      required
-                      id="address1"
-                      value={formData.address1}
-                      className={`form-control ${hasError("address1")}`}
-                      onChange={handleInputChange}
-                      placeholder="Address"
-                    ></textarea>
-                    {getErrorMessage("address1") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("address1")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Country *</label>
-                    <select
-                      className={`form-select ${hasError("countryId")}`}
-                      value={formData.countryId}
-                      onChange={(e) => {
-                        const selectedCountry = countryData.find(
-                          (country) => country.id.toString() === e.target.value,
-                        );
-                        if (selectedCountry) {
-                          handleCountryChange(selectedCountry.id);
-                          setCountryIds(selectedCountry.id);
-                          fetchStateData(selectedCountry.id);
-                        }
-                      }}
-                      disabled={loading}
-                    >
-                      <option value="">Select Country</option>
-                      {countryData.map((country) => (
-                        <option key={country.id} value={country.id}>
-                          {country.countryName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("countryId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("countryId")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">State *</label>
-                    <select
-                      className={`form-select ${hasError("stateId")}`}
-                      value={formData.stateId}
-                      onChange={(e) => {
-                        const selectedState = stateData.find(
-                          (state) => state.id.toString() === e.target.value,
-                        );
-                        if (selectedState) {
-                          handleStateChange(selectedState.id);
-                          setStateIds(selectedState.id);
-                          fetchDistrictData(selectedState.id);
-                        }
-                      }}
-                      disabled={loading || !formData.countryId}
-                    >
-                      <option value="">Select State</option>
-                      {stateData.map((state) => (
-                        <option key={state.id} value={state.id}>
-                          {state.stateName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("stateId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("stateId")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">District *</label>
-                    <select
-                      className={`form-select ${hasError("districtId")}`}
-                      value={formData.districtId}
-                      onChange={(e) => handleDistrictChange(e.target.value)}
-                      disabled={loading || !formData.stateId}
-                    >
-                      <option value="">Select District</option>
-                      {districtData.map((dist) => (
-                        <option key={dist.id} value={dist.id}>
-                          {dist.districtName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("districtId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("districtId")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">City *</label>
-                    <input
-                      type="text"
-                      required
-                      className={`form-control ${hasError("city")}`}
-                      id="city"
-                      placeholder="City"
-                      onChange={handleInputChange}
-                      value={formData.city}
-                      maxLength={mlenght}
-                    />
-                    {getErrorMessage("city") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("city")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Pincode *</label>
-                    <input
-                      type="text"
-                      required
-                      className={`form-control ${hasError("pincode")}`}
-                      id="pincode"
-                      placeholder="Pincode"
-                      onChange={handleInputMobileChange}
-                      value={formData.pincode}
-                      maxLength={6}
-                      minLength={6}
-                      inputMode="numeric"
-                      pattern="\d*"
-                    />
-                    {getErrorMessage("pincode") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("pincode")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Mobile No. *</label>
-                    <input
-                      type="text"
-                      required
-                      className={`form-control ${hasError("mobileNo")}`}
-                      id="mobileNo"
-                      placeholder="Mobile No."
-                      onChange={handleInputMobileChange}
-                      value={formData.mobileNo}
-                      maxLength={10}
-                      minLength={10}
-                      inputMode="numeric"
-                      pattern="\d*"
-                    />
-                    {getErrorMessage("mobileNo") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("mobileNo")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">ID Type *</label>
-                    <select
-                      className={`form-select ${hasError("identificationType")}`}
-                      style={{ paddingRight: "40px" }}
-                      value={formData.identificationType}
-                      onChange={(e) =>
-                        handleIdTypeChange(parseInt(e.target.value, 10))
-                      }
-                      disabled={loading}
-                    >
-                      <option value="">Select ID Type</option>
-                      {idTypeData.map((idType) => (
-                        <option
-                          key={idType.identificationTypeId}
-                          value={idType.identificationTypeId}
-                        >
-                          {idType.identificationName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("identificationType") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("identificationType")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">ID Number *</label>
-                    <input
-                      type="text"
-                      required
-                      className={`form-control ${hasError("registrationNo")}`}
-                      id="registrationNo"
-                      placeholder="ID Number"
-                      onChange={handleInputChange}
-                      value={formData.registrationNo}
-                      maxLength={mlenght}
-                    />
-                    {getErrorMessage("registrationNo") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("registrationNo")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">ID Upload (JPEG/PDF) *</label>
-                    <div className="position-relative">
+            <fieldset disabled={isViewMode}>
+              <div className="g-3 row">
+                <div className="col-md-9">
+                  <div className="g-3 row">
+                    <div className="col-md-4">
+                      <label className="form-label">First Name *</label>
                       <input
-                        type="file"
-                        id="idDocumentName"
-                        className={`form-control ${hasError("idDocumentName")}`}
-                        accept=".jpg,.jpeg,.png,.pdf"
-                        onChange={(e) => handleFileWithPreview(e, "idDocument")}
-                        style={{ fontSize: "12px", padding: "4px 8px" }}
+                        type="text"
+                        required
+                        className={`form-control ${hasError("firstName")}`}
+                        id="firstName"
+                        placeholder="First Name"
+                        onChange={handleInputChange}
+                        value={formData.firstName}
+                        maxLength={mlenght}
                       />
-                      {getErrorMessage("idDocumentName") && (
+                      {getErrorMessage("firstName") && (
                         <div className="invalid-feedback">
-                          {getErrorMessage("idDocumentName")}
-                        </div>
-                      )}
-
-                      {/* File actions */}
-                      {(formData.idDocumentName ||
-                        existingFiles.idDocument) && (
-                        <div className="d-flex justify-content-between align-items-center mt-1">
-                          <small
-                            className="text-muted"
-                            style={{ fontSize: "11px" }}
-                          >
-                            <i className="icofont-check-circled me-1"></i>
-                            {formData.idDocumentName instanceof File
-                              ? formData.idDocumentName.name.substring(0, 15)
-                              : extractFilename(
-                                  existingFiles.idDocument,
-                                ).substring(0, 15)}
-                            {(
-                              formData.idDocumentName instanceof File
-                                ? formData.idDocumentName.name.length > 15
-                                : extractFilename(existingFiles.idDocument)
-                                    .length > 15
-                            )
-                              ? "..."
-                              : ""}
-                          </small>
-                          <div className="d-flex gap-1">
-                            <button
-                              type="button"
-                              className="btn btn-link p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                if (formData.idDocumentName instanceof File) {
-                                  const reader = new FileReader();
-                                  reader.onloadend = () => {
-                                    openPreview(
-                                      reader.result,
-                                      formData.idDocumentName.type ===
-                                        "application/pdf"
-                                        ? "pdf"
-                                        : "image",
-                                      formData.idDocumentName.name,
-                                      "idDocument",
-                                    );
-                                  };
-                                  reader.readAsDataURL(formData.idDocumentName);
-                                } else if (existingFiles.idDocument) {
-                                  openPreview(
-                                    createViewUrl(existingFiles.idDocument),
-                                    existingFiles.idDocument.endsWith(".pdf")
-                                      ? "pdf"
-                                      : "image",
-                                    extractFilename(existingFiles.idDocument),
-                                    "idDocument",
-                                  );
-                                }
-                              }}
-                              title="Preview"
-                              style={{
-                                fontSize: "12px",
-                                color: "#0d6efd",
-                                width: "20px",
-                                height: "20px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <i className="icofont-eye"></i>
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-link p-0"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                setFormData((prev) => ({
-                                  ...prev,
-                                  idDocumentName: null,
-                                }));
-                                setExistingFiles((prev) => ({
-                                  ...prev,
-                                  idDocument: null,
-                                }));
-                                document.getElementById(
-                                  "idDocumentName",
-                                ).value = "";
-                                setErrors((prev) => ({
-                                  ...prev,
-                                  idDocumentName: "",
-                                }));
-                              }}
-                              title="Remove"
-                              style={{
-                                fontSize: "12px",
-                                color: "#dc3545",
-                                width: "20px",
-                                height: "20px",
-                                display: "flex",
-                                alignItems: "center",
-                                justifyContent: "center",
-                              }}
-                            >
-                              <i className="icofont-close"></i>
-                            </button>
-                          </div>
+                          {getErrorMessage("firstName")}
                         </div>
                       )}
                     </div>
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label">
-                      Total Experience (Years)
-                    </label>
-                    <input
-                      type="number"
-                      className="form-control"
-                      id="yearOfExperience"
-                      value={formData.yearOfExperience}
-                      placeholder="Enter total experience in years"
-                      min="0"
-                      max="60"
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label">Designation *</label>
-                    <select
-                      className={`form-select ${hasError("designationId")}`}
-                      style={{ paddingRight: "40px" }}
-                      value={formData.designationId || ""}
-                      onChange={(e) =>
-                        handleDesignationChange(parseInt(e.target.value, 10))
-                      }
-                      disabled={loading || !formData.employeeTypeId}
-                    >
-                      <option value="">Select Designation</option>
-                      {designationData.map((designation) => (
-                        <option
-                          key={designation.designationId}
-                          value={designation.designationId}
-                        >
-                          {designation.designationName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("designationId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("designationId")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Role Name *</label>
-                    <select
-                      className={`form-select ${hasError("roleId")}`}
-                      style={{ paddingRight: "40px" }}
-                      value={formData.roleId}
-                      onChange={(e) =>
-                        handleRoleChange(parseInt(e.target.value, 10))
-                      }
-                      disabled={loading}
-                    >
-                      <option value="">Select Role</option>
-                      {roleData.map((role) => (
-                        <option key={role.id} value={role.id}>
-                          {role.roleDesc}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("roleId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("roleId")}
-                      </div>
-                    )}
-                  </div>
-
-                  <div className="col-md-4">
-                    <label className="form-label">
-                      Period of Employment From Date
-                    </label>
-                    <input
-                      type="date"
-                      id="fromDate"
-                      value={formData.fromDate}
-                      className="form-control"
-                      onChange={handleInputChange}
-                    />
-                  </div>
-
-<div className="col-md-4">
-    <label className="form-label">
-        Qualifications <span className="text-danger">*</span>
-    </label>
-    <input
-        type="text"
-        required
-        className="form-control"
-        id="qualifications"
-        placeholder="Enter qualifications"
-        onChange={handleInputChange}
-        value={formData.qualifications}
-        maxLength={mlenght}
-    />
-    {getErrorMessage("qualifications") && (
-        <div className="invalid-feedback">
-            {getErrorMessage("qualifications")}
-        </div>
-    )}
-</div>
-
-{/* NEW: Medical Registration Number field */}
-<div className="col-md-4">
-    <label className="form-label">
-        Medical Registration Number <span className="text-danger">*</span>
-    </label>
-    <input
-        type="text"
-        required
-        className="form-control"
-        id="medicalRegistrationNo"
-        placeholder="Medical Registration Number"
-        onChange={handleInputChange}
-        value={formData.medicalRegistrationNo}
-        maxLength={mlenght}
-    />
-    {getErrorMessage("medicalRegistrationNo") && (
-        <div className="invalid-feedback">
-            {getErrorMessage("medicalRegistrationNo")}
-        </div>
-    )}
-</div>
-                  <div className="col-md-4">
-                    <label className="form-label">Type of Employee *</label>
-                    <select
-                      className={`form-select ${hasError("employeeTypeId")}`}
-                      style={{ paddingRight: "40px" }}
-                      value={formData.employeeTypeId}
-                      onChange={(e) =>
-                        handleEmployeeTypeChange(parseInt(e.target.value, 10))
-                      }
-                      disabled={loading}
-                    >
-                      <option value="">Select Employee Type</option>
-                      {employeeTypeData.map((empType) => (
-                        <option
-                          key={empType.userTypeId}
-                          value={empType.userTypeId}
-                        >
-                          {empType.userTypeName}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("employeeTypeId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("employeeTypeId")}
-                      </div>
-                    )}
-                  </div>
-                  <div className="col-md-4">
-                    <label className="form-label">Type of Employment *</label>
-                    <select
-                      className={`form-select ${hasError("employmentTypeId")}`}
-                      style={{ paddingRight: "40px" }}
-                      value={formData.employmentTypeId}
-                      onChange={(e) =>
-                        handleEmploymentTypeChange(parseInt(e.target.value, 10))
-                      }
-                      disabled={loading}
-                    >
-                      <option value="">Select Employment Type</option>
-                      {employmentTypeData.map((emptType) => (
-                        <option key={emptType.id} value={emptType.id}>
-                          {emptType.employmentType}
-                        </option>
-                      ))}
-                    </select>
-                    {getErrorMessage("employmentTypeId") && (
-                      <div className="invalid-feedback">
-                        {getErrorMessage("employmentTypeId")}
-                      </div>
-                    )}
-                  </div>
-                </div>
-                <div className="col-md-12 mt-3">
-                  <label className="form-label">Profile Description</label>
-                  <div className="form-group col-md-12">
-                    <div
-                      className="form-label"
-                      style={{
-                        border: "1px solid #ced4da",
-                        borderRadius: "6px",
-                        padding: "8px",
-                      }}
-                    >
-                      <div ref={profileInclusionRef}></div>
-                      <CKEditor
-                        editor={DecoupledEditor}
-                        data={formData.profileDescription}
-                        config={{
-                          toolbar: { shouldNotGroupWhenFull: true },
-                          alignment: {
-                            options: ["left", "center", "right", "justify"],
-                          },
-                        }}
-                        onReady={(editor) => {
-                          profileEditorRef.current = editor;
-                          if (profileInclusionRef.current) {
-                            profileInclusionRef.current.innerHTML = "";
-                            profileInclusionRef.current.appendChild(
-                              editor.ui.view.toolbar.element,
-                            );
+                    <div className="col-md-4">
+                      <label className="form-label">Middle Name</label>
+                      <input
+                        type="text"
+                        className="form-control"
+                        id="middleName"
+                        placeholder="Middle Name"
+                        onChange={handleInputChange}
+                        value={formData.middleName}
+                        maxLength={mlenght}
+                      />
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Last Name *</label>
+                      <input
+                        type="text"
+                        required
+                        className={`form-control ${hasError("lastName")}`}
+                        id="lastName"
+                        placeholder="Last Name"
+                        onChange={handleInputChange}
+                        value={formData.lastName}
+                        maxLength={mlenght}
+                      />
+                      {getErrorMessage("lastName") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("lastName")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Date of Birth *</label>
+                      <input
+                        type="date"
+                        required
+                        id="dob"
+                        value={formData.dob}
+                        className={`form-control ${hasError("dob")}`}
+                        onChange={handleInputChange}
+                      />
+                      {getErrorMessage("dob") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("dob")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Gender *</label>
+                      <select
+                        className={`form-select ${hasError("genderId")}`}
+                        style={{ paddingRight: "40px" }}
+                        value={formData.genderId}
+                        onChange={(e) =>
+                          handleGenderChange(parseInt(e.target.value, 10))
+                        }
+                        disabled={loading}
+                      >
+                        <option value="">Select Gender</option>
+                        {genderData.map((gender) => (
+                          <option key={gender.id} value={gender.id}>
+                            {gender.genderName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("genderId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("genderId")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Address *</label>
+                      <textarea
+                        required
+                        id="address1"
+                        value={formData.address1}
+                        className={`form-control ${hasError("address1")}`}
+                        onChange={handleInputChange}
+                        placeholder="Address"
+                      ></textarea>
+                      {getErrorMessage("address1") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("address1")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Country *</label>
+                      <select
+                        className={`form-select ${hasError("countryId")}`}
+                        value={formData.countryId}
+                        onChange={(e) => {
+                          const selectedCountry = countryData.find(
+                            (country) =>
+                              country.id.toString() === e.target.value,
+                          );
+                          if (selectedCountry) {
+                            handleCountryChange(selectedCountry.id);
+                            setCountryIds(selectedCountry.id);
+                            fetchStateData(selectedCountry.id);
                           }
                         }}
-                        onChange={handleProfileEditorChange}
+                        disabled={loading}
+                      >
+                        <option value="">Select Country</option>
+                        {countryData.map((country) => (
+                          <option key={country.id} value={country.id}>
+                            {country.countryName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("countryId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("countryId")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">State *</label>
+                      <select
+                        className={`form-select ${hasError("stateId")}`}
+                        value={formData.stateId}
+                        onChange={(e) => {
+                          const selectedState = stateData.find(
+                            (state) => state.id.toString() === e.target.value,
+                          );
+                          if (selectedState) {
+                            handleStateChange(selectedState.id);
+                            setStateIds(selectedState.id);
+                            fetchDistrictData(selectedState.id);
+                          }
+                        }}
+                        disabled={loading || !formData.countryId}
+                      >
+                        <option value="">Select State</option>
+                        {stateData.map((state) => (
+                          <option key={state.id} value={state.id}>
+                            {state.stateName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("stateId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("stateId")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">District *</label>
+                      <select
+                        className={`form-select ${hasError("districtId")}`}
+                        value={formData.districtId}
+                        onChange={(e) => handleDistrictChange(e.target.value)}
+                        disabled={loading || !formData.stateId}
+                      >
+                        <option value="">Select District</option>
+                        {districtData.map((dist) => (
+                          <option key={dist.id} value={dist.id}>
+                            {dist.districtName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("districtId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("districtId")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">City *</label>
+                      <input
+                        type="text"
+                        required
+                        className={`form-control ${hasError("city")}`}
+                        id="city"
+                        placeholder="City"
+                        onChange={handleInputChange}
+                        value={formData.city}
+                        maxLength={mlenght}
+                      />
+                      {getErrorMessage("city") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("city")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Pincode *</label>
+                      <input
+                        type="text"
+                        required
+                        className={`form-control ${hasError("pincode")}`}
+                        id="pincode"
+                        placeholder="Pincode"
+                        onChange={handleInputMobileChange}
+                        value={formData.pincode}
+                        maxLength={6}
+                        minLength={6}
+                        inputMode="numeric"
+                        pattern="\d*"
+                      />
+                      {getErrorMessage("pincode") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("pincode")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Mobile No. *</label>
+                      <input
+                        type="text"
+                        required
+                        className={`form-control ${hasError("mobileNo")}`}
+                        id="mobileNo"
+                        placeholder="Mobile No."
+                        onChange={handleInputMobileChange}
+                        value={formData.mobileNo}
+                        maxLength={10}
+                        minLength={10}
+                        inputMode="numeric"
+                        pattern="\d*"
+                      />
+                      {getErrorMessage("mobileNo") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("mobileNo")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">ID Type *</label>
+                      <select
+                        className={`form-select ${hasError("identificationType")}`}
+                        style={{ paddingRight: "40px" }}
+                        value={formData.identificationType}
+                        onChange={(e) =>
+                          handleIdTypeChange(parseInt(e.target.value, 10))
+                        }
+                        disabled={loading}
+                      >
+                        <option value="">Select ID Type</option>
+                        {idTypeData.map((idType) => (
+                          <option
+                            key={idType.identificationTypeId}
+                            value={idType.identificationTypeId}
+                          >
+                            {idType.identificationName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("identificationType") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("identificationType")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">ID Number *</label>
+                      <input
+                        type="text"
+                        required
+                        className={`form-control ${hasError("registrationNo")}`}
+                        id="registrationNo"
+                        placeholder="ID Number"
+                        onChange={handleInputChange}
+                        value={formData.registrationNo}
+                        maxLength={mlenght}
+                      />
+                      {getErrorMessage("registrationNo") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("registrationNo")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">
+                        ID Upload (JPEG/PDF) *
+                      </label>
+                      <div className="position-relative">
+                        <input
+                          type="file"
+                          id="idDocumentName"
+                          className={`form-control ${hasError("idDocumentName")}`}
+                          accept=".jpg,.jpeg,.png,.pdf"
+                          onChange={(e) =>
+                            handleFileWithPreview(e, "idDocument")
+                          }
+                          style={{ fontSize: "12px", padding: "4px 8px" }}
+                        />
+                        {getErrorMessage("idDocumentName") && (
+                          <div className="invalid-feedback">
+                            {getErrorMessage("idDocumentName")}
+                          </div>
+                        )}
+
+                        {/* File actions */}
+                        {(formData.idDocumentName ||
+                          existingFiles.idDocument) && (
+                          <div className="d-flex justify-content-between align-items-center mt-1">
+                            <small
+                              className="text-muted"
+                              style={{ fontSize: "11px" }}
+                            >
+                              <i className="icofont-check-circled me-1"></i>
+                              {formData.idDocumentName instanceof File
+                                ? formData.idDocumentName.name.substring(0, 15)
+                                : extractFilename(
+                                    existingFiles.idDocument,
+                                  ).substring(0, 15)}
+                              {(
+                                formData.idDocumentName instanceof File
+                                  ? formData.idDocumentName.name.length > 15
+                                  : extractFilename(existingFiles.idDocument)
+                                      .length > 15
+                              )
+                                ? "..."
+                                : ""}
+                            </small>
+                            <div className="d-flex gap-1">
+                              <button
+                                type="button"
+                                className="btn btn-link p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  if (formData.idDocumentName instanceof File) {
+                                    const reader = new FileReader();
+                                    reader.onloadend = () => {
+                                      openPreview(
+                                        reader.result,
+                                        formData.idDocumentName.type ===
+                                          "application/pdf"
+                                          ? "pdf"
+                                          : "image",
+                                        formData.idDocumentName.name,
+                                        "idDocument",
+                                      );
+                                    };
+                                    reader.readAsDataURL(
+                                      formData.idDocumentName,
+                                    );
+                                  } else if (existingFiles.idDocument) {
+                                    openPreview(
+                                      createViewUrl(existingFiles.idDocument),
+                                      existingFiles.idDocument.endsWith(".pdf")
+                                        ? "pdf"
+                                        : "image",
+                                      extractFilename(existingFiles.idDocument),
+                                      "idDocument",
+                                    );
+                                  }
+                                }}
+                                title="Preview"
+                                style={{
+                                  fontSize: "12px",
+                                  color: "#0d6efd",
+                                  width: "20px",
+                                  height: "20px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <i className="icofont-eye"></i>
+                              </button>
+                              <button
+                                type="button"
+                                className="btn btn-link p-0"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setFormData((prev) => ({
+                                    ...prev,
+                                    idDocumentName: null,
+                                  }));
+                                  setExistingFiles((prev) => ({
+                                    ...prev,
+                                    idDocument: null,
+                                  }));
+                                  document.getElementById(
+                                    "idDocumentName",
+                                  ).value = "";
+                                  setErrors((prev) => ({
+                                    ...prev,
+                                    idDocumentName: "",
+                                  }));
+                                }}
+                                title="Remove"
+                                style={{
+                                  fontSize: "12px",
+                                  color: "#dc3545",
+                                  width: "20px",
+                                  height: "20px",
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "center",
+                                }}
+                              >
+                                <i className="icofont-close"></i>
+                              </button>
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label">
+                        Total Experience (Years)
+                      </label>
+                      <input
+                        type="number"
+                        className="form-control"
+                        id="yearOfExperience"
+                        value={formData.yearOfExperience}
+                        placeholder="Enter total experience in years"
+                        min="0"
+                        max="60"
+                        onChange={handleInputChange}
                       />
                     </div>
-                  </div>
-                </div>
-              </div>
-              {/* Profile Image */}
-              <div className="col-md-3 d-flex flex-column">
-                <label className="form-label">Profile Image *</label>
-                <div className="d-flex flex-column align-items-center border p-2">
-                  <div
-                    style={{
-                      width: "100%",
-                      height: "150px",
-                      overflow: "hidden",
-                      display: "flex",
-                      justifyContent: "center",
-                      alignItems: "center",
-                      backgroundColor: "#f8f9fa",
-                      cursor:
-                        formData.profilePicPreview || existingFiles.profilePic
-                          ? "pointer"
-                          : "default",
-                    }}
-                    onClick={() => {
-                      if (formData.profilePicPreview) {
-                        openPreview(
-                          formData.profilePicPreview,
-                          "image",
-                          formData.profilePicName?.name || "Profile Image",
-                          "profile",
-                        );
-                      } else if (existingFiles.profilePic) {
-                        openPreview(
-                          createViewUrl(existingFiles.profilePic),
-                          "image",
-                          extractFilename(existingFiles.profilePic),
-                          "profile",
-                        );
-                      }
-                    }}
-                  >
-                    <img
-                      src={
-                        formData.profilePicPreview ||
-                        imageSrc ||
-                        placeholderImage
-                      }
-                      alt="Profile"
-                      style={{
-                        objectFit: "cover",
-                        maxWidth: "100%",
-                        maxHeight: "100%",
-                        borderRadius: "4px",
-                      }}
-                    />
-                  </div>
 
-                  <input
-                    type="file"
-                    id="profilePicName"
-                    className={`form-control mt-2 ${hasError("profilePicName")}`}
-                    accept="image/*"
-                    onChange={(e) => handleFileWithPreview(e, "profile")}
-                    style={{ fontSize: "12px", padding: "4px 8px" }}
-                  />
-                  {getErrorMessage("profilePicName") && (
-                    <div className="invalid-feedback">
-                      {getErrorMessage("profilePicName")}
-                    </div>
-                  )}
-
-                  {/* File actions */}
-                  {(formData.profilePicName || existingFiles.profilePic) && (
-                    <div className="d-flex justify-content-between align-items-center w-100 mt-2">
-                      <small
-                        className="text-muted"
-                        style={{ fontSize: "11px" }}
+                    <div className="col-md-4">
+                      <label className="form-label">Designation *</label>
+                      <select
+                        className={`form-select ${hasError("designationId")}`}
+                        style={{ paddingRight: "40px" }}
+                        value={formData.designationId || ""}
+                        onChange={(e) =>
+                          handleDesignationChange(parseInt(e.target.value, 10))
+                        }
+                        disabled={loading || !formData.employeeTypeId}
                       >
-                        <i className="icofont-check-circled me-1"></i>
-                        {formData.profilePicName instanceof File
-                          ? formData.profilePicName.name.substring(0, 15)
-                          : extractFilename(existingFiles.profilePic).substring(
-                              0,
-                              15,
-                            )}
-                        {(
-                          formData.profilePicName instanceof File
-                            ? formData.profilePicName.name.length > 15
-                            : extractFilename(existingFiles.profilePic).length >
-                              15
-                        )
-                          ? "..."
-                          : ""}
-                      </small>
-                      <div className="d-flex gap-1">
-                        <button
-                          type="button"
-                          className="btn btn-link p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            if (formData.profilePicPreview) {
-                              openPreview(
-                                formData.profilePicPreview,
-                                "image",
-                                formData.profilePicName?.name ||
-                                  "Profile Image",
-                                "profile",
-                              );
-                            } else if (existingFiles.profilePic) {
-                              openPreview(
-                                createViewUrl(existingFiles.profilePic),
-                                "image",
-                                extractFilename(existingFiles.profilePic),
-                                "profile",
+                        <option value="">Select Designation</option>
+                        {designationData.map((designation) => (
+                          <option
+                            key={designation.designationId}
+                            value={designation.designationId}
+                          >
+                            {designation.designationName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("designationId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("designationId")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Role Name *</label>
+                      <select
+                        className={`form-select ${hasError("roleId")}`}
+                        style={{ paddingRight: "40px" }}
+                        value={formData.roleId}
+                        onChange={(e) =>
+                          handleRoleChange(parseInt(e.target.value, 10))
+                        }
+                        disabled={loading}
+                      >
+                        <option value="">Select Role</option>
+                        {roleData.map((role) => (
+                          <option key={role.id} value={role.id}>
+                            {role.roleDesc}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("roleId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("roleId")}
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label">
+                        Period of Employment From Date
+                      </label>
+                      <input
+                        type="date"
+                        id="fromDate"
+                        value={formData.fromDate}
+                        className="form-control"
+                        onChange={handleInputChange}
+                      />
+                    </div>
+
+                    <div className="col-md-4">
+                      <label className="form-label">
+                        Qualifications <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="form-control"
+                        id="qualifications"
+                        placeholder="Enter qualifications"
+                        onChange={handleInputChange}
+                        value={formData.qualifications}
+                        maxLength={mlenght}
+                      />
+                      {getErrorMessage("qualifications") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("qualifications")}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* NEW: Medical Registration Number field */}
+                    <div className="col-md-4">
+                      <label className="form-label">
+                        Medical Registration Number{" "}
+                        <span className="text-danger">*</span>
+                      </label>
+                      <input
+                        type="text"
+                        required
+                        className="form-control"
+                        id="medicalRegistrationNo"
+                        placeholder="Medical Registration Number"
+                        onChange={handleInputChange}
+                        value={formData.medicalRegistrationNo}
+                        maxLength={mlenght}
+                      />
+                      {getErrorMessage("medicalRegistrationNo") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("medicalRegistrationNo")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Type of Employee *</label>
+                      <select
+                        className={`form-select ${hasError("employeeTypeId")}`}
+                        style={{ paddingRight: "40px" }}
+                        value={formData.employeeTypeId}
+                        onChange={(e) =>
+                          handleEmployeeTypeChange(parseInt(e.target.value, 10))
+                        }
+                        disabled={loading}
+                      >
+                        <option value="">Select Employee Type</option>
+                        {employeeTypeData.map((empType) => (
+                          <option
+                            key={empType.userTypeId}
+                            value={empType.userTypeId}
+                          >
+                            {empType.userTypeName}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("employeeTypeId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("employeeTypeId")}
+                        </div>
+                      )}
+                    </div>
+                    <div className="col-md-4">
+                      <label className="form-label">Type of Employment *</label>
+                      <select
+                        className={`form-select ${hasError("employmentTypeId")}`}
+                        style={{ paddingRight: "40px" }}
+                        value={formData.employmentTypeId}
+                        onChange={(e) =>
+                          handleEmploymentTypeChange(
+                            parseInt(e.target.value, 10),
+                          )
+                        }
+                        disabled={loading}
+                      >
+                        <option value="">Select Employment Type</option>
+                        {employmentTypeData.map((emptType) => (
+                          <option key={emptType.id} value={emptType.id}>
+                            {emptType.employmentType}
+                          </option>
+                        ))}
+                      </select>
+                      {getErrorMessage("employmentTypeId") && (
+                        <div className="invalid-feedback">
+                          {getErrorMessage("employmentTypeId")}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  <div className="col-md-12 mt-3">
+                    <label className="form-label">Profile Description</label>
+                    <div className="form-group col-md-12">
+                      <div
+                        className="form-label"
+                        style={{
+                          border: "1px solid #ced4da",
+                          borderRadius: "6px",
+                          padding: "8px",
+                        }}
+                      >
+                        <div ref={profileInclusionRef}></div>
+                        <CKEditor
+                          editor={DecoupledEditor}
+                          data={formData.profileDescription}
+                          config={{
+                            toolbar: { shouldNotGroupWhenFull: true },
+                            alignment: {
+                              options: ["left", "center", "right", "justify"],
+                            },
+                          }}
+                          onReady={(editor) => {
+                            profileEditorRef.current = editor;
+                            if (profileInclusionRef.current) {
+                              profileInclusionRef.current.innerHTML = "";
+                              profileInclusionRef.current.appendChild(
+                                editor.ui.view.toolbar.element,
                               );
                             }
                           }}
-                          title="Preview"
-                          style={{
-                            fontSize: "12px",
-                            color: "#0d6efd",
-                            width: "20px",
-                            height: "20px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <i className="icofont-eye"></i>
-                        </button>
-                        <button
-                          type="button"
-                          className="btn btn-link p-0"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setFormData((prev) => ({
-                              ...prev,
-                              profilePicName: null,
-                              profilePicPreview: null,
-                            }));
-                            setExistingFiles((prev) => ({
-                              ...prev,
-                              profilePic: null,
-                            }));
-                            document.getElementById("profilePicName").value =
-                              "";
-                            setErrors((prev) => ({
-                              ...prev,
-                              profilePicName: "",
-                            }));
-                          }}
-                          title="Remove"
-                          style={{
-                            fontSize: "12px",
-                            color: "#dc3545",
-                            width: "20px",
-                            height: "20px",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                          }}
-                        >
-                          <i className="icofont-close"></i>
-                        </button>
+                          onChange={handleProfileEditorChange}
+                        />
                       </div>
                     </div>
-                  )}
+                  </div>
+                </div>
+                {/* Profile Image */}
+                <div className="col-md-3 d-flex flex-column">
+                  <label className="form-label">Profile Image *</label>
+                  <div className="d-flex flex-column align-items-center border p-2">
+                    <div
+                      style={{
+                        width: "100%",
+                        height: "150px",
+                        overflow: "hidden",
+                        display: "flex",
+                        justifyContent: "center",
+                        alignItems: "center",
+                        backgroundColor: "#f8f9fa",
+                        cursor:
+                          formData.profilePicPreview || existingFiles.profilePic
+                            ? "pointer"
+                            : "default",
+                      }}
+                      onClick={() => {
+                        if (formData.profilePicPreview) {
+                          openPreview(
+                            formData.profilePicPreview,
+                            "image",
+                            formData.profilePicName?.name || "Profile Image",
+                            "profile",
+                          );
+                        } else if (existingFiles.profilePic) {
+                          openPreview(
+                            createViewUrl(existingFiles.profilePic),
+                            "image",
+                            extractFilename(existingFiles.profilePic),
+                            "profile",
+                          );
+                        }
+                      }}
+                    >
+                      <img
+                        src={
+                          formData.profilePicPreview ||
+                          imageSrc ||
+                          placeholderImage
+                        }
+                        alt="Profile"
+                        style={{
+                          objectFit: "cover",
+                          maxWidth: "100%",
+                          maxHeight: "100%",
+                          borderRadius: "4px",
+                        }}
+                      />
+                    </div>
+
+                    <input
+                      type="file"
+                      id="profilePicName"
+                      className={`form-control mt-2 ${hasError("profilePicName")}`}
+                      accept="image/*"
+                      onChange={(e) => handleFileWithPreview(e, "profile")}
+                      style={{ fontSize: "12px", padding: "4px 8px" }}
+                    />
+                    {getErrorMessage("profilePicName") && (
+                      <div className="invalid-feedback">
+                        {getErrorMessage("profilePicName")}
+                      </div>
+                    )}
+
+                    {/* File actions */}
+                    {(formData.profilePicName || existingFiles.profilePic) && (
+                      <div className="d-flex justify-content-between align-items-center w-100 mt-2">
+                        <small
+                          className="text-muted"
+                          style={{ fontSize: "11px" }}
+                        >
+                          <i className="icofont-check-circled me-1"></i>
+                          {formData.profilePicName instanceof File
+                            ? formData.profilePicName.name.substring(0, 15)
+                            : extractFilename(
+                                existingFiles.profilePic,
+                              ).substring(0, 15)}
+                          {(
+                            formData.profilePicName instanceof File
+                              ? formData.profilePicName.name.length > 15
+                              : extractFilename(existingFiles.profilePic)
+                                  .length > 15
+                          )
+                            ? "..."
+                            : ""}
+                        </small>
+                        <div className="d-flex gap-1">
+                          <button
+                            type="button"
+                            className="btn btn-link p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              if (formData.profilePicPreview) {
+                                openPreview(
+                                  formData.profilePicPreview,
+                                  "image",
+                                  formData.profilePicName?.name ||
+                                    "Profile Image",
+                                  "profile",
+                                );
+                              } else if (existingFiles.profilePic) {
+                                openPreview(
+                                  createViewUrl(existingFiles.profilePic),
+                                  "image",
+                                  extractFilename(existingFiles.profilePic),
+                                  "profile",
+                                );
+                              }
+                            }}
+                            title="Preview"
+                            style={{
+                              fontSize: "12px",
+                              color: "#0d6efd",
+                              width: "20px",
+                              height: "20px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <i className="icofont-eye"></i>
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-link p-0"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setFormData((prev) => ({
+                                ...prev,
+                                profilePicName: null,
+                                profilePicPreview: null,
+                              }));
+                              setExistingFiles((prev) => ({
+                                ...prev,
+                                profilePic: null,
+                              }));
+                              document.getElementById("profilePicName").value =
+                                "";
+                              setErrors((prev) => ({
+                                ...prev,
+                                profilePicName: "",
+                              }));
+                            }}
+                            title="Remove"
+                            style={{
+                              fontSize: "12px",
+                              color: "#dc3545",
+                              width: "20px",
+                              height: "20px",
+                              display: "flex",
+                              alignItems: "center",
+                              justifyContent: "center",
+                            }}
+                          >
+                            <i className="icofont-close"></i>
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
-            </div>
 
-            <div className="row mb-3 mt-4">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header   border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">
-                      Educational Qualification *
-                    </h6>
-                    {errors.qualification &&
-                      typeof errors.qualification === "string" && (
-                        <small className="text-danger">
-                          {errors.qualification}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Degree *</th>
-                          <th>Name of Institution *</th>
-                          <th>Year of Completion *</th>
-                          <th>File Upload *</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.qualification.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <input
-                                type="text"
-                                className={`form-control ${errors.qualification?.[index]?.qualificationName ? "is-invalid" : ""}`}
-                                value={row.qualificationName}
-                                onChange={(e) =>
-                                  handleQualificationChange(
-                                    index,
-                                    "qualificationName",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              {errors.qualification?.[index]
-                                ?.qualificationName && (
-                                <div className="invalid-feedback">
-                                  {
-                                    errors.qualification[index]
-                                      .qualificationName
-                                  }
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                className={`form-control ${errors.qualification?.[index]?.institutionName ? "is-invalid" : ""}`}
-                                value={row.institutionName}
-                                onChange={(e) =>
-                                  handleQualificationChange(
-                                    index,
-                                    "institutionName",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              {errors.qualification?.[index]
-                                ?.institutionName && (
-                                <div className="invalid-feedback">
-                                  {errors.qualification[index].institutionName}
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              <input
-                                type="text"
-                                className={`form-control ${errors.qualification?.[index]?.completionYear ? "is-invalid" : ""}`}
-                                placeholder="YYYY"
-                                value={row.completionYear}
-                                onChange={(e) =>
-                                  handleQualificationChange(
-                                    index,
-                                    "completionYear",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                              {errors.qualification?.[index]
-                                ?.completionYear && (
-                                <div className="invalid-feedback">
-                                  {errors.qualification[index].completionYear}
-                                </div>
-                              )}
-                            </td>
-                            <td>
-                              <div className="position-relative">
+              <div className="row mb-3 mt-4">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header   border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">
+                        Educational Qualification *
+                      </h6>
+                      {errors.qualification &&
+                        typeof errors.qualification === "string" && (
+                          <small className="text-danger">
+                            {errors.qualification}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Degree *</th>
+                            <th>Name of Institution *</th>
+                            <th>Year of Completion *</th>
+                            <th>File Upload *</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.qualification.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
                                 <input
-                                  type="file"
-                                  className={`form-control ${errors.qualification?.[index]?.filePath ? "is-invalid" : ""}`}
+                                  type="text"
+                                  className={`form-control ${errors.qualification?.[index]?.qualificationName ? "is-invalid" : ""}`}
+                                  value={row.qualificationName}
                                   onChange={(e) =>
-                                    handleFileWithPreview(
-                                      e,
-                                      "qualification",
+                                    handleQualificationChange(
                                       index,
+                                      "qualificationName",
+                                      e.target.value,
                                     )
                                   }
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  style={{
-                                    fontSize: "12px",
-                                    padding: "4px 8px",
-                                  }}
                                 />
-                                {errors.qualification?.[index]?.filePath && (
+                                {errors.qualification?.[index]
+                                  ?.qualificationName && (
                                   <div className="invalid-feedback">
-                                    {errors.qualification[index].filePath}
+                                    {
+                                      errors.qualification[index]
+                                        .qualificationName
+                                    }
                                   </div>
                                 )}
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className={`form-control ${errors.qualification?.[index]?.institutionName ? "is-invalid" : ""}`}
+                                  value={row.institutionName}
+                                  onChange={(e) =>
+                                    handleQualificationChange(
+                                      index,
+                                      "institutionName",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                                {errors.qualification?.[index]
+                                  ?.institutionName && (
+                                  <div className="invalid-feedback">
+                                    {
+                                      errors.qualification[index]
+                                        .institutionName
+                                    }
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className={`form-control ${errors.qualification?.[index]?.completionYear ? "is-invalid" : ""}`}
+                                  placeholder="YYYY"
+                                  value={row.completionYear}
+                                  onChange={(e) =>
+                                    handleQualificationChange(
+                                      index,
+                                      "completionYear",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                                {errors.qualification?.[index]
+                                  ?.completionYear && (
+                                  <div className="invalid-feedback">
+                                    {errors.qualification[index].completionYear}
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                <div className="position-relative">
+                                  <input
+                                    type="file"
+                                    className={`form-control ${errors.qualification?.[index]?.filePath ? "is-invalid" : ""}`}
+                                    onChange={(e) =>
+                                      handleFileWithPreview(
+                                        e,
+                                        "qualification",
+                                        index,
+                                      )
+                                    }
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    style={{
+                                      fontSize: "12px",
+                                      padding: "4px 8px",
+                                    }}
+                                  />
+                                  {errors.qualification?.[index]?.filePath && (
+                                    <div className="invalid-feedback">
+                                      {errors.qualification[index].filePath}
+                                    </div>
+                                  )}
 
-                                {/* File actions */}
-                                {(row.filePath ||
-                                  existingFiles.qualifications[index]) && (
-                                  <div className="d-flex justify-content-between align-items-center mt-1">
-                                    <small
-                                      className="text-muted"
-                                      style={{ fontSize: "10px" }}
-                                    >
-                                      <i className="icofont-check-circled me-1"></i>
-                                      {row.filePath instanceof File
-                                        ? row.filePath.name.substring(0, 12)
-                                        : extractFilename(
-                                            existingFiles.qualifications[index],
-                                          ).substring(0, 12)}
-                                      {(
-                                        row.filePath instanceof File
-                                          ? row.filePath.name.length > 12
+                                  {/* File actions */}
+                                  {(row.filePath ||
+                                    existingFiles.qualifications[index]) && (
+                                    <div className="d-flex justify-content-between align-items-center mt-1">
+                                      <small
+                                        className="text-muted"
+                                        style={{ fontSize: "10px" }}
+                                      >
+                                        <i className="icofont-check-circled me-1"></i>
+                                        {row.filePath instanceof File
+                                          ? row.filePath.name.substring(0, 12)
                                           : extractFilename(
                                               existingFiles.qualifications[
                                                 index
                                               ],
-                                            ).length > 12
-                                      )
-                                        ? "..."
-                                        : ""}
-                                    </small>
-                                    <div className="d-flex gap-1">
-                                      <button
-                                        type="button"
-                                        className="btn btn-link p-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (row.filePath instanceof File) {
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                              openPreview(
-                                                reader.result,
-                                                row.filePath.type ===
-                                                  "application/pdf"
-                                                  ? "pdf"
-                                                  : "image",
-                                                row.filePath.name,
-                                                "qualification",
-                                              );
-                                            };
-                                            reader.readAsDataURL(row.filePath);
-                                          } else if (
-                                            existingFiles.qualifications[index]
-                                          ) {
-                                            openPreview(
-                                              createViewUrl(
+                                            ).substring(0, 12)}
+                                        {(
+                                          row.filePath instanceof File
+                                            ? row.filePath.name.length > 12
+                                            : extractFilename(
                                                 existingFiles.qualifications[
                                                   index
                                                 ],
-                                              ),
+                                              ).length > 12
+                                        )
+                                          ? "..."
+                                          : ""}
+                                      </small>
+                                      <div className="d-flex gap-1">
+                                        <button
+                                          type="button"
+                                          className="btn btn-link p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (row.filePath instanceof File) {
+                                              const reader = new FileReader();
+                                              reader.onloadend = () => {
+                                                openPreview(
+                                                  reader.result,
+                                                  row.filePath.type ===
+                                                    "application/pdf"
+                                                    ? "pdf"
+                                                    : "image",
+                                                  row.filePath.name,
+                                                  "qualification",
+                                                );
+                                              };
+                                              reader.readAsDataURL(
+                                                row.filePath,
+                                              );
+                                            } else if (
                                               existingFiles.qualifications[
                                                 index
-                                              ].endsWith(".pdf")
-                                                ? "pdf"
-                                                : "image",
-                                              extractFilename(
+                                              ]
+                                            ) {
+                                              openPreview(
+                                                createViewUrl(
+                                                  existingFiles.qualifications[
+                                                    index
+                                                  ],
+                                                ),
                                                 existingFiles.qualifications[
                                                   index
-                                                ],
-                                              ),
-                                              "qualification",
-                                            );
-                                          }
-                                        }}
-                                        title="Preview"
+                                                ].endsWith(".pdf")
+                                                  ? "pdf"
+                                                  : "image",
+                                                extractFilename(
+                                                  existingFiles.qualifications[
+                                                    index
+                                                  ],
+                                                ),
+                                                "qualification",
+                                              );
+                                            }
+                                          }}
+                                          title="Preview"
+                                          style={{
+                                            fontSize: "11px",
+                                            color: "#0d6efd",
+                                            width: "18px",
+                                            height: "18px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                          }}
+                                        >
+                                          <i className="icofont-eye"></i>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-link p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFormData((prev) => ({
+                                              ...prev,
+                                              qualification:
+                                                prev.qualification.map(
+                                                  (item, i) =>
+                                                    i === index
+                                                      ? {
+                                                          ...item,
+                                                          filePath: null,
+                                                        }
+                                                      : item,
+                                                ),
+                                            }));
+                                            setExistingFiles((prev) => {
+                                              const newQualifications = [
+                                                ...prev.qualifications,
+                                              ];
+                                              newQualifications[index] = null;
+                                              return {
+                                                ...prev,
+                                                qualifications:
+                                                  newQualifications,
+                                              };
+                                            });
+                                            setErrors((prev) => {
+                                              const newErrors = { ...prev };
+                                              if (
+                                                newErrors.qualification &&
+                                                newErrors.qualification[index]
+                                              ) {
+                                                delete newErrors.qualification[
+                                                  index
+                                                ].filePath;
+                                              }
+                                              return newErrors;
+                                            });
+                                          }}
+                                          title="Remove"
+                                          style={{
+                                            fontSize: "11px",
+                                            color: "#dc3545",
+                                            width: "18px",
+                                            height: "18px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                          }}
+                                        >
+                                          <i className="icofont-close"></i>
+                                        </button>
+                                      </div>
+                                    </div>
+                                  )}
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() => removeEducationRow(index)}
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addEducationRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Specialty Center Name Section */}
+              <div className="row mb-3 mt-4">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">Specialty Center Name</h6>
+                      {errors.specialtyCenter &&
+                        typeof errors.specialtyCenter === "string" && (
+                          <small className="text-danger">
+                            {errors.specialtyCenter}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Specialty Center Name</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.specialtyCenter.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                <div className="position-relative">
+                                  <input
+                                    type="text"
+                                    className="form-control"
+                                    value={row.specialtyCenterName}
+                                    placeholder="Search specialty center..."
+                                    onChange={(e) => {
+                                      const value = e.target.value;
+                                      handleSpecialtyCenterChange(
+                                        index,
+                                        "specialtyCenterName",
+                                        value,
+                                      );
+                                      handleSpecialtyCenterChange(
+                                        index,
+                                        "searchTerm",
+                                        value,
+                                      );
+                                    }}
+                                    onBlur={() => {
+                                      // Clear search after a short delay when input loses focus
+                                      setTimeout(() => {
+                                        handleSpecialtyCenterChange(
+                                          index,
+                                          "searchTerm",
+                                          "",
+                                        );
+                                      }, 200);
+                                    }}
+                                    maxLength={mlenght}
+                                    autoComplete="off"
+                                  />
+
+                                  {/* Show dropdown only for this row if it has search term */}
+                                  {row.searchTerm &&
+                                    row.searchTerm.length > 0 && (
+                                      <div
+                                        className="dropdown-menu show w-100"
                                         style={{
-                                          fontSize: "11px",
-                                          color: "#0d6efd",
-                                          width: "18px",
-                                          height: "18px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
+                                          position: "absolute",
+                                          top: "100%",
+                                          left: 0,
+                                          zIndex: 1000,
+                                          maxHeight: "200px",
+                                          overflowY: "auto",
                                         }}
                                       >
-                                        <i className="icofont-eye"></i>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-link p-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setFormData((prev) => ({
-                                            ...prev,
-                                            qualification:
-                                              prev.qualification.map(
+                                        {specialtyCenterData
+                                          .filter((center) => {
+                                            const searchLower =
+                                              row.searchTerm.toLowerCase();
+                                            const centerName =
+                                              center.centerName || "";
+                                            const specialtyName =
+                                              center.specialtyCenterName || "";
+                                            return (
+                                              centerName
+                                                .toLowerCase()
+                                                .includes(searchLower) ||
+                                              specialtyName
+                                                .toLowerCase()
+                                                .includes(searchLower)
+                                            );
+                                          })
+                                          .slice(0, 10) // Limit to 10 results for better UX
+                                          .map((center) => (
+                                            <button
+                                              key={center.centerId}
+                                              type="button"
+                                              className="dropdown-item"
+                                              onClick={() => {
+                                                handleSpecialtyCenterChange(
+                                                  index,
+                                                  "specialtyCenterName",
+                                                  center.centerName ||
+                                                    center.specialtyCenterName ||
+                                                    "",
+                                                );
+                                                handleSpecialtyCenterChange(
+                                                  index,
+                                                  "centerId",
+                                                  center.centerId || "",
+                                                );
+                                                handleSpecialtyCenterChange(
+                                                  index,
+                                                  "searchTerm",
+                                                  "",
+                                                ); // Clear search after selection
+                                              }}
+                                              style={{ cursor: "pointer" }}
+                                            >
+                                              {center.centerName ||
+                                                center.specialtyCenterName ||
+                                                ""}
+                                            </button>
+                                          ))}
+                                      </div>
+                                    )}
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() =>
+                                    removeSpecialtyCenterRow(index)
+                                  }
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addSpecialtyCenterRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Language Known Section */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">
+                        Language Known <span className="text-danger">*</span>
+                      </h6>
+                      {errors.languages &&
+                        typeof errors.languages === "string" && (
+                          <small className="text-danger">
+                            {errors.languages}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>
+                              Language <span className="text-danger">*</span>
+                            </th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.languages.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                <select
+                                  className={`form-select ${errors.languages?.[index]?.languageName ? "is-invalid" : ""}`}
+                                  value={row.languageName}
+                                  onChange={(e) => {
+                                    const value = e.target.value;
+                                    if (value) {
+                                      const selectedLang = languageData.find(
+                                        (lang) =>
+                                          lang.language === value ||
+                                          lang.languageName === value ||
+                                          String(lang.id) === String(value) ||
+                                          String(lang.languageId) ===
+                                            String(value),
+                                      );
+
+                                      if (selectedLang) {
+                                        handleLanguageChange(
+                                          index,
+                                          "languageName",
+                                          selectedLang.language ||
+                                            selectedLang.languageName,
+                                          selectedLang,
+                                        );
+                                      }
+                                    } else {
+                                      handleLanguageChange(
+                                        index,
+                                        "languageName",
+                                        "",
+                                        null,
+                                      );
+                                    }
+                                  }}
+                                >
+                                  <option value="">Select Language</option>
+                                  {languageData.map((lang) => (
+                                    <option
+                                      key={lang.id || lang.languageId}
+                                      value={lang.language || lang.languageName}
+                                    >
+                                      {lang.language || lang.languageName}
+                                    </option>
+                                  ))}
+                                </select>
+                                {errors.languages?.[index]?.languageName && (
+                                  <div className="invalid-feedback">
+                                    {errors.languages[index].languageName}
+                                  </div>
+                                )}
+                              </td>
+                              <td>
+                                {formData.languages.length > 1 ? (
+                                  <button
+                                    type="button"
+                                    className="btn btn-danger"
+                                    onClick={() => removeLanguageRow(index)}
+                                    title="Remove language"
+                                  >
+                                    <i className="icofont-close"></i>
+                                  </button>
+                                ) : (
+                                  <button
+                                    type="button"
+                                    className="btn btn-secondary"
+                                    disabled
+                                    title="At least one language is required"
+                                  >
+                                    <i className="icofont-close"></i>
+                                  </button>
+                                )}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addLanguageRow}
+                      >
+                        <i className="icofont-plus me-1"></i> Add Language
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Work Experience Section */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">Work Experience</h6>
+                      {errors.workExperiences &&
+                        typeof errors.workExperiences === "string" && (
+                          <small className="text-danger">
+                            {errors.workExperiences}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Work Experience</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.workExperiences.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={row.experienceSummary}
+                                  placeholder="Enter experience details"
+                                  onChange={(e) =>
+                                    handleWorkExperienceChange(
+                                      index,
+                                      "experienceSummary",
+                                      e.target.value,
+                                    )
+                                  }
+                                  maxLength={mlenght}
+                                />
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() => removeWorkExperienceRow(index)}
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addWorkExperienceRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Memberships Section */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">Memberships</h6>
+                      {errors.memberships &&
+                        typeof errors.memberships === "string" && (
+                          <small className="text-danger">
+                            {errors.memberships}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Membership Details</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.memberships.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={row.membershipSummary}
+                                  placeholder="Enter membership details"
+                                  onChange={(e) =>
+                                    handlemembershipsChange(
+                                      index,
+                                      "membershipSummary",
+                                      e.target.value,
+                                    )
+                                  }
+                                  maxLength={mlenght}
+                                />
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() => removemembershipsRow(index)}
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addmembershipsRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Specialty Interest Section */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">Specialty Interest</h6>
+                      {errors.specialtyInterest &&
+                        typeof errors.specialtyInterest === "string" && (
+                          <small className="text-danger">
+                            {errors.specialtyInterest}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Specialty Interest Details</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.specialtyInterest.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={row.interestSummary}
+                                  placeholder="Enter specialty details"
+                                  onChange={(e) =>
+                                    handleSpecialtyInterestChange(
+                                      index,
+                                      "interestSummary",
+                                      e.target.value,
+                                    )
+                                  }
+                                  maxLength={mlenght}
+                                />
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() =>
+                                    removeSpecialtyInterestRow(index)
+                                  }
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addSpecialtyInterestRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Awards & Distinctions Section */}
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">Awards & Distinctions</h6>
+                      {errors.awardsDistinction &&
+                        typeof errors.awardsDistinction === "string" && (
+                          <small className="text-danger">
+                            {errors.awardsDistinction}
+                          </small>
+                        )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Award Details</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.awardsDistinction.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={row.awardName}
+                                  placeholder="Enter award details"
+                                  onChange={(e) =>
+                                    handleAwardsDistinctionChange(
+                                      index,
+                                      "awardName",
+                                      e.target.value,
+                                    )
+                                  }
+                                  maxLength={mlenght}
+                                />
+                              </td>
+                              <td>
+                                <button
+                                  type="button"
+                                  className="btn btn-danger"
+                                  onClick={() =>
+                                    removeAwardsDistinctionRow(index)
+                                  }
+                                >
+                                  <i className="icofont-close"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addAwardsDistinctionRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              <div className="row mb-3">
+                <div className="col-sm-12">
+                  <div className="card shadow mb-3">
+                    <div className="card-header   border-bottom-1 py-3">
+                      <h6 className="fw-bold mb-0">Required Documents *</h6>
+                      {errors.document && (
+                        <small className="text-danger">
+                          Please fill all document fields
+                        </small>
+                      )}
+                    </div>
+                    <div className="card-body">
+                      <table className="table table-bordered">
+                        <thead>
+                          <tr>
+                            <th>S.No</th>
+                            <th>Document Name *</th>
+                            <th>File Upload *</th>
+                            <th>Action</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {formData.document.map((row, index) => (
+                            <tr key={index}>
+                              <td>{index + 1}</td>
+
+                              <td>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={row.documentName}
+                                  placeholder="Enter document name"
+                                  onChange={(e) =>
+                                    handleDocumentChange(
+                                      index,
+                                      "documentName",
+                                      e.target.value,
+                                    )
+                                  }
+                                />
+                              </td>
+                              <td>
+                                <div className="position-relative">
+                                  <input
+                                    type="file"
+                                    className={`form-control ${errors.document?.[index]?.filePath ? "is-invalid" : ""}`}
+                                    onChange={(e) =>
+                                      handleFileWithPreview(
+                                        e,
+                                        "document",
+                                        index,
+                                      )
+                                    }
+                                    accept=".pdf,.jpg,.jpeg,.png"
+                                    style={{
+                                      fontSize: "12px",
+                                      padding: "4px 8px",
+                                    }}
+                                  />
+                                  {errors.document?.[index]?.filePath && (
+                                    <div className="invalid-feedback">
+                                      {errors.document[index].filePath}
+                                    </div>
+                                  )}
+
+                                  {/* File actions */}
+                                  {(row.filePath ||
+                                    existingFiles.documents[index]) && (
+                                    <div className="d-flex justify-content-between align-items-center mt-1">
+                                      <small
+                                        className="text-muted"
+                                        style={{ fontSize: "10px" }}
+                                      >
+                                        <i className="icofont-check-circled me-1"></i>
+                                        {row.filePath instanceof File
+                                          ? row.filePath.name.substring(0, 12)
+                                          : extractFilename(
+                                              existingFiles.documents[index],
+                                            ).substring(0, 12)}
+                                        {(
+                                          row.filePath instanceof File
+                                            ? row.filePath.name.length > 12
+                                            : extractFilename(
+                                                existingFiles.documents[index],
+                                              ).length > 12
+                                        )
+                                          ? "..."
+                                          : ""}
+                                      </small>
+                                      <div className="d-flex gap-1">
+                                        <button
+                                          type="button"
+                                          className="btn btn-link p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            if (row.filePath instanceof File) {
+                                              const reader = new FileReader();
+                                              reader.onloadend = () => {
+                                                openPreview(
+                                                  reader.result,
+                                                  row.filePath.type ===
+                                                    "application/pdf"
+                                                    ? "pdf"
+                                                    : "image",
+                                                  row.filePath.name,
+                                                  "document",
+                                                );
+                                              };
+                                              reader.readAsDataURL(
+                                                row.filePath,
+                                              );
+                                            } else if (
+                                              existingFiles.documents[index]
+                                            ) {
+                                              openPreview(
+                                                createViewUrl(
+                                                  existingFiles.documents[
+                                                    index
+                                                  ],
+                                                ),
+                                                existingFiles.documents[
+                                                  index
+                                                ].endsWith(".pdf")
+                                                  ? "pdf"
+                                                  : "image",
+                                                extractFilename(
+                                                  existingFiles.documents[
+                                                    index
+                                                  ],
+                                                ),
+                                                "document",
+                                              );
+                                            }
+                                          }}
+                                          title="Preview"
+                                          style={{
+                                            fontSize: "11px",
+                                            color: "#0d6efd",
+                                            width: "18px",
+                                            height: "18px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                          }}
+                                        >
+                                          <i className="icofont-eye"></i>
+                                        </button>
+                                        <button
+                                          type="button"
+                                          className="btn btn-link p-0"
+                                          onClick={(e) => {
+                                            e.stopPropagation();
+                                            setFormData((prev) => ({
+                                              ...prev,
+                                              document: prev.document.map(
                                                 (item, i) =>
                                                   i === index
                                                     ? {
@@ -3193,848 +4084,86 @@ formDataToSend.append("medicalRegistrationNo", formData.medicalRegistrationNo ||
                                                       }
                                                     : item,
                                               ),
-                                          }));
-                                          setExistingFiles((prev) => {
-                                            const newQualifications = [
-                                              ...prev.qualifications,
-                                            ];
-                                            newQualifications[index] = null;
-                                            return {
-                                              ...prev,
-                                              qualifications: newQualifications,
-                                            };
-                                          });
-                                          setErrors((prev) => {
-                                            const newErrors = { ...prev };
-                                            if (
-                                              newErrors.qualification &&
-                                              newErrors.qualification[index]
-                                            ) {
-                                              delete newErrors.qualification[
-                                                index
-                                              ].filePath;
-                                            }
-                                            return newErrors;
-                                          });
-                                        }}
-                                        title="Remove"
-                                        style={{
-                                          fontSize: "11px",
-                                          color: "#dc3545",
-                                          width: "18px",
-                                          height: "18px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                        }}
-                                      >
-                                        <i className="icofont-close"></i>
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() => removeEducationRow(index)}
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addEducationRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Specialty Center Name Section */}
-            <div className="row mb-3 mt-4">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">Specialty Center Name</h6>
-                    {errors.specialtyCenter &&
-                      typeof errors.specialtyCenter === "string" && (
-                        <small className="text-danger">
-                          {errors.specialtyCenter}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Specialty Center Name</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.specialtyCenter.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <div className="position-relative">
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  value={row.specialtyCenterName}
-                                  placeholder="Search specialty center..."
-                                  onChange={(e) => {
-                                    const value = e.target.value;
-                                    handleSpecialtyCenterChange(
-                                      index,
-                                      "specialtyCenterName",
-                                      value,
-                                    );
-                                    handleSpecialtyCenterChange(
-                                      index,
-                                      "searchTerm",
-                                      value,
-                                    );
-                                  }}
-                                  onBlur={() => {
-                                    // Clear search after a short delay when input loses focus
-                                    setTimeout(() => {
-                                      handleSpecialtyCenterChange(
-                                        index,
-                                        "searchTerm",
-                                        "",
-                                      );
-                                    }, 200);
-                                  }}
-                                  maxLength={mlenght}
-                                  autoComplete="off"
-                                />
-
-                                {/* Show dropdown only for this row if it has search term */}
-                                {row.searchTerm &&
-                                  row.searchTerm.length > 0 && (
-                                    <div
-                                      className="dropdown-menu show w-100"
-                                      style={{
-                                        position: "absolute",
-                                        top: "100%",
-                                        left: 0,
-                                        zIndex: 1000,
-                                        maxHeight: "200px",
-                                        overflowY: "auto",
-                                      }}
-                                    >
-                                      {specialtyCenterData
-                                        .filter((center) => {
-                                          const searchLower =
-                                            row.searchTerm.toLowerCase();
-                                          const centerName =
-                                            center.centerName || "";
-                                          const specialtyName =
-                                            center.specialtyCenterName || "";
-                                          return (
-                                            centerName
-                                              .toLowerCase()
-                                              .includes(searchLower) ||
-                                            specialtyName
-                                              .toLowerCase()
-                                              .includes(searchLower)
-                                          );
-                                        })
-                                        .slice(0, 10) // Limit to 10 results for better UX
-                                        .map((center) => (
-                                          <button
-                                            key={center.centerId}
-                                            type="button"
-                                            className="dropdown-item"
-                                            onClick={() => {
-                                              handleSpecialtyCenterChange(
-                                                index,
-                                                "specialtyCenterName",
-                                                center.centerName ||
-                                                  center.specialtyCenterName ||
-                                                  "",
-                                              );
-                                              handleSpecialtyCenterChange(
-                                                index,
-                                                "centerId",
-                                                center.centerId || "",
-                                              );
-                                              handleSpecialtyCenterChange(
-                                                index,
-                                                "searchTerm",
-                                                "",
-                                              ); // Clear search after selection
-                                            }}
-                                            style={{ cursor: "pointer" }}
-                                          >
-                                            {center.centerName ||
-                                              center.specialtyCenterName ||
-                                              ""}
-                                          </button>
-                                        ))}
+                                            }));
+                                            // Clear existing file reference
+                                            setExistingFiles((prev) => {
+                                              const newDocuments = [
+                                                ...prev.documents,
+                                              ];
+                                              newDocuments[index] = null;
+                                              return {
+                                                ...prev,
+                                                documents: newDocuments,
+                                              };
+                                            });
+                                            // Clear validation error
+                                            setErrors((prev) => {
+                                              const newErrors = { ...prev };
+                                              if (
+                                                newErrors.document &&
+                                                newErrors.document[index]
+                                              ) {
+                                                delete newErrors.document[index]
+                                                  .filePath;
+                                              }
+                                              return newErrors;
+                                            });
+                                          }}
+                                          title="Remove"
+                                          style={{
+                                            fontSize: "11px",
+                                            color: "#dc3545",
+                                            width: "18px",
+                                            height: "18px",
+                                            display: "flex",
+                                            alignItems: "center",
+                                            justifyContent: "center",
+                                          }}
+                                        >
+                                          <i className="icofont-close"></i>
+                                        </button>
+                                      </div>
                                     </div>
                                   )}
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() => removeSpecialtyCenterRow(index)}
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addSpecialtyCenterRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Language Known Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">
-                      Language Known <span className="text-danger">*</span>
-                    </h6>
-                    {errors.languages &&
-                      typeof errors.languages === "string" && (
-                        <small className="text-danger">
-                          {errors.languages}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>
-                            Language <span className="text-danger">*</span>
-                          </th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.languages.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <select
-                                className={`form-select ${errors.languages?.[index]?.languageName ? "is-invalid" : ""}`}
-                                value={row.languageName}
-                                onChange={(e) => {
-                                  const value = e.target.value;
-                                  if (value) {
-                                    const selectedLang = languageData.find(
-                                      (lang) =>
-                                        lang.language === value ||
-                                        lang.languageName === value ||
-                                        String(lang.id) === String(value) ||
-                                        String(lang.languageId) ===
-                                          String(value),
-                                    );
-
-                                    if (selectedLang) {
-                                      handleLanguageChange(
-                                        index,
-                                        "languageName",
-                                        selectedLang.language ||
-                                          selectedLang.languageName,
-                                        selectedLang,
-                                      );
-                                    }
-                                  } else {
-                                    handleLanguageChange(
-                                      index,
-                                      "languageName",
-                                      "",
-                                      null,
-                                    );
-                                  }
-                                }}
-                              >
-                                <option value="">Select Language</option>
-                                {languageData.map((lang) => (
-                                  <option
-                                    key={lang.id || lang.languageId}
-                                    value={lang.language || lang.languageName}
-                                  >
-                                    {lang.language || lang.languageName}
-                                  </option>
-                                ))}
-                              </select>
-                              {errors.languages?.[index]?.languageName && (
-                                <div className="invalid-feedback">
-                                  {errors.languages[index].languageName}
                                 </div>
-                              )}
-                            </td>
-                            <td>
-                              {formData.languages.length > 1 ? (
+                              </td>
+                              <td>
                                 <button
                                   type="button"
                                   className="btn btn-danger"
-                                  onClick={() => removeLanguageRow(index)}
-                                  title="Remove language"
+                                  onClick={() => removeDocumentRow(index)}
                                 >
                                   <i className="icofont-close"></i>
                                 </button>
-                              ) : (
-                                <button
-                                  type="button"
-                                  className="btn btn-secondary"
-                                  disabled
-                                  title="At least one language is required"
-                                >
-                                  <i className="icofont-close"></i>
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addLanguageRow}
-                    >
-                      <i className="icofont-plus me-1"></i> Add Language
-                    </button>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                      <button
+                        type="button"
+                        className="btn btn-success"
+                        onClick={addDocumentRow}
+                      >
+                        Add Row +
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
 
-            {/* Work Experience Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">Work Experience</h6>
-                    {errors.workExperiences &&
-                      typeof errors.workExperiences === "string" && (
-                        <small className="text-danger">
-                          {errors.workExperiences}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Work Experience</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.workExperiences.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={row.experienceSummary}
-                                placeholder="Enter experience details"
-                                onChange={(e) =>
-                                  handleWorkExperienceChange(
-                                    index,
-                                    "experienceSummary",
-                                    e.target.value,
-                                  )
-                                }
-                                maxLength={mlenght}
-                              />
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() => removeWorkExperienceRow(index)}
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addWorkExperienceRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
+              <div className="form-group col-md-12 d-flex justify-content-end mt-2">
+                <button type="submit" className="btn btn-primary me-2">
+                  {editingEmployee ? "Update" : "Save"}
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-danger"
+                  onClick={resetForm}
+                >
+                  Cancel
+                </button>
               </div>
-            </div>
-
-            {/* Memberships Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">Memberships</h6>
-                    {errors.memberships &&
-                      typeof errors.memberships === "string" && (
-                        <small className="text-danger">
-                          {errors.memberships}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Membership Details</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.memberships.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={row.membershipSummary}
-                                placeholder="Enter membership details"
-                                onChange={(e) =>
-                                  handlemembershipsChange(
-                                    index,
-                                    "membershipSummary",
-                                    e.target.value,
-                                  )
-                                }
-                                maxLength={mlenght}
-                              />
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() => removemembershipsRow(index)}
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addmembershipsRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Specialty Interest Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">Specialty Interest</h6>
-                    {errors.specialtyInterest &&
-                      typeof errors.specialtyInterest === "string" && (
-                        <small className="text-danger">
-                          {errors.specialtyInterest}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Specialty Interest Details</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.specialtyInterest.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={row.interestSummary}
-                                placeholder="Enter specialty details"
-                                onChange={(e) =>
-                                  handleSpecialtyInterestChange(
-                                    index,
-                                    "interestSummary",
-                                    e.target.value,
-                                  )
-                                }
-                                maxLength={mlenght}
-                              />
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() =>
-                                  removeSpecialtyInterestRow(index)
-                                }
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addSpecialtyInterestRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Awards & Distinctions Section */}
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">Awards & Distinctions</h6>
-                    {errors.awardsDistinction &&
-                      typeof errors.awardsDistinction === "string" && (
-                        <small className="text-danger">
-                          {errors.awardsDistinction}
-                        </small>
-                      )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Award Details</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.awardsDistinction.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={row.awardName}
-                                placeholder="Enter award details"
-                                onChange={(e) =>
-                                  handleAwardsDistinctionChange(
-                                    index,
-                                    "awardName",
-                                    e.target.value,
-                                  )
-                                }
-                                maxLength={mlenght}
-                              />
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() =>
-                                  removeAwardsDistinctionRow(index)
-                                }
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addAwardsDistinctionRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="row mb-3">
-              <div className="col-sm-12">
-                <div className="card shadow mb-3">
-                  <div className="card-header   border-bottom-1 py-3">
-                    <h6 className="fw-bold mb-0">Required Documents *</h6>
-                    {errors.document && (
-                      <small className="text-danger">
-                        Please fill all document fields
-                      </small>
-                    )}
-                  </div>
-                  <div className="card-body">
-                    <table className="table table-bordered">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>Document Name *</th>
-                          <th>File Upload *</th>
-                          <th>Action</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {formData.document.map((row, index) => (
-                          <tr key={index}>
-                            <td>{index + 1}</td>
-
-                            <td>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={row.documentName}
-                                placeholder="Enter document name"
-                                onChange={(e) =>
-                                  handleDocumentChange(
-                                    index,
-                                    "documentName",
-                                    e.target.value,
-                                  )
-                                }
-                              />
-                            </td>
-                            <td>
-                              <div className="position-relative">
-                                <input
-                                  type="file"
-                                  className={`form-control ${errors.document?.[index]?.filePath ? "is-invalid" : ""}`}
-                                  onChange={(e) =>
-                                    handleFileWithPreview(e, "document", index)
-                                  }
-                                  accept=".pdf,.jpg,.jpeg,.png"
-                                  style={{
-                                    fontSize: "12px",
-                                    padding: "4px 8px",
-                                  }}
-                                />
-                                {errors.document?.[index]?.filePath && (
-                                  <div className="invalid-feedback">
-                                    {errors.document[index].filePath}
-                                  </div>
-                                )}
-
-                                {/* File actions */}
-                                {(row.filePath ||
-                                  existingFiles.documents[index]) && (
-                                  <div className="d-flex justify-content-between align-items-center mt-1">
-                                    <small
-                                      className="text-muted"
-                                      style={{ fontSize: "10px" }}
-                                    >
-                                      <i className="icofont-check-circled me-1"></i>
-                                      {row.filePath instanceof File
-                                        ? row.filePath.name.substring(0, 12)
-                                        : extractFilename(
-                                            existingFiles.documents[index],
-                                          ).substring(0, 12)}
-                                      {(
-                                        row.filePath instanceof File
-                                          ? row.filePath.name.length > 12
-                                          : extractFilename(
-                                              existingFiles.documents[index],
-                                            ).length > 12
-                                      )
-                                        ? "..."
-                                        : ""}
-                                    </small>
-                                    <div className="d-flex gap-1">
-                                      <button
-                                        type="button"
-                                        className="btn btn-link p-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          if (row.filePath instanceof File) {
-                                            const reader = new FileReader();
-                                            reader.onloadend = () => {
-                                              openPreview(
-                                                reader.result,
-                                                row.filePath.type ===
-                                                  "application/pdf"
-                                                  ? "pdf"
-                                                  : "image",
-                                                row.filePath.name,
-                                                "document",
-                                              );
-                                            };
-                                            reader.readAsDataURL(row.filePath);
-                                          } else if (
-                                            existingFiles.documents[index]
-                                          ) {
-                                            openPreview(
-                                              createViewUrl(
-                                                existingFiles.documents[index],
-                                              ),
-                                              existingFiles.documents[
-                                                index
-                                              ].endsWith(".pdf")
-                                                ? "pdf"
-                                                : "image",
-                                              extractFilename(
-                                                existingFiles.documents[index],
-                                              ),
-                                              "document",
-                                            );
-                                          }
-                                        }}
-                                        title="Preview"
-                                        style={{
-                                          fontSize: "11px",
-                                          color: "#0d6efd",
-                                          width: "18px",
-                                          height: "18px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                        }}
-                                      >
-                                        <i className="icofont-eye"></i>
-                                      </button>
-                                      <button
-                                        type="button"
-                                        className="btn btn-link p-0"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          setFormData((prev) => ({
-                                            ...prev,
-                                            document: prev.document.map(
-                                              (item, i) =>
-                                                i === index
-                                                  ? {
-                                                      ...item,
-                                                      filePath: null,
-                                                    }
-                                                  : item,
-                                            ),
-                                          }));
-                                          // Clear existing file reference
-                                          setExistingFiles((prev) => {
-                                            const newDocuments = [
-                                              ...prev.documents,
-                                            ];
-                                            newDocuments[index] = null;
-                                            return {
-                                              ...prev,
-                                              documents: newDocuments,
-                                            };
-                                          });
-                                          // Clear validation error
-                                          setErrors((prev) => {
-                                            const newErrors = { ...prev };
-                                            if (
-                                              newErrors.document &&
-                                              newErrors.document[index]
-                                            ) {
-                                              delete newErrors.document[index]
-                                                .filePath;
-                                            }
-                                            return newErrors;
-                                          });
-                                        }}
-                                        title="Remove"
-                                        style={{
-                                          fontSize: "11px",
-                                          color: "#dc3545",
-                                          width: "18px",
-                                          height: "18px",
-                                          display: "flex",
-                                          alignItems: "center",
-                                          justifyContent: "center",
-                                        }}
-                                      >
-                                        <i className="icofont-close"></i>
-                                      </button>
-                                    </div>
-                                  </div>
-                                )}
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                type="button"
-                                className="btn btn-danger"
-                                onClick={() => removeDocumentRow(index)}
-                              >
-                                <i className="icofont-close"></i>
-                              </button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={addDocumentRow}
-                    >
-                      Add Row +
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div className="form-group col-md-12 d-flex justify-content-end mt-2">
-              <button type="submit" className="btn btn-primary me-2">
-                {editingEmployee ? "Update" : "Save"}
-              </button>
-              <button
-                type="button"
-                className="btn btn-danger"
-                onClick={resetForm}
-              >
-                Cancel
-              </button>
-            </div>
             </fieldset>
           </form>
         )}

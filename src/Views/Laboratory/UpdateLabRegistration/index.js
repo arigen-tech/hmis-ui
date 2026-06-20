@@ -23,6 +23,7 @@ import {
   LAB_SERVICE_CATAGORY,
   FOLLOWUP_PATIENTS_LIST,
   PATIENT_FOLLOW_UP_DETAILS,
+  UPDATE_LAB_REGISTRATION,
 } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import {
@@ -1288,7 +1289,7 @@ const UpdateLabRegistration = () => {
         });
 
         const labResult = await postRequest(
-          "/lab/updateDetailsAndBookingLaboratory",
+          `${UPDATE_LAB_REGISTRATION}`,
           labData,
         );
         if (!labResult || labResult.status !== 200) {
