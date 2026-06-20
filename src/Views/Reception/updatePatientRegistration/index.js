@@ -4,6 +4,10 @@ import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import DatePicker from "../../../Components/DatePicker";
 import { useNavigate } from "react-router-dom";
+import ABHACreationModal from "../ABHACreationModel";
+import ABHAVerificationModal from "../ABHAVerificationModel";
+import { integrationService } from "../../../service/integrationService";
+import { isValidAadhaarNumber } from "../../../utils/ABDMValidations";
 import {
   ALL_COUNTRY,
   ALL_DEPARTMENT,
@@ -90,8 +94,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -108,8 +111,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-     finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -126,8 +128,7 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-     finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -196,6 +197,7 @@ const UpdatePatientRegistration = () => {
   const [patientDetailForm, setPatientDetailForm] = useState({
     patientGender: "",
     patientRelation: "",
+    abhaNumber: "",
   });
   let stream = null;
   const [patients, setPatients] = useState([]);
@@ -205,7 +207,45 @@ const UpdatePatientRegistration = () => {
   const [mobileQuery, setMobileQuery] = useState("");
   const [pageInput, setPageInput] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
-const [editLoadingId, setEditLoadingId] = useState(null);  
+  const [editLoadingId, setEditLoadingId] = useState(null);
+  // ABHA State
+  const [showAbhaCreationModal, setShowAbhaCreationModal] = useState(false);
+  const [showAbhaVerificationModal, setShowAbhaVerificationModal] =
+    useState(false);
+  const [abhaMode, setAbhaMode] = useState("existing");
+  const [abhaData, setAbhaData] = useState({
+    abhaNumber: "",
+    consentName: "",
+    aadhaarNo: "",
+    consent1: true,
+    consent2: true,
+    consent3: true,
+    consent4: true,
+    consent5: true,
+    consent6: true,
+    consent7: true,
+    otp: "",
+    verified: false,
+    abhaAddress: "",
+  });
+
+  const createInitialCreateState = () => ({
+    loading: false,
+    txnId: "",
+    xtoken: "",
+    isType: "",
+    needsMobileVerification: false,
+    mobileVerificationTxnId: "",
+    heldIsNew: null,
+    heldXtoken: "",
+    suggestions: [],
+    verifiedProfile: null,
+    createdAbha: null,
+    banner: null,
+  });
+
+  const [createState, setCreateState] = useState(createInitialCreateState);
+  const [showConsentModal, setShowConsentModal] = useState(false);
 
   const [appointments, setAppointments] = useState([
     {
@@ -661,6 +701,21 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     setDoctorDataMap({});
     setSessionDataMap({});
     setErrors({});
+    setAbhaData({
+      abhaNumber: "",
+      consentName: "",
+      aadhaarNo: "",
+      consent1: false,
+      consent2: false,
+      consent3: false,
+      consent4: false,
+      consent5: false,
+      consent6: false,
+      consent7: false,
+      otp: "",
+      verified: false,
+      abhaAddress: "",
+    });
   };
 
   const handleRadioChange = (event) => {
@@ -682,6 +737,351 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     } catch (error) {
       console.error(CAMERA_ACCESS_ERROR_LOG, error);
     }
+  };
+
+  // Helper function to format ABHA number
+  const formatAbhaNumber = (value = "") => {
+    if (!value) return "";
+    const digits = value.replace(/\D/g, "");
+    if (digits.length !== 14) return value;
+    return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}-${digits.slice(10, 14)}`;
+  };
+
+  // Handle ABHA Creation Success
+  const handleAbhaCreationSuccess = (abhaData) => {
+    console.log("ABHA Data received:", abhaData);
+
+    // Auto-fill the form data with ABHA information
+    const updatedFormData = { ...patientDetailForm };
+
+    // Fill name
+    if (abhaData.consentName) {
+      const nameParts = abhaData.consentName.trim().split(/\s+/);
+      updatedFormData.patientFn =
+        updatedFormData.patientFn || nameParts[0] || "";
+      updatedFormData.patientLn =
+        updatedFormData.patientLn || nameParts.slice(1).join(" ") || "";
+    }
+
+    // Fill mobile
+    if (abhaData.mobileNumber) {
+      updatedFormData.patientMobileNumber =
+        updatedFormData.patientMobileNumber || abhaData.mobileNumber;
+    }
+
+    // Fill gender using the mapped ID from ABHA data
+    if (abhaData.genderId) {
+      const selectedGender = genderData.find(
+        (g) => g.id === Number(abhaData.genderId),
+      );
+      if (selectedGender) {
+        updatedFormData.patientGender = selectedGender;
+      }
+    } else if (abhaData.gender) {
+      const genderMap = {
+        Male: 1,
+        Female: 2,
+        Other: 3,
+        Transgender: 3,
+      };
+      const genderId = genderMap[abhaData.gender];
+      if (genderId) {
+        const selectedGender = genderData.find((g) => g.id === genderId);
+        if (selectedGender) {
+          updatedFormData.patientGender = selectedGender;
+        }
+      }
+    }
+
+    // Fill date of birth
+    if (abhaData.dateOfBirth) {
+      const dateParts = abhaData.dateOfBirth.split("-");
+      if (dateParts.length === 3) {
+        const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, "0")}-${dateParts[0].padStart(2, "0")}`;
+        updatedFormData.patientDob =
+          updatedFormData.patientDob || formattedDate;
+        if (!updatedFormData.patientAge) {
+          updatedFormData.patientAge = calculateAgeFromDOB(formattedDate);
+        }
+      }
+    }
+
+    // Fill address
+    if (abhaData.address) {
+      const addressParts = abhaData.address.split(",");
+      updatedFormData.patientAddress1 =
+        updatedFormData.patientAddress1 || addressParts[0]?.trim() || "";
+      if (addressParts.length > 1) {
+        updatedFormData.patientAddress2 =
+          updatedFormData.patientAddress2 ||
+          addressParts.slice(1).join(",").trim() ||
+          "";
+      }
+    }
+
+    // Fill state using the mapped ID from ABHA data
+    if (abhaData.stateId) {
+      const selectedState = stateData.find(
+        (s) => s.id === Number(abhaData.stateId),
+      );
+      if (selectedState) {
+        updatedFormData.patientState = selectedState;
+      }
+    } else if (abhaData.stateName) {
+      const state = stateData.find(
+        (s) => s.stateName?.toLowerCase() === abhaData.stateName.toLowerCase(),
+      );
+      if (state) {
+        updatedFormData.patientState = state;
+      }
+    }
+
+    // Fill district using the mapped ID from ABHA data
+    if (abhaData.districtId) {
+      const selectedDistrict = districtData.find(
+        (d) => d.id === Number(abhaData.districtId),
+      );
+      if (selectedDistrict) {
+        updatedFormData.patientDistrict = selectedDistrict;
+      }
+    } else if (abhaData.districtName) {
+      const district = districtData.find(
+        (d) =>
+          d.districtName?.toLowerCase() === abhaData.districtName.toLowerCase(),
+      );
+      if (district) {
+        updatedFormData.patientDistrict = district;
+      }
+    }
+
+    // Fill pincode
+    if (abhaData.pincode) {
+      updatedFormData.patientPincode =
+        updatedFormData.patientPincode || abhaData.pincode;
+    }
+
+    // Handle profile photo
+    if (abhaData.photo) {
+      const photoUrl = abhaData.photo.startsWith("data:")
+        ? abhaData.photo
+        : `data:image/jpeg;base64,${abhaData.photo}`;
+      setImage(photoUrl);
+    }
+
+    // Store ABHA number in form data
+    if (abhaData.abhaNumber) {
+      updatedFormData.abhaNumber = abhaData.abhaNumber;
+    }
+
+    // Update form data
+    setPatientDetailForm(updatedFormData);
+
+    // Store ABHA data for reference
+    setAbhaData((prev) => ({
+      ...prev,
+      abhaNumber: abhaData.abhaNumber,
+      abhaAddress: abhaData.abhaAddress,
+      consentName: abhaData.consentName || prev.consentName,
+      verified: true,
+    }));
+
+    // Show success message
+    const filledFields = [];
+    if (abhaData.consentName) filledFields.push("Name");
+    if (abhaData.mobileNumber) filledFields.push("Mobile");
+    if (abhaData.dateOfBirth) filledFields.push("DOB");
+    if (abhaData.address) filledFields.push("Address");
+    if (abhaData.gender) filledFields.push("Gender");
+    if (abhaData.stateName) filledFields.push("State");
+    if (abhaData.districtName) filledFields.push("District");
+    if (abhaData.pincode) filledFields.push("Pincode");
+    if (abhaData.abhaNumber) filledFields.push("ABHA Number");
+
+    Swal.fire({
+      icon: "success",
+      title: "ABHA Linked Successfully!",
+      html: `
+      <div>
+        <p><strong>ABHA Number:</strong> ${formatAbhaNumber(abhaData.abhaNumber)}</p>
+        <p><strong>ABHA Address:</strong> ${abhaData.abhaAddress || "Not set"}</p>
+        ${
+          abhaData.isExistingAbha
+            ? '<p class="text-info"><i class="fa fa-info-circle"></i> This is an existing ABHA profile.</p>'
+            : '<p class="text-success"><i class="fa fa-check-circle"></i> New ABHA created successfully.</p>'
+        }
+        <hr>
+        <p class="text-muted">The following fields have been auto-filled:</p>
+        <p><strong>${filledFields.join(", ") || "No fields were auto-filled"}</strong></p>
+      </div>
+    `,
+      timer: 4000,
+      timerProgressBar: true,
+    });
+  };
+
+  // Handle ABHA Verification Success
+  const handleAbhaVerificationSuccess = (abhaData) => {
+    console.log("ABHA Verification Data received:", abhaData);
+
+    const updatedFormData = { ...patientDetailForm };
+
+    // Fill name
+    if (abhaData.consentName) {
+      const nameParts = abhaData.consentName.trim().split(/\s+/);
+      updatedFormData.patientFn =
+        updatedFormData.patientFn || nameParts[0] || "";
+      updatedFormData.patientLn =
+        updatedFormData.patientLn || nameParts.slice(1).join(" ") || "";
+    }
+
+    // Fill mobile
+    if (abhaData.mobileNumber) {
+      updatedFormData.patientMobileNumber =
+        updatedFormData.patientMobileNumber || String(abhaData.mobileNumber);
+    }
+
+    // Fill gender using the mapped ID
+    if (abhaData.genderId) {
+      const selectedGender = genderData.find(
+        (g) => g.id === Number(abhaData.genderId),
+      );
+      if (selectedGender) {
+        updatedFormData.patientGender = selectedGender;
+      }
+    } else if (abhaData.gender) {
+      const genderMap = {
+        Male: 29,
+        Female: 30,
+        Other: 32,
+        Transgender: 31,
+      };
+      const genderId = genderMap[abhaData.gender];
+      if (genderId) {
+        const selectedGender = genderData.find((g) => g.id === genderId);
+        if (selectedGender) {
+          updatedFormData.patientGender = selectedGender;
+        }
+      }
+    }
+
+    if (abhaData.dateOfBirth) {
+      const dateParts = abhaData.dateOfBirth.split("-");
+      if (dateParts.length === 3) {
+        const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, "0")}-${dateParts[0].padStart(2, "0")}`;
+        updatedFormData.patientDob =
+          updatedFormData.patientDob || formattedDate;
+        if (!updatedFormData.patientAge) {
+          updatedFormData.patientAge = calculateAgeFromDOB(formattedDate);
+        }
+      }
+    }
+
+    if (abhaData.address) {
+      const addressParts = abhaData.address.split(",");
+      updatedFormData.patientAddress1 =
+        updatedFormData.patientAddress1 || addressParts[0]?.trim() || "";
+      if (addressParts.length > 1) {
+        updatedFormData.patientAddress2 =
+          updatedFormData.patientAddress2 ||
+          addressParts.slice(1).join(",").trim() ||
+          "";
+      }
+    }
+
+    if (abhaData.stateId) {
+      const selectedState = stateData.find(
+        (s) => s.id === Number(abhaData.stateId),
+      );
+      if (selectedState) {
+        updatedFormData.patientState = selectedState;
+      }
+    } else if (abhaData.stateName) {
+      const state = stateData.find(
+        (s) => s.stateName?.toLowerCase() === abhaData.stateName.toLowerCase(),
+      );
+      if (state) {
+        updatedFormData.patientState = state;
+      }
+    }
+
+    if (abhaData.districtId) {
+      const selectedDistrict = districtData.find(
+        (d) => d.id === Number(abhaData.districtId),
+      );
+      if (selectedDistrict) {
+        updatedFormData.patientDistrict = selectedDistrict;
+      }
+    } else if (abhaData.districtName) {
+      const district = districtData.find(
+        (d) =>
+          d.districtName?.toLowerCase() === abhaData.districtName.toLowerCase(),
+      );
+      if (district) {
+        updatedFormData.patientDistrict = district;
+      }
+    }
+
+    if (abhaData.pincode) {
+      updatedFormData.patientPincode =
+        updatedFormData.patientPincode || String(abhaData.pincode);
+    }
+
+    if (abhaData.photo) {
+      const photoUrl = abhaData.photo.startsWith("data:")
+        ? abhaData.photo
+        : `data:image/jpeg;base64,${abhaData.photo}`;
+      setImage(photoUrl);
+    }
+
+    if (abhaData.abhaNumber) {
+      updatedFormData.abhaNumber = abhaData.abhaNumber;
+    }
+
+    setPatientDetailForm(updatedFormData);
+
+    setAbhaData((prev) => ({
+      ...prev,
+      abhaNumber: abhaData.abhaNumber,
+      abhaAddress: abhaData.abhaAddress,
+      consentName: abhaData.consentName || prev.consentName,
+      verified: true,
+    }));
+
+    const filledFields = [];
+    if (abhaData.consentName) filledFields.push("Name");
+    if (abhaData.mobileNumber) filledFields.push("Mobile");
+    if (abhaData.dateOfBirth) filledFields.push("DOB");
+    if (abhaData.address) filledFields.push("Address");
+    if (abhaData.gender) filledFields.push("Gender");
+    if (abhaData.stateName) filledFields.push("State");
+    if (abhaData.districtName) filledFields.push("District");
+    if (abhaData.pincode) filledFields.push("Pincode");
+    if (abhaData.abhaNumber) filledFields.push("ABHA Number");
+
+    Swal.fire({
+      icon: "success",
+      title: "ABHA Verified Successfully!",
+      html: `
+      <div>
+        <p><strong>ABHA Number:</strong> ${formatAbhaNumber(abhaData.abhaNumber)}</p>
+        <p><strong>ABHA Address:</strong> ${abhaData.abhaAddress || "Not set"}</p>
+        <hr>
+        <p class="text-muted">The following fields have been auto-filled:</p>
+        <p><strong>${filledFields.join(", ") || "No fields were auto-filled"}</strong></p>
+      </div>
+    `,
+      timer: 4000,
+      timerProgressBar: true,
+    });
+  };
+
+  const useAbhaData = () => {
+    Swal.fire({
+      icon: "success",
+      title: "ABHA Details Applied",
+      text: "ABHA details have been applied to the form.",
+      timer: 1500,
+    });
   };
 
   const capturePhoto = () => {
@@ -778,7 +1178,9 @@ const [editLoadingId, setEditLoadingId] = useState(null);
         if (patientDetailsInFlightRef.current.has(patientId)) {
           response = await patientDetailsInFlightRef.current.get(patientId);
         } else {
-          const request = getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`)
+          const request = getRequest(
+            `${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`,
+          )
             .then((res) => {
               if (res.status === 200) {
                 patientDetailsCacheRef.current.set(patientId, res);
@@ -793,7 +1195,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           response = await request;
         }
       }
-
+      debugger;
       if (response.status === 200) {
         const data = response.response;
         const personal = data.personal || {};
@@ -814,6 +1216,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           patientGender: personal.gender
             ? { id: personal.gender, name: personal.genderName }
             : "",
+          patientAbhaId: personal.patientAbhaId || "",
           patientRelation: personal.relation
             ? { id: personal.relation, name: personal.relationName }
             : "",
@@ -849,6 +1252,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           emerFn: emergency.firstName || "",
           emerLn: emergency.lastName || "",
           emerMobile: emergency.mobileNo || "",
+          abhaNumber: personal.abhaNumber || "",
         };
 
         setPatientDetailForm(mappedPatientData);
@@ -918,9 +1322,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
 
           const uniqueSpecialities = [
             ...new Set(
-              mappedAppointments
-                .map((appt) => appt.speciality)
-                .filter(Boolean),
+              mappedAppointments.map((appt) => appt.speciality).filter(Boolean),
             ),
           ];
 
@@ -981,7 +1383,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
 
   async function fetchGenderData() {
     try {
-      
       const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
@@ -991,8 +1392,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    }
-    finally {
+    } finally {
       setLoading(false);
     }
   }
@@ -1001,7 +1401,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     // setLoading(true);
 
     try {
-      
       const data = await getRequest(`${ALL_RELATION}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setRelationData(data.response);
@@ -1021,7 +1420,6 @@ const [editLoadingId, setEditLoadingId] = useState(null);
     // setLoading(true);
 
     try {
-      
       const data = await getRequest(`${ALL_COUNTRY}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setCountryData(data.response);
@@ -1179,7 +1577,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
 
   async function fetchDepartment() {
     try {
-       setLoading(true);
+      setLoading(true);
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
@@ -1523,6 +1921,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       nokCountryId: extractId(patientDetailForm.nokCountry),
       nokPincode: patientDetailForm.nokPincode || "",
       nokRelationId: null,
+      patientAbhaId: patientDetailForm.abhaNumber || "",
     };
 
     const opdPatientDetailRequest = {
@@ -1621,7 +2020,9 @@ const [editLoadingId, setEditLoadingId] = useState(null);
       Swal.close();
 
       if (response.status === 200) {
-        const message = appointmentFlag ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS : PATIENT_UPDATE_SUCCESS;
+        const message = appointmentFlag
+          ? PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS
+          : PATIENT_UPDATE_SUCCESS;
 
         const resp = response.response?.opdBillingPatientResponse;
         const patientResp = response.response?.patient || response.response;
@@ -1680,7 +2081,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
             confirmButtonText: "OK",
             allowOutsideClick: false,
           }).then(() => {
-            handleReset(); 
+            handleReset();
           });
         } else {
           Swal.fire({
@@ -1725,7 +2126,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
           confirmButtonText: "OK",
         });
       }
-    }finally {
+    } finally {
       setLoading(false);
     }
   };
@@ -1867,7 +2268,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   //     </div>
   //   );
   // }
- 
+
   const onDateChange = (index, date) => {
     if (!date) return;
 
@@ -2221,12 +2622,13 @@ const [editLoadingId, setEditLoadingId] = useState(null);
   // };
 
   if (showPatientDetails) {
-     {loading && (
-                  <div className="text-center py-4">
-                    <LoadingScreen />
-                  </div>
-                )}
-
+    {
+      loading && (
+        <div className="text-center py-4">
+          <LoadingScreen />
+        </div>
+      );
+    }
 
     return (
       <div className="body d-flex py-3">
@@ -2249,6 +2651,155 @@ const [editLoadingId, setEditLoadingId] = useState(null);
               </div>
             </div>
           </div>
+
+          {/* ABHA Integration Section - Add this after Personal Details and before Patient Address */}
+          <div className="row mb-3">
+            <div className="col-sm-12">
+              <div className="card shadow">
+                <div className="card-header py-3 border-bottom-1">
+                  <h6 className="mb-0 fw-bold">ABHA Health ID Integration</h6>
+                </div>
+
+                <div className="card-body">
+                  <div className="row">
+                    {/* Existing ABHA - Verify Section */}
+                    <div className="col-md-6 border-end">
+                      <div className="form-check mb-3">
+                        <input
+                          type="radio"
+                          name="abhaMode"
+                          checked={abhaMode === "existing"}
+                          onChange={() => setAbhaMode("existing")}
+                        />
+                        <label className="form-check-label fw-bold">
+                          I have ABHA
+                        </label>
+                      </div>
+
+                      <p className="text-muted small mb-3">
+                        Verify an existing ABHA Health ID. You can verify using
+                        Mobile Number, Aadhaar Number, ABHA Number, or ABHA
+                        Address.
+                      </p>
+
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setShowAbhaVerificationModal(true)}
+                        disabled={abhaMode !== "existing"}
+                      >
+                        <i className="bi bi-check-circle me-2"></i>
+                        Verify ABHA
+                      </button>
+
+                      {abhaData.verified && (
+                        <div className="alert alert-success mt-3">
+                          <h6>✓ Verified Successfully</h6>
+                          {abhaData.consentName && (
+                            <div>
+                              <strong>Name:</strong> {abhaData.consentName}
+                            </div>
+                          )}
+                          <div>
+                            <strong>ABHA Number:</strong> {abhaData.abhaNumber}
+                          </div>
+                          {abhaData.abhaAddress && (
+                            <div>
+                              <strong>ABHA Address:</strong>{" "}
+                              {abhaData.abhaAddress}
+                            </div>
+                          )}
+                          <button
+                            className="btn btn-outline-primary btn-sm mt-2"
+                            onClick={useAbhaData}
+                          >
+                            <i className="bi bi-arrow-right me-1"></i>
+                            Use Details
+                          </button>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Create New ABHA */}
+                    <div className="col-md-6">
+                      <div className="form-check mb-3">
+                        <input
+                          type="radio"
+                          name="abhaMode"
+                          checked={abhaMode === "new"}
+                          onChange={() => setAbhaMode("new")}
+                        />
+                        <label className="form-check-label fw-bold">
+                          Create New ABHA
+                        </label>
+                      </div>
+
+                      <p className="text-muted small mb-3">
+                        Create a new ABHA Health ID for the patient. This will
+                        link their Aadhaar to create a unique health identifier.
+                      </p>
+
+                      <button
+                        type="button"
+                        className="btn btn-primary"
+                        onClick={() => setShowAbhaCreationModal(true)}
+                        disabled={abhaMode !== "new"}
+                      >
+                        <i className="bi bi-plus-circle me-2"></i>
+                        Create New ABHA
+                      </button>
+
+                      {abhaData.verified && abhaMode === "new" && (
+                        <div className="alert alert-success mt-3">
+                          <h6>✓ ABHA Created Successfully</h6>
+                          <div>
+                            <strong>ABHA Number:</strong> {abhaData.abhaNumber}
+                          </div>
+                          <div>
+                            <strong>ABHA Address:</strong>{" "}
+                            {abhaData.abhaAddress}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* ABHA Verification Modal */}
+          <ABHAVerificationModal
+            show={showAbhaVerificationModal}
+            onClose={() => setShowAbhaVerificationModal(false)}
+            onSuccess={handleAbhaVerificationSuccess}
+            patientData={{
+              firstName: patientDetailForm.patientFn,
+              lastName: patientDetailForm.patientLn,
+              mobileNo: patientDetailForm.patientMobileNumber,
+              aadhaarNo: abhaData.aadhaarNo,
+              email: patientDetailForm.patientEmailId,
+            }}
+            genderData={genderData}
+            stateData={stateData}
+            districtData={districtData}
+          />
+
+          {/* ABHA Creation Modal */}
+          <ABHACreationModal
+            show={showAbhaCreationModal}
+            onClose={() => setShowAbhaCreationModal(false)}
+            onSuccess={handleAbhaCreationSuccess}
+            patientData={{
+              firstName: patientDetailForm.patientFn,
+              lastName: patientDetailForm.patientLn,
+              mobileNo: patientDetailForm.patientMobileNumber,
+              email: patientDetailForm.patientEmailId,
+            }}
+            genderData={genderData}
+            stateData={stateData}
+            districtData={districtData}
+          />
 
           {/* Patient Personal Details */}
           <div className="row mb-3">
@@ -2432,6 +2983,25 @@ const [editLoadingId, setEditLoadingId] = useState(null);
                                 {errors.patientEmailId}
                               </div>
                             )}
+                          </div>
+                          <div className="col-md-4">
+                            <label className="form-label" htmlFor="abhaNumber">
+                              ABHA Number
+                            </label>
+                            <input
+                              type="text"
+                              id="abhaNumber"
+                              name="abhaNumber"
+                              className="form-control"
+                              value={patientDetailForm.abhaNumber ||patientDetailForm.patientAbhaId|| ""}
+                              readOnly
+                              placeholder="Not linked"
+                              style={{ backgroundColor: "#f8f9fa" }}
+                            />
+                            <small className="text-muted">
+                              ABHA number will be auto-filled after verification
+                              or creation
+                            </small>
                           </div>
                         </div>
                       </div>
@@ -3493,6 +4063,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
                               <th>Age</th>
                               <th>Gender</th>
                               <th>Email</th>
+                              <th>ABHA ID</th>
                               <th>Action</th>
                             </tr>
                           </thead>
@@ -3505,6 +4076,7 @@ const [editLoadingId, setEditLoadingId] = useState(null);
                                 <td>{patient.patientAge || ""}</td>
                                 <td>{patient.gender || ""}</td>
                                 <td>{patient.patientEmailId || ""}</td>
+                                <td>{patient.patientAbhaId || "N/A"}</td>
                                 <td>
                                   {/* <button
                                     type="button"
@@ -3517,38 +4089,38 @@ const [editLoadingId, setEditLoadingId] = useState(null);
                                       <i className="icofont-edit"></i>
                                     </span>
                                   </button> */}
-                                <button
-  type="button"
-  className="btn btn-primary btn-sm"
-  onClick={async () => {
-    setEditLoadingId(patient.id);
+                                  <button
+                                    type="button"
+                                    className="btn btn-primary btn-sm"
+                                    onClick={async () => {
+                                      setEditLoadingId(patient.id);
 
-    try {
-      await handleEdit(patient);
-    } finally {
-      setEditLoadingId(null);
-    }
-  }}
-  disabled={editLoadingId === patient.id}
->
-  {editLoadingId === patient.id ? (
-    <>
-      <span
-        className="spinner-border spinner-border-sm me-2"
-        role="status"
-        aria-hidden="true"
-      ></span>
-      Editing...
-    </>
-  ) : (
-    <>
-      Edit
-      <span className="ms-2">
-        <i className="icofont-edit"></i>
-      </span>
-    </>
-  )}
-</button>
+                                      try {
+                                        await handleEdit(patient);
+                                      } finally {
+                                        setEditLoadingId(null);
+                                      }
+                                    }}
+                                    disabled={editLoadingId === patient.id}
+                                  >
+                                    {editLoadingId === patient.id ? (
+                                      <>
+                                        <span
+                                          className="spinner-border spinner-border-sm me-2"
+                                          role="status"
+                                          aria-hidden="true"
+                                        ></span>
+                                        Editing...
+                                      </>
+                                    ) : (
+                                      <>
+                                        Edit
+                                        <span className="ms-2">
+                                          <i className="icofont-edit"></i>
+                                        </span>
+                                      </>
+                                    )}
+                                  </button>
                                 </td>
                               </tr>
                             ))}
