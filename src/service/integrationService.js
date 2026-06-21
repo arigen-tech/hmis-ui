@@ -1,6 +1,6 @@
 import { DEFAULT_RSA_PUBLIC_KEY } from "../config/apiConfig";
 
-const INTEGRATION_BASE_URL = "http://localhost:8089";
+const INTEGRATION_BASE_URL = "http://localhost:8080";
 const ABDM_PREFIX = "/api/v1/abdm";
 const NHCX_PREFIX = "/beneficiary/api/v1/bis";
 

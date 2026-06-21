@@ -15,7 +15,7 @@ export const getRequest = async (endpoint, headers = {}) => {
     } else {
       token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
     }
-    const response = await fetch(`${API_HOST}${endpoint}`, {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -92,7 +92,7 @@ export const postRequest = async (endpoint, data, options = {}) => {
 
     const isMultipart = options.isMultipart;
 
-    const response = await fetch(`${API_HOST}${endpoint}`, {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
         ...token,
@@ -127,7 +127,7 @@ export const postRequestWithFormData = async (endpoint, formData) => {
 
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 30000);
-    const response = await fetch(`${API_HOST}${endpoint}`, {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${token}`, 
@@ -178,7 +178,7 @@ export const putRequest = async (endpoint, data, headers = {}) => {
     } else {
       token = { Authorization: `Bearer ${sessionStorage.getItem("token")}` };
     }
-    const response = await fetch(`${API_HOST}${endpoint}`, {
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
       method: "PUT",
       headers: {
         "Content-Type": "application/json",

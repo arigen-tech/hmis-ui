@@ -4,7 +4,7 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { getRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading";
-import {  GET_MODALITY_DROPDOWN_WRT_DEPARTMENT, REQUEST_PARAM_CODE, RADIOLOGY_DEPARTMENT_CODE, PACS_STUDY_LIST_GET_API, RADIOLOGY_REPORT_END_URL, REQUEST_PARAM_RAD_ORDER_DT_ID, REQUEST_PARAM_FLAG, STATUS_Y, STATUS_N, STATUS_S } from "../../../config/apiConfig";
+import { GET_MODALITY_DROPDOWN_WRT_DEPARTMENT, REQUEST_PARAM_CODE, RADIOLOGY_DEPARTMENT_CODE, PACS_STUDY_LIST_GET_API, GET_WEASIS_LAUNCH_URL_API, RADIOLOGY_REPORT_END_URL, REQUEST_PARAM_RAD_ORDER_DT_ID, REQUEST_PARAM_FLAG, STATUS_Y, STATUS_N, STATUS_S } from "../../../config/apiConfig";
 import { FETCH_MODALITY_OPTION_ERR_MSG, FETCH_STUDY_LIST_ERR_MSG, REPORT_GENERATION_ERR_MSG, SEARCH_CRITERIA_MANDATORY_WARN_MSG } from "../../../config/constants";
 
 const RadiologyPACSStudyList = () => {
@@ -30,6 +30,8 @@ const RadiologyPACSStudyList = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [selectedReportId, setSelectedReportId] = useState(null);
+  const [isDicomLoading, setIsDicomLoading] = useState(false);
+  const [selectedDicomRow, setSelectedDicomRow] = useState(null);
   
   // State for popup messages
   const [popupMessage, setPopupMessage] = useState(null);
@@ -314,9 +316,55 @@ const RadiologyPACSStudyList = () => {
     }
   };
 
-  // Handle DICOM view (placeholder for now)
-  const handleDicomView = (item) => {
-    showPopup(`DICOM viewer for ${item.patientName} - Coming soon`, "info");
+  const handleDicomView = async (item) => {
+    try {
+      setIsDicomLoading(true);
+      setSelectedDicomRow(item.id);
+
+      const params = new URLSearchParams({
+        uhid: item.uhidNo,
+        orderNo: item.accessionNo,
+      });
+
+      const response = await getRequest(
+        `${GET_WEASIS_LAUNCH_URL_API}?${params.toString()}`
+      );
+
+      const payload = response?.response ?? response;
+      const weasisUrl = payload?.weasisUrl;
+
+      if (!weasisUrl) {
+        console.error("Weasis launch response missing weasisUrl:", response);
+        showPopup(
+          `No DICOM study found for ${item.patientName}.`,
+          "info"
+        );
+        return;
+      }
+
+      const weasisWindow = window.open(
+        weasisUrl,
+        "_blank",
+        "noopener,noreferrer"
+      );
+
+      if (!weasisWindow) {
+        showPopup(
+          "Unable to open Weasis. Please allow popups and try again.",
+          "warning"
+        );
+      }
+    } catch (error) {
+      console.error("Error launching Weasis:", error);
+
+      showPopup(
+        "Failed to open DICOM study. Please try again.",
+        "error"
+      );
+    } finally {
+      setIsDicomLoading(false);
+      setSelectedDicomRow(null);
+    }
   };
 
   // Get status badge class
@@ -548,8 +596,15 @@ const RadiologyPACSStudyList = () => {
                                       <button
                                         className="btn btn-sm btn-success"
                                         onClick={() => handleDicomView(row)}
+                                        disabled={isDicomLoading && selectedDicomRow === row.id}
                                       >
-                                        <i className="fa fa-eye"></i>
+                                        {isDicomLoading && selectedDicomRow === row.id ? (
+                                          <>
+                                            <span className="spinner-border spinner-border-sm me-1" />
+                                          </>
+                                        ) : (
+                                          <i className="fa fa-eye"></i>
+                                        )}
                                       </button>
                                     </td>
                                   </tr>

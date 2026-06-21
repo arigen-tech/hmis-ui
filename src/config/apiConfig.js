@@ -1,6 +1,6 @@
 export const API_HOST =  'http://103.133.215.182:8081/hims';
 // export const API_HOST = "http://localhost:8080";
-export const ABDM_API = "http://localhost:8089";
+// export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.1.17:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 
@@ -163,6 +163,7 @@ export const REGISTER_RADIOLOGY = `${RADIOLOGY}/radiologyRegistration`;
 export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
 
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
+export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
 
 export const ITEM_CLASS = {
   TABLET: 1,
@@ -642,4 +643,4 @@ export const ENT_MAS_PINNA = `${MASTERS}/entMasPinna`;
 
 //ABHA INTEGRATION URLS
 // ABDM APIs
-export const ABDM_SEND_AADHAAR_OTP = `${ABDM_API}/api/v1/abdm/create/send-otp-aadhaar`;
+export const ABDM_SEND_AADHAAR_OTP = `/api/v1/abdm/create/send-otp-aadhaar`;
