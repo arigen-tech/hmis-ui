@@ -5,7 +5,7 @@ import ProfileImg from "../../assets/images/profile_av.png";
 import { getRequest, getImageRequest } from "../../service/apiService";
 import './header.css';
 
-const Header = () => {
+const Header = ({ toggleSidebar, collapsed }) => {
   const [currentUserData, setCurrentUserData] = useState();
   const [loading, setLoading] = useState(false);
   const currentUser = localStorage.getItem("username") || sessionStorage.getItem("username");
@@ -93,10 +93,53 @@ const Header = () => {
   return (
     <>
       <div className="header">
-        <nav className="navbar py-4">
-          <div className="container-xxl">
-            {/* header rightbar icon */}
-            <div className="h-right d-flex align-items-center mr-5 mr-lg-0 order-1">
+        <nav className="navbar py-3">
+          <div className="container-fluid d-flex align-items-center justify-content-between">
+            {/* Left section: Hamburger & Search */}
+            <div className="d-flex align-items-center gap-3">
+              <button
+                className="sidebar-toggle-btn btn p-0 border-0 d-flex align-items-center justify-content-center"
+                type="button"
+                onClick={toggleSidebar}
+                title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+              >
+                <svg
+                  width="20"
+                  height="20"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2.5"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="hamburger-icon"
+                >
+                  <line x1="3" y1="12" x2="21" y2="12" />
+                  <line x1="3" y1="6" x2="21" y2="6" />
+                  <line x1="3" y1="18" x2="21" y2="18" />
+                </svg>
+              </button>
+
+              <div className="header-search d-none d-sm-block">
+                <div className="input-group flex-nowrap">
+                  <input
+                    type="search"
+                    className="form-control"
+                    placeholder="Search..."
+                    aria-label="search"
+                  />
+                  <button
+                    type="button"
+                    className="input-group-text"
+                  >
+                    <i className="fa fa-search" />
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Right section: Action items & Profile */}
+            <div className="h-right d-flex align-items-center gap-2">
               <div className="d-flex">
                 <a
                   className="nav-link text-primary collapsed"
@@ -321,7 +364,7 @@ const Header = () => {
                 )}
 
                 <a
-                  className="nav-link dropdown-toggle pulse p-0"
+                  className="dropdown-toggle pulse p-0"
                   href="#"
                   role="button"
                   data-bs-toggle="dropdown"
@@ -392,39 +435,6 @@ const Header = () => {
                     </div>
                   </div>
                 </div>
-              </div>
-              <div className="setting ms-2">
-                <a href="#" data-bs-toggle="modal" data-bs-target="#Settingmodal">
-                  <i className="icofont-gear-alt fs-5" />
-                </a>
-              </div>
-            </div>
-            {/* menu toggler */}
-            <button
-              className="navbar-toggler p-0 border-0 menu-toggle order-3"
-              type="button"
-              data-bs-toggle="collapse"
-              data-bs-target="#mainHeader"
-            >
-              <span className="fa fa-bars" />
-            </button>
-            {/* main menu Search*/}
-            <div className="order-0 col-lg-4 col-md-4 col-sm-12 col-12 mb-3 mb-md-0">
-              <div className="input-group flex-nowrap input-group-lg">
-                <input
-                  type="search"
-                  className="form-control"
-                  placeholder="Search"
-                  aria-label="search"
-                  aria-describedby="addon-wrapping"
-                />
-                <button
-                  type="button"
-                  className="input-group-text"
-                  id="addon-wrapping"
-                >
-                  <i className="fa fa-search" />
-                </button>
               </div>
             </div>
           </div>
