@@ -65,7 +65,7 @@ const iconMap = {
 
 const getIconClass = (name) => iconMap[name] || "icofont-ui-folder"
 
-const Sidebar = () => {
+const Sidebar = ({ collapsed, toggleSidebar }) => {
   const [loading, setLoading] = useState(false)
   const [menuData, setMenuData] = useState([])
   const [searchText, setSearchText] = useState("")
@@ -168,7 +168,7 @@ const Sidebar = () => {
   }
 
   return (
-    <div className="sidebar px-4 py-4 py-md-5 me-0 ms-1">
+    <div className={`sidebar px-3 py-4 py-md-4 me-0 ms-1 ${collapsed ? "sidebar-mini" : "open"}`}>
       <div className="d-flex flex-column h-100">
 
         <Link to="index" className="mb-0 brand-icon">
@@ -210,7 +210,7 @@ const Sidebar = () => {
           )}
         </ul>
 
-        <button type="button" className="btn btn-link sidebar-mini-btn text-light">
+        <button type="button" className="btn btn-link sidebar-mini-btn text-light" onClick={toggleSidebar}>
           <span className="ms-2">
             <i className="icofont-bubble-right" />
           </span>

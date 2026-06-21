@@ -1,922 +1,774 @@
 import React, { useEffect, useState } from "react";
 import "./dashboard.css";
-import ProfileImg from "../../assets/images/profile_av.png";
 
 const Dashboard = () => {
+  const [isMounted, setIsMounted] = useState(false);
+  const [hoveredTrendIndex, setHoveredTrendIndex] = useState(null);
+  const [activeTab, setActiveTab] = useState("Last 7 Days");
+  
+  // Toggle states for patient trend chart lines
+  const [showReg, setShowReg] = useState(true);
+  const [showOPD, setShowOPD] = useState(true);
+  const [showIPD, setShowIPD] = useState(true);
 
+  useEffect(() => {
+    // Trigger animations after mount
+    const timer = setTimeout(() => setIsMounted(true), 100);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Bed statistics constants
+  const bedStats = {
+    total: 250,
+    occupied: { count: 205, percentage: 82 },
+    available: { count: 35, percentage: 14 },
+    cleaning: { count: 5, percentage: 2 },
+    maintenance: { count: 5, percentage: 2 }
+  };
+
+  // Ward Wise Bed Statistics
+  const wardWiseBeds = [
+    { name: "General Ward", occupied: 85, available: 20, cleaning: 3, maintenance: 2, total: 110 },
+    { name: "Semi Private Ward", occupied: 40, available: 10, cleaning: 2, maintenance: 1, total: 53 },
+    { name: "Private Ward", occupied: 25, available: 10, cleaning: 2, maintenance: 1, total: 38 },
+    { name: "ICU", occupied: 22, available: 3, cleaning: 0, maintenance: 0, total: 25 },
+    { name: "NICU", occupied: 12, available: 3, cleaning: 0, maintenance: 0, total: 15 },
+    { name: "HDU", occupied: 10, available: 4, cleaning: 1, maintenance: 1, total: 16 },
+    { name: "Isolation Ward", occupied: 6, available: 2, cleaning: 0, maintenance: 0, total: 8 },
+    { name: "Maternity Ward", occupied: 5, available: 2, cleaning: 2, maintenance: 0, total: 9 }
+  ];
+
+  // IPD Admission Summary
+  const ipdSummary = {
+    todayAdmission: 22,
+    discharges: 18,
+    currentIpd: 126,
+    icuPatients: 14
+  };
+
+  // IPD Ward Occupancy Percentages
+  const wardOccupancy = [
+    { name: "General Ward", percentage: 85 },
+    { name: "Semi Private Ward", percentage: 78 },
+    { name: "Private Ward", percentage: 65 },
+    { name: "ICU", percentage: 92 }
+  ];
+
+  // OPD Specialty Wise
+  const opdSpecialties = [
+    { name: "General Medicine", count: 220 },
+    { name: "Orthopedic", count: 180 },
+    { name: "Pediatrics", count: 140 },
+    { name: "Gynecology", count: 125 },
+    { name: "ENT", count: 95 }
+  ];
+
+  // Top Investigations
+  const topInvestigations = [
+    { name: "CBC", count: 220 },
+    { name: "Blood Sugar", count: 180 },
+    { name: "LFT", count: 150 },
+    { name: "KFT", count: 132 },
+    { name: "Thyroid", count: 98 }
+  ];
+
+  // Top Diagnosis
+  const topDiagnosis = [
+    { name: "Hypertension", count: 165 },
+    { name: "Diabetes", count: 142 },
+    { name: "Fever", count: 125 },
+    { name: "Viral Infection", count: 110 },
+    { name: "Arthritis", count: 90 }
+  ];
+
+  // Patient Trend Data (7 Days)
+  const patientTrend = {
+    days: ["Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Sun"],
+    registration: [620, 680, 780, 820, 950, 1200, 580],
+    opd: [680, 800, 850, 1050, 1100, 1250, 600],
+    ipd: [100, 120, 150, 180, 220, 260, 80]
+  };
+
+  // SVG dimensions for Line Chart
+  const lineChartWidth = 500;
+  const lineChartHeight = 200;
+  const padLeft = 45;
+  const padRight = 15;
+  const padTop = 15;
+  const padBottom = 25;
+  
+  const plotWidth = lineChartWidth - padLeft - padRight;
+  const plotHeight = lineChartHeight - padTop - padBottom;
+  const maxVal = 1400;
+
+  const getCoordinates = (value, index) => {
+    const x = padLeft + index * (plotWidth / 6);
+    const y = lineChartHeight - padBottom - (value / maxVal) * plotHeight;
+    return { x, y };
+  };
+
+  // Generates SVG Path string
+  const generatePath = (data) => {
+    return data.map((val, i) => {
+      const { x, y } = getCoordinates(val, i);
+      return `${i === 0 ? "M" : "L"} ${x} ${y}`;
+    }).join(" ");
+  };
+
+  // Generates SVG Area Path string
+  const generateAreaPath = (data) => {
+    const linePath = generatePath(data);
+    const firstX = padLeft;
+    const lastX = padLeft + 6 * (plotWidth / 6);
+    const baseY = lineChartHeight - padBottom;
+    return `${linePath} L ${lastX} ${baseY} L ${firstX} ${baseY} Z`;
+  };
 
   return (
-    <>
+    <div className="modern-dashboard anim-fade-in">
+      
+      {/* Dashboard Top Header Block */}
+      <div className="dashboard-header d-flex flex-wrap justify-content-between align-items-center gap-3">
+        <div className="dashboard-title-area">
+          <h2>Clinical & Operational Dashboard</h2>
+          <p>Real-time updates & hospital status insights • Auto-refreshes every 15 min</p>
+        </div>
+        <div className="dashboard-filters">
+          {["Today", "Last 7 Days", "Last Month"].map((tab) => (
+            <button
+              key={tab}
+              className={`filter-btn ${activeTab === tab ? "active" : ""}`}
+              onClick={() => setActiveTab(tab)}
+            >
+              {tab}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Row 1: KPI Statistics Overview */}
+      <div className="metric-row">
+        {/* Total Beds */}
+        <div className="glass-card card-occupied">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Total Bed Capacity</span>
+              <span className="metric-value">{bedStats.total}</span>
+              <span className="metric-meta text-muted">100% capacity</span>
+            </div>
+            <div className="metric-icon-box bg-occupied-light">
+              <i className="icofont-patient-bed" />
+            </div>
+          </div>
+        </div>
+
+        {/* Occupied Beds */}
+        <div className="glass-card card-occupied">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Occupied Beds</span>
+              <span className="metric-value">{bedStats.occupied.count}</span>
+              <span className="metric-meta text-primary">82% occupancy rate</span>
+            </div>
+            <div className="metric-icon-box bg-occupied-light">
+              <i className="icofont-user-suited" />
+            </div>
+          </div>
+        </div>
+
+        {/* Available Beds */}
+        <div className="glass-card card-available">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Available Beds</span>
+              <span className="metric-value">{bedStats.available.count}</span>
+              <span className="metric-meta text-success">14% remaining capacity</span>
+            </div>
+            <div className="metric-icon-box bg-available-light">
+              <i className="icofont-check-circled" />
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Admission */}
+        <div className="glass-card card-info">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Today's Admission</span>
+              <span className="metric-value">{ipdSummary.todayAdmission}</span>
+              <span className="metric-meta text-primary">+{ipdSummary.todayAdmission} new today</span>
+            </div>
+            <div className="metric-icon-box bg-info-light">
+              <i className="icofont-sign-in" />
+            </div>
+          </div>
+        </div>
+
+        {/* Discharges */}
+        <div className="glass-card card-available">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Discharges</span>
+              <span className="metric-value">{ipdSummary.discharges}</span>
+              <span className="metric-meta text-success">-{ipdSummary.discharges} checked out</span>
+            </div>
+            <div className="metric-icon-box bg-available-light">
+              <i className="icofont-sign-out" />
+            </div>
+          </div>
+        </div>
+
+        {/* Current IPD */}
+        <div className="glass-card card-accent">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Current IPD</span>
+              <span className="metric-value">{ipdSummary.currentIpd}</span>
+              <span className="metric-meta text-muted">Inpatient department</span>
+            </div>
+            <div className="metric-icon-box bg-accent-light">
+              <i className="icofont-hospital" />
+            </div>
+          </div>
+        </div>
 
 
-            {/* Body: Body */}
-            <div className="body d-flex py-3">
-              <div className="container-xxl">
-                <div className="row g-3 mb-3">
-                  <div className="col-md-12 col-lg-4 col-xl-4 d-none d-lg-block">
-                    <svg
-                      id="b142c218-c3ca-487e-979b-dffd11e3a76c"
-                      className="cal-img"
-                      data-name="Layer 1"
-                      xmlns="http://www.w3.org/2000/svg"
-                      width="100%"
-                      height="389.35169"
-                      viewBox="0 0 532.48525 389.35169"
-                    >
-                      <path
-                        d="M657.62709,439.57146a6.51369,6.51369,0,0,1-6.48976-6.0878l-.9666-14.75858a6.51365,6.51365,0,0,1,6.07385-6.92548l115.62688-7.57232a13.90881,13.90881,0,0,1,1.81772,27.75816l-115.62662,7.57183Q657.84421,439.57122,657.62709,439.57146Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="var(--secondary-color)"
-                      />
-                      <path
-                        d="M680.427,441.47433a6.52191,6.52191,0,0,1-6.50615-6.2708l-.824-22.04369a6.513,6.513,0,0,1,6.26591-6.75177l95.08311-3.55375a6.51385,6.51385,0,0,1,6.75226,6.26591l.824,22.04369a6.513,6.513,0,0,1-6.2659,6.75177l-95.08311,3.55375C680.59089,441.47286,680.50845,441.47433,680.427,441.47433Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <path
-                        d="M791.8491,644.67585H777.05871a6.52087,6.52087,0,0,1-6.51349-6.51349V514.893a6.52087,6.52087,0,0,1,6.51349-6.51348H791.8491a6.52087,6.52087,0,0,1,6.51349,6.51348V638.16236A6.52087,6.52087,0,0,1,791.8491,644.67585Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <path
-                        d="M754.7143,644.67585H739.92391a6.52087,6.52087,0,0,1-6.51349-6.51349V514.893a6.52087,6.52087,0,0,1,6.51349-6.51348H754.7143a6.52087,6.52087,0,0,1,6.51349,6.51348V638.16236A6.52087,6.52087,0,0,1,754.7143,644.67585Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <circle
-                        cx="435.62828"
-                        cy="73.30445"
-                        r="51.10582"
-                        fill="var(--secondary-color)"
-                      />
-                      <path
-                        d="M741.7224,346.07792a12.12059,12.12059,0,0,1-4.42606-2.59809,8.15037,8.15037,0,0,1-2.38243-6.45236,5.48293,5.48293,0,0,1,2.43759-4.21982c1.82759-1.17234,4.27192-1.1758,6.76064-.079l-.09421-19.951,2.004-.00955.11086,23.4545-1.5442-.97135c-1.79064-1.12447-4.34788-1.916-6.15482-.7566a3.521,3.521,0,0,0-1.5247,2.72455,6.15892,6.15892,0,0,0,1.77145,4.81091c2.213,2.11392,5.44168,2.775,9.12357,3.36575l-.31763,1.97862A33.03108,33.03108,0,0,1,741.7224,346.07792Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <rect
-                        x="727.57592"
-                        y="308.07255"
-                        width="2.0039"
-                        height="10.79402"
-                        transform="matrix(0.13093, -0.99139, 0.99139, 0.13093, -11.34164, 739.40982)"
-                        fill="#2f2e41"
-                      />
-                      <rect
-                        x="761.35331"
-                        y="312.53222"
-                        width="2.0039"
-                        height="10.79402"
-                        transform="translate(13.59208 776.77223) rotate(-82.4768)"
-                        fill="#2f2e41"
-                      />
-                      <path
-                        d="M725.88081,547.96632h-.00009a8.52716,8.52716,0,0,1-8.51764-8.51764s13.57921-73.67742,21.339-116.86035a36.37333,36.37333,0,0,1,35.79926-29.94363h.00007a46.07539,46.07539,0,0,1,46.07539,46.07539v14.55024A94.696,94.696,0,0,1,725.88081,547.96632Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <path
-                        d="M790.35864,540.59071a6.52391,6.52391,0,0,1-5.98009,3.80507l-14.78976-.12843a6.51295,6.51295,0,0,1-6.45648-6.56975l1.00467-115.87a13.90824,13.90824,0,1,1,27.81543.24117l-1.00412,115.87A6.47722,6.47722,0,0,1,790.35864,540.59071Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="var(--secondary-color)"
-                      />
-                      <path
-                        d="M796.89226,509.65844a6.52358,6.52358,0,0,1-5.98,3.80485l-25.26174-.21914a6.5209,6.5209,0,0,1-6.45648-6.56976l.82512-95.1459a6.51295,6.51295,0,0,1,6.56963-6.45681l25.2613.21894a6.51295,6.51295,0,0,1,6.45649,6.56975l-.82468,95.14611A6.48519,6.48519,0,0,1,796.89226,509.65844Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <path
-                        d="M754.6343,298.51405c-7.9642,1.35175-16.85609,2.89733-24.44478-.79571-5.97328-2.9069-10.08009-8.71259-8.62518-15.53409,2.89548-13.57569,18.43743-19.57763,30.92767-18.3664a33.17835,33.17835,0,0,1,19.63021,8.85084,1.81749,1.81749,0,0,0,3.06741-1.27056c-.05315-5.00947,3.69455-9.18969,8.13532-11.0767,5.56-2.36261,12.02054-1.51832,17.73484-.254a78.74679,78.74679,0,0,1,60.83363,65.858,77.868,77.868,0,0,1-2.5009,33.35023c-3.03124,9.95948-8.63018,19.96974-17.84813,25.38834-8.30647,4.8828-20.38476,6.14019-28.04987-.71022-6.13981-5.48723-8.90734-15.74534-3.87-22.84427a14.06282,14.06282,0,0,1,13.23124-5.72048,12.59183,12.59183,0,0,1,10.15717,9.0336,12.34855,12.34855,0,0,1-4.28719,12.17557,11.98985,11.98985,0,0,1-17.08764-3.2621c-1.22071-1.95857-4.331-.15647-3.103,1.8138a15.91988,15.91988,0,0,0,13.08837,7.34165,14.71593,14.71593,0,0,0,12.95418-7.25451A15.35938,15.35938,0,0,0,835.032,359.876a16.45392,16.45392,0,0,0-13.71557-8.21305,17.88422,17.88422,0,0,0-14.795,7.63283,19.00308,19.00308,0,0,0-2.76852,13.93458,23.0561,23.0561,0,0,0,6.77554,12.87447,23.81222,23.81222,0,0,0,15.10181,6.14228c12.18476.69494,23.06255-6.32472,29.78312-16.08243,6.97354-10.125,10.092-22.83033,10.72046-34.97715a82.43531,82.43531,0,0,0-27.72525-66.01717,83.76892,83.76892,0,0,0-30.40919-16.9906c-11.10146-3.40065-26.60128-5.87948-34.098,5.46345a13.81219,13.81219,0,0,0-2.30549,7.755l3.06741-1.27056c-10.84666-10.365-27.89773-12.98409-41.44177-6.61282-6.8027,3.20007-12.70035,9.15063-14.81478,16.48759-2.19389,7.61272.97872,15.08455,7.48524,19.402,8.855,5.87575,19.83684,4.24871,29.6976,2.57506,2.27529-.38618,1.31047-3.84989-.95534-3.46532Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#2f2e41"
-                      />
-                      <path
-                        d="M642.25738,519.40775h-291a17.52,17.52,0,0,1-17.5-17.5v-174a17.52,17.52,0,0,1,17.5-17.5h291a17.52,17.52,0,0,1,17.5,17.5v174A17.52,17.52,0,0,1,642.25738,519.40775Zm-291-206a14.51669,14.51669,0,0,0-14.5,14.5v174a14.51669,14.51669,0,0,0,14.5,14.5h291a14.51669,14.51669,0,0,0,14.5-14.5v-174a14.5167,14.5167,0,0,0-14.5-14.5Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#3f3d56"
-                      />
-                      <path
-                        d="M390.25738,351.40775a12.5,12.5,0,1,1,12.5-12.5A12.51408,12.51408,0,0,1,390.25738,351.40775Zm0-22a9.5,9.5,0,1,0,9.5,9.5A9.5108,9.5108,0,0,0,390.25738,329.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#3f3d56"
-                      />
-                      <path
-                        d="M601.25738,351.40775a12.5,12.5,0,1,1,12.5-12.5A12.51408,12.51408,0,0,1,601.25738,351.40775Zm0-22a9.5,9.5,0,1,0,9.5,9.5A9.5108,9.5108,0,0,0,601.25738,329.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#3f3d56"
-                      />
-                      <path
-                        d="M419.75738,427.40775h-54a8.51012,8.51012,0,0,1-8.5-8.5v-32a8.51013,8.51013,0,0,1,8.5-8.5h54a8.51014,8.51014,0,0,1,8.5,8.5v32A8.51013,8.51013,0,0,1,419.75738,427.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#e6e6e6"
-                      />
-                      <path
-                        d="M523.75738,427.40775h-54a8.51012,8.51012,0,0,1-8.5-8.5v-32a8.51013,8.51013,0,0,1,8.5-8.5h54a8.51014,8.51014,0,0,1,8.5,8.5v32A8.51013,8.51013,0,0,1,523.75738,427.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#e6e6e6"
-                      />
-                      <path
-                        d="M573.75738,379.40775a7.5082,7.5082,0,0,0-7.5,7.5v32a7.50819,7.50819,0,0,0,7.5,7.5h54a7.5082,7.5082,0,0,0,7.5-7.5v-32a7.5082,7.5082,0,0,0-7.5-7.5Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#e6e6e6"
-                      />
-                      <path
-                        d="M420.25738,491.40775h-54a8.51012,8.51012,0,0,1-8.5-8.5v-32a8.51013,8.51013,0,0,1,8.5-8.5h54a8.51014,8.51014,0,0,1,8.5,8.5v32A8.51013,8.51013,0,0,1,420.25738,491.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#e6e6e6"
-                      />
-                      <path
-                        d="M524.25738,491.40775h-54a8.51012,8.51012,0,0,1-8.5-8.5v-32a8.51013,8.51013,0,0,1,8.5-8.5h54a8.51014,8.51014,0,0,1,8.5,8.5v32A8.51013,8.51013,0,0,1,524.25738,491.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#e6e6e6"
-                      />
-                      <path
-                        d="M628.25738,491.40775h-54a8.51012,8.51012,0,0,1-8.5-8.5v-32a8.51013,8.51013,0,0,1,8.5-8.5h54a8.51014,8.51014,0,0,1,8.5,8.5v32A8.51013,8.51013,0,0,1,628.25738,491.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#e6e6e6"
-                      />
-                      <path
-                        d="M390.25738,342.40775a3.50424,3.50424,0,0,1-3.5-3.5v-50a3.5,3.5,0,0,1,7,0v50A3.50425,3.50425,0,0,1,390.25738,342.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#3f3d56"
-                      />
-                      <path
-                        d="M601.25738,342.40775a3.50424,3.50424,0,0,1-3.5-3.5v-50a3.5,3.5,0,0,1,7,0v50A3.50425,3.50425,0,0,1,601.25738,342.40775Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="#3f3d56"
-                      />
-                      <path
-                        id="b5e0804e-c461-433c-b77b-73087ef71cb0"
-                        data-name="Path 395"
-                        d="M390.71607,415.879a6.78778,6.78778,0,0,1-4.08354-1.35714l-.073-.05479-15.38069-11.76574a6.83507,6.83507,0,0,1,8.31719-10.84883l9.96238,7.63962L413,368.77943a6.83219,6.83219,0,0,1,9.579-1.26526l.002.00148-.1461.20287.15006-.20287a6.84044,6.84044,0,0,1,1.26378,9.581l-27.69011,36.1087a6.83631,6.83631,0,0,1-5.43658,2.66555Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="var(--secondary-color)"
-                      />
-                      <path
-                        id="b3a0cc8c-ec19-4bca-9f18-6cf478ced8d1"
-                        data-name="Path 395"
-                        d="M497.71607,478.879a6.78778,6.78778,0,0,1-4.08354-1.35714l-.073-.05479-15.38069-11.76574a6.83507,6.83507,0,0,1,8.31719-10.84883l9.96238,7.63962L520,431.77943a6.83219,6.83219,0,0,1,9.579-1.26526l.002.00148-.1461.20287.15006-.20287a6.84044,6.84044,0,0,1,1.26378,9.581l-27.69011,36.1087a6.83631,6.83631,0,0,1-5.43658,2.66555Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="var(--secondary-color)"
-                      />
-                      <path
-                        id="b29a902b-cd84-4f58-97ad-17c408cf2b06"
-                        data-name="Path 395"
-                        d="M598.71607,415.879a6.78778,6.78778,0,0,1-4.08354-1.35714l-.073-.05479-15.38069-11.76574a6.83507,6.83507,0,0,1,8.31719-10.84883l9.96238,7.63962L621,368.77943a6.83219,6.83219,0,0,1,9.579-1.26526l.002.00148-.1461.20287.15006-.20287a6.84044,6.84044,0,0,1,1.26378,9.581l-27.69011,36.1087a6.83631,6.83631,0,0,1-5.43658,2.66555Z"
-                        transform="translate(-333.75738 -255.32415)"
-                        fill="var(--secondary-color)"
-                      />
-                    </svg>
-                    <div className="calandarclock-block">
-                      <div className="signboard outer">
-                        <div className="signboard front inner anim04c">
-                          <ul>
-                            <li className="year anim04c">
-                              <span />
-                            </li>
-                            <li>
-                              <ul className="calendarMain anim04c">
-                                <li className="month anim04c">
-                                  <span />
-                                </li>
-                                <li className="date anim04c">
-                                  <span />
-                                </li>
-                                <li className="day anim04c">
-                                  <span />
-                                </li>
-                              </ul>
-                            </li>
-                            <li className="clock minute anim04c">
-                              <span />
-                            </li>
-                            <li className="calendarNormal date2 anim04c">
-                              <span />
-                            </li>
-                          </ul>
-                        </div>
-                        <div className="signboard left inner anim04c">
-                          <ul>
-                            <li className="clock hour anim04c">
-                              <span />
-                            </li>
-                            <li className="calendarNormal day2 anim04c">
-                              <span />
-                            </li>
-                          </ul>
-                        </div>
-                        <div className="signboard right inner anim04c">
-                          <ul>
-                            <li className="clock second anim04c">
-                              <span />
-                            </li>
-                            <li className="calendarNormal month2 anim04c">
-                              <span />
-                            </li>
-                          </ul>
-                        </div>
-                      </div>
-                    </div>
+      </div>
+
+      {/* Main Content Grid */}
+      <div className="dashboard-layout-grid">
+        
+        {/* Overall Bed Statistics (Donut) */}
+        <div className="glass-card span-4">
+          <div className="card-title-bar">
+            <h5><i className="icofont-pie-chart text-primary" /> Overall Bed Statistics</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="donut-container">
+              <div className="donut-svg-wrapper">
+                <svg width="100%" height="100%" viewBox="0 0 160 160">
+                  <defs>
+                    <linearGradient id="occupied-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#60a5fa" />
+                      <stop offset="100%" stopColor="#2563eb" />
+                    </linearGradient>
+                    <linearGradient id="available-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#34d399" />
+                      <stop offset="100%" stopColor="#059669" />
+                    </linearGradient>
+                    <linearGradient id="cleaning-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#fbbf24" />
+                      <stop offset="100%" stopColor="#d97706" />
+                    </linearGradient>
+                    <linearGradient id="maintenance-grad" x1="0%" y1="0%" x2="100%" y2="100%">
+                      <stop offset="0%" stopColor="#f87171" />
+                      <stop offset="100%" stopColor="#dc2626" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Circle segments calculations based on r=60, circ=377 */}
+                  {/* Occupied: 82% = 309.1 */}
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="60"
+                    fill="none"
+                    stroke="url(#occupied-grad)"
+                    strokeWidth="10"
+                    strokeDasharray="309.1 377"
+                    strokeDashoffset="0"
+                    transform="rotate(-90 80 80)"
+                    className="chart-segment"
+                  />
+                  {/* Available: 14% = 52.8 */}
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="60"
+                    fill="none"
+                    stroke="url(#available-grad)"
+                    strokeWidth="10"
+                    strokeDasharray="52.8 377"
+                    strokeDashoffset="-309.1"
+                    transform="rotate(-90 80 80)"
+                    className="chart-segment"
+                  />
+                  {/* Cleaning: 2% = 7.5 */}
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="60"
+                    fill="none"
+                    stroke="url(#cleaning-grad)"
+                    strokeWidth="10"
+                    strokeDasharray="7.5 377"
+                    strokeDashoffset="-361.9"
+                    transform="rotate(-90 80 80)"
+                    className="chart-segment"
+                  />
+                  {/* Maintenance: 2% = 7.5 */}
+                  <circle
+                    cx="80"
+                    cy="80"
+                    r="60"
+                    fill="none"
+                    stroke="url(#maintenance-grad)"
+                    strokeWidth="10"
+                    strokeDasharray="7.5 377"
+                    strokeDashoffset="-369.4"
+                    transform="rotate(-90 80 80)"
+                    className="chart-segment"
+                  />
+                </svg>
+                <div className="donut-center-text">
+                  <div className="donut-center-number">{bedStats.total}</div>
+                  <div className="donut-center-label">Beds</div>
+                </div>
+              </div>
+              
+              <div className="legend-list">
+                <div className="legend-item">
+                  <div className="legend-label-wrapper">
+                    <span className="legend-color-dot" style={{ backgroundColor: "#2563eb" }} />
+                    <span>Occupied</span>
                   </div>
-                  <div className="col-md-12 col-lg-8 col-xl-8">
-                    <div className="card">
-                      <div className="card-header py-3 d-flex justify-content-between bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold">Patient Statistics</h6>
-                      </div>
-                      <div className="card-body">
-                        <div id="apex-stacked-area" />
-                      </div>
-                    </div>
+                  <div className="legend-value-group">
+                    <span>{bedStats.occupied.count}</span>
+                    <span className="legend-percentage">({bedStats.occupied.percentage}%)</span>
                   </div>
                 </div>
-                <div className="row g-3 mb-3 row-deck">
-                  <div className="col-lg-12 col-xl-6">
-                    <div className="card">
-                      <div className="card-header py-3 d-flex justify-content-between bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold">Hospitality Status</h6>
-                      </div>
-                      <div className="card-body">
-                        <div className="row g-3 row-deck">
-                          <div className="col-md-4 col-sm-6">
-                            <div className="card">
-                              <div className="card-body">
-                                <i className="icofont-patient-file fs-3 text-secondary" />
-                                <h6 className="mt-3 mb-0 fw-bold small-14">
-                                  Total Appointment
-                                </h6>
-                                <span className="text-muted">400</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-md-4 col-sm-6">
-                            <div className="card">
-                              <div className="card-body">
-                                <i className="icofont-crutch fs-3 color-lightblue" />
-                                <h6 className="mt-3 mb-0 fw-bold small-14">
-                                  Total Patients
-                                </h6>
-                                <span className="text-muted">117</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-md-4 col-sm-6">
-                            <div className="card">
-                              <div className="card-body">
-                                <i className="icofont-doctor fs-3 color-light-orange" />
-                                <h6 className="mt-3 mb-0 fw-bold small-14">
-                                  Patients per Doctor
-                                </h6>
-                                <span className="text-muted">16</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-md-4 col-sm-6">
-                            <div className="card">
-                              <div className="card-body">
-                                <i className="icofont-king-monster fs-3 color-careys-pink" />
-                                <h6 className="mt-3 mb-0 fw-bold small-14">
-                                  Covid Patients
-                                </h6>
-                                <span className="text-muted">144</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-md-4 col-sm-6">
-                            <div className="card">
-                              <div className="card-body">
-                                <i className="icofont-doctor-alt fs-3 color-lavender-purple" />
-                                <h6 className="mt-3 mb-0 fw-bold small-14">
-                                  Total Doctor
-                                </h6>
-                                <span className="text-muted">200</span>
-                              </div>
-                            </div>
-                          </div>
-                          <div className="col-md-4 col-sm-6">
-                            <div className="card">
-                              <div className="card-body">
-                                <i className="icofont-nurse-alt fs-3 color-light-success" />
-                                <h6 className="mt-3 mb-0 fw-bold small-14">
-                                  Total Nurse
-                                </h6>
-                                <span className="text-muted">84</span>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                <div className="legend-item">
+                  <div className="legend-label-wrapper">
+                    <span className="legend-color-dot" style={{ backgroundColor: "#059669" }} />
+                    <span>Available</span>
                   </div>
-                  <div className="col-lg-12 col-xl-6">
-                    <div className="card">
-                      <div className="card-header py-3 d-flex bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold">Hospital Room Booking Status</h6>
-                      </div>
-                      <div className="card-body">
-                        <div className="room_book">
-                          <div className="row row-cols-2 row-cols-sm-4 row-cols-md-6 row-cols-lg-6 g-3">
-                            <div className="room col">
-                              <input type="checkbox" id="1A" defaultChecked="" />
-                              <label htmlFor="1A">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room A-101</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="1B" />
-                              <label htmlFor="1B">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room B-102</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="1C" />
-                              <label htmlFor="1C">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room C-103</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" disabled="" id="1D" />
-                              <label htmlFor="1D">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Occupied</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="1E" />
-                              <label htmlFor="1E">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room D-104</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="1F" defaultChecked="" />
-                              <label htmlFor="1F">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room E-105</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="2A" />
-                              <label htmlFor="2A">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room F-106</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="2B" />
-                              <label htmlFor="2B">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room G-107</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="2C" defaultChecked="" />
-                              <label htmlFor="2C">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room H-108</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="2D" />
-                              <label htmlFor="2D">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room I-109</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="2E" defaultChecked="" />
-                              <label htmlFor="2E">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room J-110</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="2F" />
-                              <label htmlFor="2F">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room K-111</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="3A" defaultChecked="" />
-                              <label htmlFor="3A">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room L-112</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="3B" />
-                              <label htmlFor="3B">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room M-113</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="3C" />
-                              <label htmlFor="3C">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room N-114</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="3D" />
-                              <label htmlFor="3D">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room O-115</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="3E" defaultChecked="" />
-                              <label htmlFor="3E">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room P-116</span>
-                              </label>
-                            </div>
-                            <div className="room col">
-                              <input type="checkbox" id="3F" />
-                              <label htmlFor="3F">
-                                <i className="icofont-patient-bed fs-2" />
-                                <span className="text-muted">Room Q-117</span>
-                              </label>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                  <div className="legend-value-group">
+                    <span>{bedStats.available.count}</span>
+                    <span className="legend-percentage">({bedStats.available.percentage}%)</span>
                   </div>
                 </div>
-                <div className="row g-3 mb-3">
-                  <div className="col-xl-8 col-lg-12 flex-column">
-                    <div className="card mb-3">
-                      <div className="card-header py-3 d-flex justify-content-between bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold">Addmission by Division</h6>
-                      </div>
-                      <div className="card-body">
-                        <div id="hiringsources" />
-                      </div>
-                    </div>
-                    <div className="card">
-                      <div className="card-header py-3 d-flex justify-content-between bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold">Patients Information</h6>
-                      </div>
-                      <div className="card-body">
-                        <table
-                          id="myDataTable"
-                          className="table table-hover align-middle mb-0"
-                          style={{ width: "100%" }}
-                        >
-                          <thead>
-                            <tr>
-                              <th>Patients</th>
-                              <th>Adress</th>
-                              <th>Admited</th>
-                              <th>Discharge</th>
-                              <th>Progress</th>
-                              <th>Status</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar3.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Molly </span>
-                              </td>
-                              <td>70 Bowman St. South Windsor, CT 06074</td>
-                              <td>May 13, 2021</td>
-                              <td>May 16, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar progress-bar-warning"
-                                    role="progressbar"
-                                    aria-valuenow={40}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "40%" }}
-                                  >
-                                    <span className="sr-only">40% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-info">Admit</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar1.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Brian</span>
-                              </td>
-                              <td>123 6th St. Melbourne, FL 32904</td>
-                              <td>May 13, 2021</td>
-                              <td>May 22, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-success"
-                                    role="progressbar"
-                                    aria-valuenow={100}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "100%" }}
-                                  >
-                                    <span className="sr-only">100% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-success">Discharge</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar2.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Julia</span>
-                              </td>
-                              <td>4 Shirley Ave. West Chicago, IL 60185</td>
-                              <td>May 17, 2021</td>
-                              <td>May 16, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-success"
-                                    role="progressbar"
-                                    aria-valuenow={100}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "100%" }}
-                                  >
-                                    <span className="sr-only">100% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-success">Discharge</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar4.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Sonia</span>
-                              </td>
-                              <td>123 6th St. Melbourne, FL 32904</td>
-                              <td>May 13, 2021</td>
-                              <td>May 23, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-info"
-                                    role="progressbar"
-                                    aria-valuenow={15}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "15%" }}
-                                  >
-                                    <span className="sr-only">15% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-info">Admit</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar5.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Adam H</span>
-                              </td>
-                              <td>4 Shirley Ave. West Chicago, IL 60185</td>
-                              <td>May 18, 2021</td>
-                              <td>May 18, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-danger"
-                                    role="progressbar"
-                                    aria-valuenow={85}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "85%" }}
-                                  >
-                                    <span className="sr-only">85% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-info">Admit</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar9.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Alexander</span>
-                              </td>
-                              <td>123 6th St. Melbourne, FL 32904</td>
-                              <td>May 13, 2021</td>
-                              <td>May 22, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-success"
-                                    role="progressbar"
-                                    aria-valuenow={100}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "100%" }}
-                                  >
-                                    <span className="sr-only">100% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-success">Discharge</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar11.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Gabrielle</span>
-                              </td>
-                              <td>4 Shirley Ave. West Chicago, IL 60185</td>
-                              <td>May 17, 2021</td>
-                              <td>May 16, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-success"
-                                    role="progressbar"
-                                    aria-valuenow={100}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "100%" }}
-                                  >
-                                    <span className="sr-only">100% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-success">Discharge</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar12.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Grace</span>
-                              </td>
-                              <td>4 Shirley Ave. West Chicago, IL 60185</td>
-                              <td>May 17, 2021</td>
-                              <td>May 16, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-success"
-                                    role="progressbar"
-                                    aria-valuenow={100}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "100%" }}
-                                  >
-                                    <span className="sr-only">100% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-success">Discharge</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar8.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Ryan </span>
-                              </td>
-                              <td>70 Bowman St. South Windsor, CT 06074</td>
-                              <td>May 13, 2021</td>
-                              <td>May 16, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar progress-bar-warning"
-                                    role="progressbar"
-                                    aria-valuenow={40}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "40%" }}
-                                  >
-                                    <span className="sr-only">40% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-info">Admit</span>
-                              </td>
-                            </tr>
-                            <tr>
-                              <td>
-                                <img
-                                  src="assets/images/xs/avatar7.jpg"
-                                  className="avatar sm rounded-circle me-2"
-                                  alt="profile-image"
-                                />
-                                <span>Christian</span>
-                              </td>
-                              <td>123 6th St. Melbourne, FL 32904</td>
-                              <td>May 13, 2021</td>
-                              <td>May 22, 2021</td>
-                              <td>
-                                <div className="progress" style={{ height: 3 }}>
-                                  <div
-                                    className="progress-bar bg-success"
-                                    role="progressbar"
-                                    aria-valuenow={100}
-                                    aria-valuemin={0}
-                                    aria-valuemax={100}
-                                    style={{ width: "100%" }}
-                                  >
-                                    <span className="sr-only">100% Complete</span>
-                                  </div>
-                                </div>
-                              </td>
-                              <td>
-                                <span className="badge bg-success">Discharge</span>
-                              </td>
-                            </tr>
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
+                <div className="legend-item">
+                  <div className="legend-label-wrapper">
+                    <span className="legend-color-dot" style={{ backgroundColor: "#d97706" }} />
+                    <span>Cleaning</span>
                   </div>
-                  <div className="col-xl-4 col-lg-12 flex-column">
-                    <div className="card mb-3">
-                      <div className="card-header py-3 d-flex justify-content-between bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold">Make appointment</h6>
-                      </div>
-                      <div className="card-body">
-                        <div className="wrapper">
-                          <div id="calendar">
-                            <div className="monthChange" />
-                            <div className="timepicker">
-                              <div className="owl">
-                                <div>06:00</div>
-                                <div>07:00</div>
-                                <div>08:00</div>
-                                <div>09:00</div>
-                                <div>10:00</div>
-                                <div>11:00</div>
-                                <div>12:00</div>
-                                <div>13:00</div>
-                                <div>14:00</div>
-                                <div>15:00</div>
-                                <div>16:00</div>
-                                <div>17:00</div>
-                                <div>18:00</div>
-                                <div>19:00</div>
-                                <div>20:00</div>
-                              </div>
-                              <div className="fade-l" />
-                              <div className="fade-r" />
-                            </div>
-                          </div>
-                          <div className="inner-wrap">
-                            <form>
-                              <div className="mb-3">
-                                <input
-                                  type="text"
-                                  className="form-control"
-                                  id="ps-name"
-                                  placeholder="Enter Name"
-                                />
-                              </div>
-                              <div className="mb-3">
-                                <input
-                                  type="email"
-                                  className="form-control"
-                                  id="ps-email"
-                                  placeholder="Enter Email"
-                                />
-                              </div>
-                              <select
-                                className="form-select mb-3"
-                                aria-label="Default select example"
-                              >
-                                <option selected="">Select Doctor</option>
-                                <option value={1}>One</option>
-                                <option value={2}>Two</option>
-                                <option value={3}>Three</option>
-                              </select>
-                              <button
-                                type="submit"
-                                className="btn btn-primary disabled request"
-                              >
-                                Request appointment <span>On</span>
-                                <span className="day fw-bold text-dark" />
-                                <span>At</span>
-                                <span className="time fw-bold text-dark" />
-                                <i className="icofont-dotted-right fs-3" />
-                              </button>
-                            </form>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    <div className="card bg-secondary-color position-relative">
-                      <div className="card-header py-3 d-flex justify-content-between bg-transparent border-bottom-0">
-                        <h6 className="mb-0 fw-bold text-white">Doctor Of the Month</h6>
-                      </div>
-                      <div className="card-body text-center p-4 text-white">
-                        <img
-                          src={ProfileImg}
-                          alt=""
-                          className="rounded-circle mb-3 img-thumbnail avatar xl shadow-sm"
-                        />
-                        <div className="d-flex align-items-center justify-content-center">
-                          <span className="mb-2 me-3">
-                            <a href="#" className="rating-link active">
-                              <i className="bi bi-star-fill text-primary" />
-                            </a>
-                            <a href="#" className="rating-link active">
-                              <i className="bi bi-star-fill text-primary" />
-                            </a>
-                            <a href="#" className="rating-link active">
-                              <i className="bi bi-star-fill text-primary" />
-                            </a>
-                            <a href="#" className="rating-link active">
-                              <i className="bi bi-star-fill text-primary" />
-                            </a>
-                            <a href="#" className="rating-link active">
-                              <i className="bi bi-star-half text-primary" />
-                            </a>
-                          </span>
-                        </div>
-                        <h5 className="mb-0">Manuella Nevoresky</h5>
-                        <span className="small">Cardiologists</span>
-                        <div className="d-flex justify-content-center pt-3">
-                          <div className="opration d-flex justify-content-start align-content-center p-3">
-                            <i className="icofont-operation-theater fs-1" />
-                            <div className="opt_ineer text-start ps-3">
-                              <span className="d-block">12</span>
-                              <span className="d-block">Oprations</span>
-                            </div>
-                          </div>
-                          <div className="pations-visit d-flex justify-content-start align-content-center p-3 border-start">
-                            <i className="icofont-crutch fs-1" />
-                            <div className="opt_ineer text-start ps-3">
-                              <span className="d-block">35</span>
-                              <span className="d-block">Patient</span>
-                            </div>
-                          </div>
-                        </div>
-                        <div className="cup">
-                          <i className="icofont-award" />
-                        </div>
-                      </div>
-                    </div>
+                  <div className="legend-value-group">
+                    <span>{bedStats.cleaning.count}</span>
+                    <span className="legend-percentage">({bedStats.cleaning.percentage}%)</span>
                   </div>
                 </div>
-                {/* .row end */}
+                <div className="legend-item">
+                  <div className="legend-label-wrapper">
+                    <span className="legend-color-dot" style={{ backgroundColor: "#dc2626" }} />
+                    <span>Maintenance</span>
+                  </div>
+                  <div className="legend-value-group">
+                    <span>{bedStats.maintenance.count}</span>
+                    <span className="legend-percentage">({bedStats.maintenance.percentage}%)</span>
+                  </div>
+                </div>
               </div>
             </div>
+          </div>
+        </div>
 
+        {/* Occupancy Rate (Gauge) */}
+        <div className="glass-card span-4">
+          <div className="card-title-bar">
+            <h5><i className="icofont-speedometer text-success" /> Occupancy Rate</h5>
+          </div>
+          <div className="card-body-content d-flex justify-content-center align-items-center">
+            <div className="gauge-container">
+              <div className="gauge-svg-wrapper">
+                <svg width="200" height="200" viewBox="0 0 200 200">
+                  <defs>
+                    <linearGradient id="gauge-grad" x1="0%" y1="0%" x2="100%" y2="0%">
+                      <stop offset="0%" stopColor="#ef4444" />
+                      <stop offset="35%" stopColor="#f97316" />
+                      <stop offset="70%" stopColor="#eab308" />
+                      <stop offset="100%" stopColor="#10b981" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Gauge Arc Background track */}
+                  <path
+                    d="M 30 100 A 70 70 0 0 1 170 100"
+                    fill="none"
+                    stroke="#e2e8f0"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                  />
+                  
+                  {/* Segments: Red Zone (0-25%), Orange (25-50%), Yellow (50-75%), Green (75-100%) */}
+                  <path
+                    d="M 30 100 A 70 70 0 0 1 170 100"
+                    fill="none"
+                    stroke="url(#gauge-grad)"
+                    strokeWidth="14"
+                    strokeLinecap="round"
+                  />
 
+                  {/* Needle - pivots around 100,100. Pointers point vertically up at 50% */}
+                  {/* Rotation calculates: 82% translates to (82 - 50) * 1.8 = 57.6 degrees rotation */}
+                  <g
+                    className="gauge-needle"
+                    style={{
+                      transform: isMounted
+                        ? `rotate(${((bedStats.occupied.count / bedStats.total) * 180) - 90}deg)`
+                        : "rotate(-90deg)"
+                    }}
+                  >
+                    <polygon points="97,100 103,100 100,38" fill="#1e293b" />
+                    <circle cx="100" cy="100" r="7" fill="#1e293b" />
+                    <circle cx="100" cy="100" r="3" fill="#ffffff" />
+                  </g>
+                </svg>
+              </div>
+              <div className="gauge-center-text">
+                <div className="gauge-percentage">{bedStats.occupied.percentage}%</div>
+                <div className="gauge-label">Occupancy Rate</div>
+              </div>
+            </div>
+          </div>
+        </div>
 
-    </>
+        {/* IPD Ward Occupancy Percentage */}
+        <div className="glass-card span-4">
+          <div className="card-title-bar">
+            <h5><i className="icofont-building text-info" /> Ward Occupancy</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="progress-list">
+              {wardOccupancy.map((ward, idx) => (
+                <div className="progress-list-item" key={idx}>
+                  <div className="item-meta-row">
+                    <span className="item-name-bold">{ward.name}</span>
+                    <span className="item-value-pill">{ward.percentage}%</span>
+                  </div>
+                  <div className="modern-progress-bar-bg">
+                    <div
+                      className="modern-progress-bar-fill gradient-fill-blue"
+                      style={{ width: isMounted ? `${ward.percentage}%` : "0%" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Ward Wise Bed Statistics (Grid of 8 wards) */}
+        <div className="glass-card span-12">
+          <div className="card-title-bar">
+            <h5><i className="icofont-listing-number text-primary" /> Ward-Wise Bed Details (Occupied, Available, Cleaning, Maintenance)</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="ward-grid">
+              {wardWiseBeds.map((ward, i) => {
+                const occWidth = (ward.occupied / ward.total) * 100;
+                const avWidth = (ward.available / ward.total) * 100;
+                const clWidth = (ward.cleaning / ward.total) * 100;
+                const mtWidth = (ward.maintenance / ward.total) * 100;
+
+                return (
+                  <div className="ward-bed-card" key={i}>
+                    <div className="ward-card-header">
+                      <span className="ward-name">{ward.name}</span>
+                      <span className="ward-total">{ward.total} Beds</span>
+                    </div>
+                    
+                    <div className="stacked-bar">
+                      <div className="bar-segment bg-primary" style={{ width: `${occWidth}%` }} title={`Occupied: ${ward.occupied}`} />
+                      <div className="bar-segment bg-success" style={{ width: `${avWidth}%` }} title={`Available: ${ward.available}`} />
+                      <div className="bar-segment bg-warning" style={{ width: `${clWidth}%` }} title={`Cleaning: ${ward.cleaning}`} />
+                      <div className="bar-segment bg-danger" style={{ width: `${mtWidth}%` }} title={`Maintenance: ${ward.maintenance}`} />
+                    </div>
+
+                    <div className="ward-bed-legend">
+                      <div className="ward-legend-label">
+                        <span className="count text-primary">{ward.occupied}</span>
+                        <span className="text-muted">Occ</span>
+                      </div>
+                      <div className="ward-legend-label">
+                        <span className="count text-success">{ward.available}</span>
+                        <span className="text-muted">Avail</span>
+                      </div>
+                      <div className="ward-legend-label">
+                        <span className="count text-warning">{ward.cleaning}</span>
+                        <span className="text-muted">Clean</span>
+                      </div>
+                      <div className="ward-legend-label">
+                        <span className="count text-danger">{ward.maintenance}</span>
+                        <span className="text-muted">Maint</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Patient Trend (Line Chart Last 7 Days) */}
+        <div className="glass-card span-8">
+          <div className="card-title-bar">
+            <h5><i className="icofont-chart-line text-accent" /> Daily Patient Trend (Last 7 Days)</h5>
+            <div className="chart-legends-horizontal mt-0">
+              <div 
+                className={`chart-legend-pill ${showReg ? "" : "inactive"}`} 
+                onClick={() => setShowReg(!showReg)}
+              >
+                <span className="legend-color-dot" style={{ backgroundColor: "#2563eb" }} />
+                <span>Registrations</span>
+              </div>
+              <div 
+                className={`chart-legend-pill ${showOPD ? "" : "inactive"}`} 
+                onClick={() => setShowOPD(!showOPD)}
+              >
+                <span className="legend-color-dot" style={{ backgroundColor: "#8b5cf6" }} />
+                <span>OPD Visits</span>
+              </div>
+              <div 
+                className={`chart-legend-pill ${showIPD ? "" : "inactive"}`} 
+                onClick={() => setShowIPD(!showIPD)}
+              >
+                <span className="legend-color-dot" style={{ backgroundColor: "#10b981" }} />
+                <span>IPD Admissions</span>
+              </div>
+            </div>
+          </div>
+          <div className="card-body-content">
+            <div className="chart-container-rel">
+              <svg width="100%" height="100%" viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`}>
+                <defs>
+                  {/* Gradients for fills */}
+                  <linearGradient id="reg-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="opd-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="ipd-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Y Axis Gridlines */}
+                {[0, 200, 400, 600, 800, 1000, 1200, 1400].map((v, idx) => {
+                  const y = lineChartHeight - padBottom - (v / maxVal) * plotHeight;
+                  return (
+                    <g key={idx}>
+                      <line x1={padLeft} y1={y} x2={lineChartWidth - padRight} y2={y} className="grid-line" />
+                      <text x={padLeft - 8} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="600">{v}</text>
+                    </g>
+                  );
+                })}
+
+                {/* X Axis Labels */}
+                {patientTrend.days.map((d, i) => {
+                  const x = padLeft + i * (plotWidth / 6);
+                  return (
+                    <text key={i} x={x} y={lineChartHeight - 8} textAnchor="middle" fontSize="9" fill="#94a3b8" fontWeight="600">{d}</text>
+                  );
+                })}
+
+                {/* Registration Area and Line */}
+                {showReg && isMounted && (
+                  <>
+                    <path d={generateAreaPath(patientTrend.registration)} fill="url(#reg-area)" className="chart-area-path" />
+                    <path d={generatePath(patientTrend.registration)} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" className="chart-line-path" />
+                  </>
+                )}
+
+                {/* OPD Visits Area and Line */}
+                {showOPD && isMounted && (
+                  <>
+                    <path d={generateAreaPath(patientTrend.opd)} fill="url(#opd-area)" className="chart-area-path" />
+                    <path d={generatePath(patientTrend.opd)} fill="none" stroke="#8b5cf6" strokeWidth="3" strokeLinecap="round" className="chart-line-path" />
+                  </>
+                )}
+
+                {/* IPD Admissions Area and Line */}
+                {showIPD && isMounted && (
+                  <>
+                    <path d={generateAreaPath(patientTrend.ipd)} fill="url(#ipd-area)" className="chart-area-path" />
+                    <path d={generatePath(patientTrend.ipd)} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" className="chart-line-path" />
+                  </>
+                )}
+
+                {/* Interactive Dots & Tooltip Overlays */}
+                {patientTrend.days.map((d, i) => {
+                  const regCoords = getCoordinates(patientTrend.registration[i], i);
+                  const opdCoords = getCoordinates(patientTrend.opd[i], i);
+                  const ipdCoords = getCoordinates(patientTrend.ipd[i], i);
+
+                  return (
+                    <g key={i}>
+                      {/* Interaction bounds rect */}
+                      <rect
+                        x={regCoords.x - 20}
+                        y={padTop}
+                        width={40}
+                        height={plotHeight}
+                        fill="transparent"
+                        style={{ cursor: "pointer" }}
+                        onMouseEnter={() => setHoveredTrendIndex(i)}
+                        onMouseLeave={() => setHoveredTrendIndex(null)}
+                      />
+
+                      {/* Vertically hovering tracker line */}
+                      {hoveredTrendIndex === i && (
+                        <line x1={regCoords.x} y1={padTop} x2={regCoords.x} y2={lineChartHeight - padBottom} stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="3 3" />
+                      )}
+
+                      {/* Line points indicators */}
+                      {showReg && isMounted && (
+                        <circle cx={regCoords.x} cy={regCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#2563eb" stroke="#ffffff" strokeWidth="2" className="chart-data-dot" />
+                      )}
+                      {showOPD && isMounted && (
+                        <circle cx={opdCoords.x} cy={opdCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#8b5cf6" stroke="#ffffff" strokeWidth="2" className="chart-data-dot" />
+                      )}
+                      {showIPD && isMounted && (
+                        <circle cx={ipdCoords.x} cy={ipdCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#10b981" stroke="#ffffff" strokeWidth="2" className="chart-data-dot" />
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Tooltip Box overlay */}
+              {hoveredTrendIndex !== null && (
+                <div
+                  className="chart-tooltip"
+                  style={{
+                    left: `${padLeft + hoveredTrendIndex * (plotWidth / 6) + 15}px`,
+                    top: "30px",
+                    opacity: 1
+                  }}
+                >
+                  <div className="tooltip-day">{patientTrend.days[hoveredTrendIndex]} Statistics</div>
+                  {showReg && (
+                    <div className="tooltip-row">
+                      <span><span className="tooltip-dot" style={{ backgroundColor: "#2563eb" }} />Registrations:</span>
+                      <span className="fw-bold">{patientTrend.registration[hoveredTrendIndex]}</span>
+                    </div>
+                  )}
+                  {showOPD && (
+                    <div className="tooltip-row">
+                      <span><span className="tooltip-dot" style={{ backgroundColor: "#8b5cf6" }} />OPD Visits:</span>
+                      <span className="fw-bold">{patientTrend.opd[hoveredTrendIndex]}</span>
+                    </div>
+                  )}
+                  {showIPD && (
+                    <div className="tooltip-row">
+                      <span><span className="tooltip-dot" style={{ backgroundColor: "#10b981" }} />IPD Admissions:</span>
+                      <span className="fw-bold">{patientTrend.ipd[hoveredTrendIndex]}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* OPD Specialty & Gender Distribution */}
+        <div className="glass-card span-4">
+          <div className="card-title-bar">
+            <h5><i className="icofont-doctor-alt text-info" /> OPD Statistics</h5>
+          </div>
+          <div className="card-body-content">
+            {/* Specialty List */}
+            <div className="progress-list">
+              {opdSpecialties.map((spec, idx) => (
+                <div className="progress-list-item" key={idx}>
+                  <div className="item-meta-row">
+                    <span className="item-name-bold">{spec.name}</span>
+                    <span className="item-value-pill">{spec.count}</span>
+                  </div>
+                  <div className="modern-progress-bar-bg">
+                    <div
+                      className="modern-progress-bar-fill gradient-fill-teal"
+                      style={{ width: isMounted ? `${(spec.count / 220) * 100}%` : "0%" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Gender Distribution Segment under Specialty */}
+            <div className="gender-split-box flex-column align-items-stretch">
+              <div className="d-flex justify-content-between font-weight-bold text-muted small mb-2">
+                <span>OPD GENDER DISTRIBUTION</span>
+                <span className="text-dark fw-bold">Male 52% • Female 41% • Child 7%</span>
+              </div>
+              <div className="gender-progress">
+                <div className="gender-segment bg-male" style={{ width: "52%" }} title="Male: 52%" />
+                <div className="gender-segment bg-female" style={{ width: "41%" }} title="Female: 41%" />
+                <div className="gender-segment bg-child" style={{ width: "7%" }} title="Child: 7%" />
+              </div>
+              <div className="gender-labels-row mt-2">
+                <span className="gender-label-item male"><span className="legend-color-dot bg-male d-inline-block" style={{ width: 8, height: 8 }} /> Male (52%)</span>
+                <span className="gender-label-item female"><span className="legend-color-dot bg-female d-inline-block" style={{ width: 8, height: 8 }} /> Female (41%)</span>
+                <span className="gender-label-item child"><span className="legend-color-dot bg-child d-inline-block" style={{ width: 8, height: 8 }} /> Child (7%)</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Top Investigations */}
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-laboratory text-primary" /> Top Investigations</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="progress-list">
+              {topInvestigations.map((inv, idx) => (
+                <div className="progress-list-item" key={idx}>
+                  <div className="item-meta-row">
+                    <span className="item-name-bold">{inv.name}</span>
+                    <span className="item-value-pill">{inv.count} Cases</span>
+                  </div>
+                  <div className="modern-progress-bar-bg">
+                    <div
+                      className="modern-progress-bar-fill gradient-fill-blue"
+                      style={{ width: isMounted ? `${(inv.count / 220) * 100}%` : "0%" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Top Diagnosis */}
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-stethoscope text-accent" /> Top Diagnosis</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="progress-list">
+              {topDiagnosis.map((diag, idx) => (
+                <div className="progress-list-item" key={idx}>
+                  <div className="item-meta-row">
+                    <span className="item-name-bold">{diag.name}</span>
+                    <span className="item-value-pill">{diag.count} cases</span>
+                  </div>
+                  <div className="modern-progress-bar-bg">
+                    <div
+                      className="modern-progress-bar-fill gradient-fill-coral"
+                      style={{ width: isMounted ? `${(diag.count / 165) * 100}%` : "0%" }}
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
   );
 };
 

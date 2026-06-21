@@ -1,5 +1,195 @@
+/* Modern Sidebar Redesign */
+
+.sidebar {
+  background: linear-gradient(180deg, #0f172a 0%, #1e293b 100%) !important;
+  border-right: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 10px 0 30px rgba(0, 0, 0, 0.08);
+  font-family: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border-radius: 0 1.5rem 1.5rem 0;
+  color: #94a3b8 !important;
+}
+
+/* Brand Area */
+.brand-icon {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.5rem 0.25rem 1.5rem 0.25rem;
+  text-decoration: none !important;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  margin-bottom: 1rem;
+}
+
+.logo-icon {
+  width: 2.5rem;
+  height: 2.5rem;
+  background: linear-gradient(135deg, #3b82f6 0%, #8b5cf6 100%);
+  border-radius: 0.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ffffff !important;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.logo-icon i {
+  animation: pulse-heart 2s infinite ease-in-out;
+}
+
+.logo-text {
+  font-size: 1.2rem;
+  font-weight: 800 !important;
+  background: linear-gradient(135deg, #ffffff 0%, #cbd5e1 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  letter-spacing: -0.02em;
+}
+
+/* Sidebar Search */
+#sidebar-search {
+  background: rgba(255, 255, 255, 0.05) !important;
+  border: 1px solid rgba(255, 255, 255, 0.08) !important;
+  border-radius: 0.75rem !important;
+  color: #ffffff !important;
+  padding: 0.6rem 1rem !important;
+  font-size: 0.85rem !important;
+  transition: all 0.2s ease !important;
+}
+
+#sidebar-search::placeholder {
+  color: #64748b !important;
+}
+
+#sidebar-search:focus {
+  background: rgba(255, 255, 255, 0.08) !important;
+  border-color: rgba(59, 130, 246, 0.5) !important;
+  box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.15) !important;
+  outline: none !important;
+}
+
+/* Menu list */
+.menu-list {
+  padding-left: 0 !important;
+  list-style: none !important;
+}
+
+.menu-list li {
+  margin-bottom: 0.35rem;
+}
+
+/* Base links styling */
+.m-link,
+.ms-link {
+  display: flex;
+  align-items: center;
+  padding: 0.75rem 1rem !important;
+  color: #94a3b8 !important;
+  text-decoration: none !important;
+  font-weight: 500 !important;
+  font-size: 0.9rem !important;
+  border-radius: 0.75rem !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  border: 1px solid transparent !important;
+}
+
+.m-link i,
+.ms-link i {
+  color: #64748b !important;
+  transition: color 0.2s ease;
+  margin-right: 0.75rem;
+}
+
+/* Hover state */
+.m-link:hover,
+.ms-link:hover {
+  color: #ffffff !important;
+  background: rgba(255, 255, 255, 0.04) !important;
+  padding-left: 1.25rem !important;
+  /* Slide-in indent effect */
+}
+
+.m-link:hover i,
+.ms-link:hover i {
+  color: #3b82f6 !important;
+}
+
+/* Active links highlight */
+.ms-link.active,
+.m-link.active {
+  background: linear-gradient(135deg, #3b82f6 0%, #6366f1 100%) !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  box-shadow: 0 4px 15px -3px rgba(59, 130, 246, 0.4) !important;
+  border: 1px solid rgba(255, 255, 255, 0.1) !important;
+}
+
+.ms-link.active i,
+.m-link.active i {
+  color: #ffffff !important;
+}
+
+/* Submenu collapse arrows */
+.collapse-arrow {
+  color: #64748b !important;
+  font-size: 1rem !important;
+  transition: transform 0.3s ease !important;
+}
+
+.m-link[aria-expanded="true"] .collapse-arrow {
+  transform: rotate(180deg) !important;
+  color: #3b82f6 !important;
+}
+
+/* Sub-menus styling */
+.sub-menu {
+  list-style: none !important;
+  padding-left: .5rem !important;
+  margin-top: 0.25rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.05);
+  margin-left: 1.25rem;
+  margin-bottom: 0.5rem;
+}
+
+.sub-menu li {
+  margin-bottom: 0.15rem;
+}
+
+.sub-menu .ms-link {
+  padding: 0.5rem 0.75rem !important;
+  font-size: 0.755rem !important;
+}
+
+/* Mini Sidebar customization */
+.sidebar-mini-btn {
+  background: rgba(255, 255, 255, 0.03) !important;
+  border-radius: 0.5rem !important;
+  border: 1px solid rgba(255, 255, 255, 0.05) !important;
+  transition: all 0.2s ease;
+  margin-top: auto;
+}
+
+.sidebar-mini-btn:hover {
+  background: rgba(255, 255, 255, 0.06) !important;
+  color: #3b82f6 !important;
+}
+
+/* Pulse animation for logo heartbeat */
+@keyframes pulse-heart {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
+}
+
+/* Skeleton Loading override */
 .bg-custom {
-  background-color: #ece6e6 !important;
+  background-color: rgba(255, 255, 255, 0.06) !important;
   opacity: 0.3;
   animation: skeleton-loading 1.5s infinite ease-in-out;
 }
@@ -17,20 +207,12 @@
   0% {
     opacity: 0.3;
   }
+
   50% {
     opacity: 0.6;
   }
+
   100% {
     opacity: 0.3;
   }
-}
-
-
-.arrow {
-  transition: transform 0.3s ease;
-}
-
-.sub-menu.collapse.show ~ .arrow,
-.m-link[aria-expanded="true"] .arrow {
-  transform: rotate(180deg);
 }
