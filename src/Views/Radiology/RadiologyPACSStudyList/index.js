@@ -341,19 +341,7 @@ const RadiologyPACSStudyList = () => {
         );
         return;
       }
-
-      const weasisWindow = window.open(
-        weasisUrl,
-        "_blank",
-        "noopener,noreferrer"
-      );
-
-      if (!weasisWindow) {
-        showPopup(
-          "Unable to open Weasis. Please allow popups and try again.",
-          "warning"
-        );
-      }
+    window.location.assign(weasisUrl);
     } catch (error) {
       console.error("Error launching Weasis:", error);
 
