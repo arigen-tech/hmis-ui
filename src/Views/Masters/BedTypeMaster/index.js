@@ -55,6 +55,11 @@ const BedTypeMaster = () => {
     }
   };
 
+  const normalizeStatus = (status) =>
+    typeof status === "string" ? status.trim().toLowerCase() : status;
+
+  const isStatusActive = (status) => normalizeStatus(status) === "y";
+
   // Fetch bed type data
   const fetchBedTypeData = async (flag = 0) => {
     try {
@@ -218,7 +223,7 @@ const BedTypeMaster = () => {
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = isStatusActive(currentStatus) ? "n" : "y";
     setConfirmDialog({ isOpen: true, typeId: id, newStatus, name });
   };
 
@@ -234,7 +239,7 @@ const BedTypeMaster = () => {
         if (response && response.status === 200) {
           setPopupMessage({
             message: `Bed type "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              isStatusActive(confirmDialog.newStatus) ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -351,7 +356,7 @@ const BedTypeMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={type.status === "y"}
+                                    checked={isStatusActive(type.status)}
                                     onChange={() => handleSwitchChange(type.id, type.status, type.bedTypeName)}
                                     id={`switch-${type.id}`}
                                   />
@@ -359,7 +364,7 @@ const BedTypeMaster = () => {
                                     className="form-check-label ms-2"
                                     htmlFor={`switch-${type.id}`}
                                   >
-                                    {type.status === "y" ? 'Active' : 'Inactive'}
+                                    {isStatusActive(type.status) ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -367,7 +372,7 @@ const BedTypeMaster = () => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(type)}
-                                  disabled={type.status !== "y"}
+                                  disabled={!isStatusActive(type.status)}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -460,7 +465,7 @@ const BedTypeMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {isStatusActive(confirmDialog.newStatus) ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
