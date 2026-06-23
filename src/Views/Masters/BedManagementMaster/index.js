@@ -44,6 +44,11 @@ const BedManagement = () => {
   const BED_NO_MAX_LENGTH = 20;
 
   // Function to format date as dd/MM/YYYY
+  const normalizeStatus = (status) =>
+    typeof status === "string" ? status.trim().toLowerCase() : status;
+
+  const isStatusActive = (status) => normalizeStatus(status) === "y";
+
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
 
@@ -197,8 +202,8 @@ const BedManagement = () => {
       bed.bedStatus?.toLowerCase().includes(searchQuery.toLowerCase())
     )
     .sort((a, b) => {
-      if (a.status === b.status) return 0;
-      return a.status === "y" ? -1 : 1;
+      if (normalizeStatus(a.status) === normalizeStatus(b.status)) return 0;
+      return isStatusActive(a.status) ? -1 : 1;
     });
 
   // Calculate pagination values
@@ -328,7 +333,7 @@ const BedManagement = () => {
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = isStatusActive(currentStatus) ? "n" : "y";
     setConfirmDialog({ isOpen: true, bedId: id, newStatus, name });
   };
 
@@ -344,7 +349,7 @@ const BedManagement = () => {
         if (response && response.status === 200) {
           setPopupMessage({
             message: `Bed "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              isStatusActive(confirmDialog.newStatus) ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -494,7 +499,7 @@ const BedManagement = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={bed.status === "y"}
+                                    checked={isStatusActive(bed.status)}
                                     onChange={() => handleSwitchChange(bed.id, bed.status, bed.bedNumber)}
                                     id={`switch-${bed.id}`}
                                   />
@@ -502,7 +507,7 @@ const BedManagement = () => {
                                     className="form-check-label ms-2"
                                     htmlFor={`switch-${bed.id}`}
                                   >
-                                    {bed.status === "y" ? 'Active' : 'Inactive'}
+                                    {isStatusActive(bed.status) ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -510,7 +515,7 @@ const BedManagement = () => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(bed)}
-                                  disabled={bed.status !== "y"}
+                                  disabled={!isStatusActive(bed.status)}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -668,7 +673,7 @@ const BedManagement = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {isStatusActive(confirmDialog.newStatus) ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
