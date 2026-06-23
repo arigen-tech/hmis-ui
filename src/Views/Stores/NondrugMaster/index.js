@@ -1,6 +1,8 @@
 import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
 const NonDrugMaster = () => {
@@ -91,45 +93,34 @@ const NonDrugMaster = () => {
         setIsFormValid(isValid);
     };
 
+    const normalizeItem = (item) => ({
+        id: item.itemId || item.id || null,
+        itemCode: item.itemCode || item.pvmsNo || "",
+        itemName: item.itemName || item.nomenclature || "",
+        itemGroup: item.groupName || item.itemGroup || item.groupId || "",
+        itemType: item.itemTypeName || item.itemType || item.itemTypeId || "",
+        section: item.sectionName || item.section || item.sectionId || "",
+        itemClass: item.itemClassName || item.itemClass || item.itemClassId || "",
+        itemCategory: item.itemCategoryName || item.itemCategory || item.masItemCategoryId || "",
+        unitAU: item.unitAuName || item.unitAU || "",
+        status: item.status || "",
+        raw: item,
+    });
+
     const fetchNonDrugMasterData = async () => {
         setLoading(true);
         try {
-            const mockData = [
-                {
-                    id: 1,
-                    itemCode: "ND001",
-                    itemName: "Surgical Gloves",
-                    itemGroup: "Medical Supplies",
-                    unitAU: "Pair",
-                    section: "Surgical",
-                    itemClass: "Consumables",
-                    status: "y"
-                },
-                {
-                    id: 2,
-                    itemCode: "ND002",
-                    itemName: "Syringe 5ml",
-                    itemGroup: "Medical Supplies",
-                    unitAU: "Piece",
-                    section: "Pharmacy",
-                    itemClass: "Disposables",
-                    status: "y"
-                },
-                {
-                    id: 3,
-                    itemCode: "ND003",
-                    itemName: "Bandage Roll",
-                    itemGroup: "Medical Supplies",
-                    unitAU: "Roll",
-                    section: "Emergency",
-                    itemClass: "Wound Care",
-                    status: "y"
-                }
-            ];
-            setNonDrugs(mockData);
+            const data = await getRequest(MAS_NON_DRUG_ITEM_GET_ALL);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setNonDrugs(data.response.map(normalizeItem));
+            } else {
+                console.error("Unexpected non-drug API response format:", data);
+                setNonDrugs([]);
+            }
         } catch (error) {
             console.error("Error fetching non-drug data:", error);
             showPopup("Error fetching non-drug data", "error");
+            setNonDrugs([]);
         } finally {
             setLoading(false);
         }
@@ -137,78 +128,79 @@ const NonDrugMaster = () => {
 
     const fetchMasterData = async () => {
         try {
-            const mockGroups = [
-                { id: 1, groupName: "Medical Supplies" },
-                { id: 2, groupName: "Surgical Instruments" },
-                { id: 3, groupName: "Lab Equipment" }
-            ];
-            setMasStoreGroup(mockGroups);
+            const groupData = await getRequest(`${MAS_STORE_GROUP}/getAll/1`);
+            if (groupData.status === 200 && Array.isArray(groupData.response)) {
+                setMasStoreGroup(groupData.response);
+            } else {
+                setMasStoreGroup([]);
+            }
 
-            const mockUnits = [
-                { unitId: 1, unitName: "Piece" },
-                { unitId: 2, unitName: "Box" },
-                { unitId: 3, unitName: "Pack" },
-                { unitId: 4, unitName: "Pair" },
-                { unitId: 5, unitName: "Roll" }
-            ];
-            setStoreUnitData(mockUnits);
+            const unitData = await getRequest(`${MAS_STORE_UNIT}/getAll/1`);
+            if (unitData.status === 200 && Array.isArray(unitData.response)) {
+                setStoreUnitData(unitData.response);
+            } else {
+                setStoreUnitData([]);
+            }
         } catch (error) {
             console.error("Error fetching master data:", error);
+            setMasStoreGroup([]);
+            setStoreUnitData([]);
         }
     };
 
     const fetchItemTypesByGroup = async (groupId) => {
         try {
-            const mockItemTypes = [
-                { id: 1, name: "Disposable" },
-                { id: 2, name: "Reusable" },
-                { id: 3, name: "Equipment" }
-            ];
-            setMasItemTypeData(mockItemTypes);
+            const data = await getRequest(`${MAS_ITEM_TYPE}/findByGroupId/${groupId}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setMasItemTypeData(data.response);
+            } else {
+                setMasItemTypeData([]);
+            }
         } catch (error) {
             console.error("Error fetching item types:", error);
+            setMasItemTypeData([]);
         }
     };
 
     const fetchSectionsByItemType = async (itemTypeId) => {
         try {
-            const mockSections = [
-                { sectionId: 1, sectionName: "Surgical" },
-                { sectionId: 2, sectionName: "Pharmacy" },
-                { sectionId: 3, sectionName: "Emergency" },
-                { sectionId: 4, sectionName: "Ward" }
-            ];
-            setItemSectionData(mockSections);
+            const data = await getRequest(`${MAS_ITEM_SECTION}/findByItemType/${itemTypeId}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setItemSectionData(data.response);
+            } else {
+                setItemSectionData([]);
+            }
         } catch (error) {
             console.error("Error fetching sections:", error);
+            setItemSectionData([]);
         }
     };
 
     const fetchCategoriesBySection = async (sectionId) => {
         try {
-            const mockCategories = [
-                { itemCategoryId: 1, itemCategoryName: "Consumables" },
-                { itemCategoryId: 2, itemCategoryName: "Disposables" },
-                { itemCategoryId: 3, itemCategoryName: "Wound Care" },
-                { itemCategoryId: 4, itemCategoryName: "Diagnostic" }
-            ];
-            setServiceCategoryData(mockCategories);
+            const data = await getRequest(`${MAS_ITEM_CATEGORY}/findBySectionId/${sectionId}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setServiceCategoryData(data.response);
+            } else {
+                setServiceCategoryData([]);
+            }
         } catch (error) {
             console.error("Error fetching categories:", error);
+            setServiceCategoryData([]);
         }
     };
 
     const fetchClassesBySection = async (sectionId) => {
         try {
-            const mockClasses = [
-                { itemClassId: 1, itemClassName: "Consumables" },
-                { itemClassId: 2, itemClassName: "Disposables" },
-                { itemClassId: 3, itemClassName: "Wound Care" },
-                { itemClassId: 4, itemClassName: "Diagnostic" }
-            ];
-            setItemClassData(mockClasses);
+            const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${sectionId}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setItemClassData(data.response);
+            } else {
+                setItemClassData([]);
+            }
         } catch (error) {
             console.error("Error fetching item classes:", error);
+            setItemClassData([]);
         }
     };
 
@@ -228,41 +220,74 @@ const NonDrugMaster = () => {
     const handleConfirm = async (confirmed) => {
         if (confirmed && confirmDialog.nonDrugId !== null) {
             try {
-                showPopup("Status updated successfully!", "success");
-                await fetchNonDrugMasterData();
+                const response = await putRequest(
+                    `${MAS_DRUG_MAS}/status/${confirmDialog.nonDrugId}?status=${confirmDialog.newStatus}`,
+                    {}
+                );
+                if (response.status === 200) {
+                    setPopupMessage({
+                        message: `Non-drug item "${confirmDialog.name}" ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        type: "success",
+                        onClose: () => {
+                            setPopupMessage(null);
+                            fetchNonDrugMasterData();
+                            setCurrentPage(1);
+                        }
+                    });
+                } else {
+                    throw new Error(response.message || "Failed to update status.");
+                }
             } catch (error) {
                 console.error("Error updating status:", error);
-                showPopup("Error updating status.", "error");
+                showPopup(error.message || "Error updating status.", "error");
             }
         }
-        setConfirmDialog({ isOpen: false, nonDrugId: null, newStatus: null });
+        setConfirmDialog({ isOpen: false, nonDrugId: null, newStatus: null, name: "" });
     }
 
     const handleEdit = async (nonDrug) => {
         try {
-            setEditingNonDrug(nonDrug);
+            const itemId = nonDrug.itemId || nonDrug.id;
+            let details = nonDrug;
+            if (itemId) {
+                const data = await getRequest(`${MAS_NON_DRUG_ITEM_GET_BY_ID}/${itemId}`);
+                if (data.status === 200 && data.response) {
+                    details = data.response;
+                }
+            }
+
+            setEditingNonDrug(details);
             setEditEnabled(true);
             setShowForm(true);
 
+            const groupId = details.groupId || details.itemGroupId || details.itemGroup || "";
+            const itemTypeId = details.itemTypeId || details.itemType || "";
+            const sectionId = details.sectionId || details.section || "";
+            const itemClassId = details.itemClassId || details.itemClass || "";
+            const categoryId = details.masItemCategoryId || details.itemCategoryId || details.itemCategory || "";
+            const unitAUValue = details.unitAU || details.unitAu || "";
+
             setFormData({
-                itemCode: nonDrug.itemCode || "",
-                itemName: nonDrug.itemName || "",
-                itemGroup: nonDrug.itemGroup || "",
-                itemType: "",
-                section: nonDrug.section || "",
-                itemClass: nonDrug.itemClass || "",
-                itemCategory: "",
-                unitAU: nonDrug.unitAU || ""
+                itemCode: details.itemCode || details.pvmsNo || "",
+                itemName: details.itemName || details.nomenclature || "",
+                itemGroup: groupId?.toString() || "",
+                itemType: itemTypeId?.toString() || "",
+                section: sectionId?.toString() || "",
+                itemClass: itemClassId?.toString() || "",
+                itemCategory: categoryId?.toString() || "",
+                unitAU: unitAUValue?.toString() || ""
             });
 
-            if (nonDrug.itemGroup) {
-                await fetchItemTypesByGroup(nonDrug.itemGroup);
+            if (groupId) {
+                await fetchItemTypesByGroup(groupId);
             }
-            
-            if (nonDrug.section) {
+            if (itemTypeId) {
+                await fetchSectionsByItemType(itemTypeId);
+            }
+            if (sectionId) {
                 await Promise.all([
-                    fetchCategoriesBySection(nonDrug.section),
-                    fetchClassesBySection(nonDrug.section)
+                    fetchCategoriesBySection(sectionId),
+                    fetchClassesBySection(sectionId),
                 ]);
             }
         } catch (error) {
@@ -301,29 +326,41 @@ const NonDrugMaster = () => {
             const payload = {
                 itemCode: formData.itemCode.trim(),
                 itemName: formData.itemName.trim(),
-                itemGroup: formData.itemGroup,
-                itemType: formData.itemType,
-                section: formData.section,
-                itemClass: formData.itemClass,
-                itemCategory: formData.itemCategory,
-                unitAU: formData.unitAU,
+                groupId: Number(formData.itemGroup),
+                itemTypeId: Number(formData.itemType),
+                sectionId: Number(formData.section),
+                itemClassId: Number(formData.itemClass),
+                masItemCategoryId: Number(formData.itemCategory),
+                unitAU: Number(formData.unitAU),
                 status: "y"
             };
 
-            console.log("Saving payload:", payload);
-
+            let response;
             if (editingNonDrug && editEnabled) {
-                showPopup("Non-Drug updated successfully!", "success");
+                const itemId = editingNonDrug.itemId || editingNonDrug.id;
+                response = await putRequest(`${MAS_NON_DRUG_ITEM_UPDATE}/${itemId}`, payload);
             } else {
-                showPopup("Non-Drug added successfully!", "success");
+                response = await postRequest(`${MAS_NON_DRUG_ITEM}/create`, payload);
             }
 
-            resetForm();
-            await fetchNonDrugMasterData();
+            if (response.status === 200 || response.status === 201) {
+                setPopupMessage({
+                    message: editEnabled ? "Non-drug item updated successfully!" : "Non-drug item added successfully!",
+                    type: "success",
+                    onClose: () => {
+                        setPopupMessage(null);
+                        resetForm();
+                        fetchNonDrugMasterData();
+                        setCurrentPage(1);
+                    }
+                });
+            } else {
+                throw new Error(response.message || response.response?.message || "Failed to save non-drug item");
+            }
 
         } catch (error) {
             console.error("Error saving non-drug:", error);
-            showPopup("Failed to save non-drug. Please try again.", "error");
+            showPopup(error.message || "Failed to save non-drug. Please try again.", "error");
         } finally {
             setProcess(false);
         }
@@ -470,7 +507,7 @@ const NonDrugMaster = () => {
                                                                         className="form-check-label px-0"
                                                                         htmlFor={`switch-${item.id}`}
                                                                     >
-                                                                        {item.status === "y" ? "Active" : "Deactivated"}
+                                                                        {item.status === "y" ? "Active" : "Deactivat"}
                                                                     </label>
                                                                 </div>
                                                             </td>
