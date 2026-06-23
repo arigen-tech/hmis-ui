@@ -206,6 +206,11 @@ export const MAS_OPD_SESSION_GET_ALL = `${MAS_OPD_SESSION}/getAll/1`;
 export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
 export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
 export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
+export const MAS_WARD_GET_ALL = `${MASTERS}/masWard/getAll/0`;
+export const MAS_WARD_STATUS = `${MASTERS}/masWard/status`;
+export const MAS_WARD_UPDATE = `${MASTERS}/masWard/update`;
+export const MAS_WARD_CREATE = `${MASTERS}/masWard/create`;
+export const MAS_WARD_GET_BY_ID = `${MASTERS}/masWard/getById`;
 
 export const MAS_INVESTIGATION_UNIQUE_TYPES = `${MAS_INVESTIGATION}/investigationCategoryTypes`;
 export const MAS_INVESTIGATION_BY_MAIN_CHARGE_CODE = `${MAS_INVESTIGATION}/dgMasInvestigationByMainChargeCodeId`;
