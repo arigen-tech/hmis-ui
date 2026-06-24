@@ -255,13 +255,13 @@ const Login = () => {
                       <div className="text-center mb-4">
                         <h1 className="login-title">Sign In</h1>
                         <span className="version-badge">
-                          Version 2.50.3
+                          Version 2.50.4
                           <button
                             type="button"
                             className="info-tooltip-btn ms-1"
                             data-bs-toggle="tooltip"
                             data-bs-placement="right"
-                            title="Now Release Version 2.50.3 — Under Testing"
+                            title="Now Release Version 2.50.4 — Under Testing"
                           >
                             <i className="bi bi-info-circle text-muted"></i>
                           </button>
