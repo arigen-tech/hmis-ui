@@ -106,7 +106,7 @@ const InvestigationMaster = () => {
 
         const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes, methodologiesRes, categoriesRes] =
           await Promise.all([
-            getRequest(`${MAS_INVESTIGATION}/getAll/0`),
+            getRequest(`${MAS_INVESTIGATION}/getAll/0/1`),
             getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
             getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
             getRequest(`${MAS_DG_SAMPLE}/getAll/1`),

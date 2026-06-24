@@ -97,6 +97,29 @@ const RadiologyInvestigationMaster = () => {
     return genderMap[genderDisplay] || null
   }
 
+  const filterRadiologyInvestigations = (investigations) =>
+    investigations
+      .filter((item) => item.mainChargeCodeId === 2)
+      .map((item) => ({
+        ...item,
+        id: item.investigationId,
+      }))
+
+  const loadRadiologyInvestigations = async () => {
+    try {
+      setLoading(true)
+      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+      if (investigationsRes && investigationsRes.response) {
+        setInvestigations(filterRadiologyInvestigations(investigationsRes.response))
+      }
+    } catch (error) {
+      console.error("Error fetching radiology investigations:", error)
+      showPopup(FETCH_DROP_DOWN_ERR_MSG, "error")
+    } finally {
+      setLoading(false)
+    }
+  }
+
   // Fetch all required data on component mount
   useEffect(() => {
     const fetchData = async () => {
@@ -106,7 +129,7 @@ const RadiologyInvestigationMaster = () => {
         // Fetch all data in parallel
         const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes,methodologiesRes,categoriesRes] =
             await Promise.all([
-              getRequest(`${MAS_INVESTIGATION}/getAll/0`),
+              getRequest(`${MAS_INVESTIGATION}/getAll/0/2`),
               getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
               getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
               getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
@@ -118,12 +141,7 @@ const RadiologyInvestigationMaster = () => {
 
         // Set investigations data
         if (investigationsRes && investigationsRes.response) {
-          setInvestigations(
-              investigationsRes.response.filter(item => item.mainChargeCodeName === "Radiology").map((item) => ({
-                ...item,
-                id: item.investigationId, // Add id for consistency
-              })),
-          )
+          setInvestigations(filterRadiologyInvestigations(investigationsRes.response))
         }
 
         setDropdownOptions({
@@ -193,6 +211,7 @@ const RadiologyInvestigationMaster = () => {
   const handleRefresh = () => {
     setSearchQuery("")
     setCurrentPage(1)
+    loadRadiologyInvestigations()
   }
 
   const handleSearch = () => {
@@ -462,12 +481,7 @@ const RadiologyInvestigationMaster = () => {
         // Refresh the investigations list
         const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
         if (investigationsRes && investigationsRes.response) {
-          setInvestigations(
-              investigationsRes.response.map((item) => ({
-                ...item,
-                id: item.investigationId,
-              })),
-          )
+          setInvestigations(filterRadiologyInvestigations(investigationsRes.response))
         }
 
         if (selectedInvestigation) {
