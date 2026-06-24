@@ -2779,6 +2779,7 @@ const UpdatePatientRegistration = () => {
               mobileNo: patientDetailForm.patientMobileNumber,
               aadhaarNo: abhaData.aadhaarNo,
               email: patientDetailForm.patientEmailId,
+              patientAbhaId: patientDetailForm.abhaNumber || patientDetailForm.patientAbhaId || "",
             }}
             genderData={genderData}
             stateData={stateData}

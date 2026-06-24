@@ -125,6 +125,8 @@ const PatientRegistration = () => {
     },
   ]);
   const [nextAppointmentId, setNextAppointmentId] = useState(1);
+  // Add this near other state declarations
+  const [abhaNumber, setAbhaNumber] = useState("");
   const [formData, setFormData] = useState({
     imageurl: "",
     firstName: "",
@@ -289,78 +291,82 @@ const PatientRegistration = () => {
     return `${digits.slice(0, 2)}-${digits.slice(2, 6)}-${digits.slice(6, 10)}-${digits.slice(10, 14)}`;
   };
 
-  const handleAbhaCreationSuccess = (abhaData) => {
-    console.log("ABHA Data received:", abhaData);
-
-    // Auto-fill the form data with ABHA information
+  const buildAbhaMappedFormData = (sourceAbhaData = {}) => {
     const updatedFormData = { ...formData };
+    const sourceName = sourceAbhaData.consentName || sourceAbhaData.name || "";
+    const sourceMobile =
+      sourceAbhaData.mobileNumber || sourceAbhaData.mobile || "";
+    const sourceStateName =
+      typeof sourceAbhaData.stateName === "string"
+        ? sourceAbhaData.stateName
+        : typeof sourceAbhaData.state === "string"
+          ? sourceAbhaData.state
+          : "";
+    const sourceDistrictName =
+      typeof sourceAbhaData.districtName === "string"
+        ? sourceAbhaData.districtName
+        : typeof sourceAbhaData.district === "string"
+          ? sourceAbhaData.district
+          : "";
+    const sourcePincode =
+      sourceAbhaData.pincode || sourceAbhaData.pinCode || "";
+    const sourceAddress = sourceAbhaData.address || "";
 
-    if (abhaData.abhaNumber) {
-      updatedFormData.abhaNumber = abhaData.abhaNumber;
+    if (sourceAbhaData.abhaNumber) {
+      updatedFormData.abhaNumber = sourceAbhaData.abhaNumber;
     }
 
-    // Fill name
-    if (abhaData.consentName) {
-      const nameParts = abhaData.consentName.trim().split(/\s+/);
-      updatedFormData.firstName =
-        updatedFormData.firstName || nameParts[0] || "";
-      updatedFormData.lastName =
-        updatedFormData.lastName || nameParts.slice(1).join(" ") || "";
-    }
-
-    // Fill mobile
-    if (abhaData.mobileNumber) {
-      updatedFormData.mobileNo =
-        updatedFormData.mobileNo || abhaData.mobileNumber;
-    }
-
-    // Fill gender using the mapped ID from ABHA data
-    if (abhaData.genderId) {
-      updatedFormData.gender = updatedFormData.gender || abhaData.genderId;
-    } else if (abhaData.gender) {
-      // Fallback: Try to find gender ID from the master data
-      const genderMap = {
-        Male: 1,
-        Female: 2,
-        Other: 3,
-        Transgender: 3,
-      };
-      updatedFormData.gender =
-        updatedFormData.gender || genderMap[abhaData.gender] || "";
-    }
-
-    // Fill date of birth
-    if (abhaData.dateOfBirth) {
-      // Parse date from "10-02-2002" format to "YYYY-MM-DD" for the date input
-      const dateParts = abhaData.dateOfBirth.split("-");
-      if (dateParts.length === 3) {
-        const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, "0")}-${dateParts[0].padStart(2, "0")}`;
-        updatedFormData.dob = updatedFormData.dob || formattedDate;
-
-        // Calculate age from DOB
-        const birthDate = new Date(formattedDate);
-        const today = new Date();
-        let years = today.getFullYear() - birthDate.getFullYear();
-        let months = today.getMonth() - birthDate.getMonth();
-        let days = today.getDate() - birthDate.getDate();
-        if (days < 0) {
-          months--;
-          days += new Date(today.getFullYear(), today.getMonth(), 0).getDate();
-        }
-        if (months < 0) {
-          years--;
-          months += 12;
-        }
-        updatedFormData.age =
-          updatedFormData.age || `${years}Y ${months}M ${days}D`;
+    if (sourceName) {
+      const nameParts = sourceName.trim().split(/\s+/);
+      if (!updatedFormData.firstName) {
+        updatedFormData.firstName = nameParts[0] || "";
+      }
+      if (!updatedFormData.lastName && nameParts.length > 1) {
+        updatedFormData.lastName = nameParts.slice(1).join(" ") || "";
       }
     }
 
-    // Fill address
-    if (abhaData.address) {
-      const addressParts = abhaData.address.split(",");
-      updatedFormData.address1 =
-        updatedFormData.address1 || addressParts[0]?.trim() || "";
+    if (sourceMobile) {
+      updatedFormData.mobileNo =
+        updatedFormData.mobileNo || String(sourceMobile);
+    }
+
+    if (sourceAbhaData.gender) {
+      const normalizedGender = sourceAbhaData.gender.toLowerCase().trim();
+
+      const foundGender = genderData.find((g) => {
+        const genderName = (g.genderName || "").toLowerCase().trim();
+        return genderName === normalizedGender;
+      });
+
+      console.log("ABHA Gender:", normalizedGender);
+      console.log("Gender Master:", genderData);
+      console.log("Matched Gender:", foundGender);
+
+      if (foundGender) {
+        updatedFormData.gender = Number(foundGender.id);
+      }
+    }
+    if (sourceAbhaData.dateOfBirth) {
+      let formattedDate = sourceAbhaData.dateOfBirth;
+      if (sourceAbhaData.dateOfBirth.includes("-")) {
+        const parts = sourceAbhaData.dateOfBirth.split("-");
+        if (parts.length === 3 && parts[0].length === 2) {
+          formattedDate = `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(2, "0")}`;
+        }
+      }
+      updatedFormData.dob = updatedFormData.dob || formattedDate;
+      if (!updatedFormData.age) {
+        updatedFormData.age = calculateAgeFromDOB(formattedDate);
+      }
+    }
+
+    if (sourceAddress) {
+      const addressParts = sourceAddress.split(",");
+      if (addressParts.length > 0) {
+        updatedFormData.address1 =
+          updatedFormData.address1 || addressParts[0]?.trim() || "";
+      }
       if (addressParts.length > 1) {
         updatedFormData.address2 =
           updatedFormData.address2 ||
@@ -369,53 +375,89 @@ const PatientRegistration = () => {
       }
     }
 
-    // Fill state using the mapped ID from ABHA data
-    if (abhaData.stateId) {
-      updatedFormData.state = updatedFormData.state || abhaData.stateId;
-    } else if (abhaData.stateName) {
-      // Fallback: Try to find state ID from the master data
-      const state = stateData.find(
-        (s) => s.stateName?.toLowerCase() === abhaData.stateName.toLowerCase(),
+    if (sourceAbhaData.stateId) {
+      const stateExists = stateData.some(
+        (s) => Number(s.id) === Number(sourceAbhaData.stateId),
       );
-      if (state) {
-        updatedFormData.state = updatedFormData.state || state.id;
+      if (stateExists) {
+        updatedFormData.state =
+          updatedFormData.state || Number(sourceAbhaData.stateId);
+      }
+    } else if (sourceStateName) {
+      const normalizedState = sourceStateName.toLowerCase().trim();
+      const foundState = stateData.find(
+        (s) =>
+          s.stateName?.toLowerCase() === normalizedState ||
+          s.stateName?.toLowerCase().includes(normalizedState) ||
+          normalizedState.includes(s.stateName?.toLowerCase()),
+      );
+      if (foundState) {
+        updatedFormData.state = updatedFormData.state || Number(foundState.id);
+        fetchDistrict(foundState.id);
       }
     }
 
-    if (abhaData.districtId) {
-      updatedFormData.district =
-        updatedFormData.district || abhaData.districtId;
-    } else if (abhaData.districtName) {
-      const district = districtData.find(
-        (d) =>
-          d.districtName?.toLowerCase() === abhaData.districtName.toLowerCase(),
+    if (sourceAbhaData.districtId) {
+      const districtExists = districtData.some(
+        (d) => Number(d.id) === Number(sourceAbhaData.districtId),
       );
-      if (district) {
-        updatedFormData.district = updatedFormData.district || district.id;
+      if (districtExists) {
+        updatedFormData.district =
+          updatedFormData.district || Number(sourceAbhaData.districtId);
+      }
+    } else if (sourceDistrictName) {
+      const normalizedDistrict = sourceDistrictName.toLowerCase().trim();
+      const currentStateId = updatedFormData.state || formData.state;
+      const foundDistrict = districtData.find((d) => {
+        const nameMatch =
+          d.districtName?.toLowerCase() === normalizedDistrict ||
+          d.districtName?.toLowerCase().includes(normalizedDistrict) ||
+          normalizedDistrict.includes(d.districtName?.toLowerCase());
+        if (currentStateId && d.stateId) {
+          return nameMatch && Number(d.stateId) === Number(currentStateId);
+        }
+        return nameMatch;
+      });
+      if (foundDistrict) {
+        updatedFormData.district =
+          updatedFormData.district || Number(foundDistrict.id);
       }
     }
 
-    if (abhaData.pincode) {
-      updatedFormData.pinCode = updatedFormData.pinCode || abhaData.pincode;
+    if (sourcePincode) {
+      updatedFormData.pinCode =
+        updatedFormData.pinCode || String(sourcePincode);
     }
 
-    if (abhaData.photo) {
-      const photoUrl = abhaData.photo.startsWith("data:")
-        ? abhaData.photo
-        : `data:image/jpeg;base64,${abhaData.photo}`;
+    if (sourceAbhaData.photo) {
+      const photoUrl = sourceAbhaData.photo.startsWith("data:")
+        ? sourceAbhaData.photo
+        : `data:image/jpeg;base64,${sourceAbhaData.photo}`;
       setImage(photoUrl);
     }
 
+    return updatedFormData;
+  };
+
+  const handleAbhaCreationSuccess = (abhaData) => {
+    console.log("ABHA Data received:", abhaData);
+
+    if (abhaData.abhaNumber) {
+      setAbhaNumber(abhaData.abhaNumber);
+    }
+
+    const updatedFormData = buildAbhaMappedFormData(abhaData);
     setFormData(updatedFormData);
 
     setAbhaData((prev) => ({
       ...prev,
       abhaNumber: abhaData.abhaNumber,
       abhaAddress: abhaData.abhaAddress,
-      consentName: abhaData.consentName || prev.consentName,
+      consentName: abhaData.consentName || abhaData.name || prev.consentName,
       verified: true,
     }));
 
+    // Show success message with filled fields
     const filledFields = [];
     if (abhaData.consentName) filledFields.push("Name");
     if (abhaData.mobileNumber) filledFields.push("Mobile");
@@ -496,64 +538,21 @@ const PatientRegistration = () => {
   };
 
   const handleAbhaVerificationSuccess = (abhaData) => {
+    debugger;
     console.log("ABHA Verification Data received:", abhaData);
 
-    const updatedFormData = { ...formData };
-
     if (abhaData.abhaNumber) {
-      updatedFormData.abhaNumber = abhaData.abhaNumber;
+      setAbhaNumber(abhaData.abhaNumber);
     }
 
-    if (abhaData.consentName) {
-      const nameParts = abhaData.consentName.trim().split(/\s+/);
-      updatedFormData.firstName =
-        updatedFormData.firstName || nameParts[0] || "";
-      updatedFormData.lastName =
-        updatedFormData.lastName || nameParts.slice(1).join(" ") || "";
-    }
-
-    if (abhaData.mobileNumber) {
-      updatedFormData.mobileNo =
-        updatedFormData.mobileNo || String(abhaData.mobileNumber);
-    }
-
-    if (abhaData.genderId) {
-      updatedFormData.gender =
-        updatedFormData.gender || Number(abhaData.genderId);
-    } else if (abhaData.gender) {
-      updatedFormData.gender = updatedFormData.gender || "";
-    }
-
-    if (abhaData.dateOfBirth) {
-      const dateParts = abhaData.dateOfBirth.split("-");
-      if (dateParts.length === 3) {
-        const formattedDate = `${dateParts[2]}-${dateParts[1].padStart(2, "0")}-${dateParts[0].padStart(2, "0")}`;
-        updatedFormData.dob = updatedFormData.dob || formattedDate;
-        if (!updatedFormData.age) {
-          updatedFormData.age = calculateAgeFromDOB(formattedDate);
-        }
-      }
-    }
-
-    if (abhaData.pincode) {
-      updatedFormData.pinCode =
-        updatedFormData.pinCode || String(abhaData.pincode);
-    }
-
-    if (abhaData.photo) {
-      const photoUrl = abhaData.photo.startsWith("data:")
-        ? abhaData.photo
-        : `data:image/jpeg;base64,${abhaData.photo}`;
-      setImage(photoUrl);
-    }
-
+    const updatedFormData = buildAbhaMappedFormData(abhaData);
     setFormData(updatedFormData);
 
     setAbhaData((prev) => ({
       ...prev,
       abhaNumber: abhaData.abhaNumber,
       abhaAddress: abhaData.abhaAddress,
-      consentName: abhaData.consentName || prev.consentName,
+      consentName: abhaData.consentName || abhaData.name || prev.consentName,
       verified: true,
     }));
 
@@ -1648,9 +1647,25 @@ const PatientRegistration = () => {
   };
 
   const useAbhaData = () => {
-    setFormData((prev) => ({
-      ...prev,
-    }));
+    if (!abhaData.verified) {
+      Swal.fire(
+        "ABHA Not Verified",
+        "Please verify ABHA details first.",
+        "info",
+      );
+      return;
+    }
+
+    const updatedFormData = buildAbhaMappedFormData(abhaData);
+    setFormData(updatedFormData);
+
+    Swal.fire({
+      icon: "success",
+      title: "ABHA Details Applied",
+      text: "Verified ABHA data has been copied into the registration form.",
+      timer: 2000,
+      timerProgressBar: true,
+    });
   };
 
   const verifyAbha = () => {
@@ -1811,13 +1826,16 @@ const PatientRegistration = () => {
 
   const sendPatientData = async () => {
     if (validateForm() && validateVitalDetails()) {
+      const currentAbhaNumber =
+        abhaNumber || formData.abhaNumber || abhaData.abhaNumber || "";
+      debugger
       const requestData = {
         patient: {
           id: 0,
           uhidNo: "",
           patientStatus: "",
           regDate: new Date(Date.now()).toJSON().split(".")[0].split("T")[0],
-          patientAbhaId: formData.abhaNumber || "",
+          patientAbhaId: currentAbhaNumber,
           lastChgBy: sessionStorage.getItem("username"),
           patientHospitalId: Number(sessionStorage.getItem("hospitalId")),
           patientFn: formData.firstName,
@@ -2684,7 +2702,7 @@ const PatientRegistration = () => {
                             id="abhaNumber"
                             name="abhaNumber"
                             className="form-control"
-                            value={formData.abhaNumber || ""}
+                            value={abhaNumber || formData.abhaNumber || ""} // Show from either source
                             readOnly
                             placeholder="Not linked"
                             style={{ backgroundColor: "#f8f9fa" }}

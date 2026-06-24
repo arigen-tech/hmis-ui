@@ -1,7 +1,7 @@
-export const API_HOST =  'http://103.133.215.182:8081/hims';
+// export const API_HOST =  'http://103.133.215.182:8081/hims';
 // export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
-//  export const API_HOST = 'http://192.168.1.17:8080';
+ export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 
 export const DEFAULT_RSA_PUBLIC_KEY =
@@ -45,6 +45,10 @@ export const MAS_ITEM_CLASS = `${MASTERS}/masItemClass`;
 export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
+export const MAS_NON_DRUG_ITEM = `${MASTERS}/nonDrugItem`;
+export const MAS_NON_DRUG_ITEM_GET_ALL = `${MAS_NON_DRUG_ITEM}/getAll`;
+export const MAS_NON_DRUG_ITEM_GET_BY_ID = `${MAS_NON_DRUG_ITEM}/getById`;
+export const MAS_NON_DRUG_ITEM_UPDATE = `${MAS_NON_DRUG_ITEM}/update`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
 export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
 export const DG_MAS_INVESTIGATION_CATEGORY = `${MASTERS}/masInvestigationCategory`;
@@ -206,6 +210,11 @@ export const MAS_OPD_SESSION_GET_ALL = `${MAS_OPD_SESSION}/getAll/1`;
 export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
 export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
 export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
+export const MAS_WARD_GET_ALL = `${MASTERS}/masWard/getAll/0`;
+export const MAS_WARD_STATUS = `${MASTERS}/masWard/status`;
+export const MAS_WARD_UPDATE = `${MASTERS}/masWard/update`;
+export const MAS_WARD_CREATE = `${MASTERS}/masWard/create`;
+export const MAS_WARD_GET_BY_ID = `${MASTERS}/masWard/getById`;
 
 export const MAS_INVESTIGATION_UNIQUE_TYPES = `${MAS_INVESTIGATION}/investigationCategoryTypes`;
 export const MAS_INVESTIGATION_BY_MAIN_CHARGE_CODE = `${MAS_INVESTIGATION}/dgMasInvestigationByMainChargeCodeId`;
