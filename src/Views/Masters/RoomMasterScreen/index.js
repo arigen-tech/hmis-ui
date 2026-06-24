@@ -516,9 +516,9 @@ const RoomMasterScreen = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={room.status === "y"}
+                                    checked={room.status?.toLowerCase() === "y"}
                                     onChange={() =>
-                                      handleSwitchChange(room.id, room.status === "y" ? "n" : "y")
+                                      handleSwitchChange(room.id, room.status?.toLowerCase() === "y" ? "n" : "y")
                                     }
                                     id={`switch-${room.id}`}
                                   />
@@ -526,7 +526,7 @@ const RoomMasterScreen = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${room.id}`}
                                   >
-                                    {room.status === "y" ? 'Active' : 'Inactive'}
+                                    {room.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -537,7 +537,7 @@ const RoomMasterScreen = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(room)}
-                                  disabled={room.status !== "y"}
+                                  disabled={room.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
