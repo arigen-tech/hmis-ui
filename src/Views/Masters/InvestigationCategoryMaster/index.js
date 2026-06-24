@@ -94,8 +94,9 @@ const InvestigationCategory = () => {
         });
 
         if (response && response.status === 200) {
-          fetchCategories();
-          showPopup(UPDATE_INV_CATEGORY_SUCC_MSG, "success");
+          showPopup(UPDATE_INV_CATEGORY_SUCC_MSG, "success", () => {
+                    fetchCategories();
+                });
         }
       } else {
         // Create new category
@@ -104,8 +105,9 @@ const InvestigationCategory = () => {
         });
 
         if (response && response.status === 200) {
-          fetchCategories();
-          showPopup(ADD_INV_CATEGORY_SUCC_MSG, "success");
+          showPopup(ADD_INV_CATEGORY_SUCC_MSG, "success", () => {
+                    fetchCategories();
+                });
         }
       }
 
@@ -120,13 +122,14 @@ const InvestigationCategory = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 

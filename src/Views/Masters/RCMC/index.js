@@ -74,15 +74,18 @@ const RCMC = () => {
         setEditingComplaint(null);
         setShowForm(false);
         setIsFormValid(false);
-        showPopup("Changes saved successfully!", "success");
+        showPopup("Changes saved successfully!", "success", () => {
+                    fetchData();
+                });
     };
 
-    const showPopup = (message, type = 'info') => {
+    const showPopup = (message, type = 'info', onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             }
         });
     };
@@ -206,15 +209,15 @@ const RCMC = () => {
                                                             <input
                                                                 className="form-check-input"
                                                                 type="checkbox"
-                                                                checked={complaint.status === "y"}
-                                                                onChange={() => handleSwitchChange(complaint.id, complaint.status === "y" ? "n" : "y")}
+                                                                checked={complaint.status?.toLowerCase() === "y"}
+                                                                onChange={() => handleSwitchChange(complaint.id, complaint.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                 id={`switch-${complaint.id}`}
                                                             />
                                                             <label
                                                                 className="form-check-label px-0"
                                                                 htmlFor={`switch-${complaint.id}`}
                                                             >
-                                                                {complaint.status === "y" ? 'Active' : 'Inactive'}
+                                                                {complaint.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                                             </label>
                                                         </div>
                                                     </td>
@@ -222,7 +225,7 @@ const RCMC = () => {
                                                         <button
                                                             className="btn btn-sm btn-success me-2"
                                                             onClick={() => handleEdit(complaint)}
-                                                            disabled={complaint.status !== "y"}
+                                                            disabled={complaint.status?.toLowerCase() !== "y"}
                                                         >
                                                             <i className="fa fa-pencil"></i>
                                                         </button>
@@ -317,7 +320,7 @@ const RCMC = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{complaintData.find(complaint => complaint.id === confirmDialog.complaintId)?.complaintName}</strong>?
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'} <strong>{complaintData.find(complaint => complaint.id === confirmDialog.complaintId)?.complaintName}</strong>?
                                                 </p>
                                             </div>
                                             <div className="modal-footer">

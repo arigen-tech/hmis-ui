@@ -272,12 +272,12 @@ const RoomMasterScreen = () => {
                 `${MAS_ROOM}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Room "${
                         confirmDialog.roomName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -315,8 +315,11 @@ const RoomMasterScreen = () => {
 };
 
   // Popup
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // Page navigation handlers
@@ -725,7 +728,7 @@ const RoomMasterScreen = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'} 
                           <strong> {roomData.find(room => room.id === confirmDialog.id)?.roomName}</strong>?
                         </p>
                       </div>

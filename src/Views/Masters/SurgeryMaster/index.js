@@ -15,11 +15,11 @@ const SurgeryMaster = () => {
     isAnesthesiaRequired: ""
   })
 
-  const [confirmDialog, setConfirmDialog] = useState({ 
-    isOpen: false, 
-    surgeryId: null, 
-    newStatus: "", 
-    surgeryName: "" 
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    surgeryId: null,
+    newStatus: "",
+    surgeryName: ""
   })
 
   const [searchQuery, setSearchQuery] = useState("")
@@ -38,7 +38,7 @@ const SurgeryMaster = () => {
   // Constants for validation
   const SURGERY_CODE_MAX_LENGTH = 8;
   const SURGERY_NAME_MAX_LENGTH = 30;
-  
+
   // Surgery level options
   const surgeryLevelOptions = [
     { value: "MIN", label: "Minor" },
@@ -86,7 +86,7 @@ const SurgeryMaster = () => {
     try {
       // Get all active records (flag=1)
       const data = await getRequest(`${MAS_SURGERY}/getAll/0`);
-      
+
       if (data.status === 200 && data.response) {
         setSurgeryData(data.response);
         setTotalItems(data.response.length);
@@ -129,10 +129,10 @@ const SurgeryMaster = () => {
 
   const handleEdit = async (item) => {
     setEditingSurgery(item);
-    
+
     // Fetch departments first to ensure dropdown is populated
     await fetchDepartmentData();
-    
+
     // Set form data from the selected item
     setFormData({
       surgeryCode: item.surgeryCode || "",
@@ -141,7 +141,7 @@ const SurgeryMaster = () => {
       surgeryLevel: item.surgeryLevel || "",
       isAnesthesiaRequired: item.isAnesthesiaRequired || ""
     });
-    
+
     setShowForm(true);
   };
 
@@ -169,36 +169,40 @@ const SurgeryMaster = () => {
           payload
         );
         if (response.status === 200) {
-          //showPopup(UPDATE_SURGERY_SUCC_MSG || "Surgery updated successfully!", "success");
+          showPopup(UPDATE_SURGERY_SUCC_MSG || "Surgery updated successfully!", "success", () => {
+            // fetchSurgeryData();
+          });
           setPopupMessage({
-            message:  "Surgery updated successfully!",
+            message: "Surgery updated successfully!",
             type: "success",
             onClose: () => {
               setPopupMessage(null);
-                  resetForm();
-           fetchSurgeryData();
-          setCurrentPage(1);
+              resetForm();
+              setCurrentPage(1);
+              fetchSurgeryData();
             }
           });
-        
+
         } else {
           throw new Error(response.message || "Update failed");
         }
       } else {
         response = await postRequest(`${MAS_SURGERY}/create`, payload);
         if (response.status === 201 || response.status === 200) {
-          // showPopup(ADD_SURGERY_SUCC_MSG || "Surgery added successfully!", "success");
+          showPopup(ADD_SURGERY_SUCC_MSG || "Surgery added successfully!", "success", () => {
+            // fetchSurgeryData();
+          });
           setPopupMessage({
-            message:  "Surgery added successfully!",
+            message: "Surgery added successfully!",
             type: "success",
             onClose: () => {
               setPopupMessage(null);
-                  resetForm();
-           fetchSurgeryData();
-          setCurrentPage(1);
+              resetForm();
+              setCurrentPage(1);
             }
           });
-          
+          fetchSurgeryData();
+
         } else {
           throw new Error(response.message || "Save failed");
         }
@@ -223,22 +227,23 @@ const SurgeryMaster = () => {
     });
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
       },
     });
   };
 
   const handleSwitchChange = (id, name, newStatus) => {
-    setConfirmDialog({ 
-      isOpen: true, 
-      surgeryId: id, 
-      newStatus, 
-      surgeryName: name 
+    setConfirmDialog({
+      isOpen: true,
+      surgeryId: id,
+      newStatus,
+      surgeryName: name
     });
   };
 
@@ -250,18 +255,18 @@ const SurgeryMaster = () => {
           `${MAS_SURGERY}/status/${confirmDialog.surgeryId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
-            message:  `Surgery master ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            message: `Surgery master ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
-                  resetForm();
-           fetchSurgeryData();
-          setCurrentPage(1);
+              resetForm();
+              fetchSurgeryData();
+              setCurrentPage(1);
             }
           });
-          
+
         } else {
           throw new Error(response.message || "Failed to update status");
         }
@@ -272,11 +277,11 @@ const SurgeryMaster = () => {
         setProcess(false);
       }
     }
-    setConfirmDialog({ 
-      isOpen: false, 
-      surgeryId: null, 
-      newStatus: "", 
-      surgeryName: "" 
+    setConfirmDialog({
+      isOpen: false,
+      surgeryId: null,
+      newStatus: "",
+      surgeryName: ""
     });
   };
 
@@ -308,15 +313,17 @@ const SurgeryMaster = () => {
   };
 
   const handleActivate = async () => {
-    if (editingSurgery && editingSurgery.status === "n") {
+    if (editingSurgery && editingSurgery.status?.toLowerCase() === "n") {
       setProcess(true);
       try {
         const response = await putRequest(
           `${MAS_SURGERY}/status/${editingSurgery.surgeryId}?status=y`
         );
 
-        if (response.status === 200) {
-          showPopup("Surgery activated successfully!", "success");
+        if (response && response.status === 200) {
+          showPopup("Surgery activated successfully!", "success", () => {
+            fetchSurgeryData();
+          });
           resetForm();
           await fetchSurgeryData();
           setCurrentPage(1);
@@ -414,9 +421,9 @@ const SurgeryMaster = () => {
                             const levelLabel = surgeryLevelOptions.find(
                               opt => opt.value === item.surgeryLevel
                             )?.label || item.surgeryLevel;
-                            
+
                             const anesthesiaLabel = item.isAnesthesiaRequired === "Y" ? "Yes" : "No";
-                            
+
                             return (
                               <tr key={item.surgeryId}>
                                 <td>{item.surgeryCode || '-'}</td>
@@ -429,11 +436,11 @@ const SurgeryMaster = () => {
                                     <input
                                       className="form-check-input"
                                       type="checkbox"
-                                      checked={item.status === "y"}
+                                      checked={item.status?.toLowerCase() === "y"}
                                       onChange={() => handleSwitchChange(
-                                        item.surgeryId, 
-                                        item.surgeryName, 
-                                        item.status === "y" ? "n" : "y"
+                                        item.surgeryId,
+                                        item.surgeryName,
+                                        item.status?.toLowerCase() === "y" ? "n" : "y"
                                       )}
                                       id={`switch-${item.surgeryId}`}
                                     />
@@ -441,7 +448,7 @@ const SurgeryMaster = () => {
                                       className="form-check-label px-0"
                                       htmlFor={`switch-${item.surgeryId}`}
                                     >
-                                      {item.status === "y" ? "Active" : "Deactivated"}
+                                      {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                     </label>
                                   </div>
                                 </td>
@@ -449,7 +456,7 @@ const SurgeryMaster = () => {
                                   <button
                                     className="btn btn-sm btn-success me-2"
                                     onClick={() => handleEdit(item)}
-                                    disabled={item.status !== "y"}
+                                    disabled={item.status?.toLowerCase() !== "y"}
                                   >
                                     <i className="fa fa-pencil"></i>
                                   </button>
@@ -586,8 +593,8 @@ const SurgeryMaster = () => {
                       >
                         {process ? "Processing..." : (editingSurgery ? 'Update' : 'Save')}
                       </button>
-                      
-                      {editingSurgery && editingSurgery.status === "n" && (
+
+                      {editingSurgery && editingSurgery.status?.toLowerCase() === "n" && (
                         <button
                           type="button"
                           className="btn btn-success me-2"
@@ -597,7 +604,7 @@ const SurgeryMaster = () => {
                           Activate
                         </button>
                       )}
-                      
+
                       <button
                         type="button"
                         className="btn btn-danger"
@@ -623,7 +630,7 @@ const SurgeryMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {confirmDialog.surgeryName}
                           </strong>

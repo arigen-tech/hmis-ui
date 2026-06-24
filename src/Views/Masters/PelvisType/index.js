@@ -115,15 +115,18 @@ const PelvisType = () => {
           ...editingRecord,
           pelvisType: formData.pelvisType.trim(),
         });
-        showPopup(UPDATE_PELVISTYPE, "success");
+        showPopup(UPDATE_PELVISTYPE, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OP_PELVIS_TYPE}/create`, {
           pelvisType: formData.pelvisType.trim(),
           status: "Y",
         });
-        showPopup(UPDATE_PELVISTYPE, "success");
+        showPopup(UPDATE_PELVISTYPE, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_PELVISTYPE, "error");
@@ -141,7 +144,7 @@ const PelvisType = () => {
     setConfirmDialog({
       isOpen: true,
       reccord: rec,
-      newStatus: rec.status === "y" ? "n" : "y",
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
@@ -166,8 +169,11 @@ const PelvisType = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -242,11 +248,11 @@ const PelvisType = () => {
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status === "y"}
+                            checked={rec.status?.toLowerCase() === "y"}
                             onChange={() => handleSwitchChange(rec)}
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === "y" ? "Active" : "Inactive"}
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
@@ -254,7 +260,7 @@ const PelvisType = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
-                          disabled={rec.status !== "y"}
+                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -315,7 +321,7 @@ const PelvisType = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.reccord?.pelvisType}</strong>?
                   </div>
                   <div className="modal-footer">

@@ -106,7 +106,7 @@ const MealTypeMaster = () => {
   const filteredMealTypeData = mealTypeData.filter(mealType =>
     mealType.mealTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     mealType.sequenceNo?.toString().includes(searchQuery) ||
-    (mealType.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+    (mealType.status?.toLowerCase() === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -170,16 +170,18 @@ const MealTypeMaster = () => {
         const response = await putRequest(`${MAS_MEAL_TYPE}/update/${editingMealType.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchMealTypeData();
-          showPopup(UPDATE_MEAL_TYPE_SUCC_MSG, "success");
+          showPopup(UPDATE_MEAL_TYPE_SUCC_MSG, "success", () => {
+                    fetchMealTypeData();
+                });
         }
       } else {
         // Add new meal type
         const response = await postRequest(`${MAS_MEAL_TYPE}/create`, requestData);
 
         if (response && response.status === 200) {
-          fetchMealTypeData();
-          showPopup(ADD_MEAL_TYPE_SUCC_MSG, "success");
+          showPopup(ADD_MEAL_TYPE_SUCC_MSG, "success", () => {
+                    fetchMealTypeData();
+                });
         }
       }
 
@@ -194,13 +196,14 @@ const MealTypeMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -217,7 +220,7 @@ const MealTypeMaster = () => {
           `${MAS_MEAL_TYPE}/status/${confirmDialog.mealTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setMealTypeData((prevData) =>
             prevData.map((mealType) =>
@@ -230,7 +233,9 @@ const MealTypeMaster = () => {
                 : mealType
             )
           );
-          showPopup(`Meal type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Meal type ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchMealTypeData();
+                    });
         }
       } catch (err) {
         console.error("Error updating meal type status:", err);
@@ -348,15 +353,15 @@ const MealTypeMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={mealType.status === "y"}
-                                    onChange={() => handleSwitchChange(mealType.id, mealType.status === "y" ? "n" : "y")}
+                                    checked={mealType.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(mealType.id, mealType.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${mealType.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${mealType.id}`}
                                   >
-                                    {mealType.status === "y" ? 'Active' : 'Inactive'}
+                                    {mealType.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -364,7 +369,7 @@ const MealTypeMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(mealType)}
-                                  disabled={mealType.status !== "y"}
+                                  disabled={mealType.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -471,7 +476,7 @@ const MealTypeMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {mealTypeData.find(mealType => mealType.id === confirmDialog.mealTypeId)?.mealTypeName}</strong> meal type?
                         </p>
                       </div>

@@ -172,7 +172,6 @@ const BedTypeMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchBedTypeData();
               setShowForm(false);
             }
           });
@@ -193,7 +192,6 @@ const BedTypeMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchBedTypeData();
               setShowForm(false);
             }
           });
@@ -212,13 +210,14 @@ const BedTypeMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 

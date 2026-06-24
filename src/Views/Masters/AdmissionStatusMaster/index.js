@@ -131,8 +131,9 @@ const AdmissionStatusMaster = () => {
                 });
 
                 if (response && response.status === 200) {
+                    showPopup(UPDATE_ADMISSION_STATUS_SUCC_MSG, "success", () => {
                     fetchAdmissionStatusData();
-                    showPopup(UPDATE_ADMISSION_STATUS_SUCC_MSG, "success");
+                });
                 }
             } else {
                 const response = await postRequest(`${MAS_ADMISSION_STATUS}/create`, {
@@ -140,8 +141,9 @@ const AdmissionStatusMaster = () => {
                 });
 
                 if (response && response.status === 200) {
+                    showPopup(ADD_ADMISSION_STATUS_SUCC_MSG, "success", () => {
                     fetchAdmissionStatusData();
-                    showPopup(ADD_ADMISSION_STATUS_SUCC_MSG, "success");
+                });
                 }
             }
 
@@ -156,12 +158,13 @@ const AdmissionStatusMaster = () => {
         }
     };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -177,7 +180,7 @@ const AdmissionStatusMaster = () => {
                 const response = await putRequest(
                     `${MAS_ADMISSION_STATUS}/status/${confirmDialog.admissionStatusId}?status=${confirmDialog.newStatus}`
                 );
-                if (response && response.response) {
+                if (response && response.status === 200) {
                     setAdmissionStatusData((prevData) =>
                         prevData.map((status) =>
                             status.id === confirmDialog.admissionStatusId
@@ -185,10 +188,9 @@ const AdmissionStatusMaster = () => {
                                 : status
                         )
                     );
-                    showPopup(
-                        `Admission Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
+                    showPopup(`Admission Status ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchAdmissionStatusData();
+                    });
                 }
             } catch (err) {
                 console.error("Error updating admission status:", err);
@@ -288,15 +290,15 @@ const AdmissionStatusMaster = () => {
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={status.status === "y"}
-                                                                    onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+                                                                    checked={status.status?.toLowerCase() === "y"}
+                                                                    onChange={() => handleSwitchChange(status.id, status.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                     id={`switch-${status.id}`}
                                                                 />
                                                                 <label
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${status.id}`}
                                                                 >
-                                                                    {status.status === "y" ? "Active" : "Deactivated"}
+                                                                    {status.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -304,7 +306,7 @@ const AdmissionStatusMaster = () => {
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleEdit(status)}
-                                                                disabled={status.status !== "y"}
+                                                                disabled={status.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -395,7 +397,7 @@ const AdmissionStatusMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{admissionStatusData.find((status) => status.id === confirmDialog.admissionStatusId)?.statusCode}</strong>?
                                                 </p>
                                             </div>

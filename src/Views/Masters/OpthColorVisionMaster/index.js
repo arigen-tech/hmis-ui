@@ -110,15 +110,18 @@ const OpthColorVisionMaster = () => {
           ...editingRecord,
           colorValue: formData.colorValue.trim(),
         });
-        showPopup(UPDATE_OPTH_COLOR, "success");
+        showPopup(UPDATE_OPTH_COLOR, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OPTH_COLOR_VISION}/create`, {
           colorValue: formData.colorValue.trim(),
           status: "Y",
         });
-        showPopup(UPDATE_OPTH_COLOR, "success");
+        showPopup(UPDATE_OPTH_COLOR, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_OPTH_COLOR, "error");
@@ -136,7 +139,7 @@ const OpthColorVisionMaster = () => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status === "y" ? "n" : "y",
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
@@ -159,8 +162,11 @@ const OpthColorVisionMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -233,11 +239,11 @@ const OpthColorVisionMaster = () => {
                             <input
                               className="form-check-input"
                               type="checkbox"
-                              checked={rec.status === "y"}
+                              checked={rec.status?.toLowerCase() === "y"}
                               onChange={() => handleSwitchChange(rec)}
                             />
                             <label className="form-check-label px-0">
-                              {rec.status === "y"
+                              {rec.status?.toLowerCase() === "y"
                                 ? "Active"
                                 : "Inactive"}
                             </label>
@@ -247,7 +253,7 @@ const OpthColorVisionMaster = () => {
                           <button
                             className="btn btn-success btn-sm"
                             onClick={() => handleEdit(rec)}
-                            disabled={rec.status !== "y"}
+                            disabled={rec.status?.toLowerCase() !== "y"}
                           >
                             <i className="fa fa-pencil"></i>
                           </button>
@@ -301,7 +307,7 @@ const OpthColorVisionMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.colorValue}</strong>?
                   </div>
                   <div className="modal-footer">

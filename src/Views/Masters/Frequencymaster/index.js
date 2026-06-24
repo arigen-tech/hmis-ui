@@ -113,8 +113,9 @@ const FrequencyMaster = () => {
         })
 
         if (response && response.status === 200) {
-          fetchFrequencyData()
-          showPopup(UPDATE_FREQUENCY_SUCC_MSG, "success")
+          showPopup(UPDATE_FREQUENCY_SUCC_MSG, "success", () => {
+                    fetchFrequencyData();
+                })
         }
       } else {
         const response = await postRequest(`${MAS_FREQUENCY}/create`, {
@@ -125,8 +126,9 @@ const FrequencyMaster = () => {
         })
 
         if (response && response.status === 200) {
-          fetchFrequencyData()
-          showPopup(ADD_FREQUENCY_SUCC_MSG, "success")
+          showPopup(ADD_FREQUENCY_SUCC_MSG, "success", () => {
+                    fetchFrequencyData();
+                })
         }
       }
 
@@ -162,7 +164,7 @@ const FrequencyMaster = () => {
         const response = await putRequest(
           `${MAS_FREQUENCY}/status/${confirmDialog.frequencyId}/${confirmDialog.newStatus}`,
         )
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setFrequencyData((prevData) =>
             prevData.map((frequency) =>
               frequency.frequencyId === confirmDialog.frequencyId
@@ -171,7 +173,7 @@ const FrequencyMaster = () => {
             ),
           )
           showPopup(
-            `Frequency ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            `Frequency ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             "success",
           )
         }
@@ -279,14 +281,14 @@ const FrequencyMaster = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={frequency.status === "y"}
+                                  checked={frequency.status?.toLowerCase() === "y"}
                                   onChange={() =>
-                                    handleSwitchChange(frequency.frequencyId, frequency.status === "y" ? "n" : "y")
+                                    handleSwitchChange(frequency.frequencyId, frequency.status?.toLowerCase() === "y" ? "n" : "y")
                                   }
                                   id={`switch-${frequency.frequencyId}`}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${frequency.frequencyId}`}>
-                                  {frequency.status === "y" ? "Active" : "Deactivated"}
+                                  {frequency.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -294,7 +296,7 @@ const FrequencyMaster = () => {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(frequency)}
-                                disabled={frequency.status !== "y"}
+                                disabled={frequency.status?.toLowerCase() !== "y"}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -421,7 +423,7 @@ const FrequencyMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {
                               frequencyData.find((frequency) => frequency.frequencyId === confirmDialog.frequencyId)

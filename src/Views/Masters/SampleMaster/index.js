@@ -83,7 +83,7 @@ const SampleMaster = () => {
   const filteredSampleData = sampleData.filter(sample =>
     sample.sampleDescription?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     sample.sampleCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (sample.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+    (sample.status?.toLowerCase() === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
   );
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -141,7 +141,9 @@ const SampleMaster = () => {
               sample.id === editingSample.id ? response.response : sample
             )
           );
-          showPopup(UPDATE_SAMPLE_SUCC_MSG, "success");
+          showPopup(UPDATE_SAMPLE_SUCC_MSG, "success", () => {
+                    fetchSampleData();
+                });
         } else {
           showPopup(UPDATE_SAMPLE_ERR_MSG, "error");
         }
@@ -152,7 +154,9 @@ const SampleMaster = () => {
         if (response && response.status === 200 && response.response) {
           // Add new sample to state - will appear at the top after refresh
           setSampleData((prevData) => [...prevData, response.response]);
-          showPopup(ADD_SAMPLE_SUCC_MSG, "success");
+          showPopup(ADD_SAMPLE_SUCC_MSG, "success", () => {
+                    fetchSampleData();
+                });
         } else {
           showPopup(ADD_SAMPLE_ERR_MSG, "error");
         }
@@ -163,8 +167,7 @@ const SampleMaster = () => {
       setShowForm(false);
       
       // Refresh data to get proper ordering from backend
-      fetchSampleData(0);
-    } catch (err) {
+      } catch (err) {
       console.error("Error saving sample data:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
@@ -172,13 +175,14 @@ const SampleMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -195,10 +199,12 @@ const SampleMaster = () => {
           `${MAS_DG_SAMPLE}/status/${confirmDialog.sampleId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Refresh data to get proper ordering from backend
           fetchSampleData(0);
-          showPopup(`Sample ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Sample ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchSampleData();
+                    });
         }
       } catch (err) {
         console.error("Error updating sample status:", err);
@@ -305,15 +311,15 @@ const SampleMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={sample.status === "y"}
-                                    onChange={() => handleSwitchChange(sample.id, sample.status === "y" ? "n" : "y")}
+                                    checked={sample.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(sample.id, sample.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${sample.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${sample.id}`}
                                   >
-                                    {sample.status === "y" ? 'Active' : 'Inactive'}
+                                    {sample.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -321,7 +327,7 @@ const SampleMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(sample)}
-                                  disabled={sample.status !== "y"}
+                                  disabled={sample.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -428,7 +434,7 @@ const SampleMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {sampleData.find(sample => sample.id === confirmDialog.sampleId)?.sampleDescription}</strong> sample?
                         </p>
                       </div>

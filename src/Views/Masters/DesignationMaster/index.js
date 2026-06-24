@@ -87,8 +87,11 @@ const DesignationMaster = () => {
         fetchUserTypes();
     }, []);
 
-    const showPopup = (msg, type) => {
-        setPopupMessage({ message: msg, type, onClose: () => setPopupMessage(null) });
+    const showPopup = (msg, type, onCloseCallback = null) => {
+        setPopupMessage({ message: msg, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
     };
 
     const filteredData = data.filter(rec =>
@@ -140,7 +143,6 @@ const DesignationMaster = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        fetchData();
                         setShowForm(false);
                     }
                 });
@@ -161,7 +163,6 @@ const DesignationMaster = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        fetchData();
                         setShowForm(false);
                     }
                 });
@@ -193,7 +194,7 @@ const DesignationMaster = () => {
     };
 
     const handleSwitchChange = (id, currentStatus, name) => {
-        const newStatus = currentStatus === "y" ? "n" : "y";
+        const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
         setConfirmDialog({ isOpen: true, id, newStatus, name });
     };
 
@@ -206,12 +207,12 @@ const DesignationMaster = () => {
                 `${MAS_DESIGNATION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Designation "${
                         confirmDialog.name
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -333,13 +334,13 @@ const DesignationMaster = () => {
                                                                 <input
                                                                     type="checkbox"
                                                                     className="form-check-input"
-                                                                    checked={rec.status === "y"}
+                                                                    checked={rec.status?.toLowerCase() === "y"}
                                                                     onChange={() =>
                                                                         handleSwitchChange(rec.id, rec.status, rec.designation_name)
                                                                     }
                                                                 />
                                                                 <label className="form-check-label ms-2">
-                                                                    {rec.status === "y" ? "Active" : "Inactive"}
+                                                                    {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -347,7 +348,7 @@ const DesignationMaster = () => {
                                                             <button
                                                                 className="btn btn-success btn-sm"
                                                                 onClick={() => handleEdit(rec)}
-                                                                disabled={rec.status !== "y"}
+                                                                disabled={rec.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -441,7 +442,7 @@ const DesignationMaster = () => {
                                         <div className="modal-content">
                                             <div className="modal-body">
                                                 Are you sure you want to{" "}
-                                                {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                 <strong>{confirmDialog.name}</strong>?
                                             </div>
                                             <div className="modal-footer">

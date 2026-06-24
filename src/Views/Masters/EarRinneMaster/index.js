@@ -114,14 +114,17 @@ const EarRinneMaster = () => {
           ...editingRecord,
           rinneResult: formData.rinneResult.trim(),
         });
-        showPopup(UPDATE_EAR, "success");
+        showPopup(UPDATE_EAR, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_ENT_RINNE}/create`, {
           rinneResult: formData.rinneResult.trim(),
         });
-        showPopup(ADD_EAR, "success");
+        showPopup(ADD_EAR, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_EAR, "error");
@@ -165,8 +168,11 @@ const EarRinneMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -314,7 +320,7 @@ const EarRinneMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.rinneResult}</strong>?
                   </div>
                   <div className="modal-footer">

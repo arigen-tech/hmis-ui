@@ -182,7 +182,6 @@ const ProcedureMaster = () => {
             onClose: () => {
               setPopupMessage(null)
               resetForm()
-              fetchProcedureData()
               setCurrentPage(1)
             }
           })
@@ -198,7 +197,6 @@ const ProcedureMaster = () => {
             onClose: () => {
               setPopupMessage(null)
               resetForm()
-              fetchProcedureData()
               setCurrentPage(1)
             }
           })
@@ -255,9 +253,9 @@ const ProcedureMaster = () => {
           `${MAS_PROCEDURE}/status/${confirmDialog.procedureId}?status=${confirmDialog.newStatus}`
         )
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
-            message: `Procedure ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            message: `Procedure ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             type: "success",
             onClose: () => {
               setPopupMessage(null)
@@ -311,15 +309,17 @@ const ProcedureMaster = () => {
   }
 
   const handleActivate = async () => {
-    if (editingProcedure && editingProcedure.status === "n") {
+    if (editingProcedure && editingProcedure.status?.toLowerCase() === "n") {
       setProcess(true)
       try {
         const response = await putRequest(
           `${MAS_PROCEDURE}/status/${editingProcedure.procedureId}?status=y`
         )
 
-        if (response.status === 200) {
-          showPopup("Procedure activated successfully!", "success")
+        if (response && response.status === 200) {
+          showPopup("Procedure activated successfully!", "success", () => {
+                        fetchProcedureData();
+                    })
           resetForm()
           await fetchProcedureData()
           setCurrentPage(1)
@@ -455,11 +455,11 @@ const ProcedureMaster = () => {
                                     <input
                                       className="form-check-input"
                                       type="checkbox"
-                                      checked={item.status === "y"}
+                                      checked={item.status?.toLowerCase() === "y"}
                                       onChange={() => handleSwitchChange(
                                         item.procedureId, 
                                         item.procedureName, 
-                                        item.status === "y" ? "n" : "y"
+                                        item.status?.toLowerCase() === "y" ? "n" : "y"
                                       )}
                                       id={`switch-${item.procedureId}`}
                                     />
@@ -467,7 +467,7 @@ const ProcedureMaster = () => {
                                       className="form-check-label px-0"
                                       htmlFor={`switch-${item.procedureId}`}
                                     >
-                                      {item.status === "y" ? "Active" : "Deactivated"}
+                                      {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                     </label>
                                   </div>
                                 </td>
@@ -475,7 +475,7 @@ const ProcedureMaster = () => {
                                   <button
                                     className="btn btn-sm btn-success me-2"
                                     onClick={() => handleEdit(item)}
-                                    disabled={item.status !== "y"}
+                                    disabled={item.status?.toLowerCase() !== "y"}
                                   >
                                     <i className="fa fa-pencil"></i>
                                   </button>
@@ -653,7 +653,7 @@ const ProcedureMaster = () => {
                         {process ? "Processing..." : (editingProcedure ? 'Update' : 'Save')}
                       </button>
                       
-                      {editingProcedure && editingProcedure.status === "n" && (
+                      {editingProcedure && editingProcedure.status?.toLowerCase() === "n" && (
                         <button
                           type="button"
                           className="btn btn-success me-2"
@@ -689,7 +689,7 @@ const ProcedureMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {confirmDialog.procedureName}
                           </strong>

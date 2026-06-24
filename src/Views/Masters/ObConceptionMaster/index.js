@@ -152,7 +152,9 @@ const ObConceptionMaster = () => {
           description: formData.description || "",
           status: editingRecord.status,
         });
-        showPopup(UPDATE_OB_CONCEPTION, "success");
+        showPopup(UPDATE_OB_CONCEPTION, "success", () => {
+                    fetchData();
+                });
       } else {
         // CREATE
         await postRequest(`${MAS_OB_CONCEPTION}/create`, {
@@ -160,10 +162,11 @@ const ObConceptionMaster = () => {
           description: formData.description || "",
           status: "Y",
         });
-        showPopup(ADD_OB_CONCEPTION, "success");
+        showPopup(ADD_OB_CONCEPTION, "success", () => {
+                    fetchData();
+                });
       }
 
-      fetchData();
       resetForm();
       setEditingRecord(null);
       setShowForm(false);
@@ -214,8 +217,11 @@ const ObConceptionMaster = () => {
   };
 
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   
@@ -283,11 +289,11 @@ const ObConceptionMaster = () => {
                           <input
                             className="form-check-input"
                             type="checkbox"
-                            checked={rec.status === "y"}
+                            checked={rec.status?.toLowerCase() === "y"}
                             onChange={() =>
                               handleSwitchChange(
                                 rec.id,
-                                rec.status === "y" ? "n" : "y",
+                                rec.status?.toLowerCase() === "y" ? "n" : "y",
                                 rec.conceptionType
 
 
@@ -295,7 +301,7 @@ const ObConceptionMaster = () => {
                             }
                           />
                           <label className="form-check-label ms-2">
-                            {rec.status === "y" ? "Active" : "Inactive"}
+                            {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
@@ -303,7 +309,7 @@ const ObConceptionMaster = () => {
                         <button
                           className="btn btn-success btn-sm"
                           onClick={() => handleEdit(rec)}
-                          disabled={rec.status !== "y"}
+                          disabled={rec.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -360,7 +366,7 @@ const ObConceptionMaster = () => {
                     <div className="modal-body">
                       Are you sure you want to{" "}
 
-                      {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}
+                      {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}
                       {" "}
                       <strong>{confirmDialog.statusName}</strong>?
                     </div>

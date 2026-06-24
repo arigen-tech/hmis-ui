@@ -152,8 +152,8 @@ const PackageInvestigationMaster = () => {
         item.investigationName.join(", ").toLowerCase().includes(searchTerm))
     );
   }).sort((a, b) => {
-    if (a.status === "y" && b.status !== "y") return -1;
-    if (a.status !== "y" && b.status === "y") return 1;
+    if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y") return -1;
+    if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y") return 1;
     return 0;
   });
 
@@ -221,7 +221,7 @@ const PackageInvestigationMaster = () => {
         )
         // Show success popup – data refreshes only after OK click
         setPopupMessage({
-          message: `All investigations for package "${confirmDialog.packageName}" have been ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+          message: `All investigations for package "${confirmDialog.packageName}" have been ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
           type: "success",
           onClose: async () => {
@@ -291,11 +291,14 @@ const PackageInvestigationMaster = () => {
       .filter((inv) => inv !== undefined)
   }
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null),
+      onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     })
   }
 
@@ -506,12 +509,12 @@ const PackageInvestigationMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={item.status === "y"}
-                                    onChange={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
+                                    checked={item.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(item, item.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${item.pimId}`}
                                   />
                                   <label className="form-check-label px-0" htmlFor={`switch-${item.pimId}`}>
-                                    {item.status === "y" ? "Active" : "Deactivated"}
+                                    {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -519,7 +522,7 @@ const PackageInvestigationMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success"
                                   onClick={() => handleManageInvestigations(item)}
-                                  disabled={item.status !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -668,7 +671,7 @@ const PackageInvestigationMaster = () => {
                       <div className="modal-body">
                         <p>
                           <strong>Warning:</strong> This action will{" "}
-                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}
+                          {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}
                           <strong> ALL investigations</strong> for the package "<strong>{confirmDialog.packageName}</strong>".
                         </p>
                         <p>Are you sure you want to continue?</p>
@@ -679,10 +682,10 @@ const PackageInvestigationMaster = () => {
                         </button>
                         <button
                           type="button"
-                          className={`btn ${confirmDialog.newStatus === "y" ? "btn-success" : "btn-warning"}`}
+                          className={`btn ${confirmDialog.newStatus?.toLowerCase() === "y" ? "btn-success" : "btn-warning"}`}
                           onClick={() => handleConfirm(true)}
                         >
-                          {confirmDialog.newStatus === "y" ? "Activate All" : "Deactivate All"}
+                          {confirmDialog.newStatus?.toLowerCase() === "y" ? "Activate All" : "Deactivate All"}
                         </button>
                       </div>
                     </div>

@@ -118,14 +118,17 @@ const PresentationMaster = () => {
           ...editingRecord,
           presentationValue: formData.presentationValue.trim(),
         });
-        showPopup(UPDATE_PRESENTATION, "success");
+        showPopup(UPDATE_PRESENTATION, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_PRESENTATION}/create`, {
           presentationValue: formData.presentationValue.trim(),
         });
-        showPopup(UPDATE_PRESENTATION, "success");
+        showPopup(UPDATE_PRESENTATION, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(Fail_PRESENTATION, "error");
@@ -169,8 +172,11 @@ const PresentationMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -310,7 +316,7 @@ const PresentationMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.presentationValue}</strong>?
                   </div>
                   <div className="modal-footer">

@@ -36,11 +36,14 @@ const Relationmaster = () => {
   const RELATION_CODE_MAX_LENGTH = 30;
 
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
   setPopupMessage({
     message,
     type,
-    onClose: () => setPopupMessage(null),
+    onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
   });
 };
 
@@ -148,7 +151,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchRelationData();
             setShowForm(false);
           },
         });
@@ -184,7 +186,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchRelationData();
             setShowForm(false);
           },
         });
@@ -220,12 +221,12 @@ const handleConfirm = async (confirmed) => {
                 `${MAS_RELATION}/status/${confirmDialog.relationId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Relation "${
                         confirmDialog.name
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -366,15 +367,15 @@ const handleConfirm = async (confirmed) => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={relation.status === "y"}
-                                    onChange={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
+                                    checked={relation.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(relation.id, relation.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${relation.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${relation.id}`}
                                   >
-                                    {relation.status === "y" ? "Active" : "Deactivated"}
+                                    {relation.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -382,7 +383,7 @@ const handleConfirm = async (confirmed) => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(relation)}
-                                  disabled={relation.status !== "y"}
+                                  disabled={relation.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -491,7 +492,7 @@ const handleConfirm = async (confirmed) => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{relationData.find((relation) => relation.id === confirmDialog.relationId)?.relationName}</strong>?
                         </p>
                       </div>

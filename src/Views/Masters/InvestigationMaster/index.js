@@ -274,7 +274,7 @@ const InvestigationMaster = () => {
   }
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y"
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y"
     setConfirmDialog({ isOpen: true, investigationId: id, newStatus, name })
   }
 
@@ -290,7 +290,7 @@ const InvestigationMaster = () => {
         if (response && response.status === 200) {
           setPopupMessage({
             message: `Investigation "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -636,12 +636,12 @@ const InvestigationMaster = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={item.status === "y"}
+                                checked={item.status?.toLowerCase() === "y"}
                                 onChange={() => handleSwitchChange(item.investigationId, item.status, item.investigationName)}
                                 id={`switch-${item.investigationId}`}
                               />
                               <label className="form-check-label ms-2" htmlFor={`switch-${item.investigationId}`}>
-                                {item.status === "y" ? "Active" : "Inactive"}
+                                {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
@@ -1115,7 +1115,7 @@ const InvestigationMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

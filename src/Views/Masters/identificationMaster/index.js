@@ -42,8 +42,8 @@ const Identificationmaster = () => {
       if (response && response.response) {
         // Sort the data to show active items first
         const sortedData = response.response.sort((a, b) => {
-          if (a.status === 'y' && b.status !== 'y') return -1;
-          if (a.status !== 'y' && b.status === 'y') return 1;
+          if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y") return -1;
+          if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y") return 1;
           return 0;
         });
         setIdentificationTypes(sortedData);
@@ -134,8 +134,7 @@ const Identificationmaster = () => {
             setFormData({ identificationCode: "", identificationName: "" });
             setIsFormValid(false);
             setShowForm(false);
-            fetchIdentificationTypes();
-          }
+            }
         });
       } else {
         const response = await postRequest(`${MAS_IDENTIFICATION_TYPE}/create`, {
@@ -155,8 +154,7 @@ const Identificationmaster = () => {
               setFormData({ identificationCode: "", identificationName: "" });
               setIsFormValid(false);
               setShowForm(false);
-              fetchIdentificationTypes();
-            }
+              }
           });
         }
       }
@@ -168,13 +166,14 @@ const Identificationmaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -193,7 +192,7 @@ const Identificationmaster = () => {
         
         // Set popup with onClose callback that refreshes data
         setPopupMessage({
-          message: `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          message: `Identification type ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
           type: "success",
           onClose: () => {
             setPopupMessage(null);
@@ -319,12 +318,12 @@ const Identificationmaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={type.status === "y"}
-                                    onChange={() => handleSwitchChange(type.identificationTypeId, type.status === "y" ? "n" : "y")}
+                                    checked={type.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(type.identificationTypeId, type.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${type.identificationTypeId}`}
                                   />
                                   <label className="form-check-label px-0" htmlFor={`switch-${type.identificationTypeId}`}>
-                                    {type.status === "y" ? "Active" : "Deactivated"}
+                                    {type.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -332,7 +331,7 @@ const Identificationmaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(type)}
-                                  disabled={type.status !== "y"}
+                                  disabled={type.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -424,7 +423,7 @@ const Identificationmaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{identificationTypes.find((type) => type.identificationTypeId === confirmDialog.identificationId)?.identificationName}</strong>?
                         </p>
                       </div>

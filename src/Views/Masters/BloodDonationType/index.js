@@ -139,7 +139,6 @@ const BloodDonationType = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -158,7 +157,6 @@ const BloodDonationType = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -205,12 +203,12 @@ const BloodDonationType = () => {
           `${MAS_BLOOD_DONATION_TYPE}/status/${confirmDialog.record.donationTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Blood Donation Type "${
               confirmDialog.record.donationTypeName
             }" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -238,11 +236,14 @@ const BloodDonationType = () => {
     });
   };
 
-  const showPopup = (message, type) => {
+  const showPopup = (message, type, onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null)
+      onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -404,7 +405,7 @@ const BloodDonationType = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.donationTypeName}</strong>?
                   </div>
                   <div className="modal-footer">

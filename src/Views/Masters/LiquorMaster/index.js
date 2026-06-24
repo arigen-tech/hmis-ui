@@ -109,14 +109,17 @@ const LiquorMaster = () => {
           ...editingRecord,
           liquorValue: formData.liquorValue.trim(),
         });
-        showPopup(UPDATE_LIQUOR, "success");
+        showPopup(UPDATE_LIQUOR, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OB_PVLIQUOR}/create`, {
           liquorValue: formData.liquorValue.trim(),
         });
-        showPopup(ADD_LIQUOR, "success");
+        showPopup(ADD_LIQUOR, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_LIQUOR, "error");
@@ -170,8 +173,11 @@ const LiquorMaster = () => {
     fetchData();
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   if (loading) {
@@ -317,7 +323,7 @@ const LiquorMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.liquorValue}</strong>?
                   </div>
                   <div className="modal-footer">

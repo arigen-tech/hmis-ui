@@ -173,7 +173,6 @@ const QuestionHeadingMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -194,7 +193,6 @@ const QuestionHeadingMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -222,7 +220,7 @@ const QuestionHeadingMaster = () => {
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
       id: id || '',
@@ -240,10 +238,10 @@ const QuestionHeadingMaster = () => {
           `${MAS_QUESTION_HEADING}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Question heading "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -267,8 +265,11 @@ const QuestionHeadingMaster = () => {
     setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // ================= UI =================
@@ -384,7 +385,7 @@ const QuestionHeadingMaster = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={rec.status === "y"}
+                                  checked={rec.status?.toLowerCase() === "y"}
                                   onChange={() => handleSwitchChange(
                                     rec.id || rec.questionHeadingId || rec._id,
                                     rec.status,
@@ -396,14 +397,14 @@ const QuestionHeadingMaster = () => {
                                   className="form-check-label ms-2"
                                   htmlFor={`switch-${rec.id || rec.questionHeadingId}`}
                                 >
-                                  {rec.status === "y" ? "Active" : "Inactive"}
+                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                 </label>
                               </div>
                             </td>
                             <td>
                               <button
                                 className="btn btn-success btn-sm"
-                                disabled={rec.status !== "y"}
+                                disabled={rec.status?.toLowerCase() !== "y"}
                                 onClick={() => handleEdit(rec)}
                               >
                                 <i className="fa fa-pencil"></i>
@@ -487,7 +488,7 @@ const QuestionHeadingMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

@@ -121,14 +121,17 @@ const LensTypeMaster = () => {
           ...editingRecord,
           lensType: formData.lensType.trim(),
         });
-        showPopup(UPDATE_LENSTYPE, "success");
+        showPopup(UPDATE_LENSTYPE, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OPTH_LENSTYPE}/create`, {
           lensType: formData.lensType.trim(),
         });
-        showPopup(ADD_LENSTYPE, "success");
+        showPopup(ADD_LENSTYPE, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_LENSTYPE, "error");
@@ -175,8 +178,11 @@ const LensTypeMaster = () => {
 
 
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
 
@@ -322,7 +328,7 @@ const LensTypeMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.lensType}</strong>?
                   </div>
                   <div className="modal-footer">

@@ -39,8 +39,8 @@ const PackageMaster = () => {
   // Helper function to sort packages: Active first (status "y"), then Deactivated
   const sortPackagesByStatus = (packages) => {
     return [...packages].sort((a, b) => {
-      if (a.status === "y" && b.status !== "y") return -1;
-      if (a.status !== "y" && b.status === "y") return 1;
+      if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y") return -1;
+      if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y") return 1;
       return 0;
     });
   };
@@ -216,11 +216,14 @@ const PackageMaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null),
+      onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
     // Auto-close only non-success popups after 3 seconds
     if (type !== "success") {
@@ -246,7 +249,7 @@ const PackageMaster = () => {
         `${INVESTIGATION_PACKAGE_API}/status/${confirmDialog.packageId}?status=${confirmDialog.newStatus}`
       );
       setPopupMessage({
-        message: `Package ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+        message: `Package ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
         type: "success",
         onClose: async () => {
           setPopupMessage(null);
@@ -402,12 +405,12 @@ const PackageMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={pkg.status === "y"}
-                                    onChange={() => handleSwitchChange(pkg.packId, pkg.status === "y" ? "n" : "y")}
+                                    checked={pkg.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(pkg.packId, pkg.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${pkg.packId}`}
                                   />
                                   <label className="form-check-label px-0" htmlFor={`switch-${pkg.packId}`}>
-                                    {pkg.status === "y" ? "Active" : "Deactivated"}
+                                    {pkg.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -415,7 +418,7 @@ const PackageMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(pkg)}
-                                  disabled={pkg.status !== "y"}
+                                  disabled={pkg.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -512,7 +515,7 @@ const PackageMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{packageData.find((pkg) => pkg.packId === confirmDialog.packageId)?.packName}</strong>?
                         </p>
                       </div>
