@@ -20,7 +20,6 @@ const ABHACreationModal = ({
     mobileNumber: patientData.mobileNo || "",
   });
 
-  // Consent state - 7 consents as per ABHA requirements
   const [consents, setConsents] = useState({
     consent1: false,
     consent2: false,
@@ -31,7 +30,6 @@ const ABHACreationModal = ({
     consent7: false,
   });
 
-  // Consent checkbox refs for individual selection
   const [selectAll, setSelectAll] = useState(false);
 
   const [captcha, setCaptcha] = useState({
@@ -50,7 +48,6 @@ const ABHACreationModal = ({
     xtoken: "",
   });
 
-  // Tab 3: ABHA Address / Existing ABHA Display
   const [abhaAddress, setAbhaAddress] = useState("");
   const [abhaNumber, setAbhaNumber] = useState("");
   const [existingAbhaProfile, setExistingAbhaProfile] = useState(null);
@@ -106,8 +103,8 @@ const ABHACreationModal = ({
       setAbhaNumber("");
       setAbhaAddress("");
       setIsCreatingAbha(false);
-      setSuggestions([]); // Add this
-      setAddressError(""); // Add this
+      setSuggestions([]); 
+      setAddressError("");
     }
     return () => {
       if (timerInterval.current) {
@@ -216,7 +213,6 @@ const ABHACreationModal = ({
     }
   };
 
-  // Validate Tab 1
   const validateTab1 = () => {
     if (!aadhaarData.consentName.trim()) {
       Swal.fire(
@@ -254,7 +250,6 @@ const ABHACreationModal = ({
     return true;
   };
 
-  // Validate Tab 2
   const validateTab2 = () => {
     if (otpData.otp.length !== 6) {
       Swal.fire(
@@ -275,14 +270,12 @@ const ABHACreationModal = ({
     return true;
   };
 
-  // Validate Tab 3
   const validateTab3 = () => {
     if (!abhaAddress.trim()) {
       Swal.fire("Validation Error", "Please enter an ABHA address.", "warning");
       return false;
     }
 
-    // Remove @abdm suffix if present for validation
     const cleanAddress = abhaAddress.replace(/@abdm$/i, "");
     if (!isValidAbhaAddress(cleanAddress)) {
       Swal.fire(
@@ -317,7 +310,6 @@ const ABHACreationModal = ({
     return value.replace(/\s+/g, "").toLowerCase();
   };
 
-  // Fetch ABHA address suggestions
   const fetchAbhaAddressSuggestions = async () => {
     if (!otpData.txnId) return;
 
@@ -330,7 +322,6 @@ const ABHACreationModal = ({
       const suggestionList = response?.response?.abhaAddressList || [];
       setSuggestions(suggestionList);
 
-      // Auto-select first suggestion if available and no address entered
       if (suggestionList.length > 0 && !abhaAddress) {
         setAbhaAddress(suggestionList[0]);
         setAddressError("");
@@ -526,13 +517,11 @@ const findGenderId = (genderName) => {
     setLoading((prev) => ({ ...prev, sendOtp: true }));
 
     try {
-      // Secure Aadhaar number (same as initial send)
       const secureAadhaar = await integrationService.secureAbdmFieldPayload({
         field: "aadhaarNumber",
         value: aadhaarData.aadhaarNo,
       });
 
-      // Prepare consent payload - all consents should be "true"
       const consentPayload = {
         consent1: String(consents.consent1),
         consent2: String(consents.consent2),
@@ -543,7 +532,6 @@ const findGenderId = (genderName) => {
         consent7: String(consents.consent7),
       };
 
-      // Call the same send OTP API with all required data
       const response = await integrationService.sendAbdmAadhaarOtp({
         ...secureAadhaar,
         consentName: aadhaarData.consentName.trim(),
@@ -554,13 +542,12 @@ const findGenderId = (genderName) => {
         throw new Error(response?.message || "Unable to resend OTP.");
       }
 
-      // Update txnId if a new one is returned
       setOtpData((prev) => ({
         ...prev,
         txnId:
           response?.response?.txnId || response?.response?.tnxId || prev.txnId,
         isType: response?.response?.isType || prev.isType,
-        otp: "", // Clear previous OTP
+        otp: "",
       }));
 
       // Reset timer
@@ -604,7 +591,6 @@ const fetchAbhaDetails = async (xtoken, isType) => {
 
     const profile = response?.response || {};
 
-    // Map the response fields to our profile structure
     return {
       abhaNumber: profile.ABHANumber || profile.healthIdNumber || profile.abhaNumber || "",
       abhaAddress: profile.preferredAbhaAddress || profile.healthId || profile.abhaAddress || "",
@@ -637,8 +623,6 @@ const fetchAbhaDetails = async (xtoken, isType) => {
   }
 };
 
-  // Verify OTP API call - MODIFIED to handle existing ABHA and fetch full profile
-// Verify OTP API call - MODIFIED to handle existing ABHA and fetch full profile
 const handleVerifyOtp = async () => {
   if (!validateTab2()) return;
 
@@ -700,7 +684,6 @@ const handleVerifyOtp = async () => {
         setAbhaAddress(fullProfile.abhaAddress);
         setOtpData((prev) => ({ ...prev, xtoken }));
         
-        // Show success message with existing ABHA info
         Swal.fire({
           icon: "info",
           title: "ABHA Already Exists",
@@ -757,7 +740,6 @@ const handleVerifyOtp = async () => {
     setIsCreatingAbha(true);
 
     try {
-      // Ensure address has @abdm suffix
       const finalAbhaAddress = abhaAddress.trim().includes("@")
         ? abhaAddress.trim()
         : `${abhaAddress.trim()}@abdm`;
@@ -771,7 +753,6 @@ const handleVerifyOtp = async () => {
         throw new Error(response?.message || "Unable to create ABHA account.");
       }
 
-      // After address update, fetch the complete profile
       let fullProfile = null;
       if (otpData.xtoken) {
         fullProfile = await fetchAbhaDetails(otpData.xtoken, otpData.isType);
