@@ -1,5 +1,5 @@
-export const API_HOST =  'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+//export const API_HOST =  'http://103.133.215.182:8081/hims';
+ export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
@@ -653,3 +653,5 @@ export const ENT_MAS_PINNA = `${MASTERS}/entMasPinna`;
 //ABHA INTEGRATION URLS
 // ABDM APIs
 export const ABDM_SEND_AADHAAR_OTP = `/api/v1/abdm/create/send-otp-aadhaar`;
+export const LABOLATORY_MAIN_CHARGECODE_ID = 1;
+export const REDIOLOGY_MAIN_CHARGECODE_ID = 2;

@@ -12,6 +12,7 @@ import {
   DG_MAS_COLLECTION,
   DG_MAS_INVESTIGATION_CATEGORY,
   DG_MAS_INVESTIGATION_METHODOLOGY,
+  LABOLATORY_MAIN_CHARGECODE_ID,
 } from "../../../config/apiConfig"
 import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
@@ -106,7 +107,7 @@ const InvestigationMaster = () => {
 
         const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes, methodologiesRes, categoriesRes] =
           await Promise.all([
-            getRequest(`${MAS_INVESTIGATION}/getAll/0/1`),
+            getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${LABOLATORY_MAIN_CHARGECODE_ID}`),
             getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
             getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
             getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
@@ -316,7 +317,7 @@ const InvestigationMaster = () => {
 
   const fetchInvestigations = async () => {
     try {
-      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${LABOLATORY_MAIN_CHARGECODE_ID}`);
       if (investigationsRes && investigationsRes.response) {
         setInvestigations(
           investigationsRes.response.map((item) => ({
