@@ -114,15 +114,18 @@ const MenarcheMaster = () => {
         await putRequest(`${MAS_MENARCHE_AGE}/update/${editingRecord.id}`, {
           menarcheAge: formData.menarcheAge.trim(),
         });
-        showPopup(UPDATE_MENARCHE, "success");
+        showPopup(UPDATE_MENARCHE, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_MENARCHE_AGE}/create`, {
           menarcheAge: formData.menarcheAge.trim(),
           status: "y",
         });
-        showPopup(ADD_MENARCHE, "success");
+        showPopup(ADD_MENARCHE, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch (error) {
       console.error("Save error:", error);
@@ -169,8 +172,11 @@ const MenarcheMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -336,7 +342,7 @@ const MenarcheMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.menarcheAge}</strong>?
                   </div>
                   <div className="modal-footer">

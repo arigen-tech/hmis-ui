@@ -171,8 +171,11 @@ const BloodCollectionTypeMaster = () => {
   };
 
   // popup
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // form input
@@ -236,7 +239,6 @@ const BloodCollectionTypeMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData(0);
               setShowForm(false);
             }
           });
@@ -256,7 +258,6 @@ const BloodCollectionTypeMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData(0);
               setShowForm(false);
             }
           });
@@ -302,12 +303,12 @@ const BloodCollectionTypeMaster = () => {
           `${MAS_BLOOD_COLLECTION}/status/${confirmDialog.record.collectionTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Blood Collection Type "${
               confirmDialog.record.collectionTypeName
             }" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -524,7 +525,7 @@ const BloodCollectionTypeMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.collectionTypeName}</strong>?
                   </div>
                   <div className="modal-footer">

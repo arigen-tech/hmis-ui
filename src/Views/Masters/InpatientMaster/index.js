@@ -225,7 +225,9 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
           : rec
       );
       setData(updated);
-      showPopup("Record updated!", "success");
+      showPopup("Record updated!", "success", () => {
+                    fetchData();
+                });
     } else {
       const newRec = {
         inpatient_id: data.length + 1,
@@ -234,7 +236,9 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
         last_update_date: timestamp,
       };
       setData([...data, newRec]);
-      showPopup("Record added!", "success");
+      showPopup("Record added!", "success", () => {
+                    fetchData();
+                });
     }
 
     setShowForm(false);
@@ -300,8 +304,11 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
     setConfirmDialog({ isOpen: false, id: null, newStatus: "" });
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
    
         
@@ -400,16 +407,16 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
                     <input
                       className="form-check-input"
                       type="checkbox"
-                      checked={rec.status === "Y"}
+                      checked={rec.status?.toLowerCase() === "y"}
                       onChange={() =>
                         handleSwitchChange(
                           rec.inpatient_id,
-                          rec.status === "Y" ? "N" : "Y"
+                          rec.status?.toLowerCase() === "y" ? "N" : "Y"
                         )
                       }
                     />
                     <label className="form-check-label">
-                      {rec.status === "Y" ? "Active" : "Inactive"}
+                      {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                     </label>
                   </div>
                 </td>
@@ -418,7 +425,7 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
                   <button
                     className="btn btn-success btn-sm"
                     onClick={() => handleEdit(rec)}
-                    disabled={rec.status !== "Y"}
+                    disabled={rec.status?.toLowerCase() !== "y"}
                   >
                     <i className="fa fa-pencil"></i>
                   </button>
@@ -531,7 +538,7 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
                   <div className="modal-body">
                     Change status to{" "}
                     <strong>
-                      {confirmDialog.newStatus === "Y" ? "Active" : "Inactive"}
+                      {confirmDialog.newStatus?.toLowerCase() === "y" ? "Active" : "Inactive"}
                     </strong>
                     ?
                   </div>

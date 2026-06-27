@@ -96,7 +96,7 @@ const DietPreferenceMaster = () => {
   const filteredData = data.filter(item =>
     item.preferenceName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     item.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (item.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+    (item.status?.toLowerCase() === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -160,16 +160,18 @@ const DietPreferenceMaster = () => {
         const response = await putRequest(`${MAS_DIET_PREFERENCE}/update/${editingPreference.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchData();
-          showPopup(UPDATE_DIET_PREFERENCE_SUCC_MSG, "success");
+          showPopup(UPDATE_DIET_PREFERENCE_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
         }
       } else {
         // Add new preference
         const response = await postRequest(`${MAS_DIET_PREFERENCE}/create`, requestData);
 
         if (response && response.status === 200) {
-          fetchData();
-          showPopup(ADD_DIET_PREFERENCE_SUCC_MSG, "success");
+          showPopup(ADD_DIET_PREFERENCE_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
         }
       }
 
@@ -184,13 +186,14 @@ const DietPreferenceMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -207,7 +210,7 @@ const DietPreferenceMaster = () => {
           `${MAS_DIET_PREFERENCE}/status/${confirmDialog.preferenceId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setData((prevData) =>
             prevData.map((item) =>
@@ -220,7 +223,9 @@ const DietPreferenceMaster = () => {
                 : item
             )
           );
-          showPopup(`Diet preference ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Diet preference ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchData();
+                    });
         }
       } catch (err) {
         console.error("Error updating diet preference status:", err);
@@ -336,15 +341,15 @@ const DietPreferenceMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={item.status === "y"}
-                                    onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+                                    checked={item.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(item.id, item.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${item.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${item.id}`}
                                   >
-                                    {item.status === "y" ? 'Active' : 'Inactive'}
+                                    {item.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -352,7 +357,7 @@ const DietPreferenceMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(item)}
-                                  disabled={item.status !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -458,7 +463,7 @@ const DietPreferenceMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {data.find(item => item.id === confirmDialog.preferenceId)?.preferenceName}</strong> diet preference?
                         </p>
                       </div>

@@ -80,8 +80,11 @@ const BloodUnitStatus = () => {
   };
 
   // Popup helper
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // Form reset
@@ -148,7 +151,6 @@ const BloodUnitStatus = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -171,7 +173,6 @@ const BloodUnitStatus = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -217,12 +218,12 @@ const BloodUnitStatus = () => {
           `${MAS_BLOOD_UNIT}/status/${confirmDialog.record.statusId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Blood Unit Status "${
               confirmDialog.record.statusName
             }" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -412,7 +413,7 @@ const BloodUnitStatus = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.statusName}</strong>?
                   </div>
                   <div className="modal-footer">

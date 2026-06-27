@@ -109,15 +109,18 @@ const MAX_LENGTH = 8;
           ...editingRecord,
           nearValue: formData.nearValue.trim(),
         });
-        showPopup(UPDATE_OPTHNEAR, "success");
+        showPopup(UPDATE_OPTHNEAR, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OPTH_NEAR_VISION}/create`, {
           nearValue: formData.nearValue.trim(),
         });
-        showPopup(ADD_OPTHNEAR, "success");
+        showPopup(ADD_OPTHNEAR, "success", () => {
+                    fetchData();
+                });
       }
-      await fetchData();
-      handleCancel();
+      await handleCancel();
     } catch {
       showPopup(FAIL_OPTHNEAR, "error");
     }
@@ -157,8 +160,11 @@ const MAX_LENGTH = 8;
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -291,7 +297,7 @@ const MAX_LENGTH = 8;
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.visionTestName}</strong>?
                   </div>
                   <div className="modal-footer">

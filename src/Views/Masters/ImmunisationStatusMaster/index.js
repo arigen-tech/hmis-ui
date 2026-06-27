@@ -50,13 +50,14 @@ const ImmunisationStatus = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -113,8 +114,9 @@ const ImmunisationStatus = () => {
         });
 
         if (response && response.status === 200) {
-          fetchData();
-          showPopup(UPDATE_IMMUNISATION_SUCC_MSG, "success");
+          showPopup(UPDATE_IMMUNISATION_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
         }
       } else {
         // Add new record
@@ -124,8 +126,9 @@ const ImmunisationStatus = () => {
         });
 
         if (response && response.status === 200 || response && response.status === 201) {
-          fetchData();
-          showPopup(ADD_IMMUNISATION_SUCC_MSG, "success");
+          showPopup(ADD_IMMUNISATION_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
         }
       }
 
@@ -160,10 +163,9 @@ const ImmunisationStatus = () => {
         );
         if (response && response.status === 200) {
           fetchData();
-          showPopup(
-            `Immunisation Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Immunisation Status ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchData();
+                    });
         }
       } catch (err) {
         console.error("Error updating status:", err);
@@ -283,15 +285,15 @@ const ImmunisationStatus = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={rec.status === "y"}
-                                onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+                                checked={rec.status?.toLowerCase() === "y"}
+                                onChange={() => handleSwitchChange(rec.id, rec.status?.toLowerCase() === "y" ? "n" : "y")}
                                 id={`switch-${rec.id}`}
                               />
                               <label
                                 className="form-check-label px-0"
                                 htmlFor={`switch-${rec.id}`}
                               >
-                                {rec.status === "y" ? "Active" : "Deactivated"}
+                                {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                               </label>
                             </div>
                           </td>
@@ -299,7 +301,7 @@ const ImmunisationStatus = () => {
                             <button
                               className="btn btn-sm btn-success me-2"
                               onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "y"}
+                              disabled={rec.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -379,7 +381,7 @@ const ImmunisationStatus = () => {
                   </div>
                   <div className="modal-body">
                     <p>
-                      Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                      Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                       <strong>
                         {data.find((rec) => rec.id === confirmDialog.recordId)?.immunisationValue}
                       </strong>

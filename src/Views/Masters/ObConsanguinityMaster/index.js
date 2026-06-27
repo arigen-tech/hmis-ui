@@ -103,14 +103,17 @@ const ObConsanguinityMaster = () => {
           ...editingRecord,
           consanguinityValue: formData.consanguinityValue.trim(),
         });
-        showPopup(UPDATE_OB_CONSAN, "success");
+        showPopup(UPDATE_OB_CONSAN, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OB_CONSANGUINITY}/create`, {
           consanguinityValue: formData.consanguinityValue.trim(),
         });
-        showPopup(ADD_OB_CONSAN, "success");
+        showPopup(ADD_OB_CONSAN, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_OB_CONSAN, "error");
@@ -150,8 +153,11 @@ const ObConsanguinityMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -276,7 +282,7 @@ const ObConsanguinityMaster = () => {
                 <div className="modal-dialog">
                   <div className="modal-content">
                     <div className="modal-body">
-                      Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                      Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                       <strong>{confirmDialog.record.consanguinityValue}</strong>?
                     </div>
                     <div className="modal-footer">

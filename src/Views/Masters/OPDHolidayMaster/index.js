@@ -154,7 +154,6 @@ const OPDHolidayMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -176,7 +175,6 @@ const OPDHolidayMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -207,7 +205,7 @@ const OPDHolidayMaster = () => {
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({ isOpen: true, id, newStatus, name });
   };
 
@@ -220,10 +218,10 @@ const OPDHolidayMaster = () => {
           `${MAS_OPD_HOLIDAY}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
         
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Holiday "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -239,7 +237,7 @@ const OPDHolidayMaster = () => {
       } catch (error) {
         console.error("Status update error:", error);
         showPopup(
-          confirmDialog.newStatus === "y" 
+          confirmDialog.newStatus?.toLowerCase() === "y" 
             ? "Failed to activate holiday" 
             : "Failed to deactivate holiday",
           "error"
@@ -257,8 +255,11 @@ const OPDHolidayMaster = () => {
     });
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleCancel = () => {
@@ -348,7 +349,7 @@ const OPDHolidayMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={rec.status === "y"}
+                                    checked={rec.status?.toLowerCase() === "y"}
                                     onChange={() =>
                                       handleSwitchChange(rec.opdHolidayId, rec.status, rec.holidayName)
                                     }
@@ -358,7 +359,7 @@ const OPDHolidayMaster = () => {
                                     className="form-check-label ms-2"
                                     htmlFor={`switch-${rec.opdHolidayId}`}
                                   >
-                                    {rec.status === "y" ? "Active" : "Inactive"}
+                                    {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
                               </td>
@@ -366,7 +367,7 @@ const OPDHolidayMaster = () => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(rec)}
-                                  disabled={rec.status !== "y"}
+                                  disabled={rec.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -465,7 +466,7 @@ const OPDHolidayMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

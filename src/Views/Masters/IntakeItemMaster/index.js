@@ -181,7 +181,9 @@ const IntakeItemMaster = () => {
 
         if (response && response.status === 200) {
           fetchData();
-          showPopup(UPDATE_INTAKE_ITEM_SUCC_MSG, "success");
+          showPopup(UPDATE_INTAKE_ITEM_SUCC_MSG, "success", () => {
+                    fetchDropdownData();
+                });
         }
       } else {
         // Add new intake item
@@ -189,7 +191,9 @@ const IntakeItemMaster = () => {
 
         if (response && response.status === 200 || response.status === 201) {
           fetchData();
-          showPopup(ADD_INTAKE_ITEM_SUCC_MSG, "success");
+          showPopup(ADD_INTAKE_ITEM_SUCC_MSG, "success", () => {
+                    fetchDropdownData();
+                });
         }
       }
 
@@ -233,7 +237,7 @@ const IntakeItemMaster = () => {
           `${MAS_INTAKE_ITEM}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setData((prevData) =>
             prevData.map((item) =>
@@ -247,10 +251,9 @@ const IntakeItemMaster = () => {
             )
           );
 
-          showPopup(
-            `Intake item ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Intake item ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchDropdownData();
+                    });
         }
       } catch (err) {
         console.error("Error updating intake item status:", err);
@@ -263,8 +266,11 @@ const IntakeItemMaster = () => {
   };
 
   // Popup
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // Page navigation handlers
@@ -458,11 +464,11 @@ const IntakeItemMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={item.status === "y"}
+                                    checked={item.status?.toLowerCase() === "y"}
                                     onChange={() =>
                                       handleSwitchChange(
                                         item.id, 
-                                        item.status === "y" ? "n" : "y",
+                                        item.status?.toLowerCase() === "y" ? "n" : "y",
                                         item.intakeItemName
                                       )
                                     }
@@ -472,7 +478,7 @@ const IntakeItemMaster = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${item.id}`}
                                   >
-                                    {item.status === "y" ? 'Active' : 'Inactive'}
+                                    {item.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -483,7 +489,7 @@ const IntakeItemMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(item)}
-                                  disabled={item.status !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -637,7 +643,7 @@ const IntakeItemMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'} 
                           <strong> {confirmDialog.intakeItemName}</strong>?
                         </p>
                       </div>

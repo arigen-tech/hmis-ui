@@ -111,14 +111,17 @@ const EntMasMucosaMaster = () => {
           ...editingRecord,
           mucosaStatus: formData.mucosaStatus.trim(),
         });
-        showPopup(UPDATE_ENTMASMUCOSA, "success");
+        showPopup(UPDATE_ENTMASMUCOSA, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_ENT_MUCOSA}/create`, {
           mucosaStatus: formData.mucosaStatus.trim(),
         });
-        showPopup(ADD_ENTMASMUCOSA, "success");
+        showPopup(ADD_ENTMASMUCOSA, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_ENTMASMUCOSA, "error");
@@ -172,8 +175,11 @@ const EntMasMucosaMaster = () => {
     fetchData();
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   if (loading) {
@@ -311,7 +317,7 @@ const EntMasMucosaMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.mucosaStatus}</strong>?
                   </div>
                   <div className="modal-footer">

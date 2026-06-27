@@ -134,8 +134,9 @@ const SpectacleUseMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchSpectacleUseData();
-          showPopup(UPDATE_SPECTACLE_USE_SUCC_MSG, "success");
+          showPopup(UPDATE_SPECTACLE_USE_SUCC_MSG, "success", () => {
+                    fetchSpectacleUseData();
+                });
         }
       } else {
         const response = await postRequest(`${OPTH_SPECTACLE_USE}/create`, {
@@ -143,8 +144,9 @@ const SpectacleUseMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchSpectacleUseData();
-          showPopup(ADD_SPECTACLE_USE_SUCC_MSG, "success");
+          showPopup(ADD_SPECTACLE_USE_SUCC_MSG, "success", () => {
+                    fetchSpectacleUseData();
+                });
         }
       }
 
@@ -159,13 +161,14 @@ const SpectacleUseMaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -180,7 +183,7 @@ const SpectacleUseMaster = () => {
         const response = await putRequest(
           `${OPTH_SPECTACLE_USE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setSpectacleUseData((prevData) =>
             prevData.map((spectacleUse) =>
               spectacleUse.id === confirmDialog.id
@@ -188,10 +191,9 @@ const SpectacleUseMaster = () => {
                 : spectacleUse
             )
           );
-          showPopup(
-            `Spectacle Use ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Spectacle Use ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchSpectacleUseData();
+                    });
         }
       } catch (err) {
         console.error("Error updating spectacle use status:", err);
@@ -296,10 +298,10 @@ const SpectacleUseMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={spectacleUse.status === "y"}
+                                    checked={spectacleUse.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
                                       spectacleUse.id,
-                                      spectacleUse.status === "y" ? "n" : "y",
+                                      spectacleUse.status?.toLowerCase() === "y" ? "n" : "y",
                                       spectacleUse.useName
                                     )}
                                     id={`switch-${spectacleUse.id}`}
@@ -308,7 +310,7 @@ const SpectacleUseMaster = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${spectacleUse.id}`}
                                   >
-                                    {spectacleUse.status === "y" ? "Active" : "Deactivated"}
+                                    {spectacleUse.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -316,7 +318,7 @@ const SpectacleUseMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(spectacleUse)}
-                                  disabled={spectacleUse.status !== "y"}
+                                  disabled={spectacleUse.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -389,7 +391,7 @@ const SpectacleUseMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{confirmDialog.useName}</strong>?
                         </p>
                       </div>

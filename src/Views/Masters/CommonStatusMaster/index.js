@@ -231,11 +231,14 @@ const CommonStatusMaster = () => {
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   // Show popup
-  const showPopup = (message, type = "success") => {
+  const showPopup = (message, type = "success", onCloseCallback = null) => {
     setPopupMessage({ 
       message, 
       type, 
-      onClose: () => setPopupMessage(null) 
+      onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } 
     });
   };
 
@@ -350,8 +353,7 @@ const CommonStatusMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               handleBack();
-              fetchCommonStatusData();
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Update failed");
@@ -370,8 +372,7 @@ const CommonStatusMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               handleBack();
-              fetchCommonStatusData();
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Save failed");

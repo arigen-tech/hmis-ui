@@ -110,14 +110,17 @@ const EarCanalMaster = () => {
           ...editingRecord,
           earCanalCondition: formData.earCanalCondition.trim(),
         });
-        showPopup(UPDATE_EARCANAL, "success");
+        showPopup(UPDATE_EARCANAL, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_EAR_CANAL}/create`, {
           earCanalCondition: formData.earCanalCondition.trim(),
         });
-        showPopup(ADD_EARCANAL, "success");
+        showPopup(ADD_EARCANAL, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch (error) {
       console.error("Save error:", error);
@@ -168,8 +171,11 @@ const EarCanalMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -338,7 +344,7 @@ const EarCanalMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.earCanalCondition}</strong>?
                   </div>
                   <div className="modal-footer">

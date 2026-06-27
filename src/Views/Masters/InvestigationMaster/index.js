@@ -12,6 +12,7 @@ import {
   DG_MAS_COLLECTION,
   DG_MAS_INVESTIGATION_CATEGORY,
   DG_MAS_INVESTIGATION_METHODOLOGY,
+  LABOLATORY_MAIN_CHARGECODE_ID,
 } from "../../../config/apiConfig"
 import { ADD_INV_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DROP_DOWN_ERR_MSG, MISSING_MANDOTORY_FIELD_MSG, SELECT_INV_ERR_MSG, UPDATE_INV_SUCC_MSG } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
@@ -106,7 +107,7 @@ const InvestigationMaster = () => {
 
         const [investigationsRes, departmentsRes, modalitiesRes, samplesRes, containersRes, uomsRes, methodologiesRes, categoriesRes] =
           await Promise.all([
-            getRequest(`${MAS_INVESTIGATION}/getAll/0/1`),
+            getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${LABOLATORY_MAIN_CHARGECODE_ID}`),
             getRequest(`${MAS_MAIN_CHARGE_CODE}/getAll/1`),
             getRequest(`${MAS_SUB_CHARGE_CODE}/getAll/1`),
             getRequest(`${MAS_DG_SAMPLE}/getAll/1`),
@@ -274,7 +275,7 @@ const InvestigationMaster = () => {
   }
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y"
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y"
     setConfirmDialog({ isOpen: true, investigationId: id, newStatus, name })
   }
 
@@ -290,7 +291,7 @@ const InvestigationMaster = () => {
         if (response && response.status === 200) {
           setPopupMessage({
             message: `Investigation "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -316,7 +317,7 @@ const InvestigationMaster = () => {
 
   const fetchInvestigations = async () => {
     try {
-      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0`)
+      const investigationsRes = await getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${LABOLATORY_MAIN_CHARGECODE_ID}`);
       if (investigationsRes && investigationsRes.response) {
         setInvestigations(
           investigationsRes.response.map((item) => ({
@@ -636,12 +637,12 @@ const InvestigationMaster = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={item.status === "y"}
+                                checked={item.status?.toLowerCase() === "y"}
                                 onChange={() => handleSwitchChange(item.investigationId, item.status, item.investigationName)}
                                 id={`switch-${item.investigationId}`}
                               />
                               <label className="form-check-label ms-2" htmlFor={`switch-${item.investigationId}`}>
-                                {item.status === "y" ? "Active" : "Inactive"}
+                                {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
@@ -1115,7 +1116,7 @@ const InvestigationMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

@@ -111,7 +111,9 @@ const MaritalStatusMaster = () => {
               status.id === editingStatus.id ? response.response : status
             )
           );
-          showPopup(UPDATE_MARITAL_STATUS_SUCC_MSG, "success");
+          showPopup(UPDATE_MARITAL_STATUS_SUCC_MSG, "success", () => {
+                    fetchMaritalStatusData();
+                });
         }
       } else {
         // Add new marital status
@@ -122,15 +124,16 @@ const MaritalStatusMaster = () => {
 
         if (response && response.response) {
           setMaritalStatusData((prevData) => [...prevData, response.response]);
-          showPopup(ADD_MARITAL_STATUS_SUCC_MSG, "success");
+          showPopup(ADD_MARITAL_STATUS_SUCC_MSG, "success", () => {
+                    fetchMaritalStatusData();
+                });
         }
       }
 
       setEditingStatus(null);
       setFormData({ name: "" });
       setShowForm(false);
-      fetchMaritalStatusData();
-    } catch (err) {
+      } catch (err) {
       console.error("Error saving marital status data:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
@@ -138,13 +141,14 @@ const MaritalStatusMaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -160,7 +164,7 @@ const MaritalStatusMaster = () => {
           `${MAS_MARITAL_STATUS}/status/${confirmDialog.maritalStatusId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setMaritalStatusData((prevData) =>
             prevData.map((status) =>
               status.id === confirmDialog.maritalStatusId
@@ -168,10 +172,9 @@ const MaritalStatusMaster = () => {
                 : status
             )
           );
-          showPopup(
-            `Marital status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Marital status ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchMaritalStatusData();
+                    });
         }
       } catch (err) {
         console.error("Error updating marital status status:", err);
@@ -282,12 +285,12 @@ const MaritalStatusMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={status.status === "y"}
-                                    onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+                                    checked={status.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(status.id, status.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${status.id}`}
                                   />
                                   <label className="form-check-label px-0" htmlFor={`switch-${status.id}`}>
-                                    {status.status === "y" ? "Active" : "Deactivated"}
+                                    {status.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -297,7 +300,7 @@ const MaritalStatusMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(status)}
-                                  disabled={status.status !== "y"}
+                                  disabled={status.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -372,7 +375,7 @@ const MaritalStatusMaster = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {maritalStatusData.find((status) => status.id === confirmDialog.maritalStatusId)?.name || "this status"}
                           </strong>

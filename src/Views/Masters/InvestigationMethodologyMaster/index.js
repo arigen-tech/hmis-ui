@@ -96,8 +96,9 @@ const InvestigationMethodologyMaster = () => {
                 });
 
                 if (response && response.status === 200) {
+                    showPopup(UPDATE_INV_METHODOLOGY_SUCC_MSG, "success", () => {
                     fetchMethodologies();
-                    showPopup(UPDATE_INV_METHODOLOGY_SUCC_MSG, "success");
+                });
                 }
             } else {
                 // Add new methodology
@@ -107,8 +108,9 @@ const InvestigationMethodologyMaster = () => {
                 });
 
                 if (response && response.status === 200) {
+                    showPopup(ADD_INV_METHODOLOGY_SUCC_MSG, "success", () => {
                     fetchMethodologies();
-                    showPopup(ADD_INV_METHODOLOGY_SUCC_MSG, "success");
+                });
                 }
             }
 
@@ -124,12 +126,13 @@ const InvestigationMethodologyMaster = () => {
     };
 
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };

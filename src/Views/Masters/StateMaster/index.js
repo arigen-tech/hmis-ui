@@ -165,7 +165,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchStates();
             setShowForm(false);
           },
         });
@@ -189,7 +188,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchStates();
             setShowForm(false);
           },
         });
@@ -211,12 +209,13 @@ const handleSave = async (e) => {
   }
 };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -236,12 +235,12 @@ const handleSave = async (e) => {
                 `${MAS_STATE}/status/${confirmDialog.stateId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `State "${
                         confirmDialog.stateName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -391,15 +390,15 @@ const handleSave = async (e) => {
                                                                         <input
                                                                             className="form-check-input"
                                                                             type="checkbox"
-                                                                            checked={state.status === "y"}
-                                                                            onChange={() => handleSwitchChange(state.id, state.status === "y" ? "n" : "y")}
+                                                                            checked={state.status?.toLowerCase() === "y"}
+                                                                            onChange={() => handleSwitchChange(state.id, state.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                             id={`switch-${state.id}`}
                                                                         />
                                                                         <label
                                                                             className="form-check-label px-0"
                                                                             htmlFor={`switch-${state.id}`}
                                                                         >
-                                                                            {state.status === "y" ? "Active" : "Deactivated"}
+                                                                            {state.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                         </label>
                                                                     </div>
                                                                 </td>
@@ -407,7 +406,7 @@ const handleSave = async (e) => {
                                                                     <button
                                                                         className="btn btn-sm btn-success me-2"
                                                                         onClick={() => handleEdit(state)}
-                                                                        disabled={state.status !== "y"}
+                                                                        disabled={state.status?.toLowerCase() !== "y"}
                                                                     >
                                                                         <i className="fa fa-pencil"></i>
                                                                     </button>
@@ -513,7 +512,7 @@ const handleSave = async (e) => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{states.find((state) => state.id === confirmDialog.stateId)?.stateName}</strong>?
                                                 </p>
                                             </div>

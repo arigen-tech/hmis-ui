@@ -393,9 +393,9 @@ const SurgeryPricing = () => {
         const response = await putRequest(
           `${MAS_SURGERY_PRICING}/status/${confirmDialog.itemId}?status=${confirmDialog.newStatus}`
         )
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
-            message: `Surgery pricing ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            message: `Surgery pricing ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             type: "success",
             onClose: () => {
               setPopupMessage(null)
@@ -530,16 +530,16 @@ const SurgeryPricing = () => {
                                     <input
                                       className="form-check-input"
                                       type="checkbox"
-                                      checked={item.status === "y"}
+                                      checked={item.status?.toLowerCase() === "y"}
                                       onChange={() => handleSwitchChange(
                                         item.surgeryPricingId,
                                         item.surgeryName,
-                                        item.status === "y" ? "n" : "y"
+                                        item.status?.toLowerCase() === "y" ? "n" : "y"
                                       )}
                                       id={`switch-${item.surgeryPricingId}`}
                                     />
                                     <label className="form-check-label px-0" htmlFor={`switch-${item.surgeryPricingId}`}>
-                                      {item.status === "y" ? "Active" : "Inactive"}
+                                      {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                     </label>
                                   </div>
                                 </td>
@@ -547,7 +547,7 @@ const SurgeryPricing = () => {
                                   <button
                                     className="btn btn-sm btn-success me-2"
                                     onClick={() => handleEdit(item)}
-                                    disabled={item.status !== "y"}
+                                    disabled={item.status?.toLowerCase() !== "y"}
                                   >
                                     <i className="fa fa-pencil"></i>
                                   </button>
@@ -749,7 +749,7 @@ const SurgeryPricing = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} 
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} 
                           <strong> {confirmDialog.itemName}</strong> surgery pricing?
                         </p>
                       </div>

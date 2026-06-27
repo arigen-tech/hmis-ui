@@ -145,15 +145,17 @@ const ToothConditionMaster = () => {
         const response = await putRequest(`${MAS_TOOTH_CONDITION}/update/${editingRecord.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchToothConditionData();
-          showPopup(UPDATE_TOOTH_CONDITION_SUCC_MSG, "success");
+          showPopup(UPDATE_TOOTH_CONDITION_SUCC_MSG, "success", () => {
+                    fetchToothConditionData();
+                });
         }
       } else {
         const response = await postRequest(`${MAS_TOOTH_CONDITION}/create`, requestData);
 
         if (response && response.status === 200) {
-          fetchToothConditionData();
-          showPopup(ADD_TOOTH_CONDITION_SUCC_MSG, "success");
+          showPopup(ADD_TOOTH_CONDITION_SUCC_MSG, "success", () => {
+                    fetchToothConditionData();
+                });
         }
       }
 
@@ -168,13 +170,14 @@ const ToothConditionMaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -189,7 +192,7 @@ const ToothConditionMaster = () => {
         const response = await putRequest(
           `${MAS_TOOTH_CONDITION}/status/${confirmDialog.conditionId}?status=${confirmDialog.newStatus}`
         );
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setToothConditionData((prevData) =>
             prevData.map((toothCondition) =>
               toothCondition.id === confirmDialog.conditionId
@@ -197,10 +200,9 @@ const ToothConditionMaster = () => {
                 : toothCondition
             )
           );
-          showPopup(
-            `Tooth Condition ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Tooth Condition ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchToothConditionData();
+                    });
         }
       } catch (err) {
         console.error("Error updating tooth condition status:", err);
@@ -323,10 +325,10 @@ const ToothConditionMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={toothCondition.status === "y"}
+                                    checked={toothCondition.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
                                       toothCondition.id,
-                                      toothCondition.status === "y" ? "n" : "y",
+                                      toothCondition.status?.toLowerCase() === "y" ? "n" : "y",
                                       toothCondition.conditionName
                                     )}
                                     id={`switch-${toothCondition.id}`}
@@ -335,7 +337,7 @@ const ToothConditionMaster = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${toothCondition.id}`}
                                   >
-                                    {toothCondition.status === "y" ? "Active" : "Deactivated"}
+                                    {toothCondition.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -343,7 +345,7 @@ const ToothConditionMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(toothCondition)}
-                                  disabled={toothCondition.status !== "y"}
+                                  disabled={toothCondition.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -444,7 +446,7 @@ const ToothConditionMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{confirmDialog.conditionName}</strong>?
                         </p>
                       </div>

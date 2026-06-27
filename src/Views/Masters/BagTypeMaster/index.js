@@ -180,8 +180,7 @@ const handleInputChange = (e) => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData(0);
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Update failed");
@@ -199,8 +198,7 @@ const handleInputChange = (e) => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData(0);
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Save failed");
@@ -217,7 +215,7 @@ const handleInputChange = (e) => {
 
   const handleSwitchChange = (bagTypeId, currentStatus) => {
     const bagType = data.find((b) => b.bagTypeId === bagTypeId);
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
       bagTypeId,
@@ -237,10 +235,10 @@ const handleInputChange = (e) => {
           `${MAS_BLOOD_BAG_TYPE}/status/${confirmDialog.bagTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Bag type "${confirmDialog.bagTypeName}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -269,8 +267,11 @@ const handleInputChange = (e) => {
   };
 
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   return (
@@ -505,7 +506,7 @@ const handleInputChange = (e) => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{confirmDialog.bagTypeName}</strong>?
                         </p>
                       </div>

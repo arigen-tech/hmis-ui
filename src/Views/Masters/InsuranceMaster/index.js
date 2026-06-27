@@ -219,7 +219,7 @@ else {
     setConfirmDialog({
       isOpen: true,
       reccord: rec,
-      newStatus: rec.status === "y" ? "n" : "y",
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
@@ -238,12 +238,12 @@ else {
                 `${MAS_INSURANCE}/status/${confirmDialog.reccord.insuranceId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Insurance "${
                         confirmDialog.reccord.insuranceName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -263,7 +263,7 @@ else {
             console.error("Status update error:", error);
 
             const errorMsg =
-                confirmDialog.newStatus === "y"
+                confirmDialog.newStatus?.toLowerCase() === "y"
                     ? ACTIVATE_INSURANCE_FAIL
                     : DEACTIVATE_INSURANCE_FAIL;
 
@@ -279,8 +279,11 @@ else {
         newStatus: "",
     });
 };
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleCancel = () => {
@@ -386,13 +389,13 @@ else {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={rec.status === "y"}
+                                  checked={rec.status?.toLowerCase() === "y"}
                                   onChange={() => handleStatusChange(rec)}
                                   id={`switch-${rec.insuranceId}`}
                                   disabled={loading}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${rec.insuranceId}`}>
-                                  {rec.status === "y" ? "Active" : "Deactivated"}
+                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -400,7 +403,7 @@ else {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y" || loading}
+                                disabled={rec.status?.toLowerCase() !== "y" || loading}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -519,7 +522,7 @@ else {
               <div className="modal-body">
                 <p>
                   Are you sure you want to{" "}
-                  {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+                  {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} this record?
                 </p>
               </div>
               <div className="modal-footer">

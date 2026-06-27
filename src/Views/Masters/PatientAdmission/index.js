@@ -355,7 +355,9 @@ const PatientAdmission = () => {
         );
 
         setPatientData(updatedData);
-        showPopup("Patient admission updated successfully!", "success");
+        showPopup("Patient admission updated successfully!", "success", () => {
+                    fetchData();
+                });
       } else {
         // Add new patient admission
         const newPatient = {
@@ -375,7 +377,9 @@ const PatientAdmission = () => {
         };
 
         setPatientData([...patientData, newPatient]);
-        showPopup("New patient admission added successfully!", "success");
+        showPopup("New patient admission added successfully!", "success", () => {
+                    fetchData();
+                });
       }
 
       setEditingPatient(null);
@@ -402,13 +406,14 @@ const PatientAdmission = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -443,7 +448,7 @@ const PatientAdmission = () => {
         );
 
         setPatientData(updatedData);
-        showPopup(`Patient admission ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+        showPopup(`Patient admission ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success");
       } catch (err) {
         console.error("Error updating patient admission status:", err);
         showPopup(`Failed to update status: ${err.message}`, "error");
@@ -596,15 +601,15 @@ const PatientAdmission = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={patient.status === "y"}
-                                    onChange={() => handleSwitchChange(patient.id, patient.status === "y" ? "n" : "y")}
+                                    checked={patient.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(patient.id, patient.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${patient.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${patient.id}`}
                                   >
-                                    {patient.status === "y" ? 'Active' : 'Inactive'}
+                                    {patient.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -613,7 +618,7 @@ const PatientAdmission = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(patient)}
-                                  disabled={patient.status !== "y"}
+                                  disabled={patient.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -864,11 +869,11 @@ const PatientAdmission = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {patientData.find(patient => patient.id === confirmDialog.patientId)?.patientName}</strong>?
                         </p>
                         <p className="text-muted">
-                          {confirmDialog.newStatus === "y"
+                          {confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "This will make the patient admission active."
                             : "This will mark the patient admission as inactive."}
                         </p>

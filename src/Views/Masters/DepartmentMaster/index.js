@@ -227,7 +227,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchDepartments();
             setShowForm(false);
           },
         });
@@ -251,7 +250,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchDepartments();
             setShowForm(false);
           },
         });
@@ -275,12 +273,13 @@ const handleSave = async (e) => {
   }
 };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -299,12 +298,12 @@ const [saving, setSaving] = useState(false);
                 `${MAS_DEPARTMENT}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Department "${
                         confirmDialog.name
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -444,12 +443,12 @@ const [saving, setSaving] = useState(false);
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
-                                                                        checked={dept.status === "y"}
-                                                                        onChange={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
+                                                                        checked={dept.status?.toLowerCase() === "y"}
+                                                                        onChange={() => handleSwitchChange(dept.id, dept.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                         id={`switch-${dept.id}`}
                                                                     />
                                                                     <label className="form-check-label px-0" htmlFor={`switch-${dept.id}`}>
-                                                                        {dept.status === "y" ? "Active" : "Deactivated"}
+                                                                        {dept.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                     </label>
                                                                 </div>
                                                             </td>
@@ -457,7 +456,7 @@ const [saving, setSaving] = useState(false);
                                                                 <button
                                                                     className="btn btn-sm btn-success me-2"
                                                                     onClick={() => handleEdit(dept)}
-                                                                    disabled={dept.status !== "y"}
+                                                                    disabled={dept.status?.toLowerCase() !== "y"}
                                                                 >
                                                                     <i className="fa fa-pencil"></i>
                                                                 </button>
@@ -643,7 +642,7 @@ const [saving, setSaving] = useState(false);
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>
                                                         {departments.find((dept) => dept.id === confirmDialog.categoryId)?.departmentName}
                                                     </strong>

@@ -139,16 +139,19 @@ const CervixPosition = () => {
           status: editingRecord.status,
         });
 
-        showPopup(UPDATE_CERVIX, "success");
+        showPopup(UPDATE_CERVIX, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_CERVIX_POSITION}/create`, {
           cervixPosition: formData.cervixPosition,
           status: "Y",
         });
 
-        showPopup(ADD_CERVIX, "success");
+        showPopup(ADD_CERVIX, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       resetForm();
       setEditingRecord(null);
       setShowForm(false);
@@ -190,8 +193,11 @@ const CervixPosition = () => {
     });
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -340,7 +346,7 @@ const CervixPosition = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.cervixPosition}</strong>?
                   </div>
                   <div className="modal-footer">

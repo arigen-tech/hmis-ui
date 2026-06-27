@@ -205,8 +205,7 @@ setUserDepartmentData([...transformedData].reverse());
         async () => {
 
            
-            await fetchUserDepartmentData();
-            setCurrentPage(1);
+            await setCurrentPage(1);
             setEditingDepartment(null);
 
             setFormData({
@@ -250,8 +249,7 @@ setUserDepartmentData([...transformedData].reverse());
                     "success",
                     async () => {
                         
-                        await fetchUserDepartmentData();
-                        setCurrentPage(1);
+                        await setCurrentPage(1);
 
                         setEditingDepartment(null);
 
@@ -490,15 +488,15 @@ setUserDepartmentData([...transformedData].reverse());
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={userDept.status === "y"}
-                                                                    onChange={() => handleSwitchChange(userDept.id, userDept.status === "y" ? "n" : "y")}
+                                                                    checked={userDept.status?.toLowerCase() === "y"}
+                                                                    onChange={() => handleSwitchChange(userDept.id, userDept.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                     id={`switch-${userDept.id}`}
                                                                 />
                                                                 <label
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${userDept.id}`}
                                                                 >
-                                                                    {userDept.status === "y" ? 'Active' : 'Deactivated'}
+                                                                    {userDept.status?.toLowerCase() === "y" ? 'Active' : 'Deactivated'}
                                                                 </label>
                                                             </div>
                                                         </td> */}
@@ -506,7 +504,7 @@ setUserDepartmentData([...transformedData].reverse());
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleEdit(userDept)}
-                                                            // disabled={userDept.status !== "y"}
+                                                            // disabled={userDept.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -656,7 +654,7 @@ setUserDepartmentData([...transformedData].reverse());
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'} <strong>
                                                     {userDepartmentData.find(userDept => userDept.id === confirmDialog.departmentId)?.userName} - 
                                                     {userDepartmentData.find(userDept => userDept.id === confirmDialog.departmentId)?.departmentName}
                                                     </strong>?

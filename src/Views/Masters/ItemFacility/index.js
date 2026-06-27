@@ -162,7 +162,6 @@ const ItemFacility = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchFacilityData();
               setCurrentPage(1);
             }
           });
@@ -178,7 +177,6 @@ const ItemFacility = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchFacilityData();
               setCurrentPage(1);
             }
           });
@@ -204,13 +202,14 @@ const ItemFacility = () => {
     });
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -231,9 +230,9 @@ const ItemFacility = () => {
           `${MAS_ITEM_FACILITY}/status/${confirmDialog.facilityId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
-            message: `Facility master ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            message: `Facility master ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
@@ -288,15 +287,17 @@ const ItemFacility = () => {
   };
 
   const handleActivate = async () => {
-    if (editingFacility && editingFacility.status === "n") {
+    if (editingFacility && editingFacility.status?.toLowerCase() === "n") {
       setProcess(true);
       try {
         const response = await putRequest(
           `${MAS_ITEM_FACILITY}/status/${editingFacility.facilityId}?status=y`
         );
 
-        if (response.status === 200) {
-          showPopup("Facility activated successfully!", "success");
+        if (response && response.status === 200) {
+          showPopup("Facility activated successfully!", "success", () => {
+                        fetchFacilityData();
+                    });
           resetForm();
           await fetchFacilityData();
           setCurrentPage(1);
@@ -397,11 +398,11 @@ const ItemFacility = () => {
                                     <input
                                       className="form-check-input"
                                       type="checkbox"
-                                      checked={item.status === "y"}
+                                      checked={item.status?.toLowerCase() === "y"}
                                       onChange={() => handleSwitchChange(
                                         item.facilityId, 
                                         item.facilityName, 
-                                        item.status === "y" ? "n" : "y"
+                                        item.status?.toLowerCase() === "y" ? "n" : "y"
                                       )}
                                       id={`switch-${item.facilityId}`}
                                     />
@@ -409,7 +410,7 @@ const ItemFacility = () => {
                                       className="form-check-label px-0"
                                       htmlFor={`switch-${item.facilityId}`}
                                     >
-                                      {item.status === "y" ? "Active" : "Deactivated"}
+                                      {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                     </label>
                                   </div>
                                 </td>
@@ -417,7 +418,7 @@ const ItemFacility = () => {
                                   <button
                                     className="btn btn-sm btn-success me-2"
                                     onClick={() => handleEdit(item)}
-                                    disabled={item.status !== "y"}
+                                    disabled={item.status?.toLowerCase() !== "y"}
                                   >
                                     <i className="fa fa-pencil"></i>
                                   </button>
@@ -515,7 +516,7 @@ const ItemFacility = () => {
                         {process ? "Processing..." : (editingFacility ? 'Update' : 'Save')}
                       </button>
                       
-                      {editingFacility && editingFacility.status === "n" && (
+                      {editingFacility && editingFacility.status?.toLowerCase() === "n" && (
                         <button
                           type="button"
                           className="btn btn-success me-2"
@@ -551,7 +552,7 @@ const ItemFacility = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {confirmDialog.facilityName}
                           </strong>

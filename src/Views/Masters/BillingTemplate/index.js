@@ -442,7 +442,7 @@ const BillingTemplate = () => {
       if (success) {
         // Set popup with onClose callback that refreshes data
         setPopupMessage({
-          message: `Template ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          message: `Template ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
           type: "success",
           onClose: () => {
             setPopupMessage(null)
@@ -685,12 +685,12 @@ const BillingTemplate = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={template.status === "y"}
-                                  onChange={() => handleSwitchChange(template.templateId, template.status === "y" ? "n" : "y")}
+                                  checked={template.status?.toLowerCase() === "y"}
+                                  onChange={() => handleSwitchChange(template.templateId, template.status?.toLowerCase() === "y" ? "n" : "y")}
                                   id={`switch-${template.templateId}`}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${template.templateId}`}>
-                                  {template.status === "y" ? "Active" : "Inactive"}
+                                  {template.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                 </label>
                               </div>
                             </td>
@@ -698,7 +698,7 @@ const BillingTemplate = () => {
                               <button
                                 className="btn btn-sm btn-success"
                                 onClick={() => handleEdit(template)}
-                                disabled={template.status !== "y"}
+                                disabled={template.status?.toLowerCase() !== "y"}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -969,7 +969,7 @@ const BillingTemplate = () => {
                         <button type="button" className="btn-close" onClick={() => handleConfirm(false)}></button>
                       </div>
                       <div className="modal-body">
-                        <p>Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this template?</p>
+                        <p>Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} this template?</p>
                       </div>
                       <div className="modal-footer">
                         <button type="button" className="btn btn-secondary" onClick={() => handleConfirm(false)}>Cancel</button>
