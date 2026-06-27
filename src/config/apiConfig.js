@@ -655,3 +655,5 @@ export const ENT_MAS_PINNA = `${MASTERS}/entMasPinna`;
 export const ABDM_SEND_AADHAAR_OTP = `/api/v1/abdm/create/send-otp-aadhaar`;
 export const LABOLATORY_MAIN_CHARGECODE_ID = 1;
 export const REDIOLOGY_MAIN_CHARGECODE_ID = 2;
+export const ABDM_GENERATE_CAPTCHA = `/api/v1/abdm/m2/generate-captcha`;
+export const ABDM_VERIFY_HEALTH_ID = `/api/v1/abdm/m2/verify-health-id`;
