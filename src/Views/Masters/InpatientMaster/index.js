@@ -225,9 +225,7 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
           : rec
       );
       setData(updated);
-      showPopup("Record updated!", "success", () => {
-                    fetchData();
-                });
+      showPopup("Record updated!", "success");
     } else {
       const newRec = {
         inpatient_id: data.length + 1,
@@ -236,9 +234,7 @@ const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
         last_update_date: timestamp,
       };
       setData([...data, newRec]);
-      showPopup("Record added!", "success", () => {
-                    fetchData();
-                });
+      showPopup("Record added!", "success");
     }
 
     setShowForm(false);
