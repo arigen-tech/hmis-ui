@@ -1,4 +1,8 @@
-import { DEFAULT_RSA_PUBLIC_KEY } from "../config/apiConfig";
+import {
+  DEFAULT_RSA_PUBLIC_KEY,
+  ABDM_GENERATE_CAPTCHA,
+  ABDM_VERIFY_HEALTH_ID,
+} from "../config/apiConfig";
 
 const INTEGRATION_BASE_URL = "http://localhost:8080";
 const ABDM_PREFIX = "/api/v1/abdm";
@@ -167,6 +171,18 @@ export const integrationService = {
 
   async verifyAbdmAadhaarOtp(payload) {
     return postIntegration(`${ABDM_PREFIX}/create/verify-otp-aadhaar`, payload);
+  },
+
+  async generateAbdmCaptcha(payload = {}) {
+    return postIntegration(ABDM_GENERATE_CAPTCHA, payload);
+  },
+
+  async verifyAbdmHealthId(payload) {
+    if (!payload?.healthId) {
+      throw new Error("ABHA health ID is required.");
+    }
+
+    return postIntegration(ABDM_VERIFY_HEALTH_ID, payload);
   },
 
   async verifyAbdmAadhaarAnotherNumber(payload) {
