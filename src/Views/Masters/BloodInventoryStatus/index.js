@@ -41,8 +41,11 @@ const BloodInventoryStatus = () => {
 
   const MAX_LENGTH = 50;
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const formatDate = (dateString) => {
@@ -134,7 +137,6 @@ const BloodInventoryStatus = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -157,7 +159,6 @@ const BloodInventoryStatus = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -203,7 +204,7 @@ const BloodInventoryStatus = () => {
           `${MAS_BLOOD_INVENTORY_STATUS}/status/${confirmDialog.record.inventoryStatusId}?status=${confirmDialog.newStatus}`,
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Blood Inventory Status "${
               confirmDialog.record.statusCode

@@ -132,7 +132,6 @@ const ServiceCategoryMaster = () => {
               gstPercent: "",
               registrationCost: "",
             });
-            fetchServicecategoryData();
             setCurrentPage(1);
           }
         });
@@ -170,9 +169,9 @@ const ServiceCategoryMaster = () => {
           `${MAS_SERVICE_CATEGORY}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
-            message: `Service Category ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+            message: `Service Category ${confirmDialog.newStatus?.toLowerCase() === "y" ? 'activated' : 'deactivated'} successfully!`,
             type: "success",
             onClose: () => {
               setPopupMessage(null);
@@ -312,15 +311,15 @@ const ServiceCategoryMaster = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={item.status === "y"}
-                                  onChange={() => handleSwitchChange(item.id, item.serviceCatName, item.status === "y" ? "n" : "y")}
+                                  checked={item.status?.toLowerCase() === "y"}
+                                  onChange={() => handleSwitchChange(item.id, item.serviceCatName, item.status?.toLowerCase() === "y" ? "n" : "y")}
                                   id={`switch-${item.id}`}
                                 />
                                 <label
                                   className="form-check-label px-0"
                                   htmlFor={`switch-${item.id}`}
                                 >
-                                  {item.status === "y" ? "Active" : "Deactivated"}
+                                  {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -328,7 +327,7 @@ const ServiceCategoryMaster = () => {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(item)}
-                                disabled={item.status !== "y"}
+                                disabled={item.status?.toLowerCase() !== "y"}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -493,7 +492,7 @@ const ServiceCategoryMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {currentItem}
                           </strong>

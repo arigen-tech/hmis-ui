@@ -124,14 +124,17 @@ const MembraneStatusMaster = () => {
           `${MAS_OB_PVMEMBRANE}/update/${editingRecord.id}`,
           { membraneStatus: formData.membraneStatus.trim() }
         );
-        showPopup(UPDATE_MEMBRANE, "success");
+        showPopup(UPDATE_MEMBRANE, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OB_PVMEMBRANE}/create`, {
           membraneStatus: formData.membraneStatus.trim(),
         });
-        showPopup(ADD_MEMBRANE, "success");
+        showPopup(ADD_MEMBRANE, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_MEMBRANE, "error");
@@ -328,7 +331,7 @@ const MembraneStatusMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y"
+                    {confirmDialog.newStatus?.toLowerCase() === "y"
                       ? "activate"
                       : "deactivate"}{" "}
                     <strong>

@@ -114,14 +114,17 @@ const StationPresentingMaster = () => {
           ...editingRecord,
           stationValue: formData.stationValue.trim(),
         });
-        showPopup(UPDATE_STATION_PRESENTING, "success");
+        showPopup(UPDATE_STATION_PRESENTING, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_STATION_PRESENTATION}/create`, {
           stationValue: formData.stationValue.trim(),
         });
-        showPopup(ADD_STATION_PRESENTING, "success");
+        showPopup(ADD_STATION_PRESENTING, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch (error) {
       showPopup(FAIL_STATION_PRESENTING, "error");
@@ -168,8 +171,11 @@ const StationPresentingMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -329,7 +335,7 @@ const StationPresentingMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.stationValue}</strong>? {/* Fixed */}
                   </div>
                   <div className="modal-footer">

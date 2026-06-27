@@ -432,7 +432,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchHospitals();
             setShowForm(false);
           },
         });
@@ -456,7 +455,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchHospitals();
             setShowForm(false);
           },
         });
@@ -478,13 +476,14 @@ const handleSave = async (e) => {
   }
 };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -502,12 +501,12 @@ const [saving, setSaving] = useState(false);
                 `${MAS_HOSPITAL}/status/${confirmDialog.hospitalId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Hospital "${
                         confirmDialog.hospitalName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -685,11 +684,11 @@ const [saving, setSaving] = useState(false);
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={hospital.status === "y"}
+                                    checked={hospital.status?.toLowerCase() === "y"}
                                     onChange={() =>
                                       handleSwitchChange(
                                         hospital.id,
-                                        hospital.status === "y" ? "n" : "y",
+                                        hospital.status?.toLowerCase() === "y" ? "n" : "y",
                                       )
                                     }
                                     id={`switch-${hospital.id}`}
@@ -698,7 +697,7 @@ const [saving, setSaving] = useState(false);
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${hospital.id}`}
                                   >
-                                    {hospital.status === "y"
+                                    {hospital.status?.toLowerCase() === "y"
                                       ? "Active"
                                       : "Deactivated"}
                                   </label>
@@ -708,7 +707,7 @@ const [saving, setSaving] = useState(false);
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(hospital)}
-                                  disabled={hospital.status !== "y"}
+                                  disabled={hospital.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -1173,7 +1172,7 @@ const [saving, setSaving] = useState(false);
               <div className="modal-body">
                 <p>
                   Are you sure you want to{" "}
-                  {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                  {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                   <strong>
                     {
                       hospitals.find(

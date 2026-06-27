@@ -253,12 +253,12 @@ const WardCategoryMaster = () => {
                 `${MAS_WARD_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Ward category "${
                         confirmDialog.categoryName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -390,15 +390,15 @@ const WardCategoryMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={category.status === "y"}
+                                    checked={category.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
                                       category.id, 
-                                      category.status === "y" ? "n" : "y",
+                                      category.status?.toLowerCase() === "y" ? "n" : "y",
                                       category.categoryName
                                     )}
                                   />
                                   <label className="form-check-label ms-2">
-                                    {category.status === "y" ? "Active" : "Inactive"}
+                                    {category.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
                               </td>
@@ -407,7 +407,7 @@ const WardCategoryMaster = () => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(category)}
-                                  disabled={category.status !== "y"}
+                                  disabled={category.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -513,7 +513,7 @@ const WardCategoryMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.categoryName}</strong>?
                       </div>
                       <div className="modal-footer">

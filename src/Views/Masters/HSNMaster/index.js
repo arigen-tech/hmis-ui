@@ -86,8 +86,8 @@ const HSNMaster = () => {
     )
   )
   .sort((a, b) => {
-    if (a.status === "y" && b.status !== "y") return -1;
-    if (a.status !== "y" && b.status === "y") return 1;
+    if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y") return -1;
+    if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y") return 1;
     return 0;
   });
 
@@ -176,8 +176,7 @@ if (
                 effectiveTo: "",
               });
               setShowForm(false);
-              fetchHsnData();
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Update failed");
@@ -203,8 +202,7 @@ if (
                 effectiveTo: "",
               });
               setShowForm(false);
-              fetchHsnData();
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Save failed");
@@ -224,13 +222,14 @@ if (
   };
 
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -247,9 +246,9 @@ if (
         `${MAS_HSN}/status/${confirmDialog.hsnId}?status=${confirmDialog.newStatus}`
       );
 
-      if (response.status === 200) {
+      if (response && response.status === 200) {
         setPopupMessage({
-          message: `HSN ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          message: `HSN ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
           type: "success",
           onClose: () => {
             setPopupMessage(null);
@@ -406,15 +405,15 @@ if (
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={hsn.status === "y"}
-                                  onChange={() => handleSwitchChange(hsn.hsnCode, hsn.status === "y" ? "n" : "y")}
+                                  checked={hsn.status?.toLowerCase() === "y"}
+                                  onChange={() => handleSwitchChange(hsn.hsnCode, hsn.status?.toLowerCase() === "y" ? "n" : "y")}
                                   id={`switch-${hsn.hsnCode}`}
                                 />
                                 <label
                                   className="form-check-label px-0"
                                   htmlFor={`switch-${hsn.hsnCode}`}
                                 >
-                                  {hsn.status === "y" ? 'Active' : 'Deactivated'}
+                                  {hsn.status?.toLowerCase() === "y" ? 'Active' : 'Deactivated'}
                                 </label>
                               </div>
                             </td>
@@ -422,7 +421,7 @@ if (
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(hsn)}
-                                disabled={hsn.status !== "y"}
+                                disabled={hsn.status?.toLowerCase() !== "y"}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -568,7 +567,7 @@ if (
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{hsnData.find(hsn => hsn.hsnCode === confirmDialog.hsnId)?.hsnCode}</strong>?
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'} <strong>{hsnData.find(hsn => hsn.hsnCode === confirmDialog.hsnId)?.hsnCode}</strong>?
                         </p>
                       </div>
                       <div className="modal-footer">

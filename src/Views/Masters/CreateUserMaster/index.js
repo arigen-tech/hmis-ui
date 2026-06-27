@@ -66,7 +66,7 @@ const Createusermaster = () => {
         try {
             const data = await getRequest(`${MAS_ROLES}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
-                const allRoles = data.response.filter(role => role.status === 'y');
+                const allRoles = data.response.filter(role => role.status?.toLowerCase() === "y");
                 setAllRolesData(allRoles);
 
                 const assignedIds = formData.rolesIdForUsers
@@ -137,7 +137,7 @@ const Createusermaster = () => {
                 Array.isArray(userDeptRes.response) &&
                 Array.isArray(allDeptRes.response)
             ) {
-                const allDepartments = allDeptRes.response.filter(dep => dep.status === 'y');
+                const allDepartments = allDeptRes.response.filter(dep => dep.status?.toLowerCase() === "y");
                 const userDepartments = userDeptRes.response;
 
                 // Extract assigned department IDs
@@ -233,7 +233,9 @@ const Createusermaster = () => {
             }
 
             if (rolesChanged || departmentsChanged) {
-                showPopup("Roles and/or departments updated successfully!", "success");
+                showPopup("Roles and/or departments updated successfully!", "success", () => {
+                    fetchAllRolesData();
+                });
             } else {
                 showPopup("No changes detected. Nothing was updated.", "info");
             }
@@ -251,12 +253,13 @@ const Createusermaster = () => {
         setEditMode(false);
     };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -280,7 +283,7 @@ const Createusermaster = () => {
                 setFilteredUsers((prevData) => prevData.map(updateUserStatus(confirmDialog.userId, confirmDialog.newStatus)));
 
                 showPopup(
-                    `User ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                    `User ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
                     "success"
                 );
                 fetchUsersData();
@@ -493,7 +496,7 @@ const Createusermaster = () => {
                                                             <td>
                                                                 <button
                                                                     className="btn btn-sm btn-success me-2"
-                                                                    disabled={user.status !== "y"}
+                                                                    disabled={user.status?.toLowerCase() !== "y"}
                                                                     onClick={() => handleEditClick(user)}
                                                                 >
                                                                     <i className="fa fa-pencil"></i>
@@ -504,9 +507,9 @@ const Createusermaster = () => {
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
-                                                                        checked={user.status === "y"}
+                                                                        checked={user.status?.toLowerCase() === "y"}
                                                                         onChange={() => {
-                                                                            const newStatus = user.status === "y" ? "n" : "y"
+                                                                            const newStatus = user.status?.toLowerCase() === "y" ? "n" : "y"
                                                                             setConfirmDialog({
                                                                                 isOpen: true,
                                                                                 userId: user.userId,
@@ -517,7 +520,7 @@ const Createusermaster = () => {
                                                                         id={`switch-${user.userId}`}
                                                                     />
                                                                     <label className="form-check-label px-0" htmlFor={`switch-${user.userId}`}>
-                                                                        {user.status === "y" ? "Active" : "Deactivated"}
+                                                                        {user.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                     </label>
                                                                 </div>
                                                             </td>
@@ -787,7 +790,7 @@ const Createusermaster = () => {
                                                     {confirmDialog.action === "status" ? (
                                                         <>
                                                             Are you sure you want to{" "}
-                                                            <strong>{confirmDialog.newStatus === "y" ? "activate" : "deactivate"}</strong>{" "}
+                                                            <strong>{confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}</strong>{" "}
                                                             <strong>
                                                                 {allUserData.find((user) => user.userId === confirmDialog.userId)?.username}
                                                             </strong>

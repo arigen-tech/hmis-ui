@@ -96,7 +96,7 @@ const DietTypeMaster = () => {
   const filteredDietTypeData = dietTypeData.filter(dietType =>
     dietType.dietTypeName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     dietType.description?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (dietType.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+    (dietType.status?.toLowerCase() === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -160,16 +160,18 @@ const DietTypeMaster = () => {
         const response = await putRequest(`${MAS_DIET_TYPE}/update/${editingDietType.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchDietTypeData();
-          showPopup(UPDATE_DIET_TYPE_SUCC_MSG, "success");
+          showPopup(UPDATE_DIET_TYPE_SUCC_MSG, "success", () => {
+                    fetchDietTypeData();
+                });
         }
       } else {
         // Add new diet type
         const response = await postRequest(`${MAS_DIET_TYPE}/create`, requestData);
 
         if (response && response.status === 200) {
-          fetchDietTypeData();
-          showPopup(ADD_DIET_TYPE_SUCC_MSG, "success");
+          showPopup(ADD_DIET_TYPE_SUCC_MSG, "success", () => {
+                    fetchDietTypeData();
+                });
         }
       }
 
@@ -184,13 +186,14 @@ const DietTypeMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -207,7 +210,7 @@ const DietTypeMaster = () => {
           `${MAS_DIET_TYPE}/status/${confirmDialog.dietTypeId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setDietTypeData((prevData) =>
             prevData.map((dietType) =>
@@ -220,7 +223,9 @@ const DietTypeMaster = () => {
                 : dietType
             )
           );
-          showPopup(`Diet type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Diet type ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchDietTypeData();
+                    });
         }
       } catch (err) {
         console.error("Error updating diet type status:", err);
@@ -336,15 +341,15 @@ const DietTypeMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={dietType.status === "y"}
-                                    onChange={() => handleSwitchChange(dietType.id, dietType.status === "y" ? "n" : "y")}
+                                    checked={dietType.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(dietType.id, dietType.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${dietType.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${dietType.id}`}
                                   >
-                                    {dietType.status === "y" ? 'Active' : 'Inactive'}
+                                    {dietType.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -352,7 +357,7 @@ const DietTypeMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(dietType)}
-                                  disabled={dietType.status !== "y"}
+                                  disabled={dietType.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -457,7 +462,7 @@ const DietTypeMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {dietTypeData.find(dietType => dietType.id === confirmDialog.dietTypeId)?.dietTypeName}</strong> diet type?
                         </p>
                       </div>

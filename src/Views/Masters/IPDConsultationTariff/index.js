@@ -129,7 +129,7 @@ const IPDConsultationTariff = () => {
         }
 
         const categoryOptions = categories
-          .filter(cat => cat.status === "y")
+          .filter(cat => cat.status?.toLowerCase() === "y")
           .map(cat => ({
             id: cat.id || cat.serviceCategoryId,
             name: cat.serviceCatName || cat.serviceCategoryName
@@ -153,7 +153,7 @@ const IPDConsultationTariff = () => {
 
       if (response && response.status === 200 && response.response && Array.isArray(response.response)) {
         const visitTypeOptions = response.response
-          .filter(type => type.status === "y")
+          .filter(type => type.status?.toLowerCase() === "y")
           .map(type => ({
             id: type.visitTypeId,
             name: type.visitTypeName
@@ -177,7 +177,7 @@ const IPDConsultationTariff = () => {
       const response = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
       if (response.status === 200 && Array.isArray(response.response)) {
         const filteredDepartments = response.response.filter(
-          (dept) => dept.departmentTypeName === FILTER_OPD_DEPT && dept.status === "y"
+          (dept) => dept.departmentTypeName === FILTER_OPD_DEPT && dept.status?.toLowerCase() === "y"
         );
         setDepartmentData(filteredDepartments);
         return filteredDepartments;
@@ -483,7 +483,6 @@ const IPDConsultationTariff = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchIPDTariffData(0);
               setShowForm(false);
             }
           });
@@ -549,7 +548,7 @@ const IPDConsultationTariff = () => {
 
   // ================= STATUS SWITCH =================
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
       id: id,
@@ -570,7 +569,7 @@ const IPDConsultationTariff = () => {
         if (response.status === 200) {
           setPopupMessage({
             message: `Record "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -599,8 +598,11 @@ const IPDConsultationTariff = () => {
     });
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleCancel = () => {
@@ -743,7 +745,7 @@ const IPDConsultationTariff = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={rec.status === "y"}
+                                    checked={rec.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
                                       rec.id,
                                       rec.status,
@@ -755,7 +757,7 @@ const IPDConsultationTariff = () => {
                                     className="form-check-label ms-2"
                                     htmlFor={`switch-${rec.id}`}
                                   >
-                                    {rec.status === "y" ? "Active" : "Inactive"}
+                                    {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                   </label>
                                 </div>
                               </td>
@@ -763,7 +765,7 @@ const IPDConsultationTariff = () => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(rec)}
-                                  disabled={rec.status !== "y"}
+                                  disabled={rec.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -979,7 +981,7 @@ const IPDConsultationTariff = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

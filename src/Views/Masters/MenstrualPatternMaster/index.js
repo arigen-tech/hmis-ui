@@ -47,8 +47,11 @@ const MenstrualPatternMaster = () => {
     ).padStart(2, "0")}/${date.getFullYear()}`;
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // ---------- Fetch ----------
@@ -133,16 +136,19 @@ const MenstrualPatternMaster = () => {
           `${MAS_MENSTRUAl_PATTERN}/update/${editingRecord.id}`,
           payload
         );
-        showPopup(UPDATE_MENSTRUAL_PATTERN, "success");
+        showPopup(UPDATE_MENSTRUAL_PATTERN, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_MENSTRUAl_PATTERN}/create`, {
           ...payload,
           status: "Y",
         });
-        showPopup(ADD_MENSTRUAL_PATTERN, "success");
+        showPopup(ADD_MENSTRUAL_PATTERN, "success", () => {
+                    fetchData();
+                });
       }
 
-      fetchData();
       handleCancel();
     } catch (error) {
       console.error(error);
@@ -345,7 +351,7 @@ const MenstrualPatternMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y"
+                    {confirmDialog.newStatus?.toLowerCase() === "y"
                       ? "activate"
                       : "deactivate"}{" "}
                     <strong>

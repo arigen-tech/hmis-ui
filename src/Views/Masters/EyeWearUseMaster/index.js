@@ -50,8 +50,11 @@ const EyeWearUseMaster = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast)
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleSearchChange = (e) => { setSearchQuery(e.target.value); setCurrentPage(1); };
@@ -73,10 +76,14 @@ const EyeWearUseMaster = () => {
 
     if (editingRecord) {
       setData(data.map(rec => rec.id === editingRecord.id ? { ...rec, ...formData, last_update_date: now } : rec));
-      showPopup("Record updated successfully!", "success");
+      showPopup("Record updated successfully!", "success", () => {
+                    fetchData();
+                });
     } else {
       setData([...data, { id: Date.now(), ...formData, last_update_date: now }]);
-      showPopup("New record added successfully!", "success");
+      showPopup("New record added successfully!", "success", () => {
+                    fetchData();
+                });
     }
     resetForm();
   };
@@ -99,7 +106,7 @@ const EyeWearUseMaster = () => {
         rec.id === confirmDialog.recordId ? { ...rec, status: confirmDialog.newStatus } : rec
       ));
       showPopup(
-        confirmDialog.newStatus === "Y" ? "Activated successfully!" : "Deactivated successfully!",
+        confirmDialog.newStatus?.toLowerCase() === "y" ? "Activated successfully!" : "Deactivated successfully!",
         "success"
       );
     }
@@ -155,17 +162,17 @@ const EyeWearUseMaster = () => {
                             <input
                               className="form-check-input"
                               type="checkbox"
-                              checked={rec.status === "Y"}
-                              onChange={() => handleSwitchChange(rec.id, rec.status === "Y" ? "N" : "Y")}
+                              checked={rec.status?.toLowerCase() === "y"}
+                              onChange={() => handleSwitchChange(rec.id, rec.status?.toLowerCase() === "y" ? "N" : "Y")}
                             />
-                            <label className="form-check-label">{rec.status === "Y" ? "Active" : "Inactive"}</label>
+                            <label className="form-check-label">{rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}</label>
                           </div>
                         </td>
                         <td>
                           <button
                             className="btn btn-success btn-sm d-flex align-items-center justify-content-center"
                             onClick={() => handleEdit(rec)}
-                            disabled={rec.status !== "Y"}
+                            disabled={rec.status?.toLowerCase() !== "y"}
                             style={{ width: "32px", height: "32px" }}
                           >
                             <i className="fa fa-pencil"></i>
@@ -212,7 +219,7 @@ const EyeWearUseMaster = () => {
                   </div>
                   <div className="modal-body">
                     <p>
-                      Are you sure you want to {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"} <strong>{data.find((rec) => rec.id === confirmDialog.recordId)?.use_name}</strong>?
+                      Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} <strong>{data.find((rec) => rec.id === confirmDialog.recordId)?.use_name}</strong>?
                     </p>
                   </div>
                   <div className="modal-footer">

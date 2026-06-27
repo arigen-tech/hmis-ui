@@ -158,8 +158,9 @@ const CareLevelMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchCareLevelData();
-          showPopup(UPDATE_CARE_LEVEL_SUCC_MSG, "success");
+          showPopup(UPDATE_CARE_LEVEL_SUCC_MSG, "success", () => {
+                    fetchCareLevelData();
+                });
         }
       } else {
         // Add new care level
@@ -169,8 +170,9 @@ const CareLevelMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchCareLevelData();
-          showPopup(ADD_CARE_LEVEL_SUCC_MSG, "success");
+          showPopup(ADD_CARE_LEVEL_SUCC_MSG, "success", () => {
+                    fetchCareLevelData();
+                });
         }
       }
 
@@ -185,13 +187,14 @@ const CareLevelMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -208,7 +211,7 @@ const CareLevelMaster = () => {
           `${MAS_CARE_LEVEL}/update-status/${confirmDialog.careLevelId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setCareLevelData((prevData) =>
             prevData.map((careLevel) =>
@@ -221,7 +224,9 @@ const CareLevelMaster = () => {
                 : careLevel
             )
           );
-          showPopup(`Care level ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Care level ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchCareLevelData();
+                    });
         }
       } catch (err) {
         console.error("Error updating care level status:", err);
@@ -341,15 +346,15 @@ const CareLevelMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={careLevel.status === "y"}
-                                    onChange={() => handleSwitchChange(careLevel.id, careLevel.status === "y" ? "n" : "y")}
+                                    checked={careLevel.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(careLevel.id, careLevel.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${careLevel.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${careLevel.id}`}
                                   >
-                                    {careLevel.status === "y" ? 'Active' : 'Inactive'}
+                                    {careLevel.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -358,7 +363,7 @@ const CareLevelMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(careLevel)}
-                                  disabled={careLevel.status !== "y"}
+                                  disabled={careLevel.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -456,11 +461,11 @@ const CareLevelMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {careLevelData.find(careLevel => careLevel.id === confirmDialog.careLevelId)?.careLevelName}</strong>?
                         </p>
                         {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
+                          {confirmDialog.newStatus?.toLowerCase() === "y" 
                             ? "This will make the care level available for selection." 
                             : "This will hide the care level from selection."}
                         </p> */}

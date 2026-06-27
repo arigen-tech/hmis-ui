@@ -45,8 +45,11 @@ const CervixConsistencyMaster = () => {
     return `${day}/${month}/${year}`;
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   // Fetch
@@ -196,16 +199,19 @@ const CervixConsistencyMaster = () => {
           `${MAS_CERVIX_CONSISTENCY}/update/${editingRecord.id}`,
           { cervixConsistency: formData.cervixConsistency.trim() }
         );
-        showPopup(UPDATE_CERVIX_CONSISTENCY, "success");
+        showPopup(UPDATE_CERVIX_CONSISTENCY, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_CERVIX_CONSISTENCY}/create`, {
           cervixConsistency: formData.cervixConsistency.trim(),
           status: "Y",
         });
-        showPopup(ADD_CERVIX_CONSISTENCY, "success");
+        showPopup(ADD_CERVIX_CONSISTENCY, "success", () => {
+                    fetchData();
+                });
       }
 
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_CERVIX_CONSISTENCY, "error");
@@ -415,7 +421,7 @@ const CervixConsistencyMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.cervixConsistency}</strong>?
                   </div>
                   <div className="modal-footer">

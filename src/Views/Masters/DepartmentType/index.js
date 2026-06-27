@@ -126,7 +126,6 @@ const resetForm = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        fetchDepartmentTypes();
                         setShowForm(false);
                     }
                 });
@@ -161,7 +160,6 @@ const resetForm = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        fetchDepartmentTypes();
                         setShowForm(false);
                     }
                 });
@@ -182,12 +180,13 @@ const resetForm = () => {
     }
 };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -205,9 +204,9 @@ const resetForm = () => {
                 `${MAS_DEPARTMENT_TYPE}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
-                    message: `Department type ${confirmDialog.newStatus === "y"
+                    message: `Department type ${confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                         } successfully!`,
@@ -344,15 +343,15 @@ const resetForm = () => {
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={type.status === "y"}
-                                                                    onChange={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
+                                                                    checked={type.status?.toLowerCase() === "y"}
+                                                                    onChange={() => handleSwitchChange(type.id, type.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                     id={`switch-${type.id}`}
                                                                 />
                                                                 <label
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${type.id}`}
                                                                 >
-                                                                    {type.status === "y" ? "Active" : "Deactivated"}
+                                                                    {type.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -360,7 +359,7 @@ const resetForm = () => {
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleEdit(type)}
-                                                                disabled={type.status !== "y"}
+                                                                disabled={type.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -441,7 +440,7 @@ const resetForm = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{departmentTypes.find((type) => type.id === confirmDialog.categoryId)?.departmentTypeName}</strong>?
                                                 </p>
                                             </div>

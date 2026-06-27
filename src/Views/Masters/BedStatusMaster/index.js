@@ -154,7 +154,6 @@ const BedStatusMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchBedStatusData();
               setShowForm(false);
             }
           });
@@ -174,7 +173,6 @@ const BedStatusMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchBedStatusData();
               setShowForm(false);
             }
           });
@@ -193,13 +191,14 @@ const BedStatusMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 

@@ -76,8 +76,11 @@ const BloodComponentMaster = () => {
     currentPage * DEFAULT_ITEMS_PER_PAGE
   );
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const resetForm = () => {
@@ -150,7 +153,6 @@ const BloodComponentMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -170,7 +172,6 @@ const BloodComponentMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -216,12 +217,12 @@ const BloodComponentMaster = () => {
           `${MAS_BLOOD_COMPONENT}/status/${confirmDialog.record.componentId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Blood Component "${
               confirmDialog.record.componentName
             }" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -450,7 +451,7 @@ const BloodComponentMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     the component <strong>{confirmDialog.record?.componentName}</strong>?
                   </div>
                   <div className="modal-footer">

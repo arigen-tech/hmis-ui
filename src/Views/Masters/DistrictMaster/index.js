@@ -169,7 +169,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchDistricts();
             setShowForm(false);
           },
         });
@@ -194,7 +193,6 @@ const handleSave = async (e) => {
           onClose: () => {
             setPopupMessage(null);
             resetForm();
-            fetchDistricts();
             setShowForm(false);
           },
         });
@@ -239,7 +237,7 @@ const handleSave = async (e) => {
                 if (response && response.status === 200) {
                     // fetchDistricts();
                     setPopupMessage({
-                        message: `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+                        message: `District ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
                         type: "success",
                         onClose: () => {
                             setPopupMessage(null);
@@ -375,15 +373,15 @@ const handleSave = async (e) => {
                                                                         <input
                                                                             className="form-check-input"
                                                                             type="checkbox"
-                                                                            checked={district.status === "y"}
-                                                                            onChange={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
+                                                                            checked={district.status?.toLowerCase() === "y"}
+                                                                            onChange={() => handleSwitchChange(district.id, district.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                             id={`switch-${district.id}`}
                                                                         />
                                                                         <label
                                                                             className="form-check-label px-0"
                                                                             htmlFor={`switch-${district.id}`}
                                                                         >
-                                                                            {district.status === "y" ? "Active" : "Deactivated"}
+                                                                            {district.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                         </label>
                                                                     </div>
                                                                 </td>
@@ -391,7 +389,7 @@ const handleSave = async (e) => {
                                                                     <button
                                                                         className="btn btn-sm btn-success me-2"
                                                                         onClick={() => handleEdit(district)}
-                                                                        disabled={district.status !== "y"}
+                                                                        disabled={district.status?.toLowerCase() !== "y"}
                                                                     >
                                                                         <i className="fa fa-pencil"></i>
                                                                     </button>
@@ -506,7 +504,7 @@ const handleSave = async (e) => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{districts.find((district) => district.id === confirmDialog.districtId)?.districtName}</strong>?
                                                 </p>
                                             </div>

@@ -122,15 +122,18 @@ const OpthMasSpectacleUse = () => {
         await putRequest(`${MAS_OPTH_SPECTACLE_USE}/update/${editingRecord.id}`, {
           useName: formData.useName.trim(),
         });
-        showPopup(UPDATE_SPECTACLE_USE_SUCC_MSG, "success");
+        showPopup(UPDATE_SPECTACLE_USE_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_OPTH_SPECTACLE_USE}/create`, {
           useName: formData.useName.trim(),
           status: "y",
         });
-        showPopup(ADD_SPECTACLE_USE_SUCC_MSG, "success");
+        showPopup(ADD_SPECTACLE_USE_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch (error) {
       console.error("Save error:", error);
@@ -180,8 +183,11 @@ const OpthMasSpectacleUse = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -333,7 +339,7 @@ const OpthMasSpectacleUse = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.useName}</strong>?
                   </div>
                   <div className="modal-footer">

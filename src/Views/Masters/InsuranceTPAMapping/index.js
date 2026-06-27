@@ -265,7 +265,7 @@ const isDuplicate = () => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status === "y" ? "n" : "y",
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
@@ -295,10 +295,10 @@ const [saving, setSaving] = useState(false);
                 `${INSURANCE_TPA_MAPPING}/status/${confirmDialog.record.mappingId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Insurance-TPA Mapping ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -434,13 +434,13 @@ const [saving, setSaving] = useState(false);
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={rec.status === "y"}
+                                  checked={rec.status?.toLowerCase() === "y"}
                                   onChange={() => handleStatusChange(rec)}
                                   id={`switch-${rec.mappingId}`}
                                   disabled={loading}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${rec.mappingId}`}>
-                                  {rec.status === "y" ? "Active" : "Deactivated"}
+                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -448,7 +448,7 @@ const [saving, setSaving] = useState(false);
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y" || loading}
+                                disabled={rec.status?.toLowerCase() !== "y" || loading}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -598,7 +598,7 @@ const [saving, setSaving] = useState(false);
                        <div className="modal-body">
                          <p>
                            Are you sure you want to{" "}
-                           {confirmDialog.newStatus === "y"
+                           {confirmDialog.newStatus?.toLowerCase() === "y"
                              ? "activate"
                              : "deactivate"}{" "}
                            <strong>{confirmDialog.record?.insuranceName}</strong>?

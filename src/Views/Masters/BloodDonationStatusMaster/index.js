@@ -159,7 +159,6 @@ const BloodDonationStatusMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             resetForm();
-                            fetchData();
                             setShowForm(false);
                         }
                     });
@@ -179,7 +178,6 @@ const BloodDonationStatusMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             resetForm();
-                            fetchData();
                             setShowForm(false);
                         }
                     });
@@ -231,12 +229,12 @@ const BloodDonationStatusMaster = () => {
                     `${MAS_BLOOD_DONATION_STATUS}/status/${confirmDialog.record.donationStatusId}?status=${confirmDialog.newStatus}`
                 );
 
-                if (response.status === 200) {
+                if (response && response.status === 200) {
                     setPopupMessage({
                         message: `Blood Donation Status "${
                             confirmDialog.record.donationStatusName
                         }" ${
-                            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+                            confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
                         } successfully!`,
                         type: "success",
                         onClose: () => {
@@ -263,8 +261,11 @@ const BloodDonationStatusMaster = () => {
         });
     };
 
-    const showPopup = (message, type) => {
-        setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+    const showPopup = (message, type, onCloseCallback = null) => {
+        setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
     };
 
     return (
@@ -423,7 +424,7 @@ const BloodDonationStatusMaster = () => {
                                 <div className="modal-content">
                                     <div className="modal-body">
                                         Are you sure you want to{" "}
-                                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                         <strong>{confirmDialog.record?.donationStatusName}</strong>?
                                     </div>
                                     <div className="modal-footer">

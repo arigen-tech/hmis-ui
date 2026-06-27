@@ -142,8 +142,7 @@ const RoomCategoryMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             handleCancel();
-                            fetchCategoryData(0);
-                        }
+                            }
                     });
                 }
             } else {
@@ -159,8 +158,7 @@ const RoomCategoryMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             handleCancel();
-                            fetchCategoryData(0);
-                        }
+                            }
                     });
                 }
             }
@@ -172,12 +170,13 @@ const RoomCategoryMaster = () => {
         }
     };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -195,12 +194,12 @@ const RoomCategoryMaster = () => {
                 `${MAS_ROOM_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Room Category "${
                         confirmDialog.categoryName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -440,7 +439,7 @@ const RoomCategoryMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{categoryData.find((category) => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
                                                 </p>
                                             </div>

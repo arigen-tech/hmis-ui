@@ -163,7 +163,6 @@ const CorporateMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               handleCancel();
-              fetchData(0);
               setCurrentPage(1);
             }
           });
@@ -188,7 +187,6 @@ const CorporateMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               handleCancel();
-              fetchData(0);
               setCurrentPage(1);
             }
           });
@@ -222,7 +220,7 @@ const CorporateMaster = () => {
     setConfirmDialog({
       isOpen: true,
       reccord: rec,
-      newStatus: rec.status === "y" ? "n" : "y",
+      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
     });
   };
 
@@ -237,7 +235,7 @@ const CorporateMaster = () => {
       const response = await putRequest(
         `${MAS_CORPORATE}/status/${confirmDialog.reccord.corporateId}?status=${confirmDialog.newStatus}`
       );
-      if (response.status === 200) {
+      if (response && response.status === 200) {
         setPopupMessage({
           message: STATUS_CORPORATE_SUCCESS,
           type: "success",
@@ -257,11 +255,14 @@ const CorporateMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
+  const showPopup = (message, type, onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null)
+      onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -378,13 +379,13 @@ const CorporateMaster = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={rec.status === "y"}
+                                  checked={rec.status?.toLowerCase() === "y"}
                                   onChange={() => handleStatusChange(rec)}
                                   id={`switch-${rec.corporateId}`}
                                   disabled={loading}
                                 />
                                 <label className="form-check-label px-0" htmlFor={`switch-${rec.corporateId}`}>
-                                  {rec.status === "y" ? "Active" : "Deactivated"}
+                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -392,7 +393,7 @@ const CorporateMaster = () => {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y" || loading}
+                                disabled={rec.status?.toLowerCase() !== "y" || loading}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -562,7 +563,7 @@ const CorporateMaster = () => {
               <div className="modal-body">
                 <p>
                   Are you sure you want to{" "}
-                  {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+                  {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} this record?
                 </p>
               </div>
               <div className="modal-footer">

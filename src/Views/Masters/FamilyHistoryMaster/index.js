@@ -155,16 +155,18 @@ const FamilyHistoryMaster = () => {
         const response = await putRequest(`${MAS_MEDICAL_HISTORY}/update/${editingFamilyHistory.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchFamilyHistoryData();
-          showPopup(UPDATE_FAMILY_HISTORY_SUCC_MSG, "success");
+          showPopup(UPDATE_FAMILY_HISTORY_SUCC_MSG, "success", () => {
+                    fetchFamilyHistoryData();
+                });
         }
       } else {
         // Add new family history
         const response = await postRequest(`${MAS_MEDICAL_HISTORY}/create`, requestData);
 
         if (response && (response.status === 200 || response.status === 201)) {
-          fetchFamilyHistoryData();
-          showPopup(ADD_FAMILY_HISTORY_SUCC_MSG, "success");
+          showPopup(ADD_FAMILY_HISTORY_SUCC_MSG, "success", () => {
+                    fetchFamilyHistoryData();
+                });
         }
       }
 
@@ -179,13 +181,14 @@ const FamilyHistoryMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
@@ -202,7 +205,7 @@ const FamilyHistoryMaster = () => {
           `${MAS_MEDICAL_HISTORY}/status/${confirmDialog.familyHistoryId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setFamilyHistoryData((prevData) =>
             prevData.map((history) =>
@@ -215,7 +218,9 @@ const FamilyHistoryMaster = () => {
                 : history
             )
           );
-          showPopup(`Family history ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+          showPopup(`Family history ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchFamilyHistoryData();
+                    });
         }
       } catch (err) {
         console.error("Error updating family history status:", err);
@@ -331,15 +336,15 @@ const FamilyHistoryMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={history.status === "y"}
-                                    onChange={() => handleSwitchChange(history.id, history.status === "y" ? "n" : "y")}
+                                    checked={history.status?.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(history.id, history.status?.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${history.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${history.id}`}
                                   >
-                                    {history.status === "y" ? 'Active' : 'Inactive'}
+                                    {history.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -349,7 +354,7 @@ const FamilyHistoryMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(history)}
-                                  disabled={history.status !== "y"}
+                                  disabled={history.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -438,11 +443,11 @@ const FamilyHistoryMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {familyHistoryData.find(history => history.id === confirmDialog.familyHistoryId)?.medicalHistoryName}</strong> family history?
                         </p>
                         {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
+                          {confirmDialog.newStatus?.toLowerCase() === "y" 
                             ? "This will make the family history available for selection." 
                             : "This will hide the family history from selection."}
                         </p> */}

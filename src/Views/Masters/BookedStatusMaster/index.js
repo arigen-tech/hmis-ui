@@ -134,8 +134,9 @@ const BookedStatusMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchBookedStatusData();
-          showPopup(UPDATE_BOOKED_STATUS_SUCC_MSG, "success");
+          showPopup(UPDATE_BOOKED_STATUS_SUCC_MSG, "success", () => {
+                    fetchBookedStatusData();
+                });
         }
       } else {
         const response = await postRequest(`${OB_BOOKED_STATUS}/create`, {
@@ -143,8 +144,9 @@ const BookedStatusMaster = () => {
         });
 
         if (response && response.status === 200) {
-          fetchBookedStatusData();
-          showPopup(ADD_BOOKED_STATUS_SUCC_MSG, "success");
+          showPopup(ADD_BOOKED_STATUS_SUCC_MSG, "success", () => {
+                    fetchBookedStatusData();
+                });
         }
       }
 
@@ -159,13 +161,14 @@ const BookedStatusMaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -180,7 +183,7 @@ const BookedStatusMaster = () => {
         const response = await putRequest(
           `${OB_BOOKED_STATUS}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setBookedStatusData((prevData) =>
             prevData.map((bookedStatus) =>
               bookedStatus.id === confirmDialog.id
@@ -188,10 +191,9 @@ const BookedStatusMaster = () => {
                 : bookedStatus
             )
           );
-          showPopup(
-            `Booked Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Booked Status ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchBookedStatusData();
+                    });
         }
       } catch (err) {
         console.error("Error updating booked status:", err);
@@ -294,10 +296,10 @@ const BookedStatusMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={bookedStatus.status === "y"}
+                                    checked={bookedStatus.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
                                       bookedStatus.id, 
-                                      bookedStatus.status === "y" ? "n" : "y", 
+                                      bookedStatus.status?.toLowerCase() === "y" ? "n" : "y", 
                                       bookedStatus.bookedStatus
                                     )}
                                     id={`switch-${bookedStatus.id}`}
@@ -306,7 +308,7 @@ const BookedStatusMaster = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${bookedStatus.id}`}
                                   >
-                                    {bookedStatus.status === "y" ? "Active" : "Deactivated"}
+                                    {bookedStatus.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -314,7 +316,7 @@ const BookedStatusMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(bookedStatus)}
-                                  disabled={bookedStatus.status !== "y"}
+                                  disabled={bookedStatus.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -387,7 +389,7 @@ const BookedStatusMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{confirmDialog.bookedStatus}</strong>?
                         </p>
                       </div>

@@ -43,8 +43,8 @@ const OPDServiceMaster = () => {
 
   const sortServicesByStatus = (services) => {
     return [...services].sort((a, b) => {
-      if (a.status === "y" && b.status !== "y") return -1;
-      if (a.status !== "y" && b.status === "y") return 1;
+      if (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() !== "y") return -1;
+      if (a.status?.toLowerCase() !== "y" && b.status?.toLowerCase() === "y") return 1;
       return 0;
     });
   };
@@ -256,11 +256,14 @@ const OPDServiceMaster = () => {
     setFormLoading(false);
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null),
+      onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
     if (type !== "success") {
       setTimeout(() => setPopupMessage(null), 3000);
@@ -328,7 +331,7 @@ const OPDServiceMaster = () => {
       try {
         await putRequest(`${MAS_OPD_SERVICE}/updateStatus/${confirmDialog.serviceId}?status=${confirmDialog.newStatus}`);
         setPopupMessage({
-          message: `Service "${confirmDialog.serviceName}" ${confirmDialog.newStatus === 'y' ? 'activated' : 'deactivated'} successfully!`,
+          message: `Service "${confirmDialog.serviceName}" ${confirmDialog.newStatus?.toLowerCase() === "y" ? 'activated' : 'deactivated'} successfully!`,
           type: "success",
           onClose: async () => {
             setPopupMessage(null);
@@ -449,8 +452,8 @@ const OPDServiceMaster = () => {
                             <td>{[item.doctorFirstName, item.doctorMiddleName, item.doctorLastName].filter(Boolean).join(" ") || '-'}</td>
                             <td>{item.fromDate ? new Date(item.fromDate).toLocaleDateString() : '-'}</td>
                             <td>{item.toDate ? new Date(item.toDate).toLocaleDateString() : '-'}</td>
-                            <td><div className="form-check form-switch"><input className="form-check-input" type="checkbox" checked={item.status === "y"} onChange={() => handleSwitchChange(item.id, item.serviceName, item.status === "y" ? "n" : "y")} id={`switch-${item.id}`} /><label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>{item.status === "y" ? "Active" : "Deactivated"}</label></div></td>
-                            <td><button className="btn btn-sm btn-success me-2" onClick={() => handleEdit(item)} disabled={item.status !== "y"}><i className="fa fa-pencil"></i></button></td>
+                            <td><div className="form-check form-switch"><input className="form-check-input" type="checkbox" checked={item.status?.toLowerCase() === "y"} onChange={() => handleSwitchChange(item.id, item.serviceName, item.status?.toLowerCase() === "y" ? "n" : "y")} id={`switch-${item.id}`} /><label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>{item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}</label></div></td>
+                            <td><button className="btn btn-sm btn-success me-2" onClick={() => handleEdit(item)} disabled={item.status?.toLowerCase() !== "y"}><i className="fa fa-pencil"></i></button></td>
                           </tr>
                         )) : <tr><td colSpan="8" className="text-center">No records found</td></tr>}
                       </tbody>
@@ -482,7 +485,7 @@ const OPDServiceMaster = () => {
               {popupMessage && <Popup message={popupMessage.message} type={popupMessage.type} onClose={popupMessage.onClose} />}
               {confirmDialog.isOpen && (
                 <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
-                  <div className="modal-dialog"><div className="modal-content"><div className="modal-header"><h5 className="modal-title">Confirm Status Change</h5><button type="button" className="close" onClick={() => handleConfirm(false)}><span>&times;</span></button></div><div className="modal-body"><p>Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} <strong>{confirmDialog.serviceName}</strong>?</p></div><div className="modal-footer"><button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button><button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button></div></div></div>
+                  <div className="modal-dialog"><div className="modal-content"><div className="modal-header"><h5 className="modal-title">Confirm Status Change</h5><button type="button" className="close" onClick={() => handleConfirm(false)}><span>&times;</span></button></div><div className="modal-body"><p>Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} <strong>{confirmDialog.serviceName}</strong>?</p></div><div className="modal-footer"><button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button><button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button></div></div></div>
                 </div>
               )}
             </div>

@@ -190,7 +190,9 @@ const TreatmentAdviceMaster = () => {
 
         if (response && response.status === 200) {
           fetchTreatmentData();
-          showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success");
+          showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success", () => {
+                    fetchDropdownData();
+                });
         }
       } else {
         // Add new treatment advice
@@ -198,7 +200,9 @@ const TreatmentAdviceMaster = () => {
 
         if (response && (response.status === 200 || response.status === 201)) {
           fetchTreatmentData();
-          showPopup(ADD_TREAT_ADV_SUCC_MSG, "success");
+          showPopup(ADD_TREAT_ADV_SUCC_MSG, "success", () => {
+                    fetchDropdownData();
+                });
         }
       }
 
@@ -240,7 +244,7 @@ const TreatmentAdviceMaster = () => {
 
         if (response && response.status === 200) {
           showPopup(
-            `Treatment advice ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            `Treatment advice ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             "success",
             () => {
               fetchTreatmentData();
@@ -495,11 +499,11 @@ const TreatmentAdviceMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {treatmentData.find(treatment => treatment.id === confirmDialog.treatmentAdviseId)?.treatmentAdvice}</strong> treatment advice?
                         </p>
                         {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
+                          {confirmDialog.newStatus?.toLowerCase() === "y" 
                             ? "This will make the treatment advice available for selection." 
                             : "This will hide the treatment advice from selection."}
                         </p> */}
