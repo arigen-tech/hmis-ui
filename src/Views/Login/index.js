@@ -255,7 +255,7 @@ const Login = () => {
                       <div className="text-center mb-4">
                         <h1 className="login-title">Sign In</h1>
                         <span className="version-badge">
-                          Version 2.50.4
+                          Version 2.50.5
                           <button
                             type="button"
                             className="info-tooltip-btn ms-1"
