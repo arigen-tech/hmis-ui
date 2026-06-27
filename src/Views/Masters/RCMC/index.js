@@ -74,9 +74,7 @@ const RCMC = () => {
         setEditingComplaint(null);
         setShowForm(false);
         setIsFormValid(false);
-        showPopup("Changes saved successfully!", "success", () => {
-                    fetchData();
-                });
+        showPopup("Changes saved successfully!", "success");
     };
 
     const showPopup = (message, type = 'info', onCloseCallback = null) => {
@@ -132,7 +130,7 @@ const RCMC = () => {
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredComplaints.slice(indexOfFirst, indexOfLast);
 
-    
+
 
     return (
         <div className="content-wrapper">
@@ -243,7 +241,7 @@ const RCMC = () => {
                                             onPageChange={setCurrentPage}
                                         />
                                     )}
-                                 
+
                                 </div>
                             ) : (
                                 <form className="forms row" onSubmit={handleSave}>

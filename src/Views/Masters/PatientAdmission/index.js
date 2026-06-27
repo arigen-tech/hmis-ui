@@ -355,9 +355,7 @@ const PatientAdmission = () => {
         );
 
         setPatientData(updatedData);
-        showPopup("Patient admission updated successfully!", "success", () => {
-                    fetchData();
-                });
+        showPopup("Patient admission updated successfully!", "success");
       } else {
         // Add new patient admission
         const newPatient = {
@@ -377,9 +375,7 @@ const PatientAdmission = () => {
         };
 
         setPatientData([...patientData, newPatient]);
-        showPopup("New patient admission added successfully!", "success", () => {
-                    fetchData();
-                });
+        showPopup("New patient admission added successfully!", "success");
       }
 
       setEditingPatient(null);
@@ -411,9 +407,9 @@ const PatientAdmission = () => {
       message,
       type,
       onClose: () => {
-                setPopupMessage(null);
-                if (onCloseCallback) onCloseCallback();
-            }
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      }
     });
   };
 
@@ -636,13 +632,13 @@ const PatientAdmission = () => {
 
                   {/* Pagination */}
                   <div>
-                        <Pagination
-                          totalItems={filteredPatientData.length}
-                          itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                          currentPage={currentPage}
-                          onPageChange={setCurrentPage}
-                        />
-                      </div>     
+                    <Pagination
+                      totalItems={filteredPatientData.length}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                      currentPage={currentPage}
+                      onPageChange={setCurrentPage}
+                    />
+                  </div>
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
