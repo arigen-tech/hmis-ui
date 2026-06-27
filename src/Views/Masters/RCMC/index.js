@@ -74,9 +74,7 @@ const RCMC = () => {
         setEditingComplaint(null);
         setShowForm(false);
         setIsFormValid(false);
-        showPopup("Changes saved successfully!", "success", () => {
-                    fetchData();
-                });
+        showPopup("Changes saved successfully!", "success");
     };
 
     const showPopup = (message, type = 'info', onCloseCallback = null) => {
