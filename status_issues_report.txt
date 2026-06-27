@@ -1,0 +1,2169 @@
+﻿D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+66: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+180: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+189: `Admission Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+291: checked={status.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+292: onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+299: {status.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+307: disabled={status.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\AdmissionStatusMaster\index.js
+398: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BagTypeMaster\index.js
+220: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BagTypeMaster\index.js
+243: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BagTypeMaster\index.js
+377: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BagTypeMaster\index.js
+382: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BagTypeMaster\index.js
+390: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BagTypeMaster\index.js
+508: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BedManagementMaster\index.js
+129: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BedStatusMaster\index.js
+66: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BedTypeMaster\index.js
+68: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+74: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+294: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+439: checked={policy.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+443: policy.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+453: {policy.status === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+465: disabled={policy.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingPolicyMaster\index.js
+623: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingTemplate\index.js
+445: message: `Template ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingTemplate\index.js
+688: checked={template.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingTemplate\index.js
+689: onChange={() => handleSwitchChange(template.templateId, template.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingTemplate\index.js
+693: {template.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingTemplate\index.js
+701: disabled={template.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BillingTemplate\index.js
+972: <p>Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this template?</p>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCollectionTypeMater\index.js
+292: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCollectionTypeMater\index.js
+310: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCollectionTypeMater\index.js
+414: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCollectionTypeMater\index.js
+418: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCollectionTypeMater\index.js
+425: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCollectionTypeMater\index.js
+527: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+74: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+94: if (response && response.response && Array.isArray(response.response)) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+285: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+470: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+472: handleSwitchChange(rec.compatibilityId, rec.status === "y" ? "n" : "y")
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+480: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+489: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodCompatibilityMaster\index.js
+681: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodComponentMaster\index.js
+206: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodComponentMaster\index.js
+224: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodComponentMaster\index.js
+339: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodComponentMaster\index.js
+343: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodComponentMaster\index.js
+453: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationHDR\index.js
+159: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationHDR\index.js
+258: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationHDR\index.js
+262: item.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationHDR\index.js
+271: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationHDR\index.js
+280: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationHDR\index.js
+376: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationStatusMaster\index.js
+221: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationStatusMaster\index.js
+239: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationStatusMaster\index.js
+338: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationStatusMaster\index.js
+342: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationStatusMaster\index.js
+426: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationType\index.js
+195: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationType\index.js
+213: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationType\index.js
+324: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationType\index.js
+328: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationType\index.js
+336: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodDonationType\index.js
+407: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodFailureReasonMaster\index.js
+221: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodFailureReasonMaster\index.js
+239: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodFailureReasonMaster\index.js
+350: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodFailureReasonMaster\index.js
+354: {rec.status?.toLowerCase() === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodFailureReasonMaster\index.js
+365: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodFailureReasonMaster\index.js
+452: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodInventoryStatus\index.js
+338: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+50: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+230: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+370: checked={bloodGroup.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+371: onChange={() => handleSwitchChange(bloodGroup.bloodGroupId, bloodGroup.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+378: {bloodGroup.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+386: disabled={bloodGroup.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodMaster\index.js
+470: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodUnitStatus\index.js
+207: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodUnitStatus\index.js
+225: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodUnitStatus\index.js
+324: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodUnitStatus\index.js
+328: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BloodUnitStatus\index.js
+415: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+69: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+183: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+192: `Booked Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+297: checked={bookedStatus.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+300: bookedStatus.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+309: {bookedStatus.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+317: disabled={bookedStatus.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\BookedStatusMaster\index.js
+390: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+63: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+211: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+224: showPopup(`Care level ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+344: checked={careLevel.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+345: onChange={() => handleSwitchChange(careLevel.id, careLevel.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+352: {careLevel.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+361: disabled={careLevel.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+459: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CareLevelMaster\index.js
+463: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CervixConsistencyMaster\index.js
+228: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CervixConsistencyMaster\index.js
+316: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CervixConsistencyMaster\index.js
+320: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CervixConsistencyMaster\index.js
+327: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CervixConsistencyMaster\index.js
+418: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CervixPosition\index.js
+343: {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CommonStatusMaster\index.js
+72: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CorporateMaster\index.js
+225: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CorporateMaster\index.js
+381: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CorporateMaster\index.js
+387: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CorporateMaster\index.js
+395: disabled={rec.status !== "y" || loading}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CorporateMaster\index.js
+565: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+38: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+216: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+358: checked={country.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+359: onChange={() => handleSwitchChange(country.id, country.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+366: {country.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+374: disabled={country.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CountryMaster\index.js
+452: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CreateUserMaster\index.js
+283: `User ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CreateUserMaster\index.js
+496: disabled={user.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CreateUserMaster\index.js
+507: checked={user.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CreateUserMaster\index.js
+509: const newStatus = user.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CreateUserMaster\index.js
+520: {user.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CreateUserMaster\index.js
+790: <strong>{confirmDialog.newStatus === "y" ? "activate" : "deactivate"}</strong>{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CrossMatchType\index.js
+211: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CrossMatchType\index.js
+232: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CrossMatchType\index.js
+373: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CrossMatchType\index.js
+387: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CrossMatchType\index.js
+395: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\CrossMatchType\index.js
+537: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+49: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+63: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+75: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+307: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+447: checked={dept.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+448: onChange={() => handleSwitchChange(dept.id, dept.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+452: {dept.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+460: disabled={dept.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentMaster\index.js
+646: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+50: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+210: message: `Department type ${confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+347: checked={type.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+348: onChange={() => handleSwitchChange(type.id, type.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+355: {type.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+363: disabled={type.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DepartmentType\index.js
+444: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DesignationMaster\index.js
+196: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DesignationMaster\index.js
+214: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DesignationMaster\index.js
+336: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DesignationMaster\index.js
+342: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DesignationMaster\index.js
+350: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DesignationMaster\index.js
+444: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+63: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+99: (item.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+210: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+223: showPopup(`Diet preference ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+339: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+340: onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+347: {item.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+355: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietPreferenceMaster\index.js
+461: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+65: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+102: (item.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+213: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+226: showPopup(`Diet schedule ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+344: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+345: onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+352: {item.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+360: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietScheduleMaster\index.js
+465: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+63: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+99: (dietType.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+210: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+223: showPopup(`Diet type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+339: checked={dietType.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+340: onChange={() => handleSwitchChange(dietType.id, dietType.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+347: {dietType.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+355: disabled={dietType.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DietTypeMaster\index.js
+460: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+44: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+58: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+242: message: `District ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+378: checked={district.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+379: onChange={() => handleSwitchChange(district.id, district.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+386: {district.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+394: disabled={district.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\DistrictMaster\index.js
+509: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarCanalMaster\index.js
+138: const currentStatus = record.status?.toLowerCase() === "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarCanalMaster\index.js
+341: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarRinneMaster\index.js
+142: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarRinneMaster\index.js
+241: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarRinneMaster\index.js
+245: {rec.status?.toLowerCase() === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarRinneMaster\index.js
+255: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarRinneMaster\index.js
+317: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+42: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+164: `TM Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+285: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+286: onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+293: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+301: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarTmStatusMaster\index.js
+379: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarWeberMaster\index.js
+145: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarWeberMaster\index.js
+241: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarWeberMaster\index.js
+250: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EarWeberMaster\index.js
+313: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasMucosaMaster\index.js
+139: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasMucosaMaster\index.js
+240: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasMucosaMaster\index.js
+244: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasMucosaMaster\index.js
+252: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasMucosaMaster\index.js
+314: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasSeptum\index.js
+138: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasSeptum\index.js
+236: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasSeptum\index.js
+240: {rec.status?.toLowerCase() === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasSeptum\index.js
+250: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasSeptum\index.js
+306: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+37: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+44: formatted.sort((a, b) => (a.status === "y" && b.status === "n" ? -1 : 1));
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+160: showPopup(confirmDialog.newStatus === "y" ? "Activated successfully!" : "Deactivated successfully!", "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+227: <tr key={rec.id} className={rec.status !== "y" ? "table-secondary" : ""}>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+234: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+235: onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+238: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+246: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EntMasTonsilGrade\index.js
+294: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EyeWearUseMaster\index.js
+102: confirmDialog.newStatus === "Y" ? "Activated successfully!" : "Deactivated successfully!",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EyeWearUseMaster\index.js
+158: checked={rec.status === "Y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EyeWearUseMaster\index.js
+159: onChange={() => handleSwitchChange(rec.id, rec.status === "Y" ? "N" : "Y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EyeWearUseMaster\index.js
+161: <label className="form-check-label">{rec.status === "Y" ? "Active" : "Inactive"}</label>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EyeWearUseMaster\index.js
+168: disabled={rec.status !== "Y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\EyeWearUseMaster\index.js
+215: Are you sure you want to {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"} <strong>{data.find((rec) => rec.id === confirmDialog.recordId)?.use_name}</strong>?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+61: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+205: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+218: showPopup(`Family history ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+334: checked={history.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+335: onChange={() => handleSwitchChange(history.id, history.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+342: {history.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+352: disabled={history.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+441: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\FamilyHistoryMaster\index.js
+445: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+39: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+165: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+174: `Frequency ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+282: checked={frequency.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+284: handleSwitchChange(frequency.frequencyId, frequency.status === "y" ? "n" : "y")
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+289: {frequency.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+297: disabled={frequency.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Frequencymaster\index.js
+424: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+50: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+232: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+376: checked={gender.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+377: onChange={() => handleSwitchChange(gender.id, gender.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+384: {gender.status === "y" ? 'Active' : 'Deactivated'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+392: disabled={gender.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Gendermaster\index.js
+501: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{genderData.find(gender => gender.id === confirmDialog.genderId)?.genderName}</strong>?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+92: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+106: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+121: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+142: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+271: const labBillingValue = hospital.labStatus === "y" ? "Yes" : "No";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+272: const radBillingValue = hospital.radioStatus === "y" ? "Yes" : "No";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+510: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+688: checked={hospital.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+692: hospital.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+701: {hospital.status === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+711: disabled={hospital.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HospitalMaster\index.js
+1176: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+51: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+89: if (a.status === "y" && b.status !== "y") return -1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+90: if (a.status !== "y" && b.status === "y") return 1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+252: message: `HSN ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+409: checked={hsn.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+410: onChange={() => handleSwitchChange(hsn.hsnCode, hsn.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+417: {hsn.status === "y" ? 'Active' : 'Deactivated'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+425: disabled={hsn.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\HSNMaster\index.js
+571: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{hsnData.find(hsn => hsn.hsnCode === confirmDialog.hsnId)?.hsnCode}</strong>?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+42: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+147: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+196: message: `Identification type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+322: checked={type.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+323: onChange={() => handleSwitchChange(type.identificationTypeId, type.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+327: {type.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+335: disabled={type.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\identificationMaster\index.js
+427: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+42: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+164: `Immunisation Status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+286: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+287: onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+294: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+302: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ImmunisationStatusMaster\index.js
+382: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InpatientMaster\index.js
+403: checked={rec.status === "Y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InpatientMaster\index.js
+407: rec.status === "Y" ? "N" : "Y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InpatientMaster\index.js
+412: {rec.status === "Y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InpatientMaster\index.js
+421: disabled={rec.status !== "Y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InpatientMaster\index.js
+534: {confirmDialog.newStatus === "Y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+222: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+246: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+266: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+389: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+395: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+403: disabled={rec.status !== "y" || loading}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceMaster\index.js
+522: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceTPAMapping\index.js
+268: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceTPAMapping\index.js
+301: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceTPAMapping\index.js
+437: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceTPAMapping\index.js
+443: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceTPAMapping\index.js
+451: disabled={rec.status !== "y" || loading}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InsuranceTPAMapping\index.js
+601: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+67: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+84: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+236: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+251: `Intake item ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+461: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+465: item.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+475: {item.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+486: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeItemMaster\index.js
+640: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+70: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+222: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+237: `Intake type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+446: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+450: item.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+460: {item.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+471: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IntakeTypeMaster\index.js
+623: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationCategoryMaster\index.js
+34: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMaster\index.js
+277: const newStatus = currentStatus === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMaster\index.js
+293: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMaster\index.js
+639: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMaster\index.js
+644: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMaster\index.js
+1118: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMaster\Masprep\masprep.js
+18: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationMethodologyMaster\index.js
+36: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+100: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+293: const newStatus = currentStatus === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+309: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+501: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+513: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+521: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\InvestigationPricing\index.js
+685: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+132: .filter(cat => cat.status === "y")
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+156: .filter(type => type.status === "y")
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+180: (dept) => dept.departmentTypeName === FILTER_OPD_DEPT && dept.status === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+552: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+573: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+746: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+758: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+766: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDConsultationTariff\index.js
+982: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+61: (cat) => cat.status === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+82: (dept) => dept.departmentTypeName === FILTER_OPD_DEPT && dept.status === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+154: .filter(cat => cat.status === "y")
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+437: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+458: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+615: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+627: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+635: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\IPDPackageMaster\index.js
+844: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ItemFacility\index.js
+236: message: `Facility master ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ItemFacility\index.js
+400: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ItemFacility\index.js
+404: item.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ItemFacility\index.js
+412: {item.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ItemFacility\index.js
+420: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ItemFacility\index.js
+554: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+74: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+216: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+225: `Amendment Type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+345: checked={amendmentType.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+348: amendmentType.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+357: {amendmentType.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+365: disabled={amendmentType.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LabResultAmendment\index.js
+484: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LensTypeMaster\index.js
+151: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LensTypeMaster\index.js
+252: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LensTypeMaster\index.js
+256: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LensTypeMaster\index.js
+264: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LensTypeMaster\index.js
+325: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LiquorMaster\index.js
+137: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LiquorMaster\index.js
+240: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LiquorMaster\index.js
+244: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LiquorMaster\index.js
+252: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\LiquorMaster\index.js
+320: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+42: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+108: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+123: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+163: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+172: `Marital status ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+285: checked={status.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+286: onChange={() => handleSwitchChange(status.id, status.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+290: {status.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+300: disabled={status.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MaritalStatusMaster\index.js
+375: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MasSpectacleMaster\index.js
+156: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MasSpectacleMaster\index.js
+257: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MasSpectacleMaster\index.js
+265: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MasSpectacleMaster\index.js
+273: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MasSpectacleMaster\index.js
+336: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+62: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+109: (mealType.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+220: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+233: showPopup(`Meal type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+351: checked={mealType.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+352: onChange={() => handleSwitchChange(mealType.id, mealType.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+359: {mealType.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+367: disabled={mealType.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MealTypeMaster\index.js
+474: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MembraneMaster\index.js
+152: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MembraneMaster\index.js
+250: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MembraneMaster\index.js
+254: {rec.status?.toLowerCase() === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MembraneMaster\index.js
+264: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MembraneMaster\index.js
+331: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenarcheMaster\index.js
+146: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenarcheMaster\index.js
+246: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenarcheMaster\index.js
+254: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenarcheMaster\index.js
+262: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenarcheMaster\index.js
+339: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualFlowMaster\index.js
+144: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualFlowMaster\index.js
+239: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualFlowMaster\index.js
+243: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualFlowMaster\index.js
+251: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualFlowMaster\index.js
+313: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualPatternMaster\index.js
+160: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualPatternMaster\index.js
+260: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualPatternMaster\index.js
+264: {rec.status?.toLowerCase() === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualPatternMaster\index.js
+273: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\MenstrualPatternMaster\index.js
+348: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConceptionMaster\index.js
+72: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConceptionMaster\index.js
+286: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConceptionMaster\index.js
+290: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConceptionMaster\index.js
+298: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConceptionMaster\index.js
+306: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConceptionMaster\index.js
+363: {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConsanguinityMaster\index.js
+131: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConsanguinityMaster\index.js
+220: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConsanguinityMaster\index.js
+224: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConsanguinityMaster\index.js
+232: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ObConsanguinityMaster\index.js
+279: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+210: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+226: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+242: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+351: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+361: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+369: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDHolidayMaster\index.js
+468: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+48: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+180: `OPD Session ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+303: checked={session.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+304: onChange={() => handleSwitchChange(session.id, session.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+308: {session.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+316: disabled={session.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdMaster\index.js
+465: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDQuestionnaireMaster\index.js
+196: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDQuestionnaireMaster\index.js
+212: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDQuestionnaireMaster\index.js
+372: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDQuestionnaireMaster\index.js
+378: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDQuestionnaireMaster\index.js
+385: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OPDQuestionnaireMaster\index.js
+474: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdService\index.js
+46: if (a.status === "y" && b.status !== "y") return -1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdService\index.js
+47: if (a.status !== "y" && b.status === "y") return 1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdService\index.js
+452: <td><div className="form-check form-switch"><input className="form-check-input" type="checkbox" checked={item.status === "y"} onChange={() => handleSwitchChange(item.id, item.serviceName, item.status === "y" ? "n" : "y")} id={`switch-${item.id}`} /><label className="form-check-label px-0" htmlFor={`switch-${item.id}`}>{item.status === "y" ? "Active" : "Deactivated"}</label></div></td>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdService\index.js
+453: <td><button className="btn btn-sm btn-success me-2" onClick={() => handleEdit(item)} disabled={item.status !== "y"}><i className="fa fa-pencil"></i></button></td>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpdService\index.js
+485: <div className="modal-dialog"><div className="modal-content"><div className="modal-header"><h5 className="modal-title">Confirm Status Change</h5><button type="button" className="close" onClick={() => handleConfirm(false)}><span>&times;</span></button></div><div className="modal-body"><p>Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} <strong>{confirmDialog.serviceName}</strong>?</p></div><div className="modal-footer"><button className="btn btn-secondary" onClick={() => handleConfirm(false)}>No</button><button className="btn btn-primary" onClick={() => handleConfirm(true)}>Yes</button></div></div></div>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthColorVisionMaster\index.js
+139: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthColorVisionMaster\index.js
+236: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthColorVisionMaster\index.js
+240: {rec.status === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthColorVisionMaster\index.js
+250: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthColorVisionMaster\index.js
+304: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthDistanceVisionMaster\index.js
+173: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthDistanceVisionMaster\index.js
+189: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthDistanceVisionMaster\index.js
+299: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthDistanceVisionMaster\index.js
+309: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthDistanceVisionMaster\index.js
+317: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthDistanceVisionMaster\index.js
+393: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthNearVisionMaster\index.js
+137: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthNearVisionMaster\index.js
+230: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthNearVisionMaster\index.js
+234: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthNearVisionMaster\index.js
+242: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OpthNearVisionMaster\index.js
+294: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+72: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+227: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+242: `Output type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+453: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+457: item.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+467: {item.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+478: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\OutputTypeMaster\index.js
+641: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageConfiguration\index.js
+427: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageConfiguration\index.js
+689: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageConfiguration\index.js
+694: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageConfiguration\index.js
+702: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageConfiguration\index.js
+1000: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+80: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+92: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+104: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+116: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+155: if (a.status === "y" && b.status !== "y") return -1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+156: if (a.status !== "y" && b.status === "y") return 1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+224: message: `All investigations for package "${confirmDialog.packageName}" have been ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+509: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+510: onChange={() => handleSwitchChange(item, item.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+514: {item.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+522: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+671: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+682: className={`btn ${confirmDialog.newStatus === "y" ? "btn-success" : "btn-warning"}`}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageInvestigationMaster\index.js
+685: {confirmDialog.newStatus === "y" ? "Activate All" : "Deactivate All"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+42: if (a.status === "y" && b.status !== "y") return -1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+43: if (a.status !== "y" && b.status === "y") return 1;
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+56: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+249: message: `Package ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+405: checked={pkg.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+406: onChange={() => handleSwitchChange(pkg.packId, pkg.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+410: {pkg.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+418: disabled={pkg.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PackageMaster\index.js
+515: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+67: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+215: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+230: `Patient acuity ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+353: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+357: item.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+367: {item.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+378: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientacuityMaster\index.js
+496: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+446: showPopup(`Patient admission ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+599: checked={patient.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+600: onChange={() => handleSwitchChange(patient.id, patient.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+607: {patient.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+616: disabled={patient.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+867: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientAdmission\index.js
+871: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+70: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+227: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+236: `Patient Preparation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+368: checked={preparation.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+369: onChange={() => handleSwitchChange(preparation.id, preparation.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+376: {preparation.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+385: disabled={preparation.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientPreparationMaster\index.js
+540: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PatientwiseBilldatails\index.js
+182: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PelvisType\index.js
+144: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PelvisType\index.js
+245: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PelvisType\index.js
+249: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PelvisType\index.js
+257: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PelvisType\index.js
+318: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PresentationMaster\index.js
+148: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PresentationMaster\index.js
+241: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PresentationMaster\index.js
+245: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PresentationMaster\index.js
+253: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\PresentationMaster\index.js
+313: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureMaster\index.js
+260: message: `Procedure ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureMaster\index.js
+458: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureMaster\index.js
+462: item.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureMaster\index.js
+470: {item.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureMaster\index.js
+478: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureMaster\index.js
+692: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedurePricing\index.js
+391: message: `Procedure pricing ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedurePricing\index.js
+528: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedurePricing\index.js
+532: item.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedurePricing\index.js
+537: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedurePricing\index.js
+545: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedurePricing\index.js
+762: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+61: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+219: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+235: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+385: checked={procedureType.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+393: {procedureType.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+401: disabled={procedureType.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ProcedureTypeMaster\index.js
+505: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\QuestionHeadingMaster\index.js
+225: const newStatus = currentStatus === "y" ? "n" : "y";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\QuestionHeadingMaster\index.js
+246: confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\QuestionHeadingMaster\index.js
+387: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\QuestionHeadingMaster\index.js
+399: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\QuestionHeadingMaster\index.js
+406: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\QuestionHeadingMaster\index.js
+490: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RCMC\index.js
+209: checked={complaint.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RCMC\index.js
+210: onChange={() => handleSwitchChange(complaint.id, complaint.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RCMC\index.js
+217: {complaint.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RCMC\index.js
+225: disabled={complaint.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RCMC\index.js
+320: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>{complaintData.find(complaint => complaint.id === confirmDialog.complaintId)?.complaintName}</strong>?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+56: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+228: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+369: checked={relation.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+370: onChange={() => handleSwitchChange(relation.id, relation.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+377: {relation.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+385: disabled={relation.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\Relationmaster\index.js
+494: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+49: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+225: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+350: checked={religion.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+351: onChange={() => handleSwitchChange(religion.id, religion.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+358: {religion.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+366: disabled={religion.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ReligionMaster\index.js
+458: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+60: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+203: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+332: checked={category.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+333: onChange={() => handleSwitchChange(category.id, category.status?.toLowerCase() === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+340: {category.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+349: disabled={category.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomCategoryMaster\index.js
+443: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+100: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+280: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+519: checked={room.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+521: handleSwitchChange(room.id, room.status?.toLowerCase() === "y" ? "n" : "y")
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+529: {room.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+540: disabled={room.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\RoomMasterScreen\index.js
+728: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+39: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+86: (sample.status === "y" ? "active" : "inactive").includes(searchQuery.toLowerCase())
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+198: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+201: showPopup(`Sample ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+308: checked={sample.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+309: onChange={() => handleSwitchChange(sample.id, sample.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+316: {sample.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+324: disabled={sample.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SampleMaster\index.js
+431: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ServiceCategory\index.js
+68: const status = item?.status === "y" ? "active" : "deactivated";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ServiceCategory\index.js
+315: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ServiceCategory\index.js
+316: onChange={() => handleSwitchChange(item.id, item.serviceCatName, item.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ServiceCategory\index.js
+323: {item.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ServiceCategory\index.js
+331: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ServiceCategory\index.js
+496: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SmearResultMaster\index.js
+148: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SmearResultMaster\index.js
+248: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SmearResultMaster\index.js
+252: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SmearResultMaster\index.js
+259: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SmearResultMaster\index.js
+324: {confirmDialog.newStatus === "y" ? "deactivate" : "activate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+67: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+185: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+194: `Specialty Center ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+297: checked={specialty.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+298: onChange={() => handleSwitchChange(specialty.id, specialty.status === "y" ? "n" : "y", specialty.centerName)}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+305: {specialty.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+313: disabled={specialty.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpecialityMaster\index.js
+418: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+69: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+183: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+192: `Spectacle Use ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+299: checked={spectacleUse.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+302: spectacleUse.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+311: {spectacleUse.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+319: disabled={spectacleUse.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SpectacleUseMaster\index.js
+392: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+48: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+62: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+244: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+394: checked={state.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+395: onChange={() => handleSwitchChange(state.id, state.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+402: {state.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+410: disabled={state.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StateMaster\index.js
+516: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StationPresentingMaster\index.js
+144: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StationPresentingMaster\index.js
+248: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StationPresentingMaster\index.js
+252: {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StationPresentingMaster\index.js
+259: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\StationPresentingMaster\index.js
+332: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SterilisationMaster\index.js
+143: newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SterilisationMaster\index.js
+246: checked={rec.status?.toLowerCase() === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SterilisationMaster\index.js
+250: {rec.status?.toLowerCase() === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SterilisationMaster\index.js
+260: disabled={rec.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SterilisationMaster\index.js
+332: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryMaster\index.js
+255: message:  `Surgery master ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryMaster\index.js
+432: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryMaster\index.js
+436: item.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryMaster\index.js
+444: {item.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryMaster\index.js
+452: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryMaster\index.js
+626: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryPricing\index.js
+398: message: `Surgery pricing ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryPricing\index.js
+533: checked={item.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryPricing\index.js
+537: item.status === "y" ? "n" : "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryPricing\index.js
+542: {item.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryPricing\index.js
+550: disabled={item.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\SurgeryPricing\index.js
+752: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+71: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+192: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+201: `Tooth Condition ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+326: checked={toothCondition.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+329: toothCondition.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+338: {toothCondition.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+346: disabled={toothCondition.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\ToothConditionMaster\index.js
+447: Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+198: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+221: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+241: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+371: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+377: {rec.status === "y" ? "Active" : "Deactivated"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+385: disabled={rec.status !== "y" || loading}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TPAMaster\index.js
+504: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this record?
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TreatmentAdviceMaster\index.js
+84: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TreatmentAdviceMaster\index.js
+243: `Treatment advice ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TreatmentAdviceMaster\index.js
+376: {treatment.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TreatmentAdviceMaster\index.js
+386: disabled={treatment.status?.toLowerCase() !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TreatmentAdviceMaster\index.js
+498: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TreatmentAdviceMaster\index.js
+502: {confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TrimesterMaster\index.js
+159: newStatus: rec.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TrimesterMaster\index.js
+247: checked={rec.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TrimesterMaster\index.js
+251: {rec.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TrimesterMaster\index.js
+258: disabled={rec.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\TrimesterMaster\index.js
+314: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+69: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+121: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+246: if (response && response.response) {
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+493: checked={userDept.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+494: onChange={() => handleSwitchChange(userDept.id, userDept.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+501: {userDept.status === "y" ? 'Active' : 'Deactivated'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+509: // disabled={userDept.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\UserDepartment\index.js
+659: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} <strong>
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardCategoryMaster\index.js
+261: confirmDialog.newStatus === "y"
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardCategoryMaster\index.js
+393: checked={category.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardCategoryMaster\index.js
+396: category.status === "y" ? "n" : "y",
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardCategoryMaster\index.js
+401: {category.status === "y" ? "Active" : "Inactive"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardCategoryMaster\index.js
+410: disabled={category.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardCategoryMaster\index.js
+516: {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+327: const statusValue = confirmDialog.newStatus === "y" ? "Y" : "N";
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+333: `Ward ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+460: checked={ward.status === "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+461: onChange={() => handleSwitchChange(ward.id, ward.status === "y" ? "n" : "y")}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+468: {ward.status === "y" ? 'Active' : 'Inactive'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+477: disabled={ward.status !== "y"}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+596: Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+
+D:\Arigen\Projects\hmis-ui\src\Views\Masters\WardManagementMaster\index.js
+600: {confirmDialog.newStatus === "y"
+
