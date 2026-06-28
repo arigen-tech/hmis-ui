@@ -4,7 +4,7 @@ import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { RADIOLOGY_TEMPLATE } from "../../../config/apiConfig";
+import { RADIOLOGY_TEMPLATE, RADIOLOGY_DEPARTMENT_CODE, GET_MODALITY_DROPDOWN_WRT_DEPARTMENT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { 
   ADD_RADIOLOGY_TEMPLATE_SUCC_MSG, 
@@ -103,7 +103,7 @@ const RadiologyTemplateMaster = () => {
   // Fetch modality dropdown data
   const fetchModalityDropdownData = async () => {
     try {
-      const response = await getRequest(`/general/getModalityDetailsByDepartment?code=RADIMG`);
+      const response = await getRequest(`${GET_MODALITY_DROPDOWN_WRT_DEPARTMENT}?code=${RADIOLOGY_DEPARTMENT_CODE}`);
       if (response && response.response) {
         const modalityValue = response.response.map(mod => ({
           id: mod.id,
