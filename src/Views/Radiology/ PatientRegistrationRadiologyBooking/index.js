@@ -2033,9 +2033,9 @@ const PatientRegistrationRadiologyBooking = () => {
                                     {formData.type === "investigation"
                                       ? investigationItems
                                           .filter((item) =>
-                                            item.investigationName
+                                            (item.investigationName || "")
                                               .toLowerCase()
-                                              .includes(row.name.toLowerCase()),
+                                              .includes((row.name || "").toLowerCase()),
                                           )
                                           .map((item, i) => {
                                             const hasDiscount =
@@ -2180,9 +2180,9 @@ const PatientRegistrationRadiologyBooking = () => {
                                           })
                                       : packageItems
                                           .filter((item) =>
-                                            item.packName
+                                            (item.packName || "")
                                               .toLowerCase()
-                                              .includes(row.name.toLowerCase()),
+                                              .includes((row.name || "").toLowerCase()),
                                           )
                                           .map((item, i) => (
                                             <li
