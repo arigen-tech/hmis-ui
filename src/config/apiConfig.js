@@ -301,11 +301,11 @@ export const ENT_MAS_TM_STATUS = `${MASTERS}/entMasTmStatus`;
 export const OB_MAS_IMMUNISED_STATUS = `${MASTERS}/obMasImmunisedStatus`;
 export const MAS_GYN_POPSMEAR = `${MASTERS}/gynMasPapSmear`;
 export const MAS_ENT_WEBER = `${MASTERS}/entMasWeber`;
-export const XRAY_MODALITY = 40;
-export const USG_MODALITY = 41;
-export const MRI_MODALITY = 43;
-export const CT_MODALITY = 42;
-export const PET_MODALITY = 48;
+export const XRAY_MODALITY = 84;
+export const USG_MODALITY = 85;
+export const MRI_MODALITY = 87;
+export const CT_MODALITY = 86;
+export const PET_MODALITY = 91;
 
 export const GET_PREVIOUS_OPD_VISIT_HISTORY = `/opd/getPreviousOpdVisitHistory`;
 export const GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY = `/opd/getPreviousOpdVitalsDetailsHistory`;
@@ -412,7 +412,7 @@ export const MAS_BLOOD_COLLECTION_TYPE = `${MASTERS}/masBloodCollectionType`;
 export const GENERAL = "/general";
 export const GET_MODALITY_DROPDOWN_WRT_DEPARTMENT = `${GENERAL}/getModalityDetailsByDepartment`;
 export const REQUEST_PARAM_CODE = "code";
-export const RADIOLOGY_DEPARTMENT_CODE = "RADIMG";
+export const RADIOLOGY_DEPARTMENT_CODE = "RAD";
 
 export const RADIOLOGY_REPORT_END_URL = `${ALL_REPORTS}/radiologyReport`;
 export const REQUEST_PARAM_FLAG = `flag`;
@@ -424,6 +424,7 @@ export const STATUS_P = `P`;
 export const STATUS_D = `D`;
 export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
 export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
+export const RADIOLOGY_REPORT_GET_URL = `${RADIOLOGY}/getDetailsReportForRadiology`;
 export const REQUEST_PARAM_STATUS = "status";
 
 export const GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL = `${MAS_DEPARTMENT}/allForDropdowns`;

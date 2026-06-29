@@ -2167,10 +2167,10 @@ useEffect(() => {
                                       {formData.type === "investigation"
                                         ? investigationItems
                                             .filter((item) =>
-                                              item.investigationName
+                                              (item.investigationName || "")
                                                 .toLowerCase()
                                                 .includes(
-                                                  row.name.toLowerCase(),
+                                                  (row.name || "").toLowerCase(),
                                                 ),
                                             )
                                             .map((item, i) => {
@@ -2302,10 +2302,10 @@ useEffect(() => {
                                             })
                                         : packageItems
                                             .filter((item) =>
-                                              item.packName
+                                              (item.packName || "")
                                                 .toLowerCase()
                                                 .includes(
-                                                  row.name.toLowerCase(),
+                                                  (row.name || "").toLowerCase(),
                                                 ),
                                             )
                                             .map((item, i) => (
