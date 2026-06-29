@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import LoginImg from "../../assets/images/login-img.svg";
 import Cardiogram from "../../assets/images/cardiogram.png";
 import "./login.css";
@@ -62,7 +63,13 @@ const Login = () => {
     try {
       const response = await postRequest(LOGIN, formData);
 
-      if (response?.response?.jwtToken) {
+      if (response?.status === 401) {
+        Swal.fire({
+          icon: "error",
+          title: "Incorrect Password",
+          text: response.message || "INVALID USERNAME OR PASSWORD!",
+        });
+      } else if (response?.response?.jwtToken) {
         const {
           jwtToken,
           refreshToken,
@@ -123,6 +130,11 @@ const Login = () => {
         navigate("/dashboard");
       } else {
         console.error("Login failed: Missing token in response.");
+        Swal.fire({
+          icon: "error",
+          title: "Login Failed",
+          text: response?.message || "An unexpected error occurred during login.",
+        });
       }
     } catch (error) {
       console.error("Login request failed:", error);
