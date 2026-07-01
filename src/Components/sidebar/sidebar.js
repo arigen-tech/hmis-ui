@@ -61,6 +61,7 @@ const iconMap = {
   "Opening Balance": "icofont-coins",
   "Physical Stock": "icofont-capsule",
   Indent: "icofont-prescription",
+  "ABDM Milestone 2 & 3": "icofont-heart-beat",
 }
 
 const getIconClass = (name) => iconMap[name] || "icofont-ui-folder"
@@ -82,7 +83,21 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
     try {
       const data = await getRequest(`${GET_URL_BY_ROLES}/${rolesId}`)
       if (data.status === 200 && Array.isArray(data.response)) {
-        setMenuData(data.response)
+        let menuItems = data.response;
+        const hasAbdmRoute = menuItems.some(
+          item => item.url === "/abdm-milestone2" || (item.children && item.children.some(child => child.url === "/abdm-milestone2"))
+        );
+        if (!hasAbdmRoute) {
+          menuItems = [
+            ...menuItems,
+            {
+              name: "ABDM Milestone 2 & 3",
+              url: "/abdm-milestone2",
+              children: []
+            }
+          ];
+        }
+        setMenuData(menuItems)
 
         const extractUrls = (items) => {
           const urls = []
@@ -93,7 +108,7 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
           return urls
         }
 
-        sessionStorage.setItem("allowedUrls", JSON.stringify(extractUrls(data.response)))
+        sessionStorage.setItem("allowedUrls", JSON.stringify(extractUrls(menuItems)))
       } else {
         setMenuData([])
       }

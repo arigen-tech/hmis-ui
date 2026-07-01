@@ -257,6 +257,7 @@ const DoctorRoaster = React.lazy(() => import('./Views/Admin/Apointment/DoctorRo
 const PatientRegistration = React.lazy(() => import('./Views/Reception/PatientRegistration'));
 const RegisterEmployee = React.lazy(() => import('./Views/Admin/Employee/EmployeeRegistrartion'));
 const ViewSearchEmployee = React.lazy(() => import('./Views/Admin/Employee/ViewSearchEmployee'));
+const AbdmMilestone2 = React.lazy(() => import('./Views/Reception/AbdmMilestone2'));
 
 
 
@@ -319,6 +320,7 @@ function App() {
                 <Route path="frequencymaster" element={<Frequencymaster />} />
                 <Route path="opdmaster" element={<OpdMaster />} />
                 <Route path="AppointmentForFollowUpPatient" element={<UpdatePatientRegistration />} />
+                <Route path="abdm-milestone2" element={<AbdmMilestone2 />} />
                 <Route path="mainchargecode" element={<Mainchargecode />} />
                 <Route path="subchargecode" element={<Subchargecode />} />
                 <Route path="labregistration" element={<Labregistration />} />
