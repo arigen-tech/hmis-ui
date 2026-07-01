@@ -165,8 +165,9 @@ const PatientPreparationMaster = () => {
         );
 
         if (response && response.status === 200) {
-          fetchPreparationData();
-          showPopup(UPDATE_PREPARATION_SUCC_MSG, "success");
+          showPopup(UPDATE_PREPARATION_SUCC_MSG, "success", () => {
+                    fetchPreparationData();
+                });
         }
       } else {
         // Create new preparation
@@ -181,8 +182,9 @@ const PatientPreparationMaster = () => {
         );
 
         if (response && response.status === 200) {
-          fetchPreparationData();
-          showPopup(ADD_PREPARATION_SUCC_MSG, "success");
+          showPopup(ADD_PREPARATION_SUCC_MSG, "success", () => {
+                    fetchPreparationData();
+                });
         }
       }
 
@@ -203,13 +205,14 @@ const PatientPreparationMaster = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -224,7 +227,7 @@ const PatientPreparationMaster = () => {
         const response = await putRequest(
           `${MAS_PATIENT_PREPARATION}/${confirmDialog.preparationId}/status/${confirmDialog.newStatus}`
         );
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setPreparationData((prevData) =>
             prevData.map((preparation) =>
               preparation.id === confirmDialog.preparationId
@@ -232,10 +235,9 @@ const PatientPreparationMaster = () => {
                 : preparation
             )
           );
-          showPopup(
-            `Patient Preparation ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Patient Preparation ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchPreparationData();
+                    });
         }
       } catch (err) {
         console.error("Error updating patient preparation status:", err);
@@ -365,15 +367,15 @@ const PatientPreparationMaster = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={preparation.status === "y"}
-                                  onChange={() => handleSwitchChange(preparation.id, preparation.status === "y" ? "n" : "y")}
+                                  checked={preparation.status?.toLowerCase() === "y"}
+                                  onChange={() => handleSwitchChange(preparation.id, preparation.status?.toLowerCase() === "y" ? "n" : "y")}
                                   id={`switch-${preparation.id}`}
                                 />
                                 <label
                                   className="form-check-label px-0"
                                   htmlFor={`switch-${preparation.id}`}
                                 >
-                                  {preparation.status === "y" ? "Active" : "Deactivated"}
+                                  {preparation.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -382,7 +384,7 @@ const PatientPreparationMaster = () => {
                               <button
                                 className="btn btn-sm btn-success me-2"
                                 onClick={() => handleEdit(preparation)}
-                                disabled={preparation.status !== "y"}
+                                disabled={preparation.status?.toLowerCase() !== "y"}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -537,7 +539,7 @@ const PatientPreparationMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {preparationData.find((preparation) => preparation.id === confirmDialog.preparationId)?.preparationName}
                           </strong>?

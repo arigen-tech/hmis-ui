@@ -135,8 +135,9 @@ const SpecialityMaster = () => {
                 });
 
                 if (response && response.status === 200) {
+                    showPopup(UPDATE_SPECIALTY_SUCC_MSG, "success", () => {
                     fetchSpecialtyData();
-                    showPopup(UPDATE_SPECIALTY_SUCC_MSG, "success");
+                });
                 }
             } else {
                 const response = await postRequest(`${MAS_SPECIALTY}/create`, {
@@ -145,8 +146,9 @@ const SpecialityMaster = () => {
                 });
 
                 if (response && response.status === 200) {
+                    showPopup(ADD_SPECIALTY_SUCC_MSG, "success", () => {
                     fetchSpecialtyData();
-                    showPopup(ADD_SPECIALTY_SUCC_MSG, "success");
+                });
                 }
             }
 
@@ -161,12 +163,13 @@ const SpecialityMaster = () => {
         }
     };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -182,7 +185,7 @@ const SpecialityMaster = () => {
                 const response = await putRequest(
                     `${MAS_SPECIALTY}/status/${confirmDialog.centerId}?status=${confirmDialog.newStatus}`
                 );
-                if (response && response.response) {
+                if (response && response.status === 200) {
                     setSpecialtyData((prevData) =>
                         prevData.map((specialty) =>
                             specialty.id === confirmDialog.centerId
@@ -190,10 +193,9 @@ const SpecialityMaster = () => {
                                 : specialty
                         )
                     );
-                    showPopup(
-                        `Specialty Center ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-                        "success"
-                    );
+                    showPopup(`Specialty Center ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchSpecialtyData();
+                    });
                 }
             } catch (err) {
                 console.error("Error updating specialty status:", err);
@@ -294,15 +296,15 @@ const SpecialityMaster = () => {
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
-                                                                        checked={specialty.status === "y"}
-                                                                        onChange={() => handleSwitchChange(specialty.id, specialty.status === "y" ? "n" : "y", specialty.centerName)}
+                                                                        checked={specialty.status?.toLowerCase() === "y"}
+                                                                        onChange={() => handleSwitchChange(specialty.id, specialty.status?.toLowerCase() === "y" ? "n" : "y", specialty.centerName)}
                                                                         id={`switch-${specialty.id}`}
                                                                     />
                                                                     <label
                                                                         className="form-check-label px-0"
                                                                         htmlFor={`switch-${specialty.id}`}
                                                                     >
-                                                                        {specialty.status === "y" ? "Active" : "Deactivated"}
+                                                                        {specialty.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                     </label>
                                                                 </div>
                                                             </td>
@@ -310,7 +312,7 @@ const SpecialityMaster = () => {
                                                                 <button
                                                                     className="btn btn-sm btn-success me-2"
                                                                     onClick={() => handleEdit(specialty)}
-                                                                    disabled={specialty.status !== "y"}
+                                                                    disabled={specialty.status?.toLowerCase() !== "y"}
                                                                 >
                                                                     <i className="fa fa-pencil"></i>
                                                                 </button>
@@ -415,7 +417,7 @@ const SpecialityMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{confirmDialog.centerName}</strong>?
                                                 </p>
                                             </div>

@@ -187,9 +187,7 @@ const handleSave = async (e) => {
 
         async () => {
 
-          await fetchBillingPolicyData();
-
-          setEditingRecord(null);
+          await setEditingRecord(null);
 
           setFormData({
             policyCode: "",
@@ -291,7 +289,7 @@ const response = await putRequest(
 
   showPopup(
     `Billing Policy ${
-      confirmDialog.newStatus === "y"
+      confirmDialog.newStatus?.toLowerCase() === "y"
         ? "activated"
         : "deactivated"
     } successfully!`,
@@ -436,11 +434,11 @@ const response = await putRequest(
     <input
       className="form-check-input"
       type="checkbox"
-      checked={policy.status === "y"}
+      checked={policy.status?.toLowerCase() === "y"}
       onChange={() =>
         handleSwitchChange(
           policy.id,
-          policy.status === "y" ? "n" : "y"
+          policy.status?.toLowerCase() === "y" ? "n" : "y"
         )
       }
       id={`switch-${policy.id}`}
@@ -450,7 +448,7 @@ const response = await putRequest(
       className="form-check-label px-0"
       htmlFor={`switch-${policy.id}`}
     >
-      {policy.status === "y"
+      {policy.status?.toLowerCase() === "y"
         ? "Active"
         : "Inactive"}
     </label>
@@ -462,7 +460,7 @@ const response = await putRequest(
                                <button
   className="btn btn-sm btn-success me-2"
   onClick={() => handleEdit(policy)}
-  disabled={policy.status !== "y"}
+  disabled={policy.status?.toLowerCase() !== "y"}
 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -620,7 +618,7 @@ const response = await putRequest(
         <div className="modal-body">
           <p>
             Are you sure you want to{" "}
-            {confirmDialog.newStatus === "y"
+            {confirmDialog.newStatus?.toLowerCase() === "y"
               ? "activate"
               : "deactivate"}
 

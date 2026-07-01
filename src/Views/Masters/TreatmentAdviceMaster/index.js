@@ -190,7 +190,9 @@ const TreatmentAdviceMaster = () => {
 
         if (response && response.status === 200) {
           fetchTreatmentData();
-          showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success");
+          showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success", () => {
+                    fetchDropdownData();
+                });
         }
       } else {
         // Add new treatment advice
@@ -198,7 +200,9 @@ const TreatmentAdviceMaster = () => {
 
         if (response && (response.status === 200 || response.status === 201)) {
           fetchTreatmentData();
-          showPopup(ADD_TREAT_ADV_SUCC_MSG, "success");
+          showPopup(ADD_TREAT_ADV_SUCC_MSG, "success", () => {
+                    fetchDropdownData();
+                });
         }
       }
 
@@ -213,16 +217,18 @@ const TreatmentAdviceMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
+        if (typeof onCloseCallback === 'function') {
+          onCloseCallback();
+        }
       }
     });
   };
-
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, treatmentAdviseId: id, newStatus });
   };
@@ -236,20 +242,14 @@ const TreatmentAdviceMaster = () => {
           `${MAS_TREATMENT_ADVISE}/status/${confirmDialog.treatmentAdviseId}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
-          // Update local state with formatted date
-          setTreatmentData((prevData) =>
-            prevData.map((treatment) =>
-              treatment.id === confirmDialog.treatmentAdviseId
-                ? {
-                  ...treatment,
-                  status: confirmDialog.newStatus,
-                  lastUpdated: formatDate(new Date().toISOString())
-                }
-                : treatment
-            )
+        if (response && response.status === 200) {
+          showPopup(
+            `Treatment advice ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
+            "success",
+            () => {
+              fetchTreatmentData();
+            }
           );
-          showPopup(`Treatment advice ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
         }
       } catch (err) {
         console.error("Error updating treatment advice status:", err);
@@ -369,15 +369,15 @@ const TreatmentAdviceMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={treatment.status === "y"}
-                                    onChange={() => handleSwitchChange(treatment.id, treatment.status === "y" ? "n" : "y")}
+                                    checked={treatment.status.toLowerCase() === "y"}
+                                    onChange={() => handleSwitchChange(treatment.id, treatment.status.toLowerCase() === "y" ? "n" : "y")}
                                     id={`switch-${treatment.id}`}
                                   />
                                   <label
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${treatment.id}`}
                                   >
-                                    {treatment.status === "y" ? 'Active' : 'Inactive'}
+                                    {treatment.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -387,7 +387,7 @@ const TreatmentAdviceMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(treatment)}
-                                  disabled={treatment.status !== "y"}
+                                  disabled={treatment.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -499,11 +499,11 @@ const TreatmentAdviceMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
                           <strong> {treatmentData.find(treatment => treatment.id === confirmDialog.treatmentAdviseId)?.treatmentAdvice}</strong> treatment advice?
                         </p>
                         {/* <p className="text-muted">
-                          {confirmDialog.newStatus === "y" 
+                          {confirmDialog.newStatus?.toLowerCase() === "y" 
                             ? "This will make the treatment advice available for selection." 
                             : "This will hide the treatment advice from selection."}
                         </p> */}

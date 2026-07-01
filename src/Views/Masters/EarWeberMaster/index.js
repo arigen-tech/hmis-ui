@@ -116,14 +116,17 @@ const EarWeberMaster = () => {
           ...editingRecord,
           weberResult: formData.weberResult.trim(),
         });
-        showPopup(UPDATE_EARWEB, "success");
+        showPopup(UPDATE_EARWEB, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_ENT_WEBER}/create`, {
           weberResult: formData.weberResult.trim(),
         });
-        showPopup(ADD_EARWEB, "success");
+        showPopup(ADD_EARWEB, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_TO_UPDATE_STS, "error");
@@ -166,8 +169,11 @@ const EarWeberMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -238,7 +244,7 @@ const EarWeberMaster = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={rec.status === "y"}
+                                checked={rec.status?.toLowerCase() === "y"}
                                 onChange={() => handleSwitchChange(rec)}
                               />
                             </div>
@@ -247,7 +253,7 @@ const EarWeberMaster = () => {
                             <button
                               className="btn btn-success btn-sm"
                               onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "y"}
+                              disabled={rec.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -310,7 +316,7 @@ const EarWeberMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record.weberResult}</strong>
 
                     ?

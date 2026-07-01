@@ -290,7 +290,7 @@ const Investigationpricing = () => {
     }
 
     const handleSwitchChange = (id, currentStatus, name) => {
-        const newStatus = currentStatus === "y" ? "n" : "y"
+        const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y"
         setConfirmDialog({ isOpen: true, investigationId: id, newStatus, name })
     }
 
@@ -306,7 +306,7 @@ const Investigationpricing = () => {
                 if (response && response.status === 200) {
                     setPopupMessage({
                         message: `Investigation price "${confirmDialog.name}" ${
-                            confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+                            confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
                         } successfully!`,
                         type: "success",
                         onClose: () => {
@@ -498,7 +498,7 @@ const Investigationpricing = () => {
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
-                                                                        checked={item.status === "y"}
+                                                                        checked={item.status?.toLowerCase() === "y"}
                                                                         onChange={() => handleSwitchChange(
                                                                             item.id, 
                                                                             item.status, 
@@ -510,7 +510,7 @@ const Investigationpricing = () => {
                                                                         className="form-check-label ms-2"
                                                                         htmlFor={`switch-${item.id}`}
                                                                     >
-                                                                        {item.status === "y" ? "Active" : "Inactive"}
+                                                                        {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                                                     </label>
                                                                 </div>
                                                             </td>
@@ -518,7 +518,7 @@ const Investigationpricing = () => {
                                                                 <button
                                                                     className="btn btn-success btn-sm"
                                                                     onClick={() => handleEdit(item)}
-                                                                    disabled={item.status !== "y"}
+                                                                    disabled={item.status?.toLowerCase() !== "y"}
                                                                 >
                                                                     <i className="fa fa-pencil"></i>
                                                                 </button>
@@ -682,7 +682,7 @@ const Investigationpricing = () => {
                                         <div className="modal-content">
                                             <div className="modal-body">
                                                 Are you sure you want to{" "}
-                                                {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                 <strong>{confirmDialog.name}</strong>?
                                             </div>
                                             <div className="modal-footer">

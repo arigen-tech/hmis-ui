@@ -90,8 +90,11 @@ const BloodDonationHDR = () => {
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   /* ---------------- HANDLERS ---------------- */
-  const showPopup = (message, type = "success") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "success", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleEdit = (record) => {
@@ -156,7 +159,7 @@ const BloodDonationHDR = () => {
       );
       showPopup(
         `Blood Donation HDR ${
-          confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+          confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
         }`,
       );
     }
@@ -255,11 +258,11 @@ const BloodDonationHDR = () => {
                             type="checkbox"
                             role="switch"
                             id={`switch-${item.id}`}
-                            checked={item.status === "y"}
+                            checked={item.status?.toLowerCase() === "y"}
                             onChange={() =>
                               handleSwitchChange(
                                 item.id,
-                                item.status === "y" ? "n" : "y",
+                                item.status?.toLowerCase() === "y" ? "n" : "y",
                                 item.donationType,
                               )
                             }
@@ -268,7 +271,7 @@ const BloodDonationHDR = () => {
                             className="form-check-label ms-2"
                             htmlFor={`switch-${item.id}`}
                           >
-                            {item.status === "y" ? "Active" : "Inactive"}
+                            {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                           </label>
                         </div>
                       </td>
@@ -277,7 +280,7 @@ const BloodDonationHDR = () => {
                         <button
                           className="btn btn-sm btn-success"
                           onClick={() => handleEdit(item)}
-                          disabled={item.status !== "y"}
+                          disabled={item.status?.toLowerCase() !== "y"}
                         >
                           <i className="fa fa-pencil"></i>
                         </button>
@@ -373,7 +376,7 @@ const BloodDonationHDR = () => {
                           <div className="modal-body">
                             <p>
                               Are you sure you want to{" "}
-                              {confirmDialog.newStatus === "y"
+                              {confirmDialog.newStatus?.toLowerCase() === "y"
                                 ? "activate"
                                 : "deactivate"}{" "}
                               <strong>{confirmDialog.donationType}</strong>?

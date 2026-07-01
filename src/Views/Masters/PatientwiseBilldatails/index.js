@@ -41,13 +41,14 @@ const PatientwiseBilldatails = () => {
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
   const [printingIds, setPrintingIds] = useState(new Set());
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 

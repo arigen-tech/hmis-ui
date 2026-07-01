@@ -168,7 +168,6 @@ const ProcedureTypeMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchProcedureTypeData();
               setShowForm(false);
             }
           });
@@ -186,7 +185,6 @@ const ProcedureTypeMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchProcedureTypeData();
               setShowForm(false);
             }
           });
@@ -205,18 +203,19 @@ const ProcedureTypeMaster = () => {
     }
   };
 
-  const showPopup = (message, type = 'info') => {
+  const showPopup = (message, type = 'info', onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      }
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            }
     });
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({ isOpen: true, procedureTypeId: id, newStatus, name });
   };
 
@@ -232,7 +231,7 @@ const ProcedureTypeMaster = () => {
         if (response && response.status === 200) {
           setPopupMessage({
             message: `Procedure type "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -274,7 +273,7 @@ const ProcedureTypeMaster = () => {
 
   // Handle activate for deactive records in edit mode
   const handleActivate = async () => {
-    if (editingProcedureType && editingProcedureType.status === "n") {
+    if (editingProcedureType && editingProcedureType.status?.toLowerCase() === "n") {
       setSaving(true);
 
       try {
@@ -382,7 +381,7 @@ const ProcedureTypeMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={procedureType.status === "y"}
+                                    checked={procedureType.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(procedureType.id, procedureType.status, procedureType.procedureTypeName)}
                                     id={`switch-${procedureType.id}`}
                                   />
@@ -390,7 +389,7 @@ const ProcedureTypeMaster = () => {
                                     className="form-check-label ms-2"
                                     htmlFor={`switch-${procedureType.id}`}
                                   >
-                                    {procedureType.status === "y" ? 'Active' : 'Inactive'}
+                                    {procedureType.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -398,7 +397,7 @@ const ProcedureTypeMaster = () => {
                                 <button
                                   className="btn btn-success btn-sm"
                                   onClick={() => handleEdit(procedureType)}
-                                  disabled={procedureType.status !== "y"}
+                                  disabled={procedureType.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -463,7 +462,7 @@ const ProcedureTypeMaster = () => {
                       {saving ? "Saving..." : editingProcedureType ? 'Update' : 'Save'}
                     </button>
 
-                    {editingProcedureType && editingProcedureType.status === "n" && (
+                    {editingProcedureType && editingProcedureType.status?.toLowerCase() === "n" && (
                       <button
                         type="button"
                         className="btn btn-success me-2"
@@ -502,7 +501,7 @@ const ProcedureTypeMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

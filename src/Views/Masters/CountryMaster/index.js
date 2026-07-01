@@ -136,7 +136,6 @@ const CountryMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             resetForm();
-                            fetchCountries();
                             setShowForm(false);
                         },
                     });
@@ -160,7 +159,6 @@ const CountryMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             resetForm();
-                            fetchCountries();
                             setShowForm(false);
                         },
                     });
@@ -183,12 +181,13 @@ const CountryMaster = () => {
     };
 
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -208,12 +207,12 @@ const CountryMaster = () => {
                 `${MAS_COUNTRY}/status/${confirmDialog.countryId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Country "${
                         confirmDialog.countryName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -355,15 +354,15 @@ const CountryMaster = () => {
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={country.status === "y"}
-                                                                    onChange={() => handleSwitchChange(country.id, country.status === "y" ? "n" : "y")}
+                                                                    checked={country.status?.toLowerCase() === "y"}
+                                                                    onChange={() => handleSwitchChange(country.id, country.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                     id={`switch-${country.id}`}
                                                                 />
                                                                 <label
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${country.id}`}
                                                                 >
-                                                                    {country.status === "y" ? "Active" : "Deactivated"}
+                                                                    {country.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -371,7 +370,7 @@ const CountryMaster = () => {
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleEdit(country)}
-                                                                disabled={country.status !== "y"}
+                                                                disabled={country.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -449,7 +448,7 @@ const CountryMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{countries.find((country) => country.id === confirmDialog.countryId)?.countryName}</strong>?
                                                 </p>
                                             </div>

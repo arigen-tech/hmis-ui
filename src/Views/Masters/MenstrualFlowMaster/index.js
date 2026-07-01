@@ -114,14 +114,17 @@ const MenstrualFlowMaster = () => {
           ...editingRecord,
           flowValue: formData.flowValue.trim(),
         });
-        showPopup(UPDATE_MENSTRUAL, "success");
+        showPopup(UPDATE_MENSTRUAL, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_GYN_FLOW}/create`, { 
           flowValue: formData.flowValue.trim(),
         });
-        showPopup(ADD_MENSTRUAL, "success");
+        showPopup(ADD_MENSTRUAL, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_MENSTRUAL, "error");
@@ -165,8 +168,11 @@ const MenstrualFlowMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -310,7 +316,7 @@ const MenstrualFlowMaster = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.flowValue}</strong>?
                   </div>
                   <div className="modal-footer">

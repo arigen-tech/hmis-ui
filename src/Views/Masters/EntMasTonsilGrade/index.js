@@ -41,7 +41,7 @@ const EntMasTonsilGradeMaster = () => {
           status: rec.status.toLowerCase(),
           lastUpdateDate: rec.lastUpdateDate ? rec.lastUpdateDate.replace("T", " ").split(".")[0] : "",
         }));
-        formatted.sort((a, b) => (a.status === "y" && b.status === "n" ? -1 : 1));
+        formatted.sort((a, b) => (a.status?.toLowerCase() === "y" && b.status?.toLowerCase() === "n" ? -1 : 1));
         setRecords(formatted);
       }
     } catch (err) {
@@ -56,8 +56,11 @@ const EntMasTonsilGradeMaster = () => {
     fetchRecords();
   }, []);
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleSearchChange = (e) => {
@@ -109,15 +112,18 @@ const EntMasTonsilGradeMaster = () => {
           tonsilGrade: formData.tonsilGrade,
           status: formData.status,
         });
-        showPopup(UPDATE_ENTMAS, "success");
+        showPopup(UPDATE_ENTMAS, "success", () => {
+                    fetchRecords();
+                });
       } else {
         await postRequest(`${MAS_TONSIL_GRADE}/create`, {
           tonsilGrade: formData.tonsilGrade,
           status: formData.status,
         });
-        showPopup(ADD_ENTMAS, "success");
+        showPopup(ADD_ENTMAS, "success", () => {
+                    fetchRecords();
+                });
       }
-      fetchRecords();
       resetForm();
     } catch (err) {
       console.error(err);
@@ -157,7 +163,7 @@ const EntMasTonsilGradeMaster = () => {
     }
     try {
       await putRequest(`${MAS_TONSIL_GRADE}/status/${confirmDialog.recordId}?status=${confirmDialog.newStatus}`);
-      showPopup(confirmDialog.newStatus === "y" ? "Activated successfully!" : "Deactivated successfully!", "success");
+      showPopup(confirmDialog.newStatus?.toLowerCase() === "y" ? "Activated successfully!" : "Deactivated successfully!", "success");
       fetchRecords();
     } catch (err) {
       console.error(err);
@@ -224,18 +230,18 @@ const EntMasTonsilGradeMaster = () => {
                       </thead>
                       <tbody>
                         {currentItems.length ? currentItems.map((rec, idx) => (
-                          <tr key={rec.id} className={rec.status !== "y" ? "table-secondary" : ""}>
+                          <tr key={rec.id} className={rec.status?.toLowerCase() !== "y" ? "table-secondary" : ""}>
                             <td>{rec.tonsilGrade}</td>
                             <td>
                               <div className="form-check form-switch">
                                 <input
                                   type="checkbox"
                                   className="form-check-input"
-                                  checked={rec.status === "y"}
-                                  onChange={() => handleSwitchChange(rec.id, rec.status === "y" ? "n" : "y")}
+                                  checked={rec.status?.toLowerCase() === "y"}
+                                  onChange={() => handleSwitchChange(rec.id, rec.status?.toLowerCase() === "y" ? "n" : "y")}
                                 />
                                 <label className="form-check-label">
-                                  {rec.status === "y" ? "Active" : "Deactivated"}
+                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                 </label>
                               </div>
                             </td>
@@ -243,7 +249,7 @@ const EntMasTonsilGradeMaster = () => {
                               <button
                                 className="btn btn-sm btn-success"
                                 onClick={() => handleEdit(rec)}
-                                disabled={rec.status !== "y"}
+                                disabled={rec.status?.toLowerCase() !== "y"}
                               >
                                 <i className="fa fa-pencil"></i>
                               </button>
@@ -291,7 +297,7 @@ const EntMasTonsilGradeMaster = () => {
                         <h5 className="modal-title">Confirm Status Change</h5>
                       </div>
                       <div className="modal-body">
-                        Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{records.find(r => r.id === confirmDialog.recordId)?.tonsilGrade}</strong>?
                       </div>
                       <div className="modal-footer">

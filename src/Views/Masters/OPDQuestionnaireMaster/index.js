@@ -141,7 +141,6 @@ const OPDQuestionnaireMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -163,7 +162,6 @@ const OPDQuestionnaireMaster = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -193,7 +191,7 @@ const OPDQuestionnaireMaster = () => {
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({ isOpen: true, id, newStatus, name });
   };
 
@@ -206,10 +204,10 @@ const OPDQuestionnaireMaster = () => {
           `${MAS_OPD_QUESTION}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Question "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -240,8 +238,11 @@ const OPDQuestionnaireMaster = () => {
     fetchData();
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleSearch = () => {
@@ -369,20 +370,20 @@ const OPDQuestionnaireMaster = () => {
                                 <input
                                   className="form-check-input"
                                   type="checkbox"
-                                  checked={rec.status === "y"}
+                                  checked={rec.status?.toLowerCase() === "y"}
                                   onChange={() =>
                                     handleSwitchChange(rec.id, rec.status, rec.question)
                                   }
                                 />
                                 <label className="form-check-label ms-2">
-                                  {rec.status === "y" ? "Active" : "Inactive"}
+                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                                 </label>
                               </div>
                             </td>
                             <td>
                               <button
                                 className="btn btn-success btn-sm"
-                                disabled={rec.status !== "y"}
+                                disabled={rec.status?.toLowerCase() !== "y"}
                                 onClick={() => handleEdit(rec)}
                               >
                                 <i className="fa fa-pencil"></i>
@@ -471,7 +472,7 @@ const OPDQuestionnaireMaster = () => {
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                        {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">

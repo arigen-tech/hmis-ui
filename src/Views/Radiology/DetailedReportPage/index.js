@@ -5,7 +5,7 @@ import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { RADIOLOGY_REPORT_SAVE_URL, RADIOLOGY_TEMPLATE_LIST_GET_BY_ID, REQUEST_PARAM_STATUS, STATUS_Y ,STATUS_S} from "../../../config/apiConfig";
+import { RADIOLOGY_REPORT_SAVE_URL, RADIOLOGY_TEMPLATE_LIST_GET_BY_ID, RADIOLOGY_REPORT_GET_URL, REQUEST_PARAM_STATUS, STATUS_Y ,STATUS_S} from "../../../config/apiConfig";
 import { FETCH_RADIOLOGY_TEMPLATE_ERR_MSG,REPORT_SAVE_FAILED_ERR_MSG,REPORT_SAVED_SUCC_MSG, REPORT_SUBMIT_FAILED_ERR_MSG, REPORT_SUBMITTED_SUCC_MSG } from "../../../config/constants";
 
 const DetailedRadiologyReportPage = () => {
@@ -81,12 +81,37 @@ const DetailedRadiologyReportPage = () => {
     }
   };
 
-  // Fetch templates when component mounts
+  // Fetch saved report details based on radOrderDtId
+  const fetchSavedReport = async () => {
+    if (!formData.radOrderDtId) return;
+    
+    try {
+      setLoading(true);
+      const response = await getRequest(`${RADIOLOGY_REPORT_GET_URL}?radOrderDtId=${formData.radOrderDtId}`);
+      
+      if (response?.status === 200 && response?.response && response.response.reportDesc) {
+        const savedReport = response.response;
+        setFormData(prev => ({
+          ...prev,
+          reportContent: savedReport.reportDesc || ""
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching saved report:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch templates and saved report when component mounts
   useEffect(() => {
+    if (formData.radOrderDtId) {
+      fetchSavedReport();
+    }
     if (formData.modalityId) {
       fetchTemplateData();
     }
-  }, [formData.modalityId]);
+  }, [formData.modalityId, formData.radOrderDtId]);
 
   // Filter templates based on search query
   const filteredTemplates = templateData.filter(template =>

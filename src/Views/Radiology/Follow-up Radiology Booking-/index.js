@@ -191,7 +191,10 @@ useEffect(() => {
       if (lastFetchedGender.current !== formData.gender) {
         lastFetchedGender.current = formData.gender;
         hasFetchedInvestigations.current = true;
-        const inv = await fetchInvestigationDetails(Number(formData.gender));
+        const inv = await fetchInvestigationDetails(
+          Number(formData.gender),
+          genderData,
+        );
         setInvestigationItems(inv);
       }
     }
@@ -663,12 +666,15 @@ useEffect(() => {
       const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
+        return data.response;
       } else {
         console.error("Unexpected API response format:", data);
         setGenderData([]);
+        return [];
       }
     } catch (error) {
       console.error("Error fetching gender data:", error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -776,10 +782,10 @@ useEffect(() => {
     }
   }
 
-  async function fetchInvestigationDetails(genderValue) {
+  async function fetchInvestigationDetails(genderValue, genderList = genderData) {
     setLoading(true);
     try {
-      const selectedGender = genderData.find(
+      const selectedGender = genderList.find(
         (gender) => gender.id === Number(genderValue),
       );
       if (!selectedGender) {
@@ -981,12 +987,12 @@ useEffect(() => {
 
       setFormData(mappedData);
 
-    await Promise.all([
-      fetchGenderData(),
-      fetchRelationData(),
-      fetchCountryData(),
-      fetchGstConfiguration(),
-    ]);
+      const [genders] = await Promise.all([
+        fetchGenderData(),
+        fetchRelationData(),
+        fetchCountryData(),
+        fetchGstConfiguration(),
+      ]);
 
         if (mappedData.country) {
       await fetchStates(mappedData.country);
@@ -1003,7 +1009,10 @@ useEffect(() => {
     
     // Fetch investigation items based on patient's gender
     if (mappedData.gender) {
-      const inv = await fetchInvestigationDetails(Number(mappedData.gender));
+      const inv = await fetchInvestigationDetails(
+        Number(mappedData.gender),
+        genders,
+      );
       setInvestigationItems(inv);
     }
     
@@ -2158,10 +2167,10 @@ useEffect(() => {
                                       {formData.type === "investigation"
                                         ? investigationItems
                                             .filter((item) =>
-                                              item.investigationName
+                                              (item.investigationName || "")
                                                 .toLowerCase()
                                                 .includes(
-                                                  row.name.toLowerCase(),
+                                                  (row.name || "").toLowerCase(),
                                                 ),
                                             )
                                             .map((item, i) => {
@@ -2293,10 +2302,10 @@ useEffect(() => {
                                             })
                                         : packageItems
                                             .filter((item) =>
-                                              item.packName
+                                              (item.packName || "")
                                                 .toLowerCase()
                                                 .includes(
-                                                  row.name.toLowerCase(),
+                                                  (row.name || "").toLowerCase(),
                                                 ),
                                             )
                                             .map((item, i) => (

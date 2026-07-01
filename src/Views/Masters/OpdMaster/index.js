@@ -119,8 +119,9 @@ const OpdSessionMaster = () => {
         })
 
         if (response && response.status === 200) {
-          fetchOpdSessionData()
-          showPopup(UPDATE_OPD_SUCC_MSG, "success")
+          showPopup(UPDATE_OPD_SUCC_MSG, "success", () => {
+                    fetchOpdSessionData();
+                })
         }
       } else {
         // Add new OPD session
@@ -132,8 +133,9 @@ const OpdSessionMaster = () => {
         })
 
         if (response && response.status === 200) {
-          fetchOpdSessionData()
-          showPopup(ADD_OPD_SUCC_MSG, "success")
+          showPopup(ADD_OPD_SUCC_MSG, "success", () => {
+                    fetchOpdSessionData();
+                })
         }
       }
 
@@ -177,7 +179,7 @@ const OpdSessionMaster = () => {
             ),
           )
           showPopup(
-            `OPD Session ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+            `OPD Session ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             "success",
           )
         }
@@ -300,12 +302,12 @@ const OpdSessionMaster = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={session.status === "y"}
-                                onChange={() => handleSwitchChange(session.id, session.status === "y" ? "n" : "y")}
+                                checked={session.status?.toLowerCase() === "y"}
+                                onChange={() => handleSwitchChange(session.id, session.status?.toLowerCase() === "y" ? "n" : "y")}
                                 id={`switch-${session.id}`}
                               />
                               <label className="form-check-label px-0" htmlFor={`switch-${session.id}`}>
-                                {session.status === "y" ? "Active" : "Deactivated"}
+                                {session.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                               </label>
                             </div>
                           </td>
@@ -313,7 +315,7 @@ const OpdSessionMaster = () => {
                             <button
                               className="btn btn-sm btn-success me-2"
                               onClick={() => handleEdit(session)}
-                              disabled={session.status !== "y"}
+                              disabled={session.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -462,7 +464,7 @@ const OpdSessionMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>
                             {opdSessionData.find((session) => session.id === confirmDialog.sessionId)?.sessionName}
                           </strong>

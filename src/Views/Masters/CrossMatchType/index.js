@@ -170,8 +170,7 @@ const CrossMatchType = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData(0);
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Update failed");
@@ -192,8 +191,7 @@ const CrossMatchType = () => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData(0);
-            }
+              }
           });
         } else {
           throw new Error(response.message || "Save failed");
@@ -208,7 +206,7 @@ const CrossMatchType = () => {
   };
 
   const handleSwitchChange = (id, currentStatus, name) => {
-    const newStatus = currentStatus === "y" ? "n" : "y";
+    const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
     setConfirmDialog({
       isOpen: true,
       id,
@@ -226,10 +224,10 @@ const CrossMatchType = () => {
           `${MAS_CROSS_MATCH_TYPE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Cross match type "${confirmDialog.name}" ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -257,8 +255,11 @@ const CrossMatchType = () => {
     });
   };
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   return (
@@ -370,7 +371,7 @@ const CrossMatchType = () => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={item.status === "y"}
+                                checked={item.status?.toLowerCase() === "y"}
                                 onChange={() =>
                                   handleSwitchChange(
                                     item.id,
@@ -384,7 +385,7 @@ const CrossMatchType = () => {
                                 className="form-check-label ms-2"
                                 htmlFor={`switch-${item.id}`}
                               >
-                                {item.status === "y" ? "Active" : "Inactive"}
+                                {item.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
@@ -392,7 +393,7 @@ const CrossMatchType = () => {
                             <button
                               className="btn btn-sm btn-success me-2"
                               onClick={() => handleEdit(item)}
-                              disabled={item.status !== "y"}
+                              disabled={item.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -534,7 +535,7 @@ const CrossMatchType = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to{" "}
-                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{confirmDialog.name}</strong>?
                         </p>
                       </div>

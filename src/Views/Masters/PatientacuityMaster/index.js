@@ -157,16 +157,18 @@ const PatientacuityMaster = () => {
         const response = await putRequest(`${MAS_PATIENT_ACUITY}/update/${editingRecord.acuityCode}`, requestData);
 
         if (response && response.status === 200) {
-          fetchData();
-          showPopup(UPDATE_PATIENT_ACUITY_SUCC_MSG ,"success");
+          showPopup(UPDATE_PATIENT_ACUITY_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
         }
       } else {
         // Add new acuity
         const response = await postRequest(`${MAS_PATIENT_ACUITY}/create`, requestData);
 
         if (response && (response.status === 200 || response.status === 201)) {
-          fetchData();
-          showPopup(ADD_PATIENT_ACUITY_SUCC_MSG, "success");
+          showPopup(ADD_PATIENT_ACUITY_SUCC_MSG, "success", () => {
+                    fetchData();
+                });
         }
       }
 
@@ -212,7 +214,7 @@ const PatientacuityMaster = () => {
           `${MAS_PATIENT_ACUITY}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response && response.response) {
+        if (response && response.status === 200) {
           // Update local state with formatted date
           setData((prevData) =>
             prevData.map((item) =>
@@ -226,10 +228,9 @@ const PatientacuityMaster = () => {
             )
           );
 
-          showPopup(
-            `Patient acuity ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Patient acuity ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchData();
+                    });
         }
       } catch (err) {
         console.error("Error updating patient acuity status:", err);
@@ -242,8 +243,11 @@ const PatientacuityMaster = () => {
   };
 
   // Popup
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
  
@@ -350,11 +354,11 @@ const PatientacuityMaster = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={item.status === "y"}
+                                    checked={item.status?.toLowerCase() === "y"}
                                     onChange={() =>
                                       handleSwitchChange(
                                         item.acuityCode, 
-                                        item.status === "y" ? "n" : "y",
+                                        item.status?.toLowerCase() === "y" ? "n" : "y",
                                         item.acuityName
                                       )
                                     }
@@ -364,7 +368,7 @@ const PatientacuityMaster = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${item.acuityCode}`}
                                   >
-                                    {item.status === "y" ? 'Active' : 'Inactive'}
+                                    {item.status?.toLowerCase() === "y" ? 'Active' : 'Inactive'}
                                   </label>
                                 </div>
                               </td>
@@ -375,7 +379,7 @@ const PatientacuityMaster = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(item)}
-                                  disabled={item.status !== "y"}
+                                  disabled={item.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -493,7 +497,7 @@ const PatientacuityMaster = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? 'activate' : 'deactivate'} 
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'} 
                           <strong> {confirmDialog.acuityName}</strong>?
                         </p>
                       </div>

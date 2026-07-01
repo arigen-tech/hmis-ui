@@ -118,14 +118,17 @@ const SmearResultMaster = () => {
           ...editingRecord,
           papResult: formData.papResult.trim(),
         });
-        showPopup(UPDATE_SMEARRESULT, "success");
+        showPopup(UPDATE_SMEARRESULT, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_GYN_POPSMEAR}/create`, {
           papResult: formData.papResult.trim(),
         });
-        showPopup(ADD_SMEARRESULT, "success");
+        showPopup(ADD_SMEARRESULT, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_SMEARRESULT, "error");
@@ -169,8 +172,11 @@ const SmearResultMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -321,7 +327,7 @@ const SmearResultMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "deactivate" : "activate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "deactivate" : "activate"}{" "}
                     <strong>{confirmDialog.record?.papResult}</strong>?
                   </div>
                   <div className="modal-footer">

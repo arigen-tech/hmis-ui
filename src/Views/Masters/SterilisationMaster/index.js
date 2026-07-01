@@ -113,14 +113,17 @@ const SterilisationMaster = () => {
           ...editingRecord,
           sterilisationType: formData.sterilisationType.trim(),
         });
-        showPopup(UPDATE_STERILI_SATION, "success");
+        showPopup(UPDATE_STERILI_SATION, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_STERILISATION}/create`, {
           sterilisationType: formData.sterilisationType.trim(),
         });
-        showPopup(ADD_STERILI_SATION, "success");
+        showPopup(ADD_STERILI_SATION, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch (error) {
       showPopup(FAIL_STERILI_SATION, "error");
@@ -166,8 +169,11 @@ const SterilisationMaster = () => {
     }
   };
 
-  const showPopup = (message, type) => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type, onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -329,7 +335,7 @@ const SterilisationMaster = () => {
                   </div>
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     <strong>{confirmDialog.record?.sterilisationType}</strong>? {/* Fixed */}
                   </div>
                   <div className="modal-footer">

@@ -161,8 +161,9 @@ const LabResultAmendment = () => {
         });
 
         if (response && response.status === 200) {
-          fetchAmendmentTypeData();
-          showPopup(UPDATE_LAB_AMENDMENT_TYPE_SUCC_MSG, "success");
+          showPopup(UPDATE_LAB_AMENDMENT_TYPE_SUCC_MSG, "success", () => {
+                    fetchAmendmentTypeData();
+                });
         }
       } else {
         const response = await postRequest(`${LAB_AMENDMENT_TYPE_API}/create`, {
@@ -172,8 +173,9 @@ const LabResultAmendment = () => {
         });
 
         if (response && response.status === 200 || response.status === 201) {
-          fetchAmendmentTypeData();
-          showPopup(ADD_LAB_AMENDMENT_TYPE_SUCC_MSG, "success");
+          showPopup(ADD_LAB_AMENDMENT_TYPE_SUCC_MSG, "success", () => {
+                    fetchAmendmentTypeData();
+                });
         }
       }
 
@@ -192,13 +194,14 @@ const LabResultAmendment = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
-        setPopupMessage(null);
-      },
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            },
     });
   };
 
@@ -213,7 +216,7 @@ const LabResultAmendment = () => {
         const response = await putRequest(
           `${LAB_AMENDMENT_TYPE_API}/${confirmDialog.id}/status/${confirmDialog.newStatus}`
         );
-        if (response && response.response) {
+        if (response && response.status === 200) {
           setAmendmentTypeData((prevData) =>
             prevData.map((amendmentType) =>
               amendmentType.id === confirmDialog.id
@@ -221,10 +224,9 @@ const LabResultAmendment = () => {
                 : amendmentType
             )
           );
-          showPopup(
-            `Amendment Type ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
-            "success"
-          );
+          showPopup(`Amendment Type ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`, "success", () => {
+                        fetchAmendmentTypeData();
+                    });
         }
       } catch (err) {
         console.error("Error updating amendment type status:", err);
@@ -342,10 +344,10 @@ const LabResultAmendment = () => {
                                   <input
                                     className="form-check-input"
                                     type="checkbox"
-                                    checked={amendmentType.status === "y"}
+                                    checked={amendmentType.status?.toLowerCase() === "y"}
                                     onChange={() => handleSwitchChange(
                                       amendmentType.id, 
-                                      amendmentType.status === "y" ? "n" : "y", 
+                                      amendmentType.status?.toLowerCase() === "y" ? "n" : "y", 
                                       amendmentType.name
                                     )}
                                     id={`switch-${amendmentType.id}`}
@@ -354,7 +356,7 @@ const LabResultAmendment = () => {
                                     className="form-check-label px-0"
                                     htmlFor={`switch-${amendmentType.id}`}
                                   >
-                                    {amendmentType.status === "y" ? "Active" : "Deactivated"}
+                                    {amendmentType.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                   </label>
                                 </div>
                               </td>
@@ -362,7 +364,7 @@ const LabResultAmendment = () => {
                                 <button
                                   className="btn btn-sm btn-success me-2"
                                   onClick={() => handleEdit(amendmentType)}
-                                  disabled={amendmentType.status !== "y"}
+                                  disabled={amendmentType.status?.toLowerCase() !== "y"}
                                 >
                                   <i className="fa fa-pencil"></i>
                                 </button>
@@ -481,7 +483,7 @@ const LabResultAmendment = () => {
                       </div>
                       <div className="modal-body">
                         <p>
-                          Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                           <strong>{confirmDialog.amendmentTypeName}</strong>?
                         </p>
                       </div>

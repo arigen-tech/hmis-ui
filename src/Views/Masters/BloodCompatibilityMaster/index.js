@@ -48,8 +48,11 @@ const BloodCompatibilityMaster = () => {
   };
 
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
 
@@ -218,7 +221,6 @@ const fetchBloodGroupOptions = async (flag = 1) => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -238,7 +240,6 @@ const fetchBloodGroupOptions = async (flag = 1) => {
             onClose: () => {
               setPopupMessage(null);
               resetForm();
-              fetchData();
               setShowForm(false);
             }
           });
@@ -279,10 +280,10 @@ const fetchBloodGroupOptions = async (flag = 1) => {
           `${MAS_BLOOD_COMPATIBILITY}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
         );
 
-        if (response.status === 200) {
+        if (response && response.status === 200) {
           setPopupMessage({
             message: `Blood Compatibility record ${
-              confirmDialog.newStatus === "y" ? "activated" : "deactivated"
+              confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"
             } successfully!`,
             type: "success",
             onClose: () => {
@@ -467,9 +468,9 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                               <input
                                 className="form-check-input"
                                 type="checkbox"
-                                checked={rec.status === "y"}
+                                checked={rec.status?.toLowerCase() === "y"}
                                 onChange={() =>
-                                  handleSwitchChange(rec.compatibilityId, rec.status === "y" ? "n" : "y")
+                                  handleSwitchChange(rec.compatibilityId, rec.status?.toLowerCase() === "y" ? "n" : "y")
                                 }
                                 id={`switch-${rec.compatibilityId}`}
                               />
@@ -477,7 +478,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                                 className="form-check-label px-0"
                                 htmlFor={`switch-${rec.compatibilityId}`}
                               >
-                                {rec.status === "y" ? "Active" : "Inactive"}
+                                {rec.status?.toLowerCase() === "y" ? "Active" : "Inactive"}
                               </label>
                             </div>
                           </td>
@@ -486,7 +487,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                             <button
                               className="btn btn-sm btn-success"
                               onClick={() => handleEdit(rec)}
-                              disabled={rec.status !== "y"}
+                              disabled={rec.status?.toLowerCase() !== "y"}
                             >
                               <i className="fa fa-pencil"></i>
                             </button>
@@ -678,7 +679,7 @@ const fetchBloodGroupOptions = async (flag = 1) => {
                   <div className="modal-body">
                     <p>
                       Are you sure you want to{" "}
-                      {confirmDialog.newStatus === "y" ? "activate" : "deactivate"} this
+                      {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"} this
                       compatibility record?
                     </p>
                   </div>

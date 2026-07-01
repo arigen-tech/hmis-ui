@@ -1,7 +1,7 @@
-export const API_HOST =  'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+export const API_HOST = 'http://103.133.215.182:8081/hims';
+//  export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
-//  export const API_HOST = 'http://192.168.1.17:8080';
+//  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 
 export const DEFAULT_RSA_PUBLIC_KEY =
@@ -45,6 +45,10 @@ export const MAS_ITEM_CLASS = `${MASTERS}/masItemClass`;
 export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
+export const MAS_NON_DRUG_ITEM = `${MASTERS}/nonDrugItem`;
+export const MAS_NON_DRUG_ITEM_GET_ALL = `${MAS_NON_DRUG_ITEM}/getAll`;
+export const MAS_NON_DRUG_ITEM_GET_BY_ID = `${MAS_NON_DRUG_ITEM}/getById`;
+export const MAS_NON_DRUG_ITEM_UPDATE = `${MAS_NON_DRUG_ITEM}/update`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
 export const DG_MAS_COLLECTION = `${MASTERS}/DgMasCollection`;
 export const DG_MAS_INVESTIGATION_CATEGORY = `${MASTERS}/masInvestigationCategory`;
@@ -206,6 +210,11 @@ export const MAS_OPD_SESSION_GET_ALL = `${MAS_OPD_SESSION}/getAll/1`;
 export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
 export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
 export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
+export const MAS_WARD_GET_ALL = `${MASTERS}/masWard/getAll/0`;
+export const MAS_WARD_STATUS = `${MASTERS}/masWard/status`;
+export const MAS_WARD_UPDATE = `${MASTERS}/masWard/update`;
+export const MAS_WARD_CREATE = `${MASTERS}/masWard/create`;
+export const MAS_WARD_GET_BY_ID = `${MASTERS}/masWard/getById`;
 
 export const MAS_INVESTIGATION_UNIQUE_TYPES = `${MAS_INVESTIGATION}/investigationCategoryTypes`;
 export const MAS_INVESTIGATION_BY_MAIN_CHARGE_CODE = `${MAS_INVESTIGATION}/dgMasInvestigationByMainChargeCodeId`;
@@ -292,11 +301,11 @@ export const ENT_MAS_TM_STATUS = `${MASTERS}/entMasTmStatus`;
 export const OB_MAS_IMMUNISED_STATUS = `${MASTERS}/obMasImmunisedStatus`;
 export const MAS_GYN_POPSMEAR = `${MASTERS}/gynMasPapSmear`;
 export const MAS_ENT_WEBER = `${MASTERS}/entMasWeber`;
-export const XRAY_MODALITY = 40;
-export const USG_MODALITY = 41;
-export const MRI_MODALITY = 43;
-export const CT_MODALITY = 42;
-export const PET_MODALITY = 48;
+export const XRAY_MODALITY = 84;
+export const USG_MODALITY = 85;
+export const MRI_MODALITY = 87;
+export const CT_MODALITY = 86;
+export const PET_MODALITY = 91;
 
 export const GET_PREVIOUS_OPD_VISIT_HISTORY = `/opd/getPreviousOpdVisitHistory`;
 export const GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY = `/opd/getPreviousOpdVitalsDetailsHistory`;
@@ -403,7 +412,7 @@ export const MAS_BLOOD_COLLECTION_TYPE = `${MASTERS}/masBloodCollectionType`;
 export const GENERAL = "/general";
 export const GET_MODALITY_DROPDOWN_WRT_DEPARTMENT = `${GENERAL}/getModalityDetailsByDepartment`;
 export const REQUEST_PARAM_CODE = "code";
-export const RADIOLOGY_DEPARTMENT_CODE = "RADIMG";
+export const RADIOLOGY_DEPARTMENT_CODE = "RAD";
 
 export const RADIOLOGY_REPORT_END_URL = `${ALL_REPORTS}/radiologyReport`;
 export const REQUEST_PARAM_FLAG = `flag`;
@@ -415,6 +424,7 @@ export const STATUS_P = `P`;
 export const STATUS_D = `D`;
 export const RADIOLOGY_TEMPLATE_LIST_GET_BY_ID = `${MASTERS}/radiologyTemplateList/getById`;
 export const RADIOLOGY_REPORT_SAVE_URL = `${RADIOLOGY}/saveDetailsReportForRadiology`;
+export const RADIOLOGY_REPORT_GET_URL = `${RADIOLOGY}/getDetailsReportForRadiology`;
 export const REQUEST_PARAM_STATUS = "status";
 
 export const GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL = `${MAS_DEPARTMENT}/allForDropdowns`;
@@ -644,3 +654,7 @@ export const ENT_MAS_PINNA = `${MASTERS}/entMasPinna`;
 //ABHA INTEGRATION URLS
 // ABDM APIs
 export const ABDM_SEND_AADHAAR_OTP = `/api/v1/abdm/create/send-otp-aadhaar`;
+export const LABOLATORY_MAIN_CHARGECODE_ID = 1;
+export const REDIOLOGY_MAIN_CHARGECODE_ID = 2;
+export const ABDM_GENERATE_CAPTCHA = `/api/v1/abdm/m2/generate-captcha`;
+export const ABDM_VERIFY_HEALTH_ID = `/api/v1/abdm/m2/verify-health-id`;

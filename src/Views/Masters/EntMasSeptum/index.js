@@ -110,14 +110,17 @@ const EntMasSeptum = () => {
         await putRequest(`${MAS_ENT_SEPTUM}/update/${editingRecord.id}`, {
           septumStatus: formData.septumStatus.trim(),
         });
-        showPopup(UPDATE_ENT_MAS_SEPTUM, "success");
+        showPopup(UPDATE_ENT_MAS_SEPTUM, "success", () => {
+                    fetchData();
+                });
       } else {
         await postRequest(`${MAS_ENT_SEPTUM}/create`, {
           septumStatus: formData.septumStatus.trim(),
         });
-        showPopup(ADD_ENT_MAS_SEPTUM, "success");
+        showPopup(ADD_ENT_MAS_SEPTUM, "success", () => {
+                    fetchData();
+                });
       }
-      fetchData();
       handleCancel();
     } catch {
       showPopup(FAIL_ENT_MAS_SEPTUM, "error");
@@ -160,8 +163,11 @@ const EntMasSeptum = () => {
     }
   };
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({ message, type, onClose: () => {
+                setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
+            } });
   };
 
   const handleRefresh = () => {
@@ -303,7 +309,7 @@ const EntMasSeptum = () => {
                 <div className="modal-content">
                   <div className="modal-body">
                     Are you sure you want to{" "}
-                    {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                    {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                     this record?
                   </div>
                   <div className="modal-footer">

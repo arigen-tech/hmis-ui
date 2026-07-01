@@ -142,8 +142,7 @@ const RoomCategoryMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             handleCancel();
-                            fetchCategoryData(0);
-                        }
+                            }
                     });
                 }
             } else {
@@ -159,8 +158,7 @@ const RoomCategoryMaster = () => {
                         onClose: () => {
                             setPopupMessage(null);
                             handleCancel();
-                            fetchCategoryData(0);
-                        }
+                            }
                     });
                 }
             }
@@ -172,12 +170,13 @@ const RoomCategoryMaster = () => {
         }
     };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
+                if (onCloseCallback) onCloseCallback();
             },
         });
     };
@@ -195,12 +194,12 @@ const RoomCategoryMaster = () => {
                 `${MAS_ROOM_CATEGORY}/status/${confirmDialog.categoryId}?status=${confirmDialog.newStatus}`
             );
 
-            if (response.status === 200) {
+            if (response && response.status === 200) {
                 setPopupMessage({
                     message: `Room Category "${
                         confirmDialog.categoryName
                     }" ${
-                        confirmDialog.newStatus === "y"
+                        confirmDialog.newStatus?.toLowerCase() === "y"
                             ? "activated"
                             : "deactivated"
                     } successfully!`,
@@ -329,15 +328,15 @@ const RoomCategoryMaster = () => {
                                                                 <input
                                                                     className="form-check-input"
                                                                     type="checkbox"
-                                                                    checked={category.status === "y"}
-                                                                    onChange={() => handleSwitchChange(category.id, category.status === "y" ? "n" : "y")}
+                                                                    checked={category.status?.toLowerCase() === "y"}
+                                                                    onChange={() => handleSwitchChange(category.id, category.status?.toLowerCase() === "y" ? "n" : "y")}
                                                                     id={`switch-${category.id}`}
                                                                 />
                                                                 <label
                                                                     className="form-check-label px-0"
                                                                     htmlFor={`switch-${category.id}`}
                                                                 >
-                                                                    {category.status === "y" ? "Active" : "Deactivated"}
+                                                                    {category.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                 </label>
                                                             </div>
                                                         </td>
@@ -346,7 +345,7 @@ const RoomCategoryMaster = () => {
                                                             <button
                                                                 className="btn btn-sm btn-success me-2"
                                                                 onClick={() => handleEdit(category)}
-                                                                disabled={category.status !== "y"}
+                                                                disabled={category.status?.toLowerCase() !== "y"}
                                                             >
                                                                 <i className="fa fa-pencil"></i>
                                                             </button>
@@ -440,7 +439,7 @@ const RoomCategoryMaster = () => {
                                             </div>
                                             <div className="modal-body">
                                                 <p>
-                                                    Are you sure you want to {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                                                    Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
                                                     <strong>{categoryData.find((category) => category.id === confirmDialog.categoryId)?.categoryName}</strong>?
                                                 </p>
                                             </div>

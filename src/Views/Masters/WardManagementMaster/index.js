@@ -2,134 +2,20 @@ import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { getRequest, putRequest, postRequest } from "../../../service/apiService";
+import { MAS_WARD_CATEGORY_GET_ALL, MAS_WARD_GET_ALL, MAS_WARD_STATUS, MAS_WARD_UPDATE, MAS_WARD_CREATE, MAS_WARD_GET_BY_ID, MAS_CARE_LEVEL } from "../../../config/apiConfig";
 
 
 const WardManagement = () => {
-  // Sample mock data
-  const initialWardData = [
-    {
-      id: 1,
-      wardName: "Ward A",
-      category: "General Ward",
-      careLevel: "Basic",
-      status: "y",
-      lastUpdated: "2024-01-15 10:30:00"
-    },
-    {
-      id: 2,
-      wardName: "Ward B - Private",
-      category: "Private Ward",
-      careLevel: "Standard",
-      status: "y",
-      lastUpdated: "2024-01-10 14:20:00"
-    },
-    {
-      id: 3,
-      wardName: "ICU - 1",
-      category: "ICU - Intensive Care Unit",
-      careLevel: "Critical",
-      status: "y",
-      lastUpdated: "2024-01-05 09:15:00"
-    },
-    {
-      id: 4,
-      wardName: "Cardiac Unit - 1",
-      category: "CCU - Cardiac Care Unit",
-      careLevel: "Specialized",
-      status: "y",
-      lastUpdated: "2024-01-20 16:45:00"
-    },
-    {
-      id: 5,
-      wardName: "Children's Ward",
-      category: "Pediatric Ward",
-      careLevel: "Standard",
-      status: "y",
-      lastUpdated: "2024-01-18 11:10:00"
-    },
-    {
-      id: 6,
-      wardName: "Maternity - 1",
-      category: "Maternity Ward",
-      careLevel: "Basic",
-      status: "n",
-      lastUpdated: "2024-01-12 13:25:00"
-    },
-    {
-      id: 7,
-      wardName: "Ortho Ward - 1",
-      category: "Orthopedic Ward",
-      careLevel: "Specialized",
-      status: "y",
-      lastUpdated: "2024-01-08 15:40:00"
-    },
-    {
-      id: 8,
-      wardName: "Neuro ICU",
-      category: "Neuro Ward",
-      careLevel: "Critical",
-      status: "y",
-      lastUpdated: "2024-01-22 08:55:00"
-    },
-    {
-      id: 9,
-      wardName: "Oncology - 1",
-      category: "Oncology Ward",
-      careLevel: "Specialized",
-      status: "y",
-      lastUpdated: "2024-01-16 12:30:00"
-    },
-    {
-      id: 10,
-      wardName: "Psych Ward",
-      category: "Psychiatric Ward",
-      careLevel: "Standard",
-      status: "n",
-      lastUpdated: "2024-01-14 10:05:00"
-    },
-    {
-      id: 11,
-      wardName: "Isolation - 1",
-      category: "Isolation Ward",
-      careLevel: "Specialized",
-      status: "y",
-      lastUpdated: "2024-01-19 14:50:00"
-    },
-    {
-      id: 12,
-      wardName: "VIP Suite - 1",
-      category: "VIP Suite",
-      careLevel: "Premium",
-      status: "y",
-      lastUpdated: "2024-01-21 09:25:00"
-    }
-  ];
+  const initialWardData = [];
 
-  // Dropdown options
-  const categoryOptions = [
-    { value: "", label: "Select Category" },
-    { value: "General Ward", label: "General Ward" },
-    { value: "Private Ward", label: "Private Ward" },
-    { value: "ICU - Intensive Care Unit", label: "ICU - Intensive Care Unit" },
-    { value: "CCU - Cardiac Care Unit", label: "CCU - Cardiac Care Unit" },
-    { value: "Pediatric Ward", label: "Pediatric Ward" },
-    { value: "Maternity Ward", label: "Maternity Ward" },
-    { value: "Orthopedic Ward", label: "Orthopedic Ward" },
-    { value: "Neuro Ward", label: "Neuro Ward" },
-    { value: "Oncology Ward", label: "Oncology Ward" },
-    { value: "Psychiatric Ward", label: "Psychiatric Ward" },
-    { value: "Isolation Ward", label: "Isolation Ward" },
-    { value: "VIP Suite", label: "VIP Suite" }
-  ];
+  const [categoryOptions, setCategoryOptions] = useState([
+    { value: "", label: "Select Category" }
+  ]);
 
-  const careLevelOptions = [
-    { value: "", label: "Select Care Level" },
-    { value: "Basic", label: "Basic" },
-    { value: "Standard", label: "Standard" },
-    { value: "Specialized", label: "Specialized" },
-    { value: "Critical", label: "Critical" },
-    { value: "Premium", label: "Premium" }
-  ];
+  const [careLevelOptions, setCareLevelOptions] = useState([
+    { value: "", label: "Select Care Level" }
+  ]);
 
   const [wardData, setWardData] = useState(initialWardData);
   const [loading, setLoading] = useState(false);
@@ -144,6 +30,81 @@ const WardManagement = () => {
     category: "",
     careLevel: "",
   });
+
+  const mapApiWardToView = (ward) => ({
+    id: ward.wardId,
+    wardName: ward.wardName || "",
+    category: ward.wardCategoryName || "",
+    careLevel: ward.careLevelName || "",
+    categoryId: ward.wardCategoryId || ward.categoryId || "",
+    careLevelId: ward.careLevelId || ward.careId || "",
+    status: (ward.status || "").toUpperCase() === "Y" ? "y" : "n",
+    lastUpdated: ward.lastUpdateDate || "",
+  });
+
+  const fetchWardData = async () => {
+    setLoading(true);
+    try {
+      const data = await getRequest(MAS_WARD_GET_ALL);
+      if (data?.status === 200) {
+        setWardData((data.response || []).map(mapApiWardToView));
+      } else {
+        console.error("Unexpected ward API response:", data);
+      }
+    } catch (error) {
+      console.error("Error loading ward data:", error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchCategoryOptions = async () => {
+    try {
+      const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
+      const list = Array.isArray(data?.response) ? data.response : [];
+      setCategoryOptions([
+        { value: "", label: "Select Category" },
+        ...list.map((item) => ({
+          value: item.categoryId?.toString() || item.wardCategoryId?.toString() || "",
+          label: item.wardCategoryName || item.categoryName || ""
+        }))
+      ]);
+    } catch (error) {
+      console.error("Error loading ward categories:", error);
+    }
+  };
+
+  const fetchCareLevelOptions = async () => {
+    try {
+      const data = await getRequest(`${MAS_CARE_LEVEL}/getAll/1`);
+      const list = Array.isArray(data?.response) ? data.response : [];
+      setCareLevelOptions([
+        { value: "", label: "Select Care Level" },
+        ...list.map((item) => ({
+          value: item.careId?.toString() || "",
+          label: item.careLevelName || ""
+        }))
+      ]);
+    } catch (error) {
+      console.error("Error loading care levels:", error);
+    }
+  };
+
+  const openWardForm = async (ward = null) => {
+    await Promise.all([fetchCategoryOptions(), fetchCareLevelOptions()]);
+    if (ward) {
+      setEditingWard(ward);
+      setFormData({
+        wardName: ward.wardName,
+        category: ward.categoryId?.toString() || "",
+        careLevel: ward.careLevelId?.toString() || "",
+      });
+    } else {
+      setEditingWard(null);
+      setFormData({ wardName: "", category: "", careLevel: "" });
+    }
+    setShowForm(true);
+  };
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
@@ -171,6 +132,10 @@ const WardManagement = () => {
 
   // Reset to page 1 when search changes
   useEffect(() => {
+    fetchWardData();
+  }, []);
+
+  useEffect(() => {
     setCurrentPage(1);
     setPageInput("1");
   }, [searchQuery]);
@@ -197,14 +162,24 @@ const WardManagement = () => {
     setSearchQuery(e.target.value);
   };
 
-  const handleEdit = (ward) => {
-    setEditingWard(ward);
-    setFormData({
-      wardName: ward.wardName,
-      category: ward.category,
-      careLevel: ward.careLevel,
-    });
-    setShowForm(true);
+  const handleEdit = async (ward) => {
+    setLoading(true);
+    try {
+      const data = await getRequest(`${MAS_WARD_GET_BY_ID}/${ward.id}`);
+      if (data?.status === 200 && data.response) {
+        const apiWard = data.response;
+        const mapped = mapApiWardToView(apiWard);
+        await openWardForm(mapped);
+      } else {
+        console.error("Failed to fetch ward by id:", data);
+        showPopup("Failed to load ward details", "error");
+      }
+    } catch (err) {
+      console.error("Error fetching ward details:", err);
+      showPopup("Failed to load ward details", "error");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSave = async (e) => {
@@ -218,14 +193,26 @@ const WardManagement = () => {
       await new Promise(resolve => setTimeout(resolve, 500));
 
       if (editingWard) {
-        // Update existing ward
+        const payload = {
+          wardName: formData.wardName,
+          wardCategoryId: Number(formData.category),
+          careLevelId: Number(formData.careLevel)
+        };
+
+        const response = await putRequest(`${MAS_WARD_UPDATE}/${editingWard.id}`, payload);
+        if (response?.status !== 200) {
+          throw new Error(`Failed to update ward: ${response?.status}`);
+        }
+
         const updatedData = wardData.map(item =>
           item.id === editingWard.id
             ? {
               ...item,
               wardName: formData.wardName,
-              category: formData.category,
-              careLevel: formData.careLevel,
+              category: categoryOptions.find(opt => opt.value === formData.category)?.label || item.category,
+              careLevel: careLevelOptions.find(opt => opt.value === formData.careLevel)?.label || item.careLevel,
+              categoryId: formData.category,
+              careLevelId: formData.careLevel,
               lastUpdated: new Date().toLocaleString('en-IN', {
                 year: 'numeric',
                 month: '2-digit',
@@ -240,7 +227,12 @@ const WardManagement = () => {
         );
 
         setWardData(updatedData);
-        showPopup("Ward updated successfully!", "success");
+        showPopupWithCallback("Ward updated successfully!", "success", async () => {
+          setEditingWard(null);
+          setFormData({ wardName: "", category: "", careLevel: "" });
+          setShowForm(false);
+          await fetchWardData();
+        });
       } else {
         // Add new ward
         const newWard = {
@@ -260,16 +252,32 @@ const WardManagement = () => {
           }).replace(',', '')
         };
 
-        setWardData([...wardData, newWard]);
-        showPopup("New ward added successfully!", "success");
-      }
+          const payload = {
+            wardName: formData.wardName,
+            wardCategoryId: Number(formData.category),
+            careLevelId: Number(formData.careLevel)
+          };
 
-      setEditingWard(null);
-      setFormData({ wardName: "", category: "", careLevel: "" });
-      setShowForm(false);
+          const createResp = await postRequest(`${MAS_WARD_CREATE}`, payload);
+          if (createResp?.status !== 200) {
+            throw new Error(`Failed to create ward: ${createResp?.status}`);
+          }
+
+          showPopupWithCallback("New ward added successfully!", "success", async () => {
+            setEditingWard(null);
+            setFormData({ wardName: "", category: "", careLevel: "" });
+            setShowForm(false);
+            await fetchWardData();
+          });
+      }
     } catch (err) {
       console.error("Error saving ward data:", err);
-      showPopup(`Failed to save changes: ${err.message}`, "error");
+      showPopupWithCallback(`Failed to save changes: ${err.message}`, "error", async () => {
+        setShowForm(false);
+        setEditingWard(null);
+        setFormData({ wardName: "", category: "", careLevel: "" });
+        await fetchWardData();
+      });
     } finally {
       setLoading(false);
     }
@@ -285,46 +293,62 @@ const WardManagement = () => {
     });
   };
 
+  // showPopup with optional afterClose callback
+  const showPopupWithCallback = (message, type = 'info', afterClose = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (afterClose) afterClose();
+      }
+    });
+  };
+
   const handleSwitchChange = (id, newStatus) => {
     setConfirmDialog({ isOpen: true, wardId: id, newStatus });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.wardId !== null) {
-      try {
-        setLoading(true);
-
-        // Simulate API call delay
-        await new Promise(resolve => setTimeout(resolve, 500));
-
-        const updatedData = wardData.map((ward) =>
-          ward.id === confirmDialog.wardId
-            ? {
-              ...ward,
-              status: confirmDialog.newStatus,
-              lastUpdated: new Date().toLocaleString('en-IN', {
-                year: 'numeric',
-                month: '2-digit',
-                day: '2-digit',
-                hour: '2-digit',
-                minute: '2-digit',
-                second: '2-digit',
-                hour12: false
-              }).replace(',', '')
-            }
-            : ward
-        );
-
-        setWardData(updatedData);
-        showPopup(`Ward ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`, "success");
-      } catch (err) {
-        console.error("Error updating ward status:", err);
-        showPopup(`Failed to update status: ${err.message}`, "error");
-      } finally {
-        setLoading(false);
-      }
+    // If user cancelled the confirmation dialog, just close it
+    if (!confirmed) {
+      setConfirmDialog({ isOpen: false, wardId: null, newStatus: null });
+      return;
     }
+
+    if (confirmDialog.wardId === null) return;
+
+    // Close the confirmation dialog immediately after user confirms
     setConfirmDialog({ isOpen: false, wardId: null, newStatus: null });
+
+    try {
+      setLoading(true);
+
+      const statusValue = confirmDialog.newStatus === "y" ? "Y" : "N";
+      const response = await putRequest(`${MAS_WARD_STATUS}/${confirmDialog.wardId}?status=${statusValue}`, {});
+
+      if (response?.status === 200) {
+        // Do not update list until user confirms the success popup
+        showPopupWithCallback(
+          `Ward ${confirmDialog.newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          "success",
+          async () => {
+            await fetchWardData();
+            setConfirmDialog({ isOpen: false, wardId: null, newStatus: null });
+          }
+        );
+      } else {
+        throw new Error(`Status update failed: ${response?.status}`);
+      }
+    } catch (err) {
+      console.error("Error updating ward status:", err);
+      showPopupWithCallback(`Failed to update status: ${err.message}`, "error", async () => {
+        await fetchWardData();
+        setConfirmDialog({ isOpen: false, wardId: null, newStatus: null });
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleInputChange = (e) => {
@@ -337,10 +361,11 @@ const WardManagement = () => {
     setFormData((prevData) => ({ ...prevData, [id]: value }));
   };
 
-  const handleRefresh = () => {
+  const handleRefresh = async () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
+    await fetchWardData();
     showPopup("Data refreshed!", "success");
   };
 
@@ -383,11 +408,7 @@ const WardManagement = () => {
                       <button
                         type="button"
                         className="btn btn-success me-2"
-                        onClick={() => {
-                          setEditingWard(null);
-                          setFormData({ wardName: "", category: "", careLevel: "" });
-                          setShowForm(true);
-                        }}
+                        onClick={() => openWardForm()}
                       >
                         <i className="mdi mdi-plus"></i> Add
                       </button>
