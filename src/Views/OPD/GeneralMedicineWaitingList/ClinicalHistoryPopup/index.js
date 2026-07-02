@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import ReactDOM from "react-dom";
 import axios from "axios";
 import { ALL_REPORTS } from "../../../../config/apiConfig";
-import Pagination from "../../../../Components/Pagination"; 
+import Pagination from "../../../../Components/Pagination";
 import Psychiatrist from "../../Psychiatrist";
 
 const ClinicalHistoryPopup = ({
@@ -18,11 +18,14 @@ const ClinicalHistoryPopup = ({
   onPageChange,
   onPageSizeChange,
   isLoading = false,
-   patientId,   
-  visitId,  
+  patientId,
+  visitId,
+  onPsychiatristSave,
+  psychiatristValue,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
+  const psychiatristRef = useRef(null);
   const [loadingStates, setLoadingStates] = useState({
     generating: null,
     printing: null,
@@ -178,9 +181,10 @@ const ClinicalHistoryPopup = ({
     if (popupType === "vitals") {
       return "PREVIOUS VITALS HISTORY";
     }
-     if (popupType === "psychiatrist") {  // 👈 ADD THIS
-    return "PSYCHIATRIST ASSESSMENT";
-  }
+    if (popupType === "psychiatrist") {
+      // 👈 ADD THIS
+      return "PSYCHIATRIST ASSESSMENT";
+    }
     return "PREVIOUS VISITS HISTORY";
   };
 
@@ -188,9 +192,9 @@ const ClinicalHistoryPopup = ({
     if (popupType === "vitals") {
       return "mdi mdi-heart-pulse me-2";
     }
-     if (popupType === "psychiatrist") {  
-    return "mdi mdi-brain me-2";
-  }
+    if (popupType === "psychiatrist") {
+      return "mdi mdi-brain me-2";
+    }
     return "mdi mdi-clock-history me-2";
   };
 
@@ -403,7 +407,9 @@ const ClinicalHistoryPopup = ({
                                     <button
                                       className="btn btn-sm btn-primary d-flex align-items-center gap-1"
                                       onClick={() =>
-                                        handleViewDownloadCaseSheet(visit.visitId)
+                                        handleViewDownloadCaseSheet(
+                                          visit.visitId,
+                                        )
                                       }
                                       disabled={
                                         isGenerating(visit.visitId) ||
@@ -416,7 +422,9 @@ const ClinicalHistoryPopup = ({
                                             className="spinner-border spinner-border-sm"
                                             role="status"
                                           ></span>
-                                          <span className="ms-1">Loading...</span>
+                                          <span className="ms-1">
+                                            Loading...
+                                          </span>
                                         </>
                                       ) : (
                                         <>
@@ -690,16 +698,17 @@ const ClinicalHistoryPopup = ({
                 </>
               )}
               {/* Psychiatrist Assessment */}
-{!isLoading && popupType === "psychiatrist" && (
-  <div>
-   <Psychiatrist 
-  onSave={(assessmentData) => {
-    console.log("Psychiatrist Assessment Saved:", assessmentData);
-  }}
-  readOnly={false}
-/>
-  </div>
-)}
+              {!isLoading && popupType === "psychiatrist" && (
+                <div>
+                  <Psychiatrist
+                    ref={psychiatristRef}
+                    onSave={onPsychiatristSave}
+                    value={psychiatristValue}
+                    hideSaveButton
+                    readOnly={false}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Footer */}
@@ -718,6 +727,19 @@ const ClinicalHistoryPopup = ({
                   Total: {totalElements || 0} record(s)
                 </div>
                 <div className="d-flex gap-2">
+                  {popupType === "psychiatrist" && (
+                    <button
+                      className="btn btn-success btn-sm px-3"
+                      onClick={() => psychiatristRef.current?.save?.()}
+                      style={{
+                        borderRadius: "4px",
+                        border: "none",
+                      }}
+                    >
+                      <i className="mdi mdi-content-save me-2" />
+                      SAVE
+                    </button>
+                  )}
                   <button
                     className="btn btn-primary btn-sm px-3"
                     onClick={onClose}

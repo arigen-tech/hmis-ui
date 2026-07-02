@@ -191,10 +191,7 @@ useEffect(() => {
       if (lastFetchedGender.current !== formData.gender) {
         lastFetchedGender.current = formData.gender;
         hasFetchedInvestigations.current = true;
-        const inv = await fetchInvestigationDetails(
-          Number(formData.gender),
-          genderData,
-        );
+        const inv = await fetchInvestigationDetails(Number(formData.gender));
         setInvestigationItems(inv);
       }
     }
@@ -666,15 +663,12 @@ useEffect(() => {
       const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
-        return data.response;
       } else {
         console.error("Unexpected API response format:", data);
         setGenderData([]);
-        return [];
       }
     } catch (error) {
       console.error("Error fetching gender data:", error);
-      return [];
     } finally {
       setLoading(false);
     }
@@ -782,10 +776,11 @@ useEffect(() => {
     }
   }
 
-  async function fetchInvestigationDetails(genderValue, genderList = genderData) {
+  async function fetchInvestigationDetails(genderValue) {
+    debugger
     setLoading(true);
     try {
-      const selectedGender = genderList.find(
+      const selectedGender = genderData.find(
         (gender) => gender.id === Number(genderValue),
       );
       if (!selectedGender) {
@@ -987,12 +982,12 @@ useEffect(() => {
 
       setFormData(mappedData);
 
-      const [genders] = await Promise.all([
-        fetchGenderData(),
-        fetchRelationData(),
-        fetchCountryData(),
-        fetchGstConfiguration(),
-      ]);
+    await Promise.all([
+      fetchGenderData(),
+      fetchRelationData(),
+      fetchCountryData(),
+      fetchGstConfiguration(),
+    ]);
 
         if (mappedData.country) {
       await fetchStates(mappedData.country);
@@ -1009,10 +1004,7 @@ useEffect(() => {
     
     // Fetch investigation items based on patient's gender
     if (mappedData.gender) {
-      const inv = await fetchInvestigationDetails(
-        Number(mappedData.gender),
-        genders,
-      );
+      const inv = await fetchInvestigationDetails(Number(mappedData.gender));
       setInvestigationItems(inv);
     }
     

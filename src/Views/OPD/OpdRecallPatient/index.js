@@ -38,6 +38,7 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 import ClinicalHistoryPopup from "../GeneralMedicineWaitingList/ClinicalHistoryPopup";
+import PregnancySection from "../Pregnancy";
 
 const OpdRRecallPatient = () => {
   const [currentPage, setCurrentPage] = useState(1);
@@ -136,6 +137,8 @@ const OpdRRecallPatient = () => {
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
   const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
+  const pregnancyRef = useRef(null);
+  const [recallPregnancyData, setRecallPregnancyData] = useState(null);
 
   const [visitsCurrentPage, setVisitsCurrentPage] = useState(0);
   const [visitsTotalPages, setVisitsTotalPages] = useState(0);
@@ -2045,6 +2048,8 @@ const OpdRRecallPatient = () => {
           ...patientData,
           currentMedications: medications,
         });
+        setRecallPregnancyData(patientData.pregnancyDetails || null);
+
         const sectionsToExpand = {};
 
         /* -------------------- VITALS / BASIC DATA -------------------- */
@@ -2373,6 +2378,10 @@ const OpdRRecallPatient = () => {
   const handleBackToList = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
+    setRecallPregnancyData(null);
+    if (pregnancyRef.current?.resetForm) {
+      pregnancyRef.current.resetForm();
+    }
     setFormData({
       height: "",
       weight: "",
@@ -2478,6 +2487,24 @@ const OpdRRecallPatient = () => {
     setVitalsTotalPages(0);
     setVitalsTotalElements(0);
   };
+
+  useEffect(() => {
+    const isFemale =
+      String(selectedPatient?.gender || "").toLowerCase() === "female";
+
+    if (!showDetailView || !isFemale) {
+      if (pregnancyRef.current?.resetForm) {
+        pregnancyRef.current.resetForm();
+      }
+      return;
+    }
+
+    if (recallPregnancyData && pregnancyRef.current?.setData) {
+      pregnancyRef.current.setData(recallPregnancyData);
+    } else if (pregnancyRef.current?.resetForm) {
+      pregnancyRef.current.resetForm();
+    }
+  }, [showDetailView, selectedPatient, recallPregnancyData]);
 
   const toggleSection = (section) => {
     setExpandedSections((prev) => ({
@@ -3533,6 +3560,27 @@ const OpdRRecallPatient = () => {
                               placeholder="Enter Family History"
                             ></textarea>
                           </div>
+
+                          {String(selectedPatient?.gender || "").toLowerCase() ===
+                            "female" &&
+                            selectedPatient?.pregnancyDetails && (
+                              <div className="mb-3">
+                                <div className="d-flex justify-content-between align-items-center">
+                                  <label className="form-label fw-bold m-0">
+                                    Pregnancy Details
+                                  </label>
+                                </div>
+                                <div className="mt-2">
+                                  <PregnancySection
+                                    ref={pregnancyRef}
+                                    readOnly
+                                    opdPatientDetailsId={
+                                      selectedPatient?.opdPatientId ?? null
+                                    }
+                                  />
+                                </div>
+                              </div>
+                            )}
                         </div>
                       </div>
                     </div>

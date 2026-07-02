@@ -47,6 +47,8 @@ import {
   OBG_DEPARTMENT_ID,
   ENT_DEPARTMENT_ID,
   DENTAL_DEPARTMENT_ID,
+  MAS_WARD_GET_BY_ID,
+  MAS_WARDS_GET_BY_ID,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -351,7 +353,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchWardData = async (categoryId) => {
     try {
       const data = await getRequest(
-        `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
+        `${MAS_WARDS_GET_BY_ID}/${categoryId}`,
       );
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardDepartments(data.response);
@@ -1115,8 +1117,8 @@ const GeneralMedicineWaitingList = () => {
     familyHistory: "",
     treatmentAdvice: "",
     mlcCase: false,
-    psychiatristAssessment: "",
   });
+  const [psychiatristAssessment, setPsychiatristAssessment] = useState(null);
 
   const [errors, setErrors] = useState({});
 
@@ -2264,6 +2266,7 @@ const GeneralMedicineWaitingList = () => {
   const handleBackToList = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
+    setPsychiatristAssessment(null);
     if (earExaminationRef.current) {
       earExaminationRef.current.resetForm();
     }
@@ -2930,6 +2933,11 @@ const GeneralMedicineWaitingList = () => {
             pregnancyDetails: pregnancyData,
           }),
 
+        ...(psychiatristAssessment?.topicId && {
+          topicId: Number(psychiatristAssessment.topicId),
+          details: psychiatristAssessment.details || [],
+        }),
+
         // ===== Vital =====
         height: formData.height,
         weight: formData.weight,
@@ -3160,6 +3168,8 @@ const GeneralMedicineWaitingList = () => {
         templateId: "",
       },
     ]);
+
+    setPsychiatristAssessment(null);
 
     // Reset form errors
     setErrors({});
@@ -4245,6 +4255,49 @@ const GeneralMedicineWaitingList = () => {
                               placeholder="Enter Family History"
                             ></textarea>
                           </div>
+
+                          {psychiatristAssessment?.rows?.length > 0 && (
+                            <div className="mb-3 border rounded p-3 bg-light">
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <label className="form-label fw-bold m-0">
+                                  Psychiatric Assessment
+                                </label>
+                                <button
+                                  className="btn btn-sm btn-outline-primary p-1 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClinicalPopupType("psychiatrist");
+                                    setShowPopup(true);
+                                    handleHistoryTypeClick("psychiatrist");
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+
+                              <div className="small text-muted mb-2">
+                                Saved assessment data will be submitted with the patient record.
+                              </div>
+
+                              {psychiatristAssessment.rows.map((row) => (
+                                <div key={`${row.headingId}-${row.headingCode}`} className="mb-3">
+                                  <div className="fw-bold">
+                                    {row.headingName || `Category ${row.headingId}`}
+                                    {row.headingCode ? ` (${row.headingCode})` : ""}
+                                  </div>
+                                  <ul className="mb-0 ps-3">
+                                    {row.questions.map((qa) => (
+                                      <li key={`${row.headingId}-${qa.questionId}`}>
+                                        <strong>{qa.questionText || `Question ${qa.questionId}`}</strong>
+                                        : {qa.answerValue || `Option ${qa.answerOptionId}`}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {/*Pregnancy*/}
                           {selectedPatient?.gender?.toLowerCase() ===
                             "female" && (
@@ -4259,6 +4312,11 @@ const GeneralMedicineWaitingList = () => {
                                   ref={pregnancyRef} // ADD THIS REF
                                   patientId={selectedPatient?.patientId}
                                   visitId={selectedPatient?.visitId}
+                                  opdPatientDetailsId={
+                                    vitalsAvailable
+                                      ? opdVitalsData?.opdPatientDetailsId
+                                      : null
+                                  }
                                 />
                               </div>
                             </div>
@@ -6358,8 +6416,8 @@ const GeneralMedicineWaitingList = () => {
                                   >
                                     <option value="">Select Ward/Dept</option>
                                     {wardDepartments.map((dept) => (
-                                      <option key={dept.id} value={dept.id}>
-                                        {dept.departmentName}
+                                      <option key={dept.wardId} value={dept.wardId}>
+                                        {dept.wardName}
                                       </option>
                                     ))}
                                   </select>
@@ -7257,6 +7315,8 @@ const GeneralMedicineWaitingList = () => {
           <ClinicalHistoryPopup
             show={showPopup}
             onClose={() => setShowPopup(false)}
+            onPsychiatristSave={setPsychiatristAssessment}
+            psychiatristValue={psychiatristAssessment}
             visitsData={previousVisitsData}
             vitalsData={previousVitalsData}
             popupType={clinicalPopupType}
