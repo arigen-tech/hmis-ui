@@ -1322,3 +1322,4 @@ export const STATUS_ITEM_TYPE_FAIL = "Failed to update Item Type status";
 export const ADD_FACILITY_SUCC_MSG = "Facility added successfully!";
 export const UPDATE_FACILITY_SUCC_MSG = "Facility updated successfully!";
 export const FETCH_FACILITY_ERR_MSG = "Failed to fetch facility data";
+export const FETCH_MED_ADV_ERR_MSG = "Failed to load medical advices"; export const DUPLICATE_MED_ADV ="Medical advice already exists for this department!"; export const UPDATE_MED_ADV_SUCC_MSG ="Medical advice updated successfully!"; export const ADD_MED_ADV_SUCC_MSG ="New medical advice added successfully!";

@@ -668,3 +668,4 @@ export const ABDM_M2_CONSENT_LIST = `/api/v1/abdm/m2/consent/list`;
 export const ABDM_M2_CONSENT_STATUS = `/api/v1/abdm/m2/consent/status`;
 export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
 
+export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
