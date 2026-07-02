@@ -60,14 +60,14 @@ const TreatmentAdviceMaster = () => {
   // Fetch dropdown data
   const fetchDropdownData = async () => {
     try {
-      // Fetch departments (active only, flag=1)
-      const departmentResponse = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      // Fetch departments (OPD only)
+      const departmentResponse = await getRequest(`${MAS_DEPARTMENT}/allForDropdowns?departmentTypeCode=OPD`);
       if (departmentResponse && departmentResponse.response) {
         setDepartmentOptions(departmentResponse.response.map(dept => ({
           id: dept.id,
           name: dept.departmentName,
           code: dept.departmentCode,
-          deptType: dept.departmentTypeName
+          deptType: dept.departmentTypeCode
         })));
       }
     } catch (err) {
