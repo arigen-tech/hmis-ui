@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_TREATMENT_ADVISE, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { MAS_TREATMENT_ADVISE, MAS_DEPARTMENT, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ADD_TREAT_ADV_SUCC_MSG, DUPLICATE_TREAT_ADV, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_TREAT_ADV_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_TREAT_ADV_SUCC_MSG } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
@@ -61,7 +61,7 @@ const TreatmentAdviceMaster = () => {
   const fetchDropdownData = async () => {
     try {
       // Fetch departments (OPD only)
-      const departmentResponse = await getRequest(`${MAS_DEPARTMENT}/allForDropdowns?departmentTypeCode=OPD`);
+      const departmentResponse = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
       if (departmentResponse && departmentResponse.response) {
         setDepartmentOptions(departmentResponse.response.map(dept => ({
           id: dept.id,
