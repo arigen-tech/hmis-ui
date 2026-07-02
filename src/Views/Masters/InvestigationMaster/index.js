@@ -136,6 +136,7 @@ const InvestigationMaster = () => {
             modalitiesRes?.response?.map((mod) => ({
               id: mod.subId,
               name: mod.subName,
+              mainChargeId: mod.mainChargeId,
             })) || [],
           samples:
             samplesRes?.response?.map((sample) => ({
@@ -225,11 +226,23 @@ const InvestigationMaster = () => {
       const prefix = name.replace("Id", "")
       const selectedOption = getSelectedOption(prefix, value)
 
-      setFormData({
+      const updatedFormData = {
         ...formData,
         [name]: value,
         [`${prefix}Name`]: selectedOption ? selectedOption.name : "",
-      })
+      }
+
+      if (name === "departmentId") {
+        const currentModality = dropdownOptions.modalities.find(
+          (mod) => mod.id.toString() === formData.modalityId?.toString()
+        )
+        if (currentModality && String(currentModality.mainChargeId) !== String(value)) {
+          updatedFormData.modalityId = ""
+          updatedFormData.modalityName = ""
+        }
+      }
+
+      setFormData(updatedFormData)
     } else {
       setFormData({
         ...formData,
@@ -722,11 +735,13 @@ const InvestigationMaster = () => {
                               disabled={saving}
                             >
                               <option value="">Select Modality</option>
-                              {dropdownOptions.modalities.map((mod) => (
-                                <option key={mod.id} value={mod.id}>
-                                  {mod.name}
-                                </option>
-                              ))}
+                              {dropdownOptions.modalities
+                                .filter((mod) => !formData.departmentId || String(mod.mainChargeId) === String(formData.departmentId))
+                                .map((mod) => (
+                                  <option key={mod.id} value={mod.id}>
+                                    {mod.name}
+                                  </option>
+                                ))}
                             </select>
                           </div>
                         </div>
