@@ -188,20 +188,20 @@ const MedicalAdviceMaster = () => {
         const response = await putRequest(`${MAS_MEDICAL_ADVICE}/update/${editingMedical.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchMedicalData();
           showPopup(UPDATE_MED_ADV_SUCC_MSG, "success", () => {
-                    fetchDropdownData();
-                });
+            fetchMedicalData();
+            fetchDropdownData();
+          });
         }
       } else {
         // Add new Clinical/Medical Advice
         const response = await postRequest(`${MAS_MEDICAL_ADVICE}/create`, requestData);
 
         if (response && (response.status === 200 || response.status === 201)) {
-          fetchMedicalData();
           showPopup(ADD_MED_ADV_SUCC_MSG, "success", () => {
-                    fetchDropdownData();
-                });
+            fetchMedicalData();
+            fetchDropdownData();
+          });
         }
       }
 

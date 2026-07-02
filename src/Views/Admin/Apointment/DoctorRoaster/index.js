@@ -21,12 +21,15 @@ const DoctorRoaster = () => {
   const jwtToken = sessionStorage.getItem("token") || localStorage.getItem("token");
 
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
+        if (typeof onCloseCallback === 'function') {
+          onCloseCallback();
+        }
       },
     });
   };
@@ -301,9 +304,9 @@ const DoctorRoaster = () => {
       const response = await postRequest(endpoint, dataToSend);
 
       if (response.status === 200) {
-        showPopup("Roster saved successfully!", "success");
-        handleReset();
-        prepareRosterData(); 
+        showPopup("Roster saved successfully!", "success", () => {
+          prepareRosterData();
+        });
       } else {
         showPopup(`Error saving roster: ${response.message || "Unknown error"}`, "error");
       }
