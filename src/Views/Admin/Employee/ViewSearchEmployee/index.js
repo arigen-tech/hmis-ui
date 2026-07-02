@@ -136,6 +136,7 @@ const ViewSearchEmployee = () => {
   const [searchName, setSearchName] = useState("");
   const [pageInput, setPageInput] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
   const [imageSrc, setImageSrc] = useState(null);
   const [showDocModal, setShowDocModal] = useState(false);
   const [docUrl, setDocUrl] = useState(null);
@@ -170,7 +171,6 @@ const ViewSearchEmployee = () => {
     localStorage.getItem("token") || sessionStorage.getItem("token");
 
   useEffect(() => {
-    fetchEmployeesData();
     fetchCountryData();
     fetchGenderData();
     fetchIdTypeData();
@@ -180,6 +180,10 @@ const ViewSearchEmployee = () => {
     fetchSpecialtyCenterData();
     fetchLanguageData();
   }, []);
+
+  useEffect(() => {
+    fetchEmployeesData(currentPage - 1, searchName, searchMobile);
+  }, [currentPage]);
 
   useEffect(() => {
     return () => {
@@ -609,20 +613,32 @@ const ViewSearchEmployee = () => {
     }
   };
 
-  const fetchEmployeesData = async () => {
+  const fetchEmployeesData = async (page = currentPage - 1, name = searchName, mobile = searchMobile) => {
     setLoading(true);
     try {
-      const data = await getRequest(`${GET_ALL_EMPLOYEES}`);
-      if (data.status === 200 && Array.isArray(data.response)) {
-        setEmployees(data.response);
-        setFilteredEmployees(data.response);
+      const queryParams = new URLSearchParams();
+      if (name) queryParams.append("employeeName", name);
+      if (mobile) queryParams.append("mobileNo", mobile);
+      queryParams.append("page", page);
+      queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+      const data = await getRequest(`${GET_ALL_EMPLOYEES}?${queryParams.toString()}`);
+      if (data.status === 200 && data.response) {
+        const content = data.response.content || [];
+        setEmployees(content);
+        setFilteredEmployees(content);
+        setTotalElements(data.response.totalElements || 0);
       } else {
         console.error("Unexpected API response format:", data);
         setEmployees([]);
         setFilteredEmployees([]);
+        setTotalElements(0);
       }
     } catch (error) {
       console.error("Error fetching Employees data:", error);
+      setEmployees([]);
+      setFilteredEmployees([]);
+      setTotalElements(0);
     } finally {
       setLoading(false);
     }
@@ -1710,22 +1726,21 @@ const ViewSearchEmployee = () => {
   };
 
   const handleSearch = () => {
-    const lowerName = searchName.toLowerCase();
-    const filtered = employees.filter((emp) => {
-      const fullName =
-        `${emp.firstName} ${emp.middleName} ${emp.lastName}`.toLowerCase();
-      return (
-        (searchMobile === "" || emp.mobileNo.includes(searchMobile)) &&
-        (searchName === "" || fullName.includes(lowerName))
-      );
-    });
-    setFilteredEmployees(filtered);
+    if (currentPage === 1) {
+      fetchEmployeesData(0, searchName, searchMobile);
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const handleShowAll = () => {
-    setFilteredEmployees(employees);
     setSearchMobile("");
     setSearchName("");
+    if (currentPage === 1) {
+      fetchEmployeesData(0, "", "");
+    } else {
+      setCurrentPage(1);
+    }
   };
 
   const getLanguageNameById = (languageId) => {
@@ -1738,11 +1753,6 @@ const ViewSearchEmployee = () => {
     return language ? language.language || language.languageName : "";
   };
 
-  const filteredTotalPages = Math.ceil(filteredEmployees.length / itemsPerPage);
-
-  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const currentItems = filteredEmployees.slice(indexOfFirst, indexOfLast);
 
   const resetForm = () => {
     setFormData({
@@ -2212,7 +2222,7 @@ const ViewSearchEmployee = () => {
                     </thead>
                     <tbody>
                       {filteredEmployees.length > 0 ? (
-                        currentItems.map((employee, index) => (
+                        filteredEmployees.map((employee, index) => (
                           <tr key={index}>
                             <td>
                               {(currentPage - 1) * itemsPerPage + index + 1}
@@ -2262,7 +2272,7 @@ const ViewSearchEmployee = () => {
                   </table>
 
                   <Pagination
-                    totalItems={filteredEmployees.length}
+                    totalItems={totalElements}
                     itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
