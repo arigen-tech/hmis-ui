@@ -131,10 +131,9 @@ const TreatmentAdviceMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { treatmentAdvice, departmentId } = formData;
+      const { treatmentAdvice } = formData;
       return (
-        treatmentAdvice.trim() !== "" &&
-        departmentId.trim() !== ""
+        treatmentAdvice.trim() !== ""
       );
     };
     setIsFormValid(validateForm());
@@ -168,7 +167,7 @@ const TreatmentAdviceMaster = () => {
       const isDuplicate = treatmentData.some(
         (treatment) =>
           treatment.treatmentAdvice.toLowerCase() === formData.treatmentAdvice.toLowerCase() &&
-          treatment.departmentId?.toString() === formData.departmentId &&
+          (treatment.departmentId?.toString() || "") === formData.departmentId &&
           (!editingTreatment || editingTreatment.id !== treatment.id)
       );
 
@@ -181,7 +180,7 @@ const TreatmentAdviceMaster = () => {
       // Prepare request data
       const requestData = {
         treatmentAdvice: formData.treatmentAdvice,
-        departmentId: parseInt(formData.departmentId)
+        departmentId: formData.departmentId ? parseInt(formData.departmentId) : null
       };
 
       if (editingTreatment) {
@@ -189,20 +188,20 @@ const TreatmentAdviceMaster = () => {
         const response = await putRequest(`${MAS_TREATMENT_ADVISE}/update/${editingTreatment.id}`, requestData);
 
         if (response && response.status === 200) {
-          fetchTreatmentData();
           showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success", () => {
-                    fetchDropdownData();
-                });
+            fetchTreatmentData();
+            fetchDropdownData();
+          });
         }
       } else {
         // Add new treatment advice
         const response = await postRequest(`${MAS_TREATMENT_ADVISE}/create`, requestData);
 
         if (response && (response.status === 200 || response.status === 201)) {
-          fetchTreatmentData();
           showPopup(ADD_TREAT_ADV_SUCC_MSG, "success", () => {
-                    fetchDropdownData();
-                });
+            fetchTreatmentData();
+            fetchDropdownData();
+          });
         }
       }
 
@@ -435,14 +434,13 @@ const TreatmentAdviceMaster = () => {
                   </div>
 
                   <div className="form-group col-md-6">
-                    <label>Department <span className="text-danger">*</span></label>
+                    <label>Department</label>
                     <select
                       className="form-select mt-1"
                       id="departmentId"
                       name="departmentId"
                       value={formData.departmentId}
                       onChange={handleSelectChange}
-                      required
                       disabled={loading || departmentOptions.length === 0}
                     >
                       <option value="">Select Department</option>
