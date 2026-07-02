@@ -3,6 +3,10 @@ import placeholderImage from "../../../assets/images/placeholder.jpg";
 import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard";
 import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal";
 import TreatmentModal from "../GeneralMedicineWaitingList/TreatmentModal";
+import OpdVision from "../OpdVision";
+import OBGDetails from "../OBGDetails";
+import EarExamination from "../EarExamination";
+import Dental from "../Dental";
 import {
   OPD_PATIENT,
   OPD_TEMPLATE,
@@ -24,6 +28,11 @@ import {
   UPDATE_RECALL_PATIENT,
   GET_PATIENT_PRESCRIPTION_DETAILS,
   GET_ALL_DRUGS_BY_SECTION,
+  OPHTHALMOLOGY_DEPARTMENT_CODE,
+  OBG_DEPARTMENT_CODE,
+  ENT_DEPARTMENT_CODE,
+  DENTAL_DEPARTMENT_CODE,
+  MAS_WARDS_GET_BY_ID,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -81,6 +90,7 @@ const OpdRRecallPatient = () => {
 
   const [showClinicalPopup, setShowClinicalPopup] = useState(false);
   const [clinicalPopupType, setClinicalPopupType] = useState("visits");
+  const [psychiatristAssessment, setPsychiatristAssessment] = useState(null);
   const [previousVisitsData, setPreviousVisitsData] = useState([]);
   const [previousVitalsData, setPreviousVitalsData] = useState([]);
 
@@ -136,9 +146,30 @@ const OpdRRecallPatient = () => {
   const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
+  const visionRef = useRef(null);
   const [selectedTemplateForEdit, setSelectedTemplateForEdit] = useState(null);
   const pregnancyRef = useRef(null);
+  const obgDetailsRef = useRef(null);
+  const earExaminationRef = useRef(null);
   const [recallPregnancyData, setRecallPregnancyData] = useState(null);
+
+  const loggedInDepartmentCode =
+    sessionStorage.getItem("departmentCode") ||
+    localStorage.getItem("departmentCode") ||
+    "";
+
+  const selectedPatientDepartmentId = Number(
+    selectedPatient?.deptId || selectedPatient?.departmentId || 0,
+  );
+
+  const isOphthalmologyDepartment =
+    loggedInDepartmentCode === OPHTHALMOLOGY_DEPARTMENT_CODE;
+  const isObgynDepartment = loggedInDepartmentCode === OBG_DEPARTMENT_CODE;
+  const isEntDepartment = loggedInDepartmentCode === ENT_DEPARTMENT_CODE;
+  const isDentalDepartment = loggedInDepartmentCode === DENTAL_DEPARTMENT_CODE;
+  const shouldShowVisionExamination =
+    isOphthalmologyDepartment ||
+    loggedInDepartmentCode === OPHTHALMOLOGY_DEPARTMENT_CODE;
 
   const [visitsCurrentPage, setVisitsCurrentPage] = useState(0);
   const [visitsTotalPages, setVisitsTotalPages] = useState(0);
@@ -180,7 +211,7 @@ const OpdRRecallPatient = () => {
   const fetchWardData = async (categoryId) => {
     try {
       const data = await getRequest(
-        `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
+        `${MAS_WARDS_GET_BY_ID}/${categoryId}`,
       );
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardDepartments(data.response);
@@ -1111,6 +1142,7 @@ const OpdRRecallPatient = () => {
           localStorage.getItem("userId") ||
           selectedPatient.docterId,
       );
+      const visionExaminationData = visionRef.current?.getData?.();
 
       // ===== 1. ICD Diagnoses - All new =====
       const icdDiagList = diagnosisItems
@@ -1210,6 +1242,21 @@ const OpdRRecallPatient = () => {
 
         // Doctor's Remarks
         doctorRemarks: doctorRemarksText || null,
+
+        ...(psychiatristAssessment?.topicId && {
+          topicId: Number(psychiatristAssessment.topicId),
+          details: psychiatristAssessment.details || [],
+        }),
+
+        ...(shouldShowVisionExamination &&
+          visionExaminationData && {
+            ophthalmologyExaminationDetails: {
+              patientId: selectedPatient.patientId,
+              visitId: selectedPatient.visitId,
+              opdDate: getToday(),
+              ...visionExaminationData,
+            },
+          }),
 
         // Follow Up
         followUpFlag: followUps.followUpFlag ? "y" : "n",
@@ -1311,6 +1358,10 @@ const OpdRRecallPatient = () => {
   const [expandedSections, setExpandedSections] = useState({
     personalDetails: false,
     clinicalHistory: true,
+    visionExamination: false,
+    obgDetails: true,
+    earExamination: true,
+    dentalExamination: true,
     vitalDetail: true,
     diagnosis: true,
     investigation: false,
@@ -2215,6 +2266,23 @@ const OpdRRecallPatient = () => {
 
         setDoctorRemarksText(patientData.doctorRemarks || "");
 
+        /* -------------------- PSYCHIATRIST -------------------- */
+        const psychiatricAssessment =
+          patientData.psychiatristAssessment ||
+          (patientData.topicId
+            ? {
+                topicId: patientData.topicId,
+                details: patientData.details || [],
+                rows: patientData.rows || [],
+              }
+            : null);
+
+        if (psychiatricAssessment?.rows?.length > 0) {
+          sectionsToExpand.clinicalHistory = true;
+        }
+
+        setPsychiatristAssessment(psychiatricAssessment);
+
         /* -------------------- FOLLOW UP -------------------- */
         const hasFollowUpData = patientData.followUpFlag === "y";
         if (hasFollowUpData) sectionsToExpand.followUp = true;
@@ -2379,6 +2447,7 @@ const OpdRRecallPatient = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
     setRecallPregnancyData(null);
+    setPsychiatristAssessment(null);
     if (pregnancyRef.current?.resetForm) {
       pregnancyRef.current.resetForm();
     }
@@ -2427,6 +2496,9 @@ const OpdRRecallPatient = () => {
     setExpandedSections({
       personalDetails: false,
       clinicalHistory: false,
+      obgDetails: false,
+      earExamination: false,
+      dentalExamination: false,
       vitalDetail: false,
       diagnosis: false,
       investigation: false,
@@ -2471,6 +2543,7 @@ const OpdRRecallPatient = () => {
     setSelectedTemplateIds(new Set());
     setSelectedTreatmentTemplateIds(new Set());
     setDoctorRemarksText("");
+    setPsychiatristAssessment(null);
     setAdmissionAdvised(false);
     setAdmissionDate("");
     setAdmissionRemarks("");
@@ -2486,6 +2559,26 @@ const OpdRRecallPatient = () => {
     setVitalsCurrentPage(0);
     setVitalsTotalPages(0);
     setVitalsTotalElements(0);
+    setExpandedSections({
+      personalDetails: false,
+      clinicalHistory: false,
+      visionExamination: false,
+      obgDetails: false,
+      earExamination: false,
+      dentalExamination: false,
+      vitalDetail: false,
+      diagnosis: false,
+      investigation: false,
+      treatment: false,
+      treatmentAdvice: false,
+      procedureCare: false,
+      surgeryAdvice: false,
+      admissionAdvice: false,
+      referral: false,
+      followUp: false,
+      doctorRemark: false,
+      remarks: false,
+    });
   };
 
   useEffect(() => {
@@ -2744,6 +2837,7 @@ const OpdRRecallPatient = () => {
 
     // Reset doctor remarks
     setDoctorRemarksText("");
+    setPsychiatristAssessment(null);
 
     // Reset Admission fields
     setAdmissionAdvised(false);
@@ -2788,6 +2882,26 @@ const OpdRRecallPatient = () => {
 
     // Reset form errors
     setErrors({});
+    setExpandedSections({
+      personalDetails: false,
+      clinicalHistory: false,
+      visionExamination: false,
+      obgDetails: false,
+      earExamination: false,
+      dentalExamination: false,
+      vitalDetail: false,
+      diagnosis: false,
+      investigation: false,
+      treatment: false,
+      treatmentAdvice: false,
+      procedureCare: false,
+      surgeryAdvice: false,
+      admissionAdvice: false,
+      referral: false,
+      followUp: false,
+      doctorRemark: false,
+      remarks: false,
+    });
   };
 
   const handleCreateTemplate = () => {
@@ -3445,6 +3559,7 @@ const OpdRRecallPatient = () => {
                                 label: "Previous ECG Investigation",
                               },
                               { id: "audit-history", label: "Audit History" },
+                              { id: "psychiatrist", label: "Psychiatrist" },
                             ].map((btn) => (
                               <button
                                 key={btn.id}
@@ -3463,6 +3578,10 @@ const OpdRRecallPatient = () => {
                                     await handleHistoryTypeClick(
                                       "previous-vitals",
                                     );
+                                  } else if (btn.id === "psychiatrist") {
+                                    setClinicalPopupType("psychiatrist");
+                                    setShowClinicalPopup(true);
+                                    handleHistoryTypeClick(btn.id);
                                   } else {
                                     handleHistoryTypeClick(btn.id);
                                   }
@@ -3581,11 +3700,166 @@ const OpdRRecallPatient = () => {
                                 </div>
                               </div>
                             )}
+
+                          {psychiatristAssessment?.rows?.length > 0 && (
+                            <div className="mb-3 border rounded p-3 bg-light">
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <label className="form-label fw-bold m-0">
+                                  Psychiatric Assessment
+                                </label>
+                                <button
+                                  className="btn btn-sm btn-outline-primary p-1 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClinicalPopupType("psychiatrist");
+                                    setShowClinicalPopup(true);
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+
+                              <div className="small text-muted mb-2">
+                                Saved assessment data will be submitted with the patient record.
+                              </div>
+
+                              {psychiatristAssessment.rows.map((row) => (
+                                <div
+                                  key={`${row.headingId}-${row.headingCode}`}
+                                  className="mb-3"
+                                >
+                                  <div className="fw-bold">
+                                    {row.headingName ||
+                                      `Category ${row.headingId}`}
+                                    {row.headingCode
+                                      ? ` (${row.headingCode})`
+                                      : ""}
+                                  </div>
+                                  <ul className="mb-0 ps-3">
+                                    {row.questions?.map((qa) => (
+                                      <li
+                                        key={`${row.headingId}-${qa.questionId}`}
+                                      >
+                                        <strong>
+                                          {qa.questionText ||
+                                            `Question ${qa.questionId}`}
+                                        </strong>
+                                        : {qa.answerValue || `Option ${qa.answerOptionId}`}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
+                {/* Vision Examination Section */}
+                {shouldShowVisionExamination && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("visionExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">Opthal Examination</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.visionExamination ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.visionExamination && (
+                      <div className="card-body">
+                        <OpdVision
+                          ref={visionRef}
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* OBG Details Section */}
+                {isObgynDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("obgDetails")}
+                    >
+                      <h6 className="mb-0 fw-bold">OBG Details</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.obgDetails ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.obgDetails && (
+                      <div className="card-body">
+                        <OBGDetails
+                          ref={obgDetailsRef}
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Ear Examination Section */}
+                {isEntDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("earExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">ENT</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.earExamination ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.earExamination && (
+                      <div className="card-body">
+                        <EarExamination
+                          ref={earExaminationRef}
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
+                {/* Dental Section */}
+                {isDentalDepartment && (
+                  <div className="card mb-3">
+                    <div
+                      className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+                      style={{ cursor: "pointer" }}
+                      onClick={() => toggleSection("dentalExamination")}
+                    >
+                      <h6 className="mb-0 fw-bold">Dental</h6>
+                      <span style={{ fontSize: "18px" }}>
+                        {expandedSections.dentalExamination ? "−" : "+"}
+                      </span>
+                    </div>
+                    {expandedSections.dentalExamination && (
+                      <div className="card-body">
+                        <Dental
+                          patientId={selectedPatient?.patientId}
+                          visitId={selectedPatient?.visitId}
+                          hideHeader={true}
+                          hideButtons={true}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )}
                 <MasFamilyModel
                   show={showModelPopup}
                   popupType={popupType}
@@ -5496,8 +5770,8 @@ const OpdRRecallPatient = () => {
                                   >
                                     <option value="">Select Ward/Dept</option>
                                     {wardDepartments.map((dept) => (
-                                      <option key={dept.id} value={dept.id}>
-                                        {dept.departmentName}
+                                      <option key={dept.wardId} value={dept.wardId}>
+                                        {dept.wardName}
                                       </option>
                                     ))}
                                   </select>
@@ -6308,6 +6582,8 @@ const OpdRRecallPatient = () => {
           <ClinicalHistoryPopup
             show={showClinicalPopup}
             onClose={() => setShowClinicalPopup(false)}
+            onPsychiatristSave={setPsychiatristAssessment}
+            psychiatristValue={psychiatristAssessment}
             visitsData={previousVisitsData}
             vitalsData={previousVitalsData}
             popupType={clinicalPopupType}

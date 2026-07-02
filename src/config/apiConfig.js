@@ -377,22 +377,26 @@ export const LAB_SERVICE_CATAGORY = "SC002";
 export const SAC_CODE_REGISTRATION = "REG110";
 
 //ENT
-export const ENT_DEPARTMENT_ID = 859;
+// export const ENT_DEPARTMENT_ID = 859;
+export const ENT_DEPARTMENT_CODE = "ENT";
 export const GET_ENT_DETAILS_BY_VISIT = `/opd/getEntDetailsByVisit`;
 export const SAVE_ENT_DETAILS = "/opd/saveOrUpdateEntDetails";
 
 
 //OB&G
-export const OBG_DEPARTMENT_ID = 858;
+// export const OBG_DEPARTMENT_ID = 858;
+export const OBG_DEPARTMENT_CODE = "GYNAE";
 export const GET_OBG_EXAMINATION_DETAIL = "/opd/getOBGDetailsByVisit";
 export const SAVE_OBG_DETAILS = "/opd/saveOrUpdateOBGDetails";
 
 //OPTHALMOLOGY
-export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
+// export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
+export const OPHTHALMOLOGY_DEPARTMENT_CODE = "OPHTH";
 export const GET_OPTHALMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
 
 //Dental
-export const DENTAL_DEPARTMENT_ID = 47;
+// export const DENTAL_DEPARTMENT_ID = 47;
+export const DENTAL_DEPARTMENT_CODE = "DNTL";
 export const GET_DENTAL_EXAMINATION_DETAIL = `/opd/getDentalExaminationDetail`;
 
 export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;

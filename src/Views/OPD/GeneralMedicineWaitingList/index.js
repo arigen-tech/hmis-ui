@@ -37,18 +37,21 @@ import {
   OPD_CREATE_PATIENT_DETAILS,
   OPTH_MAS_DISTANCE_VISION,
   OPTH_MAS_NEAR_VISION,
-  OPHTHALMOLOGY_DEPARTMENT_ID,
   GET_PREVIOUS_OPD_VISIT_HISTORY,
   GET_PATIENT_PRESCRIPTION_DETAILS,
   MAS_BED_COUNT,
   ALL_REPORTS,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
   GET_ALL_DRUGS_BY_SECTION,
-  OBG_DEPARTMENT_ID,
-  ENT_DEPARTMENT_ID,
-  DENTAL_DEPARTMENT_ID,
+  // OBG_DEPARTMENT_ID,
+  // ENT_DEPARTMENT_ID,
+  // DENTAL_DEPARTMENT_ID,
   MAS_WARD_GET_BY_ID,
   MAS_WARDS_GET_BY_ID,
+  OPHTHALMOLOGY_DEPARTMENT_CODE,
+  OBG_DEPARTMENT_CODE,
+  ENT_DEPARTMENT_CODE,
+  DENTAL_DEPARTMENT_CODE,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -128,12 +131,17 @@ const GeneralMedicineWaitingList = () => {
     sessionStorage.getItem("departmentId") ||
     localStorage.getItem("departmentId") ||
     "";
+
+  const loggedInDepartmentCode =
+    sessionStorage.getItem("departmentCode") ||
+    localStorage.getItem("departmentCode") ||
+    "";
+
   const isOphthalmologyDepartment =
-    Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
-  const isObgynDepartment = Number(loggedInDepartmentId) === OBG_DEPARTMENT_ID;
-  const isEntDepartment = Number(loggedInDepartmentId) === ENT_DEPARTMENT_ID;
-  const isDentalDepartment =
-    Number(loggedInDepartmentId) === DENTAL_DEPARTMENT_ID;
+    loggedInDepartmentCode === OPHTHALMOLOGY_DEPARTMENT_CODE;
+  const isObgynDepartment = loggedInDepartmentCode === OBG_DEPARTMENT_CODE;
+  const isEntDepartment = loggedInDepartmentCode === ENT_DEPARTMENT_CODE;
+  const isDentalDepartment = loggedInDepartmentCode === DENTAL_DEPARTMENT_CODE;
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -2503,6 +2511,11 @@ const GeneralMedicineWaitingList = () => {
     };
   };
 
+  const selectedPatientDepartmentId = Number(
+    selectedPatient?.deptId || selectedPatient?.departmentId || 0,
+  );
+  const shouldShowVisionExamination = isOphthalmologyDepartment || selectedPatientDepartmentId === OPHTHALMOLOGY_DEPARTMENT_CODE;
+
   const validateSubmitForm = () => {
     const nextErrors = {};
     const messages = [];
@@ -2790,7 +2803,7 @@ const GeneralMedicineWaitingList = () => {
       if (visionRef.current && visionRef.current.getData) {
         visionExaminationData = visionRef.current.getData();
       }
-      const ophthalmologyExaminationDetails = isOphthalmologyDepartment
+      const ophthalmologyExaminationDetails = shouldShowVisionExamination
         ? buildOphthalmologyExaminationPayload(visionExaminationData)
         : null;
 
@@ -2914,7 +2927,7 @@ const GeneralMedicineWaitingList = () => {
         familyHistory: formData.familyHistory ?? null,
         // presentComplaints: formData.patientSymptoms ?? null,
 
-        ...(isOphthalmologyDepartment && {
+        ...(shouldShowVisionExamination && {
           ophthalmologyExaminationDetails,
         }),
 
@@ -4537,7 +4550,7 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
                 {/* Vision Examination Section */}
-                {isOphthalmologyDepartment && (
+                {shouldShowVisionExamination && (
                   <div className="card mb-3">
                     <div
                       className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
