@@ -658,3 +658,13 @@ export const LABOLATORY_MAIN_CHARGECODE_ID = 1;
 export const REDIOLOGY_MAIN_CHARGECODE_ID = 2;
 export const ABDM_GENERATE_CAPTCHA = `/api/v1/abdm/m2/generate-captcha`;
 export const ABDM_VERIFY_HEALTH_ID = `/api/v1/abdm/m2/verify-health-id`;
+
+// ABDM Milestone 2 APIs
+export const ABDM_M2_DISCOVER_PATIENTS = `/api/v1/abdm/m2/link/discover-records`;
+export const ABDM_M2_LINK_INITIATE = `/api/v1/abdm/m2/link/initiate`;
+export const ABDM_M2_LINK_VERIFY = `/api/v1/abdm/m2/link/verify`;
+export const ABDM_M2_CONSENT_REQUEST = `/api/v1/abdm/m2/consent/request`;
+export const ABDM_M2_CONSENT_LIST = `/api/v1/abdm/m2/consent/list`;
+export const ABDM_M2_CONSENT_STATUS = `/api/v1/abdm/m2/consent/status`;
+export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
+

@@ -2,6 +2,13 @@ import {
   DEFAULT_RSA_PUBLIC_KEY,
   ABDM_GENERATE_CAPTCHA,
   ABDM_VERIFY_HEALTH_ID,
+  ABDM_M2_DISCOVER_PATIENTS,
+  ABDM_M2_LINK_INITIATE,
+  ABDM_M2_LINK_VERIFY,
+  ABDM_M2_CONSENT_REQUEST,
+  ABDM_M2_CONSENT_LIST,
+  ABDM_M2_CONSENT_STATUS,
+  ABDM_M2_FETCH_RECORDS,
 } from "../config/apiConfig";
 
 const INTEGRATION_BASE_URL = "http://localhost:8080";
@@ -252,6 +259,34 @@ export const integrationService = {
       ...getHospitalContext(),
       ...payload,
     });
+  },
+
+  async discoverPatientRecords(patientId) {
+    return postIntegration(ABDM_M2_DISCOVER_PATIENTS, { patientId });
+  },
+
+  async initiateCareContextLink(payload) {
+    return postIntegration(ABDM_M2_LINK_INITIATE, payload);
+  },
+
+  async verifyCareContextLink(payload) {
+    return postIntegration(ABDM_M2_LINK_VERIFY, payload);
+  },
+
+  async createConsentRequest(payload) {
+    return postIntegration(ABDM_M2_CONSENT_REQUEST, payload);
+  },
+
+  async fetchConsentRequests(payload = {}) {
+    return postIntegration(ABDM_M2_CONSENT_LIST, payload);
+  },
+
+  async refreshConsentStatus(consentRequestId) {
+    return postIntegration(ABDM_M2_CONSENT_STATUS, { consentRequestId });
+  },
+
+  async fetchSharedClinicalRecords(consentRequestId) {
+    return postIntegration(ABDM_M2_FETCH_RECORDS, { consentRequestId });
   },
 };
 

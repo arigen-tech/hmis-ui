@@ -5,7 +5,7 @@ const Dashboard = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState(null);
   const [activeTab, setActiveTab] = useState("Last 7 Days");
-  
+
   // Toggle states for patient trend chart lines
   const [showReg, setShowReg] = useState(true);
   const [showOPD, setShowOPD] = useState(true);
@@ -46,6 +46,44 @@ const Dashboard = () => {
     icuPatients: 14
   };
 
+  // OPD, Lab & Billing KPI Summaries
+  const opdSummary = {
+    todayOPD: 342,
+    newReg: 125,
+    revisits: 217
+  };
+
+  const labSummary = {
+    todayTests: 185,
+    pendingReports: 28,
+    completedReports: 157
+  };
+
+  const billingSummary = {
+    todayBilling: "₹1,42,800",
+    collectedAmount: "₹1,28,500",
+    pendingBilling: "₹14,300"
+  };
+
+  // Billing Statistics List
+  const billingStats = [
+    { name: "OPD Billing", amount: "₹85,400", percentage: 40 },
+    { name: "IPD Billing", amount: "₹1,20,500", percentage: 56 },
+    { name: "Pharmacy Billing", amount: "₹65,200", percentage: 30 },
+    { name: "Lab Billing", amount: "₹42,800", percentage: 20 },
+    { name: "Radiology Billing", amount: "₹24,300", percentage: 11 },
+    { name: "Consult Billing", amount: "₹18,500", percentage: 8 },
+    { name: "Emergency Billing", amount: "₹15,000", percentage: 7 }
+  ];
+
+  // Payment Mode Distribution
+  const paymentModes = [
+    { name: "Cash", percentage: 35 },
+    { name: "Card", percentage: 25 },
+    { name: "UPI", percentage: 30 },
+    { name: "Insurance", percentage: 10 }
+  ];
+
   // IPD Ward Occupancy Percentages
   const wardOccupancy = [
     { name: "General Ward", percentage: 85 },
@@ -56,11 +94,15 @@ const Dashboard = () => {
 
   // OPD Specialty Wise
   const opdSpecialties = [
-    { name: "General Medicine", count: 220 },
+    { name: "Gen Medicine", count: 220 },
     { name: "Orthopedic", count: 180 },
     { name: "Pediatrics", count: 140 },
     { name: "Gynecology", count: 125 },
-    { name: "ENT", count: 95 }
+    { name: "ENT", count: 95 },
+    { name: "Cardiology", count: 80 },
+    { name: "Dental", count: 65 },
+    { name: "Neurology", count: 50 },
+    { name: "Dermatology", count: 40 }
   ];
 
   // Top Investigations
@@ -69,7 +111,10 @@ const Dashboard = () => {
     { name: "Blood Sugar", count: 180 },
     { name: "LFT", count: 150 },
     { name: "KFT", count: 132 },
-    { name: "Thyroid", count: 98 }
+    { name: "Thyroid", count: 98 },
+    { name: "Lipid Profile", count: 85 },
+    { name: "Urine R/M", count: 70 },
+    { name: "X-Ray Chest", count: 55 }
   ];
 
   // Top Diagnosis
@@ -78,7 +123,10 @@ const Dashboard = () => {
     { name: "Diabetes", count: 142 },
     { name: "Fever", count: 125 },
     { name: "Viral Infection", count: 110 },
-    { name: "Arthritis", count: 90 }
+    { name: "Arthritis", count: 90 },
+    { name: "Asthma", count: 75 },
+    { name: "Gastritis", count: 60 },
+    { name: "Anaemia", count: 45 }
   ];
 
   // Patient Trend Data (7 Days)
@@ -90,13 +138,13 @@ const Dashboard = () => {
   };
 
   // SVG dimensions for Line Chart
-  const lineChartWidth = 500;
-  const lineChartHeight = 200;
+  const lineChartWidth = 600;
+  const lineChartHeight = 240;
   const padLeft = 45;
   const padRight = 15;
-  const padTop = 15;
+  const padTop = 20;
   const padBottom = 25;
-  
+
   const plotWidth = lineChartWidth - padLeft - padRight;
   const plotHeight = lineChartHeight - padTop - padBottom;
   const maxVal = 1400;
@@ -126,7 +174,7 @@ const Dashboard = () => {
 
   return (
     <div className="modern-dashboard anim-fade-in">
-      
+
       {/* Dashboard Top Header Block */}
       <div className="dashboard-header d-flex flex-wrap justify-content-between align-items-center gap-3">
         <div className="dashboard-title-area">
@@ -148,44 +196,44 @@ const Dashboard = () => {
 
       {/* Row 1: KPI Statistics Overview */}
       <div className="metric-row">
-        {/* Total Beds */}
-        <div className="glass-card card-occupied">
+        {/* Today's OPD Visits */}
+        <div className="glass-card card-info">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Total Bed Capacity</span>
-              <span className="metric-value">{bedStats.total}</span>
-              <span className="metric-meta text-muted">100% capacity</span>
+              <span className="metric-label">Today's OPD Visits</span>
+              <span className="metric-value">{opdSummary.todayOPD}</span>
+              <span className="metric-meta text-primary">New: {opdSummary.newReg} • Revisit: {opdSummary.revisits}</span>
             </div>
-            <div className="metric-icon-box bg-occupied-light">
-              <i className="icofont-patient-bed" />
+            <div className="metric-icon-box bg-info-light">
+              <i className="icofont-doctor-alt" />
             </div>
           </div>
         </div>
 
-        {/* Occupied Beds */}
-        <div className="glass-card card-occupied">
-          <div className="card-content-wrapper">
-            <div className="metric-details">
-              <span className="metric-label">Occupied Beds</span>
-              <span className="metric-value">{bedStats.occupied.count}</span>
-              <span className="metric-meta text-primary">82% occupancy rate</span>
-            </div>
-            <div className="metric-icon-box bg-occupied-light">
-              <i className="icofont-user-suited" />
-            </div>
-          </div>
-        </div>
-
-        {/* Available Beds */}
+        {/* Today's Lab Tests */}
         <div className="glass-card card-available">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Available Beds</span>
-              <span className="metric-value">{bedStats.available.count}</span>
-              <span className="metric-meta text-success">14% remaining capacity</span>
+              <span className="metric-label">Today's Lab Tests</span>
+              <span className="metric-value">{labSummary.todayTests}</span>
+              <span className="metric-meta text-success">{labSummary.pendingReports} pending reports</span>
             </div>
             <div className="metric-icon-box bg-available-light">
-              <i className="icofont-check-circled" />
+              <i className="icofont-laboratory" />
+            </div>
+          </div>
+        </div>
+
+        {/* Today's Billing/Revenue */}
+        <div className="glass-card card-billing">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Today's Revenue</span>
+              <span className="metric-value">{billingSummary.todayBilling}</span>
+              <span className="metric-meta text-warning">Pending: {billingSummary.pendingBilling}</span>
+            </div>
+            <div className="metric-icon-box bg-billing-light">
+              <i className="icofont-coins" />
             </div>
           </div>
         </div>
@@ -231,13 +279,356 @@ const Dashboard = () => {
             </div>
           </div>
         </div>
-
-
       </div>
-
-      {/* Main Content Grid */}
       <div className="dashboard-layout-grid">
-        
+
+        {/* ── Row 1: OPD Statistics full width ── */}
+        <div className="glass-card span-12">
+          <div className="card-title-bar">
+            <h5><i className="icofont-doctor-alt text-info" /> OPD Statistics</h5>
+          </div>
+          <div className="card-body-content opd-dashboard-row">
+            {/* Specialty bars */}
+            <div className="opd-chart-col">
+              <h6>Specialty-Wise Distribution</h6>
+              <div className="vertical-bar-chart">
+                {opdSpecialties.map((spec, idx) => {
+                  const heightPercent = (spec.count / 220) * 100;
+                  return (
+                    <div className="vertical-bar-item" key={idx}>
+                      <div className="vertical-bar-value">{spec.count}</div>
+                      <div className="vertical-bar-container">
+                        <div
+                          className="vertical-bar-fill gradient-fill-teal"
+                          style={{ height: isMounted ? `${heightPercent}%` : "0%" }}
+                          title={`${spec.name}: ${spec.count}`}
+                        />
+                      </div>
+                      <div className="vertical-bar-label" title={spec.name}>{spec.name}</div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Gender Donut */}
+            <div className="opd-gender-col">
+              <h6>Gender Distribution</h6>
+              <div style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "1rem" }}>
+                <div className="donut-svg-wrapper" style={{ width: "130px", height: "130px" }}>
+                  <svg width="100%" height="100%" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="10" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" strokeWidth="10" strokeDasharray="130.7 251.3" strokeDashoffset="0" transform="rotate(-90 50 50)" className="chart-segment" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#ec4899" strokeWidth="10" strokeDasharray="103.0 251.3" strokeDashoffset="-130.7" transform="rotate(-90 50 50)" className="chart-segment" />
+                    <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="10" strokeDasharray="17.6 251.3" strokeDashoffset="-233.7" transform="rotate(-90 50 50)" className="chart-segment" />
+                  </svg>
+                  <div className="donut-center-text">
+                    <div className="donut-center-number" style={{ fontSize: "1.3rem" }}>{opdSummary.todayOPD}</div>
+                    <div className="donut-center-label">Total</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%", fontSize: "0.8rem" }}>
+                  {[
+                    { label: "Male", pct: "52%", color: "#3b82f6" },
+                    { label: "Female", pct: "41%", color: "#ec4899" },
+                    { label: "Child", pct: "7%", color: "#10b981" }
+                  ].map((g) => (
+                    <div key={g.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                        <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, display: "inline-block" }} />
+                        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{g.label}</span>
+                      </div>
+                      <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{g.pct}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Row 2: Top Investigations | Top Diagnosis | Billing & Financials ── */}
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-laboratory text-primary" /> Top Investigations</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="vertical-bar-chart">
+              {topInvestigations.map((inv, idx) => {
+                const heightPercent = (inv.count / 220) * 100;
+                return (
+                  <div className="vertical-bar-item" key={idx}>
+                    <div className="vertical-bar-value">{inv.count}</div>
+                    <div className="vertical-bar-container">
+                      <div
+                        className="vertical-bar-fill gradient-fill-blue"
+                        style={{ height: isMounted ? `${heightPercent}%` : "0%" }}
+                        title={`${inv.name}: ${inv.count}`}
+                      />
+                    </div>
+                    <div className="vertical-bar-label" title={inv.name}>{inv.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-stethoscope text-accent" /> Top Diagnosis</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="vertical-bar-chart">
+              {topDiagnosis.map((diag, idx) => {
+                const heightPercent = (diag.count / 165) * 100;
+                return (
+                  <div className="vertical-bar-item" key={idx}>
+                    <div className="vertical-bar-value">{diag.count}</div>
+                    <div className="vertical-bar-container">
+                      <div
+                        className="vertical-bar-fill gradient-fill-coral"
+                        style={{ height: isMounted ? `${heightPercent}%` : "0%" }}
+                        title={`${diag.name}: ${diag.count}`}
+                      />
+                    </div>
+                    <div className="vertical-bar-label" title={diag.name}>{diag.name}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+
+        {/* Billing & Financials */}
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-coins text-warning" /> Billing & Financials</h5>
+          </div>
+          <div className="card-body-content" style={{ display: "flex", flexDirection: "column", gap: "1rem" }}>
+            {/* Bar chart row */}
+            <div className="billing-bar-chart">
+              <div className="vertical-bar-chart">
+                {billingStats.map((bill, idx) => {
+                  const amt = parseInt(bill.amount.replace(/[^0-9]/g, ""), 10);
+                  const heightPercent = (amt / 120500) * 100;
+                  return (
+                    <div className="vertical-bar-item" key={idx}>
+                      <div className="vertical-bar-value" style={{ fontSize: "0.62rem" }}>{bill.amount}</div>
+                      <div className="vertical-bar-container">
+                        <div
+                          className="vertical-bar-fill gradient-fill-purple"
+                          style={{ height: isMounted ? `${heightPercent}%` : "0%" }}
+                          title={`${bill.name}: ${bill.amount}`}
+                        />
+                      </div>
+                      <div className="vertical-bar-label" title={bill.name} style={{ fontSize: "0.62rem" }}>
+                        {bill.name.split(" ")[0]}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Payment Mode Donut + Legend */}
+            <div style={{ borderTop: "1px solid var(--border-color)", paddingTop: "0.75rem" }}>
+              <div style={{ fontSize: "0.72rem", fontWeight: 700, color: "var(--text-muted)", textTransform: "uppercase", letterSpacing: "0.06em", marginBottom: "0.6rem" }}>
+                Payment Mode
+              </div>
+              <div style={{ display: "flex", alignItems: "center", gap: "1rem" }}>
+                <div className="donut-svg-wrapper" style={{ width: "80px", height: "80px", flexShrink: 0 }}>
+                  <svg width="100%" height="100%" viewBox="0 0 100 100">
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" strokeWidth="12" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#3b82f6" strokeWidth="12" strokeDasharray="83.5 238.8" strokeDashoffset="0" transform="rotate(-90 50 50)" className="chart-segment" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="12" strokeDasharray="71.6 238.8" strokeDashoffset="-83.5" transform="rotate(-90 50 50)" className="chart-segment" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#ec4899" strokeWidth="12" strokeDasharray="59.7 238.8" strokeDashoffset="-155.1" transform="rotate(-90 50 50)" className="chart-segment" />
+                    <circle cx="50" cy="50" r="38" fill="none" stroke="#f59e0b" strokeWidth="12" strokeDasharray="23.9 238.8" strokeDashoffset="-214.8" transform="rotate(-90 50 50)" className="chart-segment" />
+                  </svg>
+                  <div className="donut-center-text">
+                    <div className="donut-center-number" style={{ fontSize: "0.8rem", fontWeight: 800 }}>₹1.4L</div>
+                    <div className="donut-center-label" style={{ fontSize: "0.5rem" }}>Revenue</div>
+                  </div>
+                </div>
+                <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, fontSize: "0.75rem" }}>
+                  {[
+                    { label: "Cash", pct: "35%", color: "#3b82f6" },
+                    { label: "UPI", pct: "30%", color: "#10b981" },
+                    { label: "Card", pct: "25%", color: "#ec4899" },
+                    { label: "Insurance", pct: "10%", color: "#f59e0b" }
+                  ].map((m) => (
+                    <div key={m.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                        <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, display: "inline-block", flexShrink: 0 }} />
+                        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{m.label}</span>
+                      </div>
+                      <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{m.pct}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* ── Row 3: Daily Patient Trend full width ── */}
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-chart-line text-accent" /> Daily Patient Trend (Last 7 Days)</h5>
+            <div className="chart-legends-horizontal mt-0">
+              <div
+                className={`chart-legend-pill ${showReg ? "" : "inactive"}`}
+                onClick={() => setShowReg(!showReg)}
+              >
+                <span className="legend-color-dot" style={{ backgroundColor: "#2563eb" }} />
+                <span>Registrations</span>
+              </div>
+              <div
+                className={`chart-legend-pill ${showOPD ? "" : "inactive"}`}
+                onClick={() => setShowOPD(!showOPD)}
+              >
+                <span className="legend-color-dot" style={{ backgroundColor: "#8b5cf6" }} />
+                <span>OPD Visits</span>
+              </div>
+              <div
+                className={`chart-legend-pill ${showIPD ? "" : "inactive"}`}
+                onClick={() => setShowIPD(!showIPD)}
+              >
+                <span className="legend-color-dot" style={{ backgroundColor: "#10b981" }} />
+                <span>IPD Admissions</span>
+              </div>
+            </div>
+          </div>
+          <div className="card-body-content">
+            <div className="chart-container-rel">
+              <svg width="100%" height="auto" viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`} style={{ display: "block" }}>
+                <defs>
+                  <linearGradient id="reg-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="opd-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
+                  </linearGradient>
+                  <linearGradient id="ipd-area" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.35" />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                  </linearGradient>
+                </defs>
+
+                {/* Y Axis Gridlines */}
+                {[0, 200, 400, 600, 800, 1000, 1200, 1400].map((v, idx) => {
+                  const y = lineChartHeight - padBottom - (v / maxVal) * plotHeight;
+                  return (
+                    <g key={idx}>
+                      <line x1={padLeft} y1={y} x2={lineChartWidth - padRight} y2={y} stroke="#f1f5f9" strokeWidth="1" />
+                      <text x={padLeft - 8} y={y + 4} textAnchor="end" fontSize="10" fill="#94a3b8" fontWeight="600">{v}</text>
+                    </g>
+                  );
+                })}
+
+                {/* X Axis Labels */}
+                {patientTrend.days.map((d, i) => {
+                  const x = padLeft + i * (plotWidth / 6);
+                  return (
+                    <text key={i} x={x} y={lineChartHeight - 6} textAnchor="middle" fontSize="11" fill="#94a3b8" fontWeight="600">{d}</text>
+                  );
+                })}
+
+                {/* Registration Area and Line */}
+                {showReg && isMounted && (
+                  <>
+                    <path d={generateAreaPath(patientTrend.registration)} fill="url(#reg-area)" className="chart-area-path" />
+                    <path d={generatePath(patientTrend.registration)} fill="none" stroke="#2563eb" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-path" />
+                  </>
+                )}
+
+                {/* OPD Visits Area and Line */}
+                {showOPD && isMounted && (
+                  <>
+                    <path d={generateAreaPath(patientTrend.opd)} fill="url(#opd-area)" className="chart-area-path" />
+                    <path d={generatePath(patientTrend.opd)} fill="none" stroke="#8b5cf6" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-path" />
+                  </>
+                )}
+
+                {/* IPD Admissions Area and Line */}
+                {showIPD && isMounted && (
+                  <>
+                    <path d={generateAreaPath(patientTrend.ipd)} fill="url(#ipd-area)" className="chart-area-path" />
+                    <path d={generatePath(patientTrend.ipd)} fill="none" stroke="#10b981" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" className="chart-line-path" />
+                  </>
+                )}
+
+                {/* Interactive Dots & Tooltip Overlays */}
+                {patientTrend.days.map((d, i) => {
+                  const regCoords = getCoordinates(patientTrend.registration[i], i);
+                  const opdCoords = getCoordinates(patientTrend.opd[i], i);
+                  const ipdCoords = getCoordinates(patientTrend.ipd[i], i);
+                  return (
+                    <g key={i}>
+                      <rect
+                        x={regCoords.x - 25}
+                        y={padTop}
+                        width={50}
+                        height={plotHeight}
+                        fill="transparent"
+                        style={{ cursor: "pointer" }}
+                        onMouseEnter={() => setHoveredTrendIndex(i)}
+                        onMouseLeave={() => setHoveredTrendIndex(null)}
+                      />
+                      {hoveredTrendIndex === i && (
+                        <line x1={regCoords.x} y1={padTop} x2={regCoords.x} y2={lineChartHeight - padBottom} stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="4 3" />
+                      )}
+                      {showReg && isMounted && (
+                        <circle cx={regCoords.x} cy={regCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#2563eb" stroke="#fff" strokeWidth="2" className="chart-data-dot" />
+                      )}
+                      {showOPD && isMounted && (
+                        <circle cx={opdCoords.x} cy={opdCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#8b5cf6" stroke="#fff" strokeWidth="2" className="chart-data-dot" />
+                      )}
+                      {showIPD && isMounted && (
+                        <circle cx={ipdCoords.x} cy={ipdCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#10b981" stroke="#fff" strokeWidth="2" className="chart-data-dot" />
+                      )}
+                    </g>
+                  );
+                })}
+              </svg>
+
+              {/* Tooltip */}
+              {hoveredTrendIndex !== null && (
+                <div
+                  className="chart-tooltip"
+                  style={{
+                    left: `${padLeft + hoveredTrendIndex * (plotWidth / 6) + 18}px`,
+                    top: "20px",
+                    opacity: 1
+                  }}
+                >
+                  <div className="tooltip-day">{patientTrend.days[hoveredTrendIndex]}</div>
+                  {showReg && (
+                    <div className="tooltip-row">
+                      <span><span className="tooltip-dot" style={{ backgroundColor: "#2563eb" }} />Registrations:</span>
+                      <span className="fw-bold">{patientTrend.registration[hoveredTrendIndex]}</span>
+                    </div>
+                  )}
+                  {showOPD && (
+                    <div className="tooltip-row">
+                      <span><span className="tooltip-dot" style={{ backgroundColor: "#8b5cf6" }} />OPD Visits:</span>
+                      <span className="fw-bold">{patientTrend.opd[hoveredTrendIndex]}</span>
+                    </div>
+                  )}
+                  {showIPD && (
+                    <div className="tooltip-row">
+                      <span><span className="tooltip-dot" style={{ backgroundColor: "#10b981" }} />IPD Admissions:</span>
+                      <span className="fw-bold">{patientTrend.ipd[hoveredTrendIndex]}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* Overall Bed Statistics (Donut) */}
         <div className="glass-card span-4">
           <div className="card-title-bar">
@@ -265,7 +656,7 @@ const Dashboard = () => {
                       <stop offset="100%" stopColor="#dc2626" />
                     </linearGradient>
                   </defs>
-                  
+
                   {/* Circle segments calculations based on r=60, circ=377 */}
                   {/* Occupied: 82% = 309.1 */}
                   <circle
@@ -325,7 +716,7 @@ const Dashboard = () => {
                   <div className="donut-center-label">Beds</div>
                 </div>
               </div>
-              
+
               <div className="legend-list">
                 <div className="legend-item">
                   <div className="legend-label-wrapper">
@@ -389,7 +780,7 @@ const Dashboard = () => {
                       <stop offset="100%" stopColor="#10b981" />
                     </linearGradient>
                   </defs>
-                  
+
                   {/* Gauge Arc Background track */}
                   <path
                     d="M 30 100 A 70 70 0 0 1 170 100"
@@ -398,7 +789,7 @@ const Dashboard = () => {
                     strokeWidth="14"
                     strokeLinecap="round"
                   />
-                  
+
                   {/* Segments: Red Zone (0-25%), Orange (25-50%), Yellow (50-75%), Green (75-100%) */}
                   <path
                     d="M 30 100 A 70 70 0 0 1 170 100"
@@ -438,21 +829,22 @@ const Dashboard = () => {
             <h5><i className="icofont-building text-info" /> Ward Occupancy</h5>
           </div>
           <div className="card-body-content">
-            <div className="progress-list">
-              {wardOccupancy.map((ward, idx) => (
-                <div className="progress-list-item" key={idx}>
-                  <div className="item-meta-row">
-                    <span className="item-name-bold">{ward.name}</span>
-                    <span className="item-value-pill">{ward.percentage}%</span>
+            <div className="vertical-bar-chart">
+              {wardOccupancy.map((ward, idx) => {
+                return (
+                  <div className="vertical-bar-item" key={idx}>
+                    <div className="vertical-bar-value">{ward.percentage}%</div>
+                    <div className="vertical-bar-container" style={{ width: "24px" }}>
+                      <div
+                        className="vertical-bar-fill gradient-fill-blue"
+                        style={{ height: isMounted ? `${ward.percentage}%` : "0%" }}
+                        title={`${ward.name}: ${ward.percentage}%`}
+                      />
+                    </div>
+                    <div className="vertical-bar-label" title={ward.name} style={{ fontSize: "0.7rem", maxWidth: "70px" }}>{ward.name}</div>
                   </div>
-                  <div className="modern-progress-bar-bg">
-                    <div
-                      className="modern-progress-bar-fill gradient-fill-blue"
-                      style={{ width: isMounted ? `${ward.percentage}%` : "0%" }}
-                    />
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </div>
         </div>
@@ -476,7 +868,7 @@ const Dashboard = () => {
                       <span className="ward-name">{ward.name}</span>
                       <span className="ward-total">{ward.total} Beds</span>
                     </div>
-                    
+
                     <div className="stacked-bar">
                       <div className="bar-segment bg-primary" style={{ width: `${occWidth}%` }} title={`Occupied: ${ward.occupied}`} />
                       <div className="bar-segment bg-success" style={{ width: `${avWidth}%` }} title={`Available: ${ward.available}`} />
@@ -509,264 +901,6 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Patient Trend (Line Chart Last 7 Days) */}
-        <div className="glass-card span-8">
-          <div className="card-title-bar">
-            <h5><i className="icofont-chart-line text-accent" /> Daily Patient Trend (Last 7 Days)</h5>
-            <div className="chart-legends-horizontal mt-0">
-              <div 
-                className={`chart-legend-pill ${showReg ? "" : "inactive"}`} 
-                onClick={() => setShowReg(!showReg)}
-              >
-                <span className="legend-color-dot" style={{ backgroundColor: "#2563eb" }} />
-                <span>Registrations</span>
-              </div>
-              <div 
-                className={`chart-legend-pill ${showOPD ? "" : "inactive"}`} 
-                onClick={() => setShowOPD(!showOPD)}
-              >
-                <span className="legend-color-dot" style={{ backgroundColor: "#8b5cf6" }} />
-                <span>OPD Visits</span>
-              </div>
-              <div 
-                className={`chart-legend-pill ${showIPD ? "" : "inactive"}`} 
-                onClick={() => setShowIPD(!showIPD)}
-              >
-                <span className="legend-color-dot" style={{ backgroundColor: "#10b981" }} />
-                <span>IPD Admissions</span>
-              </div>
-            </div>
-          </div>
-          <div className="card-body-content">
-            <div className="chart-container-rel">
-              <svg width="100%" height="100%" viewBox={`0 0 ${lineChartWidth} ${lineChartHeight}`}>
-                <defs>
-                  {/* Gradients for fills */}
-                  <linearGradient id="reg-area" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#3b82f6" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#3b82f6" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="opd-area" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#8b5cf6" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#8b5cf6" stopOpacity="0.0" />
-                  </linearGradient>
-                  <linearGradient id="ipd-area" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor="#10b981" stopOpacity="0.4" />
-                    <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
-                  </linearGradient>
-                </defs>
-
-                {/* Y Axis Gridlines */}
-                {[0, 200, 400, 600, 800, 1000, 1200, 1400].map((v, idx) => {
-                  const y = lineChartHeight - padBottom - (v / maxVal) * plotHeight;
-                  return (
-                    <g key={idx}>
-                      <line x1={padLeft} y1={y} x2={lineChartWidth - padRight} y2={y} className="grid-line" />
-                      <text x={padLeft - 8} y={y + 4} textAnchor="end" fontSize="9" fill="#94a3b8" fontWeight="600">{v}</text>
-                    </g>
-                  );
-                })}
-
-                {/* X Axis Labels */}
-                {patientTrend.days.map((d, i) => {
-                  const x = padLeft + i * (plotWidth / 6);
-                  return (
-                    <text key={i} x={x} y={lineChartHeight - 8} textAnchor="middle" fontSize="9" fill="#94a3b8" fontWeight="600">{d}</text>
-                  );
-                })}
-
-                {/* Registration Area and Line */}
-                {showReg && isMounted && (
-                  <>
-                    <path d={generateAreaPath(patientTrend.registration)} fill="url(#reg-area)" className="chart-area-path" />
-                    <path d={generatePath(patientTrend.registration)} fill="none" stroke="#2563eb" strokeWidth="3" strokeLinecap="round" className="chart-line-path" />
-                  </>
-                )}
-
-                {/* OPD Visits Area and Line */}
-                {showOPD && isMounted && (
-                  <>
-                    <path d={generateAreaPath(patientTrend.opd)} fill="url(#opd-area)" className="chart-area-path" />
-                    <path d={generatePath(patientTrend.opd)} fill="none" stroke="#8b5cf6" strokeWidth="3" strokeLinecap="round" className="chart-line-path" />
-                  </>
-                )}
-
-                {/* IPD Admissions Area and Line */}
-                {showIPD && isMounted && (
-                  <>
-                    <path d={generateAreaPath(patientTrend.ipd)} fill="url(#ipd-area)" className="chart-area-path" />
-                    <path d={generatePath(patientTrend.ipd)} fill="none" stroke="#10b981" strokeWidth="3" strokeLinecap="round" className="chart-line-path" />
-                  </>
-                )}
-
-                {/* Interactive Dots & Tooltip Overlays */}
-                {patientTrend.days.map((d, i) => {
-                  const regCoords = getCoordinates(patientTrend.registration[i], i);
-                  const opdCoords = getCoordinates(patientTrend.opd[i], i);
-                  const ipdCoords = getCoordinates(patientTrend.ipd[i], i);
-
-                  return (
-                    <g key={i}>
-                      {/* Interaction bounds rect */}
-                      <rect
-                        x={regCoords.x - 20}
-                        y={padTop}
-                        width={40}
-                        height={plotHeight}
-                        fill="transparent"
-                        style={{ cursor: "pointer" }}
-                        onMouseEnter={() => setHoveredTrendIndex(i)}
-                        onMouseLeave={() => setHoveredTrendIndex(null)}
-                      />
-
-                      {/* Vertically hovering tracker line */}
-                      {hoveredTrendIndex === i && (
-                        <line x1={regCoords.x} y1={padTop} x2={regCoords.x} y2={lineChartHeight - padBottom} stroke="#cbd5e1" strokeWidth="1.5" strokeDasharray="3 3" />
-                      )}
-
-                      {/* Line points indicators */}
-                      {showReg && isMounted && (
-                        <circle cx={regCoords.x} cy={regCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#2563eb" stroke="#ffffff" strokeWidth="2" className="chart-data-dot" />
-                      )}
-                      {showOPD && isMounted && (
-                        <circle cx={opdCoords.x} cy={opdCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#8b5cf6" stroke="#ffffff" strokeWidth="2" className="chart-data-dot" />
-                      )}
-                      {showIPD && isMounted && (
-                        <circle cx={ipdCoords.x} cy={ipdCoords.y} r={hoveredTrendIndex === i ? 6 : 4} fill="#10b981" stroke="#ffffff" strokeWidth="2" className="chart-data-dot" />
-                      )}
-                    </g>
-                  );
-                })}
-              </svg>
-
-              {/* Tooltip Box overlay */}
-              {hoveredTrendIndex !== null && (
-                <div
-                  className="chart-tooltip"
-                  style={{
-                    left: `${padLeft + hoveredTrendIndex * (plotWidth / 6) + 15}px`,
-                    top: "30px",
-                    opacity: 1
-                  }}
-                >
-                  <div className="tooltip-day">{patientTrend.days[hoveredTrendIndex]} Statistics</div>
-                  {showReg && (
-                    <div className="tooltip-row">
-                      <span><span className="tooltip-dot" style={{ backgroundColor: "#2563eb" }} />Registrations:</span>
-                      <span className="fw-bold">{patientTrend.registration[hoveredTrendIndex]}</span>
-                    </div>
-                  )}
-                  {showOPD && (
-                    <div className="tooltip-row">
-                      <span><span className="tooltip-dot" style={{ backgroundColor: "#8b5cf6" }} />OPD Visits:</span>
-                      <span className="fw-bold">{patientTrend.opd[hoveredTrendIndex]}</span>
-                    </div>
-                  )}
-                  {showIPD && (
-                    <div className="tooltip-row">
-                      <span><span className="tooltip-dot" style={{ backgroundColor: "#10b981" }} />IPD Admissions:</span>
-                      <span className="fw-bold">{patientTrend.ipd[hoveredTrendIndex]}</span>
-                    </div>
-                  )}
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* OPD Specialty & Gender Distribution */}
-        <div className="glass-card span-4">
-          <div className="card-title-bar">
-            <h5><i className="icofont-doctor-alt text-info" /> OPD Statistics</h5>
-          </div>
-          <div className="card-body-content">
-            {/* Specialty List */}
-            <div className="progress-list">
-              {opdSpecialties.map((spec, idx) => (
-                <div className="progress-list-item" key={idx}>
-                  <div className="item-meta-row">
-                    <span className="item-name-bold">{spec.name}</span>
-                    <span className="item-value-pill">{spec.count}</span>
-                  </div>
-                  <div className="modern-progress-bar-bg">
-                    <div
-                      className="modern-progress-bar-fill gradient-fill-teal"
-                      style={{ width: isMounted ? `${(spec.count / 220) * 100}%` : "0%" }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            {/* Gender Distribution Segment under Specialty */}
-            <div className="gender-split-box flex-column align-items-stretch">
-              <div className="d-flex justify-content-between font-weight-bold text-muted small mb-2">
-                <span>OPD GENDER DISTRIBUTION</span>
-                <span className="text-dark fw-bold">Male 52% • Female 41% • Child 7%</span>
-              </div>
-              <div className="gender-progress">
-                <div className="gender-segment bg-male" style={{ width: "52%" }} title="Male: 52%" />
-                <div className="gender-segment bg-female" style={{ width: "41%" }} title="Female: 41%" />
-                <div className="gender-segment bg-child" style={{ width: "7%" }} title="Child: 7%" />
-              </div>
-              <div className="gender-labels-row mt-2">
-                <span className="gender-label-item male"><span className="legend-color-dot bg-male d-inline-block" style={{ width: 8, height: 8 }} /> Male (52%)</span>
-                <span className="gender-label-item female"><span className="legend-color-dot bg-female d-inline-block" style={{ width: 8, height: 8 }} /> Female (41%)</span>
-                <span className="gender-label-item child"><span className="legend-color-dot bg-child d-inline-block" style={{ width: 8, height: 8 }} /> Child (7%)</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Top Investigations */}
-        <div className="glass-card span-6">
-          <div className="card-title-bar">
-            <h5><i className="icofont-laboratory text-primary" /> Top Investigations</h5>
-          </div>
-          <div className="card-body-content">
-            <div className="progress-list">
-              {topInvestigations.map((inv, idx) => (
-                <div className="progress-list-item" key={idx}>
-                  <div className="item-meta-row">
-                    <span className="item-name-bold">{inv.name}</span>
-                    <span className="item-value-pill">{inv.count} Cases</span>
-                  </div>
-                  <div className="modern-progress-bar-bg">
-                    <div
-                      className="modern-progress-bar-fill gradient-fill-blue"
-                      style={{ width: isMounted ? `${(inv.count / 220) * 100}%` : "0%" }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Top Diagnosis */}
-        <div className="glass-card span-6">
-          <div className="card-title-bar">
-            <h5><i className="icofont-stethoscope text-accent" /> Top Diagnosis</h5>
-          </div>
-          <div className="card-body-content">
-            <div className="progress-list">
-              {topDiagnosis.map((diag, idx) => (
-                <div className="progress-list-item" key={idx}>
-                  <div className="item-meta-row">
-                    <span className="item-name-bold">{diag.name}</span>
-                    <span className="item-value-pill">{diag.count} cases</span>
-                  </div>
-                  <div className="modern-progress-bar-bg">
-                    <div
-                      className="modern-progress-bar-fill gradient-fill-coral"
-                      style={{ width: isMounted ? `${(diag.count / 165) * 100}%` : "0%" }}
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );
