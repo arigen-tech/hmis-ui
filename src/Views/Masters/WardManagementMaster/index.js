@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_WARD_CATEGORY_GET_ALL, MAS_WARD_GET_ALL, MAS_WARD_STATUS, MAS_WARD_UPDATE, MAS_WARD_CREATE, MAS_WARD_GET_BY_ID, MAS_CARE_LEVEL } from "../../../config/apiConfig";
+import { MAS_WARD_CATEGORY_GET_ALL, MAS_WARD_GET_ALL, MAS_WARD_STATUS, MAS_WARD_UPDATE, MAS_WARD_CREATE, MAS_WARD_GET_BY_ID, MAS_CARE_LEVEL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 
 
 const WardManagement = () => {
@@ -15,6 +15,10 @@ const WardManagement = () => {
 
   const [careLevelOptions, setCareLevelOptions] = useState([
     { value: "", label: "Select Care Level" }
+  ]);
+
+  const [departmentOptions, setDepartmentOptions] = useState([
+    { value: "", label: "Select Department" }
   ]);
 
   const [wardData, setWardData] = useState(initialWardData);
@@ -29,6 +33,7 @@ const WardManagement = () => {
     wardName: "",
     category: "",
     careLevel: "",
+    department: "",
   });
 
   const mapApiWardToView = (ward) => ({
@@ -36,8 +41,10 @@ const WardManagement = () => {
     wardName: ward.wardName || "",
     category: ward.wardCategoryName || "",
     careLevel: ward.careLevelName || "",
+    department: ward.departmentName || "",
     categoryId: ward.wardCategoryId || ward.categoryId || "",
     careLevelId: ward.careLevelId || ward.careId || "",
+    departmentId: ward.departmentId || "",
     status: (ward.status || "").toUpperCase() === "Y" ? "y" : "n",
     lastUpdated: ward.lastUpdateDate || "",
   });
@@ -90,18 +97,35 @@ const WardManagement = () => {
     }
   };
 
+  const fetchDepartmentOptions = async () => {
+    try {
+      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      const list = Array.isArray(data?.response) ? data.response : [];
+      setDepartmentOptions([
+        { value: "", label: "Select Department" },
+        ...list.map((item) => ({
+          value: item.id?.toString() || "",
+          label: item.departmentName || ""
+        }))
+      ]);
+    } catch (error) {
+      console.error("Error loading departments:", error);
+    }
+  };
+
   const openWardForm = async (ward = null) => {
-    await Promise.all([fetchCategoryOptions(), fetchCareLevelOptions()]);
+    await Promise.all([fetchCategoryOptions(), fetchCareLevelOptions(), fetchDepartmentOptions()]);
     if (ward) {
       setEditingWard(ward);
       setFormData({
         wardName: ward.wardName,
         category: ward.categoryId?.toString() || "",
         careLevel: ward.careLevelId?.toString() || "",
+        department: ward.departmentId?.toString() || "",
       });
     } else {
       setEditingWard(null);
-      setFormData({ wardName: "", category: "", careLevel: "" });
+      setFormData({ wardName: "", category: "", careLevel: "", department: "" });
     }
     setShowForm(true);
   };
@@ -121,7 +145,8 @@ const WardManagement = () => {
   const filteredWardData = wardData.filter(ward =>
     ward.wardName.toLowerCase().includes(searchQuery.toLowerCase()) ||
     ward.category.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    ward.careLevel.toLowerCase().includes(searchQuery.toLowerCase())
+    ward.careLevel.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    ward.department.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   // Calculate pagination values
@@ -148,11 +173,12 @@ const WardManagement = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { wardName, category, careLevel } = formData;
+      const { wardName, category, careLevel, department } = formData;
       return (
         wardName.trim() !== "" &&
         category.trim() !== "" &&
-        careLevel.trim() !== ""
+        careLevel.trim() !== "" &&
+        department.trim() !== ""
       );
     };
     setIsFormValid(validateForm());
@@ -196,7 +222,8 @@ const WardManagement = () => {
         const payload = {
           wardName: formData.wardName,
           wardCategoryId: Number(formData.category),
-          careLevelId: Number(formData.careLevel)
+          careLevelId: Number(formData.careLevel),
+          departmentId: Number(formData.department)
         };
 
         const response = await putRequest(`${MAS_WARD_UPDATE}/${editingWard.id}`, payload);
@@ -211,8 +238,10 @@ const WardManagement = () => {
               wardName: formData.wardName,
               category: categoryOptions.find(opt => opt.value === formData.category)?.label || item.category,
               careLevel: careLevelOptions.find(opt => opt.value === formData.careLevel)?.label || item.careLevel,
+              department: departmentOptions.find(opt => opt.value === formData.department)?.label || item.department,
               categoryId: formData.category,
               careLevelId: formData.careLevel,
+              departmentId: formData.department,
               lastUpdated: new Date().toLocaleString('en-IN', {
                 year: 'numeric',
                 month: '2-digit',
@@ -229,7 +258,7 @@ const WardManagement = () => {
         setWardData(updatedData);
         showPopupWithCallback("Ward updated successfully!", "success", async () => {
           setEditingWard(null);
-          setFormData({ wardName: "", category: "", careLevel: "" });
+          setFormData({ wardName: "", category: "", careLevel: "", department: "" });
           setShowForm(false);
           await fetchWardData();
         });
@@ -240,6 +269,7 @@ const WardManagement = () => {
           wardName: formData.wardName,
           category: formData.category,
           careLevel: formData.careLevel,
+          department: formData.department,
           status: "y",
           lastUpdated: new Date().toLocaleString('en-IN', {
             year: 'numeric',
@@ -255,7 +285,8 @@ const WardManagement = () => {
           const payload = {
             wardName: formData.wardName,
             wardCategoryId: Number(formData.category),
-            careLevelId: Number(formData.careLevel)
+            careLevelId: Number(formData.careLevel),
+            departmentId: Number(formData.department)
           };
 
           const createResp = await postRequest(`${MAS_WARD_CREATE}`, payload);
@@ -265,7 +296,7 @@ const WardManagement = () => {
 
           showPopupWithCallback("New ward added successfully!", "success", async () => {
             setEditingWard(null);
-            setFormData({ wardName: "", category: "", careLevel: "" });
+            setFormData({ wardName: "", category: "", careLevel: "", department: "" });
             setShowForm(false);
             await fetchWardData();
           });
@@ -275,7 +306,7 @@ const WardManagement = () => {
       showPopupWithCallback(`Failed to save changes: ${err.message}`, "error", async () => {
         setShowForm(false);
         setEditingWard(null);
-        setFormData({ wardName: "", category: "", careLevel: "" });
+        setFormData({ wardName: "", category: "", careLevel: "", department: "" });
         await fetchWardData();
       });
     } finally {
@@ -440,6 +471,7 @@ const WardManagement = () => {
                           <th>Ward Name</th>
                           <th>Category</th>
                           <th>Care Level</th>
+                          <th>Department</th>
                           <th>Status</th>
                           <th>Last Updated</th>
                           <th>Edit</th>
@@ -452,6 +484,7 @@ const WardManagement = () => {
                               <td>{ward.wardName}</td>
                               <td>{ward.category}</td>
                               <td>{ward.careLevel}</td>
+                              <td>{ward.department}</td>
                               <td>
                                 <div className="form-check form-switch">
                                   <input
@@ -483,7 +516,7 @@ const WardManagement = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">No ward data found</td>
+                            <td colSpan="7" className="text-center">No ward data found</td>
                           </tr>
                         )}
                       </tbody>
@@ -554,6 +587,25 @@ const WardManagement = () => {
                       ))}
                     </select>
                     <small className="text-muted">Select care level for this ward</small>
+                  </div>
+
+                  <div className="form-group col-md-4">
+                    <label>Department <span className="text-danger">*</span></label>
+                    <select
+                      className="form-select mt-1"
+                      id="department"
+                      name="department"
+                      value={formData.department}
+                      onChange={handleSelectChange}
+                      required
+                    >
+                      {departmentOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    <small className="text-muted">Select a department</small>
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
