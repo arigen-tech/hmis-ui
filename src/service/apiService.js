@@ -164,6 +164,49 @@ export const postRequestWithFormData = async (endpoint, formData) => {
 };
 
 /**
+ * Function to call PUT API with FormData
+ * @param {string} endpoint - The API endpoint
+ * @param {FormData} formData - FormData object
+ * @returns {Promise<object>} - API response
+ */
+export const putRequestWithFormData = async (endpoint, formData) => {
+  try {
+    let token =
+      localStorage.getItem("token") || sessionStorage.getItem("token");
+
+    console.log(`Sending PUT request to: ${endpoint}`);
+
+    const response = await fetch(`${BASE_URL}${endpoint}`, {
+      method: "PUT",
+      headers: {
+        Authorization: `Bearer ${token}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("Server response:", errorText);
+      throw new Error(
+        `PUT request failed: ${response.status} - ${errorText || response.statusText}`,
+      );
+    }
+
+    return await response.json();
+  } catch (error) {
+    console.error("PUT Error:", error);
+
+    if (error.message.includes("Failed to fetch")) {
+      throw new Error(
+        "Network connection error. Please check if the server is running and accessible.",
+      );
+    }
+
+    throw error;
+  }
+};
+
+/**
  * Function to call PUT API
  * @param {string} endpoint - The API endpoint
  * @param {object} data - Request body

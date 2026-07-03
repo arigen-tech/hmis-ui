@@ -157,20 +157,7 @@ const DischargeFromWard = () => {
         >
           Discharge Summary
         </button>
-        <button
-          className={`btn btn-sm ${activeTab === 'medications' ? 'btn-primary' : 'btn-outline-primary'}`}
-          onClick={() => setActiveTab('medications')}
-          style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
-        >
-          Discharge Medications
-        </button>
-        <button
-          className={`btn btn-sm ${activeTab === 'history' ? 'btn-primary' : 'btn-outline-primary'}`}
-          onClick={() => setActiveTab('history')}
-          style={{ fontSize: '0.65rem', padding: '0.1rem 0.3rem' }}
-        >
-          Discharge History
-        </button>
+       
       </div>
 
       {/* ======================= DISCHARGE SUMMARY TAB ======================= */}

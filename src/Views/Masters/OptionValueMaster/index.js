@@ -1,10 +1,13 @@
-import { useState, useEffect, useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { MAS_QUESTION_OPTION_VALUE, MAS_OPD_QUESTION } from "../../../config/apiConfig";
+import {
+  MAS_QUESTION_OPTION_VALUE,
+  MAS_OPD_QUESTION,
+  MAS_QUESTION_HEADING,
+} from "../../../config/apiConfig";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-
 import {
   FETCH_OPTION_VALUE,
   CREATE_OPTION_VALUE,
@@ -15,23 +18,12 @@ import {
   STATUS,
 } from "../../../config/constants";
 
-// ========== CONFIGURATION ==========
-// Set this to the actual field name in your question API that stores the heading/topic.
-// Common names: "topic", "scaleName", "category", "headingName", "section", "group"
-const HEADING_FIELD = "heading";   // CHANGE THIS TO MATCH YOUR API FIELD
-// ==================================
-
 const OptionValueMaster = () => {
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [data, setData] = useState([]);
-  const [rawData, setRawData] = useState([]);
-  const [formData, setFormData] = useState({
-    optionCode: "",
-    optionValue: "",
-    optionScore: "",
-    questionId: ""
-  });
+  const [headings, setHeadings] = useState([]);
+  const [questions, setQuestions] = useState([]);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
@@ -43,158 +35,186 @@ const OptionValueMaster = () => {
     newStatus: "",
     name: "",
   });
-  const [questions, setQuestions] = useState([]);
-  const [debugInfo, setDebugInfo] = useState(null);
+  const [formData, setFormData] = useState({
+    optionCode: "",
+    optionValue: "",
+    optionScore: "",
+    questionId: "",
+  });
 
-  // Filter states
-  const [tempSelectedHeading, setTempSelectedHeading] = useState('');
-  const [tempSelectedQuestion, setTempSelectedQuestion] = useState('');
-  const [selectedHeading, setSelectedHeading] = useState('');
-  const [selectedQuestion, setSelectedQuestion] = useState('');
+  const [tempSelectedTopic, setTempSelectedTopic] = useState("");
+  const [tempSelectedQuestion, setTempSelectedQuestion] = useState("");
+  const [selectedTopic, setSelectedTopic] = useState("");
+  const [selectedQuestion, setSelectedQuestion] = useState("");
+  const [formSelectedTopic, setFormSelectedTopic] = useState("");
 
-  // Form dependent heading state
-  const [formSelectedHeading, setFormSelectedHeading] = useState('');
-
-  // ---------- Helper: extract heading from question (flexible & robust) ----------
-  const getHeading = (q) => {
-    if (!q) return "";
-    
-    // Try the configured field first
-    if (q[HEADING_FIELD] && String(q[HEADING_FIELD]).trim()) {
-      return String(q[HEADING_FIELD]).trim();
-    }
-    
-    // Fallback: try common alternative names
-    const alternatives = ["topic", "scaleName", "category", "headingName", "questionHeading", "section", "group", "title"];
-    for (let alt of alternatives) {
-      if (q[alt] && String(q[alt]).trim()) {
-        return String(q[alt]).trim();
-      }
-    }
-    
-    // Last resort: use first few words of the question text as heading
-    if (q.question) {
-      const short = q.question.substring(0, 40);
-      return short + (q.question.length > 40 ? "…" : "");
-    }
-    
-    return "Uncategorized";
+  const showPopup = (message, type = "success", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      },
+    });
   };
 
-  // Enrich option values with heading & question text
+  const getRecordId = (item) => item?.id ?? item?.optionValueId ?? item?._id ?? null;
+  const getQuestionId = (question) =>
+    question?.id ?? question?.questionId ?? question?.question_id ?? null;
+  const getQuestionText = (question) =>
+    String(question?.question ?? question?.questionText ?? "").trim();
+  const getQuestionHeadingId = (question) =>
+    question?.questionHeadingId ?? question?.headingId ?? question?.topicId ?? null;
+
+  const getHeadingNameById = (headingId) => {
+    const match = headings.find(
+      (item) =>
+        String(item.questionHeadingId ?? item.id) === String(headingId),
+    );
+    return match?.questionHeadingName || match?.name || "";
+  };
+
+  const getTopicLabel = (headingId) => {
+    const heading = headings.find(
+      (item) => String(item.questionHeadingId ?? item.id) === String(headingId),
+    );
+    if (!heading) return "";
+    const code = heading.questionHeadingCode || heading.code || "";
+    return `${heading.questionHeadingName || heading.name || ""}${code ? ` (${code})` : ""}`;
+  };
+
   const enrichWithHeading = (optionValues, questionsList) => {
-    return optionValues.map(option => {
-      const question = questionsList.find(q => q.id === option.questionId);
+    return (optionValues || []).map((option) => {
+      const question = questionsList.find(
+        (q) => String(getQuestionId(q)) === String(option.questionId),
+      );
+      const headingId = option.questionHeadingId ?? getQuestionHeadingId(question);
       return {
         ...option,
-        headingName: getHeading(question) || "—",
-        questionText: option.questionName || question?.question || "—"
+        headingId,
+        headingName: option.questionHeadingName || getHeadingNameById(headingId) || "Uncategorized",
+        questionText: option.questionName || getQuestionText(question) || "Uncategorized",
       };
     });
   };
 
-  // Fetch option values
+  const fetchHeadings = async (flag = 1) => {
+    try {
+      const response = await getRequest(`${MAS_QUESTION_HEADING}/getAll/${flag}`);
+      setHeadings(Array.isArray(response?.response) ? response.response : []);
+    } catch (error) {
+      console.error("Error fetching question topics:", error);
+      setHeadings([]);
+    }
+  };
+
+  const fetchQuestions = async (flag = 0) => {
+    try {
+      const response = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
+      setQuestions(Array.isArray(response?.response) ? response.response : []);
+    } catch (error) {
+      console.error("Error fetching questions:", error);
+      setQuestions([]);
+    }
+  };
+
   const fetchData = async (flag = 0) => {
     setLoading(true);
     try {
-      const { response } = await getRequest(
-        `${MAS_QUESTION_OPTION_VALUE}/getAll/${flag}`
-      );
-      setRawData(response || []);
-      if (questions.length) {
-        setData(enrichWithHeading(response || [], questions));
-      } else {
-        setData(response || []);
-      }
-    } catch {
+      const response = await getRequest(`${MAS_QUESTION_OPTION_VALUE}/getAll/${flag}`);
+      const optionValues = Array.isArray(response?.response) ? response.response : [];
+      setData(enrichWithHeading(optionValues, questions));
+    } catch (error) {
+      console.error("Error fetching option values:", error);
       showPopup(FETCH_OPTION_VALUE, "error");
-      setRawData([]);
       setData([]);
     } finally {
       setLoading(false);
     }
   };
 
-  // Fetch questions with debugging (optional)
-  const fetchQuestions = async (flag = 0) => {
-    try {
-      const res = await getRequest(`${MAS_OPD_QUESTION}/getAll/${flag}`);
-      const qs = res?.response || res?.data?.response || [];
-      console.log("Questions API response:", qs);
-      
-      if (qs.length > 0) {
-        const sample = qs[0];
-        console.log("Sample question object:", sample);
-        console.log("Available fields in question:", Object.keys(sample));
-        console.log(`Value of configured heading field "${HEADING_FIELD}":`, sample[HEADING_FIELD]);
-        
-        // Optional debug info (can be shown in UI if needed)
-        setDebugInfo({
-          totalQuestions: qs.length,
-          sampleFields: Object.keys(sample),
-          headingValue: sample[HEADING_FIELD] || "NOT FOUND",
-          firstQuestion: sample.question?.substring(0, 50)
-        });
-      } else {
-        setDebugInfo({ totalQuestions: 0, error: "No questions found" });
-      }
-      
-      setQuestions(qs);
-      if (rawData.length) {
-        setData(enrichWithHeading(rawData, qs));
-      }
-    } catch (error) {
-      console.error("Error fetching questions:", error);
-      setDebugInfo({ error: error.message });
-      setQuestions([]);
-    }
-  };
-
   useEffect(() => {
-    fetchData();
-    fetchQuestions();
+    const load = async () => {
+      setLoading(true);
+      try {
+        await Promise.all([fetchHeadings(), fetchQuestions()]);
+        const optionResponse = await getRequest(`${MAS_QUESTION_OPTION_VALUE}/getAll/0`);
+        const optionValues = Array.isArray(optionResponse?.response) ? optionResponse.response : [];
+        const questionResponse = await getRequest(`${MAS_OPD_QUESTION}/getAll/0`);
+        const questionList = Array.isArray(questionResponse?.response) ? questionResponse.response : [];
+        setQuestions(questionList);
+        setData(enrichWithHeading(optionValues, questionList));
+      } catch (error) {
+        console.error("Error loading option master data:", error);
+        setData([]);
+        setQuestions([]);
+        setHeadings([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    load();
   }, []);
 
   useEffect(() => {
-    if (rawData.length && questions.length) {
-      setData(enrichWithHeading(rawData, questions));
+    if (data.length) {
+      setData((prev) => enrichWithHeading(prev, questions));
     }
-  }, [rawData, questions]);
-
-  // Unique headings for dropdowns
-  const uniqueHeadings = useMemo(() => {
-    const headings = questions.map(q => getHeading(q)).filter(h => h && h.trim() !== "");
-    return [...new Set(headings)];
   }, [questions]);
 
-  // Filter data based on selected heading & question
-  const filteredData = data.filter(rec => {
-    if (selectedHeading && rec.headingName !== selectedHeading) return false;
-    if (selectedQuestion) {
-      const question = questions.find(q => q.id === rec.questionId);
-      const questionText = question?.question || rec.questionText;
-      if (questionText !== selectedQuestion) return false;
-    }
-    return true;
-  });
+  const topicOptions = useMemo(() => {
+    return headings
+      .map((item) => ({
+        id: item.questionHeadingId ?? item.id,
+        name: item.questionHeadingName ?? item.name ?? "",
+        code: item.questionHeadingCode ?? item.code ?? "",
+      }))
+      .filter((item) => item.id !== null && item.id !== undefined && item.name);
+  }, [headings]);
 
-  // Pagination
+  const filteredQuestionsForForm = useMemo(() => {
+    if (!formSelectedTopic) return [];
+    return questions.filter(
+      (q) => String(getQuestionHeadingId(q)) === String(formSelectedTopic),
+    );
+  }, [questions, formSelectedTopic]);
+
+  const questionOptionsForFilter = useMemo(() => {
+    if (!tempSelectedTopic) return [];
+    return questions.filter(
+      (q) => String(getQuestionHeadingId(q)) === String(tempSelectedTopic),
+    );
+  }, [questions, tempSelectedTopic]);
+
+  const filteredData = useMemo(() => {
+    return data.filter((rec) => {
+      if (selectedTopic && String(rec.headingId) !== String(selectedTopic)) {
+        return false;
+      }
+      if (selectedQuestion && String(rec.questionId) !== String(selectedQuestion)) {
+        return false;
+      }
+      return true;
+    });
+  }, [data, selectedTopic, selectedQuestion]);
+
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
-  // Search handlers
   const handleSearch = () => {
-    setSelectedHeading(tempSelectedHeading);
+    setSelectedTopic(tempSelectedTopic);
     setSelectedQuestion(tempSelectedQuestion);
     setCurrentPage(1);
   };
 
   const handleReset = () => {
-    setTempSelectedHeading('');
-    setTempSelectedQuestion('');
-    setSelectedHeading('');
-    setSelectedQuestion('');
+    setTempSelectedTopic("");
+    setTempSelectedQuestion("");
+    setSelectedTopic("");
+    setSelectedQuestion("");
     setCurrentPage(1);
   };
 
@@ -202,21 +222,21 @@ const OptionValueMaster = () => {
     handleReset();
   };
 
-  // Form handlers
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     const updated = { ...formData, [name]: value };
 
-    const scoreValid = val => {
+    const scoreValid = (val) => {
       if (val === "") return false;
       const num = Number(val);
-      return !isNaN(num) && num >= 0;
+      return !Number.isNaN(num) && num >= 0;
     };
 
     const isValid =
-      updated.optionCode?.trim() !== "" &&
-      updated.optionValue?.trim() !== "" &&
+      updated.optionCode.trim() !== "" &&
+      updated.optionValue.trim() !== "" &&
       updated.questionId !== "" &&
+      formSelectedTopic !== "" &&
       scoreValid(updated.optionScore);
 
     setFormData(updated);
@@ -230,9 +250,9 @@ const OptionValueMaster = () => {
       optionScore: "",
       questionId: "",
     });
+    setFormSelectedTopic("");
     setIsFormValid(false);
     setEditingRecord(null);
-    setFormSelectedHeading('');
   };
 
   const handleCancel = () => {
@@ -240,7 +260,6 @@ const OptionValueMaster = () => {
     setShowForm(false);
   };
 
-  // Save (create/update)
   const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid || saving) return;
@@ -248,8 +267,8 @@ const OptionValueMaster = () => {
     const newCode = formData.optionCode.trim().toLowerCase();
     const duplicate = data.find(
       (rec) =>
-        rec.optionCode?.toLowerCase() === newCode &&
-        (!editingRecord || rec.id !== editingRecord.id)
+        String(rec.optionCode || "").trim().toLowerCase() === newCode &&
+        (!editingRecord || getRecordId(rec) !== getRecordId(editingRecord)),
     );
 
     if (duplicate) {
@@ -259,25 +278,30 @@ const OptionValueMaster = () => {
 
     setSaving(true);
     try {
+      const payload = {
+        optionCode: formData.optionCode.trim(),
+        optionValue: formData.optionValue.trim(),
+        optionScore: formData.optionScore,
+        questionId: formData.questionId,
+      };
+
       if (editingRecord) {
         await putRequest(
-          `${MAS_QUESTION_OPTION_VALUE}/update/${editingRecord.id}`,
-          formData
+          `${MAS_QUESTION_OPTION_VALUE}/update/${getRecordId(editingRecord)}`,
+          payload,
         );
         showPopup(UPDATE_OPTION_VALUE, "success");
-        resetForm();
-        fetchData();
-        setShowForm(false);
       } else {
         await postRequest(`${MAS_QUESTION_OPTION_VALUE}/create`, {
-          ...formData,
+          ...payload,
           status: "y",
         });
         showPopup(CREATE_OPTION_VALUE, "success");
-        resetForm();
-        fetchData();
-        setShowForm(false);
       }
+
+      resetForm();
+      setShowForm(false);
+      fetchData();
     } catch (error) {
       console.error("Save error:", error);
       showPopup(SAVE_OPTION_VALUE, "error");
@@ -287,29 +311,29 @@ const OptionValueMaster = () => {
   };
 
   const handleEdit = (rec) => {
+    const question = questions.find(
+      (q) => String(getQuestionId(q)) === String(rec.questionId),
+    );
+
     setEditingRecord(rec);
     setFormData({
-      optionCode: rec.optionCode,
-      optionValue: rec.optionValue,
-      optionScore: rec.optionScore,
-      questionId: rec.questionId,
+      optionCode: rec.optionCode || "",
+      optionValue: rec.optionValue || "",
+      optionScore: rec.optionScore ?? "",
+      questionId: rec.questionId ?? "",
     });
-    const questionObj = questions.find(q => q.id === rec.questionId);
-    if (questionObj) {
-      setFormSelectedHeading(getHeading(questionObj));
-    }
+    setFormSelectedTopic(String(getQuestionHeadingId(question) || rec.headingId || ""));
     setShowForm(true);
     setIsFormValid(true);
   };
 
-  // Status toggle
   const handleSwitchChange = (id, currentStatus, name) => {
     const newStatus = currentStatus === STATUS.ACTIVE ? STATUS.INACTIVE : STATUS.ACTIVE;
     setConfirmDialog({
       isOpen: true,
-      id: id,
+      id,
       newStatus,
-      name: name,
+      name,
     });
   };
 
@@ -318,13 +342,13 @@ const OptionValueMaster = () => {
       setSaving(true);
       try {
         await putRequest(
-          `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`
+          `${MAS_QUESTION_OPTION_VALUE}/status/${confirmDialog.id}?status=${confirmDialog.newStatus}`,
         );
         showPopup(
           `Option value "${confirmDialog.name}" ${
             confirmDialog.newStatus === STATUS.ACTIVE ? "activated" : "deactivated"
           } successfully!`,
-          "success"
+          "success",
         );
         fetchData();
         setCurrentPage(1);
@@ -338,15 +362,7 @@ const OptionValueMaster = () => {
     setConfirmDialog({ isOpen: false, id: null, newStatus: "", name: "" });
   };
 
-  const showPopup = (message, type = "success") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
-  };
-
-  // Questions for form (dependent on formSelectedHeading)
-  const filteredQuestionsForForm = useMemo(() => {
-    if (!formSelectedHeading) return [];
-    return questions.filter(q => getHeading(q) === formSelectedHeading);
-  }, [questions, formSelectedHeading]);
+  const displayTopicName = (rec) => rec.headingName || getHeadingNameById(rec.headingId) || "-";
 
   return (
     <div className="content-wrapper">
@@ -376,7 +392,8 @@ const OptionValueMaster = () => {
                     </button>
                   </>
                 ) : (
-                  <button className="btn btn-secondary" onClick={handleCancel}>                    Back
+                  <button className="btn btn-secondary" onClick={handleCancel}>
+                    Back
                   </button>
                 )}
               </div>
@@ -385,24 +402,25 @@ const OptionValueMaster = () => {
             <div className="card-body">
               {loading && !showForm && <LoadingScreen />}
 
-              {/* LIST VIEW */}
               {!showForm && !loading && (
                 <>
-                  {/* FILTER SECTION */}
                   <div className="row mb-3 p-2 bg-light border rounded align-items-end g-2">
                     <div className="col-md-4">
-                      <label className="fw-bold mb-1">Question Heading</label>
+                      <label className="fw-bold mb-1">Question Topic</label>
                       <select
                         className="form-select"
-                        value={tempSelectedHeading}
+                        value={tempSelectedTopic}
                         onChange={(e) => {
-                          setTempSelectedHeading(e.target.value);
-                          setTempSelectedQuestion('');
+                          setTempSelectedTopic(e.target.value);
+                          setTempSelectedQuestion("");
                         }}
                       >
-                        <option value="">Select Heading</option>
-                        {uniqueHeadings.map(heading => (
-                          <option key={heading} value={heading}>{heading}</option>
+                        <option value="">Select Topic</option>
+                        {topicOptions.map((topic) => (
+                          <option key={topic.id} value={topic.id}>
+                            {topic.name}
+                            {topic.code ? ` (${topic.code})` : ""}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -412,14 +430,14 @@ const OptionValueMaster = () => {
                         className="form-select"
                         value={tempSelectedQuestion}
                         onChange={(e) => setTempSelectedQuestion(e.target.value)}
-                        disabled={!tempSelectedHeading}
+                        disabled={!tempSelectedTopic}
                       >
                         <option value="">Select Question</option>
-                        {questions
-                          .filter(q => getHeading(q) === tempSelectedHeading)
-                          .map(q => (
-                            <option key={q.id} value={q.question}>{q.question}</option>
-                          ))}
+                        {questionOptionsForFilter.map((question) => (
+                          <option key={getQuestionId(question)} value={getQuestionId(question)}>
+                            {getQuestionText(question)}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div className="col-auto">
@@ -434,12 +452,11 @@ const OptionValueMaster = () => {
                     </div>
                   </div>
 
-                  {/* TABLE with fixed column widths */}
                   <div className="table-responsive">
                     <table className="table table-bordered table-hover" style={{ minWidth: "800px" }}>
                       <thead className="table-light">
                         <tr>
-                          <th style={{ width: "15%" }}>Heading</th>
+                          <th style={{ width: "15%" }}>Topic</th>
                           <th style={{ width: "25%" }}>Question</th>
                           <th style={{ width: "20%" }}>Option Value Name</th>
                           <th style={{ width: "15%" }}>Option Value Code</th>
@@ -451,8 +468,8 @@ const OptionValueMaster = () => {
                       <tbody>
                         {currentItems.length > 0 ? (
                           currentItems.map((rec) => (
-                            <tr key={rec.id}>
-                              <td style={{ wordBreak: "break-word" }}>{rec.headingName}</td>
+                            <tr key={getRecordId(rec)}>
+                              <td style={{ wordBreak: "break-word" }}>{displayTopicName(rec)}</td>
                               <td style={{ wordBreak: "break-word" }}>{rec.questionText}</td>
                               <td style={{ wordBreak: "break-word" }}>{rec.optionValue}</td>
                               <td>{rec.optionCode}</td>
@@ -463,7 +480,13 @@ const OptionValueMaster = () => {
                                     className="form-check-input"
                                     type="checkbox"
                                     checked={rec.status === STATUS.ACTIVE}
-                                    onChange={() => handleSwitchChange(rec.id, rec.status, rec.optionCode)}
+                                    onChange={() =>
+                                      handleSwitchChange(
+                                        getRecordId(rec),
+                                        rec.status,
+                                        rec.optionCode,
+                                      )
+                                    }
                                   />
                                   <label className="form-check-label ms-2">
                                     {rec.status === STATUS.ACTIVE ? "Active" : "Inactive"}
@@ -483,7 +506,9 @@ const OptionValueMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="7" className="text-center">No Records Found</td>
+                            <td colSpan="7" className="text-center">
+                              No Records Found
+                            </td>
                           </tr>
                         )}
                       </tbody>
@@ -499,25 +524,27 @@ const OptionValueMaster = () => {
                 </>
               )}
 
-              {/* FORM VIEW */}
               {showForm && (
                 <form onSubmit={handleSave} className="row g-3">
                   <div className="col-md-6">
                     <label>
-                      Question Heading <span className="text-danger">*</span>
+                      Question Topic <span className="text-danger">*</span>
                     </label>
                     <select
                       className="form-select mt-1"
-                      value={formSelectedHeading}
+                      value={formSelectedTopic}
                       onChange={(e) => {
-                        setFormSelectedHeading(e.target.value);
-                        setFormData(prev => ({ ...prev, questionId: "" }));
+                        setFormSelectedTopic(e.target.value);
+                        setFormData((prev) => ({ ...prev, questionId: "" }));
                       }}
                       disabled={saving}
                     >
-                      <option value="">Select Heading</option>
-                      {uniqueHeadings.map(heading => (
-                        <option key={heading} value={heading}>{heading}</option>
+                      <option value="">Select Topic</option>
+                      {topicOptions.map((topic) => (
+                        <option key={topic.id} value={topic.id}>
+                          {topic.name}
+                          {topic.code ? ` (${topic.code})` : ""}
+                        </option>
                       ))}
                     </select>
                   </div>
@@ -531,12 +558,12 @@ const OptionValueMaster = () => {
                       className="form-select mt-1"
                       value={formData.questionId}
                       onChange={handleInputChange}
-                      disabled={saving || !formSelectedHeading}
+                      disabled={saving || !formSelectedTopic}
                     >
                       <option value="">Select Question</option>
-                      {filteredQuestionsForForm.map(q => (
-                        <option key={q.id} value={q.id}>
-                          {q.question}
+                      {filteredQuestionsForForm.map((question) => (
+                        <option key={getQuestionId(question)} value={getQuestionId(question)}>
+                          {getQuestionText(question)}
                         </option>
                       ))}
                     </select>
@@ -589,7 +616,7 @@ const OptionValueMaster = () => {
                       className="btn btn-primary me-2"
                       disabled={!isFormValid || saving}
                     >
-                      {saving ? "Saving..." : (editingRecord ? "Update" : "Save")}
+                      {saving ? "Saving..." : editingRecord ? "Update" : "Save"}
                     </button>
                     <button
                       type="button"
@@ -605,29 +632,20 @@ const OptionValueMaster = () => {
 
               {popupMessage && <Popup {...popupMessage} />}
 
-              {/* Confirmation Dialog */}
               {confirmDialog.isOpen && (
-                <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+                <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
                   <div className="modal-dialog">
                     <div className="modal-content">
                       <div className="modal-body">
                         Are you sure you want to{" "}
-                        {confirmDialog.newStatus === STATUS.ACTIVE
-                          ? "activate"
-                          : "deactivate"}{" "}
+                        {confirmDialog.newStatus === STATUS.ACTIVE ? "activate" : "deactivate"}{" "}
                         <strong>{confirmDialog.name}</strong>?
                       </div>
                       <div className="modal-footer">
-                        <button
-                          className="btn btn-secondary"
-                          onClick={() => handleConfirm(false)}
-                        >
+                        <button className="btn btn-secondary" onClick={() => handleConfirm(false)}>
                           No
                         </button>
-                        <button
-                          className="btn btn-primary"
-                          onClick={() => handleConfirm(true)}
-                        >
+                        <button className="btn btn-primary" onClick={() => handleConfirm(true)}>
                           Yes
                         </button>
                       </div>

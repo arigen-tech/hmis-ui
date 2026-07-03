@@ -6,6 +6,7 @@ import VitalsandMonitoring from "../VitalsandMonitoring"
 import InvestigationOrderandTracking from "../Investigations"
 import DietOrderHistory from "../Diet"
 import MedicationModule from "./../MAR"
+import DischargeFromWard from "../DischargeFromWard"
 
 
 const WardManagement = () => {
@@ -420,6 +421,10 @@ const WardManagement = () => {
     <DietOrderHistory selectedPatient={selectedPatient}/>
   )
 }
+
+{activeTab === "Discharge" && (
+  <DischargeFromWard selectedPatient={selectedPatient}/>
+)}
 
 
 

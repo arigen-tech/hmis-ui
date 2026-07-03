@@ -80,6 +80,7 @@ const Login = () => {
           hospitalId,
           departmentId,
           departmentName,
+          departmentCode,
         } = response.response;
 
         const currentTime = Date.now();
@@ -102,6 +103,7 @@ const Login = () => {
           localStorage.setItem("hospitalId", hospitalId);
           localStorage.setItem("departmentId", departmentId);
           localStorage.setItem("departmentName", departmentName);
+          localStorage.setItem("departmentCode", departmentCode);
         } else {
           sessionStorage.setItem("token", jwtToken);
           sessionStorage.setItem("refreshToken", refreshToken);
@@ -113,6 +115,7 @@ const Login = () => {
           sessionStorage.setItem("hospitalId", hospitalId);
           sessionStorage.setItem("departmentId", departmentId);
           sessionStorage.setItem("departmentName", departmentName);
+          sessionStorage.setItem("departmentCode", departmentCode);
         }
 
         // Set up a timeout to auto-mark the token as expired

@@ -37,16 +37,21 @@ import {
   OPD_CREATE_PATIENT_DETAILS,
   OPTH_MAS_DISTANCE_VISION,
   OPTH_MAS_NEAR_VISION,
-  OPHTHALMOLOGY_DEPARTMENT_ID,
   GET_PREVIOUS_OPD_VISIT_HISTORY,
   GET_PATIENT_PRESCRIPTION_DETAILS,
   MAS_BED_COUNT,
   ALL_REPORTS,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
   GET_ALL_DRUGS_BY_SECTION,
-  OBG_DEPARTMENT_ID,
-  ENT_DEPARTMENT_ID,
-  DENTAL_DEPARTMENT_ID,
+  // OBG_DEPARTMENT_ID,
+  // ENT_DEPARTMENT_ID,
+  // DENTAL_DEPARTMENT_ID,
+  MAS_WARD_GET_BY_ID,
+  MAS_WARDS_GET_BY_ID,
+  OPHTHALMOLOGY_DEPARTMENT_CODE,
+  OBG_DEPARTMENT_CODE,
+  ENT_DEPARTMENT_CODE,
+  DENTAL_DEPARTMENT_CODE,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -126,12 +131,17 @@ const GeneralMedicineWaitingList = () => {
     sessionStorage.getItem("departmentId") ||
     localStorage.getItem("departmentId") ||
     "";
+
+  const loggedInDepartmentCode =
+    sessionStorage.getItem("departmentCode") ||
+    localStorage.getItem("departmentCode") ||
+    "";
+
   const isOphthalmologyDepartment =
-    Number(loggedInDepartmentId) === OPHTHALMOLOGY_DEPARTMENT_ID;
-  const isObgynDepartment = Number(loggedInDepartmentId) === OBG_DEPARTMENT_ID;
-  const isEntDepartment = Number(loggedInDepartmentId) === ENT_DEPARTMENT_ID;
-  const isDentalDepartment =
-    Number(loggedInDepartmentId) === DENTAL_DEPARTMENT_ID;
+    loggedInDepartmentCode === OPHTHALMOLOGY_DEPARTMENT_CODE;
+  const isObgynDepartment = loggedInDepartmentCode === OBG_DEPARTMENT_CODE;
+  const isEntDepartment = loggedInDepartmentCode === ENT_DEPARTMENT_CODE;
+  const isDentalDepartment = loggedInDepartmentCode === DENTAL_DEPARTMENT_CODE;
   const searchTimeoutRef = useRef(null);
   const debounceRef = useRef({});
 
@@ -351,7 +361,7 @@ const GeneralMedicineWaitingList = () => {
   const fetchWardData = async (categoryId) => {
     try {
       const data = await getRequest(
-        `${WARD_DEPARTMENT_GET_ALL_BY_CATEGORY}/${categoryId}`,
+        `${MAS_WARDS_GET_BY_ID}/${categoryId}`,
       );
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardDepartments(data.response);
@@ -1115,8 +1125,8 @@ const GeneralMedicineWaitingList = () => {
     familyHistory: "",
     treatmentAdvice: "",
     mlcCase: false,
-    psychiatristAssessment: "",
   });
+  const [psychiatristAssessment, setPsychiatristAssessment] = useState(null);
 
   const [errors, setErrors] = useState({});
 
@@ -2264,6 +2274,7 @@ const GeneralMedicineWaitingList = () => {
   const handleBackToList = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
+    setPsychiatristAssessment(null);
     if (earExaminationRef.current) {
       earExaminationRef.current.resetForm();
     }
@@ -2499,6 +2510,11 @@ const GeneralMedicineWaitingList = () => {
       ...visionData,
     };
   };
+
+  const selectedPatientDepartmentId = Number(
+    selectedPatient?.deptId || selectedPatient?.departmentId || 0,
+  );
+  const shouldShowVisionExamination = isOphthalmologyDepartment || selectedPatientDepartmentId === OPHTHALMOLOGY_DEPARTMENT_CODE;
 
   const validateSubmitForm = () => {
     const nextErrors = {};
@@ -2787,7 +2803,7 @@ const GeneralMedicineWaitingList = () => {
       if (visionRef.current && visionRef.current.getData) {
         visionExaminationData = visionRef.current.getData();
       }
-      const ophthalmologyExaminationDetails = isOphthalmologyDepartment
+      const ophthalmologyExaminationDetails = shouldShowVisionExamination
         ? buildOphthalmologyExaminationPayload(visionExaminationData)
         : null;
 
@@ -2911,7 +2927,7 @@ const GeneralMedicineWaitingList = () => {
         familyHistory: formData.familyHistory ?? null,
         // presentComplaints: formData.patientSymptoms ?? null,
 
-        ...(isOphthalmologyDepartment && {
+        ...(shouldShowVisionExamination && {
           ophthalmologyExaminationDetails,
         }),
 
@@ -2929,6 +2945,11 @@ const GeneralMedicineWaitingList = () => {
           pregnancyData && {
             pregnancyDetails: pregnancyData,
           }),
+
+        ...(psychiatristAssessment?.topicId && {
+          topicId: Number(psychiatristAssessment.topicId),
+          details: psychiatristAssessment.details || [],
+        }),
 
         // ===== Vital =====
         height: formData.height,
@@ -3160,6 +3181,8 @@ const GeneralMedicineWaitingList = () => {
         templateId: "",
       },
     ]);
+
+    setPsychiatristAssessment(null);
 
     // Reset form errors
     setErrors({});
@@ -4245,6 +4268,49 @@ const GeneralMedicineWaitingList = () => {
                               placeholder="Enter Family History"
                             ></textarea>
                           </div>
+
+                          {psychiatristAssessment?.rows?.length > 0 && (
+                            <div className="mb-3 border rounded p-3 bg-light">
+                              <div className="d-flex justify-content-between align-items-center mb-2">
+                                <label className="form-label fw-bold m-0">
+                                  Psychiatric Assessment
+                                </label>
+                                <button
+                                  className="btn btn-sm btn-outline-primary p-1 px-2"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    setClinicalPopupType("psychiatrist");
+                                    setShowPopup(true);
+                                    handleHistoryTypeClick("psychiatrist");
+                                  }}
+                                >
+                                  Edit
+                                </button>
+                              </div>
+
+                              <div className="small text-muted mb-2">
+                                Saved assessment data will be submitted with the patient record.
+                              </div>
+
+                              {psychiatristAssessment.rows.map((row) => (
+                                <div key={`${row.headingId}-${row.headingCode}`} className="mb-3">
+                                  <div className="fw-bold">
+                                    {row.headingName || `Category ${row.headingId}`}
+                                    {row.headingCode ? ` (${row.headingCode})` : ""}
+                                  </div>
+                                  <ul className="mb-0 ps-3">
+                                    {row.questions.map((qa) => (
+                                      <li key={`${row.headingId}-${qa.questionId}`}>
+                                        <strong>{qa.questionText || `Question ${qa.questionId}`}</strong>
+                                        : {qa.answerValue || `Option ${qa.answerOptionId}`}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+
                           {/*Pregnancy*/}
                           {selectedPatient?.gender?.toLowerCase() ===
                             "female" && (
@@ -4259,6 +4325,11 @@ const GeneralMedicineWaitingList = () => {
                                   ref={pregnancyRef} // ADD THIS REF
                                   patientId={selectedPatient?.patientId}
                                   visitId={selectedPatient?.visitId}
+                                  opdPatientDetailsId={
+                                    vitalsAvailable
+                                      ? opdVitalsData?.opdPatientDetailsId
+                                      : null
+                                  }
                                 />
                               </div>
                             </div>
@@ -4479,7 +4550,7 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
                 {/* Vision Examination Section */}
-                {isOphthalmologyDepartment && (
+                {shouldShowVisionExamination && (
                   <div className="card mb-3">
                     <div
                       className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
@@ -6358,8 +6429,8 @@ const GeneralMedicineWaitingList = () => {
                                   >
                                     <option value="">Select Ward/Dept</option>
                                     {wardDepartments.map((dept) => (
-                                      <option key={dept.id} value={dept.id}>
-                                        {dept.departmentName}
+                                      <option key={dept.wardId} value={dept.wardId}>
+                                        {dept.wardName}
                                       </option>
                                     ))}
                                   </select>
@@ -7257,6 +7328,8 @@ const GeneralMedicineWaitingList = () => {
           <ClinicalHistoryPopup
             show={showPopup}
             onClose={() => setShowPopup(false)}
+            onPsychiatristSave={setPsychiatristAssessment}
+            psychiatristValue={psychiatristAssessment}
             visitsData={previousVisitsData}
             vitalsData={previousVitalsData}
             popupType={clinicalPopupType}

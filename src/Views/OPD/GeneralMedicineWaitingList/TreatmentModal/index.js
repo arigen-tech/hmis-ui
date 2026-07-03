@@ -42,6 +42,33 @@ const Portal = ({ children }) => {
   return mounted ? ReactDOM.createPortal(children, document.body) : null;
 };
 
+const normalizeDrugRecord = (drug = {}) => ({
+  id: drug.id ?? drug.itemId ?? drug.drugId ?? null,
+  itemId: drug.itemId ?? drug.id ?? drug.drugId ?? null,
+  name:
+    drug.name ?? drug.nomenclature ?? drug.itemName ?? drug.drugName ?? "",
+  code: drug.code ?? drug.pvmsNo ?? drug.itemCode ?? "",
+  dispUnitName: drug.dispUnitName ?? drug.dispUnit ?? drug.depUnit ?? "",
+  itemClassId: drug.itemClassId ?? null,
+  aDispQty: drug.aDispQty ?? drug.adispQty ?? 1,
+});
+
+const drugMatchesQuery = (drug, searchQuery) => {
+  const query = String(searchQuery || "").trim().toLowerCase();
+  if (!query) return true;
+
+  return [
+    drug.name,
+    drug.code,
+    drug.dispUnitName,
+    drug.itemId,
+    drug.id,
+  ]
+    .filter(Boolean)
+    .map((value) => String(value).toLowerCase())
+    .some((value) => value.includes(query));
+};
+
 const TreatmentModal = ({
   show,
   onClose,
@@ -229,8 +256,12 @@ const TreatmentModal = ({
       );
 
       if (response.status === 200 && response.response?.content) {
+        const normalized = response.response.content.map(normalizeDrugRecord);
+        if (page === 0 && !String(searchText || "").trim()) {
+          setAllDrugs(normalized);
+        }
         return {
-          list: response.response.content,
+          list: normalized,
           last: response.response.last,
         };
       }
@@ -255,12 +286,16 @@ const TreatmentModal = ({
 
     drugDebounceRef.current[index] = setTimeout(async () => {
       if (!value.trim()) {
-        setDrugDropdown([]);
+        const result = await fetchDrugOptions("", 0);
+        setDrugDropdown(result.list);
+        setDrugLastPage(result.last);
+        setDrugPage(0);
+        setActiveDrugDropdown(index);
         return;
       }
 
       const result = await fetchDrugOptions(value, 0);
-      setDrugDropdown(result.list);
+      setDrugDropdown(result.list.filter((drug) => drugMatchesQuery(drug, value)));
       setDrugLastPage(result.last);
       setDrugPage(0);
       setActiveDrugDropdown(index);
@@ -271,7 +306,9 @@ const TreatmentModal = ({
     const searchText = drugSearch[index] || "";
     const result = await fetchDrugOptions(searchText, 0);
 
-    setDrugDropdown(result.list);
+    setDrugDropdown(
+      result.list.filter((drug) => drugMatchesQuery(drug, searchText)),
+    );
     setDrugLastPage(result.last);
     setDrugPage(0);
     setActiveDrugDropdown(index);
@@ -286,7 +323,12 @@ const TreatmentModal = ({
       nextPage,
     );
 
-    setDrugDropdown((prev) => [...prev, ...result.list]);
+    setDrugDropdown((prev) => [
+      ...prev,
+      ...result.list.filter((drug) =>
+        drugMatchesQuery(drug, drugSearch[activeDrugDropdown] || ""),
+      ),
+    ]);
     setDrugLastPage(result.last);
     setDrugPage(nextPage);
   };
@@ -312,7 +354,7 @@ const TreatmentModal = ({
 
       updated[index] = {
         ...updated[index],
-        drugName: selectedDrug.nomenclature,
+        drugName: selectedDrug.name,
         dispUnit: selectedDrug.dispUnitName,
         drugId: selectedDrug.itemId,
         itemClassId: selectedDrug.itemClassId,
@@ -392,42 +434,23 @@ const TreatmentModal = ({
 
     if (template.treatments && template.treatments.length > 0) {
       const items = template.treatments.map((item) => {
-        // Find drug - use multiple possible properties for compatibility
-        const drug = allDrugs.find(
-          (d) =>
-            d.id === item.itemId ||
-            d.itemId === item.itemId ||
-            d.drugId === item.itemId,
-        );
-
         // Find frequency
         const frequency = allFrequencies.find(
           (f) => f.frequencyId === item.frequencyId,
         );
-
-        console.log("Loading template item:", {
+        const fallbackDrug = normalizeDrugRecord({
           itemId: item.itemId,
-          foundDrug: drug ? drug.name : "NOT FOUND",
-          drugName: drug ? drug.name : null,
-          allDrugsCount: allDrugs.length,
+          name: item.itemName || item.nomenclature || `Drug (ID: ${item.itemId})`,
+          code: item.itemCode || item.pvmsNo || "",
+          dispUnitName: item.dispU || item.dispUnit || "",
+          itemClassId: item.itemClassId ?? null,
+          aDispQty: item.aDispQty ?? 1,
         });
 
-        // If drug not found, try to find it by name in the template data
-        let finalDrugName = "";
-        if (drug) {
-          finalDrugName = drug.name;
-        } else if (item.itemName) {
-          // Use the itemName from template if drug not found in allDrugs
-          finalDrugName = item.itemName;
-        } else {
-          // Last resort: show ID but not "Loading..."
-          finalDrugName = `Drug (ID: ${item.itemId})`;
-        }
-
         return {
-          drugName: finalDrugName,
+          drugName: fallbackDrug.name,
           drugId: item.itemId,
-          dispUnit: drug ? drug.dispUnitName : item.dispU || "",
+          dispUnit: fallbackDrug.dispUnitName || item.dispU || "",
           dosage: item.dosage || "",
           frequency: frequency ? frequency.frequencyName : "OD",
           frequencyId: item.frequencyId,
@@ -435,8 +458,8 @@ const TreatmentModal = ({
           total: item.total || "",
           instruction: item.instruction || "",
           stock: "",
-          itemClassId: drug ? drug.itemClassId : null,
-          adispQty: drug ? drug.adispQty : null,
+          itemClassId: fallbackDrug.itemClassId,
+          adispQty: fallbackDrug.aDispQty,
         };
       });
 
@@ -634,15 +657,11 @@ const TreatmentModal = ({
 
   const filterDrugsBySearch = (searchQuery) => {
     if (!searchQuery.trim()) {
-      return allDrugs.slice(0, 5);
+      return drugDropdown.slice(0, 5);
     }
 
-    const filtered = allDrugs
-      .filter(
-        (drug) =>
-          drug.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          drug.code?.toLowerCase().includes(searchQuery.toLowerCase()),
-      )
+    const filtered = drugDropdown
+      .filter((drug) => drugMatchesQuery(drug, searchQuery))
       .slice(0, 5);
 
     return filtered;
@@ -1159,8 +1178,10 @@ const TreatmentModal = ({
                                       onMouseDown={(e) => e.preventDefault()}
                                       onClick={() => updateDrug(drug, index)}
                                     >
-                                      <strong>{drug.nomenclature}</strong>
-                                      <div className="text-muted small">{drug.pvmsNo}</div>
+                                      <strong>{drug.name}</strong>
+                                      <div className="text-muted small">
+                                        {drug.code || drug.itemId}
+                                      </div>
                                     </div>
                                   ))
                                 ) : (

@@ -1,5 +1,11 @@
 import {
   DEFAULT_RSA_PUBLIC_KEY,
+  ABDM_CONSENT_APPROVE,
+  ABDM_CONSENT_DENY,
+  ABDM_CONSENT_DETAIL,
+  ABDM_CONSENT_LIST,
+  ABDM_CONSENT_REQUEST,
+  ABDM_CONSENT_REVOKE,
   ABDM_GENERATE_CAPTCHA,
   ABDM_VERIFY_HEALTH_ID,
   ABDM_M2_DISCOVER_PATIENTS,
@@ -80,6 +86,19 @@ const postIntegration = async (endpoint, payload = {}) => {
     method: "POST",
     headers: getAuthHeaders(),
     body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(await parseErrorMessage(response));
+  }
+
+  return response.json();
+};
+
+const getIntegration = async (endpoint) => {
+  const response = await fetch(`${INTEGRATION_BASE_URL}${endpoint}`, {
+    method: "GET",
+    headers: getAuthHeaders(),
   });
 
   if (!response.ok) {
@@ -190,6 +209,38 @@ export const integrationService = {
     }
 
     return postIntegration(ABDM_VERIFY_HEALTH_ID, payload);
+  },
+
+  async requestAbdmConsent(payload) {
+    return postIntegration(ABDM_CONSENT_REQUEST, payload);
+  },
+
+  async approveAbdmConsent(payload) {
+    return postIntegration(ABDM_CONSENT_APPROVE, payload);
+  },
+
+  async denyAbdmConsent(payload) {
+    return postIntegration(ABDM_CONSENT_DENY, payload);
+  },
+
+  async revokeAbdmConsent(payload) {
+    return postIntegration(ABDM_CONSENT_REVOKE, payload);
+  },
+
+  async getAbdmConsent(consentId) {
+    if (!consentId) {
+      throw new Error("Consent ID is required.");
+    }
+
+    return getIntegration(`${ABDM_CONSENT_DETAIL}/${encodeURIComponent(consentId)}`);
+  },
+
+  async listAbdmConsents(abhaId) {
+    if (!abhaId) {
+      throw new Error("Patient ABHA ID is required.");
+    }
+
+    return getIntegration(`${ABDM_CONSENT_LIST}/${encodeURIComponent(abhaId)}`);
   },
 
   async verifyAbdmAadhaarAnotherNumber(payload) {

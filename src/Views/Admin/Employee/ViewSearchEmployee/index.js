@@ -23,12 +23,10 @@ import {
 } from "../../../../config/apiConfig";
 import {
   getRequest,
-  putRequest,
-  postRequestWithFormData,
+  putRequestWithFormData,
   getImageRequest,
 } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
-import LoadingScreen from "../../../../Components/Loading";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../../Components/Pagination";
@@ -149,7 +147,6 @@ const ViewSearchEmployee = () => {
   const [selectedDesignationId, setSelectedDesignationId] = useState("");
   const profileEditorRef = useRef(null);
   const profileInclusionRef = useRef(null);
-  const [isViewMode, setIsViewMode] = useState(false);
   const [existingFiles, setExistingFiles] = useState({
     profilePic: null,
     idDocument: null,
@@ -2084,7 +2081,7 @@ const ViewSearchEmployee = () => {
 
     try {
       // Use the correct API endpoint path
-      const response = await postRequestWithFormData(
+      const response = await putRequestWithFormData(
         `${UPDATE_EMPLOYEE}/${empUpdateId}`,
         formDataToSend,
       );
@@ -2146,7 +2143,16 @@ const ViewSearchEmployee = () => {
                 onClose={popupMessage.onClose}
               />
             )}
-            {loading && <LoadingScreen />}
+            {loading && (
+              <div className="alert alert-info d-flex align-items-center gap-2 py-2 mb-3">
+                <span
+                  className="spinner-border spinner-border-sm"
+                  role="status"
+                  aria-hidden="true"
+                />
+                <span>Loading data, please wait...</span>
+              </div>
+            )}
 
             <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
               <h3 className="fw-bold mb-0">Update Employee</h3>
@@ -2247,12 +2253,6 @@ const ViewSearchEmployee = () => {
                               <button
                                 className="btn btn-sm btn-success"
                                 onClick={() => {
-                                  // Set view mode based on status
-                                  if (employee.status === "S") {
-                                    setIsViewMode(false);
-                                  } else {
-                                    setIsViewMode(true);
-                                  }
                                   handleAnotherAction(employee);
                                 }}
                               >
@@ -2285,11 +2285,11 @@ const ViewSearchEmployee = () => {
           <form
             onSubmit={(e) => {
               e.preventDefault();
-              if (!isViewMode) handleSave();
+              handleSave();
             }}
             className="forms row"
           >
-            <fieldset disabled={isViewMode}>
+            <fieldset>
               <div className="g-3 row">
                 <div className="col-md-9">
                   <div className="g-3 row">

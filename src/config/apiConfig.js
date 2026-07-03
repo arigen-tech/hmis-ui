@@ -215,6 +215,8 @@ export const MAS_WARD_STATUS = `${MASTERS}/masWard/status`;
 export const MAS_WARD_UPDATE = `${MASTERS}/masWard/update`;
 export const MAS_WARD_CREATE = `${MASTERS}/masWard/create`;
 export const MAS_WARD_GET_BY_ID = `${MASTERS}/masWard/getById`;
+export const MAS_WARDS_GET_BY_ID = `${MASTERS}/masWard/getByCategory`;
+
 
 export const MAS_INVESTIGATION_UNIQUE_TYPES = `${MAS_INVESTIGATION}/investigationCategoryTypes`;
 export const MAS_INVESTIGATION_BY_MAIN_CHARGE_CODE = `${MAS_INVESTIGATION}/dgMasInvestigationByMainChargeCodeId`;
@@ -375,22 +377,26 @@ export const LAB_SERVICE_CATAGORY = "SC002";
 export const SAC_CODE_REGISTRATION = "REG110";
 
 //ENT
-export const ENT_DEPARTMENT_ID = 859;
+// export const ENT_DEPARTMENT_ID = 859;
+export const ENT_DEPARTMENT_CODE = "ENT";
 export const GET_ENT_DETAILS_BY_VISIT = `/opd/getEntDetailsByVisit`;
 export const SAVE_ENT_DETAILS = "/opd/saveOrUpdateEntDetails";
 
 
 //OB&G
-export const OBG_DEPARTMENT_ID = 858;
+// export const OBG_DEPARTMENT_ID = 858;
+export const OBG_DEPARTMENT_CODE = "GYNAE";
 export const GET_OBG_EXAMINATION_DETAIL = "/opd/getOBGDetailsByVisit";
 export const SAVE_OBG_DETAILS = "/opd/saveOrUpdateOBGDetails";
 
 //OPTHALMOLOGY
-export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
+// export const OPHTHALMOLOGY_DEPARTMENT_ID = 860;
+export const OPHTHALMOLOGY_DEPARTMENT_CODE = "OPHTH";
 export const GET_OPTHALMOLOGY_EXAMINATION_DETAIL = `/opd/getOphthalmologyExaminationDetail`;
 
 //Dental
-export const DENTAL_DEPARTMENT_ID = 863;
+// export const DENTAL_DEPARTMENT_ID = 47;
+export const DENTAL_DEPARTMENT_CODE = "DNTL";
 export const GET_DENTAL_EXAMINATION_DETAIL = `/opd/getDentalExaminationDetail`;
 
 export const PROCESS_OPD_PAYMENT = `/billing/processOpdPayment`;
@@ -658,6 +664,17 @@ export const LABOLATORY_MAIN_CHARGECODE_ID = 1;
 export const REDIOLOGY_MAIN_CHARGECODE_ID = 2;
 export const ABDM_GENERATE_CAPTCHA = `/api/v1/abdm/m2/generate-captcha`;
 export const ABDM_VERIFY_HEALTH_ID = `/api/v1/abdm/m2/verify-health-id`;
+export const ABDM_CONSENT_REQUEST = `/api/v1/abdm/consent/request`;
+export const ABDM_CONSENT_APPROVE = `/api/v1/abdm/consent/approve`;
+export const ABDM_CONSENT_DENY = `/api/v1/abdm/consent/deny`;
+export const ABDM_CONSENT_REVOKE = `/api/v1/abdm/consent/revoke`;
+export const ABDM_CONSENT_DETAIL = `/api/v1/abdm/consent`;
+export const ABDM_CONSENT_LIST = `/api/v1/abdm/consent/patient`;
+
+
+//psy
+export const QUESTION_WISE_ANSWER_VALUE = `/opd/getQuestionWiseAnswerValue`;
+
 
 // ABDM Milestone 2 APIs
 export const ABDM_M2_DISCOVER_PATIENTS = `/api/v1/abdm/m2/link/discover-records`;
@@ -667,4 +684,7 @@ export const ABDM_M2_CONSENT_REQUEST = `/api/v1/abdm/m2/consent/request`;
 export const ABDM_M2_CONSENT_LIST = `/api/v1/abdm/m2/consent/list`;
 export const ABDM_M2_CONSENT_STATUS = `/api/v1/abdm/m2/consent/status`;
 export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
+
+
+export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 

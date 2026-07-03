@@ -1,12 +1,14 @@
-import React, { useState, useEffect, forwardRef, useImperativeHandle } from "react";
+import React, { useState, forwardRef, useImperativeHandle } from "react";
 
 const PregnancySection = forwardRef((props, ref) => {
+  const { readOnly = false, opdPatientDetailsId = null } = props;
   const [pregnancyData, setPregnancyData] = useState({
     pregnant: false,
     lmpDate: "",
     edd: "",
     currentEdd: "",
     gestationPeriod: "",
+    opdPatientDetailsId: opdPatientDetailsId || null,
   });
 
   // Expose methods to parent component
@@ -22,6 +24,8 @@ const PregnancySection = forwardRef((props, ref) => {
         edd: pregnancyData.edd,
         currentEdd: pregnancyData.currentEdd,
         gestationPeriod: pregnancyData.gestationPeriod,
+        opdPatientDetailsId:
+          pregnancyData.opdPatientDetailsId || opdPatientDetailsId || null,
       };
     },
     resetForm: () => {
@@ -31,16 +35,18 @@ const PregnancySection = forwardRef((props, ref) => {
         edd: "",
         currentEdd: "",
         gestationPeriod: "",
+        opdPatientDetailsId: null,
       });
     },
     setData: (data) => {
       if (data) {
         setPregnancyData({
-          pregnant: data.isPregnant || false,
+          pregnant: data.isPregnant ?? data.pregnant ?? false,
           lmpDate: data.lmpDate || "",
           edd: data.edd || "",
           currentEdd: data.currentEdd || "",
           gestationPeriod: data.gestationPeriod || "",
+          opdPatientDetailsId: data.opdPatientDetailsId || null,
         });
       }
     }
@@ -56,6 +62,7 @@ const PregnancySection = forwardRef((props, ref) => {
         edd: checked ? pregnancyData.edd : "",
         currentEdd: checked ? pregnancyData.currentEdd : "",
         gestationPeriod: "",
+        opdPatientDetailsId: pregnancyData.opdPatientDetailsId || opdPatientDetailsId || null,
       });
       return;
     }
@@ -79,6 +86,7 @@ const PregnancySection = forwardRef((props, ref) => {
                 checked={pregnancyData.pregnant}
                 onChange={handleChange}
                 id="pregnantCheck"
+                disabled={readOnly}
               />
               <label
                 className="form-check-label fw-bold"
@@ -97,7 +105,7 @@ const PregnancySection = forwardRef((props, ref) => {
               name="lmpDate"
               value={pregnancyData.lmpDate}
               onChange={handleChange}
-              disabled={!pregnancyData.pregnant}
+              disabled={readOnly || !pregnancyData.pregnant}
             />
           </div>
 
@@ -109,7 +117,7 @@ const PregnancySection = forwardRef((props, ref) => {
               name="edd"
               value={pregnancyData.edd}
               onChange={handleChange}
-              disabled={!pregnancyData.pregnant}
+              disabled={readOnly || !pregnancyData.pregnant}
             />
           </div>
 
@@ -121,7 +129,7 @@ const PregnancySection = forwardRef((props, ref) => {
               name="currentEdd"
               value={pregnancyData.currentEdd}
               onChange={handleChange}
-              disabled={!pregnancyData.pregnant}
+              disabled={readOnly || !pregnancyData.pregnant}
             />
           </div>
 
@@ -136,7 +144,7 @@ const PregnancySection = forwardRef((props, ref) => {
               value={pregnancyData.gestationPeriod}
               onChange={handleChange}
               placeholder="Weeks / Days"
-              disabled={!pregnancyData.pregnant}
+              disabled={readOnly || !pregnancyData.pregnant}
               style={{
                 boxShadow: "none",
               }}

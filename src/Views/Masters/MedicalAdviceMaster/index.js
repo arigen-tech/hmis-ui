@@ -1,30 +1,30 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_TREATMENT_ADVISE, MAS_DEPARTMENT, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
+import { MAS_MEDICAL_ADVICE, MAS_DEPARTMENT, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
-import { ADD_TREAT_ADV_SUCC_MSG, DUPLICATE_TREAT_ADV, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_TREAT_ADV_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_TREAT_ADV_SUCC_MSG } from "../../../config/constants";
+import { ADD_MED_ADV_SUCC_MSG, DUPLICATE_MED_ADV, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_DEPARTMENT_ERR_MSG, FETCH_MED_ADV_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_MED_ADV_SUCC_MSG } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
 
-const TreatmentAdviceMaster = () => {
-  const [treatmentData, setTreatmentData] = useState([]);
+const MedicalAdviceMaster = () => {
+  const [medicalData, setMedicalData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [confirmDialog, setConfirmDialog] = useState({
     isOpen: false,
-    treatmentAdviseId: null,
+    medicalAdviseId: null,
     newStatus: false
   });
 
   const [formData, setFormData] = useState({
-    treatmentAdvice: "",
+    medicalAdviceName: "",
     departmentId: "",
   });
 
   const [searchQuery, setSearchQuery] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [isFormValid, setIsFormValid] = useState(false);
-  const [editingTreatment, setEditingTreatment] = useState(null);
+  const [editingMedical, setEditingMedical] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageInput, setPageInput] = useState("1");
@@ -32,7 +32,7 @@ const TreatmentAdviceMaster = () => {
   // Dropdown options
   const [departmentOptions, setDepartmentOptions] = useState([]);
 
-  const TREATMENT_ADVICE_MAX_LENGTH = 500;
+  const MEDICAL_ADVICE_MAX_LENGTH = 500;
 
   // Function to format date as dd-MM-YYYY
   const formatDate = (dateString) => {
@@ -76,15 +76,15 @@ const TreatmentAdviceMaster = () => {
     }
   };
 
-  // Fetch treatment advice data
-  const fetchTreatmentData = async (flag = 0) => {
+  // Fetch Clinical/Medical Advice data
+  const fetchMedicalData = async (flag = 0) => {
     try {
       setLoading(true);
-      const response = await getRequest(`${MAS_TREATMENT_ADVISE}/getAll/${flag}`);
+      const response = await getRequest(`${MAS_MEDICAL_ADVICE}/getAll/${flag}`);
       if (response && response.response) {
         const mappedData = response.response.map(item => ({
-          id: item.treatmentAdviseId,
-          treatmentAdvice: item.treatmentAdvice,
+          id: item.medicalAdviseId,
+          medicalAdviceName: item.medicalAdviseName,
           department: item.departmentName,
           departmentId: item.departmentId,
           status: item.status,
@@ -92,11 +92,11 @@ const TreatmentAdviceMaster = () => {
           createdBy: item.createdBy || "",
           lastUpdatedBy: item.lastUpdatedBy || ""
         }));
-        setTreatmentData(mappedData);
+        setMedicalData(mappedData);
       }
     } catch (err) {
-      console.error("Error fetching treatment advice data:", err);
-      showPopup(FETCH_TREAT_ADV_ERR_MSG, "error");
+      console.error("Error fetching Clinical/Medical Advice data:", err);
+      showPopup(FETCH_MED_ADV_ERR_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -104,13 +104,13 @@ const TreatmentAdviceMaster = () => {
 
   // Initial data load
   useEffect(() => {
-    fetchTreatmentData(0);
+    fetchMedicalData(0);
     fetchDropdownData();
   }, []);
 
   // Filter data based on search query
-  const filteredTreatmentData = treatmentData.filter(treatment =>
-    treatment.treatmentAdvice?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+  const filteredMedicalData = medicalData.filter(treatment =>
+    treatment.medicalAdviceName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     treatment.department?.toLowerCase().includes(searchQuery.toLowerCase())
 
   );
@@ -131,9 +131,9 @@ const TreatmentAdviceMaster = () => {
   // Validate form whenever formData changes
   useEffect(() => {
     const validateForm = () => {
-      const { treatmentAdvice } = formData;
+      const { medicalAdviceName } = formData;
       return (
-        treatmentAdvice.trim() !== ""
+        medicalAdviceName.trim() !== ""
       );
     };
     setIsFormValid(validateForm());
@@ -144,9 +144,9 @@ const TreatmentAdviceMaster = () => {
   };
 
   const handleEdit = (treatment) => {
-    setEditingTreatment(treatment);
+    setEditingMedical(treatment);
     setFormData({
-      treatmentAdvice: treatment.treatmentAdvice || "",
+      medicalAdviceName: treatment.medicalAdviceName || "",
       departmentId: treatment.departmentId?.toString() || "",
     });
     setShowForm(true);
@@ -154,7 +154,7 @@ const TreatmentAdviceMaster = () => {
 
   const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE
-  const currentItems = filteredTreatmentData.slice(indexOfFirst, indexOfLast)
+  const currentItems = filteredMedicalData.slice(indexOfFirst, indexOfLast)
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -163,53 +163,53 @@ const TreatmentAdviceMaster = () => {
     try {
       setLoading(true);
 
-      // Check for duplicates (treatment advice should be unique within same department)
-      const isDuplicate = treatmentData.some(
+      // Check for duplicates (Clinical/Medical Advice should be unique within same department)
+      const isDuplicate = medicalData.some(
         (treatment) =>
-          treatment.treatmentAdvice.toLowerCase() === formData.treatmentAdvice.toLowerCase() &&
+          treatment.medicalAdviceName.toLowerCase() === formData.medicalAdviceName.toLowerCase() &&
           (treatment.departmentId?.toString() || "") === formData.departmentId &&
-          (!editingTreatment || editingTreatment.id !== treatment.id)
+          (!editingMedical || editingMedical.id !== treatment.id)
       );
 
       if (isDuplicate) {
-        showPopup(DUPLICATE_TREAT_ADV, "error");
+        showPopup(DUPLICATE_MED_ADV, "error");
         setLoading(false);
         return;
       }
 
       // Prepare request data
       const requestData = {
-        treatmentAdvice: formData.treatmentAdvice,
+        medicalAdviceName: formData.medicalAdviceName,
         departmentId: formData.departmentId ? parseInt(formData.departmentId) : null
       };
 
-      if (editingTreatment) {
-        // Update existing treatment advice
-        const response = await putRequest(`${MAS_TREATMENT_ADVISE}/update/${editingTreatment.id}`, requestData);
+      if (editingMedical) {
+        // Update existing Clinical/Medical Advice
+        const response = await putRequest(`${MAS_MEDICAL_ADVICE}/update/${editingMedical.id}`, requestData);
 
         if (response && response.status === 200) {
-          showPopup(UPDATE_TREAT_ADV_SUCC_MSG, "success", () => {
-            fetchTreatmentData();
+          showPopup(UPDATE_MED_ADV_SUCC_MSG, "success", () => {
+            fetchMedicalData();
             fetchDropdownData();
           });
         }
       } else {
-        // Add new treatment advice
-        const response = await postRequest(`${MAS_TREATMENT_ADVISE}/create`, requestData);
+        // Add new Clinical/Medical Advice
+        const response = await postRequest(`${MAS_MEDICAL_ADVICE}/create`, requestData);
 
         if (response && (response.status === 200 || response.status === 201)) {
-          showPopup(ADD_TREAT_ADV_SUCC_MSG, "success", () => {
-            fetchTreatmentData();
+          showPopup(ADD_MED_ADV_SUCC_MSG, "success", () => {
+            fetchMedicalData();
             fetchDropdownData();
           });
         }
       }
 
-      setEditingTreatment(null);
-      setFormData({ treatmentAdvice: "", departmentId: "" });
+      setEditingMedical(null);
+      setFormData({ medicalAdviceName: "", departmentId: "" });
       setShowForm(false);
     } catch (err) {
-      console.error("Error saving treatment advice data:", err);
+      console.error("Error saving Clinical/Medical Advice data:", err);
       showPopup(FAIL_TO_SAVE_CHANGES, "error");
     } finally {
       setLoading(false);
@@ -229,35 +229,35 @@ const TreatmentAdviceMaster = () => {
     });
   };
   const handleSwitchChange = (id, newStatus) => {
-    setConfirmDialog({ isOpen: true, treatmentAdviseId: id, newStatus });
+    setConfirmDialog({ isOpen: true, medicalAdviseId: id, newStatus });
   };
 
   const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.treatmentAdviseId !== null) {
+    if (confirmed && confirmDialog.medicalAdviseId !== null) {
       try {
         setLoading(true);
 
         const response = await putRequest(
-          `${MAS_TREATMENT_ADVISE}/status/${confirmDialog.treatmentAdviseId}?status=${confirmDialog.newStatus}`
+          `${MAS_MEDICAL_ADVICE}/status/${confirmDialog.medicalAdviseId}?status=${confirmDialog.newStatus}`
         );
 
         if (response && response.status === 200) {
           showPopup(
-            `Treatment advice ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
+            `Clinical/Medical Advice ${confirmDialog.newStatus?.toLowerCase() === "y" ? "activated" : "deactivated"} successfully!`,
             "success",
             () => {
-              fetchTreatmentData();
+              fetchMedicalData();
             }
           );
         }
       } catch (err) {
-        console.error("Error updating treatment advice status:", err);
+        console.error("Error updating Clinical/Medical Advice status:", err);
         showPopup(FAIL_TO_UPDATE_STS, "error");
       } finally {
         setLoading(false);
       }
     }
-    setConfirmDialog({ isOpen: false, treatmentAdviseId: null, newStatus: null });
+    setConfirmDialog({ isOpen: false, medicalAdviseId: null, newStatus: null });
   };
 
   const handleInputChange = (e) => {
@@ -274,7 +274,7 @@ const TreatmentAdviceMaster = () => {
     setSearchQuery("");
     setCurrentPage(1);
     setPageInput("1");
-    fetchTreatmentData(); // Refresh from API
+    fetchMedicalData(); // Refresh from API
     fetchDropdownData(); // Refresh dropdowns
   };
 
@@ -288,7 +288,7 @@ const TreatmentAdviceMaster = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">Treatment Advice Master</h4>
+              <h4 className="card-title">Clinical/Medical Advice Master</h4>
               <div className="d-flex justify-content-between align-items-center">
                 {!showForm ? (
                   <form className="d-inline-block searchform me-4" role="search">
@@ -317,8 +317,8 @@ const TreatmentAdviceMaster = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={() => {
-                          setEditingTreatment(null);
-                          setFormData({ treatmentAdvice: "", departmentId: "" });
+                          setEditingMedical(null);
+                          setFormData({ medicalAdviceName: "", departmentId: "" });
                           setShowForm(true);
                         }}
                       >
@@ -349,7 +349,7 @@ const TreatmentAdviceMaster = () => {
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Treatment Advice</th>
+                          <th>Clinical/Medical Advice</th>
                           <th>Department</th>
                           <th>Status</th>
                           {/* <th>Last Updated By</th> */}
@@ -361,7 +361,7 @@ const TreatmentAdviceMaster = () => {
                         {currentItems.length > 0 ? (
                           currentItems.map((treatment) => (
                             <tr key={treatment.id}>
-                              <td>{treatment.treatmentAdvice || "N/A"}</td>
+                              <td>{treatment.medicalAdviceName || "N/A"}</td>
                               <td>{treatment.department}</td>
                               <td>
                                 <div className="form-check form-switch">
@@ -395,14 +395,14 @@ const TreatmentAdviceMaster = () => {
                           ))
                         ) : (
                           <tr>
-                            <td colSpan="6" className="text-center">No treatment advice data found</td>
+                            <td colSpan="6" className="text-center">No Clinical/Medical Advice data found</td>
                           </tr>
                         )}
                       </tbody>
                     </table>
-                    {filteredTreatmentData.length > 0 && (
+                    {filteredMedicalData.length > 0 && (
                     <Pagination
-                      totalItems={filteredTreatmentData.length}
+                      totalItems={filteredMedicalData.length}
                       itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={setCurrentPage}
@@ -415,21 +415,21 @@ const TreatmentAdviceMaster = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="form-group col-md-6">
-                    <label>Treatment Advice <span className="text-danger">*</span></label>
+                    <label>Clinical/Medical Advice <span className="text-danger">*</span></label>
                     <textarea
                       className="form-control mt-1"
-                      id="treatmentAdvice"
-                      name="treatmentAdvice"
-                      placeholder="Enter treatment advice"
-                      value={formData.treatmentAdvice}
+                      id="medicalAdviceName"
+                      name="medicalAdviceName"
+                      placeholder="Enter Clinical/Medical Advice"
+                      value={formData.medicalAdviceName}
                       onChange={handleInputChange}
-                      maxLength={TREATMENT_ADVICE_MAX_LENGTH}
+                      maxLength={MEDICAL_ADVICE_MAX_LENGTH}
                       rows="3"
                       required
                       disabled={loading}
                     />
                     {/* <small className="text-muted">
-                      {formData.treatmentAdvice.length}/{TREATMENT_ADVICE_MAX_LENGTH} characters
+                      {formData.medicalAdviceName.length}/{MEDICAL_ADVICE_MAX_LENGTH} characters
                     </small> */}
                   </div>
 
@@ -450,7 +450,7 @@ const TreatmentAdviceMaster = () => {
                         </option>
                       ))}
                     </select>
-                    {/* <small className="text-muted">Select department for this treatment advice</small> */}
+                    {/* <small className="text-muted">Select department for this Clinical/Medical Advice</small> */}
                   </div>
 
                   <div className="form-group col-md-12 d-flex justify-content-end mt-3">
@@ -459,7 +459,7 @@ const TreatmentAdviceMaster = () => {
                       className="btn btn-primary me-2"
                       disabled={!isFormValid || loading}
                     >
-                      {loading ? "Saving..." : (editingTreatment ? 'Update' : 'Save')}
+                      {loading ? "Saving..." : (editingMedical ? 'Update' : 'Save')}
                     </button>
                     <button
                       type="button"
@@ -498,12 +498,12 @@ const TreatmentAdviceMaster = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? 'activate' : 'deactivate'}
-                          <strong> {treatmentData.find(treatment => treatment.id === confirmDialog.treatmentAdviseId)?.treatmentAdvice}</strong> treatment advice?
+                          <strong> {medicalData.find(treatment => treatment.id === confirmDialog.medicalAdviseId)?.medicalAdviceName}</strong> Clinical/Medical Advice?
                         </p>
                         {/* <p className="text-muted">
                           {confirmDialog.newStatus?.toLowerCase() === "y" 
-                            ? "This will make the treatment advice available for selection." 
-                            : "This will hide the treatment advice from selection."}
+                            ? "This will make the Clinical/Medical Advice available for selection." 
+                            : "This will hide the Clinical/Medical Advice from selection."}
                         </p> */}
                       </div>
                       <div className="modal-footer">
@@ -536,4 +536,5 @@ const TreatmentAdviceMaster = () => {
   );
 };
 
-export default TreatmentAdviceMaster;
+export default MedicalAdviceMaster;
+
