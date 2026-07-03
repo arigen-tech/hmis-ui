@@ -676,7 +676,6 @@ export const ABDM_CONSENT_LIST = `/api/v1/abdm/consent/patient`;
 export const QUESTION_WISE_ANSWER_VALUE = `/opd/getQuestionWiseAnswerValue`;
 
 
-
 // ABDM Milestone 2 APIs
 export const ABDM_M2_DISCOVER_PATIENTS = `/api/v1/abdm/m2/link/discover-records`;
 export const ABDM_M2_LINK_INITIATE = `/api/v1/abdm/m2/link/initiate`;
@@ -686,4 +685,6 @@ export const ABDM_M2_CONSENT_LIST = `/api/v1/abdm/m2/consent/list`;
 export const ABDM_M2_CONSENT_STATUS = `/api/v1/abdm/m2/consent/status`;
 export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
 
+
 export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
+
