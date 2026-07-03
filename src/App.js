@@ -65,6 +65,7 @@ import SampleMaster from './Views/Masters/SampleMaster';
 import ServiceCategoryMaster from './Views/Masters/ServiceCategory';
 import Statemaster from './Views/Masters/StateMaster';
 import Treatmentadvicemaster from './Views/Masters/TreatmentAdviceMaster';
+import MedicalAdviceMaster from './Views/Masters/MedicalAdviceMaster';
 import Userdepartment from './Views/Masters/UserDepartment';
 import WardCategoryMaster from './Views/Masters/WardCategoryMaster';
 import WardManagementMaster from './Views/Masters/WardManagementMaster';
@@ -316,6 +317,7 @@ function App() {
                 <Route path="Identificationmaster" element={<Identificationmaster />} />
                 <Route path="rcmc" element={<RCMC />} />
                 <Route path="treatmentadvicemaster" element={<Treatmentadvicemaster />} />
+                <Route path="medicaladvicemaster" element={<MedicalAdviceMaster />} />
                 <Route path="approveemployee" element={<Approveemployee />} />
                 <Route path="frequencymaster" element={<Frequencymaster />} />
                 <Route path="opdmaster" element={<OpdMaster />} />

@@ -36,6 +36,7 @@ const validRoutes = [
   "/Identificationmaster",
   "/rcmc",
   "/treatmentadvicemaster",
+  "/medicaladvicemaster",
   "/approveemployee",
   "/frequencymaster",
   "/opdmaster",
