@@ -202,8 +202,8 @@ export const MAS_BED_COUNT = `${MASTERS}/masBedCount`;
 export const WARD_DEPARTMENT_GET_ALL_BY_CATEGORY = `${MASTERS}/ward-department/getAllBy`;
 export const MAS_MEDICAL_HISTORY_GET_ALL = `${MASTERS}/masMedicalHistory/getAll/1`;
 export const MAS_SYMPTOMS_GET_ALL = `${MASTERS}/masSymptoms/getAllSymptoms/1`;
-export const MAS_TREATMENT_ADVISE_GET_ALL = `${MASTERS}/masTreatmentAdvise/getAll/1`;
-export const MAS_OPD_MEDICAL_ADVISE_GET_ALL = `${MASTERS}/masOpdMedicalAdvise/getAll/0`;
+export const MAS_TREATMENT_ADVISE_GET_ALL = `${MASTERS}/masTreatmentAdvise/getAll`;
+export const MAS_OPD_MEDICAL_ADVISE_GET_ALL = `${MASTERS}/masOpdMedicalAdvise/getAll`;
 
 export const DOCTOR_BY_DEPARTMENT = `${DOCTOR}/doctorsByDepartment`;
 export const MAS_OPD_SESSION_GET_ALL = `${MAS_OPD_SESSION}/getAll/1`;
