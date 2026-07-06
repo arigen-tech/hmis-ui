@@ -246,7 +246,8 @@ const validRoutes = [
   "/OBGDetails",
   "/EarExamination",
   "/GynaMaster",
-  "/abdm-milestone2"
+  "/abdm-milestone2",
+  "/pendingPrescription",
 ];
 
 const NotAuthorized = () => {

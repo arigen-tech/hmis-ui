@@ -244,6 +244,7 @@ import OpdVision from './Views/OPD/OpdVision';
 import OBGDetails from './Views/OPD/OBGDetails'; import EarExamination from './Views/OPD/EarExamination';
 // import GynaMaster from './Views/OPD/GynaMaster';
 import { GET_ALL_ITEMS_BY_NAME } from './config/apiConfig';
+import PrescriptionList from './Views/Dispensary/PendingPrescription';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -521,6 +522,9 @@ function App() {
                 <Route path="/OBGDetails" element={<OBGDetails/>} />
                 <Route path="/EarExamination" element={<EarExamination/>} />
                 {/* <Route path="/GynaMaster" element={<GynaMaster/>} /> */}
+                <Route path="/pendingPrescription" element={<PrescriptionList/>} />
+
+                
                 </Route>
             </Route>
 
