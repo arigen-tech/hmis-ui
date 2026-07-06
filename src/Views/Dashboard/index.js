@@ -1,7 +1,7 @@
 import React, { useEffect, useState } from "react";
 import "./dashboard.css";
 import { getRequest } from "../../service/apiService";
-import { DASHBOARD_STATS_API } from "../../config/apiConfig";
+import { DASHBOARD_STATS_API, DASHBOARD_BILLING_FINANCE_API } from "../../config/apiConfig";
 
 const Dashboard = () => {
   const [isMounted, setIsMounted] = useState(false);
@@ -23,6 +23,10 @@ const Dashboard = () => {
   const [opdSpecialties, setOpdSpecialties] = useState([]);
   const [topInvestigations, setTopInvestigations] = useState([]);
   const [topDiagnosis, setTopDiagnosis] = useState([]);
+  
+  const [billingSummary, setBillingSummary] = useState({ todayBilling: "₹0", collectedAmount: "₹0", pendingBilling: "₹0" });
+  const [billingStats, setBillingStats] = useState([]);
+  const [paymentModes, setPaymentModes] = useState([]);
 
   const getFormattedDate = (date) => {
     const year = date.getFullYear();
@@ -109,6 +113,34 @@ const Dashboard = () => {
           count: d.diagnosis_count
         })));
       }
+
+      const financeRes = await getRequest(`${DASHBOARD_BILLING_FINANCE_API}?fromDate=${fDate}&toDate=${tDate}`);
+      if (financeRes?.response) {
+        const billByCat = financeRes.response.BillbyServiceCat || [];
+        const paymentModesRes = financeRes.response.PaymentModeWisePercentage || [];
+        
+        const totalBillingNum = billByCat.reduce((sum, item) => sum + item.total_billing, 0);
+        const collectedNum = paymentModesRes.reduce((sum, item) => sum + item.total_amount, 0);
+        const pendingNum = totalBillingNum - collectedNum;
+
+        setBillingSummary({
+          todayBilling: `₹${totalBillingNum.toLocaleString('en-IN')}`,
+          collectedAmount: `₹${collectedNum.toLocaleString('en-IN')}`,
+          pendingBilling: `₹${pendingNum.toLocaleString('en-IN')}`
+        });
+
+        setBillingStats(billByCat.map(item => ({
+          name: item.service_cat_name,
+          amount: `₹${item.total_billing.toLocaleString('en-IN')}`,
+          rawAmount: item.total_billing,
+        })));
+
+        setPaymentModes(paymentModesRes.map(item => ({
+          name: item.payment_mode,
+          percentage: item.percentage,
+          total_amount: item.total_amount
+        })));
+      }
     } catch (error) {
       console.error("Error fetching dashboard stats:", error);
     }
@@ -143,30 +175,7 @@ const Dashboard = () => {
     icuPatients: 14
   };
 
-  const billingSummary = {
-    todayBilling: "₹1,42,800",
-    collectedAmount: "₹1,28,500",
-    pendingBilling: "₹14,300"
-  };
-
-  // Billing Statistics List
-  const billingStats = [
-    { name: "OPD Billing", amount: "₹85,400", percentage: 40 },
-    { name: "IPD Billing", amount: "₹1,20,500", percentage: 56 },
-    { name: "Pharmacy Billing", amount: "₹65,200", percentage: 30 },
-    { name: "Lab Billing", amount: "₹42,800", percentage: 20 },
-    { name: "Radiology Billing", amount: "₹24,300", percentage: 11 },
-    { name: "Consult Billing", amount: "₹18,500", percentage: 8 },
-    { name: "Emergency Billing", amount: "₹15,000", percentage: 7 }
-  ];
-
-  // Payment Mode Distribution
-  const paymentModes = [
-    { name: "Cash", percentage: 35 },
-    { name: "Card", percentage: 25 },
-    { name: "UPI", percentage: 30 },
-    { name: "Insurance", percentage: 10 }
-  ];
+  // Billing data is now dynamic using states
 
   // IPD Ward Occupancy Percentages
   const wardOccupancy = [
@@ -536,8 +545,8 @@ const Dashboard = () => {
             <div className="billing-bar-chart">
               <div className="vertical-bar-chart">
                 {billingStats.map((bill, idx) => {
-                  const amt = parseInt(bill.amount.replace(/[^0-9]/g, ""), 10);
-                  const heightPercent = (amt / 120500) * 100;
+                  const maxBill = billingStats.reduce((max, b) => Math.max(max, b.rawAmount || 0), 1);
+                  const heightPercent = maxBill > 0 ? ((bill.rawAmount || 0) / maxBill) * 100 : 0;
                   return (
                     <div className="vertical-bar-item" key={idx}>
                       <div className="vertical-bar-value" style={{ fontSize: "0.62rem" }}>{bill.amount}</div>
@@ -554,6 +563,7 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
+                {billingStats.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
               </div>
             </div>
 
@@ -566,31 +576,48 @@ const Dashboard = () => {
                 <div className="donut-svg-wrapper" style={{ width: "80px", height: "80px", flexShrink: 0 }}>
                   <svg width="100%" height="100%" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" strokeWidth="12" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#3b82f6" strokeWidth="12" strokeDasharray="83.5 238.8" strokeDashoffset="0" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="12" strokeDasharray="71.6 238.8" strokeDashoffset="-83.5" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#ec4899" strokeWidth="12" strokeDasharray="59.7 238.8" strokeDashoffset="-155.1" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#f59e0b" strokeWidth="12" strokeDasharray="23.9 238.8" strokeDashoffset="-214.8" transform="rotate(-90 50 50)" className="chart-segment" />
+                    {(() => {
+                      let currentOffset = 0;
+                      const c = 238.8;
+                      const colors = ["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#6366f1"];
+                      return paymentModes.map((m, i) => {
+                        const dash = (m.percentage / 100) * c;
+                        const offset = currentOffset;
+                        currentOffset -= dash;
+                        return (
+                          <circle
+                            key={m.name}
+                            cx="50" cy="50" r="38" fill="none"
+                            stroke={colors[i % colors.length]} strokeWidth="12"
+                            strokeDasharray={`${dash} ${c}`}
+                            strokeDashoffset={offset}
+                            transform="rotate(-90 50 50)"
+                            className="chart-segment"
+                          />
+                        );
+                      });
+                    })()}
                   </svg>
                   <div className="donut-center-text">
-                    <div className="donut-center-number" style={{ fontSize: "0.8rem", fontWeight: 800 }}>₹1.4L</div>
+                    <div className="donut-center-number" style={{ fontSize: "0.8rem", fontWeight: 800 }}>
+                      {billingSummary.collectedAmount}
+                    </div>
                     <div className="donut-center-label" style={{ fontSize: "0.5rem" }}>Revenue</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, fontSize: "0.75rem" }}>
-                  {[
-                    { label: "Cash", pct: "35%", color: "#3b82f6" },
-                    { label: "UPI", pct: "30%", color: "#10b981" },
-                    { label: "Card", pct: "25%", color: "#ec4899" },
-                    { label: "Insurance", pct: "10%", color: "#f59e0b" }
-                  ].map((m) => (
-                    <div key={m.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, display: "inline-block", flexShrink: 0 }} />
-                        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{m.label}</span>
+                  {paymentModes.map((m, i) => {
+                    const colors = ["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#6366f1"];
+                    return (
+                      <div key={m.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: colors[i % colors.length], display: "inline-block", flexShrink: 0 }} />
+                          <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{m.name}</span>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{m.percentage}%</span>
                       </div>
-                      <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{m.pct}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
