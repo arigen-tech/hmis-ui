@@ -75,11 +75,11 @@ const MasFamilyModel = ({
           break;
 
         case "treatmentAdvice":
-          url = MAS_TREATMENT_ADVISE_GET_ALL;
+          url = MAS_TREATMENT_ADVISE_GET_ALL+"/1";
           break;
 
         case "doctorRemark":
-          url = MAS_OPD_MEDICAL_ADVISE_GET_ALL;
+          url = MAS_OPD_MEDICAL_ADVISE_GET_ALL+"/1";
           break;
 
         default:
@@ -89,7 +89,21 @@ const MasFamilyModel = ({
       const result = await getRequest(url);
 
       if (result?.status === 200 && Array.isArray(result?.response)) {
-        const formatted = result.response.map((item) =>
+        let responseData = result.response;
+
+        if (popupType === "doctorRemark" || popupType === "treatmentAdvice") {
+          const loggedInDeptId = Number(
+            sessionStorage.getItem("departmentId") ||
+            localStorage.getItem("departmentId")
+          );
+
+          responseData = responseData.filter(
+            (item) =>
+              !item.departmentId || Number(item.departmentId) === loggedInDeptId
+          );
+        }
+
+        const formatted = responseData.map((item) =>
           normalize(item, popupType),
         );
 
