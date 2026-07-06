@@ -74,6 +74,8 @@ export const ALL_LAB_HISTORY_REPORT = `${ALL_REPORTS}/lab-histrory`;
 export const OPD_INVOICE_API = `${ALL_REPORTS}/opdInvoice`;
 export const LAB_INVOICE_API = `${ALL_REPORTS}/labInvoice`;
 export const RADIOLOGY_INVOICE_API = `${ALL_REPORTS}/radiologyInvoice`;
+export const DASHBOARD_STATS_API = `/dashboard`;
+export const DASHBOARD_BILLING_FINANCE_API = `/dashboard/billing-finance`;
 
 export const DEPARTMENT = `/department`;
 
