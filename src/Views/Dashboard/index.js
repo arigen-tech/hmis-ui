@@ -1,21 +1,150 @@
 import React, { useEffect, useState } from "react";
 import "./dashboard.css";
+import { getRequest } from "../../service/apiService";
+import { DASHBOARD_STATS_API, DASHBOARD_BILLING_FINANCE_API } from "../../config/apiConfig";
 
 const Dashboard = () => {
   const [isMounted, setIsMounted] = useState(false);
   const [hoveredTrendIndex, setHoveredTrendIndex] = useState(null);
   const [activeTab, setActiveTab] = useState("Last 7 Days");
+  const [customFromDate, setCustomFromDate] = useState("");
+  const [customToDate, setCustomToDate] = useState("");
 
   // Toggle states for patient trend chart lines
   const [showReg, setShowReg] = useState(true);
   const [showOPD, setShowOPD] = useState(true);
   const [showIPD, setShowIPD] = useState(true);
 
+  const [opdSummary, setOpdSummary] = useState({ todayOPD: 0, newReg: 0, revisits: 0 });
+  const [labSummary, setLabSummary] = useState({ todayTests: 0, totalVisits: 0 });
+  const [radiologySummary, setRadiologySummary] = useState({ totalTests: 0, totalVisits: 0 });
+  
+  const [genderDistribution, setGenderDistribution] = useState([]);
+  const [opdSpecialties, setOpdSpecialties] = useState([]);
+  const [topInvestigations, setTopInvestigations] = useState([]);
+  const [topDiagnosis, setTopDiagnosis] = useState([]);
+  
+  const [billingSummary, setBillingSummary] = useState({ todayBilling: "₹0", collectedAmount: "₹0", pendingBilling: "₹0" });
+  const [billingStats, setBillingStats] = useState([]);
+  const [paymentModes, setPaymentModes] = useState([]);
+
+  const getFormattedDate = (date) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  const calculateDates = (tab) => {
+    const today = new Date();
+    const to = getFormattedDate(today);
+    let from = to;
+
+    if (tab === "Today") {
+      from = to;
+    } else if (tab === "Last 7 Days") {
+      const d = new Date();
+      d.setDate(d.getDate() - 7);
+      from = getFormattedDate(d);
+    } else if (tab === "Last Month") {
+      const d = new Date();
+      d.setMonth(d.getMonth() - 1);
+      from = getFormattedDate(d);
+    }
+    return { from, to };
+  };
+
   useEffect(() => {
     // Trigger animations after mount
     const timer = setTimeout(() => setIsMounted(true), 100);
+    
+    if (activeTab !== "Other") {
+      const { from, to } = calculateDates(activeTab);
+      fetchDashboardStats(from, to);
+    }
+    
     return () => clearTimeout(timer);
-  }, []);
+  }, [activeTab]);
+
+  const handleCustomDateFetch = () => {
+    if (customFromDate && customToDate) {
+      fetchDashboardStats(customFromDate, customToDate);
+    } else {
+      alert("Please select both From and To dates.");
+    }
+  };
+
+  const fetchDashboardStats = async (fDate, tDate) => {
+    try {
+      const res = await getRequest(`${DASHBOARD_STATS_API}?fromDate=${fDate}&toDate=${tDate}`);
+      if (res?.response) {
+        const stats = res.response;
+        
+        const opdVisits = stats.TotOPDVisit?.[0]?.total_opd_visit || 0;
+        const newVisits = stats.TotVisit?.find(v => v.visit_type === "N")?.total_visits || 0;
+        const followUpVisits = stats.TotVisit?.find(v => v.visit_type === "F")?.total_visits || 0;
+        setOpdSummary({ todayOPD: opdVisits, newReg: newVisits, revisits: followUpVisits });
+        
+        setLabSummary({
+          todayTests: stats.TotLabTest?.[0]?.count || 0,
+          totalVisits: stats.TotTLabVisit?.[0]?.total_lab_visit || 0
+        });
+
+        setRadiologySummary({
+          totalTests: stats.TotRadoTest?.[0]?.count || 0,
+          totalVisits: stats.TotRadiovisit?.[0]?.total_radio_visit || 0
+        });
+
+        setGenderDistribution(stats.GenderWiseVisit || []);
+
+        setOpdSpecialties((stats.opdDepartmentWiseVisits || []).map(d => ({
+          name: d.department_name,
+          count: d.total_visits
+        })));
+
+        // Top 10 Lab Investigations
+        setTopInvestigations((stats.TopLabInvestigation || []).slice(0, 10).map(i => ({
+          name: i.investigation_name,
+          count: i.total_count
+        })));
+
+        setTopDiagnosis((stats.TopICDDiagnosis || []).map(d => ({
+          name: d.icd_name,
+          count: d.diagnosis_count
+        })));
+      }
+
+      const financeRes = await getRequest(`${DASHBOARD_BILLING_FINANCE_API}?fromDate=${fDate}&toDate=${tDate}`);
+      if (financeRes?.response) {
+        const billByCat = financeRes.response.BillbyServiceCat || [];
+        const paymentModesRes = financeRes.response.PaymentModeWisePercentage || [];
+        
+        const totalBillingNum = billByCat.reduce((sum, item) => sum + item.total_billing, 0);
+        const collectedNum = paymentModesRes.reduce((sum, item) => sum + item.total_amount, 0);
+        const pendingNum = totalBillingNum - collectedNum;
+
+        setBillingSummary({
+          todayBilling: `₹${totalBillingNum.toLocaleString('en-IN')}`,
+          collectedAmount: `₹${collectedNum.toLocaleString('en-IN')}`,
+          pendingBilling: `₹${pendingNum.toLocaleString('en-IN')}`
+        });
+
+        setBillingStats(billByCat.map(item => ({
+          name: item.service_cat_name,
+          amount: `₹${item.total_billing.toLocaleString('en-IN')}`,
+          rawAmount: item.total_billing,
+        })));
+
+        setPaymentModes(paymentModesRes.map(item => ({
+          name: item.payment_mode,
+          percentage: item.percentage,
+          total_amount: item.total_amount
+        })));
+      }
+    } catch (error) {
+      console.error("Error fetching dashboard stats:", error);
+    }
+  };
 
   // Bed statistics constants
   const bedStats = {
@@ -46,43 +175,7 @@ const Dashboard = () => {
     icuPatients: 14
   };
 
-  // OPD, Lab & Billing KPI Summaries
-  const opdSummary = {
-    todayOPD: 342,
-    newReg: 125,
-    revisits: 217
-  };
-
-  const labSummary = {
-    todayTests: 185,
-    pendingReports: 28,
-    completedReports: 157
-  };
-
-  const billingSummary = {
-    todayBilling: "₹1,42,800",
-    collectedAmount: "₹1,28,500",
-    pendingBilling: "₹14,300"
-  };
-
-  // Billing Statistics List
-  const billingStats = [
-    { name: "OPD Billing", amount: "₹85,400", percentage: 40 },
-    { name: "IPD Billing", amount: "₹1,20,500", percentage: 56 },
-    { name: "Pharmacy Billing", amount: "₹65,200", percentage: 30 },
-    { name: "Lab Billing", amount: "₹42,800", percentage: 20 },
-    { name: "Radiology Billing", amount: "₹24,300", percentage: 11 },
-    { name: "Consult Billing", amount: "₹18,500", percentage: 8 },
-    { name: "Emergency Billing", amount: "₹15,000", percentage: 7 }
-  ];
-
-  // Payment Mode Distribution
-  const paymentModes = [
-    { name: "Cash", percentage: 35 },
-    { name: "Card", percentage: 25 },
-    { name: "UPI", percentage: 30 },
-    { name: "Insurance", percentage: 10 }
-  ];
+  // Billing data is now dynamic using states
 
   // IPD Ward Occupancy Percentages
   const wardOccupancy = [
@@ -93,41 +186,8 @@ const Dashboard = () => {
   ];
 
   // OPD Specialty Wise
-  const opdSpecialties = [
-    { name: "Gen Medicine", count: 220 },
-    { name: "Orthopedic", count: 180 },
-    { name: "Pediatrics", count: 140 },
-    { name: "Gynecology", count: 125 },
-    { name: "ENT", count: 95 },
-    { name: "Cardiology", count: 80 },
-    { name: "Dental", count: 65 },
-    { name: "Neurology", count: 50 },
-    { name: "Dermatology", count: 40 }
-  ];
+  // State variables for these are now used.
 
-  // Top Investigations
-  const topInvestigations = [
-    { name: "CBC", count: 220 },
-    { name: "Blood Sugar", count: 180 },
-    { name: "LFT", count: 150 },
-    { name: "KFT", count: 132 },
-    { name: "Thyroid", count: 98 },
-    { name: "Lipid Profile", count: 85 },
-    { name: "Urine R/M", count: 70 },
-    { name: "X-Ray Chest", count: 55 }
-  ];
-
-  // Top Diagnosis
-  const topDiagnosis = [
-    { name: "Hypertension", count: 165 },
-    { name: "Diabetes", count: 142 },
-    { name: "Fever", count: 125 },
-    { name: "Viral Infection", count: 110 },
-    { name: "Arthritis", count: 90 },
-    { name: "Asthma", count: 75 },
-    { name: "Gastritis", count: 60 },
-    { name: "Anaemia", count: 45 }
-  ];
 
   // Patient Trend Data (7 Days)
   const patientTrend = {
@@ -181,28 +241,54 @@ const Dashboard = () => {
           <h2>Clinical & Operational Dashboard</h2>
           <p>Real-time updates & hospital status insights • Auto-refreshes every 15 min</p>
         </div>
-        <div className="dashboard-filters">
-          {["Today", "Last 7 Days", "Last Month"].map((tab) => (
-            <button
-              key={tab}
-              className={`filter-btn ${activeTab === tab ? "active" : ""}`}
-              onClick={() => setActiveTab(tab)}
-            >
-              {tab}
-            </button>
-          ))}
+        <div className="dashboard-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'center' }}>
+          <div style={{ display: 'flex', gap: '0.2rem' }}>
+            {["Today", "Last 7 Days", "Last Month", "Other"].map((tab) => (
+              <button
+                key={tab}
+                className={`filter-btn ${activeTab === tab ? "active" : ""}`}
+                onClick={() => setActiveTab(tab)}
+              >
+                {tab}
+              </button>
+            ))}
+          </div>
+          {activeTab === "Other" && (
+            <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+              <input 
+                type="date" 
+                value={customFromDate} 
+                onChange={(e) => setCustomFromDate(e.target.value)}
+                style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.8rem', background: 'var(--card-bg)', color: 'var(--text-dark)' }}
+              />
+              <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>to</span>
+              <input 
+                type="date" 
+                value={customToDate} 
+                onChange={(e) => setCustomToDate(e.target.value)}
+                style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.8rem', background: 'var(--card-bg)', color: 'var(--text-dark)' }}
+              />
+              <button 
+                className="filter-btn active" 
+                onClick={handleCustomDateFetch}
+                style={{ padding: '0.4rem 1rem' }}
+              >
+                Go
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Row 1: KPI Statistics Overview */}
       <div className="metric-row">
-        {/* Today's OPD Visits */}
+        {/* Total OPD Visits */}
         <div className="glass-card card-info">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Today's OPD Visits</span>
+              <span className="metric-label">Total OPD Visits</span>
               <span className="metric-value">{opdSummary.todayOPD}</span>
-              <span className="metric-meta text-primary">New: {opdSummary.newReg} • Revisit: {opdSummary.revisits}</span>
+              <span className="metric-meta text-primary">New: {opdSummary.newReg} • Follow-up: {opdSummary.revisits}</span>
             </div>
             <div className="metric-icon-box bg-info-light">
               <i className="icofont-doctor-alt" />
@@ -210,13 +296,13 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Today's Lab Tests */}
+        {/* Total Lab Tests */}
         <div className="glass-card card-available">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Today's Lab Tests</span>
+              <span className="metric-label">Total Lab Tests</span>
               <span className="metric-value">{labSummary.todayTests}</span>
-              <span className="metric-meta text-success">{labSummary.pendingReports} pending reports</span>
+              <span className="metric-meta text-success">{labSummary.totalVisits} Lab Visits</span>
             </div>
             <div className="metric-icon-box bg-available-light">
               <i className="icofont-laboratory" />
@@ -224,11 +310,25 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Today's Billing/Revenue */}
+        {/* Radiology Overview */}
+        <div className="glass-card card-accent">
+          <div className="card-content-wrapper">
+            <div className="metric-details">
+              <span className="metric-label">Radiology Overview</span>
+              <span className="metric-value">{radiologySummary.totalTests}</span>
+              <span className="metric-meta text-muted">{radiologySummary.totalVisits} Radiology Visits</span>
+            </div>
+            <div className="metric-icon-box bg-accent-light">
+              <i className="icofont-xray" />
+            </div>
+          </div>
+        </div>
+
+        {/* Total Billing/Revenue */}
         <div className="glass-card card-billing">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Today's Revenue</span>
+              <span className="metric-label">Total Revenue</span>
               <span className="metric-value">{billingSummary.todayBilling}</span>
               <span className="metric-meta text-warning">Pending: {billingSummary.pendingBilling}</span>
             </div>
@@ -238,11 +338,11 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Today's Admission */}
+        {/* Total Admission */}
         <div className="glass-card card-info">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Today's Admission</span>
+              <span className="metric-label">Total Admission</span>
               <span className="metric-value">{ipdSummary.todayAdmission}</span>
               <span className="metric-meta text-primary">+{ipdSummary.todayAdmission} new today</span>
             </div>
@@ -293,7 +393,8 @@ const Dashboard = () => {
               <h6>Specialty-Wise Distribution</h6>
               <div className="vertical-bar-chart">
                 {opdSpecialties.map((spec, idx) => {
-                  const heightPercent = (spec.count / 220) * 100;
+                  const maxSpec = opdSpecialties.reduce((max, s) => Math.max(max, s.count), 1);
+                  const heightPercent = maxSpec > 0 ? (spec.count / maxSpec) * 100 : 0;
                   return (
                     <div className="vertical-bar-item" key={idx}>
                       <div className="vertical-bar-value">{spec.count}</div>
@@ -304,10 +405,11 @@ const Dashboard = () => {
                           title={`${spec.name}: ${spec.count}`}
                         />
                       </div>
-                      <div className="vertical-bar-label" title={spec.name}>{spec.name}</div>
+                      <div className="vertical-bar-label" title={spec.name} style={{ fontSize: "0.6rem" }}>{spec.name.substring(0, 10)}</div>
                     </div>
                   );
                 })}
+                {opdSpecialties.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
               </div>
             </div>
 
@@ -318,29 +420,58 @@ const Dashboard = () => {
                 <div className="donut-svg-wrapper" style={{ width: "130px", height: "130px" }}>
                   <svg width="100%" height="100%" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="40" fill="none" stroke="#f1f5f9" strokeWidth="10" />
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#3b82f6" strokeWidth="10" strokeDasharray="130.7 251.3" strokeDashoffset="0" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#ec4899" strokeWidth="10" strokeDasharray="103.0 251.3" strokeDashoffset="-130.7" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="40" fill="none" stroke="#10b981" strokeWidth="10" strokeDasharray="17.6 251.3" strokeDashoffset="-233.7" transform="rotate(-90 50 50)" className="chart-segment" />
+                    {(() => {
+                      let currentOffset = 0;
+                      const c = 251.3;
+                      const totalG = genderDistribution.reduce((sum, g) => sum + g.total, 0) || 1;
+                      const gData = [
+                        { label: "Male", count: genderDistribution.find(g => g.category === "Male")?.total || 0, color: "#3b82f6" },
+                        { label: "Female", count: genderDistribution.find(g => g.category === "Female")?.total || 0, color: "#ec4899" },
+                        { label: "Child", count: genderDistribution.find(g => g.category === "Child")?.total || 0, color: "#10b981" }
+                      ];
+                      return gData.map(g => {
+                        const pct = (g.count / totalG) * 100;
+                        const dash = (pct / 100) * c;
+                        const offset = currentOffset;
+                        currentOffset -= dash;
+                        return (
+                          <circle
+                            key={g.label}
+                            cx="50" cy="50" r="40" fill="none"
+                            stroke={g.color} strokeWidth="10"
+                            strokeDasharray={`${dash} ${c}`}
+                            strokeDashoffset={offset}
+                            transform="rotate(-90 50 50)"
+                            className="chart-segment"
+                          />
+                        );
+                      });
+                    })()}
                   </svg>
                   <div className="donut-center-text">
-                    <div className="donut-center-number" style={{ fontSize: "1.3rem" }}>{opdSummary.todayOPD}</div>
+                    <div className="donut-center-number" style={{ fontSize: "1.3rem" }}>{genderDistribution.reduce((sum, g) => sum + g.total, 0)}</div>
                     <div className="donut-center-label">Total</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.5rem", width: "100%", fontSize: "0.8rem" }}>
                   {[
-                    { label: "Male", pct: "52%", color: "#3b82f6" },
-                    { label: "Female", pct: "41%", color: "#ec4899" },
-                    { label: "Child", pct: "7%", color: "#10b981" }
-                  ].map((g) => (
-                    <div key={g.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
-                        <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, display: "inline-block" }} />
-                        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{g.label}</span>
+                    { label: "Male", count: genderDistribution.find(g => g.category === "Male")?.total || 0, color: "#3b82f6" },
+                    { label: "Female", count: genderDistribution.find(g => g.category === "Female")?.total || 0, color: "#ec4899" },
+                    { label: "Child", count: genderDistribution.find(g => g.category === "Child")?.total || 0, color: "#10b981" }
+                  ].map((g) => {
+                    const totalG = genderDistribution.reduce((sum, g) => sum + g.total, 0) || 1;
+                    return (
+                      <div key={g.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "6px" }}>
+                          <span style={{ width: 10, height: 10, borderRadius: "50%", backgroundColor: g.color, display: "inline-block" }} />
+                          <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{g.label}</span>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>
+                          {((g.count / totalG) * 100).toFixed(1)}%
+                        </span>
                       </div>
-                      <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{g.pct}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
@@ -350,12 +481,13 @@ const Dashboard = () => {
         {/* ── Row 2: Top Investigations | Top Diagnosis | Billing & Financials ── */}
         <div className="glass-card span-6">
           <div className="card-title-bar">
-            <h5><i className="icofont-laboratory text-primary" /> Top Investigations</h5>
+            <h5><i className="icofont-laboratory text-primary" /> Top Lab Investigations</h5>
           </div>
           <div className="card-body-content">
             <div className="vertical-bar-chart">
               {topInvestigations.map((inv, idx) => {
-                const heightPercent = (inv.count / 220) * 100;
+                const maxInv = topInvestigations.reduce((max, i) => Math.max(max, i.count), 1);
+                const heightPercent = maxInv > 0 ? (inv.count / maxInv) * 100 : 0;
                 return (
                   <div className="vertical-bar-item" key={idx}>
                     <div className="vertical-bar-value">{inv.count}</div>
@@ -366,10 +498,11 @@ const Dashboard = () => {
                         title={`${inv.name}: ${inv.count}`}
                       />
                     </div>
-                    <div className="vertical-bar-label" title={inv.name}>{inv.name}</div>
+                    <div className="vertical-bar-label" title={inv.name}>{inv.name.substring(0, 10)}</div>
                   </div>
                 );
               })}
+              {topInvestigations.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
             </div>
           </div>
         </div>
@@ -381,7 +514,8 @@ const Dashboard = () => {
           <div className="card-body-content">
             <div className="vertical-bar-chart">
               {topDiagnosis.map((diag, idx) => {
-                const heightPercent = (diag.count / 165) * 100;
+                const maxDiag = topDiagnosis.reduce((max, d) => Math.max(max, d.count), 1);
+                const heightPercent = maxDiag > 0 ? (diag.count / maxDiag) * 100 : 0;
                 return (
                   <div className="vertical-bar-item" key={idx}>
                     <div className="vertical-bar-value">{diag.count}</div>
@@ -392,10 +526,11 @@ const Dashboard = () => {
                         title={`${diag.name}: ${diag.count}`}
                       />
                     </div>
-                    <div className="vertical-bar-label" title={diag.name}>{diag.name}</div>
+                    <div className="vertical-bar-label" title={diag.name}>{diag.name.substring(0, 10)}</div>
                   </div>
                 );
               })}
+              {topDiagnosis.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
             </div>
           </div>
         </div>
@@ -410,8 +545,8 @@ const Dashboard = () => {
             <div className="billing-bar-chart">
               <div className="vertical-bar-chart">
                 {billingStats.map((bill, idx) => {
-                  const amt = parseInt(bill.amount.replace(/[^0-9]/g, ""), 10);
-                  const heightPercent = (amt / 120500) * 100;
+                  const maxBill = billingStats.reduce((max, b) => Math.max(max, b.rawAmount || 0), 1);
+                  const heightPercent = maxBill > 0 ? ((bill.rawAmount || 0) / maxBill) * 100 : 0;
                   return (
                     <div className="vertical-bar-item" key={idx}>
                       <div className="vertical-bar-value" style={{ fontSize: "0.62rem" }}>{bill.amount}</div>
@@ -428,6 +563,7 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
+                {billingStats.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
               </div>
             </div>
 
@@ -440,31 +576,48 @@ const Dashboard = () => {
                 <div className="donut-svg-wrapper" style={{ width: "80px", height: "80px", flexShrink: 0 }}>
                   <svg width="100%" height="100%" viewBox="0 0 100 100">
                     <circle cx="50" cy="50" r="38" fill="none" stroke="#f1f5f9" strokeWidth="12" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#3b82f6" strokeWidth="12" strokeDasharray="83.5 238.8" strokeDashoffset="0" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#10b981" strokeWidth="12" strokeDasharray="71.6 238.8" strokeDashoffset="-83.5" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#ec4899" strokeWidth="12" strokeDasharray="59.7 238.8" strokeDashoffset="-155.1" transform="rotate(-90 50 50)" className="chart-segment" />
-                    <circle cx="50" cy="50" r="38" fill="none" stroke="#f59e0b" strokeWidth="12" strokeDasharray="23.9 238.8" strokeDashoffset="-214.8" transform="rotate(-90 50 50)" className="chart-segment" />
+                    {(() => {
+                      let currentOffset = 0;
+                      const c = 238.8;
+                      const colors = ["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#6366f1"];
+                      return paymentModes.map((m, i) => {
+                        const dash = (m.percentage / 100) * c;
+                        const offset = currentOffset;
+                        currentOffset -= dash;
+                        return (
+                          <circle
+                            key={m.name}
+                            cx="50" cy="50" r="38" fill="none"
+                            stroke={colors[i % colors.length]} strokeWidth="12"
+                            strokeDasharray={`${dash} ${c}`}
+                            strokeDashoffset={offset}
+                            transform="rotate(-90 50 50)"
+                            className="chart-segment"
+                          />
+                        );
+                      });
+                    })()}
                   </svg>
                   <div className="donut-center-text">
-                    <div className="donut-center-number" style={{ fontSize: "0.8rem", fontWeight: 800 }}>₹1.4L</div>
+                    <div className="donut-center-number" style={{ fontSize: "0.8rem", fontWeight: 800 }}>
+                      {billingSummary.collectedAmount}
+                    </div>
                     <div className="donut-center-label" style={{ fontSize: "0.5rem" }}>Revenue</div>
                   </div>
                 </div>
                 <div style={{ display: "flex", flexDirection: "column", gap: "0.35rem", flex: 1, fontSize: "0.75rem" }}>
-                  {[
-                    { label: "Cash", pct: "35%", color: "#3b82f6" },
-                    { label: "UPI", pct: "30%", color: "#10b981" },
-                    { label: "Card", pct: "25%", color: "#ec4899" },
-                    { label: "Insurance", pct: "10%", color: "#f59e0b" }
-                  ].map((m) => (
-                    <div key={m.label} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-                      <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
-                        <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: m.color, display: "inline-block", flexShrink: 0 }} />
-                        <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{m.label}</span>
+                  {paymentModes.map((m, i) => {
+                    const colors = ["#3b82f6", "#10b981", "#ec4899", "#f59e0b", "#6366f1"];
+                    return (
+                      <div key={m.name} style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+                        <div style={{ display: "flex", alignItems: "center", gap: "5px" }}>
+                          <span style={{ width: 8, height: 8, borderRadius: "50%", backgroundColor: colors[i % colors.length], display: "inline-block", flexShrink: 0 }} />
+                          <span style={{ color: "var(--text-muted)", fontWeight: 600 }}>{m.name}</span>
+                        </div>
+                        <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{m.percentage}%</span>
                       </div>
-                      <span style={{ fontWeight: 700, color: "var(--text-dark)" }}>{m.pct}</span>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </div>
             </div>
