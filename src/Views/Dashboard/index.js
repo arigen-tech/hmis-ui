@@ -22,7 +22,6 @@ const Dashboard = () => {
   const [genderDistribution, setGenderDistribution] = useState([]);
   const [opdSpecialties, setOpdSpecialties] = useState([]);
   const [topInvestigations, setTopInvestigations] = useState([]);
-  const [topRadioInvestigations, setTopRadioInvestigations] = useState([]);
   const [topDiagnosis, setTopDiagnosis] = useState([]);
   
   const [billingSummary, setBillingSummary] = useState({ todayBilling: "₹0", collectedAmount: "₹0", pendingBilling: "₹0" });
@@ -105,23 +104,6 @@ const Dashboard = () => {
 
         // Top 10 Lab Investigations
         setTopInvestigations((stats.TopLabInvestigation || []).slice(0, 10).map(i => ({
-          name: i.investigation_name,
-          count: i.total_count
-        })));
-
-        // Top 10 Radiology Investigations
-        const radioApiData = stats.TopRadioInvestigation || [];
-        // Fallback dummy data if API returns empty array for now
-        const dummyRadioData = [
-          // { investigation_name: "Chest X-Ray", total_count: 45 },
-          // { investigation_name: "MRI Brain", total_count: 32 },
-          // { investigation_name: "CT Scan Abdomen", total_count: 28 },
-          // { investigation_name: "USG Pelvis", total_count: 15 },
-          // { investigation_name: "X-Ray Knee", total_count: 10 }
-        ];
-        const radioDataToUse = radioApiData.length > 0 ? radioApiData : dummyRadioData;
-        
-        setTopRadioInvestigations(radioDataToUse.slice(0, 10).map(i => ({
           name: i.investigation_name,
           count: i.total_count
         })));
@@ -300,11 +282,11 @@ const Dashboard = () => {
 
       {/* Row 1: KPI Statistics Overview */}
       <div className="metric-row">
-        {/* OPD Visits */}
+        {/* Total OPD Visits */}
         <div className="glass-card card-info">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">OPD Visits</span>
+              <span className="metric-label">Total OPD Visits</span>
               <span className="metric-value">{opdSummary.todayOPD}</span>
               <span className="metric-meta text-primary">New: {opdSummary.newReg} • Follow-up: {opdSummary.revisits}</span>
             </div>
@@ -314,13 +296,13 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* LAB Visits */}
+        {/* Total Lab Tests */}
         <div className="glass-card card-available">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">LAB Visits</span>
-              <span className="metric-value">{labSummary.totalVisits || 0}</span>
-              <span className="metric-meta text-success">New: {labSummary.newReg || 0} • Follow-up: {labSummary.revisits || 0}</span>
+              <span className="metric-label">Total Lab Tests</span>
+              <span className="metric-value">{labSummary.todayTests}</span>
+              <span className="metric-meta text-success">{labSummary.totalVisits} Lab Visits</span>
             </div>
             <div className="metric-icon-box bg-available-light">
               <i className="icofont-laboratory" />
@@ -328,34 +310,16 @@ const Dashboard = () => {
           </div>
         </div>
 
-        {/* Radiology Visits */}
+        {/* Radiology Overview */}
         <div className="glass-card card-accent">
           <div className="card-content-wrapper">
             <div className="metric-details">
-              <span className="metric-label">Radiology Visits</span>
-              <span className="metric-value">{radiologySummary.totalVisits || 0}</span>
-              <span className="metric-meta text-muted">New: {radiologySummary.newReg || 0} • Follow-up: {radiologySummary.revisits || 0}</span>
+              <span className="metric-label">Radiology Overview</span>
+              <span className="metric-value">{radiologySummary.totalTests}</span>
+              <span className="metric-meta text-muted">{radiologySummary.totalVisits} Radiology Visits</span>
             </div>
             <div className="metric-icon-box bg-accent-light">
               <i className="icofont-xray" />
-            </div>
-          </div>
-        </div>
-
-        {/* Investigation Statistics */}
-        <div className="glass-card card-available">
-          <div className="card-content-wrapper">
-            <div className="metric-details">
-              <span className="metric-label">Investigation Statistics</span>
-              <span className="metric-value">
-                {(Number(labSummary.todayTests) || 0) + (Number(radiologySummary.totalTests) || 0)}
-              </span>
-              <span className="metric-meta text-success">
-                LAB- {labSummary.todayTests || 0}, Radio- {radiologySummary.totalTests || 0}
-              </span>
-            </div>
-            <div className="metric-icon-box bg-available-light">
-              <i className="icofont-laboratory" />
             </div>
           </div>
         </div>
@@ -539,35 +503,6 @@ const Dashboard = () => {
                 );
               })}
               {topInvestigations.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
-            </div>
-          </div>
-        </div>
-
-        {/* Top Radiology Investigations */}
-        <div className="glass-card span-6">
-          <div className="card-title-bar">
-            <h5><i className="icofont-xray text-accent" /> Top Radiology Investigations</h5>
-          </div>
-          <div className="card-body-content">
-            <div className="vertical-bar-chart">
-              {topRadioInvestigations.map((inv, idx) => {
-                const maxInv = topRadioInvestigations.reduce((max, i) => Math.max(max, i.count), 1);
-                const heightPercent = maxInv > 0 ? (inv.count / maxInv) * 100 : 0;
-                return (
-                  <div className="vertical-bar-item" key={idx}>
-                    <div className="vertical-bar-value">{inv.count}</div>
-                    <div className="vertical-bar-container">
-                      <div
-                        className="vertical-bar-fill gradient-fill-blue"
-                        style={{ height: isMounted ? `${heightPercent}%` : "0%" }}
-                        title={`${inv.name}: ${inv.count}`}
-                      />
-                    </div>
-                    <div className="vertical-bar-label" title={inv.name}>{inv.name.substring(0, 10)}</div>
-                  </div>
-                );
-              })}
-              {topRadioInvestigations.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
             </div>
           </div>
         </div>
