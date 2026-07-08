@@ -7,7 +7,7 @@ import InvestigationOrderandTracking from "../Investigations"
 import DietOrderHistory from "../Diet"
 import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
-
+import NursingCareModule from "../NursingProcedure/Care"
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -424,6 +424,11 @@ const WardManagement = () => {
 
 {activeTab === "Discharge" && (
   <DischargeFromWard selectedPatient={selectedPatient}/>
+)}
+
+
+{activeTab === "Nursing Care / Procedures" && (
+  <NursingCareModule selectedPatient={selectedPatient}/>
 )}
 
 
