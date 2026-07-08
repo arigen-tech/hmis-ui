@@ -182,22 +182,13 @@ const RadiologyBookingRegisteredPatient = () => {
   //   fetchGstConfiguration();
   // }, []);
 
-  const hasFetchedInvestigations = useRef(false);
-const lastFetchedGender = useRef(null);
-
-useEffect(() => {
-  const loadInvestigations = async () => {
+  useEffect(() => {
     if (formData.gender && genderData.length > 0) {
-      if (lastFetchedGender.current !== formData.gender) {
-        lastFetchedGender.current = formData.gender;
-        hasFetchedInvestigations.current = true;
-        const inv = await fetchInvestigationDetails(Number(formData.gender));
-        setInvestigationItems(inv);
-      }
+      fetchInvestigationDetails(Number(formData.gender)).then(inv => {
+        if (inv && inv.length > 0) setInvestigationItems(inv);
+      });
     }
-  };
-  loadInvestigations();
-}, [formData.gender, genderData]);
+  }, [formData.gender, genderData]);
 
   const calculatePaymentBreakdown = () => {
     const checkedItems = formData.rows.filter((_, index) => checkedRows[index]);
@@ -663,12 +654,15 @@ useEffect(() => {
       const data = await getRequest(`${MAS_GENDER}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setGenderData(data.response);
+        return data.response;
       } else {
         console.error("Unexpected API response format:", data);
         setGenderData([]);
+        return [];
       }
     } catch (error) {
       console.error("Error fetching gender data:", error);
+      return [];
     } finally {
       setLoading(false);
     }
@@ -776,11 +770,11 @@ useEffect(() => {
     }
   }
 
-  async function fetchInvestigationDetails(genderValue) {
+  async function fetchInvestigationDetails(genderValue, currentGenderData = genderData) {
     debugger
     setLoading(true);
     try {
-      const selectedGender = genderData.find(
+      const selectedGender = currentGenderData.find(
         (gender) => gender.id === Number(genderValue),
       );
       if (!selectedGender) {
@@ -1002,11 +996,7 @@ useEffect(() => {
       await fetchNokDistrict(mappedData.nokState);
     }
     
-    // Fetch investigation items based on patient's gender
-    if (mappedData.gender) {
-      const inv = await fetchInvestigationDetails(Number(mappedData.gender));
-      setInvestigationItems(inv);
-    }
+
     
     // Fetch package items
     await fetchPackageInvestigationDetails(1);
@@ -2128,6 +2118,15 @@ useEffect(() => {
                                     );
                                     if (e.target.value.trim() !== "") {
                                       setActiveRowIndex(index);
+                                      if (
+                                        formData.type === "investigation" &&
+                                        investigationItems.length === 0 &&
+                                        formData.gender
+                                      ) {
+                                        fetchInvestigationDetails(Number(formData.gender)).then(inv => {
+                                          if (inv && inv.length > 0) setInvestigationItems(inv);
+                                        });
+                                      }
                                     } else {
                                       setActiveRowIndex(null);
                                     }
@@ -2135,6 +2134,15 @@ useEffect(() => {
                                   onFocus={() => {
                                     if (row.name.trim() !== "") {
                                       setActiveRowIndex(index);
+                                    }
+                                    if (
+                                      formData.type === "investigation" &&
+                                      investigationItems.length === 0 &&
+                                      formData.gender
+                                    ) {
+                                      fetchInvestigationDetails(Number(formData.gender)).then(inv => {
+                                        if (inv && inv.length > 0) setInvestigationItems(inv);
+                                      });
                                     }
                                   }}
                                   onBlur={() =>
