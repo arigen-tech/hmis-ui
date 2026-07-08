@@ -2132,144 +2132,158 @@ const ViewSearchEmployee = () => {
   };
 
   return (
-    <div className="body d-flex py-3">
-      <div className="container-xxl">
-        <div className="row align-items-center">
-          <div className="border-0 mb-4">
-            {popupMessage && (
-              <Popup
-                message={popupMessage.message}
-                type={popupMessage.type}
-                onClose={popupMessage.onClose}
-              />
-            )}
-            {loading && (
-              <div className="alert alert-info d-flex align-items-center gap-2 py-2 mb-3">
-                <span
-                  className="spinner-border spinner-border-sm"
-                  role="status"
-                  aria-hidden="true"
-                />
-                <span>Loading data, please wait...</span>
-              </div>
-            )}
+    <div className="content-wrapper">
+      <div className="row">
+        <div className="col-12 grid-margin stretch-card">
+          <div className="card form-card">
+            <div className="card-header d-flex justify-content-between align-items-center">
+              <h4 className="card-title p-2 mb-0">Update Employee</h4>
 
-            <div className="card-header py-3 bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
-              <h3 className="fw-bold mb-0">Update Employee</h3>
-
-              <button
-                className="btn btn-secondary ms-auto me-3"
-                onClick={() => {
-                  resetForm();
-                }}
-              >
-                <i className="icofont-arrow-left me-1"></i> Back to Search
-              </button>
+              {showForm && (
+                <button
+                  type="button"
+                  className="btn btn-secondary me-2"
+                  onClick={() => {
+                    resetForm();
+                  }}
+                >
+                  Back
+                </button>
+              )}
             </div>
-          </div>
-        </div>
+            <div className="card-body p-2 pb-0">
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+              {loading && (
+                <div className="alert alert-info d-flex align-items-center gap-2 py-2 mb-3">
+                  <span
+                    className="spinner-border spinner-border-sm"
+                    role="status"
+                    aria-hidden="true"
+                  />
+                  <span>Loading data, please wait...</span>
+                </div>
+              )}
 
-        {!showForm ? (
-          <div className="row">
-            <div className="col-sm-12">
-              <div className="card shadow">
-                <div className="card-body">
+              {!showForm ? (
+                <>
                   {/* Search Section */}
-                  <div className="row mb-4">
-                    <div className="col-md-3">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Mobile Number"
-                        value={searchMobile}
-                        onChange={(e) => setSearchMobile(e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <input
-                        type="text"
-                        className="form-control"
-                        placeholder="Employee Name"
-                        value={searchName}
-                        onChange={(e) => setSearchName(e.target.value)}
-                      />
-                    </div>
-                    <div className="col-md-2">
-                      <button
-                        className="btn btn-primary w-100"
-                        onClick={handleSearch}
-                      >
-                        Search
-                      </button>
-                    </div>
-                    <div className="col-md-2">
-                      <button
-                        className="btn btn-warning w-100"
-                        onClick={handleShowAll}
-                      >
-                        Show All
-                      </button>
+                  <div className="mb-4">
+                    <div className="row g-4 align-items-end">
+                      <div className="col-md-3">
+                        <label className="form-label fw-semibold">
+                          Mobile Number
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="searchMobile"
+                          placeholder="Enter mobile number"
+                          value={searchMobile}
+                          onChange={(e) => setSearchMobile(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label fw-semibold">
+                          Employee Name
+                        </label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          id="searchName"
+                          placeholder="Enter employee name"
+                          value={searchName}
+                          onChange={(e) => setSearchName(e.target.value)}
+                        />
+                      </div>
+                      <div className="col-md-2">
+                        <div className="d-flex gap-2">
+                          <button
+                            type="button"
+                            className="btn btn-primary flex-fill"
+                            onClick={handleSearch}
+                          >
+                            Search
+                          </button>
+                          <button
+                            type="button"
+                            className="btn btn-secondary flex-fill"
+                            onClick={handleShowAll}
+                          >
+                            Reset
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
 
-                  <table className="table table-bordered">
-                    <thead>
-                      <tr>
-                        <th>S.N.</th>
-                        <th>Employee Name</th>
-                        <th>Gender</th>
-                        <th>Date Of Birth</th>
-                        <th>Mobile No</th>
-                        <th>Type Of Employee</th>
-                        <th>Role</th>
-                        <th>Status</th>
-                        <th>Edit</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {filteredEmployees.length > 0 ? (
-                        filteredEmployees.map((employee, index) => (
-                          <tr key={index}>
-                            <td>
-                              {(currentPage - 1) * itemsPerPage + index + 1}
-                            </td>
-                            <td>
-                              {employee.firstName} {employee.middleName}{" "}
-                              {employee.lastName}
-                            </td>
-                            <td>{employee.gender}</td>
-                            <td>{employee.dob}</td>
-                            <td>{employee.mobileNo}</td>
-                            <td>{employee.employeeType}</td>
-                            <td>{employee.role}</td>
-                            <td>
-                              {employee.status === "A" ? (
-                                <i className="fa fa-check-circle text-success fa-2x"></i>
-                              ) : (
-                                <i className="fa fa-times-circle fa-2x text-danger"></i>
-                              )}
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success"
-                                onClick={() => {
-                                  handleAnotherAction(employee);
-                                }}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                  <div className="table-responsive packagelist mb-3">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>S.N.</th>
+                          <th>Employee Name</th>
+                          <th>Gender</th>
+                          <th>Date Of Birth</th>
+                          <th>Mobile No</th>
+                          <th>Type Of Employee</th>
+                          <th>Role</th>
+                          <th>Status</th>
+                          <th>Edit</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {filteredEmployees.length > 0 ? (
+                          filteredEmployees.map((employee, index) => (
+                            <tr key={index}>
+                              <td>
+                                {(currentPage - 1) * DEFAULT_ITEMS_PER_PAGE +
+                                  index +
+                                  1}
+                              </td>
+                              <td>
+                                {employee.firstName} {employee.middleName}{" "}
+                                {employee.lastName}
+                              </td>
+                              <td>{employee.gender}</td>
+                              <td>{employee.dob}</td>
+                              <td>{employee.mobileNo}</td>
+                              <td>{employee.employeeType}</td>
+                              <td>{employee.role}</td>
+                              <td>
+                                {employee.status === "A" ? (
+                                  <i className="fa fa-check-circle text-success fa-2x"></i>
+                                ) : (
+                                  <i className="fa fa-times-circle fa-2x text-danger"></i>
+                                )}
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success"
+                                  onClick={() => {
+                                    handleAnotherAction(employee);
+                                  }}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="9" className="text-center text-danger">
+                              No Record Found
                             </td>
                           </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="7" className="text-center text-danger">
-                            No Record Found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
 
                   <Pagination
                     totalItems={totalElements}
@@ -2277,11 +2291,8 @@ const ViewSearchEmployee = () => {
                     currentPage={currentPage}
                     onPageChange={setCurrentPage}
                   />
-                </div>
-              </div>
-            </div>
-          </div>
-        ) : (
+                </>
+              ) : (
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -4176,8 +4187,12 @@ const ViewSearchEmployee = () => {
               </div>
             </fieldset>
           </form>
-        )}
+              )}
+            </div>
+          </div>
+        </div>
       </div>
+
       {showDocModal && (
         <div
           className="modal show d-block"
