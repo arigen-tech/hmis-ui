@@ -313,6 +313,7 @@ export const PET_MODALITY = 91;
 
 export const GET_PREVIOUS_OPD_VISIT_HISTORY = `/opd/getPreviousOpdVisitHistory`;
 export const GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY = `/opd/getPreviousOpdVitalsDetailsHistory`;
+export const GET_PREVIOUS_OPD_PSYCHIATRIST_DETAILS_HISTORY = `/opd/getPreviousOpdPsychiatristDetailsHistory`;
 
 // Constants for date validation for Lab report
 export const MAX_MONTHS_BACK = 4; // 4 months maximum back date
