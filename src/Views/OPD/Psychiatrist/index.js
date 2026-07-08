@@ -23,13 +23,65 @@ const Psychiatrist = forwardRef(
       return [createEmptyRow()];
     }
 
+    if (Array.isArray(incomingValue.assessments) && incomingValue.assessments.length > 0) {
+      return incomingValue.assessments.map((assessment, assessmentIndex) => ({
+        headingId: assessment.assessmentHeaderId
+          ? String(assessment.assessmentHeaderId)
+          : `assessment-${assessmentIndex}`,
+        headingName: assessment.topicName || `Topic ${assessmentIndex + 1}`,
+        headingCode: "",
+        answers: Array.isArray(assessment.questionsResponses)
+          ? assessment.questionsResponses.reduce((acc, item, questionIndex) => {
+              const fallbackQuestionId =
+                item.questionId ??
+                item.id ??
+                item.questionName ??
+                `${assessment.topicName || "topic"}-${questionIndex}`;
+              acc[String(fallbackQuestionId)] = {
+                questionId: fallbackQuestionId,
+                value:
+                  item.questionsAns ??
+                  item.answerValue ??
+                  item.answer ??
+                  "",
+                questionsAns:
+                  item.questionsAns ??
+                  item.answerValue ??
+                  item.answer ??
+                  "",
+                answerId: item.answerOptionId ?? null,
+                answerCode: item.answerCode ?? null,
+                answerScore: item.answerScore ?? null,
+                questionText: item.questionName ?? item.questionText ?? "",
+              };
+              return acc;
+            }, {})
+          : {},
+      }));
+    }
+
     if (Array.isArray(incomingValue.rows) && incomingValue.rows.length > 0) {
-      return incomingValue.rows.map((row) => ({
+      return incomingValue.rows.map((row, rowIndex) => ({
         headingId: row.headingId ? String(row.headingId) : "",
         answers: Array.isArray(row.questions)
-          ? row.questions.reduce((acc, item) => {
-              acc[String(item.questionId)] = {
-                value: item.answerValue ?? "",
+          ? row.questions.reduce((acc, item, questionIndex) => {
+              const fallbackQuestionId =
+                item.questionId ??
+                item.id ??
+                item.questionName ??
+                `${row.headingId || "row"}-${questionIndex}`;
+              acc[String(fallbackQuestionId)] = {
+                questionId: fallbackQuestionId,
+                value:
+                  item.questionsAns ??
+                  item.answerValue ??
+                  item.answer ??
+                  "",
+                questionsAns:
+                  item.questionsAns ??
+                  item.answerValue ??
+                  item.answer ??
+                  "",
                 answerId:
                   item.answerOptionId !== undefined &&
                   item.answerOptionId !== null
@@ -37,6 +89,7 @@ const Psychiatrist = forwardRef(
                     : null,
                 answerCode: item.answerCode ?? null,
                 answerScore: item.answerScore ?? null,
+                questionText: item.questionText ?? item.questionName ?? "",
               };
               return acc;
             }, {})
@@ -48,9 +101,24 @@ const Psychiatrist = forwardRef(
       return [
         {
           headingId: String(incomingValue.topicId),
-          answers: incomingValue.details.reduce((acc, detail) => {
-            acc[String(detail.questionId)] = {
-              value: detail.answerValue ?? "",
+          answers: incomingValue.details.reduce((acc, detail, questionIndex) => {
+            const fallbackQuestionId =
+              detail.questionId ??
+              detail.id ??
+              detail.questionName ??
+              `${incomingValue.topicId}-${questionIndex}`;
+            acc[String(fallbackQuestionId)] = {
+              questionId: fallbackQuestionId,
+              value:
+                detail.questionsAns ??
+                detail.answerValue ??
+                detail.answer ??
+                "",
+              questionsAns:
+                detail.questionsAns ??
+                detail.answerValue ??
+                detail.answer ??
+                "",
               answerId:
                 detail.answerOptionId !== undefined &&
                 detail.answerOptionId !== null
@@ -58,6 +126,7 @@ const Psychiatrist = forwardRef(
                   : null,
               answerCode: detail.answerCode ?? null,
               answerScore: detail.answerScore ?? null,
+              questionText: detail.questionText ?? detail.questionName ?? "",
             };
             return acc;
           }, {}),
@@ -87,18 +156,22 @@ const Psychiatrist = forwardRef(
 
           return {
             questionId: Number(questionId),
-            questionText: question?.text || "",
+            questionText: answerData?.questionText || question?.text || answerData.questionName|| "",
             answerOptionId:
               answerData?.answerId !== undefined && answerData?.answerId !== null
                 ? Number(answerData.answerId)
                 : null,
-            answerValue: answerData?.value || "",
+            answerValue: answerData?.value ?? "",
             answerCode: answerData?.answerCode ?? null,
             answerScore: answerData?.answerScore ?? null,
           };
         })
         .filter(
-          (detail) => detail.questionId && detail.answerOptionId !== null,
+          (detail) =>
+            detail.questionId &&
+            (detail.answerOptionId !== null ||
+              detail.answerValue ||
+              detail.questionText),
         );
 
       return {
@@ -128,18 +201,47 @@ const Psychiatrist = forwardRef(
     };
   };
 
+  const buildHistoryRows = () =>
+    Array.isArray(value?.assessments)
+      ? value.assessments.map((assessment, assessmentIndex) => ({
+          headingId: String(
+            assessment.assessmentHeaderId ?? `assessment-${assessmentIndex}`,
+          ),
+          headingName: assessment.topicName || `Topic ${assessmentIndex + 1}`,
+          headingCode: "",
+          questions: Array.isArray(assessment.questionsResponses)
+            ? assessment.questionsResponses.map((item, questionIndex) => ({
+                questionId:
+                  item.questionId ??
+                  item.id ??
+                  `${assessmentIndex}-${questionIndex}`,
+                questionText: item.questionName ?? item.questionText ?? "",
+                answerValue:
+                  item.questionsAns ??
+                  item.answerValue ??
+                  item.answer ??
+                  "",
+                answerCode: item.answerCode ?? null,
+                answerScore: item.answerScore ?? null,
+                answerOptionId: item.answerOptionId ?? null,
+              }))
+            : [],
+        }))
+      : [];
+
   useEffect(() => {
     setRows(normalizeRowsFromValue(value));
   }, [value]);
 
   useEffect(() => {
+    if (readOnly) return;
     const headingIds = [...new Set(rows.map((row) => row.headingId).filter(Boolean))];
     headingIds.forEach((headingId) => {
       if (!categoryQuestions[headingId]) {
         fetchQuestionsForCategory(headingId);
       }
     });
-  }, [rows, categoryQuestions]);
+  }, [rows, categoryQuestions, readOnly]);
 
   // Fetch categories from API
   useEffect(() => {
@@ -289,7 +391,10 @@ const Psychiatrist = forwardRef(
     );
   }
 
-  const currentPayload = buildPayload(rows);
+  const currentPayload = readOnly ? { rows: buildHistoryRows() } : buildPayload(rows);
+  const historyAssessments = Array.isArray(value?.assessments)
+    ? value.assessments
+    : [];
   
 
   return (
@@ -298,7 +403,7 @@ const Psychiatrist = forwardRef(
         <div className="card-header bg-primary text-white py-2" style={{ borderRadius: "8px 8px 0 0" }}>
           <h6 className="mb-0 fw-bold">
             <i className="mdi mdi-brain me-2"></i>
-            PSYCHIATRIC
+            Assessment
           </h6>
         </div>
 
@@ -311,97 +416,138 @@ const Psychiatrist = forwardRef(
           }}
         >
           {/* Main Table */}
-          <div className="table-responsive">
-            <table className="table table-bordered table-sm">
-              <thead style={{ backgroundColor: "#e9ecef", position: "sticky", top: 0, zIndex: 1 }}>
-                <tr>
-                  <th style={{ width: "30%", padding: "8px" }}>Question Heading</th>
-                  <th style={{ width: "55%", padding: "8px" }}>Questions & Answers</th>
-                  <th style={{ width: "7%", padding: "8px", textAlign: "center" }}>Add</th>
-                  <th style={{ width: "8%", padding: "8px", textAlign: "center" }}>Delete</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map((row, rowIndex) => {
-                  const selectedCategory = psychiatricCategories.find(x => x.id == row.headingId);
-                  const questions = categoryQuestions[row.headingId] || [];
-
-                  return (
-                    <React.Fragment key={rowIndex}>
-                      <tr>
-                        <td style={{ padding: "8px", verticalAlign: "middle" }}>
-                          <select
-                            className="form-select form-select-sm"
-                            value={row.headingId}
-                            onChange={(e) => handleHeadingChange(rowIndex, e.target.value)}
-                            disabled={readOnly}
-                          >
-                            <option value="">-- Select Category --</option>
-                            {psychiatricCategories.map((item) => (
-                              <option key={item.id} value={item.id}>
-                                {item.name} {item.code && `(${item.code})`}
-                              </option>
-                            ))}
-                          </select>
-                        </td>
-                        <td style={{ padding: "8px", verticalAlign: "middle" }}>
-                          {/* Question count indicator */}
-                          {selectedCategory && (
-                            <small className="text-muted">
-                              {questions.length} question{questions.length !== 1 ? 's' : ''} available
-                            </small>
-                          )}
-                        </td>
-                        <td style={{ padding: "8px", textAlign: "center", verticalAlign: "middle" }}>
-                          <button
-                            className="btn btn-success btn-sm"
-                            onClick={addRow}
-                            disabled={readOnly}
-                            style={{ padding: "4px 12px" }}
-                          >
-                            +
-                          </button>
-                        </td>
-                        <td style={{ padding: "8px", textAlign: "center", verticalAlign: "middle" }}>
-                          <button
-                            className="btn btn-danger btn-sm"
-                            onClick={() => deleteRow(rowIndex)}
-                            disabled={rows.length === 1 || readOnly}
-                            style={{ padding: "4px 12px" }}
-                          >
-                            -
-                          </button>
-                        </td>
-                      </tr>
-
-                      {/* Questions rows */}
-                      {selectedCategory && questions.map((question) => (
-                        <tr key={question.id} style={{ backgroundColor: "#fafafa" }}>
-                          <td style={{ padding: "10px", verticalAlign: "middle", paddingLeft: "25px" }}>
-                            <div className="mt-1">{question.text}</div>
+          {readOnly ? (
+            <div className="table-responsive">
+              <table className="table table-bordered table-sm">
+                <thead style={{ backgroundColor: "#e9ecef", position: "sticky", top: 0, zIndex: 1 }}>
+                  <tr>
+                    <th style={{ width: "65%", padding: "8px" }}>Question</th>
+                    <th style={{ width: "35%", padding: "8px" }}>Answer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {historyAssessments.length > 0 ? (
+                    historyAssessments.map((assessment, assessmentIndex) => (
+                      <React.Fragment key={`${assessment.assessmentHeaderId || "assessment"}-${assessmentIndex}`}>
+                        <tr className="table-light">
+                          <td colSpan="2" style={{ padding: "8px", fontWeight: 700 }}>
+                            {assessment.topicName || `Topic ${assessmentIndex + 1}`}
                           </td>
-                          <td colSpan="3" style={{ padding: "10px", verticalAlign: "middle" }}>
+                        </tr>
+                        {Array.isArray(assessment.questionsResponses) &&
+                          assessment.questionsResponses.map((qa, idx) => (
+                            <tr key={`${assessment.assessmentHeaderId || "assessment"}-${idx}`}>
+                              <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                                {qa.questionName || qa.questionText || `Question ${idx + 1}`}
+                              </td>
+                          <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                                {qa.questionsAns ?? qa.answerValue ?? qa.answerCode ?? qa.value ?? "-"}
+                              </td>
+                            </tr>
+                          ))}
+                      </React.Fragment>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="2" className="text-center text-muted py-4">
+                        No psychiatrist history details available
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="table-responsive">
+              <table className="table table-bordered table-sm">
+                <thead style={{ backgroundColor: "#e9ecef", position: "sticky", top: 0, zIndex: 1 }}>
+                  <tr>
+                    <th style={{ width: "30%", padding: "8px" }}>Question Heading</th>
+                    <th style={{ width: "55%", padding: "8px" }}>Questions & Answers</th>
+                    <th style={{ width: "7%", padding: "8px", textAlign: "center" }}>Add</th>
+                    <th style={{ width: "8%", padding: "8px", textAlign: "center" }}>Delete</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rows.map((row, rowIndex) => {
+                    const selectedCategory = psychiatricCategories.find(x => x.id == row.headingId);
+                    const questions = categoryQuestions[row.headingId] || [];
+
+                    return (
+                      <React.Fragment key={rowIndex}>
+                        <tr>
+                          <td style={{ padding: "8px", verticalAlign: "middle" }}>
                             <select
                               className="form-select form-select-sm"
-                              value={row.answers[question.id]?.value || ""}
-                              onChange={(e) => handleAnswerChange(rowIndex, question.id, e.target.value)}
+                              value={row.headingId}
+                              onChange={(e) => handleHeadingChange(rowIndex, e.target.value)}
                               disabled={readOnly}
-                              style={{ maxWidth: "280px" }}
                             >
-                              <option value="">-- Select Answer --</option>
-                              {question.options && question.options.map((opt, i) => (
-                                <option key={i} value={opt}>{opt}</option>
+                              <option value="">-- Select Category --</option>
+                              {psychiatricCategories.map((item) => (
+                                <option key={item.id} value={item.id}>
+                                  {item.name} {item.code && `(${item.code})`}
+                                </option>
                               ))}
                             </select>
                           </td>
+                          <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                            {selectedCategory && (
+                              <small className="text-muted">
+                                {questions.length} question{questions.length !== 1 ? 's' : ''} available
+                              </small>
+                            )}
+                          </td>
+                          <td style={{ padding: "8px", textAlign: "center", verticalAlign: "middle" }}>
+                            <button
+                              className="btn btn-success btn-sm"
+                              onClick={addRow}
+                              disabled={readOnly}
+                              style={{ padding: "4px 12px" }}
+                            >
+                              +
+                            </button>
+                          </td>
+                          <td style={{ padding: "8px", textAlign: "center", verticalAlign: "middle" }}>
+                            <button
+                              className="btn btn-danger btn-sm"
+                              onClick={() => deleteRow(rowIndex)}
+                              disabled={rows.length === 1 || readOnly}
+                              style={{ padding: "4px 12px" }}
+                            >
+                              -
+                            </button>
+                          </td>
                         </tr>
-                      ))}
-                    </React.Fragment>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+
+                        {selectedCategory && questions.map((question) => (
+                          <tr key={question.id} style={{ backgroundColor: "#fafafa" }}>
+                            <td style={{ padding: "10px", verticalAlign: "middle", paddingLeft: "25px" }}>
+                              <div className="mt-1">{question.text}</div>
+                            </td>
+                            <td colSpan="3" style={{ padding: "10px", verticalAlign: "middle" }}>
+                              <select
+                                className="form-select form-select-sm"
+                                value={row.answers[question.id]?.value || ""}
+                                onChange={(e) => handleAnswerChange(rowIndex, question.id, e.target.value)}
+                                disabled={readOnly}
+                                style={{ maxWidth: "280px" }}
+                              >
+                                <option value="">-- Select Answer --</option>
+                                {question.options && question.options.map((opt, i) => (
+                                  <option key={i} value={opt}>{opt}</option>
+                                ))}
+                              </select>
+                            </td>
+                          </tr>
+                        ))}
+                      </React.Fragment>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
 
           {/* Submit Button */}
           {!readOnly && !hideSaveButton && (
@@ -413,7 +559,7 @@ const Psychiatrist = forwardRef(
             </div>
           )}
 
-          {currentPayload.rows.length > 0 && (
+          {!readOnly && currentPayload.rows.length > 0 && (
             <div className="mt-3 border rounded p-3 bg-light">
               <div className="fw-bold mb-2">Selected Answers</div>
               {currentPayload.rows.map((row) => (
@@ -426,11 +572,11 @@ const Psychiatrist = forwardRef(
                     {row.questions.map((qa) => (
                       <li key={`${qa.questionId}-${qa.answerOptionId}`}>
                         <strong>{qa.questionText || `Question ${qa.questionId}`}</strong>
-                        : {qa.answerValue || `Option ${qa.answerOptionId}`}
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+                                : {qa.answerValue ?? qa.answerCode ?? "-"}
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
               ))}
             </div>
           )}
