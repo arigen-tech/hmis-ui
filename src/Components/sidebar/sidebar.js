@@ -6,6 +6,8 @@ import { GET_URL_BY_ROLES } from "../../config/apiConfig"
 
 
 const iconMap = {
+  DASHBOARD: "icofont-dashboard-web",
+  "Dashboard": "icofont-dashboard",
   OPD: "icofont-hospital",
   "OPD Waiting List": "icofont-waiter",
   "Opd Preconsultation": "icofont-doctor",
