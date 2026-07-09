@@ -22,6 +22,17 @@ const ClinicalHistoryPopup = ({
   visitId,
   onPsychiatristSave,
   psychiatristValue,
+  psychiatristHistoryData = [],
+  psychiatristHistoryLoading = false,
+  psychiatristHistoryCurrentPage = 0,
+  psychiatristHistoryTotalPages = 0,
+  psychiatristHistoryTotalElements = 0,
+  psychiatristHistoryPageSize = 5,
+  onPsychiatristHistoryPageChange,
+  selectedPsychiatristHistory,
+  setSelectedPsychiatristHistory,
+  showPsychiatristDetailModal,
+  setShowPsychiatristDetailModal,
 }) => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [showPdfModal, setShowPdfModal] = useState(false);
@@ -124,8 +135,10 @@ const ClinicalHistoryPopup = ({
   };
 
   const formatDate = (date) => {
-    if (!date) return "-";
-    return new Date(date).toLocaleDateString("en-GB");
+    if (!date || date === "-") return "-";
+    const parsed = new Date(date);
+    if (Number.isNaN(parsed.getTime())) return String(date);
+    return parsed.toLocaleDateString("en-GB");
   };
 
   const handleDownloadPdf = () => {
@@ -181,8 +194,10 @@ const ClinicalHistoryPopup = ({
     if (popupType === "vitals") {
       return "PREVIOUS VITALS HISTORY";
     }
+    if (popupType === "psychiatrist-history") {
+      return "Assessment History";
+    }
     if (popupType === "psychiatrist") {
-      // 👈 ADD THIS
       return "PSYCHIATRIST ASSESSMENT";
     }
     return "PREVIOUS VISITS HISTORY";
@@ -191,6 +206,9 @@ const ClinicalHistoryPopup = ({
   const getIcon = () => {
     if (popupType === "vitals") {
       return "mdi mdi-heart-pulse me-2";
+    }
+    if (popupType === "psychiatrist-history") {
+      return "mdi mdi-brain me-2";
     }
     if (popupType === "psychiatrist") {
       return "mdi mdi-brain me-2";
@@ -205,6 +223,62 @@ const ClinicalHistoryPopup = ({
   const handlePageChange = (newPage) => {
     // Pagination component uses 1-based indexing, convert to 0-based
     onPageChange(newPage - 1);
+  };
+
+  const totalRecords =
+    popupType === "psychiatrist-history"
+      ? psychiatristHistoryTotalElements
+      : totalElements || 0;
+
+  const selectedPsychiatristAssessments = Array.isArray(
+    selectedPsychiatristHistory?.assessment?.assessments,
+  )
+    ? selectedPsychiatristHistory.assessment.assessments
+    : Array.isArray(selectedPsychiatristHistory?.assessments)
+      ? selectedPsychiatristHistory.assessments
+      : [];
+
+  const selectedPsychiatristTopicName =
+    selectedPsychiatristHistory?.topicName ||
+    selectedPsychiatristHistory?.assessment?.topicName ||
+    "";
+
+  const visiblePsychiatristAssessments =
+    selectedPsychiatristTopicName &&
+    selectedPsychiatristAssessments.length > 1
+      ? selectedPsychiatristAssessments.filter(
+          (assessment) =>
+            (assessment.topicName || "").trim() ===
+            selectedPsychiatristTopicName.trim(),
+        )
+      : selectedPsychiatristAssessments;
+
+  const getAssessmentQuestions = (assessment) => {
+    const questionList = Array.isArray(assessment?.questionsResponses)
+      ? assessment.questionsResponses
+      : Array.isArray(assessment?.questions)
+        ? assessment.questions
+        : Array.isArray(assessment?.details)
+          ? assessment.details
+          : Array.isArray(assessment?.answers)
+            ? assessment.answers
+            : [];
+
+    if (questionList.length > 0) {
+      return questionList;
+    }
+
+    if (Array.isArray(selectedPsychiatristHistory?.assessment?.details)) {
+      return selectedPsychiatristHistory.assessment.details;
+    }
+
+    if (Array.isArray(selectedPsychiatristHistory?.assessment?.rows)) {
+      return selectedPsychiatristHistory.assessment.rows.flatMap((row) =>
+        Array.isArray(row?.questions) ? row.questions : [],
+      );
+    }
+
+    return [];
   };
 
   return ReactDOM.createPortal(
@@ -684,7 +758,7 @@ const ClinicalHistoryPopup = ({
                         </div>
                       )}
                     </div>
-                  ) : (
+              ) : (
                     <div className="text-center py-5">
                       <i
                         className="mdi mdi-heart-pulse"
@@ -692,6 +766,101 @@ const ClinicalHistoryPopup = ({
                       />
                       <p className="mt-2 mb-0 text-muted">
                         No Previous Vitals Found
+                      </p>
+                    </div>
+                  )}
+                </>
+              )}
+              {/* Psychiatrist History Table */}
+              {!isLoading && popupType === "psychiatrist-history" && (
+                <>
+                  {psychiatristHistoryLoading ? (
+                    <div className="text-center py-5">
+                      <div className="spinner-border text-primary" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <p className="mt-2 text-muted">Loading data...</p>
+                    </div>
+                  ) : psychiatristHistoryData?.length > 0 ? (
+                    <div>
+                      <div className="table-responsive">
+                        <table
+                          className="table table-bordered table-sm"
+                          style={{ marginBottom: 0 }}
+                        >
+                          <thead className="table-light">
+                            <tr>
+                              <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                                Assessment Date
+                              </th>
+                              <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                                Topic name
+                              </th>
+                              <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                                Doctor Name
+                              </th>
+                              <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold" }}>
+                                Score
+                              </th>
+                              <th style={{ padding: "8px", fontSize: "0.750rem", fontWeight: "bold", textAlign: "center" }}>
+                                View
+                              </th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {psychiatristHistoryData.map((record, idx) => (
+                              <tr key={`${record.assessmentDate || "record"}-${idx}`}>
+                                <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                                  {formatDate(record.assessmentDate)}
+                                </td>
+                                <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                                  {record.topicName || "-"}
+                                </td>
+                                <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                                  {record.doctorName || "-"}
+                                </td>
+                                <td style={{ padding: "8px", verticalAlign: "middle" }}>
+                                  {record.score ?? "-"}
+                                </td>
+                                <td style={{ padding: "8px", verticalAlign: "middle", textAlign: "center" }}>
+                                  <button
+                                    className="btn btn-sm btn-primary d-flex align-items-center gap-1 mx-auto"
+                                    onClick={() => {
+                                      setSelectedPsychiatristHistory?.(record);
+                                      setShowPsychiatristDetailModal?.(true);
+                                    }}
+                                  >
+                                    <i className="fa fa-eye"></i>
+                                    <span>View</span>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+
+                      {psychiatristHistoryTotalElements > 0 && (
+                        <div className="mt-3">
+                          <Pagination
+                            totalItems={psychiatristHistoryTotalElements}
+                            itemsPerPage={psychiatristHistoryPageSize}
+                            currentPage={psychiatristHistoryCurrentPage + 1}
+                            onPageChange={(newPage) =>
+                              onPsychiatristHistoryPageChange?.(newPage - 1)
+                            }
+                          />
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-5">
+                      <i
+                        className="mdi mdi-brain"
+                        style={{ fontSize: "48px", color: "#6c757d" }}
+                      />
+                      <p className="mt-2 mb-0 text-muted">
+                        No Psychiatrist History Found
                       </p>
                     </div>
                   )}
@@ -724,7 +893,7 @@ const ClinicalHistoryPopup = ({
               <div className="d-flex justify-content-between align-items-center">
                 <div className="text-muted small">
                   <i className="mdi mdi-information-outline me-1" />
-                  Total: {totalElements || 0} record(s)
+                  Total: {totalRecords} record(s)
                 </div>
                 <div className="d-flex gap-2">
                   {popupType === "psychiatrist" && (
@@ -758,6 +927,176 @@ const ClinicalHistoryPopup = ({
           </div>
         </div>
       </div>
+
+      {popupType === "psychiatrist-history" &&
+        showPsychiatristDetailModal &&
+        selectedPsychiatristHistory && (
+          <div
+            className="modal fade show"
+            style={{
+              display: "block",
+              backgroundColor: "rgba(0,0,0,0.65)",
+              zIndex: 1060,
+            }}
+            tabIndex="-1"
+            onClick={() => setShowPsychiatristDetailModal?.(false)}
+          >
+            <div
+              className="modal-dialog modal-xl"
+              style={{
+                width: "calc(100vw - 340px)",
+                left: "305px",
+                maxWidth: "none",
+                height: "auto",
+                maxHeight: "85vh",
+                margin: "4vh auto",
+                position: "fixed",
+                top: "4vh",
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div
+                className="modal-content"
+                style={{ height: "100%", display: "flex", flexDirection: "column" }}
+              >
+                <div
+                  className="modal-header"
+                  style={{
+                    backgroundColor: "#6aab9c",
+                    color: "white",
+                    borderBottom: "1px solid #245e7a",
+                    padding: "0.75rem 1.5rem",
+                    borderRadius: "8px 8px 0 0",
+                    flexShrink: 0,
+                  }}
+                >
+                  <h5 className="modal-title fw-bold fs-6">
+                    <i className="mdi mdi-brain me-2" />
+                    Assessment History Details
+                  </h5>
+                  <button
+                    type="button"
+                    className="btn-close btn-close-white"
+                    onClick={() => setShowPsychiatristDetailModal?.(false)}
+                    style={{ margin: 0 }}
+                  />
+                </div>
+
+                <div
+                  className="modal-body"
+                  style={{
+                    padding: "1.5rem",
+                    flex: 1,
+                    overflowY: "auto",
+                    overflowX: "hidden",
+                  }}
+                >
+                  <div className="row g-3 mb-3">
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold mb-1">
+                        Assessment Date
+                      </label>
+                      <div className="form-control bg-light">
+                        {formatDate(selectedPsychiatristHistory.assessmentDate)}
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold mb-1">
+                        Topic Name
+                      </label>
+                      <div className="form-control bg-light">
+                        {selectedPsychiatristHistory.topicName || "-"}
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold mb-1">
+                        Doctor Name
+                      </label>
+                      <div className="form-control bg-light">
+                        {selectedPsychiatristHistory.doctorName || "-"}
+                      </div>
+                    </div>
+                    <div className="col-md-3">
+                      <label className="form-label fw-bold mb-1">Score</label>
+                      <div className="form-control bg-light">
+                        {selectedPsychiatristHistory.score ?? "-"}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="table-responsive">
+                    <table className="table table-bordered table-sm mb-0">
+                      <thead className="table-light">
+                        <tr>
+                          <th style={{ width: "65%", padding: "8px" }}>Question</th>
+                          <th style={{ width: "35%", padding: "8px" }}>Answer</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {visiblePsychiatristAssessments.length > 0 ? (
+                          visiblePsychiatristAssessments.map((assessment, assessmentIndex) => (
+                            <React.Fragment
+                              key={`${assessment.assessmentHeaderId || assessment.topicName || "assessment"}-${assessmentIndex}`}
+                            >
+                              <tr className="table-secondary">
+                                <td colSpan="2" style={{ padding: "8px", fontWeight: 700 }}>
+                                  {assessment.topicName || `Topic ${assessmentIndex + 1}`}
+                                </td>
+                              </tr>
+                              {getAssessmentQuestions(assessment).map((question, questionIndex) => (
+                                  <tr
+                                    key={`${assessment.assessmentHeaderId || assessmentIndex}-${questionIndex}`}
+                                  >
+                                    <td style={{ padding: "8px", verticalAlign: "top" }}>
+                                      {question.questionName || question.questionText || `Question ${questionIndex + 1}`}
+                                    </td>
+                                    <td style={{ padding: "8px", verticalAlign: "top" }}>
+                                      {question.questionsAns ?? question.answerValue ?? "-"}
+                                    </td>
+                                  </tr>
+                                ))}
+                            </React.Fragment>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="2" className="text-center text-muted py-4">
+                              No question and answer details available
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div
+                  style={{
+                    padding: "1rem 1.5rem",
+                    borderTop: "1px solid #e0e0e0",
+                    backgroundColor: "#f8f9fa",
+                    borderRadius: "0 0 8px 8px",
+                    flexShrink: 0,
+                  }}
+                >
+                  <div className="d-flex justify-content-end">
+                    <button
+                      className="btn btn-primary btn-sm px-3"
+                      onClick={() => setShowPsychiatristDetailModal?.(false)}
+                      style={{
+                        borderRadius: "4px",
+                        backgroundColor: "#6aab9c",
+                        border: "none",
+                      }}
+                    >
+                      <i className="mdi mdi-check-circle me-2" />
+                      CLOSE
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
       {/* PDF Modal */}
       {showPdfModal && pdfUrl && (
@@ -853,3 +1192,4 @@ const ClinicalHistoryPopup = ({
 };
 
 export default ClinicalHistoryPopup;
+

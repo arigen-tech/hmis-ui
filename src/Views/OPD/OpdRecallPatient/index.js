@@ -21,6 +21,7 @@ import {
   GET_RECALL_OPD_PATIENTS_LIST,
   GET_PREVIOUS_OPD_VISIT_HISTORY,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
+  GET_PREVIOUS_OPD_PSYCHIATRIST_DETAILS_HISTORY,
   MAS_WARD_CATEGORY_GET_ALL,
   WARD_DEPARTMENT_GET_ALL_BY_CATEGORY,
   MAS_BED_COUNT,
@@ -93,6 +94,15 @@ const OpdRRecallPatient = () => {
   const [psychiatristAssessment, setPsychiatristAssessment] = useState(null);
   const [previousVisitsData, setPreviousVisitsData] = useState([]);
   const [previousVitalsData, setPreviousVitalsData] = useState([]);
+  const [previousPsychiatristData, setPreviousPsychiatristData] = useState([]);
+
+  const [psychiatristCurrentPage, setPsychiatristCurrentPage] = useState(0);
+  const [psychiatristTotalPages, setPsychiatristTotalPages] = useState(0);
+  const [psychiatristTotalElements, setPsychiatristTotalElements] = useState(0);
+  const [psychiatristPageSize, setPsychiatristPageSize] = useState(5);
+  const [psychiatristLoading, setPsychiatristLoading] = useState(false);
+  const [selectedPsychiatristHistory, setSelectedPsychiatristHistory] = useState(null);
+  const [showPsychiatristDetailModal, setShowPsychiatristDetailModal] = useState(false);
 
   const [currentMedicationActions, setCurrentMedicationActions] = useState({});
   const [currentMedications, setCurrentMedications] = useState([]);
@@ -407,6 +417,380 @@ const OpdRRecallPatient = () => {
     }
   };
 
+  const normalizePsychiatristQuestion = (detail = {}) => ({
+    questionId: detail.questionId ?? detail.id ?? detail.question_id ?? null,
+    questionText:
+      detail.questionText ??
+      detail.question ??
+      detail.questionName ??
+      detail.question_label ??
+      detail.questionDescription ??
+      "",
+    answerOptionId:
+      detail.answerOptionId ?? detail.answerId ?? detail.optionId ?? null,
+    answerValue:
+      detail.answerValue ??
+      detail.value ??
+      detail.answer ??
+      detail.questionsAns ??
+      detail.selectedValue ??
+      detail.responseValue ??
+      "",
+    questionsAns:
+      detail.questionsAns ??
+      detail.answerValue ??
+      detail.value ??
+      detail.answer ??
+      "",
+    answerCode: detail.answerCode ?? detail.code ?? null,
+    answerScore:
+      detail.answerScore ??
+      detail.score ??
+      detail.marks ??
+      detail.answerMarks ??
+      detail.selectedScore ??
+      null,
+  });
+
+  const getPsychiatristAssessmentPayload = (source = {}) => {
+    const assessment =
+      source.psychiatristAssessment ||
+      source.psychiatricAssessment ||
+      source.previousOpdPsychiatryHistoryResponse ||
+      source.assessment ||
+      source;
+
+    const selectedBlock = source.assessmentBlock || source.selectedAssessment || null;
+    const assessmentBlocks = Array.isArray(source.assessmentBlocks)
+      ? source.assessmentBlocks
+      : Array.isArray(assessment?.assessments)
+        ? assessment.assessments
+        : selectedBlock
+          ? [selectedBlock]
+          : [];
+
+    const explicitRows = Array.isArray(assessment?.rows)
+      ? assessment.rows
+      : Array.isArray(assessment?.topicWiseDetails)
+        ? assessment.topicWiseDetails
+        : [];
+
+    const normalizedAssessmentBlocks = assessmentBlocks.map((block = {}) => {
+      const questions = Array.isArray(block.questionsResponses)
+        ? block.questionsResponses
+        : Array.isArray(block.questions)
+          ? block.questions
+          : Array.isArray(block.details)
+            ? block.details
+            : [];
+
+      const normalizedQuestions = questions.map(normalizePsychiatristQuestion);
+      const blockScore = normalizedQuestions.reduce((sum, item) => {
+        const value = Number(item?.answerScore ?? 0);
+        return sum + (Number.isNaN(value) ? 0 : value);
+      }, 0);
+
+      return {
+        headingId:
+          block.headingId ??
+          block.topicId ??
+          block.questionHeadingId ??
+          block.assessmentHeaderId ??
+          block.id ??
+          "",
+        headingName:
+          block.headingName ??
+          block.topicName ??
+          block.questionHeadingName ??
+          block.assessmentName ??
+          "",
+        headingCode:
+          block.headingCode ??
+          block.topicCode ??
+          block.questionHeadingCode ??
+          "",
+        questions: normalizedQuestions,
+        score: Number.isFinite(blockScore) ? blockScore : 0,
+      };
+    });
+
+    const normalizedRows = explicitRows.map((row = {}) => ({
+      headingId:
+        row.headingId ?? row.topicId ?? row.questionHeadingId ?? row.id ?? "",
+      headingName:
+        row.headingName ??
+        row.topicName ??
+        row.questionHeadingName ??
+        row.topic ??
+        "",
+      headingCode:
+        row.headingCode ?? row.topicCode ?? row.questionHeadingCode ?? "",
+      questions: Array.isArray(row.questions)
+        ? row.questions.map(normalizePsychiatristQuestion)
+        : Array.isArray(row.details)
+          ? row.details.map(normalizePsychiatristQuestion)
+          : Array.isArray(row.answers)
+            ? row.answers.map(normalizePsychiatristQuestion)
+            : [],
+      score: Number(row.score ?? row.totalScore ?? 0) || 0,
+    }));
+
+    const directDetails = Array.isArray(assessment?.details)
+      ? assessment.details.map(normalizePsychiatristQuestion)
+      : Array.isArray(assessment?.questions)
+        ? assessment.questions.map(normalizePsychiatristQuestion)
+        : Array.isArray(assessment?.assessmentDetails)
+          ? assessment.assessmentDetails.map(normalizePsychiatristQuestion)
+          : [];
+
+    const rows =
+      normalizedAssessmentBlocks.length > 0
+        ? normalizedAssessmentBlocks
+        : normalizedRows.length > 0
+          ? normalizedRows
+          : directDetails.length > 0
+            ? [
+                {
+                  headingId:
+                    assessment?.topicId ??
+                    assessment?.headingId ??
+                    assessment?.topicWiseId ??
+                    "",
+                  headingName:
+                    assessment?.topicName ||
+                    assessment?.headingName ||
+                    assessment?.topic ||
+                    "",
+                  headingCode:
+                    assessment?.topicCode || assessment?.headingCode || "",
+                  questions: directDetails,
+                  score: 0,
+                },
+              ]
+            : [];
+
+    const details =
+      directDetails.length > 0
+        ? directDetails
+        : rows.flatMap((row) => (Array.isArray(row.questions) ? row.questions : []));
+
+    const score =
+      assessment?.totalScore ??
+      source.totalScore ??
+      rows.reduce((sum, row) => {
+        const value = Number(row?.score ?? 0);
+        return sum + (Number.isNaN(value) ? 0 : value);
+      }, 0);
+
+    const topicName =
+      selectedBlock?.topicName ||
+      assessmentBlocks[0]?.topicName ||
+      assessment?.topicName ||
+      assessment?.headingName ||
+      assessment?.topic ||
+      rows[0]?.headingName ||
+      "-";
+
+    const assessmentDate =
+      assessment?.assessmentDate ||
+      assessment?.createdDate ||
+      assessment?.createdAt ||
+      assessment?.visitDate ||
+      source.assessmentDate ||
+      source.visitDate ||
+      source.createdDate ||
+      source.createdAt ||
+      "-";
+
+    return {
+      assessmentDate,
+      topicName,
+      doctorName:
+        assessment?.doctorName ||
+        assessment?.prescribedBy ||
+        source.doctorName ||
+        source.createdByName ||
+        source.userName ||
+        "-",
+      score: Number.isFinite(Number(score)) ? Number(score) : "-",
+      assessment: {
+        assessments: assessmentBlocks.map((block) => ({
+          topicName: block.topicName || block.headingName || topicName,
+          questionsResponses: Array.isArray(block.questions)
+            ? block.questions.map((question) => ({
+                questionName: question.questionText || "",
+                questionsAns: question.questionsAns ?? question.answerValue ?? "",
+                questionText: question.questionText || "",
+                answerValue: question.answerValue ?? question.questionsAns ?? "",
+                answerOptionId: question.answerOptionId ?? null,
+                answerCode: question.answerCode ?? null,
+                answerScore: question.answerScore ?? null,
+              }))
+            : [],
+        })),
+        topicId:
+          selectedBlock?.assessmentHeaderId ||
+          selectedBlock?.topicId ||
+          assessmentBlocks[0]?.assessmentHeaderId ||
+          assessmentBlocks[0]?.topicId ||
+          assessment?.topicId ||
+          assessment?.headingId ||
+          assessment?.topicWiseId ||
+          rows[0]?.headingId ||
+          null,
+        topicName: topicName === "-" ? "" : topicName,
+        topicCode:
+          selectedBlock?.topicCode ||
+          assessmentBlocks[0]?.topicCode ||
+          assessment?.topicCode ||
+          assessment?.headingCode ||
+          rows[0]?.headingCode ||
+          "",
+        details,
+        rows:
+          rows.length > 0
+            ? rows
+            : [
+                {
+                  headingId:
+                    assessment?.topicId ||
+                    assessment?.headingId ||
+                    assessment?.topicWiseId ||
+                    "",
+                  headingName: topicName === "-" ? "" : topicName,
+                  headingCode:
+                    assessment?.topicCode || assessment?.headingCode || "",
+                  questions: details,
+                  score: Number.isFinite(Number(score)) ? Number(score) : 0,
+                },
+              ],
+      },
+    };
+  };
+
+  const normalizePsychiatristHistoryResponse = (response) => {
+    if (response?.status !== 200 || !response?.response) {
+      return null;
+    }
+
+    const payload = response.response;
+    const candidateList = [
+      payload.content,
+      payload.response?.content,
+      payload.data,
+      payload.list,
+      payload.items,
+      payload.previousOpdPsychiatryHistoryResponse,
+      payload.previousOpdPsychiatryHistoryResponseList,
+      payload.previousPsychiatristHistoryResponse,
+      payload.previousPsychiatristHistoryList,
+      payload.psychiatristHistoryResponse,
+      payload.psychiatristHistoryList,
+      payload,
+    ];
+
+    const content =
+      candidateList.find((item) => Array.isArray(item)) ||
+      (payload && typeof payload === "object"
+        ? [
+            payload.previousOpdPsychiatryHistoryResponse ||
+              payload.psychiatristAssessment ||
+              payload.psychiatricAssessment ||
+              payload.assessment ||
+              payload,
+          ]
+        : []);
+
+    const formattedData = content
+      .flatMap((item) => {
+        const assessments = Array.isArray(item?.assessments)
+          ? item.assessments
+          : [];
+
+        if (assessments.length > 0) {
+          return assessments.map((assessmentBlock) =>
+            getPsychiatristAssessmentPayload({
+              ...item,
+              assessmentBlock,
+              assessmentBlocks: [assessmentBlock],
+            }),
+          );
+        }
+
+        return [getPsychiatristAssessmentPayload(item)];
+      })
+      .filter((item) => {
+        const detailCount = Array.isArray(item?.assessment?.details)
+          ? item.assessment.details.length
+          : 0;
+        const rowCount = Array.isArray(item?.assessment?.rows)
+          ? item.assessment.rows.length
+          : 0;
+        return (
+          detailCount > 0 ||
+          rowCount > 0 ||
+          item.topicName !== "-" ||
+          item.doctorName !== "-" ||
+          item.score !== "-"
+        );
+      });
+
+    const flattenedCount = formattedData.length;
+    const backendTotalElements = Number(
+      payload.totalElements || payload.total_elements || payload.totalCount || 0,
+    );
+
+    return {
+      data: formattedData,
+      totalPages: payload.totalPages || payload.total_pages || 0,
+      totalElements:
+        Math.max(
+          Number.isFinite(backendTotalElements) ? backendTotalElements : 0,
+          flattenedCount,
+        ) || flattenedCount,
+      currentPage:
+        payload.pageable?.pageNumber ??
+        payload.pageNumber ??
+        payload.currentPage ??
+        payload.page ??
+        0,
+    };
+  };
+
+  const fetchPreviousPsychiatristHistory = async (
+    patientId,
+    hospitalId,
+    page = 0,
+    size = 5,
+  ) => {
+    if (!patientId) return;
+
+    try {
+      setPsychiatristLoading(true);
+      const url = `${GET_PREVIOUS_OPD_PSYCHIATRIST_DETAILS_HISTORY}?patientId=${patientId}&hospitalId=${hospitalId}&page=${page}&size=${size}`;
+      const response = await getRequest(url);
+      const parsed = normalizePsychiatristHistoryResponse(response);
+
+      if (parsed) {
+        setPreviousPsychiatristData(parsed.data);
+        setPsychiatristTotalPages(parsed.totalPages);
+        setPsychiatristTotalElements(parsed.totalElements);
+        setPsychiatristCurrentPage(parsed.currentPage);
+      } else {
+        setPreviousPsychiatristData([]);
+        setPsychiatristTotalPages(0);
+        setPsychiatristTotalElements(0);
+      }
+    } catch (error) {
+      console.error("Error fetching previous psychiatrist history:", error);
+      setPreviousPsychiatristData([]);
+      setPsychiatristTotalPages(0);
+      setPsychiatristTotalElements(0);
+    } finally {
+      setPsychiatristLoading(false);
+    }
+  };
+
   // Handle visits page change
   const handleVisitsPageChange = (newPage) => {
     if (selectedPatient) {
@@ -435,6 +819,21 @@ const OpdRRecallPatient = () => {
         hospitalId,
         newPage,
         vitalsPageSize,
+      );
+    }
+  };
+
+  const handlePsychiatristPageChange = (newPage) => {
+    if (selectedPatient) {
+      const hospitalId =
+        selectedPatient.hospitalId ||
+        sessionStorage.getItem("hospitalId") ||
+        localStorage.getItem("hospitalId");
+      fetchPreviousPsychiatristHistory(
+        selectedPatient.patientId,
+        hospitalId,
+        newPage,
+        psychiatristPageSize,
       );
     }
   };
@@ -2622,6 +3021,7 @@ const OpdRRecallPatient = () => {
         );
       }
       setShowClinicalPopup(true);
+      setSelectedHistoryType(historyType);
     } else if (historyType === "previous-vitals") {
       setClinicalPopupType("vitals");
       if (selectedPatient) {
@@ -2637,6 +3037,29 @@ const OpdRRecallPatient = () => {
         );
       }
       setShowClinicalPopup(true);
+      setSelectedHistoryType(historyType);
+    } else if (historyType === "previous-psychiatrist") {
+      setClinicalPopupType("psychiatrist-history");
+      setPreviousPsychiatristData([]);
+      setPsychiatristCurrentPage(0);
+      setPsychiatristTotalPages(0);
+      setPsychiatristTotalElements(0);
+      setSelectedPsychiatristHistory(null);
+      setShowPsychiatristDetailModal(false);
+      if (selectedPatient) {
+        const hospitalId =
+          selectedPatient.hospitalId ||
+          sessionStorage.getItem("hospitalId") ||
+          localStorage.getItem("hospitalId");
+        await fetchPreviousPsychiatristHistory(
+          selectedPatient.patientId,
+          hospitalId,
+          0,
+          psychiatristPageSize,
+        );
+      }
+      setShowClinicalPopup(true);
+      setSelectedHistoryType(historyType);
     } else {
       setSelectedHistoryType(historyType);
     }
@@ -3559,7 +3982,14 @@ const OpdRRecallPatient = () => {
                                 label: "Previous ECG Investigation",
                               },
                               { id: "audit-history", label: "Audit History" },
-                              { id: "psychiatrist", label: "Psychiatrist" },
+                              {
+                                id: "previous-psychiatrist",
+                                label: "Psychiatrist Assessment History",
+                              },
+                              {
+                                id: "psychiatrist",
+                                label: "Psychiatrist Assessment",
+                              },
                             ].map((btn) => (
                               <button
                                 key={btn.id}
@@ -3577,6 +4007,10 @@ const OpdRRecallPatient = () => {
                                   } else if (btn.id === "previous-vitals") {
                                     await handleHistoryTypeClick(
                                       "previous-vitals",
+                                    );
+                                  } else if (btn.id === "previous-psychiatrist") {
+                                    await handleHistoryTypeClick(
+                                      "previous-psychiatrist",
                                     );
                                   } else if (btn.id === "psychiatrist") {
                                     setClinicalPopupType("psychiatrist");
@@ -6581,42 +7015,75 @@ const OpdRRecallPatient = () => {
         {showClinicalPopup && (
           <ClinicalHistoryPopup
             show={showClinicalPopup}
-            onClose={() => setShowClinicalPopup(false)}
+            onClose={() => {
+              setShowClinicalPopup(false);
+              setShowPsychiatristDetailModal(false);
+              setSelectedPsychiatristHistory(null);
+            }}
             onPsychiatristSave={setPsychiatristAssessment}
             psychiatristValue={psychiatristAssessment}
             visitsData={previousVisitsData}
             vitalsData={previousVitalsData}
+            psychiatristHistoryData={previousPsychiatristData}
+            psychiatristHistoryLoading={psychiatristLoading}
+            psychiatristHistoryCurrentPage={psychiatristCurrentPage}
+            psychiatristHistoryTotalPages={psychiatristTotalPages}
+            psychiatristHistoryTotalElements={psychiatristTotalElements}
+            psychiatristHistoryPageSize={psychiatristPageSize}
+            onPsychiatristHistoryPageChange={handlePsychiatristPageChange}
+            selectedPsychiatristHistory={selectedPsychiatristHistory}
+            setSelectedPsychiatristHistory={setSelectedPsychiatristHistory}
+            showPsychiatristDetailModal={showPsychiatristDetailModal}
+            setShowPsychiatristDetailModal={setShowPsychiatristDetailModal}
             popupType={clinicalPopupType}
             currentPage={
               clinicalPopupType === "visits"
                 ? visitsCurrentPage
+                : clinicalPopupType === "psychiatrist-history"
+                  ? psychiatristCurrentPage
                 : vitalsCurrentPage
             }
             totalPages={
               clinicalPopupType === "visits"
                 ? visitsTotalPages
+                : clinicalPopupType === "psychiatrist-history"
+                  ? psychiatristTotalPages
                 : vitalsTotalPages
             }
             totalElements={
               clinicalPopupType === "visits"
                 ? visitsTotalElements
+                : clinicalPopupType === "psychiatrist-history"
+                  ? psychiatristTotalElements
                 : vitalsTotalElements
             }
             pageSize={
-              clinicalPopupType === "visits" ? visitsPageSize : vitalsPageSize
+              clinicalPopupType === "visits"
+                ? visitsPageSize
+                : clinicalPopupType === "psychiatrist-history"
+                  ? psychiatristPageSize
+                  : vitalsPageSize
             }
             onPageChange={
               clinicalPopupType === "visits"
                 ? handleVisitsPageChange
+                : clinicalPopupType === "psychiatrist-history"
+                  ? handlePsychiatristPageChange
                 : handleVitalsPageChange
             }
             onPageSizeChange={
               clinicalPopupType === "visits"
                 ? handleVisitsPageSizeChange
+                : clinicalPopupType === "psychiatrist-history"
+                  ? () => {}
                 : handleVitalsPageSizeChange
             }
             isLoading={
-              clinicalPopupType === "visits" ? visitsLoading : vitalsLoading
+              clinicalPopupType === "visits"
+                ? visitsLoading
+                : clinicalPopupType === "psychiatrist-history"
+                  ? psychiatristLoading
+                  : vitalsLoading
             }
           />
         )}

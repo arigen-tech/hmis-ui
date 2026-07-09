@@ -1116,6 +1116,70 @@ const InpatientAdmission = () => {
                     </div>
                   </div>
                 </div>
+
+                 {/* Emergency Contact Details */}
+                <div className="card mb-4">
+                  <div className="card-header py-3 border-bottom-1">
+                    <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
+                  </div>
+                  <div className="card-body">
+                    <div className="row g-3">
+                      <div className="col-md-4">
+                        <label className="form-label">First Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter First Name"
+                          name="emergencyFirstName"
+                          value={formData.emergencyFirstName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Last Name</label>
+                        <input
+                          type="text"
+                          className="form-control"
+                          placeholder="Enter Last Name"
+                          name="emergencyLastName"
+                          value={formData.emergencyLastName || ""}
+                          onChange={handleChange}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Relation</label>
+                        <select
+                          className="form-select"
+                          name="emergencyRelation"
+                          value={formData.emergencyRelation || ""}
+                          onChange={handleChange}
+                        >
+                          <option value="">Select Relation</option>
+                          {relationOptions.map(option => (
+                            <option key={option} value={option}>{option}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label">Mobile No.</label>
+                        <input
+                          type="text"
+                          className={`form-control ${errors.emergencyMobile ? "is-invalid" : ""}`}
+                          placeholder="Enter Mobile Number"
+                          name="emergencyMobile"
+                          value={formData.emergencyMobile || ""}
+                          maxLength={10}
+                          onChange={(e) => {
+                            if (/^\d*$/.test(e.target.value)) {
+                              handleChange(e);
+                            }
+                          }}
+                        />
+                        {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
+                      </div>
+                    </div>
+                  </div>
+                </div>
                 
                 {/* NEW: Patient Address Section */}
                 <div className="card mb-4">
@@ -2052,69 +2116,7 @@ const InpatientAdmission = () => {
                   </div>
                 </div>
                 
-                {/* Emergency Contact Details */}
-                <div className="card mb-4">
-                  <div className="card-header py-3 border-bottom-1">
-                    <h6 className="mb-0 fw-bold">Emergency Contact Details</h6>
-                  </div>
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-md-4">
-                        <label className="form-label">First Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Enter First Name"
-                          name="emergencyFirstName"
-                          value={formData.emergencyFirstName || ""}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Last Name</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          placeholder="Enter Last Name"
-                          name="emergencyLastName"
-                          value={formData.emergencyLastName || ""}
-                          onChange={handleChange}
-                        />
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Relation</label>
-                        <select
-                          className="form-select"
-                          name="emergencyRelation"
-                          value={formData.emergencyRelation || ""}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Relation</option>
-                          {relationOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
-                          ))}
-                        </select>
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label">Mobile No.</label>
-                        <input
-                          type="text"
-                          className={`form-control ${errors.emergencyMobile ? "is-invalid" : ""}`}
-                          placeholder="Enter Mobile Number"
-                          name="emergencyMobile"
-                          value={formData.emergencyMobile || ""}
-                          maxLength={10}
-                          onChange={(e) => {
-                            if (/^\d*$/.test(e.target.value)) {
-                              handleChange(e);
-                            }
-                          }}
-                        />
-                        {errors.emergencyMobile && <div className="invalid-feedback">{errors.emergencyMobile}</div>}
-                      </div>
-                    </div>
-                  </div>
-                </div>
+               
                 
                 {/* Action Buttons */}
                 <div className="text-center mt-4">
