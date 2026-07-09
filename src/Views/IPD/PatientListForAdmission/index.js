@@ -4,11 +4,13 @@ import { getRequest } from "../../../service/apiService";
 import Pagination from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
 import { useNavigate } from "react-router-dom";
+import { useLocation } from 'react-router-dom';
 
 const PatientListForAdmission = () => {
     const [patientList, setPatientList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const location = useLocation();
     const navigate = useNavigate();
 
     const [searchParams, setSearchParams] = useState({
@@ -197,9 +199,9 @@ const PatientListForAdmission = () => {
     const currentPatients = filteredPatients.slice(indexOfFirstItem, indexOfLastItem);
     const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
-    const handleAdmitPatient = (patientId) => {
-        console.log("Admitting patient:", patientId);
-        showPopup(`Patient admission initiated for ID: ${patientId}`, "success");
+    // Navigate to admission form with patient data
+    const handleAdmitPatient = (patient) => {
+        navigate("/InpatientAdmission", { state: { patientData: patient } });
     };
 
     const handleCancelAdmission = (patientId) => {
@@ -208,7 +210,9 @@ const PatientListForAdmission = () => {
     };
 
     const handleNewAdmission = () => {
-        navigate("/InpatientAdmission");
+        navigate("/PatientSearchForAdmission", {
+        state: { from: "PatientListForAdmission", timestamp: Date.now() }
+    });
     };
 
     if (loading) {
@@ -236,7 +240,7 @@ const PatientListForAdmission = () => {
                         <div className="card-body">
                             {error && (
                                 <div className="alert alert-danger" role="alert">
-{error}
+                                    {error}
                                     <button
                                         type="button"
                                         className="btn btn-sm btn-outline-danger ms-2"
@@ -283,14 +287,14 @@ const PatientListForAdmission = () => {
                                                 type="submit"
                                                 className="btn btn-primary"
                                             >
-Search
+                                                Search
                                             </button>
                                             <button
                                                 type="button"
                                                 className="btn btn-secondary"
                                                 onClick={handleResetSearch}
                                             >
- Reset
+                                                Reset
                                             </button>
                                         </div>
                                         <div className="col-md-3 d-flex align-items-center gap-2">
@@ -301,9 +305,8 @@ Search
                                                     backgroundColor: "#0d6efd",
                                                     color: "white"
                                                 }}
-                                              
                                             >
-                                               + New Admission
+                                                + New Admission
                                             </button>
                                         </div>
                                     </div>
@@ -312,7 +315,7 @@ Search
 
                             {filteredPatients.length === 0 ? (
                                 <div className="alert alert-info" role="alert">
- No patients found matching your search criteria.
+                                    No patients found matching your search criteria.
                                 </div>
                             ) : (
                                 <div className="table-responsive">
@@ -373,17 +376,17 @@ Search
                                                         <div className="d-flex gap-2">
                                                             <button
                                                                 className="btn btn-success btn-sm"
-                                                                onClick={() => handleAdmitPatient(patient.id)}
+                                                                onClick={() => handleAdmitPatient(patient)}
                                                                 title="Admit Patient"
                                                             >
- Admit
+                                                                Admit
                                                             </button>
                                                             <button
                                                                 className="btn btn-danger btn-sm"
                                                                 onClick={() => handleCancelAdmission(patient.id)}
                                                                 title="Cancel Admission"
                                                             >
- Cancel
+                                                                Cancel
                                                             </button>
                                                         </div>
                                                     </td>

@@ -1,5 +1,5 @@
-import { Navigate, Outlet, useLocation, useNavigate } from 'react-router-dom';
-import PageNotFound from '../Components/PageNotFound/PageNotFound';
+import { Navigate, Outlet, useLocation, useNavigate } from "react-router-dom";
+import PageNotFound from "../Components/PageNotFound/PageNotFound";
 
 // List of all valid route paths in your app
 const validRoutes = [
@@ -185,7 +185,7 @@ const validRoutes = [
   "/BloodDonationStatusMaster",
   "/BloodCompatibilityMaster",
   "/BloodFailureReasonMaster",
-   "/BloodComponentMaster",
+  "/BloodComponentMaster",
   "/WardManagement",
   "/PatientRegistrationRadiologyBooking",
   "/RadiologyBookingRegisteredPatient",
@@ -206,7 +206,6 @@ const validRoutes = [
   "/PendingComponentGeneration",
   "/RadiologyPACSStudyList",
   "/BloodUnitStatus",
-
   "/RadiologyTemplateMaster",
   "/PendingListRadiologyReport",
   "/DetailedRadiologyReportPage",
@@ -248,6 +247,12 @@ const validRoutes = [
   "/GynaMaster",
   "/abdm-milestone2",
   "/pendingPrescription",
+  "/PatientSearchForAdmission",
+];
+
+// Routes that should bypass authorization
+const bypassRoutes = [
+  "/PatientSearchForAdmission",
 ];
 
 const NotAuthorized = () => {
@@ -259,7 +264,7 @@ const NotAuthorized = () => {
       <h2>You Are Not Authorized To Access This Page</h2>
       <button
         className="btn btn-primary mt-3"
-        onClick={() => navigate('/dashboard')}
+        onClick={() => navigate("/dashboard")}
       >
         Go Back To Dashboard
       </button>
@@ -267,26 +272,42 @@ const NotAuthorized = () => {
   );
 };
 
-
 const ProtectedRoute = () => {
   const location = useLocation();
   const currentPath = location.pathname;
 
-  const isAuth = sessionStorage.getItem("isTokenValid") || localStorage.getItem("isTokenValid");
-  const allowedUrls = JSON.parse(sessionStorage.getItem("allowedUrls") || "[]");
+  const isAuth =
+    sessionStorage.getItem("isTokenValid") ||
+    localStorage.getItem("isTokenValid");
 
+  const allowedUrls = JSON.parse(
+    sessionStorage.getItem("allowedUrls") || "[]"
+  );
+
+  // Not logged in
   if (!isAuth) {
     return <Navigate to="/" replace />;
   }
 
+  // Route doesn't exist
   if (!validRoutes.includes(currentPath)) {
     return <PageNotFound />;
   }
 
-  if (currentPath === "/dashboard" || allowedUrls.includes(currentPath)) {
+  // Bypass authorization check
+  if (bypassRoutes.includes(currentPath)) {
     return <Outlet />;
   }
 
+  // Normal authorization
+  if (
+    currentPath === "/dashboard" ||
+    allowedUrls.includes(currentPath)
+  ) {
+    return <Outlet />;
+  }
+
+  // Unauthorized
   return <NotAuthorized />;
 };
 

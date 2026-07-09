@@ -4,19 +4,6 @@ import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading";
 
-// API endpoints (configure these in your config)
-// import { 
-//   INPATIENT_ADMISSION_API, 
-//   WARD_API, 
-//   ROOM_API, 
-//   BED_API, 
-//   DOCTOR_API,
-//   MAS_ADMISSION_CATEGORY,
-//   MAS_ADMISSION_TYPE,
-//   MAS_CARE_LEVEL,
-//   MAS_PATIENT_CONDITION
-// } from "../../../config/apiConfig";
-
 const InpatientAdmission = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -208,7 +195,13 @@ const InpatientAdmission = () => {
         mobileNo: patientData.mobileNo || "",
         age: patientData.age || "",
         gender: patientData.gender || "",
-        admissionAdvisedFrom: patientData.department || "OPD - Medicine",
+        admissionAdvisedFrom: patientData.department || "",
+        admissionType: patientData.admissionType || "",
+        admissionSource: patientData.admissionSource || "",
+        // Optionally map care level if it matches one of the care type options
+        admissionCareType: patientData.careLevel === "General" ? "General" :
+                           patientData.careLevel === "Critical" ? "HDU" :
+                           patientData.careLevel === "ICU" ? "ICU" : "",
         // Add more auto-population as needed
       }));
     } else if (patientId) {
