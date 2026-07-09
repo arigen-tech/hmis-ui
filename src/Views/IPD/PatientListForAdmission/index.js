@@ -5,6 +5,7 @@ import Pagination from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from 'react-router-dom';
+import { IPD_PATIENT_WAITING_LIST } from "../../../config/apiConfig";
 
 const PatientListForAdmission = () => {
     const [patientList, setPatientList] = useState([]);
@@ -20,107 +21,36 @@ const PatientListForAdmission = () => {
     });
 
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const itemsPerPage = 10;
 
     const [popupMessage, setPopupMessage] = useState(null);
 
-    const admissionTypeOptions = [
-        { value: "", label: "All Types" },
-        { value: "Planned", label: "Planned" },
-        { value: "Emergency", label: "Emergency" }
-    ];
-
-    const admissionSourceOptions = [
-        { value: "", label: "All Sources" },
-        { value: "OPD", label: "OPD" },
-        { value: "Emergency", label: "Emergency" },
-        { value: "Referral", label: "Referral" }
-    ];
-
-    const careLevelOptions = [
-        { value: "", label: "All Levels" },
-        { value: "GW", label: "General Ward (GW)" },
-        { value: "CW", label: "Critical Ward (CW)" },
-        { value: "ICU", label: "ICU" },
-        { value: "HDU", label: "HDU" },
-        { value: "Private", label: "Private Room" }
-    ];
-
-    const mockPatientData = [
-        {
-            id: 1,
-            patientName: "Ramesh Kumar",
-            mobileNo: "9812345678",
-            age: 45,
-            gender: "M",
-            admissionAdviseDate: "2024-08-15",
-            doctorName: "Dr. Verma",
-            department: "Medicine",
-            ward: "GW",
-            bedNo: "101",
-            admissionType: "Planned",
-            admissionSource: "OPD",
-            careLevel: "General",
-            status: "Pending"
-        },
-        {
-            id: 2,
-            patientName: "Sunita Sharma",
-            mobileNo: "9712345678",
-            age: 32,
-            gender: "F",
-            admissionAdviseDate: "2024-08-15",
-            doctorName: "Dr. Mehta",
-            department: "Gynae",
-            ward: "CW",
-            bedNo: "205",
-            admissionType: "Emergency",
-            admissionSource: "Emergency",
-            careLevel: "Critical",
-            status: "Pending"
-        },
-        {
-            id: 3,
-            patientName: "Mohan Das",
-            mobileNo: "9912345678",
-            age: 60,
-            gender: "M",
-            admissionAdviseDate: "2024-08-14",
-            doctorName: "Dr. Rao",
-            department: "Cardiology",
-            ward: "ICU",
-            bedNo: "ICU-01",
-            admissionType: "Planned",
-            admissionSource: "Referral",
-            careLevel: "ICU",
-            status: "Pending"
-        },
-        {
-            id: 4,
-            patientName: "Anjali Singh",
-            mobileNo: "9812345679",
-            age: 28,
-            gender: "F",
-            admissionAdviseDate: "2024-08-16",
-            doctorName: "Dr. Gupta",
-            department: "Pediatrics",
-            ward: "GW",
-            bedNo: "110",
-            admissionType: "Planned",
-            admissionSource: "OPD",
-            careLevel: "General",
-            status: "Pending"
-        }
-    ];
-
-    const fetchPatientData = async () => {
+    const fetchPatientData = async (page = 1, search = searchParams) => {
         try {
             setLoading(true);
             setError(null);
 
-            await new Promise(resolve => setTimeout(resolve, 1000));
+            const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12;
 
-            setPatientList(mockPatientData);
+            const params = new URLSearchParams({
+                page: page - 1,
+                size: itemsPerPage,
+                hospitalId: hospitalId
+            });
+
+            if (search.mobileNo) params.append("mobileNo", search.mobileNo);
+            if (search.patientName) params.append("patientName", search.patientName);
+
+            const response = await getRequest(`${IPD_PATIENT_WAITING_LIST}?${params.toString()}`);
+
+            if (response.status === 200 && response.response) {
+                setPatientList(response.response.content || []);
+                setTotalItems(response.response.totalElements || 0);
+            } else {
+                setPatientList([]);
+                setTotalItems(0);
+            }
 
         } catch (err) {
             console.error("Error fetching patient data:", err);
@@ -132,8 +62,8 @@ const PatientListForAdmission = () => {
     };
 
     useEffect(() => {
-        fetchPatientData();
-    }, []);
+        fetchPatientData(currentPage, searchParams);
+    }, [currentPage]);
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -156,18 +86,19 @@ const PatientListForAdmission = () => {
     const handleSearch = (e) => {
         e.preventDefault();
         setCurrentPage(1);
-        console.log("Searching with:", searchParams);
+        fetchPatientData(1, searchParams);
         showPopup("Search applied", "success");
     };
 
     const handleResetSearch = () => {
-        setSearchParams({
+        const resetParams = {
             mobileNo: "",
             patientName: "",
             admissionAdviseDate: ""
-        });
+        };
+        setSearchParams(resetParams);
         setCurrentPage(1);
-        fetchPatientData();
+        fetchPatientData(1, resetParams);
         showPopup("Search filters cleared", "info");
     };
 
@@ -181,23 +112,8 @@ const PatientListForAdmission = () => {
         }
     };
 
-    const filteredPatients = patientList.filter(patient => {
-        const matchesMobile = searchParams.mobileNo === "" ||
-            patient.mobileNo.includes(searchParams.mobileNo);
-
-        const matchesName = searchParams.patientName === "" ||
-            patient.patientName.toLowerCase().includes(searchParams.patientName.toLowerCase());
-
-        const matchesDate = searchParams.admissionAdviseDate === "" ||
-            patient.admissionAdviseDate === searchParams.admissionAdviseDate;
-
-        return matchesMobile && matchesName && matchesDate;
-    });
-
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentPatients = filteredPatients.slice(indexOfFirstItem, indexOfLastItem);
-    const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
+    const indexOfFirstItem = (currentPage - 1) * itemsPerPage;
+    const currentPatients = patientList;
 
     // Navigate to admission form with patient data
     const handleAdmitPatient = (patient) => {
@@ -244,7 +160,7 @@ const PatientListForAdmission = () => {
                                     <button
                                         type="button"
                                         className="btn btn-sm btn-outline-danger ms-2"
-                                        onClick={fetchPatientData}
+                                        onClick={() => fetchPatientData(currentPage, searchParams)}
                                     >
                                         Retry
                                     </button>
@@ -313,7 +229,7 @@ const PatientListForAdmission = () => {
                                 </form>
                             </div>
 
-                            {filteredPatients.length === 0 ? (
+                            {totalItems === 0 ? (
                                 <div className="alert alert-info" role="alert">
                                     No patients found matching your search criteria.
                                 </div>
@@ -329,7 +245,7 @@ const PatientListForAdmission = () => {
                                                 <th>Admission Advise Date</th>
                                                 <th>Doctor</th>
                                                 <th>Department</th>
-                                                <th>Ward / Bed</th>
+                                                <th>Ward</th>
                                                 <th>Admission Type</th>
                                                 <th>Admission Source</th>
                                                 <th>Care Level</th>
@@ -338,7 +254,7 @@ const PatientListForAdmission = () => {
                                         </thead>
                                         <tbody>
                                             {currentPatients.map((patient, index) => (
-                                                <tr key={patient.id}>
+                                                <tr key={patient.opdPatientDetailsId || index}>
                                                     <td>{indexOfFirstItem + index + 1}</td>
                                                     <td>
                                                         <div className="d-flex align-items-center">
@@ -347,43 +263,47 @@ const PatientListForAdmission = () => {
                                                             </div>
                                                         </div>
                                                     </td>
-                                                    <td>{patient.mobileNo}</td>
+                                                    <td>{patient.patientMobileNo || patient.mobileNo}</td>
                                                     <td>{patient.age} / {patient.gender}</td>
                                                     <td>{formatDate(patient.admissionAdviseDate)}</td>
                                                     <td>{patient.doctorName}</td>
                                                     <td>{patient.department}</td>
                                                     <td>
                                                         <span className="badge bg-light text-dark">
-                                                            {patient.ward} - {patient.bedNo}
+                                                            {patient.wardName || patient.ward}
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        <span
-                                                            className={`badge ${patient.admissionType === 'Emergency' ? 'bg-danger' : 'bg-primary'}`}
-                                                        >
-                                                            {patient.admissionType}
-                                                        </span>
+                                                        {patient.admissionType ? (
+                                                            <span
+                                                                className={`badge ${patient.admissionType === 'Emergency' ? 'bg-danger' : 'bg-primary'}`}
+                                                            >
+                                                                {patient.admissionType}
+                                                            </span>
+                                                        ) : (
+                                                            ''
+                                                        )}
                                                     </td>
                                                     <td>
                                                         <span className="badge bg-info">
-                                                            {patient.admissionSource}
+                                                            {patient.admissionSource || '-'}
                                                         </span>
                                                     </td>
                                                     <td>
-                                                        {patient.careLevel}
+                                                        {patient.careLevel || patient.careLevelName}
                                                     </td>
                                                     <td>
                                                         <div className="d-flex gap-2">
                                                             <button
                                                                 className="btn btn-success btn-sm"
-                                                                onClick={() => handleAdmitPatient(patient)}
+                                                                onClick={() => handleAdmitPatient(patient.opdPatientDetailsId)}
                                                                 title="Admit Patient"
                                                             >
                                                                 Admit
                                                             </button>
                                                             <button
                                                                 className="btn btn-danger btn-sm"
-                                                                onClick={() => handleCancelAdmission(patient.id)}
+                                                                onClick={() => handleCancelAdmission(patient.opdPatientDetailsId)}
                                                                 title="Cancel Admission"
                                                             >
                                                                 Cancel
@@ -397,9 +317,9 @@ const PatientListForAdmission = () => {
                                 </div>
                             )}
 
-                            {filteredPatients.length > 0 && (
+                            {totalItems > 0 && (
                                 <Pagination
-                                    totalItems={filteredPatients.length}
+                                    totalItems={totalItems}
                                     itemsPerPage={itemsPerPage}
                                     currentPage={currentPage}
                                     onPageChange={setCurrentPage}
