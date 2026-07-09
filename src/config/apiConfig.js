@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-//  export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+ export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
@@ -70,6 +70,8 @@ export const ALL_REPORTS = `${API_HOST}/report`;
 export const OPD_PATIENT = "/patient";
 
 export const FILTER_OPD_DEPT = `OPD`;
+export const FILTER_LAB_DEPT = `LAB`;
+export const FILTER_RADIO_DEPT = `RAD`;
 export const ALL_LAB_HISTORY_REPORT = `${ALL_REPORTS}/lab-histrory`;
 export const OPD_INVOICE_API = `${ALL_REPORTS}/opdInvoice`;
 export const LAB_INVOICE_API = `${ALL_REPORTS}/labInvoice`;
