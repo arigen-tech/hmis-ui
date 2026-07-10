@@ -216,6 +216,7 @@ export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
 export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
 export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
 export const MAS_WARD_GET_ALL = `${MASTERS}/masWard/getAll/0`;
+export const MAS_WARD_GET_ALL_ACTIVE = `${MASTERS}/masWard/getAll/1`;
 export const MAS_WARD_STATUS = `${MASTERS}/masWard/status`;
 export const MAS_WARD_UPDATE = `${MASTERS}/masWard/update`;
 export const MAS_WARD_CREATE = `${MASTERS}/masWard/create`;
