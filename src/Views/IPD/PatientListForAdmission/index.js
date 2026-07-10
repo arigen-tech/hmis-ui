@@ -296,7 +296,7 @@ const PatientListForAdmission = () => {
                                                         <div className="d-flex gap-2">
                                                             <button
                                                                 className="btn btn-success btn-sm"
-                                                                onClick={() => handleAdmitPatient(patient.opdPatientDetailsId)}
+                                                                onClick={() => handleAdmitPatient(patient)}
                                                                 title="Admit Patient"
                                                             >
                                                                 Admit
