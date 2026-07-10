@@ -18,13 +18,14 @@ const Dashboard = () => {
   const [opdSummary, setOpdSummary] = useState({ todayOPD: 0, newReg: 0, revisits: 0 });
   const [labSummary, setLabSummary] = useState({ todayTests: 0, totalVisits: 0 });
   const [radiologySummary, setRadiologySummary] = useState({ totalTests: 0, totalVisits: 0 });
-  
+
   const [genderDistribution, setGenderDistribution] = useState([]);
   const [opdSpecialties, setOpdSpecialties] = useState([]);
   const [topInvestigations, setTopInvestigations] = useState([]);
   const [topRadioInvestigations, setTopRadioInvestigations] = useState([]);
   const [topDiagnosis, setTopDiagnosis] = useState([]);
-  
+  const [topOpdDoctors, setTopOpdDoctors] = useState([]);
+
   const [billingSummary, setBillingSummary] = useState({ todayBilling: "₹0", collectedAmount: "₹0", pendingBilling: "₹0" });
   const [billingStats, setBillingStats] = useState([]);
   const [paymentModes, setPaymentModes] = useState([]);
@@ -58,12 +59,12 @@ const Dashboard = () => {
   useEffect(() => {
     // Trigger animations after mount
     const timer = setTimeout(() => setIsMounted(true), 100);
-    
+
     if (activeTab !== "Other") {
       const { from, to } = calculateDates(activeTab);
       fetchDashboardStats(from, to);
     }
-    
+
     return () => clearTimeout(timer);
   }, [activeTab]);
 
@@ -80,20 +81,30 @@ const Dashboard = () => {
       const res = await getRequest(`${DASHBOARD_STATS_API}?fromDate=${fDate}&toDate=${tDate}`);
       if (res?.response) {
         const stats = res.response;
+
+        const newOpdVisits = stats.TotOPDVisit?.find(v => v.visit_type === "N")?.total_opd_visit || 0;
+        const followUpOpdVisits = stats.TotOPDVisit?.find(v => v.visit_type === "F")?.total_opd_visit || 0;
+        const totalOpdVisits = stats.TotOPDVisit?.reduce((sum, item) => sum + (item.total_opd_visit || 0), 0) || 0;
+        setOpdSummary({ todayOPD: totalOpdVisits, newReg: newOpdVisits, revisits: followUpOpdVisits });
         
-        const opdVisits = stats.TotOPDVisit?.[0]?.total_opd_visit || 0;
-        const newVisits = stats.TotVisit?.find(v => v.visit_type === "N")?.total_visits || 0;
-        const followUpVisits = stats.TotVisit?.find(v => v.visit_type === "F")?.total_visits || 0;
-        setOpdSummary({ todayOPD: opdVisits, newReg: newVisits, revisits: followUpVisits });
-        
+        const newLabVisits = stats.TotLabVisit?.find(v => v.visit_type === "N")?.total_lab_visit || 0;
+        const followUpLabVisits = stats.TotLabVisit?.find(v => v.visit_type === "F")?.total_lab_visit || 0;
+        const totalLabVisits = stats.TotLabVisit?.reduce((sum, item) => sum + (item.total_lab_visit || 0), 0) || 0;
         setLabSummary({
-          todayTests: stats.TotLabTest?.[0]?.count || 0,
-          totalVisits: stats.TotTLabVisit?.[0]?.total_lab_visit || 0
+          todayTests: stats.TotLabTest?.[0]?.total_lab_test || 0,
+          totalVisits: totalLabVisits,
+          newReg: newLabVisits,
+          revisits: followUpLabVisits
         });
 
+        const newRadioVisits = stats.TotRadioVisit?.find(v => v.visit_type === "N")?.total_radio_visit || 0;
+        const followUpRadioVisits = stats.TotRadioVisit?.find(v => v.visit_type === "F")?.total_radio_visit || 0;
+        const totalRadioVisits = stats.TotRadioVisit?.reduce((sum, item) => sum + (item.total_radio_visit || 0), 0) || 0;
         setRadiologySummary({
-          totalTests: stats.TotRadoTest?.[0]?.count || 0,
-          totalVisits: stats.TotRadiovisit?.[0]?.total_radio_visit || 0
+          totalTests: stats.TotRadTest?.[0]?.total_rad_test || 0,
+          totalVisits: totalRadioVisits,
+          newReg: newRadioVisits,
+          revisits: followUpRadioVisits
         });
 
         setGenderDistribution(stats.GenderWiseVisit || []);
@@ -106,7 +117,7 @@ const Dashboard = () => {
         // Top 10 Lab Investigations
         setTopInvestigations((stats.TopLabInvestigation || []).slice(0, 10).map(i => ({
           name: i.investigation_name,
-          count: i.total_count
+          count: i.investigation_count
         })));
 
         // Top 10 Radiology Investigations
@@ -120,7 +131,7 @@ const Dashboard = () => {
           // { investigation_name: "X-Ray Knee", total_count: 10 }
         ];
         const radioDataToUse = radioApiData.length > 0 ? radioApiData : dummyRadioData;
-        
+
         setTopRadioInvestigations(radioDataToUse.slice(0, 10).map(i => ({
           name: i.investigation_name,
           count: i.total_count
@@ -130,13 +141,18 @@ const Dashboard = () => {
           name: d.icd_name,
           count: d.diagnosis_count
         })));
+
+        setTopOpdDoctors((stats.opdDoctorWiseStats || []).map(d => ({
+          name: d.doctor_name,
+          count: d.total_visits
+        })));
       }
 
       const financeRes = await getRequest(`${DASHBOARD_BILLING_FINANCE_API}?fromDate=${fDate}&toDate=${tDate}`);
       if (financeRes?.response) {
         const billByCat = financeRes.response.BillbyServiceCat || [];
         const paymentModesRes = financeRes.response.PaymentModeWisePercentage || [];
-        
+
         const totalBillingNum = billByCat.reduce((sum, item) => sum + item.total_billing, 0);
         const collectedNum = paymentModesRes.reduce((sum, item) => sum + item.total_amount, 0);
         const pendingNum = totalBillingNum - collectedNum;
@@ -273,21 +289,21 @@ const Dashboard = () => {
           </div>
           {activeTab === "Other" && (
             <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
-              <input 
-                type="date" 
-                value={customFromDate} 
+              <input
+                type="date"
+                value={customFromDate}
                 onChange={(e) => setCustomFromDate(e.target.value)}
                 style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.8rem', background: 'var(--card-bg)', color: 'var(--text-dark)' }}
               />
               <span style={{ fontSize: '0.8rem', color: 'var(--text-muted)' }}>to</span>
-              <input 
-                type="date" 
-                value={customToDate} 
+              <input
+                type="date"
+                value={customToDate}
                 onChange={(e) => setCustomToDate(e.target.value)}
                 style={{ padding: '0.4rem', borderRadius: '6px', border: '1px solid var(--border-color)', fontSize: '0.8rem', background: 'var(--card-bg)', color: 'var(--text-dark)' }}
               />
-              <button 
-                className="filter-btn active" 
+              <button
+                className="filter-btn active"
                 onClick={handleCustomDateFetch}
                 style={{ padding: '0.4rem 1rem' }}
               >
@@ -445,7 +461,7 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
-                {opdSpecialties.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
+                {opdSpecialties.length === 0 && <div style={{ width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>No data</div>}
               </div>
             </div>
 
@@ -538,7 +554,7 @@ const Dashboard = () => {
                   </div>
                 );
               })}
-              {topInvestigations.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
+              {topInvestigations.length === 0 && <div style={{ width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>No data</div>}
             </div>
           </div>
         </div>
@@ -567,7 +583,7 @@ const Dashboard = () => {
                   </div>
                 );
               })}
-              {topRadioInvestigations.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
+              {topRadioInvestigations.length === 0 && <div style={{ width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>No data</div>}
             </div>
           </div>
         </div>
@@ -595,7 +611,36 @@ const Dashboard = () => {
                   </div>
                 );
               })}
-              {topDiagnosis.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
+              {topDiagnosis.length === 0 && <div style={{ width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>No data</div>}
+            </div>
+          </div>
+        </div>
+
+        {/* Top 10 OPD Doctors */}
+        <div className="glass-card span-6">
+          <div className="card-title-bar">
+            <h5><i className="icofont-doctor text-accent" /> Top OPD Doctors</h5>
+          </div>
+          <div className="card-body-content">
+            <div className="vertical-bar-chart">
+              {topOpdDoctors.map((doc, idx) => {
+                const maxDoc = topOpdDoctors.reduce((max, d) => Math.max(max, d.count), 1);
+                const heightPercent = maxDoc > 0 ? (doc.count / maxDoc) * 100 : 0;
+                return (
+                  <div className="vertical-bar-item" key={idx}>
+                    <div className="vertical-bar-value">{doc.count}</div>
+                    <div className="vertical-bar-container">
+                      <div
+                        className="vertical-bar-fill gradient-fill-teal"
+                        style={{ height: isMounted ? `${heightPercent}%` : "0%" }}
+                        title={`${doc.name}: ${doc.count}`}
+                      />
+                    </div>
+                    <div className="vertical-bar-label" title={doc.name}>{doc.name.substring(0, 10)}</div>
+                  </div>
+                );
+              })}
+              {topOpdDoctors.length === 0 && <div style={{ width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>No data</div>}
             </div>
           </div>
         </div>
@@ -628,7 +673,7 @@ const Dashboard = () => {
                     </div>
                   );
                 })}
-                {billingStats.length === 0 && <div style={{width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px"}}>No data</div>}
+                {billingStats.length === 0 && <div style={{ width: "100%", textAlign: "center", color: "var(--text-muted)", marginTop: "20px" }}>No data</div>}
               </div>
             </div>
 

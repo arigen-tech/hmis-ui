@@ -248,6 +248,11 @@ const validRoutes = [
   "/abdm-milestone2",
   "/pendingPrescription",
   "/PatientSearchForAdmission",
+  "/IPDTransferReason",
+  "/IPDServiceSubcategory",
+  "/IPDServiceCategory",
+  "/PatientDischargeCondition",
+  "/PatientDischargeReason",
 ];
 
 // Routes that should bypass authorization
