@@ -111,6 +111,12 @@ const PatientSearchForAdmission = () => {
                     <div className="border-0 mb-4">
                         <div className="card-header py-3 no-bg bg-transparent d-flex align-items-center px-0 justify-content-between border-bottom flex-wrap">
                             <h3 className="fw-bold mb-0">Search Patient for Admission</h3>
+                            <button
+                                className="btn btn-secondary ms-auto"
+                                onClick={() => navigate(-1)}
+                            >
+                                <i className="icofont-arrow-left me-1"></i> Back
+                            </button>
                         </div>
                     </div>
                 </div>
