@@ -69,6 +69,7 @@ export const OPEN_BALANCE = "/openingBalanceEntry";
 export const ALL_REPORTS = `${API_HOST}/report`;
 export const OPD_PATIENT = "/patient";
 
+export const FILTER_WARD_DEPT = `WARD`;
 export const FILTER_OPD_DEPT = `OPD`;
 export const FILTER_LAB_DEPT = `LAB`;
 export const FILTER_RADIO_DEPT = `RAD`;

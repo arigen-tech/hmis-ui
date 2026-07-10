@@ -4,7 +4,8 @@ import LoadingScreen from "../../../Components/Loading";
 import Pagination from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
 import { useLocation } from 'react-router-dom';
-
+import { postRequest } from "../../../service/apiService";
+import { FOLLOWUP_PATIENTS_LIST } from "../../../config/apiConfig";
 
 const PatientSearchForAdmission = () => {
     const location = useLocation();
@@ -23,50 +24,8 @@ const PatientSearchForAdmission = () => {
     const [patients, setPatients] = useState([]);
     const [searchPerformed, setSearchPerformed] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [totalItems, setTotalItems] = useState(0);
     const itemsPerPage = 5;
-
-    const mockPatientData = [
-        {
-            id: 1,
-            fullName: "Ramesh Kumar",
-            patientMobileNumber: "9812345678",
-            uhidNo: "UHID001",
-            patientAge: 45,
-            gender: "M",
-            patientEmailId: "ramesh.kumar@example.com",
-            patientAbhaId: "12-3456-7890-1234",
-        },
-        {
-            id: 2,
-            fullName: "Sunita Sharma",
-            patientMobileNumber: "9712345678",
-            uhidNo: "UHID002",
-            patientAge: 32,
-            gender: "F",
-            patientEmailId: "sunita.sharma@example.com",
-            patientAbhaId: "",
-        },
-        {
-            id: 3,
-            fullName: "Mohan Das",
-            patientMobileNumber: "9912345678",
-            uhidNo: "UHID003",
-            patientAge: 60,
-            gender: "M",
-            patientEmailId: "",
-            patientAbhaId: "23-4567-8901-2345",
-        },
-        {
-            id: 4,
-            fullName: "Anjali Singh",
-            patientMobileNumber: "9812345679",
-            uhidNo: "UHID004",
-            patientAge: 28,
-            gender: "F",
-            patientEmailId: "anjali.singh@example.com",
-            patientAbhaId: "",
-        },
-    ];
 
     const showPopup = (message, type = "info") => {
         setPopupMessage({
@@ -81,32 +40,30 @@ const PatientSearchForAdmission = () => {
         setFormData((prev) => ({ ...prev, [name]: value }));
     };
 
-    const handleSearch = async () => {
+    const handleSearch = async (page = 1) => {
         setLoading(true);
-        setCurrentPage(1);
+        setCurrentPage(page);
         try {
-            // Simulated API delay - replace with real API call later
-            await new Promise((resolve) => setTimeout(resolve, 500));
-
-            const filtered = mockPatientData.filter((patient) => {
-                const matchesMobile =
-                    formData.mobileNo === "" ||
-                    patient.patientMobileNumber.includes(formData.mobileNo);
-
-                const matchesName =
-                    formData.patientName === "" ||
-                    patient.fullName
-                        .toLowerCase()
-                        .includes(formData.patientName.toLowerCase());
-
-                return matchesMobile && matchesName;
-            });
-
-            setPatients(filtered);
-            setSearchPerformed(true);
-
-            if (filtered.length === 0) {
-                showPopup("No patients found matching your search criteria", "info");
+            const payload = {
+                mobileNo: formData.mobileNo || null,
+                patientName: formData.patientName || null
+            };
+            const response = await postRequest(`${FOLLOWUP_PATIENTS_LIST}?page=${page - 1}&size=${itemsPerPage}`, payload);
+            
+            if (response?.response) {
+                const pageData = response.response;
+                setPatients(pageData.content || []);
+                setTotalItems(pageData.totalElements || 0);
+                setSearchPerformed(true);
+                
+                if (!pageData.content || pageData.content.length === 0) {
+                    showPopup("No patients found matching your search criteria", "info");
+                }
+            } else {
+                setPatients([]);
+                setTotalItems(0);
+                setSearchPerformed(true);
+                showPopup("No patients found", "info");
             }
         } catch (error) {
             console.error("Error searching patients:", error);
@@ -121,20 +78,19 @@ const PatientSearchForAdmission = () => {
         setPatients([]);
         setSearchPerformed(false);
         setCurrentPage(1);
+        setTotalItems(0);
     };
 
     const handleFormSubmit = (e) => {
         e.preventDefault();
-        handleSearch();
+        handleSearch(1);
     };
 
     const handleProceedForAdmission = (patient) => {
-        navigate("/InpatientAdmission")
+        navigate("/InpatientAdmission", { state: { patientData: patient } });
     };
 
-    const indexOfLastItem = currentPage * itemsPerPage;
-    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-    const currentItems = patients.slice(indexOfFirstItem, indexOfLastItem);
+    const currentItems = patients;
 
     if (loading) {
         return <LoadingScreen />;
@@ -223,15 +179,17 @@ const PatientSearchForAdmission = () => {
                                                         </tr>
                                                     </thead>
                                                     <tbody>
-                                                        {currentItems.map((patient) => (
-                                                            <tr key={patient.id} className="table-row-hover">
-                                                                <td>{patient.fullName}</td>
-                                                                <td>{patient.patientMobileNumber}</td>
-                                                                <td>{patient.uhidNo}</td>
-                                                                <td>{patient.patientAge}</td>
-                                                                <td>{patient.gender}</td>
-                                                                <td>{patient.patientEmailId}</td>
-                                                                <td>{patient.patientAbhaId || "N/A"}</td>
+                                                        {currentItems.map((patient) => {
+                                                            const fullName = [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(" ");
+                                                            return (
+                                                            <tr key={patient.patientId || patient.id || patient.uhidNo} className="table-row-hover">
+                                                                <td>{fullName || patient.patientName || patient.fullName || "N/A"}</td>
+                                                                <td>{patient.mobileNo || patient.patientMobileNumber || "N/A"}</td>
+                                                                <td>{patient.uhidNo || patient.uhid || "N/A"}</td>
+                                                                <td>{patient.age || patient.patientAge || "N/A"}</td>
+                                                                <td>{patient.gender || "N/A"}</td>
+                                                                <td>{patient.email || patient.emailId || patient.patientEmailId || "N/A"}</td>
+                                                                <td>{patient.abhaNo || patient.abhaId || patient.patientAbhaId || "N/A"}</td>
                                                                 <td>
                                                                     <button
                                                                         type="button"
@@ -244,7 +202,7 @@ const PatientSearchForAdmission = () => {
                                                                     </button>
                                                                 </td>
                                                             </tr>
-                                                        ))}
+                                                        )})}
                                                     </tbody>
                                                 </table>
                                             </div>
@@ -267,10 +225,10 @@ const PatientSearchForAdmission = () => {
 
                                 {searchPerformed && patients.length > 0 && (
                                     <Pagination
-                                        totalItems={patients.length}
+                                        totalItems={totalItems}
                                         itemsPerPage={itemsPerPage}
                                         currentPage={currentPage}
-                                        onPageChange={setCurrentPage}
+                                        onPageChange={handleSearch}
                                     />
                                 )}
                             </div>

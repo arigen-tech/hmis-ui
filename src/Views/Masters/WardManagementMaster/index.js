@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_WARD_CATEGORY_GET_ALL, MAS_WARD_GET_ALL, MAS_WARD_STATUS, MAS_WARD_UPDATE, MAS_WARD_CREATE, MAS_WARD_GET_BY_ID, MAS_CARE_LEVEL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
+import { MAS_WARD_CATEGORY_GET_ALL, MAS_WARD_GET_ALL, MAS_WARD_STATUS, MAS_WARD_UPDATE, MAS_WARD_CREATE, MAS_WARD_GET_BY_ID, MAS_CARE_LEVEL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT } from "../../../config/apiConfig";
 
 
 const WardManagement = () => {
@@ -99,7 +99,7 @@ const WardManagement = () => {
 
   const fetchDepartmentOptions = async () => {
     try {
-      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_WARD_DEPT}`);
       const list = Array.isArray(data?.response) ? data.response : [];
       setDepartmentOptions([
         { value: "", label: "Select Department" },
