@@ -13,8 +13,10 @@ import {
   CANCEL_APPOINTMENT,
   GET_DOCTOR_SESSION,
   RESCHEDULE_APPOINTMENT,
-  FILTER_OPD_DEPT,
   GET_TOKENS,
+  FILTER_LAB_DEPT,
+  FILTER_RADIO_DEPT,
+  FILTER_OPD_DEPT,
 } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -61,60 +63,168 @@ const formatTimeToHHMM = (timeString) => {
   return timeString.substring(0, 5);
 };
 
-const formatDateToDDMMYYYY = (dateInput) => {
-  if (!dateInput) return "";
+const MONTH_NAMES = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+];
 
-  try {
-    const date = new Date(dateInput);
+const parseAppointmentDateTime = (dateInput) => {
+  if (!dateInput) return null;
 
-    if (isNaN(date.getTime())) return "";
-
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0"); // month is 0-based
-    const year = date.getFullYear();
-
-    return `${day}/${month}/${year}`;
-  } catch (e) {
-    return "";
+  if (dateInput instanceof Date) {
+    return isNaN(dateInput.getTime()) ? null : dateInput;
   }
+
+  const value = String(dateInput).trim();
+
+  const ddmmyyyyMatch = value.match(
+    /^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2}))?$/,
+  );
+
+  if (ddmmyyyyMatch) {
+    const [, day, month, year, hours = "00", minutes = "00"] = ddmmyyyyMatch;
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes),
+      0,
+      0,
+    );
+
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const yyyyMmDdMatch = value.match(
+    /^(\d{4})-(\d{2})-(\d{2})(?:[T\s](\d{2}):(\d{2})(?::(\d{2}))?)?$/,
+  );
+
+  if (yyyyMmDdMatch) {
+    const [, year, month, day, hours = "00", minutes = "00", seconds = "00"] =
+      yyyyMmDdMatch;
+    const parsed = new Date(
+      Number(year),
+      Number(month) - 1,
+      Number(day),
+      Number(hours),
+      Number(minutes),
+      Number(seconds),
+      0,
+    );
+
+    return isNaN(parsed.getTime()) ? null : parsed;
+  }
+
+  const fallback = new Date(value);
+  return isNaN(fallback.getTime()) ? null : fallback;
+};
+
+const formatDateForDisplay = (dateString) => {
+  const date = parseAppointmentDateTime(dateString);
+
+  if (!date) return "";
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = MONTH_NAMES[date.getMonth()];
+  const year = date.getFullYear();
+
+  return `${day}-${month}-${year}`;
+};
+
+const formatDateToDDMMYYYY = (dateInput) => {
+  const date = parseAppointmentDateTime(dateInput);
+
+  if (!date) return "";
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${day}/${month}/${year}`;
+};
+
+const getAppointmentIsoDate = (dateInput) => {
+  const date = parseAppointmentDateTime(dateInput);
+
+  if (!date) return "";
+
+  const day = String(date.getDate()).padStart(2, "0");
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const year = date.getFullYear();
+
+  return `${year}-${month}-${day}`;
+};
+
+const getAppointmentTimeFromDateString = (dateInput) => {
+  const date = parseAppointmentDateTime(dateInput);
+
+  if (!date) return "";
+
+  const hours = String(date.getHours()).padStart(2, "0");
+  const minutes = String(date.getMinutes()).padStart(2, "0");
+
+  return `${hours}:${minutes}`;
 };
 
 const formatAppointmentTime = (start, end) => {
-  if (!start || !end) return "N/A";
+  if (!start && !end) return "";
 
   const startTime = formatTimeToHHMM(start);
   const endTime = formatTimeToHHMM(end);
 
-  return `${startTime}-${endTime}`;
+  if (startTime && endTime) return `${startTime}-${endTime}`;
+  return startTime || endTime || "";
 };
 
-const formatDateForDisplay = (dateString) => {
-  if (!dateString) return "";
-  try {
-    const date = new Date(dateString);
-    // Use UTC methods
-    const day = String(date.getUTCDate()).padStart(2, "0");
-    const monthNames = [
-      "Jan",
-      "Feb",
-      "Mar",
-      "Apr",
-      "May",
-      "Jun",
-      "Jul",
-      "Aug",
-      "Sep",
-      "Oct",
-      "Nov",
-      "Dec",
-    ];
-    const month = monthNames[date.getUTCMonth()];
-    const year = date.getUTCFullYear();
-    return `${day}-${month}-${year}`;
-  } catch (error) {
-    return "";
+const APPOINTMENT_TYPE_OPTIONS = [
+  { value: FILTER_OPD_DEPT, label: "OPD" },
+  { value: FILTER_LAB_DEPT, label: "Laboratory" },
+  { value: FILTER_RADIO_DEPT, label: "Radiology" },
+];
+
+const getAppointmentStatusLabel = (status) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  switch (normalizedStatus) {
+    case "c":
+      return "Cancelled";
+    case "n":
+      return "Pending";
+    case "y":
+      return "Completed";
+    default:
+      return status ? String(status) : "Unknown";
   }
 };
+
+const getAppointmentStatusBadgeClass = (status) => {
+  const normalizedStatus = String(status || "").trim().toLowerCase();
+
+  switch (normalizedStatus) {
+    case "c":
+      return "bg-danger";
+    case "n":
+      return "bg-warning text-dark";
+    case "y":
+      return "bg-success";
+    default:
+      return "bg-secondary";
+  }
+};
+
+const isCancelledAppointment = (status) =>
+  String(status || "").trim().toLowerCase() === "c";
 
 const BookingAppointmentHistory = () => {
   // UI States
@@ -125,6 +235,9 @@ const BookingAppointmentHistory = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [reportData, setReportData] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [selectedDeptTypeCode, setSelectedDeptTypeCode] = useState(
+    FILTER_OPD_DEPT,
+  );
 
   // Reschedule Popup States
   const [showReschedulePopup, setShowReschedulePopup] = useState(false);
@@ -153,6 +266,7 @@ const BookingAppointmentHistory = () => {
   const [loadingReasons, setLoadingReasons] = useState(false);
   const [patientToCancel, setPatientToCancel] = useState(null);
   const [initialLoading, setInitialLoading] = useState(true);
+  const [isOpdReschedule, setIsOpdReschedule] = useState(true);
 
   // Functionality States
   const [newDate, setNewDate] = useState("");
@@ -244,11 +358,12 @@ useEffect(() => {
 
     setSearchLoading(true);
     setShowReport(false);
+    setCurrentPage(1);
 
     try {
       const hospitalId = sessionStorage.getItem("hospitalId");
       const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${FILTER_OPD_DEPT}&includeAllHistory=false`,
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${selectedDeptTypeCode}&includeAllHistory=false`,
       );
 
       if (res.status === 200) {
@@ -268,52 +383,29 @@ useEffect(() => {
         const transformedData = appointments.map((appointment, index) => {
           const sourceDateTime =
             appointment.appointmentStartTime || appointment.appointmentDate;
+          const isOpdAppointment =
+            String(selectedDeptTypeCode || "").toUpperCase() ===
+            FILTER_OPD_DEPT;
 
-          const appointmentSlot = formatAppointmentTime(
-            appointment.appointmentStartTime,
-            appointment.appointmentEndTime,
-          );
+          const appointmentSlot =
+            isOpdAppointment
+              ? formatAppointmentTime(
+                  appointment.appointmentStartTime,
+                  appointment.appointmentEndTime,
+                ) ||
+                getAppointmentTimeFromDateString(appointment.appointmentDate) ||
+                "N/A"
+              : "N/A";
 
-          let displayDate = "N/A";
-          let shortDate = "";
+          const displayDate =
+            formatDateForDisplay(sourceDateTime) ||
+            formatDateForDisplay(appointment.appointmentDate) ||
+            "N/A";
 
-          if (sourceDateTime) {
-            try {
-              const date = new Date(sourceDateTime);
-              if (!isNaN(date.getTime())) {
-                const day = String(date.getUTCDate()).padStart(2, "0");
-                const monthNames = [
-                  "Jan",
-                  "Feb",
-                  "Mar",
-                  "Apr",
-                  "May",
-                  "Jun",
-                  "Jul",
-                  "Aug",
-                  "Sep",
-                  "Oct",
-                  "Nov",
-                  "Dec",
-                ];
-                const month = monthNames[date.getUTCMonth()];
-                const year = date.getUTCFullYear();
-                displayDate = `${day}-${month}-${year}`;
-                shortDate = date.toISOString().split("T")[0];
-              }
-            } catch (error) {
-              console.warn("Error parsing date:", error);
-            }
-          }
-
-          if (displayDate === "N/A" && appointment.appointmentDate) {
-            displayDate = formatDateForDisplay(appointment.appointmentDate);
-            if (appointment.appointmentDate.includes("T")) {
-              shortDate = appointment.appointmentDate.split("T")[0];
-            } else {
-              shortDate = appointment.appointmentDate;
-            }
-          }
+          const shortDate =
+            getAppointmentIsoDate(sourceDateTime) ||
+            getAppointmentIsoDate(appointment.appointmentDate) ||
+            "";
 
           return {
             id:
@@ -330,9 +422,14 @@ useEffect(() => {
               mobileNumber.trim(),
             patientAge: appointment.age || appointment.patientAge || "N/A",
             appointmentDate: displayDate,
-            doctorName: appointment.doctorName || "Unknown Doctor",
+            doctorName: appointment.doctorName || "N/A",
             departmentName:
               appointment.departmentName || appointment.speciality || "N/A",
+            visitStatus: appointment.visitStatus || "",
+            statusLabel: getAppointmentStatusLabel(appointment.visitStatus),
+            statusBadgeClass: getAppointmentStatusBadgeClass(
+              appointment.visitStatus,
+            ),
             appointmentSlot: appointmentSlot,
             originalDoctorId: appointment.doctorId || 0,
             originalDepartmentId: appointment.departmentId || 0,
@@ -342,6 +439,8 @@ useEffect(() => {
             tokenNo: appointment.tokenNo,
             doctorId: appointment.doctorId,
             departmentId: appointment.departmentId,
+            appointmentTypeCode: selectedDeptTypeCode,
+            isOpdAppointment,
             displayDate: displayDate,
             displayTime: appointmentSlot,
             shortDate: shortDate,
@@ -390,6 +489,11 @@ useEffect(() => {
   // Open Reschedule Popup
   const handleReschedule = (patientData) => {
     setSelectedPatient(patientData);
+    const isOpdAppointment =
+      patientData?.isOpdAppointment ??
+      String(patientData?.appointmentTypeCode || "").toUpperCase() ===
+        FILTER_OPD_DEPT;
+    setIsOpdReschedule(isOpdAppointment);
 
     const formatToISODate = (dateInput) => {
       if (!dateInput) return getTodayDate();
@@ -418,7 +522,7 @@ useEffect(() => {
       department: patientData.departmentName,
       doctor: patientData.doctorName,
       date: initialDate,
-      session: patientData.originalSessionId || "",
+      session: isOpdAppointment ? patientData.originalSessionId || "" : "",
       doctorName: patientData.doctorName,
       departmentName: patientData.departmentName,
       sessionName:
@@ -427,7 +531,7 @@ useEffect(() => {
     });
 
     setNewDate(initialDate);
-    setNewSession(patientData.originalSessionId || "");
+    setNewSession(isOpdAppointment ? patientData.originalSessionId || "" : "");
     setSelectedSlot(null);
     setSelectedToken(null);
     setShowTimeSlots(false);
@@ -479,7 +583,7 @@ useEffect(() => {
     setSelectedToken(null);
     setShowTimeSlots(false);
 
-    if (newSession && selectedPatient) {
+    if (isOpdReschedule && newSession && selectedPatient) {
       await fetchTokensForDate(cleanDate);
     }
   };
@@ -632,7 +736,7 @@ useEffect(() => {
 
   // Submit Reschedule
   const submitReschedule = async () => {
-    if (!selectedSlot && !selectedToken) {
+    if (isOpdReschedule && !selectedSlot && !selectedToken) {
       Swal.fire({
         icon: "warning",
         title: `${NO_TIME_SLOT_SELECTED}`,
@@ -643,12 +747,15 @@ useEffect(() => {
     }
 
     const slotToUse = selectedSlot || selectedToken;
+    const appointmentLabel = isOpdReschedule
+      ? `${newDate} at ${slotToUse.slot}`
+      : `${newDate}`;
 
     const result = await Swal.fire({
       title: `${CONFIRM_RESCHEDULE_TITLE}`,
       html: `
-        <p>Reschedule ${selectedPatient.patientName} to ${newDate} at ${slotToUse.slot}?</p>
-        <p><strong>Current:</strong> ${selectedPatient.displayDate} at ${selectedPatient.displayTime}</p>
+        <p>Reschedule ${selectedPatient.patientName} to ${appointmentLabel}?</p>
+        <p><strong>Current:</strong> ${selectedPatient.displayDate}${selectedPatient.displayTime ? ` at ${selectedPatient.displayTime}` : ""}</p>
       `,
       icon: "question",
       showCancelButton: true,
@@ -659,19 +766,27 @@ useEffect(() => {
     if (result.isConfirmed) {
       Swal.showLoading();
       try {
-        // Correctly create ISO strings for the backend
-        const appointmentDateInstant = `${newDate}T${slotToUse.start}:00Z`;
-        const startTimeInstant = `${newDate}T${slotToUse.start}:00Z`;
-        const endTimeInstant = `${newDate}T${slotToUse.end}:00Z`;
+        const appointmentDateInstant = isOpdReschedule
+          ? `${newDate}T${slotToUse.start}:00Z`
+          : `${newDate}T00:00:00Z`;
+        const startTimeInstant = isOpdReschedule
+          ? `${newDate}T${slotToUse.start}:00Z`
+          : null;
+        const endTimeInstant = isOpdReschedule
+          ? `${newDate}T${slotToUse.end}:00Z`
+          : null;
 
         const reschedulePayload = {
           visitId: selectedPatient.visitId,
-          tokenNumber: slotToUse.tokenNo,
-          sessionId: parseInt(newSession, 10),
+          tokenNumber: isOpdReschedule ? slotToUse.tokenNo : null,
           visitDate: appointmentDateInstant,
           appointmentStartTime: startTimeInstant,
           appointmentEndTime: endTimeInstant,
         };
+
+        if (isOpdReschedule) {
+          reschedulePayload.sessionId = parseInt(newSession, 10);
+        }
 
         const res = await postRequest(
           RESCHEDULE_APPOINTMENT,
@@ -802,7 +917,7 @@ useEffect(() => {
             </div>
             <div className="card-body">
               {searchLoading && <LoadingScreen />}
-              <div className="row mb-4">
+                <div className="row mb-4">
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Mobile Number</label>
                   <input
@@ -813,6 +928,23 @@ useEffect(() => {
                     onChange={(e) => setMobileNumber(e.target.value)}
                     maxLength="10"
                   />
+                </div>
+
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">
+                    Appointment Type
+                  </label>
+                  <select
+                    className="form-select"
+                    value={selectedDeptTypeCode}
+                    onChange={(e) => setSelectedDeptTypeCode(e.target.value)}
+                  >
+                    {APPOINTMENT_TYPE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
+                  </select>
                 </div>
 
                 <div className="col-md-4 d-flex align-items-end">
@@ -866,6 +998,7 @@ useEffect(() => {
                                 <th>Patient Age</th>
                                 <th>Doctor Name</th>
                                 <th>Department Name</th>
+                                <th>Status</th>
                                 <th>Appointment Date</th>
                                 <th>Appointment Slot</th>
                                 <th>Actions</th>
@@ -879,6 +1012,13 @@ useEffect(() => {
                                   <td>{row.patientAge}</td>
                                   <td>{row.doctorName}</td>
                                   <td>{row.departmentName}</td>
+                                  <td>
+                                    <span
+                                      className={`badge ${row.statusBadgeClass}`}
+                                    >
+                                      {row.statusLabel}
+                                    </span>
+                                  </td>
                                   <td>{row.appointmentDate}</td>
                                   <td>{row.appointmentSlot}</td>
                                   <td>
@@ -887,13 +1027,21 @@ useEffect(() => {
                                         type="button"
                                         className="btn btn-primary btn-sm"
                                         onClick={() => handleReschedule(row)}
+                                        disabled={isCancelledAppointment(
+                                          row.visitStatus,
+                                        )}
                                       >
-                                        Reschedule
+                                        {row.isOpdAppointment
+                                          ? "Reschedule"
+                                          : "Reschedule Date"}
                                       </button>
                                       <button
                                         type="button"
                                         className="btn btn-danger btn-sm"
                                         onClick={() => handleCancel(row)}
+                                        disabled={isCancelledAppointment(
+                                          row.visitStatus,
+                                        )}
                                       >
                                         Cancel
                                       </button>
@@ -966,12 +1114,10 @@ useEffect(() => {
                     <div className="row">
                       <div className="col-md-6">
                         <p>
-                          <strong>Patient:</strong>{" "}
-                          {selectedPatient.patientName}
+                          <strong>Patient:</strong> {selectedPatient.patientName}
                         </p>
                         <p>
-                          <strong>Mobile:</strong>{" "}
-                          {selectedPatient.mobileNumber}
+                          <strong>Mobile:</strong> {selectedPatient.mobileNumber}
                         </p>
                         <p>
                           <strong>Age:</strong> {selectedPatient.patientAge}
@@ -982,10 +1128,12 @@ useEffect(() => {
                           <strong>Current Date:</strong>{" "}
                           {selectedPatient.appointmentDate}
                         </p>
-                        <p>
-                          <strong>Current Slot:</strong>{" "}
-                          {selectedPatient.appointmentSlot}
-                        </p>
+                        {isOpdReschedule && (
+                          <p>
+                            <strong>Current Slot:</strong>{" "}
+                            {selectedPatient.appointmentSlot}
+                          </p>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -997,7 +1145,6 @@ useEffect(() => {
                   </div>
                   <div className="card-body">
                     <div className="row g-3">
-                      {/* Fixed Department (Read-only) */}
                       <div className="col-md-6">
                         <label className="form-label">Department</label>
                         <input
@@ -1008,7 +1155,6 @@ useEffect(() => {
                         />
                       </div>
 
-                      {/* Fixed Doctor (Read-only) */}
                       <div className="col-md-6">
                         <label className="form-label">Doctor</label>
                         <input
@@ -1019,25 +1165,6 @@ useEffect(() => {
                         />
                       </div>
 
-                      {/* Session Selection */}
-                      <div className="col-md-6">
-                        <label className="form-label">Session</label>
-                        <select
-                          className="form-select"
-                          value={rescheduleData.session}
-                          onChange={(e) => handleSessionChange(e.target.value)}
-                          disabled={isFetchingTokens}
-                        >
-                          <option value="">Select Session</option>
-                          {sessions.map((ses) => (
-                            <option key={ses.id} value={ses.id}>
-                              {ses.sessionName}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-
-                      {/* Date Selection */}
                       <div className="col-md-6">
                         <DatePicker
                           value={rescheduleData.date}
@@ -1047,8 +1174,7 @@ useEffect(() => {
                           min={new Date().toISOString().split("T")[0]}
                           disabled={isFetchingTokens}
                         />
-                        {rescheduleData.date && <div className="mt-1"></div>}
-                        {isFetchingTokens && (
+                        {isFetchingTokens && isOpdReschedule && (
                           <div className="text-info small mt-1">
                             <span className="spinner-border spinner-border-sm me-1"></span>
                             Loading available time slots...
@@ -1056,39 +1182,34 @@ useEffect(() => {
                         )}
                       </div>
 
-                      {/* Selected Time Slot Display */}
-                      {/* <div className="col-md-12">
-                        <label className="form-label">Selected Time Slot</label>
-                        <input
-                          type="text"
-                          className="form-control"
-                          value={
-                            selectedSlot
-                              ? selectedSlot.slot
-                              : (selectedToken ? selectedToken.timeSlot : "No time slot selected")
-                          }
-                          readOnly
-                          style={{
-                            backgroundColor: selectedSlot || selectedToken ? "#f0fff0" : "#f8f9fa",
-                            fontWeight: selectedSlot || selectedToken ? "bold" : "normal",
-                          }}
-                        />
-                      </div> */}
+                      {isOpdReschedule && (
+                        <div className="col-md-6">
+                          <label className="form-label">Session</label>
+                          <select
+                            className="form-select"
+                            value={rescheduleData.session}
+                            onChange={(e) => handleSessionChange(e.target.value)}
+                            disabled={isFetchingTokens}
+                          >
+                            <option value="">Select Session</option>
+                            {sessions.map((ses) => (
+                              <option key={ses.id} value={ses.id}>
+                                {ses.sessionName}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      )}
 
-                      {/* Available Time Slots Section */}
-                      {showTimeSlots && newSession && newDate && (
+                      {isOpdReschedule && showTimeSlots && newSession && newDate && (
                         <div className="col-md-12 mt-3">
                           <div className="card">
                             <div className="card-header bg-light">
-                              <h5 className="mb-0 fw-bold">
-                                Available Time Slots
-                              </h5>
-                              <p className=" h6 mb-0 text-muted small">
-                                Date: {newDate.split("-").reverse().join("/")} |
-                                Session:{" "}
-                                {sessions.find(
-                                  (s) => String(s.id) === String(newSession),
-                                )?.sessionName || "Selected Session"}
+                              <h5 className="mb-0 fw-bold">Available Time Slots</h5>
+                              <p className="h6 mb-0 text-muted small">
+                                Date: {newDate.split("-").reverse().join("/")} | Session:{" "}
+                                {sessions.find((s) => String(s.id) === String(newSession))
+                                  ?.sessionName || "Selected Session"}
                               </p>
                             </div>
                             <div className="card-body">
@@ -1100,21 +1221,15 @@ useEffect(() => {
                               ) : availableTokens.length > 0 ? (
                                 <div>
                                   <p className="text-primary fw-bold small mb-2">
-                                    {sessions.find(
-                                      (s) =>
-                                        String(s.id) === String(newSession),
-                                    )?.sessionName || "Selected Session"}{" "}
+                                    {sessions.find((s) => String(s.id) === String(newSession))
+                                      ?.sessionName || "Selected Session"}{" "}
                                     Session
                                   </p>
                                   <div className="row row-cols-6 g-2 justify-content-right">
                                     {availableTokens.map((token, index) => {
                                       const isAvailable = token.available;
-                                      const startTime = formatTimeToHHMM(
-                                        token.startTime,
-                                      );
-                                      const endTime = formatTimeToHHMM(
-                                        token.endTime,
-                                      );
+                                      const startTime = formatTimeToHHMM(token.startTime);
+                                      const endTime = formatTimeToHHMM(token.endTime);
                                       const isSelected =
                                         selectedSlot?.tokenNo === token.tokenNo;
 
@@ -1122,28 +1237,20 @@ useEffect(() => {
                                         <div className="col" key={index}>
                                           <button
                                             type="button"
-                                            className={`btn ${isSelected ? "btn-outline-badge" : isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} 
-    w-100 d-flex flex-column align-items-center justify-content-center`}
+                                            className={`btn ${isSelected ? "btn-outline-badge" : isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} w-100 d-flex flex-column align-items-center justify-content-center`}
                                             style={{
                                               height: "60px",
                                               fontSize: "0.8rem",
                                               borderRadius: "6px",
-                                              borderWidth: isSelected
-                                                ? "2px"
-                                                : "1.5px",
+                                              borderWidth: isSelected ? "2px" : "1.5px",
                                             }}
                                             onClick={() =>
-                                              isAvailable &&
-                                              handleTokenSelect(token)
+                                              isAvailable && handleTokenSelect(token)
                                             }
                                             disabled={!isAvailable}
                                           >
-                                            <span className="fw-bold">
-                                              {startTime}
-                                            </span>
-                                            <span style={{ opacity: 0.6 }}>
-                                              {endTime}
-                                            </span>
+                                            <span className="fw-bold">{startTime}</span>
+                                            <span style={{ opacity: 0.6 }}>{endTime}</span>
 
                                             {!isAvailable && (
                                               <span
@@ -1192,7 +1299,9 @@ useEffect(() => {
                   className="btn btn-primary"
                   onClick={submitReschedule}
                   disabled={
-                    (!selectedSlot && !selectedToken) || isFetchingTokens
+                    isFetchingTokens ||
+                    !newDate ||
+                    (isOpdReschedule && !selectedSlot && !selectedToken)
                   }
                 >
                   Confirm Reschedule

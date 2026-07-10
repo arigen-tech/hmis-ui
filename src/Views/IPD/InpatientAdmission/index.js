@@ -4,19 +4,6 @@ import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
 import LoadingScreen from "../../../Components/Loading";
 
-// API endpoints (configure these in your config)
-// import { 
-//   INPATIENT_ADMISSION_API, 
-//   WARD_API, 
-//   ROOM_API, 
-//   BED_API, 
-//   DOCTOR_API,
-//   MAS_ADMISSION_CATEGORY,
-//   MAS_ADMISSION_TYPE,
-//   MAS_CARE_LEVEL,
-//   MAS_PATIENT_CONDITION
-// } from "../../../config/apiConfig";
-
 const InpatientAdmission = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -75,6 +62,7 @@ const InpatientAdmission = () => {
     // Doctor & Diagnosis
     admittingDoctorId: "",
     admittingDoctorName: "",
+    department: "",
     provisionalDiagnosis: "",
     workingDiagnosis: "",
     
@@ -208,7 +196,13 @@ const InpatientAdmission = () => {
         mobileNo: patientData.mobileNo || "",
         age: patientData.age || "",
         gender: patientData.gender || "",
-        admissionAdvisedFrom: patientData.department || "OPD - Medicine",
+        admissionAdvisedFrom: patientData.department || "",
+        admissionType: patientData.admissionType || "",
+        admissionSource: patientData.admissionSource || "",
+        // Optionally map care level if it matches one of the care type options
+        admissionCareType: patientData.careLevel === "General" ? "General" :
+                           patientData.careLevel === "Critical" ? "HDU" :
+                           patientData.careLevel === "ICU" ? "ICU" : "",
         // Add more auto-population as needed
       }));
     } else if (patientId) {
@@ -875,6 +869,7 @@ const InpatientAdmission = () => {
         medicalDetails: {
           admittingDoctorId: formData.admittingDoctorId,
           admittingDoctorName: formData.admittingDoctorName,
+          department: formData.department,
           provisionalDiagnosis: formData.provisionalDiagnosis,
           workingDiagnosis: formData.workingDiagnosis,
         },
@@ -1462,28 +1457,6 @@ const InpatientAdmission = () => {
                   </div>
                 </div>
                 
-                {/* NEW SECTION: Remarks Section */}
-                <div className="card mb-4">
-                  <div className="card-header">
-                    <h5 className="mb-0 fw-bold">Remarks</h5>
-                  </div>
-                  <div className="card-body">
-                    <div className="row g-3">
-                      <div className="col-md-12">
-                        <label className="form-label fw-bold">Admission Notes</label>
-                        <textarea
-                          className="form-control"
-                          name="admissionRemarks"
-                          value={formData.admissionRemarks}
-                          onChange={handleChange}
-                          rows="3"
-                          placeholder="Enter admission notes here..."
-                        />
-                      </div>
-                    </div>
-                  </div>
-                </div>
-                
                 {/* Ward / Bed Details */}
                 <div className="card mb-4">
                   <div className="card-header">
@@ -1573,7 +1546,7 @@ const InpatientAdmission = () => {
                   </div>
                   <div className="card-body">
                     <div className="row g-3">
-                      <div className="col-md-6">
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Admitting / Treating Doctor <span className="text-danger">*</span></label>
                         <select
                           className={`form-select ${errors.admittingDoctorId ? "is-invalid" : ""}`}
@@ -1590,7 +1563,21 @@ const InpatientAdmission = () => {
                         </select>
                         {errors.admittingDoctorId && <div className="invalid-feedback">{errors.admittingDoctorId}</div>}
                       </div>
-                      <div className="col-md-6">
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Department</label>
+                        <select
+                          className="form-select"
+                          name="department"
+                          value={formData.department}
+                          onChange={handleChange}
+                        >
+                          <option value="">Select Department</option>
+                          {["Medicine", "Gynae", "Cardiology", "Pediatrics", "Surgery"].map(dept => (
+                            <option key={dept} value={dept}>{dept}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Provisional / Working Diagnosis <span className="text-danger">*</span></label>
                         <input
                           type="text"
@@ -1742,7 +1729,6 @@ const InpatientAdmission = () => {
                       <table className="table table-bordered">
                         <thead>
                           <tr>
-                            <th width="50">S.No</th>
                             <th width="250">Document Type</th>
                             <th width="150">Document Number</th>
                             <th>Remarks</th>
@@ -1753,7 +1739,6 @@ const InpatientAdmission = () => {
                         <tbody>
                           {formData.documents.map((doc, index) => (
                             <tr key={doc.id}>
-                              <td className="text-center">{index + 1}</td>
                               <td>
                                 <select
                                   className="form-select form-select-sm"
