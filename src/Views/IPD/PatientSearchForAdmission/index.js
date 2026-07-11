@@ -92,9 +92,7 @@ const PatientSearchForAdmission = () => {
 
     const currentItems = patients;
 
-    if (loading) {
-        return <LoadingScreen />;
-    }
+    // Removed global LoadingScreen return
 
     return (
         <div className="body d-flex py-3">
@@ -156,76 +154,95 @@ const PatientSearchForAdmission = () => {
                                     </div>
 
                                     <div className="mt-3 mb-3">
-                                        <button type="submit" className="btn btn-primary me-2">
-                                            Search
+                                        <button type="submit" className="btn btn-primary me-2" disabled={loading}>
+                                            {loading ? (
+                                                <>
+                                                    <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                                    Searching...
+                                                </>
+                                            ) : (
+                                                "Search"
+                                            )}
                                         </button>
                                         <button
                                             type="button"
                                             className="btn btn-secondary"
                                             onClick={handleReset}
+                                            disabled={loading}
                                         >
                                             Reset
                                         </button>
                                     </div>
 
-                                    {searchPerformed && patients.length > 0 && (
-                                        <div className="col-md-12">
-                                            <div className="table-responsive packagelist">
-                                                <table className="table table-bordered table-hover align-middle">
-                                                    <thead className="table-light">
-                                                        <tr>
-                                                            <th>Patient Name</th>
-                                                            <th>Mobile No.</th>
-                                                            <th>UHID No.</th>
-                                                            <th>Age</th>
-                                                            <th>Gender</th>
-                                                            <th>Email</th>
-                                                            <th>ABHA ID</th>
-                                                            <th>Action</th>
-                                                        </tr>
-                                                    </thead>
-                                                    <tbody>
-                                                        {currentItems.map((patient) => {
-                                                            const fullName = [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(" ");
-                                                            return (
-                                                            <tr key={patient.patientId || patient.id || patient.uhidNo} className="table-row-hover">
-                                                                <td>{fullName || patient.patientName || patient.fullName || "N/A"}</td>
-                                                                <td>{patient.mobileNo || patient.patientMobileNumber || "N/A"}</td>
-                                                                <td>{patient.uhidNo || patient.uhid || "N/A"}</td>
-                                                                <td>{patient.age || patient.patientAge || "N/A"}</td>
-                                                                <td>{patient.gender || "N/A"}</td>
-                                                                <td>{patient.email || patient.emailId || patient.patientEmailId || "N/A"}</td>
-                                                                <td>{patient.abhaNo || patient.abhaId || patient.patientAbhaId || "N/A"}</td>
-                                                                <td>
-                                                                    <button
-                                                                        type="button"
-                                                                        className="btn btn-success btn-sm"
-                                                                        onClick={() =>
-                                                                            handleProceedForAdmission(patient)
-                                                                        }
-                                                                    >
-                                                                        Proceed for Admission
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        )})}
-                                                    </tbody>
-                                                </table>
+                                    {loading ? (
+                                        <div className="col-md-12 text-center p-5">
+                                            <div className="spinner-border text-primary" role="status">
+                                                <span className="visually-hidden">Loading...</span>
                                             </div>
+                                            <p className="mt-2 text-muted">Searching patients...</p>
                                         </div>
-                                    )}
+                                    ) : (
+                                        <>
+                                            {searchPerformed && patients.length > 0 && (
+                                                <div className="col-md-12">
+                                                    <div className="table-responsive packagelist">
+                                                        <table className="table table-bordered table-hover align-middle">
+                                                            <thead className="table-light">
+                                                                <tr>
+                                                                    <th>Patient Name</th>
+                                                                    <th>Mobile No.</th>
+                                                                    <th>UHID No.</th>
+                                                                    <th>Age</th>
+                                                                    <th>Gender</th>
+                                                                    <th>Email</th>
+                                                                    <th>ABHA ID</th>
+                                                                    <th>Action</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {currentItems.map((patient) => {
+                                                                    const fullName = [patient.firstName, patient.middleName, patient.lastName].filter(Boolean).join(" ");
+                                                                    return (
+                                                                    <tr key={patient.patientId || patient.id || patient.uhidNo} className="table-row-hover">
+                                                                        <td>{fullName || patient.patientName || patient.fullName || "N/A"}</td>
+                                                                        <td>{patient.mobileNo || patient.patientMobileNumber || "N/A"}</td>
+                                                                        <td>{patient.uhidNo || patient.uhid || "N/A"}</td>
+                                                                        <td>{patient.age || patient.patientAge || "N/A"}</td>
+                                                                        <td>{patient.gender || "N/A"}</td>
+                                                                        <td>{patient.email || patient.emailId || patient.patientEmailId || "N/A"}</td>
+                                                                        <td>{patient.abhaNo || patient.abhaId || patient.patientAbhaId || "N/A"}</td>
+                                                                        <td>
+                                                                            <button
+                                                                                type="button"
+                                                                                className="btn btn-success btn-sm"
+                                                                                onClick={() =>
+                                                                                    handleProceedForAdmission(patient)
+                                                                                }
+                                                                            >
+                                                                                Proceed for Admission
+                                                                            </button>
+                                                                        </td>
+                                                                    </tr>
+                                                                )})}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            )}
 
-                                    {searchPerformed && patients.length === 0 && (
-                                        <div className="alert alert-info d-flex justify-content-between align-items-center" role="alert">
-                                            <span>No patients found matching your search criteria.</span>
-                                            <button
-                                                type="button"
-                                                className="btn btn-outline-dark btn-sm"
-                                                onClick={() => navigate("/NewPatientAppointment")}
-                                            >
-                                                Register New Patient
-                                            </button>
-                                        </div>
+                                            {searchPerformed && patients.length === 0 && (
+                                                <div className="alert alert-info d-flex justify-content-between align-items-center" role="alert">
+                                                    <span>No patients found matching your search criteria.</span>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-outline-dark btn-sm"
+                                                        onClick={() => navigate("/NewPatientAppointment")}
+                                                    >
+                                                        Register New Patient
+                                                    </button>
+                                                </div>
+                                            )}
+                                        </>
                                     )}
                                 </form>
 
