@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -139,6 +139,7 @@ const InpatientAdmission = () => {
   const [countryData, setCountryData] = useState([]);
   const [relationData, setRelationData] = useState([]);
   const [bloodGroupData, setBloodGroupData] = useState([]);
+  const [bedStats, setBedStats] = useState(null);
   const [nokStateData, setNokStateData] = useState([]);
   const [nokDistrictData, setNokDistrictData] = useState([]);
   
@@ -323,6 +324,7 @@ const InpatientAdmission = () => {
     fetchCountryData();
     fetchRelationData();
     fetchBloodGroupData();
+    fetchWardCategories();
   }, [patientId, patientData]);
   
   // Format date as "16-Aug-2025"
@@ -382,13 +384,6 @@ const InpatientAdmission = () => {
   const fetchDropdownData = async () => {
     try {
       // Mock data for now
-      setWardCategories([
-        { id: 1, name: "General Ward", code: "GW" },
-        { id: 2, name: "Critical Ward", code: "CW" },
-        { id: 3, name: "ICU", code: "ICU" },
-        { id: 4, name: "HDU", code: "HDU" },
-        { id: 5, name: "Private Room", code: "PR" },
-      ]);
       
       setDoctors([
         { id: 1, name: "Dr. S. Verma", department: "Medicine" },
@@ -433,6 +428,17 @@ const InpatientAdmission = () => {
       }
     } catch (error) {
       console.error("Error fetching blood group data:", error);
+    }
+  };
+
+  const fetchWardCategories = async () => {
+    try {
+      const response = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
+      if (response && response.response) {
+        setWardCategories(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching ward categories:", error);
     }
   };
   
@@ -508,17 +514,25 @@ const InpatientAdmission = () => {
   
   const fetchWardsByCategory = async (categoryId) => {
     try {
-      // Mock data
-      if (categoryId == 1) { // General Ward
-        setWards([
-          { id: 1, name: "General Ward - A", code: "GW-A", availableBeds: 5 },
-          { id: 2, name: "General Ward - B", code: "GW-B", availableBeds: 3 },
-        ]);
-      } else if (categoryId == 3) { // ICU
-        setWards([
-          { id: 3, name: "ICU - 1", code: "ICU-1", availableBeds: 2 },
-          { id: 4, name: "ICU - 2", code: "ICU-2", availableBeds: 1 },
-        ]);
+      if (!categoryId) {
+        setWards([]);
+        setRooms([]);
+        setBeds([]);
+        setFormData(prev => ({
+          ...prev,
+          wardId: "",
+          wardName: "",
+          roomId: "",
+          roomNumber: "",
+          bedId: "",
+          bedNumber: "",
+        }));
+        return;
+      }
+      
+      const response = await getRequest(`${MAS_WARDS_GET_BY_ID}/${categoryId}/status/y`);
+      if (response && response.response) {
+        setWards(response.response);
       } else {
         setWards([]);
       }
@@ -539,6 +553,24 @@ const InpatientAdmission = () => {
     } catch (error) {
       console.error("Error fetching wards:", error);
       setWards([]);
+    }
+  };
+  
+  const fetchBedCountByWard = async (wardId) => {
+    try {
+      if (!wardId) {
+        setBedStats(null);
+        return;
+      }
+      const response = await getRequest(`${MAS_BED_COUNT}/${wardId}`);
+      if (response && response.response) {
+        setBedStats(response.response);
+      } else {
+        setBedStats(null);
+      }
+    } catch (error) {
+      console.error("Error fetching bed count:", error);
+      setBedStats(null);
     }
   };
   
@@ -764,15 +796,16 @@ const InpatientAdmission = () => {
       bedNumber: "",
     }));
     
+    setBedStats(null);
     fetchWardsByCategory(categoryId);
   };
   
   const handleWardChange = (wardId) => {
-    const selectedWard = wards.find(w => w.id == wardId);
+    const selectedWard = wards.find(w => w.id == wardId || w.wardId == wardId);
     setFormData(prev => ({
       ...prev,
       wardId: wardId,
-      wardName: selectedWard?.name || "",
+      wardName: selectedWard?.wardName || "",
       roomId: "",
       roomNumber: "",
       bedId: "",
@@ -780,6 +813,7 @@ const InpatientAdmission = () => {
     }));
     
     fetchRoomsByWard(wardId);
+    fetchBedCountByWard(wardId);
   };
   
   const handleRoomChange = (roomId) => {
@@ -1171,7 +1205,7 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select</option>
                           {bloodGroupData.map(bg => (
-                            <option key={bg.id} value={bg.id}>{bg.bloodGroupName}</option>
+                            <option key={bg.bloodGroupId || bg.id} value={bg.bloodGroupId || bg.id}>{bg.bloodGroupName}</option>
                           ))}
                         </select>
                       </div>
@@ -1554,8 +1588,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Category</option>
                           {wardCategories.map(category => (
-                            <option key={category.id} value={category.id}>
-                              {category.name} ({category.code})
+                            <option key={category.categoryId || category.id} value={category.categoryId || category.id}>
+                              {category.categoryName}
                             </option>
                           ))}
                         </select>
@@ -1572,12 +1606,19 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Ward</option>
                           {wards.map(ward => (
-                            <option key={ward.id} value={ward.id}>
-                              {ward.name} ({ward.availableBeds || 0} beds available)
+                            <option key={ward.wardId || ward.id} value={ward.wardId || ward.id}>
+                              {ward.wardName} ({ward.vacantBed || ward.vacant || 0} beds available)
                             </option>
                           ))}
                         </select>
                         {errors.wardId && <div className="invalid-feedback">{errors.wardId}</div>}
+                        {bedStats && (
+                          <div className="mt-1 small fw-bold">
+                            <span className="me-2 text-success">Available: {bedStats.available || 0}</span>
+                            <span className="me-2 text-danger">Occupied: {bedStats.occupied || 0}</span>
+                            <span className="text-warning">Cleaning: {bedStats.cleaning || 0}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Room No <span className="text-danger">*</span></label>
