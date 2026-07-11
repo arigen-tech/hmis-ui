@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -138,6 +138,7 @@ const InpatientAdmission = () => {
   const [doctors, setDoctors] = useState([]);
   const [countryData, setCountryData] = useState([]);
   const [relationData, setRelationData] = useState([]);
+  const [bloodGroupData, setBloodGroupData] = useState([]);
   const [nokStateData, setNokStateData] = useState([]);
   const [nokDistrictData, setNokDistrictData] = useState([]);
   
@@ -321,6 +322,7 @@ const InpatientAdmission = () => {
     fetchMasterData(); // NEW: Fetch master data
     fetchCountryData();
     fetchRelationData();
+    fetchBloodGroupData();
   }, [patientId, patientData]);
   
   // Format date as "16-Aug-2025"
@@ -420,6 +422,17 @@ const InpatientAdmission = () => {
       }
     } catch (error) {
       console.error("Error fetching relation data:", error);
+    }
+  };
+
+  const fetchBloodGroupData = async () => {
+    try {
+      const response = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
+      if (response && response.response) {
+        setBloodGroupData(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching blood group data:", error);
     }
   };
   
@@ -1157,8 +1170,8 @@ const InpatientAdmission = () => {
                           onChange={handleChange}
                         >
                           <option value="">Select</option>
-                          {bloodGroupOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          {bloodGroupData.map(bg => (
+                            <option key={bg.id} value={bg.id}>{bg.bloodGroupName}</option>
                           ))}
                         </select>
                       </div>
