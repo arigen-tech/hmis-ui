@@ -589,7 +589,6 @@ const InpatientAdmission = () => {
           setRooms([]);
         }
       }
-      }
       
       // Clear bed selection
       setBeds([]);
