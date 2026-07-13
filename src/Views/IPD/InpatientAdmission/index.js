@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -355,11 +355,10 @@ const InpatientAdmission = () => {
         setAdmissionCategories(response.response);
       }
       
-      setAdmissionTypes([
-        { id: 1, admissionTypeName: "Planned", status: "Active" },
-        { id: 2, admissionTypeName: "Emergency", status: "Active" },
-        { id: 3, admissionTypeName: "Semi-Emergency", status: "Active" },
-      ]);
+      const typeResponse = await getRequest(MAS_ADMISSION_TYPE_GET_ALL);
+      if (typeResponse && typeResponse.response) {
+        setAdmissionTypes(typeResponse.response);
+      }
       
       setPatientConditions([
         { id: 1, conditionName: "Stable", status: "Active" },

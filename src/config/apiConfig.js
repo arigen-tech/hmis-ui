@@ -201,6 +201,8 @@ export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
 export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
 export const MAS_ADMISSION_CATEGORY = `${MASTERS}/masAdmissionCategory`;
 export const MAS_ADMISSION_CATEGORY_GET_ALL = `${MAS_ADMISSION_CATEGORY}/getAll/1`;
+export const MAS_ADMISSION_TYPE = `${MASTERS}/masAdmissionType`;
+export const MAS_ADMISSION_TYPE_GET_ALL = `${MAS_ADMISSION_TYPE}/getAll/1`;
 
 
 //OPD
