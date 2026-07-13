@@ -253,6 +253,7 @@ const validRoutes = [
   "/IPDServiceCategory",
   "/PatientDischargeCondition",
   "/PatientDischargeReason",
+  "/BillingRefundDetails",
 ];
 
 // Routes that should bypass authorization
