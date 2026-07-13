@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -136,6 +137,9 @@ const InpatientAdmission = () => {
   const [beds, setBeds] = useState([]);
   const [doctors, setDoctors] = useState([]);
   const [countryData, setCountryData] = useState([]);
+  const [relationData, setRelationData] = useState([]);
+  const [bloodGroupData, setBloodGroupData] = useState([]);
+  const [bedStats, setBedStats] = useState(null);
   const [nokStateData, setNokStateData] = useState([]);
   const [nokDistrictData, setNokDistrictData] = useState([]);
   
@@ -148,11 +152,7 @@ const InpatientAdmission = () => {
   const [admissionTypes, setAdmissionTypes] = useState([]);
   const [patientConditions, setPatientConditions] = useState([]);
   const [admissionCareTypes, setAdmissionCareTypes] = useState([]);
-  const [admissionSources, setAdmissionSources] = useState([
-    { id: "OPD", name: "OPD" },
-    { id: "Emergency", name: "Emergency" },
-    { id: "Referral", name: "Referral" },
-  ]);
+  const [admissionSources, setAdmissionSources] = useState([]);
   
   // NEW: Document Type Master Data
   const [documentTypes, setDocumentTypes] = useState([
@@ -183,31 +183,112 @@ const InpatientAdmission = () => {
   const consentTakenByOptions = ["Nurse Anita", "Nurse Priya", "Doctor", "Reception", "Other Staff"];
   const paymentTypeOptions = ["Self", "Insurance", "Corporate", "Government", "Other"];
   const paymentModeOptions = ["Cash", "UPI", "Card", "Cheque", "Net Banking", "Wallet"];
-  
+
+  // Initialize with patient data
+  const fetchPatientData = async (id) => {
+    try {
+      setLoading(true);
+      const response = await getRequest(`${PATIENT_FOLLOW_UP_DETAILS}/${id}`);
+      if (response && response.response) {
+        const data = response.response;
+
+        const pCountry = data.address?.country;
+        const nCountry = data.nok?.country;
+        
+        if (pCountry && pCountry === nCountry) {
+          getRequest(`${MAS_STATE}/getByCountryId/${pCountry}`).then(res => {
+            if (res?.response) {
+              setPatientStateData(res.response);
+              setNokStateData(res.response);
+            }
+          });
+        } else {
+          if (pCountry) fetchPatientStates(pCountry);
+          if (nCountry) fetchNokStates(nCountry);
+        }
+
+        const pState = data.address?.state;
+        const nState = data.nok?.state;
+        
+        if (pState && pState === nState) {
+          getRequest(`${MAS_DISTRICT}/getByState/${pState}`).then(res => {
+            if (res?.response) {
+              setPatientDistrictData(res.response);
+              setNokDistrictData(res.response);
+            }
+          });
+        } else {
+          if (pState) fetchPatientDistrict(pState);
+          if (nState) fetchNokDistrict(nState);
+        }
+        setFormData(prev => ({
+          ...prev,
+          patientName: [data.personal?.firstName, data.personal?.middleName, data.personal?.lastName].filter(Boolean).join(" ") || prev.patientName,
+          patientId: data.patientId || prev.patientId,
+          uhid: data.uhid || `UHID-${String(data.patientId).padStart(6, '0')}`,
+          mobileNo: data.personal?.mobileNo || prev.mobileNo,
+          age: data.personal?.age || prev.age,
+          gender: data.personal?.genderName || (data.personal?.gender === 29 ? "Male" : data.personal?.gender === 30 ? "Female" : "Other") || prev.gender,
+
+          patientAddress1: data.address?.address1 || prev.patientAddress1,
+          patientAddress2: data.address?.address2 || prev.patientAddress2,
+          patientCountry: data.address?.country || prev.patientCountry,
+          patientState: data.address?.state || prev.patientState,
+          patientDistrict: data.address?.district || prev.patientDistrict,
+          patientCity: data.address?.city || prev.patientCity,
+          patientPinCode: data.address?.pinCode || prev.patientPinCode,
+
+          nokFirstName: data.nok?.firstName || prev.nokFirstName,
+          nokMiddleName: data.nok?.middleName || prev.nokMiddleName,
+          nokLastName: data.nok?.lastName || prev.nokLastName,
+          nokEmail: data.nok?.email || prev.nokEmail,
+          nokMobile: data.nok?.mobileNo || prev.nokMobile,
+          nokAddress1: data.nok?.address1 || prev.nokAddress1,
+          nokAddress2: data.nok?.address2 || prev.nokAddress2,
+          nokCountry: data.nok?.country || prev.nokCountry,
+          nokState: data.nok?.state || prev.nokState,
+          nokDistrict: data.nok?.district || prev.nokDistrict,
+          nokCity: data.nok?.city || prev.nokCity,
+          nokPinCode: data.nok?.pinCode || prev.nokPinCode,
+          nokRelation: data.nok?.relation || prev.nokRelation,
+
+          emergencyFirstName: data.emergency?.firstName || prev.emergencyFirstName,
+          emergencyLastName: data.emergency?.lastName || prev.emergencyLastName,
+          emergencyMobile: data.emergency?.mobileNo || prev.emergencyMobile,
+        }));
+      }
+    } catch (error) {
+      console.error("Error fetching patient data:", error);
+      showPopup("Failed to load patient data", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   // Initialize with patient data
   useEffect(() => {
-    if (patientData) {
-      // Auto-populate patient details
+    const idToFetch = patientData?.patientId || patientData?.id || patientData?.opdPatientDetailsId || patientId;
+    if (idToFetch) {
+      fetchPatientData(idToFetch);
+    } else if (patientData) {
+      // Auto-populate patient details if no ID to fetch
       setFormData(prev => ({
         ...prev,
-        patientName: patientData.patientName || "",
-        patientId: patientData.id || "",
+        patientName: patientData.patientName || prev.patientName,
+        patientId: patientData.id || prev.patientId,
         uhid: patientData.uhid || `UHID-${String(patientData.id).padStart(6, '0')}`,
-        mobileNo: patientData.mobileNo || "",
-        age: patientData.age || "",
-        gender: patientData.gender || "",
-        admissionAdvisedFrom: patientData.department || "",
-        admissionType: patientData.admissionType || "",
-        admissionSource: patientData.admissionSource || "",
+        mobileNo: patientData.mobileNo || prev.mobileNo,
+        age: patientData.age || prev.age,
+        gender: patientData.gender || prev.gender,
+        admissionAdvisedFrom: patientData.department || prev.admissionAdvisedFrom,
+        admissionType: patientData.admissionType || prev.admissionType,
+        admissionSource: patientData.admissionSource || prev.admissionSource,
         // Optionally map care level if it matches one of the care type options
         admissionCareType: patientData.careLevel === "General" ? "General" :
-                           patientData.careLevel === "Critical" ? "HDU" :
-                           patientData.careLevel === "ICU" ? "ICU" : "",
+          patientData.careLevel === "Critical" ? "HDU" :
+            patientData.careLevel === "ICU" ? "ICU" : prev.admissionCareType,
         // Add more auto-population as needed
       }));
-    } else if (patientId) {
-      // Fetch patient data by ID
-      fetchPatientData();
     }
     
     // Set default dates
@@ -237,6 +318,9 @@ const InpatientAdmission = () => {
     fetchDropdownData();
     fetchMasterData(); // NEW: Fetch master data
     fetchCountryData();
+    fetchRelationData();
+    fetchBloodGroupData();
+    fetchWardCategories();
   }, [patientId, patientData]);
   
   // Format date as "16-Aug-2025"
@@ -256,47 +340,31 @@ const InpatientAdmission = () => {
     const hour12 = hour % 12 || 12;
     return `${hour12.toString().padStart(2, '0')}:${minutes} ${ampm}`;
   };
-  
-  const fetchPatientData = async () => {
-    try {
-      setLoading(true);
-      // Fetch patient data from API
-      // const response = await getRequest(`${INPATIENT_ADMISSION_API}/patient/${patientId}`);
-      // if (response) {
-      //   setFormData(prev => ({
-      //     ...prev,
-      //     ...response
-      //   }));
-      // }
-    } catch (error) {
-      console.error("Error fetching patient data:", error);
-      showPopup("Failed to load patient data", "error");
-    } finally {
-      setLoading(false);
-    }
-  };
-  
+
+  // fetchPatientData is defined above
+
   // NEW: Fetch master data
   const fetchMasterData = async () => {
     try {
-      // Mock data for now
-      setAdmissionCategories([
-        { id: 1, admissionCategoryName: "IPD", status: "Active" },
-        { id: 2, admissionCategoryName: "Day Care", status: "Active" },
-        { id: 3, admissionCategoryName: "Emergency IPD", status: "Active" },
-      ]);
+      const response = await getRequest(MAS_ADMISSION_CATEGORY_GET_ALL);
+      if (response && response.response) {
+        setAdmissionCategories(response.response);
+      }
       
-      setAdmissionTypes([
-        { id: 1, admissionTypeName: "Planned", status: "Active" },
-        { id: 2, admissionTypeName: "Emergency", status: "Active" },
-        { id: 3, admissionTypeName: "Semi-Emergency", status: "Active" },
-      ]);
+      const typeResponse = await getRequest(MAS_ADMISSION_TYPE_GET_ALL);
+      if (typeResponse && typeResponse.response) {
+        setAdmissionTypes(typeResponse.response);
+      }
       
-      setPatientConditions([
-        { id: 1, conditionName: "Stable", status: "Active" },
-        { id: 2, conditionName: "Serious", status: "Active" },
-        { id: 3, conditionName: "Critical", status: "Active" },
-      ]);
+      const sourceResponse = await getRequest(MAS_ADMISSION_SOURCE_GET_ALL);
+      if (sourceResponse && sourceResponse.response) {
+        setAdmissionSources(sourceResponse.response);
+      }
+      
+      const conditionResponse = await getRequest(MAS_PATIENT_CONDITION_GET_ALL);
+      if (conditionResponse && conditionResponse.response) {
+        setPatientConditions(conditionResponse.response);
+      }
       
       setAdmissionCareTypes([
         { id: 1, careLevelName: "General", status: "Active" },
@@ -313,13 +381,6 @@ const InpatientAdmission = () => {
   const fetchDropdownData = async () => {
     try {
       // Mock data for now
-      setWardCategories([
-        { id: 1, name: "General Ward", code: "GW" },
-        { id: 2, name: "Critical Ward", code: "CW" },
-        { id: 3, name: "ICU", code: "ICU" },
-        { id: 4, name: "HDU", code: "HDU" },
-        { id: 5, name: "Private Room", code: "PR" },
-      ]);
       
       setDoctors([
         { id: 1, name: "Dr. S. Verma", department: "Medicine" },
@@ -336,29 +397,58 @@ const InpatientAdmission = () => {
   
   const fetchCountryData = async () => {
     try {
-      // Mock data
-      setCountryData([
-        { id: 1, countryName: "India" },
-        { id: 2, countryName: "USA" },
-        { id: 3, countryName: "UK" },
-      ]);
+      const response = await getRequest(`${MAS_COUNTRY}/getAll/1`);
+      if (response && response.response) {
+        setCountryData(response.response);
+      }
     } catch (error) {
       console.error("Error fetching country data:", error);
+    }
+  };
+
+  const fetchRelationData = async () => {
+    try {
+      const response = await getRequest(`${ALL_RELATION}/1`);
+      if (response && response.response) {
+        setRelationData(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching relation data:", error);
+    }
+  };
+
+  const fetchBloodGroupData = async () => {
+    try {
+      const response = await getRequest(`${MAS_BLOODGROUP}/getAll/1`);
+      if (response && response.response) {
+        setBloodGroupData(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching blood group data:", error);
+    }
+  };
+
+  const fetchWardCategories = async () => {
+    try {
+      const response = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
+      if (response && response.response) {
+        setWardCategories(response.response);
+      }
+    } catch (error) {
+      console.error("Error fetching ward categories:", error);
     }
   };
   
   // NEW: Fetch patient states
   const fetchPatientStates = async (countryId) => {
     try {
-      // Mock data for India
-      if (countryId == 1) {
-        setPatientStateData([
-          { id: 1, stateName: "Maharashtra" },
-          { id: 2, stateName: "Delhi" },
-          { id: 3, stateName: "Karnataka" },
-          { id: 4, stateName: "Gujarat" },
-          { id: 5, stateName: "Tamil Nadu" },
-        ]);
+      if (countryId) {
+        const response = await getRequest(`${MAS_STATE}/getByCountryId/${countryId}`);
+        if (response && response.response) {
+          setPatientStateData(response.response);
+        } else {
+          setPatientStateData([]);
+        }
       } else {
         setPatientStateData([]);
       }
@@ -370,22 +460,13 @@ const InpatientAdmission = () => {
   // NEW: Fetch patient districts
   const fetchPatientDistrict = async (stateId) => {
     try {
-      // Mock data
-      if (stateId == 1) { // Maharashtra
-        setPatientDistrictData([
-          { id: 1, districtName: "Mumbai" },
-          { id: 2, districtName: "Pune" },
-          { id: 3, districtName: "Nagpur" },
-          { id: 4, districtName: "Nashik" },
-          { id: 5, districtName: "Aurangabad" },
-        ]);
-      } else if (stateId == 3) { // Karnataka
-        setPatientDistrictData([
-          { id: 6, districtName: "Bangalore" },
-          { id: 7, districtName: "Mysore" },
-          { id: 8, districtName: "Hubli" },
-          { id: 9, districtName: "Mangalore" },
-        ]);
+      if (stateId) {
+        const response = await getRequest(`${MAS_DISTRICT}/getByState/${stateId}`);
+        if (response && response.response) {
+          setPatientDistrictData(response.response);
+        } else {
+          setPatientDistrictData([]);
+        }
       } else {
         setPatientDistrictData([]);
       }
@@ -396,13 +477,13 @@ const InpatientAdmission = () => {
   
   const fetchNokStates = async (countryId) => {
     try {
-      // Mock data for India
-      if (countryId == 1) {
-        setNokStateData([
-          { id: 1, stateName: "Maharashtra" },
-          { id: 2, stateName: "Delhi" },
-          { id: 3, stateName: "Karnataka" },
-        ]);
+      if (countryId) {
+        const response = await getRequest(`${MAS_STATE}/getByCountryId/${countryId}`);
+        if (response && response.response) {
+          setNokStateData(response.response);
+        } else {
+          setNokStateData([]);
+        }
       } else {
         setNokStateData([]);
       }
@@ -413,13 +494,13 @@ const InpatientAdmission = () => {
   
   const fetchNokDistrict = async (stateId) => {
     try {
-      // Mock data
-      if (stateId == 1) {
-        setNokDistrictData([
-          { id: 1, districtName: "Mumbai" },
-          { id: 2, districtName: "Pune" },
-          { id: 3, districtName: "Nagpur" },
-        ]);
+      if (stateId) {
+        const response = await getRequest(`${MAS_DISTRICT}/getByState/${stateId}`);
+        if (response && response.response) {
+          setNokDistrictData(response.response);
+        } else {
+          setNokDistrictData([]);
+        }
       } else {
         setNokDistrictData([]);
       }
@@ -430,17 +511,25 @@ const InpatientAdmission = () => {
   
   const fetchWardsByCategory = async (categoryId) => {
     try {
-      // Mock data
-      if (categoryId == 1) { // General Ward
-        setWards([
-          { id: 1, name: "General Ward - A", code: "GW-A", availableBeds: 5 },
-          { id: 2, name: "General Ward - B", code: "GW-B", availableBeds: 3 },
-        ]);
-      } else if (categoryId == 3) { // ICU
-        setWards([
-          { id: 3, name: "ICU - 1", code: "ICU-1", availableBeds: 2 },
-          { id: 4, name: "ICU - 2", code: "ICU-2", availableBeds: 1 },
-        ]);
+      if (!categoryId) {
+        setWards([]);
+        setRooms([]);
+        setBeds([]);
+        setFormData(prev => ({
+          ...prev,
+          wardId: "",
+          wardName: "",
+          roomId: "",
+          roomNumber: "",
+          bedId: "",
+          bedNumber: "",
+        }));
+        return;
+      }
+      
+      const response = await getRequest(`${GET_WARD_BY_CATEGORY}/${categoryId}`);
+      if (response && response.response) {
+        setWards(response.response);
       } else {
         setWards([]);
       }
@@ -464,22 +553,35 @@ const InpatientAdmission = () => {
     }
   };
   
+  const fetchBedCountByWard = async (wardId) => {
+    try {
+      if (!wardId) {
+        setBedStats(null);
+        return;
+      }
+      const response = await getRequest(`${MAS_BED_COUNT}/${wardId}`);
+      if (response && response.response) {
+        setBedStats(response.response);
+      } else {
+        setBedStats(null);
+      }
+    } catch (error) {
+      console.error("Error fetching bed count:", error);
+      setBedStats(null);
+    }
+  };
+  
   const fetchRoomsByWard = async (wardId) => {
     try {
-      // Mock data
-      if (wardId == 1) { // General Ward - A
-        setRooms([
-          { id: 1, roomNumber: "GW-Room-01", wardId: 1 },
-          { id: 2, roomNumber: "GW-Room-02", wardId: 1 },
-          { id: 3, roomNumber: "GW-Room-03", wardId: 1 },
-        ]);
-      } else if (wardId == 3) { // ICU - 1
-        setRooms([
-          { id: 4, roomNumber: "ICU-Room-01", wardId: 3 },
-          { id: 5, roomNumber: "ICU-Room-02", wardId: 3 },
-        ]);
+      if (!wardId) {
+        setRooms([]);
+      } else {
+        const response = await getRequest(`${GET_ROOM_BY_WARD}?wardId=${wardId}`);
+        if (response && response.response) {
+          setRooms(response.response);
       } else {
         setRooms([]);
+      }
       }
       
       // Clear bed selection
@@ -686,15 +788,16 @@ const InpatientAdmission = () => {
       bedNumber: "",
     }));
     
+    setBedStats(null);
     fetchWardsByCategory(categoryId);
   };
   
   const handleWardChange = (wardId) => {
-    const selectedWard = wards.find(w => w.id == wardId);
+    const selectedWard = wards.find(w => w.id == wardId || w.wardId == wardId);
     setFormData(prev => ({
       ...prev,
       wardId: wardId,
-      wardName: selectedWard?.name || "",
+      wardName: selectedWard?.wardName || "",
       roomId: "",
       roomNumber: "",
       bedId: "",
@@ -702,14 +805,15 @@ const InpatientAdmission = () => {
     }));
     
     fetchRoomsByWard(wardId);
+    fetchBedCountByWard(wardId);
   };
   
   const handleRoomChange = (roomId) => {
-    const selectedRoom = rooms.find(r => r.id == roomId);
+    const selectedRoom = rooms.find(r => r.id == roomId || r.roomId == roomId);
     setFormData(prev => ({
       ...prev,
       roomId: roomId,
-      roomNumber: selectedRoom?.roomNumber || "",
+      roomNumber: selectedRoom?.roomName || selectedRoom?.roomNumber || "",
       bedId: "",
       bedNumber: "",
     }));
@@ -1092,8 +1196,8 @@ const InpatientAdmission = () => {
                           onChange={handleChange}
                         >
                           <option value="">Select</option>
-                          {bloodGroupOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          {bloodGroupData.map(bg => (
+                            <option key={bg.bloodGroupId || bg.id} value={bg.bloodGroupId || bg.id}>{bg.bloodGroupName}</option>
                           ))}
                         </select>
                       </div>
@@ -1150,8 +1254,10 @@ const InpatientAdmission = () => {
                           onChange={handleChange}
                         >
                           <option value="">Select Relation</option>
-                          {relationOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          {relationData.map((relation) => (
+                            <option key={relation.id} value={relation.id}>
+                              {relation.relationName}
+                            </option>
                           ))}
                         </select>
                       </div>
@@ -1371,8 +1477,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Source</option>
                           {admissionSources.map(source => (
-                            <option key={source.id} value={source.id}>
-                              {source.name}
+                            <option key={source.id} value={source.admissionSourceName}>
+                              {source.admissionSourceName}
                             </option>
                           ))}
                         </select>
@@ -1390,8 +1496,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Condition</option>
                           {patientConditions.map(condition => (
-                            <option key={condition.id} value={condition.conditionName}>
-                              {condition.conditionName}
+                            <option key={condition.patientConditionId} value={condition.patientConditionName}>
+                              {condition.patientConditionName}
                             </option>
                           ))}
                         </select>
@@ -1474,8 +1580,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Category</option>
                           {wardCategories.map(category => (
-                            <option key={category.id} value={category.id}>
-                              {category.name} ({category.code})
+                            <option key={category.categoryId || category.id} value={category.categoryId || category.id}>
+                              {category.categoryName}
                             </option>
                           ))}
                         </select>
@@ -1492,12 +1598,19 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Ward</option>
                           {wards.map(ward => (
-                            <option key={ward.id} value={ward.id}>
-                              {ward.name} ({ward.availableBeds || 0} beds available)
+                            <option key={ward.wardId || ward.id} value={ward.wardId || ward.id}>
+                              {ward.wardName} ({ward.availableBed || ward.vacantBed || ward.vacant || 0} beds available)
                             </option>
                           ))}
                         </select>
                         {errors.wardId && <div className="invalid-feedback">{errors.wardId}</div>}
+                        {bedStats && (
+                          <div className="mt-1 small fw-bold">
+                            <span className="me-2 text-success">Available: {bedStats.available || 0}</span>
+                            <span className="me-2 text-danger">Occupied: {bedStats.occupied || 0}</span>
+                            <span className="text-warning">Cleaning: {bedStats.cleaning || 0}</span>
+                          </div>
+                        )}
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Room No <span className="text-danger">*</span></label>
@@ -1510,8 +1623,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Room</option>
                           {rooms.map(room => (
-                            <option key={room.id} value={room.id}>
-                              {room.roomNumber}
+                            <option key={room.roomId || room.id} value={room.roomId || room.id}>
+                              {room.roomName || room.roomNumber}
                             </option>
                           ))}
                         </select>
@@ -1960,8 +2073,10 @@ const InpatientAdmission = () => {
                           onChange={handleChange}
                         >
                           <option value="">Select Relation</option>
-                          {relationOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          {relationData.map((relation) => (
+                            <option key={relation.id} value={relation.id}>
+                              {relation.relationName}
+                            </option>
                           ))}
                         </select>
                       </div>

@@ -69,6 +69,7 @@ export const OPEN_BALANCE = "/openingBalanceEntry";
 export const ALL_REPORTS = `${API_HOST}/report`;
 export const OPD_PATIENT = "/patient";
 
+export const FILTER_WARD_DEPT = `WARD`;
 export const FILTER_OPD_DEPT = `OPD`;
 export const FILTER_LAB_DEPT = `LAB`;
 export const FILTER_RADIO_DEPT = `RAD`;
@@ -198,6 +199,15 @@ export const MAS_ROOM_CATEGORY = `${MASTERS}/mas-room-category`;
 export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
 
 export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
+export const MAS_ADMISSION_CATEGORY = `${MASTERS}/masAdmissionCategory`;
+export const MAS_ADMISSION_CATEGORY_GET_ALL = `${MAS_ADMISSION_CATEGORY}/getAll/1`;
+export const MAS_ADMISSION_TYPE = `${MASTERS}/masAdmissionType`;
+export const MAS_ADMISSION_TYPE_GET_ALL = `${MAS_ADMISSION_TYPE}/getAll/1`;
+export const MAS_ADMISSION_SOURCE = `${MASTERS}/masAdmissionSource`;
+export const MAS_ADMISSION_SOURCE_GET_ALL = `${MAS_ADMISSION_SOURCE}/getAll/1`;
+export const MAS_PATIENT_CONDITION = `${MASTERS}/masPatientCondition`;
+export const MAS_PATIENT_CONDITION_GET_ALL = `${MAS_PATIENT_CONDITION}/getAll/1`;
+
 
 //OPD
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
@@ -215,6 +225,7 @@ export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
 export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
 export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
 export const MAS_WARD_GET_ALL = `${MASTERS}/masWard/getAll/0`;
+export const MAS_WARD_GET_ALL_ACTIVE = `${MASTERS}/masWard/getAll/1`;
 export const MAS_WARD_STATUS = `${MASTERS}/masWard/status`;
 export const MAS_WARD_UPDATE = `${MASTERS}/masWard/update`;
 export const MAS_WARD_CREATE = `${MASTERS}/masWard/create`;
@@ -694,3 +705,5 @@ export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
 export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 
 export const IPD_PATIENT_WAITING_LIST = `/ipd/ipdPatientWaitingList`;
+export const GET_WARD_BY_CATEGORY = `/ipd/getWardByCategory`;
+export const GET_ROOM_BY_WARD = `/ipd/getRoomByWard`;

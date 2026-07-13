@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_ROOM, MAS_DEPARTMENT, MAS_ROOM_CATEGORY,WARD_ID } from "../../../config/apiConfig";
+import { MAS_ROOM, MAS_DEPARTMENT, MAS_ROOM_CATEGORY, WARD_ID, MAS_WARD_GET_ALL_ACTIVE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ADD_ROOM_SUCC_MSG, DUPLICATE_ROOM, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_ROOM_CAT_ERR_MSG, FETCH_ROOM_ERR_MSG, INVALID_PAGE_NO_WARN_MSG, UPDATE_ROOM_SUCC_MSG } from "../../../config/constants";
 
@@ -62,20 +62,16 @@ const RoomMasterScreen = () => {
   // Fetch dropdown data
   const fetchDropdownData = async () => {
     try {
-      // Fetch departments
-      const deptResponse = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
-      if (deptResponse && deptResponse.response) {
-        const allDepartments = deptResponse.response.map(dept => ({
-          id: dept.id,
-          name: dept.departmentName,
-          departmentTypeId: dept.departmentTypeId // Assuming departmentTypeId exists in the response
+      // Fetch wards directly
+      const wardResponse = await getRequest(MAS_WARD_GET_ALL_ACTIVE);
+      if (wardResponse && wardResponse.response) {
+        const allWards = wardResponse.response.map(ward => ({
+          id: ward.wardId,
+          name: ward.wardName
         }));
         
-        setDepartmentOptions(allDepartments);
-        
-        // Filter departments where departmentTypeId is 10
-        const filteredDepts = allDepartments.filter(dept => dept.departmentTypeId === WARD_ID);
-        setFilteredDepartmentOptions(filteredDepts);
+        setDepartmentOptions(allWards);
+        setFilteredDepartmentOptions(allWards);
       }
 
       // Fetch room categories
