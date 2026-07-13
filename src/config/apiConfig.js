@@ -199,6 +199,9 @@ export const MAS_ROOM_CATEGORY = `${MASTERS}/mas-room-category`;
 export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
 
 export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
+export const MAS_ADMISSION_CATEGORY = `${MASTERS}/masAdmissionCategory`;
+export const MAS_ADMISSION_CATEGORY_GET_ALL = `${MAS_ADMISSION_CATEGORY}/getAll/1`;
+
 
 //OPD
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;

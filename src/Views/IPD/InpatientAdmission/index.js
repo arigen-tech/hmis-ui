@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -350,12 +350,10 @@ const InpatientAdmission = () => {
   // NEW: Fetch master data
   const fetchMasterData = async () => {
     try {
-      // Mock data for now
-      setAdmissionCategories([
-        { id: 1, admissionCategoryName: "IPD", status: "Active" },
-        { id: 2, admissionCategoryName: "Day Care", status: "Active" },
-        { id: 3, admissionCategoryName: "Emergency IPD", status: "Active" },
-      ]);
+      const response = await getRequest(MAS_ADMISSION_CATEGORY_GET_ALL);
+      if (response && response.response) {
+        setAdmissionCategories(response.response);
+      }
       
       setAdmissionTypes([
         { id: 1, admissionTypeName: "Planned", status: "Active" },
