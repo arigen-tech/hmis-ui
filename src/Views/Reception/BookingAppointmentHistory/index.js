@@ -778,6 +778,7 @@ useEffect(() => {
 
         const reschedulePayload = {
           visitId: selectedPatient.visitId,
+          moduleType: selectedDeptTypeCode,
           tokenNumber: isOpdReschedule ? slotToUse.tokenNo : null,
           visitDate: appointmentDateInstant,
           appointmentStartTime: startTimeInstant,
