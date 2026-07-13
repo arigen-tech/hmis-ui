@@ -203,6 +203,10 @@ export const MAS_ADMISSION_CATEGORY = `${MASTERS}/masAdmissionCategory`;
 export const MAS_ADMISSION_CATEGORY_GET_ALL = `${MAS_ADMISSION_CATEGORY}/getAll/1`;
 export const MAS_ADMISSION_TYPE = `${MASTERS}/masAdmissionType`;
 export const MAS_ADMISSION_TYPE_GET_ALL = `${MAS_ADMISSION_TYPE}/getAll/1`;
+export const MAS_ADMISSION_SOURCE = `${MASTERS}/masAdmissionSource`;
+export const MAS_ADMISSION_SOURCE_GET_ALL = `${MAS_ADMISSION_SOURCE}/getAll/1`;
+export const MAS_PATIENT_CONDITION = `${MASTERS}/masPatientCondition`;
+export const MAS_PATIENT_CONDITION_GET_ALL = `${MAS_PATIENT_CONDITION}/getAll/1`;
 
 
 //OPD

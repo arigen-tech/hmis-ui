@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -152,11 +152,7 @@ const InpatientAdmission = () => {
   const [admissionTypes, setAdmissionTypes] = useState([]);
   const [patientConditions, setPatientConditions] = useState([]);
   const [admissionCareTypes, setAdmissionCareTypes] = useState([]);
-  const [admissionSources, setAdmissionSources] = useState([
-    { id: "OPD", name: "OPD" },
-    { id: "Emergency", name: "Emergency" },
-    { id: "Referral", name: "Referral" },
-  ]);
+  const [admissionSources, setAdmissionSources] = useState([]);
   
   // NEW: Document Type Master Data
   const [documentTypes, setDocumentTypes] = useState([
@@ -360,11 +356,15 @@ const InpatientAdmission = () => {
         setAdmissionTypes(typeResponse.response);
       }
       
-      setPatientConditions([
-        { id: 1, conditionName: "Stable", status: "Active" },
-        { id: 2, conditionName: "Serious", status: "Active" },
-        { id: 3, conditionName: "Critical", status: "Active" },
-      ]);
+      const sourceResponse = await getRequest(MAS_ADMISSION_SOURCE_GET_ALL);
+      if (sourceResponse && sourceResponse.response) {
+        setAdmissionSources(sourceResponse.response);
+      }
+      
+      const conditionResponse = await getRequest(MAS_PATIENT_CONDITION_GET_ALL);
+      if (conditionResponse && conditionResponse.response) {
+        setPatientConditions(conditionResponse.response);
+      }
       
       setAdmissionCareTypes([
         { id: 1, careLevelName: "General", status: "Active" },
@@ -1482,8 +1482,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Source</option>
                           {admissionSources.map(source => (
-                            <option key={source.id} value={source.id}>
-                              {source.name}
+                            <option key={source.id} value={source.admissionSourceName}>
+                              {source.admissionSourceName}
                             </option>
                           ))}
                         </select>
@@ -1501,8 +1501,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Condition</option>
                           {patientConditions.map(condition => (
-                            <option key={condition.id} value={condition.conditionName}>
-                              {condition.conditionName}
+                            <option key={condition.patientConditionId} value={condition.patientConditionName}>
+                              {condition.patientConditionName}
                             </option>
                           ))}
                         </select>
