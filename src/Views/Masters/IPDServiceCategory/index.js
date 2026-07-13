@@ -12,6 +12,7 @@ const IPDServiceCategory = () => {
     isSubcategoryRequired: "",
     gstApplicable: "",
     gstPercentage: "",
+    billingFrequency: "", // NEW FIELD
   });
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false);
@@ -28,11 +29,11 @@ const IPDServiceCategory = () => {
   const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
   const dummyData = [
-    { subcategoryId: 1, code: "SC001", name: "Consultation", displayOrder: 1, isSubcategoryRequired: "y", gstApplicable: "y", gstPercentage: 18.0, status: "y" },
-    { subcategoryId: 2, code: "SC002", name: "Procedures", displayOrder: 2, isSubcategoryRequired: "n", gstApplicable: "y", gstPercentage: 12.5, status: "y" },
-    { subcategoryId: 3, code: "SC003", name: "Tests", displayOrder: 3, isSubcategoryRequired: "y", gstApplicable: "n", gstPercentage: 0, status: "n" },
-    { subcategoryId: 4, code: "SC004", name: "Medicines", displayOrder: 4, isSubcategoryRequired: "n", gstApplicable: "y", gstPercentage: 5.0, status: "y" },
-    { subcategoryId: 5, code: "SC005", name: "Accommodation", displayOrder: 5, isSubcategoryRequired: "y", gstApplicable: "n", gstPercentage: 0, status: "n" },
+    { subcategoryId: 1, code: "SC001", name: "Consultation", displayOrder: 1, isSubcategoryRequired: "y", gstApplicable: "y", gstPercentage: 18.0, status: "y", billingFrequency: "Per Visit" },
+    { subcategoryId: 2, code: "SC002", name: "Procedures", displayOrder: 2, isSubcategoryRequired: "n", gstApplicable: "y", gstPercentage: 12.5, status: "y", billingFrequency: "Per Procedure" },
+    { subcategoryId: 3, code: "SC003", name: "Tests", displayOrder: 3, isSubcategoryRequired: "y", gstApplicable: "n", gstPercentage: 0, status: "n", billingFrequency: "Per Test" },
+    { subcategoryId: 4, code: "SC004", name: "Medicines", displayOrder: 4, isSubcategoryRequired: "n", gstApplicable: "y", gstPercentage: 5.0, status: "y", billingFrequency: "Per Day" },
+    { subcategoryId: 5, code: "SC005", name: "Accommodation", displayOrder: 5, isSubcategoryRequired: "y", gstApplicable: "n", gstPercentage: 0, status: "n", billingFrequency: "Per Day" },
   ];
 
   useEffect(() => {
@@ -66,7 +67,6 @@ const IPDServiceCategory = () => {
   const handleInputChange = (e) => {
     const { name, value } = e.target;
     let updatedForm = { ...formData, [name]: value };
-    // If GST Applicable is 'n', set GST Percentage to 0
     if (name === "gstApplicable" && value === "n") {
       updatedForm.gstPercentage = "0";
     }
@@ -83,6 +83,7 @@ const IPDServiceCategory = () => {
       isSubcategoryRequired: "",
       gstApplicable: "",
       gstPercentage: "",
+      billingFrequency: "", // reset new field
     });
     setIsFormValid(false);
   };
@@ -111,6 +112,7 @@ const IPDServiceCategory = () => {
       const payload = {
         ...formData,
         gstPercentage: formData.gstApplicable === "y" ? parseFloat(formData.gstPercentage) : 0,
+        billingFrequency: formData.billingFrequency, // include new field
       };
       if (editingRecord) {
         const updated = data.map((item) =>
@@ -150,6 +152,7 @@ const IPDServiceCategory = () => {
       isSubcategoryRequired: rec.isSubcategoryRequired,
       gstApplicable: rec.gstApplicable,
       gstPercentage: rec.gstPercentage,
+      billingFrequency: rec.billingFrequency || "", // include new field
     });
     setShowForm(true);
     setIsFormValid(true);
@@ -227,7 +230,7 @@ const IPDServiceCategory = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title">IPD Service Subcategory</h4>
+              <h4 className="card-title">IPD Service Category</h4>
               <div className="d-flex justify-content-between align-items-center">
                 {!showForm ? (
                   <form className="d-inline-block searchform me-4" role="search">
@@ -295,6 +298,7 @@ const IPDServiceCategory = () => {
                           <th>Is Subcategory Required</th>
                           <th>GST Applicable</th>
                           <th>GST Percentage</th>
+                          <th>Billing Frequency</th> {/* NEW COLUMN */}
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
@@ -308,6 +312,7 @@ const IPDServiceCategory = () => {
                             <td>{rec.isSubcategoryRequired === "y" ? "Yes" : "No"}</td>
                             <td>{rec.gstApplicable === "y" ? "Yes" : "No"}</td>
                             <td>{rec.gstApplicable === "y" ? rec.gstPercentage : "-"}</td>
+                            <td>{rec.billingFrequency || "-"}</td> {/* NEW CELL */}
                             <td>
                               <div className="form-check form-switch">
                                 <input
@@ -353,7 +358,7 @@ const IPDServiceCategory = () => {
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
-                    <div className="form-group col-md-3">
+                    <div className="form-group col-md-4 mb-2">
                       <label>Code <span className="text-danger">*</span></label>
                       <input
                         className="form-control mt-1"
@@ -367,7 +372,7 @@ const IPDServiceCategory = () => {
                       />
                     </div>
 
-                    <div className="form-group col-md-3">
+                    <div className="form-group col-md-4 mb-2">
                       <label>Name <span className="text-danger">*</span></label>
                       <input
                         className="form-control mt-1"
@@ -381,7 +386,7 @@ const IPDServiceCategory = () => {
                       />
                     </div>
 
-                    <div className="form-group col-md-3">
+                    <div className="form-group col-md-4 mb-2">
                       <label>Display Order <span className="text-danger">*</span></label>
                       <input
                         className="form-control mt-1"
@@ -395,7 +400,7 @@ const IPDServiceCategory = () => {
                       />
                     </div>
 
-                    <div className="form-group col-md-3">
+                    <div className="form-group col-md-4 mb-2">
                       <label>Is Subcategory Required <span className="text-danger">*</span></label>
                       <select
                         className="form-select mt-1"
@@ -411,7 +416,7 @@ const IPDServiceCategory = () => {
                       </select>
                     </div>
 
-                    <div className="form-group col-md-4">
+                    <div className="form-group col-md-4 mb-2">
                       <label>GST Applicable <span className="text-danger">*</span></label>
                       <select
                         className="form-select mt-1"
@@ -427,7 +432,7 @@ const IPDServiceCategory = () => {
                       </select>
                     </div>
 
-                    <div className="form-group col-md-4">
+                    <div className="form-group col-md-4 mb-2">
                       <label>GST Percentage {formData.gstApplicable === "y" && <span className="text-danger">*</span>}</label>
                       <input
                         className="form-control mt-1"
@@ -440,6 +445,20 @@ const IPDServiceCategory = () => {
                         required={formData.gstApplicable === "y"}
                         disabled={loading || formData.gstApplicable !== "y"}
                         placeholder="Enter percentage"
+                      />
+                    </div>
+
+                    {/* NEW FIELD: Billing Frequency */}
+                    <div className="form-group col-md-4 mb-2">
+                      <label>Billing Frequency</label>
+                      <input
+                        className="form-control mt-1"
+                        name="billingFrequency"
+                        type="text"
+                        value={formData.billingFrequency}
+                        onChange={handleInputChange}
+                        disabled={loading}
+                        placeholder="e.g., Per Day, Per Visit"
                       />
                     </div>
                   </div>

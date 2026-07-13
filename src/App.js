@@ -251,6 +251,7 @@ import IPDServiceSubcategory from './Views/Masters/IPDServiceSubcategory';
 import IPDServiceCategory from './Views/Masters/IPDServiceCategory';
 import PatientDischargeCondition from './Views/Masters/PatientDischargeCondition';
 import PatientDischargeReason from './Views/Masters/PatientDischargeReason';
+import BillingRefundDetails from './Views/Laboratory/BillingRefundDetails';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -535,6 +536,9 @@ function App() {
                 <Route path="/IPDServiceSubcategory" element={<IPDServiceSubcategory/>} />
                 <Route path="/PatientDischargeCondition" element={<PatientDischargeCondition/>} />
                 <Route path="/PatientDischargeReason" element={<PatientDischargeReason/>} />
+                <Route path="/BillingRefundDetails" element={<BillingRefundDetails/>} />
+
+                
                 </Route>
             </Route>
 

@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading";
-import { MAS_BED, MAS_ROOM, MAS_BED_TYPE, MAS_BED_STATUS, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { MAS_BED, MAS_ROOM, MAS_BED_TYPE, MAS_BED_STATUS, MAS_WARD_GET_ALL_ACTIVE } from "../../../config/apiConfig";
 import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import { ADD_BED_SUCC_MSG, DUPLICATE_BED_DATA, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS, FETCH_BED_DATA_ERR_MSG, FETCH_DROP_DOWN_ERR_MSG, UPDATE_BED_SUCC_MSG } from "../../../config/constants";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";  
@@ -73,16 +73,14 @@ const BedManagement = () => {
   // Fetch dropdown data
   const fetchDropdownData = async () => {
     try {
-      // Fetch wards (departments) for filtering only
-      const wardResponse = await getRequest(`${MAS_DEPARTMENT}/getAll/1`);
+      // Fetch wards directly
+      const wardResponse = await getRequest(MAS_WARD_GET_ALL_ACTIVE);
       if (wardResponse && wardResponse.response) {
-        const filteredWards = wardResponse.response
-          .filter(dept => dept.departmentTypeId === 10)
-          .map(ward => ({
-            id: ward.id,
-            name: ward.departmentName
-          }));
-        setWardOptions(filteredWards);
+        const allWards = wardResponse.response.map(ward => ({
+          id: ward.wardId,
+          name: ward.wardName
+        }));
+        setWardOptions(allWards);
       }
 
       // Fetch all rooms
