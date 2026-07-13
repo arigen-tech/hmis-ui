@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -576,12 +576,12 @@ const InpatientAdmission = () => {
       if (!wardId) {
         setRooms([]);
       } else {
-        const response = await getRequest(`${GET_ROOM_BY_WARD}?wardId=${wardId}`);
+        const response = await getRequest(`${GET_ROOM_BY_WARD}/${wardId}`);
         if (response && response.response) {
           setRooms(response.response);
-      } else {
-        setRooms([]);
-      }
+        } else {
+          setRooms([]);
+        }
       }
       
       // Clear bed selection
@@ -602,20 +602,15 @@ const InpatientAdmission = () => {
   
   const fetchBedsByRoom = async (roomId) => {
     try {
-      // Mock data
-      if (roomId == 1) { // GW-Room-01
-        setBeds([
-          { id: 1, bedNumber: "GW-01", roomId: 1, status: "available" },
-          { id: 2, bedNumber: "GW-02", roomId: 1, status: "occupied" },
-          { id: 3, bedNumber: "GW-03", roomId: 1, status: "available" },
-        ]);
-      } else if (roomId == 4) { // ICU-Room-01
-        setBeds([
-          { id: 4, bedNumber: "ICU-01", roomId: 4, status: "available" },
-          { id: 5, bedNumber: "ICU-02", roomId: 4, status: "available" },
-        ]);
-      } else {
+      if (!roomId) {
         setBeds([]);
+      } else {
+        const response = await getRequest(`${GET_BED_BY_ROOM}/${roomId}`);
+        if (response && response.response) {
+          setBeds(response.response);
+        } else {
+          setBeds([]);
+        }
       }
       
       // Clear bed selection
@@ -822,11 +817,11 @@ const InpatientAdmission = () => {
   };
   
   const handleBedChange = (bedId) => {
-    const selectedBed = beds.find(b => b.id == bedId);
+    const selectedBed = beds.find(b => b.id == bedId || b.bedId == bedId);
     setFormData(prev => ({
       ...prev,
       bedId: bedId,
-      bedNumber: selectedBed?.bedNumber || "",
+      bedNumber: selectedBed?.bedName || selectedBed?.bedNumber || "",
     }));
   };
   
@@ -1624,7 +1619,7 @@ const InpatientAdmission = () => {
                           <option value="">Select Room</option>
                           {rooms.map(room => (
                             <option key={room.roomId || room.id} value={room.roomId || room.id}>
-                              {room.roomName || room.roomNumber}
+                              {room.roomName || room.roomNumber} ({room.availableBed || room.vacantBed || room.vacant || 0} beds available)
                             </option>
                           ))}
                         </select>
@@ -1641,8 +1636,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Bed</option>
                           {beds.map(bed => (
-                            <option key={bed.id} value={bed.id}>
-                              {bed.bedNumber} ({bed.status})
+                            <option key={bed.bedId || bed.id} value={bed.bedId || bed.id}>
+                              {bed.bedName || bed.bedNumber} {bed.status ? `(${bed.status})` : ''}
                             </option>
                           ))}
                         </select>
