@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -153,6 +153,7 @@ const InpatientAdmission = () => {
   const [patientConditions, setPatientConditions] = useState([]);
   const [admissionCareTypes, setAdmissionCareTypes] = useState([]);
   const [admissionSources, setAdmissionSources] = useState([]);
+  const [departments, setDepartments] = useState([]);
   
   // NEW: Document Type Master Data
   const [documentTypes, setDocumentTypes] = useState([
@@ -364,6 +365,11 @@ const InpatientAdmission = () => {
       const conditionResponse = await getRequest(MAS_PATIENT_CONDITION_GET_ALL);
       if (conditionResponse && conditionResponse.response) {
         setPatientConditions(conditionResponse.response);
+      }
+      
+      const deptResponse = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=WARD`);
+      if (deptResponse && deptResponse.response) {
+        setDepartments(deptResponse.response);
       }
       
       setAdmissionCareTypes([
@@ -1680,8 +1686,8 @@ const InpatientAdmission = () => {
                           onChange={handleChange}
                         >
                           <option value="">Select Department</option>
-                          {["Medicine", "Gynae", "Cardiology", "Pediatrics", "Surgery"].map(dept => (
-                            <option key={dept} value={dept}>{dept}</option>
+                          {departments.map(dept => (
+                            <option key={dept.id} value={dept.departmentName}>{dept.departmentName}</option>
                           ))}
                         </select>
                       </div>
