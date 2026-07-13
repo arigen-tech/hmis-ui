@@ -246,6 +246,12 @@ import OBGDetails from './Views/OPD/OBGDetails'; import EarExamination from './V
 import { GET_ALL_ITEMS_BY_NAME } from './config/apiConfig';
 import PrescriptionList from './Views/Dispensary/PendingPrescription';
 import PatientSearchForAdmission from './Views/IPD/PatientSearchForAdmission';
+import IPDTransferReason from './Views/Masters/IPDTransferReason';
+import IPDServiceSubcategory from './Views/Masters/IPDServiceSubcategory';
+import IPDServiceCategory from './Views/Masters/IPDServiceCategory';
+import PatientDischargeCondition from './Views/Masters/PatientDischargeCondition';
+import PatientDischargeReason from './Views/Masters/PatientDischargeReason';
+import BillingRefundDetails from './Views/Laboratory/BillingRefundDetails';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -525,8 +531,12 @@ function App() {
                 {/* <Route path="/GynaMaster" element={<GynaMaster/>} /> */}
                 <Route path="/pendingPrescription" element={<PrescriptionList/>} />
                 <Route path="/PatientSearchForAdmission" element={<PatientSearchForAdmission/>} />
-
-                
+                <Route path="/IPDTransferReason" element={<IPDTransferReason/>} />
+                <Route path="/IPDServiceCategory" element={<IPDServiceCategory/>} />
+                <Route path="/IPDServiceSubcategory" element={<IPDServiceSubcategory/>} />
+                <Route path="/PatientDischargeCondition" element={<PatientDischargeCondition/>} />
+                <Route path="/PatientDischargeReason" element={<PatientDischargeReason/>} />
+                <Route path="/BillingRefundDetails" element={<BillingRefundDetails/>} />
 
                 
                 </Route>

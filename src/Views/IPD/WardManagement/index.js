@@ -8,6 +8,7 @@ import DietOrderHistory from "../Diet"
 import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
+import IPDInitialAssessment from "../IPDInitialAssessment"   // imported (already present)
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -15,8 +16,10 @@ const WardManagement = () => {
   const [showPatientList, setShowPatientList] = useState(true)
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false)
 
+  // Added "IPD Initial Assessment" right after Clinical Dashboard
   const caseSheetTabs = [
     "Clinical Dashboard",
+    "IPD Initial Assessment",          // <-- new tab
     "Doctor Visit / Case Notes",
     "Investigations / Orders",
     "Medication & Treatment (MAR)",
@@ -28,7 +31,7 @@ const WardManagement = () => {
     "Discharge"
   ]
 
-  // Patient data
+  // Patient data (unchanged)
   const patientData = [
     { id: 1, bedNo: "GW-03", patientName: "RAMESH KUMAR", ageGender: "54/M", admissionNo: "AD/101/01/2021-2022", admissionDate: "05/01/2021", doctorName: "Dr. ANITA SHARMA", from: "DR. ANITA SHARMA /OPD", days: 4, currentDay: 4, status: "NRW", ward: "General Ward I", diagnosis: "Hypertension", admissionTime: "09:30 AM" },
     { id: 2, bedNo: "GW-04", patientName: "SUNITA DEVI", ageGender: "48/F", admissionNo: "AD/102/01/2021-2022", admissionDate: "06/01/2021", doctorName: "Dr. RAHUL VERMA", from: "DR. RAHUL VERMA /OPD", days: 2, currentDay: 2, status: "RW", ward: "General Ward I", diagnosis: "Diabetes Type 2", admissionTime: "11:15 AM" },
@@ -396,8 +399,14 @@ const WardManagement = () => {
                             {activeTab === "Clinical Dashboard" && (
                               <ClinicalDashboard selectedPatient={selectedPatient} />
                             )}
+
+                            {/* New IPD Initial Assessment Tab */}
+                            {activeTab === "IPD Initial Assessment" && (
+                              <IPDInitialAssessment selectedPatient={selectedPatient} />
+                            )}
+
                             {activeTab === "Medication & Treatment (MAR)" && (
-                              <MedicationModule selectedPatient={selectedPatient} />
+                              < MedicationModule selectedPatient={selectedPatient} />
                             )}
 
                             {activeTab === "Doctor Visit / Case Notes" && (
@@ -406,41 +415,43 @@ const WardManagement = () => {
 
                             {activeTab === "Bed Transfer" && (
                               <BedTransfer selectedPatient={selectedPatient} />
-)} 
-
-{activeTab ==="Vitals & Monitoring" && (
-  <VitalsandMonitoring selectedPatient={selectedPatient}/>
-)}
-{
-  activeTab === "Investigations / Orders" && (
-    <InvestigationOrderandTracking selectedPatient={selectedPatient}/>
-  )
-}
-{
-  activeTab === "Diet" && (
-    <DietOrderHistory selectedPatient={selectedPatient}/>
-  )
-}
-
-{activeTab === "Discharge" && (
-  <DischargeFromWard selectedPatient={selectedPatient}/>
-)}
-
-
-{activeTab === "Nursing Care / Procedures" && (
-  <NursingCareModule selectedPatient={selectedPatient}/>
-)}
-
-
-
-
-                            {activeTab !== "Clinical Dashboard" && activeTab !== "Doctor Visit / Case Notes" && (
-                              <div>
-                               
-                               
-                              </div>
                             )}
 
+                            {activeTab === "Vitals & Monitoring" && (
+                              <VitalsandMonitoring selectedPatient={selectedPatient} />
+                            )}
+
+                            {activeTab === "Investigations / Orders" && (
+                              <InvestigationOrderandTracking selectedPatient={selectedPatient} />
+                            )}
+
+                            {activeTab === "Diet" && (
+                              <DietOrderHistory selectedPatient={selectedPatient} />
+                            )}
+
+                            {activeTab === "Discharge" && (
+                              <DischargeFromWard selectedPatient={selectedPatient} />
+                            )}
+
+                            {activeTab === "Nursing Care / Procedures" && (
+                              <NursingCareModule selectedPatient={selectedPatient} />
+                            )}
+
+                            {/* Fallback for any undefined tabs (optional) */}
+                            {activeTab !== "Clinical Dashboard" &&
+                              activeTab !== "IPD Initial Assessment" &&
+                              activeTab !== "Doctor Visit / Case Notes" &&
+                              activeTab !== "Medication & Treatment (MAR)" &&
+                              activeTab !== "Bed Transfer" &&
+                              activeTab !== "Vitals & Monitoring" &&
+                              activeTab !== "Investigations / Orders" &&
+                              activeTab !== "Diet" &&
+                              activeTab !== "Discharge" &&
+                              activeTab !== "Nursing Care / Procedures" && (
+                              <div>
+                                <p>Content for {activeTab} will be displayed here.</p>
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
