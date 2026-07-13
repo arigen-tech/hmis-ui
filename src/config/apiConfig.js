@@ -706,3 +706,4 @@ export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 
 export const IPD_PATIENT_WAITING_LIST = `/ipd/ipdPatientWaitingList`;
 export const GET_WARD_BY_CATEGORY = `/ipd/getWardByCategory`;
+export const GET_ROOM_BY_WARD = `/ipd/getRoomByWard`;

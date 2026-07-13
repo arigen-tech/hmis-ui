@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -573,20 +573,15 @@ const InpatientAdmission = () => {
   
   const fetchRoomsByWard = async (wardId) => {
     try {
-      // Mock data
-      if (wardId == 1) { // General Ward - A
-        setRooms([
-          { id: 1, roomNumber: "GW-Room-01", wardId: 1 },
-          { id: 2, roomNumber: "GW-Room-02", wardId: 1 },
-          { id: 3, roomNumber: "GW-Room-03", wardId: 1 },
-        ]);
-      } else if (wardId == 3) { // ICU - 1
-        setRooms([
-          { id: 4, roomNumber: "ICU-Room-01", wardId: 3 },
-          { id: 5, roomNumber: "ICU-Room-02", wardId: 3 },
-        ]);
+      if (!wardId) {
+        setRooms([]);
+      } else {
+        const response = await getRequest(`${GET_ROOM_BY_WARD}?wardId=${wardId}`);
+        if (response && response.response) {
+          setRooms(response.response);
       } else {
         setRooms([]);
+      }
       }
       
       // Clear bed selection
@@ -814,11 +809,11 @@ const InpatientAdmission = () => {
   };
   
   const handleRoomChange = (roomId) => {
-    const selectedRoom = rooms.find(r => r.id == roomId);
+    const selectedRoom = rooms.find(r => r.id == roomId || r.roomId == roomId);
     setFormData(prev => ({
       ...prev,
       roomId: roomId,
-      roomNumber: selectedRoom?.roomNumber || "",
+      roomNumber: selectedRoom?.roomName || selectedRoom?.roomNumber || "",
       bedId: "",
       bedNumber: "",
     }));
@@ -1628,8 +1623,8 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Room</option>
                           {rooms.map(room => (
-                            <option key={room.id} value={room.id}>
-                              {room.roomNumber}
+                            <option key={room.roomId || room.id} value={room.roomId || room.id}>
+                              {room.roomName || room.roomNumber}
                             </option>
                           ))}
                         </select>
