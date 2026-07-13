@@ -705,3 +705,4 @@ export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
 export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 
 export const IPD_PATIENT_WAITING_LIST = `/ipd/ipdPatientWaitingList`;
+export const GET_WARD_BY_CATEGORY = `/ipd/getWardByCategory`;

@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -527,7 +527,7 @@ const InpatientAdmission = () => {
         return;
       }
       
-      const response = await getRequest(`${MAS_WARDS_GET_BY_ID}/${categoryId}/status/y`);
+      const response = await getRequest(`${GET_WARD_BY_CATEGORY}/${categoryId}`);
       if (response && response.response) {
         setWards(response.response);
       } else {
@@ -1604,7 +1604,7 @@ const InpatientAdmission = () => {
                           <option value="">Select Ward</option>
                           {wards.map(ward => (
                             <option key={ward.wardId || ward.id} value={ward.wardId || ward.id}>
-                              {ward.wardName} ({ward.vacantBed || ward.vacant || 0} beds available)
+                              {ward.wardName} ({ward.availableBed || ward.vacantBed || ward.vacant || 0} beds available)
                             </option>
                           ))}
                         </select>
