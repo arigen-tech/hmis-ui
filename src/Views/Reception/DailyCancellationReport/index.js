@@ -8,7 +8,9 @@ import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import {
   DAILY_CANCELLATION_REPORT_END_URL,
   DOCTOR_BY_SPECIALITY,
+  FILTER_LAB_DEPT,
   FILTER_OPD_DEPT,
+  FILTER_RADIO_DEPT,
   GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
   GET_ALL_REASONS,
   GET_CANCELLED_APPOINTMENTS,
@@ -39,48 +41,6 @@ import {
   DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG,
 } from "../../../config/constants";
 
-// ---------- Lab / Radiology mock data (for UI demonstration) ----------
-const LAB_RAD_MOCK_DATA = [
-  {
-    patientName: "Ananya Sharma",
-    mobileNumber: "9876543210",
-    age: "28Y / Female",
-    departmentName: "Laboratory",
-    serviceName: "CBC",
-    orderDateTime: "2026-07-10T09:30:00",
-    cancellationDateTime: "2026-07-11T14:15:00",
-    cancelledBy: "Dr. Rao",
-    cancellationReason: "Patient refused",
-  },
-  {
-    patientName: "Vikram Singh",
-    mobileNumber: "8765432109",
-    age: "35Y / Male",
-    departmentName: "Radiology",
-    serviceName: "X-Ray Chest",
-    orderDateTime: "2026-07-09T11:00:00",
-    cancellationDateTime: "2026-07-10T09:45:00",
-    cancelledBy: "Reception",
-    cancellationReason: "Machine fault",
-  },
-  {
-    patientName: "Meera Patel",
-    mobileNumber: "7654321098",
-    age: "42Y / Female",
-    departmentName: "Laboratory",
-    serviceName: "Lipid Profile",
-    orderDateTime: "2026-07-12T08:15:00",
-    cancellationDateTime: "2026-07-12T10:00:00",
-    cancelledBy: "Self",
-    cancellationReason: "Rescheduled",
-  },
-];
-
-const LAB_RAD_DEPT_OPTIONS = [
-  { id: "LAB", name: "Laboratory" },
-  { id: "RADIOLOGY", name: "Radiology" },
-];
-
 const DailyCancellationReport = () => {
   // ========================= O P D   S T A T E =========================
   const [fromDate, setFromDate] = useState("");
@@ -103,15 +63,9 @@ const DailyCancellationReport = () => {
   const [isViewLoading, setIsViewLoading] = useState(false);
   const [isPrintLoading, setIsPrintLoading] = useState(false);
 
-  // ==================== L A B / R A D   S T A T E =====================
-  const [labRadFromDate, setLabRadFromDate] = useState("");
-  const [labRadToDate, setLabRadToDate] = useState("");
-  const [labRadDepartment, setLabRadDepartment] = useState("");
-  const [labRadReason, setLabRadReason] = useState("");
-
-  const [labRadReportData, setLabRadReportData] = useState([]);
-  const [labRadShowReport, setLabRadShowReport] = useState(false);
-  const [labRadCurrentPage, setLabRadCurrentPage] = useState(1);
+  const [selectedDeptTypeCode, setSelectedDeptTypeCode] = useState(
+    FILTER_OPD_DEPT,
+  );
 
   // ======================================================================
   //               H E L P E R   F U N C T I O N S
@@ -130,6 +84,9 @@ const DailyCancellationReport = () => {
   const formatAppointmentDateTime = (appointmentDate, appointmentTime) => {
     if (!appointmentDate || !appointmentTime) return "-";
     const [year, month, day] = appointmentDate.split('-');
+    if(appointmentTime === " to "){
+      return `${day}/${month}/${year}`;
+    }
     return `${day}/${month}/${year} ${appointmentTime}`;
   };
 
@@ -149,9 +106,9 @@ const DailyCancellationReport = () => {
   //               O P D   D A T A   F E T C H I N G
   // ======================================================================
   useEffect(() => {
-    fetchDepartment();
+    fetchDepartment(selectedDeptTypeCode);
     fetchCancellationReasons();
-  }, []);
+  }, [selectedDeptTypeCode]);
 
   useEffect(() => {
     const today = new Date();
@@ -159,15 +116,14 @@ const DailyCancellationReport = () => {
     daysAgo.setDate(today.getDate() - DAY_RANGE_FOR_OPD_CANCELLTION_REPORT);
     setToDate(formatDateForInput(today));
     setFromDate(formatDateForInput(daysAgo));
-    // Same for Lab/Rad
-    setLabRadToDate(formatDateForInput(today));
-    setLabRadFromDate(formatDateForInput(daysAgo));
   }, []);
 
-  async function fetchDepartment() {
+  async function fetchDepartment(departmentTypeCode = selectedDeptTypeCode) {
     try {
       setLoading(true);
-      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      const data = await getRequest(
+        `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${departmentTypeCode}`,
+      );
       if (data.status === 200 && Array.isArray(data.response)) {
         setDepartmentData(data.response);
       } else {
@@ -283,6 +239,18 @@ const DailyCancellationReport = () => {
 
   const handleDoctorChange = (e) => setSelectedDoctor(e.target.value);
   const handleReasonChange = (e) => setSelectedReason(e.target.value);
+  const handleDeptTypeChange = (e) => {
+    const deptTypeCode = e.target.value;
+    setSelectedDeptTypeCode(deptTypeCode);
+    setSelectedDepartment("");
+    setSelectedDoctor("");
+    setDoctorOptions([]);
+    setShowReport(false);
+    setReportData([]);
+    setCurrentPage(1);
+  };
+
+  const isDoctorSelectionEnabled = selectedDeptTypeCode === FILTER_OPD_DEPT;
 
   const fetchCancellationReport = async () => {
     if (!validateDates()) return;
@@ -389,46 +357,6 @@ const DailyCancellationReport = () => {
   ];
 
   // ======================================================================
-  //      L A B / R A D   C A N C E L L A T I O N   H A N D L E R S
-  // ======================================================================
-  const handleLabRadSearch = () => {
-    // Mock search – just display the static data
-    setLabRadReportData(LAB_RAD_MOCK_DATA);
-    setLabRadShowReport(true);
-    setLabRadCurrentPage(1);
-  };
-
-  const handleLabRadReset = () => {
-    const today = new Date();
-    const daysAgo = new Date(today);
-    daysAgo.setDate(today.getDate() - DAY_RANGE_FOR_OPD_CANCELLTION_REPORT);
-    setLabRadFromDate(formatDateForInput(daysAgo));
-    setLabRadToDate(formatDateForInput(today));
-    setLabRadDepartment("");
-    setLabRadReason("");
-    setLabRadShowReport(false);
-    setLabRadReportData([]);
-    setLabRadCurrentPage(1);
-  };
-
-  // Lab/Rad pagination
-  const labRadIndexOfLast = labRadCurrentPage * DEFAULT_ITEMS_PER_PAGE;
-  const labRadIndexOfFirst = labRadIndexOfLast - DEFAULT_ITEMS_PER_PAGE;
-  const labRadCurrentItems = labRadReportData.slice(labRadIndexOfFirst, labRadIndexOfLast);
-
-  const labRadReportColumns = [
-    "Patient Name",
-    "Mobile Number",
-    "Age/Gender",
-    "Department",
-    "Service Name",
-    "Order Date & Time",
-    "Cancellation Date & Time",
-    "Cancelled By",
-    "Cancellation Reason",
-  ];
-
-  // ======================================================================
   //               J S X   R E N D E R I N G
   // ======================================================================
   return (
@@ -456,7 +384,7 @@ const DailyCancellationReport = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Daily OPD Cancellation Report</h4>
+              <h4 className="card-title p-2 mb-0">Daily Cancellation Report</h4>
             </div>
             <div className="card-body">
               {/* OPD filters */}
@@ -470,6 +398,14 @@ const DailyCancellationReport = () => {
                   <input type="date" className="form-control mt-1" value={toDate} onChange={handleToDateChange} min={fromDate} max={formatDateForInput(new Date())} />
                 </div>
                 <div className="col-md-2 mb-3">
+                  <label className="form-label fw-bold">Department Type</label>
+                  <select className="form-select mt-1" value={selectedDeptTypeCode} onChange={handleDeptTypeChange}>
+                    <option value={FILTER_OPD_DEPT}>OPD</option>
+                    <option value={FILTER_LAB_DEPT}>Laboratory</option>
+                    <option value={FILTER_RADIO_DEPT}>Radiology</option>
+                  </select>
+                </div>
+                <div className="col-md-2 mb-3">
                   <label className="form-label fw-bold">Department</label>
                   <select className="form-select mt-1" value={selectedDepartment} onChange={handleDepartmentChange}>
                     <option value="">All Departments</option>
@@ -480,7 +416,7 @@ const DailyCancellationReport = () => {
                 </div>
                 <div className="col-md-2 mb-3">
                   <label className="form-label fw-bold">Doctor</label>
-                  <select className="form-select mt-1" value={selectedDoctor} onChange={handleDoctorChange} disabled={!selectedDepartment}>
+                  <select className="form-select mt-1" value={selectedDoctor} onChange={handleDoctorChange} disabled={!isDoctorSelectionEnabled || !selectedDepartment}>
                     <option value="">All Doctors</option>
                     {doctorOptions.map((doctor) => (
                       <option key={doctor.userId} value={doctor.userId}>{`${doctor.firstName} ${doctor.middleName || ""} ${doctor.lastName || ""}`.trim()}</option>
@@ -498,7 +434,7 @@ const DailyCancellationReport = () => {
                 </div>
               </div>
 
-              {/* OPD buttons */}
+              {/* Action buttons */}
               <div className="row">
                 <div className="col-12 d-flex justify-content-between">
                   <div className="d-flex gap-2">
@@ -509,10 +445,10 @@ const DailyCancellationReport = () => {
                   </div>
                   <div className="d-flex gap-2">
                     <button type="button" className="btn btn-success btn-sm" onClick={handleViewReport} disabled={isSearching || isViewLoading || isPrintLoading}>
-                      {isViewLoading ? (<><span className="spinner-border spinner-border-sm me-2" />Generating...</>) : (<><i className="fa fa-eye me-2" />VIEW/DOWNLOAD</>)}
+                      {isViewLoading ? (<><span className="spinner-border spinner-border-sm me-2" />Generating...</>) : (<><i className="fa fa-eye me-2" />View</>)}
                     </button>
                     <button type="button" className="btn btn-warning btn-sm" onClick={handlePrintReport} disabled={isSearching || isViewLoading || isPrintLoading}>
-                      {isPrintLoading ? (<><span className="spinner-border spinner-border-sm me-2" />Printing...</>) : (<><i className="fa fa-print me-2" />PRINT</>)}
+                      {isPrintLoading ? (<><span className="spinner-border spinner-border-sm me-2" />Printing...</>) : (<><i className="fa fa-print me-2" />Print</>)}
                     </button>
                   </div>
                 </div>
@@ -524,7 +460,7 @@ const DailyCancellationReport = () => {
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
-                      <div className="card-header"><h5 className="card-title mb-0">OPD Cancellation Report</h5></div>
+                      <div className="card-header"><h5 className="card-title mb-0">Cancellation Report</h5></div>
                       <div className="card-body">
                         <div className="table-responsive">
                           <table className="table table-bordered table-hover">
@@ -554,95 +490,6 @@ const DailyCancellationReport = () => {
                         </div>
                         {reportData.length > 0 && (
                           <Pagination totalItems={reportData.length} itemsPerPage={DEFAULT_ITEMS_PER_PAGE} currentPage={currentPage} onPageChange={setCurrentPage} />
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* ================== L A B / R A D   C A R D ================== */}
-      <div className="row mt-4">
-        <div className="col-12 grid-margin stretch-card">
-          <div className="card form-card">
-            <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Daily Lab / Radiology Cancellation Report</h4>
-            </div>
-            <div className="card-body">
-              <div className="row mb-4">
-                <div className="col-md-3 mb-3">
-                  <label className="form-label fw-bold">From Date <span className="text-danger">*</span></label>
-                  <input type="date" className="form-control mt-1" value={labRadFromDate} onChange={(e) => setLabRadFromDate(e.target.value)} max={formatDateForInput(new Date())} />
-                </div>
-                <div className="col-md-3 mb-3">
-                  <label className="form-label fw-bold">To Date <span className="text-danger">*</span></label>
-                  <input type="date" className="form-control mt-1" value={labRadToDate} onChange={(e) => setLabRadToDate(e.target.value)} min={labRadFromDate} max={formatDateForInput(new Date())} />
-                </div>
-                <div className="col-md-3 mb-3">
-                  <label className="form-label fw-bold">Department</label>
-                  <select className="form-select mt-1" value={labRadDepartment} onChange={(e) => setLabRadDepartment(e.target.value)}>
-                    <option value="">All Departments</option>
-                    {LAB_RAD_DEPT_OPTIONS.map((dept) => (
-                      <option key={dept.id} value={dept.id}>{dept.name}</option>
-                    ))}
-                  </select>
-                </div>
-                <div className="col-md-3 mb-3">
-                  <label className="form-label fw-bold">Cancellation Reason</label>
-                  <select className="form-select mt-1" value={labRadReason} onChange={(e) => setLabRadReason(e.target.value)}>
-                    <option value="">All Reasons</option>
-                    {reasonOptions.map((reason) => (
-                      <option key={reason.reasonId} value={reason.reasonId}>{reason.reasonName}</option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="row">
-                <div className="col-12 d-flex justify-content-start gap-2">
-                  <button type="button" className="btn btn-primary" onClick={handleLabRadSearch}>Search</button>
-                  <button type="button" className="btn btn-secondary" onClick={handleLabRadReset}>Reset</button>
-                </div>
-              </div>
-
-              {labRadShowReport && (
-                <div className="row mt-4">
-                  <div className="col-12">
-                    <div className="card">
-                      <div className="card-header"><h5 className="card-title mb-0">Lab / Radiology Cancellation Report</h5></div>
-                      <div className="card-body">
-                        <div className="table-responsive">
-                          <table className="table table-bordered table-hover">
-                            <thead>
-                              <tr>{labRadReportColumns.map((col, idx) => <th key={idx}>{col}</th>)}</tr>
-                            </thead>
-                            <tbody>
-                              {labRadReportData.length > 0 ? (
-                                labRadCurrentItems.map((row, idx) => (
-                                  <tr key={idx}>
-                                    <td>{row.patientName}</td>
-                                    <td>{row.mobileNumber}</td>
-                                    <td>{row.age}</td>
-                                    <td>{row.departmentName}</td>
-                                    <td>{row.serviceName}</td>
-                                    <td>{formatDateTimeWithoutTZ(row.orderDateTime)}</td>
-                                    <td>{formatDateTimeWithoutTZ(row.cancellationDateTime)}</td>
-                                    <td>{row.cancelledBy}</td>
-                                    <td>{row.cancellationReason}</td>
-                                  </tr>
-                                ))
-                              ) : (
-                                <tr><td colSpan={labRadReportColumns.length} className="text-center py-4">No cancellation records found for the selected criteria</td></tr>
-                              )}
-                            </tbody>
-                          </table>
-                        </div>
-                        {labRadReportData.length > 0 && (
-                          <Pagination totalItems={labRadReportData.length} itemsPerPage={DEFAULT_ITEMS_PER_PAGE} currentPage={labRadCurrentPage} onPageChange={setLabRadCurrentPage} />
                         )}
                       </div>
                     </div>

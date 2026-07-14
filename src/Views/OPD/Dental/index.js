@@ -177,6 +177,12 @@ const DentalSection = ({ patientId, visitId, hideHeader = false, hideButtons = f
     }));
   };
 
+  const isExclusiveToothCondition = (condition) =>
+    Boolean(condition?.isMissing || condition?.isUnsalvageable);
+
+  const hasExclusiveCondition = (conditions = []) =>
+    conditions.some((condition) => isExclusiveToothCondition(condition));
+
 
 const getToothColor = (toothNumber, isAdult = true) => {
 
@@ -226,24 +232,24 @@ const handleConditionSelect = (condition) => {
 
   const existingConditions = currentData[number] || [];
 
-  const alreadySelected = existingConditions.find(
+  const alreadySelected = existingConditions.some(
     (item) => item.conditionId === condition.conditionId
   );
+  const alreadyLocked = hasExclusiveCondition(existingConditions);
+  const selectingExclusive = isExclusiveToothCondition(condition);
 
-  let updatedConditions = [];
+  let updatedConditions = existingConditions;
 
   if (alreadySelected) {
-
     updatedConditions = existingConditions.filter(
       (item) => item.conditionId !== condition.conditionId
     );
-
+  } else if (selectingExclusive) {
+    updatedConditions = [condition];
+  } else if (!alreadyLocked) {
+    updatedConditions = [...existingConditions, condition];
   } else {
-
-    updatedConditions = [
-      ...existingConditions,
-      condition,
-    ];
+    return;
   }
 
   const updatedData = {
@@ -481,6 +487,9 @@ const ToothBox = ({
         <span><span className="badge bg-danger">🔴</span> Missing</span>
         <span><span className="badge" style={{backgroundColor: "#fd7e14", color: "white"}}>🟠</span> Unsalvageable</span>
         {showScheduleModal && <span><span className="badge bg-primary">🔵</span> Selected</span>}
+      </div>
+      <div className="small text-muted mb-2">
+        Missing and unsalvageable teeth lock the rest of the conditions for that tooth.
       </div>
 
       <div className="text-center mb-2">
@@ -845,6 +854,24 @@ const ToothBox = ({
         </div>
       )}
 
+      <div className="d-flex justify-content-end mb-2">
+        <button
+          type="button"
+          className="btn btn-link btn-sm p-0 text-decoration-none"
+          onClick={() => setShowDentalHistory((prev) => !prev)}
+        >
+          {showDentalHistory ? "Hide Dental History" : "Dental History"}
+        </button>
+      </div>
+
+      {showDentalHistory && (
+        <div className="alert alert-light border py-2 px-3 mb-3 small">
+          {dentalHistory.length > 0
+            ? "Previous dental visit records are available in the history tab."
+            : "No dental history is available for this patient yet."}
+        </div>
+      )}
+
       {/* Adult Section */}
       <div className="card mb-4 p-3">
         {renderAdultSummaryCards()}
@@ -930,6 +957,14 @@ const ToothBox = ({
 )?.some(
                 (item) => item.conditionId === condition.conditionId
               );
+              const selectedConditions = selectedTooth?.isAdult
+                ? teethData[selectedTooth?.number] || []
+                : childTeethData[selectedTooth?.number] || [];
+              const lockedByExclusiveCondition = hasExclusiveCondition(selectedConditions);
+              const disabled =
+                !checked &&
+                lockedByExclusiveCondition &&
+                !isExclusiveToothCondition(condition);
 
               return (
 
@@ -940,8 +975,15 @@ const ToothBox = ({
 
                   <div
                     className="border rounded p-2 d-flex align-items-center justify-content-between"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => handleConditionSelect(condition)}
+                    style={{
+                      cursor: disabled ? "not-allowed" : "pointer",
+                      opacity: disabled ? 0.55 : 1,
+                    }}
+                    onClick={() => {
+                      if (!disabled) {
+                        handleConditionSelect(condition);
+                      }
+                    }}
                   >
 
                     <div className="d-flex align-items-center gap-2">
@@ -949,6 +991,7 @@ const ToothBox = ({
                       <input
                         type="checkbox"
                         checked={checked}
+                        disabled={disabled}
                         readOnly
                       />
 
