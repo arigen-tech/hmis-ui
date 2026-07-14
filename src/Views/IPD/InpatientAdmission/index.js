@@ -1,8 +1,8 @@
 import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
-import { getRequest, postRequest } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE } from "../../../config/apiConfig";
+import { getRequest, postRequest, postRequestWithFormData } from "../../../service/apiService";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -18,6 +18,7 @@ const InpatientAdmission = () => {
     // Patient Details 
     patientName: "Rajeev",
     patientId: "",
+    visitId: "",
     uhid: "",
     mobileNo: "7777777777",
     age: "33",
@@ -224,6 +225,7 @@ const InpatientAdmission = () => {
         }
         setFormData(prev => ({
           ...prev,
+          visitId: patientData?.visitId || patientData?.opdPatientDetailsId || null,
           patientName: [data.personal?.firstName, data.personal?.middleName, data.personal?.lastName].filter(Boolean).join(" ") || prev.patientName,
           patientId: data.patientId || prev.patientId,
           uhid: data.uhid || `UHID-${String(data.patientId).padStart(6, '0')}`,
@@ -305,6 +307,7 @@ const InpatientAdmission = () => {
     
     setFormData(prev => ({
       ...prev,
+      visitId: patientData?.visitId || patientData?.opdPatientDetailsId || null,
       admissionDate: todayISO,
       admissionTime: formattedTime,
       admissionDateTime: formattedDateTime,
@@ -386,16 +389,7 @@ const InpatientAdmission = () => {
   
   const fetchDropdownData = async () => {
     try {
-      // Mock data for now
-      
-      setDoctors([
-        { id: 1, name: "Dr. S. Verma", department: "Medicine" },
-        { id: 2, name: "Dr. A. Mehta", department: "Gynae" },
-        { id: 3, name: "Dr. K. Rao", department: "Cardiology" },
-        { id: 4, name: "Dr. R. Sharma", department: "Pediatrics" },
-        { id: 5, name: "Dr. P. Gupta", department: "Surgery" },
-      ]);
-      
+      // Dropdown data fetches
     } catch (error) {
       console.error("Error fetching dropdown data:", error);
     }
@@ -831,13 +825,54 @@ const InpatientAdmission = () => {
     }));
   };
   
+  const handleDepartmentChange = async (deptId) => {
+    const selectedDept = departments.find(d => d.id == deptId);
+    
+    setFormData(prev => ({
+      ...prev,
+      department: selectedDept ? selectedDept.departmentName : "",
+      admittingDoctorId: "",
+      admittingDoctorName: ""
+    }));
+
+    if (errors.department) {
+      setErrors(prev => ({ ...prev, department: "" }));
+    }
+    if (errors.admittingDoctorId) {
+      setErrors(prev => ({ ...prev, admittingDoctorId: "" }));
+    }
+
+    if (deptId) {
+      try {
+        const response = await getRequest(`${DOCTOR_BY_SPECIALITY}${deptId}`);
+        if (response && response.response) {
+          setDoctors(response.response);
+        } else {
+          setDoctors([]);
+        }
+      } catch (error) {
+        console.error("Error fetching doctors by speciality:", error);
+        setDoctors([]);
+      }
+    } else {
+      setDoctors([]);
+    }
+  };
+
   const handleDoctorSelect = (doctorId) => {
-    const selectedDoctor = doctors.find(d => d.id == doctorId);
+    const selectedDoctor = doctors.find(d => (d.userId == doctorId || d.id == doctorId));
+    const docName = selectedDoctor
+      ? (selectedDoctor.firstName ? [selectedDoctor.firstName, selectedDoctor.middleName, selectedDoctor.lastName].filter(Boolean).join(" ") : selectedDoctor.name)
+      : "";
     setFormData(prev => ({
       ...prev,
       admittingDoctorId: doctorId,
-      admittingDoctorName: selectedDoctor?.name || "",
+      admittingDoctorName: docName,
     }));
+
+    if (errors.admittingDoctorId) {
+      setErrors(prev => ({ ...prev, admittingDoctorId: "" }));
+    }
   };
   
   const showPopup = (message, type = "info", callback = null) => {
@@ -865,8 +900,10 @@ const InpatientAdmission = () => {
     if (!formData.wardId) newErrors.wardId = "Ward selection is required";
     if (!formData.roomId) newErrors.roomId = "Room selection is required";
     if (!formData.bedId) newErrors.bedId = "Bed selection is required";
+    if (!formData.department) newErrors.department = "Department is required";
     if (!formData.admittingDoctorId) newErrors.admittingDoctorId = "Admitting Doctor is required";
     if (!formData.provisionalDiagnosis) newErrors.provisionalDiagnosis = "Provisional Diagnosis is required";
+    if (!formData.nokFirstName) newErrors.nokFirstName = "NOK First Name is required";
     
     // Validate new consent fields
     if (formData.admissionConsentTaken === "Yes" && !formData.consentTakenBy) {
@@ -932,128 +969,115 @@ const InpatientAdmission = () => {
     try {
       setSaving(true);
       
-      // Calculate total advance amount
-      const totalAdvanceAmount = formData.financialDetails.reduce((sum, financial) => {
-        if (financial.advanceCollected === "Yes" && financial.advanceAmount) {
-          return sum + Number(financial.advanceAmount);
-        }
-        return sum;
-      }, 0);
+      // Prepare payload using FormData
+      const formDataToSend = new FormData();
+
+      formDataToSend.append("patientId", formData.patientId || "");
       
-      // Prepare payload
-      const payload = {
-        patientId: formData.patientId,
-        uhid: formData.uhid,
-        patientName: formData.patientName,
-        
-        // UPDATED Admission Details
-        admissionDetails: {
-          date: formData.admissionDate,
-          time: formData.admissionTime,
-          dateTime: formData.admissionDateTime,
-          category: formData.admissionCategory,
-          type: formData.admissionType,
-          source: formData.admissionSource,
-          patientCondition: formData.patientCondition,
-          careType: formData.admissionCareType,
-          advisedFrom: formData.admissionAdvisedFrom,
-          remarks: formData.admissionRemarks,
-          expectedStay: formData.expectedStay,
-        },
-        
-        wardDetails: {
-          wardCategory: formData.wardCategory,
-          wardId: formData.wardId,
-          wardName: formData.wardName,
-          roomId: formData.roomId,
-          roomNumber: formData.roomNumber,
-          bedId: formData.bedId,
-          bedNumber: formData.bedNumber,
-        },
-        
-        medicalDetails: {
-          admittingDoctorId: formData.admittingDoctorId,
-          admittingDoctorName: formData.admittingDoctorName,
-          department: formData.department,
-          provisionalDiagnosis: formData.provisionalDiagnosis,
-          workingDiagnosis: formData.workingDiagnosis,
-        },
-        
-        patientDetails: {
-          dietPreference: formData.dietPreference,
-          allergies: formData.allergies,
-          bloodGroup: formData.bloodGroup,
-          maritalStatus: formData.maritalStatus,
-          nationality: formData.nationality,
-          address: formData.address,
-        },
-        
-        // NEW: Patient Address Details
-        patientAddress: {
-          address1: formData.patientAddress1,
-          address2: formData.patientAddress2,
-          country: formData.patientCountry,
-          state: formData.patientState,
-          district: formData.patientDistrict,
-          city: formData.patientCity,
-          pinCode: formData.patientPinCode,
-        },
-        
-        nokDetails: {
-          firstName: formData.nokFirstName,
-          middleName: formData.nokMiddleName,
-          lastName: formData.nokLastName,
-          email: formData.nokEmail,
-          mobile: formData.nokMobile,
-          address1: formData.nokAddress1,
-          address2: formData.nokAddress2,
-          country: formData.nokCountry,
-          state: formData.nokState,
-          district: formData.nokDistrict,
-          city: formData.nokCity,
-          pinCode: formData.nokPinCode,
-          relation: formData.nokRelation,
-        },
-        
-        emergencyContact: {
-          firstName: formData.emergencyFirstName,
-          lastName: formData.emergencyLastName,
-          mobile: formData.emergencyMobile,
-          relation: formData.emergencyRelation,
-        },
-        
-        consentDetails: {
-          given: formData.consentGiven,
-          type: formData.consentType,
-          date: formData.consentDate,
-          legalGuardian: formData.legalGuardian,
-          admissionConsentTaken: formData.admissionConsentTaken,
-          consentTakenBy: formData.consentTakenBy,
-          mlcCase: formData.mlcCase,
-          policeIntimationRequired: formData.policeIntimationRequired,
-        },
-        
-        financialDetails: formData.financialDetails,
-        totalAdvanceAmount: totalAdvanceAmount,
-        
-        documents: formData.documents.map(doc => ({
-          docType: doc.docType,
-          docNumber: doc.docNumber,
-          remarks: doc.remarks,
-          fileName: doc.fileName,
-          // Note: File upload would need to be handled separately via FormData
-        })),
+      if (formData.visitId === null || formData.visitId === undefined || formData.visitId === "") {
+        formDataToSend.append("visitId", "");
+      } else {
+        formDataToSend.append("visitId", formData.visitId);
+      }
+
+      formDataToSend.append("admissionDate", formData.admissionDate || "");
+      
+      let admissionTime = formData.admissionTime || "";
+      if (admissionTime && admissionTime.split(":").length === 2) {
+        admissionTime += ":00";
+      }
+      formDataToSend.append("admissionTime", admissionTime);
+
+      const admissionCategoryObj = admissionCategories.find(c => c.admissionCategoryName === formData.admissionCategory);
+      formDataToSend.append("admissionCategoryId", admissionCategoryObj?.id || "");
+
+      const admissionTypeObj = admissionTypes.find(t => t.admissionTypeName === formData.admissionType);
+      formDataToSend.append("admissionTypeId", admissionTypeObj?.id || "");
+
+      const admissionSourceObj = admissionSources.find(s => s.admissionSourceName === formData.admissionSource);
+      formDataToSend.append("admissionSourceId", admissionSourceObj?.id || "");
+
+      const patientConditionObj = patientConditions.find(c => c.patientConditionName === formData.patientCondition);
+      formDataToSend.append("patientConditionId", patientConditionObj?.patientConditionId || "");
+
+      const careLevelObj = admissionCareTypes.find(c => c.careLevelName === formData.admissionCareType);
+      formDataToSend.append("careLevelId", careLevelObj?.id || "");
+
+      formDataToSend.append("wardCategoryId", formData.wardCategory || "");
+      formDataToSend.append("conditionNotes", formData.admissionRemarks || formData.provisionalDiagnosis || "");
+      formDataToSend.append("admissionConsentTaken", formData.admissionConsentTaken === "Yes" ? "y" : "n");
+      formDataToSend.append("consentTakenBy", formData.consentTakenBy || "");
+      formDataToSend.append("mlcCase", formData.mlcCase === "Yes" ? "y" : "n");
+      formDataToSend.append("policeIntimationRequired", formData.policeIntimationRequired === "Yes" ? "y" : "n");
+      formDataToSend.append("admissionAdvisedFrom", formData.admissionAdvisedFrom || "");
+
+      const nokName = [formData.nokFirstName, formData.nokMiddleName, formData.nokLastName].filter(Boolean).join(" ");
+      formDataToSend.append("nokName", nokName);
+      formDataToSend.append("nokRelationId", formData.nokRelation || "");
+      formDataToSend.append("contactNo", formData.nokMobile || "");
+      
+      const addressLine = [formData.nokAddress1, formData.nokAddress2].filter(Boolean).join(", ");
+      formDataToSend.append("addressLine", addressLine);
+      formDataToSend.append("city", formData.nokCity || "");
+
+      const selectedStateObj = nokStateData.find(s => s.id == formData.nokState);
+      formDataToSend.append("state", selectedStateObj?.stateName || "");
+      formDataToSend.append("pincode", formData.nokPinCode || "");
+
+      formDataToSend.append("wardId", formData.wardId || "");
+      formDataToSend.append("roomId", formData.roomId || "");
+      formDataToSend.append("bedId", formData.bedId || "");
+
+      const primaryFinancial = formData.financialDetails[0] || {};
+      const paymentTypeMap = {
+        "Self": "1",
+        "Insurance": "2",
+        "Corporate": "3",
+        "Government": "4",
+        "Other": "5"
       };
-      
-      console.log("Admission payload:", payload);
+      formDataToSend.append("paymentType", paymentTypeMap[primaryFinancial.paymentType] || "");
+      formDataToSend.append("advanceCollected", primaryFinancial.advanceCollected === "Yes" ? "1" : "0");
+      formDataToSend.append("advanceAmount", primaryFinancial.advanceAmount || "");
+
+      const paymentModeMap = {
+        "Cash": "1",
+        "UPI": "2",
+        "Card": "3",
+        "Cheque": "4",
+        "Net Banking": "5",
+        "Wallet": "6"
+      };
+      formDataToSend.append("paymentMode", paymentModeMap[primaryFinancial.paymentMode] || "");
+
+      formDataToSend.append("patientName", formData.patientName || "");
+      formDataToSend.append("uhid", formData.uhid || "");
+
+      const deptObj = departments.find(d => d.departmentName === formData.department);
+      formDataToSend.append("departmentId", deptObj?.id || "");
+      formDataToSend.append("treatingDoctor", formData.admittingDoctorId || "");
+      formDataToSend.append("workingDiagnosis", formData.workingDiagnosis || formData.provisionalDiagnosis || "");
+
+      // Append documents
+      formData.documents.forEach((doc, idx) => {
+        if (doc.docType) {
+          formDataToSend.append(`documents[${idx}].documentType`, doc.docType);
+        }
+        if (doc.file) {
+          formDataToSend.append(`documents[${idx}].ipDocumentUploads`, doc.file);
+        }
+      });
       
       // Submit to API
-      // const response = await postRequest(INPATIENT_ADMISSION_API, payload);
+      const response = await postRequestWithFormData(SAVE_IPD_PATIENT_DETAILS, formDataToSend);
       
-      // Show success and redirect
-      showPopup("Patient admitted successfully!", "success", () => {
-        navigate(-1); // Go back to patient list
-      });
+      if (response && response.status === 200 && response.message === "success") {
+        showPopup(response.response || "IPD patient details saved successfully", "success", () => {
+          navigate(-1); // Go back to patient list
+        });
+      } else {
+        showPopup(response?.response || "Failed to admit patient. Please try again.", "error");
+      }
       
     } catch (error) {
       console.error("Error admitting patient:", error);
@@ -1661,35 +1685,38 @@ const InpatientAdmission = () => {
                   <div className="card-body">
                     <div className="row g-3">
                       <div className="col-md-4">
+                        <label className="form-label fw-bold">Department <span className="text-danger">*</span></label>
+                        <select
+                          className={`form-select ${errors.department ? "is-invalid" : ""}`}
+                          name="department"
+                          value={departments.find(d => d.departmentName === formData.department)?.id || ""}
+                          onChange={(e) => handleDepartmentChange(e.target.value)}
+                          required
+                        >
+                          <option value="">Select Department</option>
+                          {departments.map(dept => (
+                            <option key={dept.id} value={dept.id}>{dept.departmentName}</option>
+                          ))}
+                        </select>
+                        {errors.department && <div className="invalid-feedback">{errors.department}</div>}
+                      </div>
+                      <div className="col-md-4">
                         <label className="form-label fw-bold">Admitting / Treating Doctor <span className="text-danger">*</span></label>
                         <select
                           className={`form-select ${errors.admittingDoctorId ? "is-invalid" : ""}`}
                           value={formData.admittingDoctorId}
                           onChange={(e) => handleDoctorSelect(e.target.value)}
                           required
+                          disabled={!formData.department}
                         >
                           <option value="">Select Doctor</option>
                           {doctors.map(doctor => (
-                            <option key={doctor.id} value={doctor.id}>
-                              {doctor.name} - {doctor.department}
+                            <option key={doctor.userId || doctor.id} value={doctor.userId || doctor.id}>
+                              {doctor.firstName ? [doctor.firstName, doctor.middleName, doctor.lastName].filter(Boolean).join(" ") : doctor.name}
                             </option>
                           ))}
                         </select>
                         {errors.admittingDoctorId && <div className="invalid-feedback">{errors.admittingDoctorId}</div>}
-                      </div>
-                      <div className="col-md-4">
-                        <label className="form-label fw-bold">Department</label>
-                        <select
-                          className="form-select"
-                          name="department"
-                          value={formData.department}
-                          onChange={handleChange}
-                        >
-                          <option value="">Select Department</option>
-                          {departments.map(dept => (
-                            <option key={dept.id} value={dept.departmentName}>{dept.departmentName}</option>
-                          ))}
-                        </select>
                       </div>
                       <div className="col-md-4">
                         <label className="form-label fw-bold">Provisional / Working Diagnosis <span className="text-danger">*</span></label>
@@ -2033,15 +2060,17 @@ const InpatientAdmission = () => {
                   <div className="card-body">
                     <div className="row g-3">
                       <div className="col-md-4">
-                        <label className="form-label">First Name</label>
+                        <label className="form-label fw-bold">First Name <span className="text-danger">*</span></label>
                         <input
                           type="text"
-                          className="form-control"
+                          className={`form-control ${errors.nokFirstName ? "is-invalid" : ""}`}
                           placeholder="Enter First Name"
                           name="nokFirstName"
                           value={formData.nokFirstName || ""}
                           onChange={handleChange}
+                          required
                         />
+                        {errors.nokFirstName && <div className="invalid-feedback">{errors.nokFirstName}</div>}
                       </div>
                       <div className="col-md-4">
                         <label className="form-label">Middle Name</label>

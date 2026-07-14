@@ -708,3 +708,5 @@ export const IPD_PATIENT_WAITING_LIST = `/ipd/ipdPatientWaitingList`;
 export const GET_WARD_BY_CATEGORY = `/ipd/getWardByCategory`;
 export const GET_ROOM_BY_WARD = `/ipd/getRoomByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedByRoom';
+export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveIpdPatientDetails';
+
