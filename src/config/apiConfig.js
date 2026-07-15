@@ -712,5 +712,6 @@ export const GET_ROOM_BY_WARD = `/ipd/getRoomByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedByRoom';
 export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveIpdPatientDetails';
 export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardByDepartment`;
+export const GET_WARD_WISE_DETAILS = `/ipd/getWardWiseDetails`;
 
 
