@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest, postRequestWithFormData } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -147,6 +147,7 @@ const InpatientAdmission = () => {
   // NEW: Patient Address dropdown data
   const [patientStateData, setPatientStateData] = useState([]);
   const [patientDistrictData, setPatientDistrictData] = useState([]);
+  const [dietPreferenceData, setDietPreferenceData] = useState([]);
   
   // Master data states - NEW
   const [admissionCategories, setAdmissionCategories] = useState([]);
@@ -173,7 +174,6 @@ const InpatientAdmission = () => {
   ]);
   
   // Dropdown options
-  const dietOptions = ["Veg", "Non-Veg", "Jain", "Diabetic", "Other"];
   const bloodGroupOptions = ["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-", "Unknown"];
   const maritalStatusOptions = ["Single", "Married", "Divorced", "Widowed", "Separated"];
   const nationalityOptions = ["Indian", "Other"];
@@ -373,6 +373,11 @@ const InpatientAdmission = () => {
       const deptResponse = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=WARD`);
       if (deptResponse && deptResponse.response) {
         setDepartments(deptResponse.response);
+      }
+      
+      const dietResponse = await getRequest(MAS_DIET_PREFERENCE_GET_ALL);
+      if (dietResponse && dietResponse.response) {
+        setDietPreferenceData(dietResponse.response);
       }
       
       setAdmissionCareTypes([
@@ -1196,8 +1201,8 @@ const InpatientAdmission = () => {
                           onChange={handleChange}
                         >
                           <option value="">Select</option>
-                          {dietOptions.map(option => (
-                            <option key={option} value={option}>{option}</option>
+                          {dietPreferenceData.map(diet => (
+                            <option key={diet.dietPreferenceId} value={diet.dietPreferenceId}>{diet.preferenceName}</option>
                           ))}
                         </select>
                       </div>
