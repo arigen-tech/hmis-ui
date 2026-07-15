@@ -263,7 +263,9 @@ export const MAS_TREATMENT_ADVISE = `${MASTERS}/masTreatmentAdvise`;
 export const MAS_MEAL_TYPE = `${MASTERS}/masMealType`;
 export const MAS_DIET_SCHEDULE = `${MASTERS}/masDietSchedule`;
 export const MAS_DIET_TYPE = `${MASTERS}/masDietType`;
+export const MAS_DIET_TYPE_GET_ALL = `${MAS_DIET_TYPE}/getAll/1`;
 export const MAS_DIET_PREFERENCE = `${MASTERS}/masDietPreference`;
+export const MAS_DIET_PREFERENCE_GET_ALL = `${MAS_DIET_PREFERENCE}/getAll/1`;
 export const MAS_INTAKE_ITEM = `${MASTERS}/masIntakeItem`;
 export const MAS_INTAKE_TYPE = `${MASTERS}/masIntakeType`;
 export const MAS_PATIENT_ACUITY = `${MASTERS}/masPatientAcuity`;
@@ -709,4 +711,7 @@ export const GET_WARD_BY_CATEGORY = `/ipd/getWardByCategory`;
 export const GET_ROOM_BY_WARD = `/ipd/getRoomByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedByRoom';
 export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveIpdPatientDetails';
+export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardByDepartment`;
+export const GET_WARD_WISE_DETAILS = `/ipd/getWardWiseDetails`;
+
 
