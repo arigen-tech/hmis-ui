@@ -1,22 +1,31 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_IPD_SERVICE_CATEGORY } from "../../../config/apiConfig";
+import {
+  FETCH_IPD_CATEGORY_ERR_MSG,
+  SAVE_IPD_CATEGORY_SUCC_MSG,
+  UPDATE_IPD_CATEGORY_SUCC_MSG,
+  DUPLICATE_IPD_CATEGORY_MSG,
+  FAILED_SAVE_IPD_CATEGORY_MSG,
+  FAILED_UPDATE_IPD_CATEGORY_STATUS_MSG,
+} from "../../../config/constants";
 
 const IPDServiceCategory = () => {
   const [data, setData] = useState([]);
-  const [formData, setFormData] = useState({
-    subcategoryId: "",
-    code: "",
-    name: "",
-    displayOrder: "",
-    isSubcategoryRequired: "",
-    gstApplicable: "",
-    gstPercentage: "",
-    billingFrequency: "", // NEW FIELD
-  });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [formData, setFormData] = useState({
+    categoryCode: "",
+    categoryName: "",
+    displayOrder: "",
+    isSubCategoryRequired: "",
+    isGstApplicable: "",
+    gstPercentage: "",
+  });
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -26,38 +35,43 @@ const IPDServiceCategory = () => {
     record: null,
     newStatus: "",
   });
-  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  const dummyData = [
-    { subcategoryId: 1, code: "SC001", name: "Consultation", displayOrder: 1, isSubcategoryRequired: "y", gstApplicable: "y", gstPercentage: 18.0, status: "y", billingFrequency: "Per Visit" },
-    { subcategoryId: 2, code: "SC002", name: "Procedures", displayOrder: 2, isSubcategoryRequired: "n", gstApplicable: "y", gstPercentage: 12.5, status: "y", billingFrequency: "Per Procedure" },
-    { subcategoryId: 3, code: "SC003", name: "Tests", displayOrder: 3, isSubcategoryRequired: "y", gstApplicable: "n", gstPercentage: 0, status: "n", billingFrequency: "Per Test" },
-    { subcategoryId: 4, code: "SC004", name: "Medicines", displayOrder: 4, isSubcategoryRequired: "n", gstApplicable: "y", gstPercentage: 5.0, status: "y", billingFrequency: "Per Day" },
-    { subcategoryId: 5, code: "SC005", name: "Accommodation", displayOrder: 5, isSubcategoryRequired: "y", gstApplicable: "n", gstPercentage: 0, status: "n", billingFrequency: "Per Day" },
-  ];
+  // --------------------------------------------------------------
+  // API Calls
+  // --------------------------------------------------------------
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const response = await getRequest(`${MAS_IPD_SERVICE_CATEGORY}/getAll/${flag}`);
+      if (response?.response) {
+        setData(response.response);
+      } else {
+        throw new Error("Invalid response structure");
+      }
+    } catch (err) {
+      showPopup(FETCH_IPD_CATEGORY_ERR_MSG, "error");
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setData(dummyData);
+    fetchData(0); // 0 = all categories (active and inactive)
   }, []);
 
-  const filteredData = (data || []).filter((rec) =>
-    (rec?.name || "")
-      .toLowerCase()
-      .includes((searchQuery || "").toLowerCase()) ||
-    (rec?.code || "")
-      .toLowerCase()
-      .includes((searchQuery || "").toLowerCase())
-  );
-
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
+  // --------------------------------------------------------------
+  // Form Validation
+  // --------------------------------------------------------------
   const validateForm = (values) => {
-    const baseValid = values.code && values.name && values.displayOrder && values.isSubcategoryRequired && values.gstApplicable;
+    const baseValid =
+      values.categoryCode &&
+      values.categoryName &&
+      values.displayOrder &&
+      values.isSubCategoryRequired &&
+      values.isGstApplicable;
     if (!baseValid) return false;
-    if (values.gstApplicable === "y") {
+    if (values.isGstApplicable === "y") {
       const percent = parseFloat(values.gstPercentage);
       return !isNaN(percent) && percent >= 0;
     }
@@ -66,77 +80,88 @@ const IPDServiceCategory = () => {
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    let updatedForm = { ...formData, [name]: value };
-    if (name === "gstApplicable" && value === "n") {
-      updatedForm.gstPercentage = "0";
+    let updated = { ...formData, [name]: value };
+    if (name === "isGstApplicable" && value === "n") {
+      updated.gstPercentage = "0";
     }
-    setFormData(updatedForm);
-    setIsFormValid(validateForm(updatedForm));
+    setFormData(updated);
+    setIsFormValid(validateForm(updated));
   };
 
+  // --------------------------------------------------------------
+  // CRUD Handlers
+  // --------------------------------------------------------------
   const resetForm = () => {
     setFormData({
-      subcategoryId: "",
-      code: "",
-      name: "",
+      categoryCode: "",
+      categoryName: "",
       displayOrder: "",
-      isSubcategoryRequired: "",
-      gstApplicable: "",
+      isSubCategoryRequired: "",
+      isGstApplicable: "",
       gstPercentage: "",
-      billingFrequency: "", // reset new field
     });
     setIsFormValid(false);
   };
 
-  const isDuplicate = () => {
-    return data.some((rec) => {
-      if (editingRecord && rec.subcategoryId === editingRecord.subcategoryId)
-        return false;
-      return (
-        rec.code.toLowerCase() === formData.code.toLowerCase() ||
-        rec.name.toLowerCase() === formData.name.toLowerCase()
-      );
-    });
+  // Callback for successful save/update: refresh data then hide form
+  const handleSuccessAndClose = () => {
+    fetchData(0); // reload table in background
+    resetForm();
+    setEditingRecord(null);
+    setShowForm(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    if (isDuplicate()) {
-      showPopup("Duplicate entry: Code or Name already exists.", "error");
+
+    // Local duplicate check (optional)
+    const duplicate = data.some(
+      (rec) =>
+        (rec.categoryCode.toLowerCase() === formData.categoryCode.trim().toLowerCase() ||
+          rec.categoryName.toLowerCase() === formData.categoryName.trim().toLowerCase()) &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+    if (duplicate) {
+      showPopup(DUPLICATE_IPD_CATEGORY_MSG, "error");
       return;
     }
 
     setLoading(true);
+    const payload = {
+      categoryCode: formData.categoryCode.trim(),
+      categoryName: formData.categoryName.trim(),
+      displayOrder: parseInt(formData.displayOrder, 10),
+      isSubCategoryRequired: formData.isSubCategoryRequired,
+      isGstApplicable: formData.isGstApplicable,
+      gstPercentage:
+        formData.isGstApplicable === "y"
+          ? parseFloat(formData.gstPercentage)
+          : 0,
+    };
+
     try {
-      const payload = {
-        ...formData,
-        gstPercentage: formData.gstApplicable === "y" ? parseFloat(formData.gstPercentage) : 0,
-        billingFrequency: formData.billingFrequency, // include new field
-      };
       if (editingRecord) {
-        const updated = data.map((item) =>
-          item.subcategoryId === editingRecord.subcategoryId
-            ? { ...item, ...payload }
-            : item
+        const response = await putRequest(
+          `${MAS_IPD_SERVICE_CATEGORY}/updateById/${editingRecord.id}`,
+          payload
         );
-        setData(updated);
-        showPopup("Record updated successfully!", "success", () => {
-          handleCancel();
-        });
+        if (response?.status === 200) {
+          showPopup(UPDATE_IPD_CATEGORY_SUCC_MSG, "success", handleSuccessAndClose);
+        } else {
+          throw new Error(response?.message || "Update failed");
+        }
       } else {
-        const newRecord = {
-          subcategoryId: Date.now(),
-          ...payload,
-          status: "y",
-        };
-        setData([newRecord, ...data]);
-        showPopup("Record added successfully!", "success", () => {
-          handleCancel();
-        });
+        const response = await postRequest(`${MAS_IPD_SERVICE_CATEGORY}/create`, payload);
+        if (response?.status === 201 || response?.status === 200) {
+          showPopup(SAVE_IPD_CATEGORY_SUCC_MSG, "success", handleSuccessAndClose);
+        } else {
+          throw new Error(response?.message || "Save failed");
+        }
       }
-    } catch (error) {
-      showPopup("Save Failed", "error");
+    } catch (err) {
+      console.error("Save error:", err);
+      showPopup(err.response?.data?.message || FAILED_SAVE_IPD_CATEGORY_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -145,14 +170,12 @@ const IPDServiceCategory = () => {
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
-      subcategoryId: rec.subcategoryId,
-      code: rec.code,
-      name: rec.name,
-      displayOrder: rec.displayOrder,
-      isSubcategoryRequired: rec.isSubcategoryRequired,
-      gstApplicable: rec.gstApplicable,
-      gstPercentage: rec.gstPercentage,
-      billingFrequency: rec.billingFrequency || "", // include new field
+      categoryCode: rec.categoryCode,
+      categoryName: rec.categoryName,
+      displayOrder: rec.displayOrder.toString(),
+      isSubCategoryRequired: rec.isSubCategoryRequired,
+      isGstApplicable: rec.isGstApplicable,
+      gstPercentage: rec.gstPercentage?.toString() || "0",
     });
     setShowForm(true);
     setIsFormValid(true);
@@ -166,49 +189,47 @@ const IPDServiceCategory = () => {
     });
   };
 
-  const showPopup = (message, type, onClose) => {
+  const handleConfirmStatus = async (confirmed) => {
+    if (!confirmed || !confirmDialog.record) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    const record = confirmDialog.record;
+    const newStatus = confirmDialog.newStatus;
+    setLoading(true);
+    try {
+      const response = await putRequest(
+        `${MAS_IPD_SERVICE_CATEGORY}/status/${record.id}?status=${newStatus}`
+      );
+      if (response?.status === 200) {
+        showPopup(
+          `Category "${record.categoryName}" ${newStatus === "y" ? "activated" : "deactivated"} successfully!`,
+          "success",
+          () => fetchData(0) // already refreshes after status change
+        );
+      } else {
+        throw new Error(response?.message || "Status update failed");
+      }
+    } catch (err) {
+      showPopup(FAILED_UPDATE_IPD_CATEGORY_STATUS_MSG, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  // --------------------------------------------------------------
+  // UI Helpers
+  // --------------------------------------------------------------
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-        if (onClose) onClose();
+        if (onCloseCallback) onCloseCallback();
       },
-    });
-  };
-
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.record) {
-      setLoading(true);
-      try {
-        const updated = data.map((item) =>
-          item.subcategoryId === confirmDialog.record.subcategoryId
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
-        );
-        setData(updated);
-        setPopupMessage({
-          message: `IPD Service Subcategory ${
-            confirmDialog.newStatus?.toLowerCase() === "y"
-              ? "activated"
-              : "deactivated"
-          } successfully!`,
-          type: "success",
-          onClose: () => {
-            setPopupMessage(null);
-            setCurrentPage(1);
-          },
-        });
-      } catch (error) {
-        showPopup("Failed to update status", "error");
-      } finally {
-        setLoading(false);
-      }
-    }
-    setConfirmDialog({
-      isOpen: false,
-      record: null,
-      newStatus: "",
     });
   };
 
@@ -221,8 +242,23 @@ const IPDServiceCategory = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setData(dummyData);
+    fetchData(0);
   };
+
+  // Search & Pagination
+  const filteredData = (data || []).filter(
+    (rec) =>
+      rec.categoryName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.categoryCode?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
@@ -248,16 +284,18 @@ const IPDServiceCategory = () => {
                       </span>
                     </div>
                   </form>
-                ) : (
-                  <></>
-                )}
-                <div className="d-flex align-items-center ms-auto">
+                ) : null}
+                <div className="d-flex align-items-center">
                   {!showForm ? (
                     <>
                       <button
                         type="button"
                         className="btn btn-success me-2"
-                        onClick={() => setShowForm(true)}
+                        onClick={() => {
+                          resetForm();
+                          setEditingRecord(null);
+                          setShowForm(true);
+                        }}
                         disabled={loading}
                       >
                         <i className="mdi mdi-plus"></i> Add
@@ -266,8 +304,9 @@ const IPDServiceCategory = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={handleRefresh}
+                        disabled={loading}
                       >
-                        <i className="mdi mdi-view-list"></i> Show All
+                        <i className="mdi mdi-refresh"></i> Show All
                       </button>
                     </>
                   ) : (
@@ -285,109 +324,116 @@ const IPDServiceCategory = () => {
             </div>
 
             <div className="card-body">
-              {!showForm ? (
+              {loading && !showForm ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <>
-                  {loading && <div className="text-center">Loading...</div>}
-                  <div className="table-responsive">
+                  <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
                           <th>Code</th>
                           <th>Name</th>
                           <th>Display Order</th>
-                          <th>Is Subcategory Required</th>
+                          <th>Subcategory Required</th>
                           <th>GST Applicable</th>
                           <th>GST Percentage</th>
-                          <th>Billing Frequency</th> {/* NEW COLUMN */}
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.map((rec) => (
-                          <tr key={rec.subcategoryId}>
-                            <td>{rec.code}</td>
-                            <td>{rec.name}</td>
-                            <td>{rec.displayOrder}</td>
-                            <td>{rec.isSubcategoryRequired === "y" ? "Yes" : "No"}</td>
-                            <td>{rec.gstApplicable === "y" ? "Yes" : "No"}</td>
-                            <td>{rec.gstApplicable === "y" ? rec.gstPercentage : "-"}</td>
-                            <td>{rec.billingFrequency || "-"}</td> {/* NEW CELL */}
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={rec.status?.toLowerCase() === "y"}
-                                  onChange={() => handleStatusChange(rec)}
-                                  id={`switch-${rec.subcategoryId}`}
-                                  disabled={loading}
-                                />
-                                <label className="form-check-label px-0" htmlFor={`switch-${rec.subcategoryId}`}>
-                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(rec)}
-                                disabled={rec.status?.toLowerCase() !== "y" || loading}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((rec) => (
+                            <tr key={rec.id}>
+                              <td>{rec.categoryCode}</td>
+                              <td>{rec.categoryName}</td>
+                              <td>{rec.displayOrder}</td>
+                              <td>{rec.isSubCategoryRequired === "y" ? "Yes" : "No"}</td>
+                              <td>{rec.isGstApplicable === "y" ? "Yes" : "No"}</td>
+                              <td>{rec.isGstApplicable === "y" ? rec.gstPercentage : "-"}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={rec.status?.toLowerCase() === "y"}
+                                    onChange={() => handleStatusChange(rec)}
+                                    id={`switch-${rec.id}`}
+                                    disabled={loading}
+                                  />
+                                  <label className="form-check-label px-0" htmlFor={`switch-${rec.id}`}>
+                                    {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(rec)}
+                                  disabled={rec.status?.toLowerCase() !== "y" || loading}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="text-center">
+                              No IPD service categories found
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
-
                   {filteredData.length > 0 && (
                     <Pagination
                       totalItems={filteredData.length}
-                      itemsPerPage={itemsPerPage}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={setCurrentPage}
                     />
-                  )}
-                  {filteredData.length === 0 && !loading && (
-                    <div className="text-center mt-3">No records found</div>
                   )}
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
                     <div className="form-group col-md-4 mb-2">
-                      <label>Code <span className="text-danger">*</span></label>
+                      <label>
+                        Code <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
-                        name="code"
+                        name="categoryCode"
                         type="text"
-                        value={formData.code}
+                        value={formData.categoryCode}
                         onChange={handleInputChange}
                         required
-                        disabled={loading}
+                        disabled={loading || editingRecord}
                         placeholder="Enter code"
                       />
                     </div>
-
                     <div className="form-group col-md-4 mb-2">
-                      <label>Name <span className="text-danger">*</span></label>
+                      <label>
+                        Name <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
-                        name="name"
+                        name="categoryName"
                         type="text"
-                        value={formData.name}
+                        value={formData.categoryName}
                         onChange={handleInputChange}
                         required
                         disabled={loading}
                         placeholder="Enter name"
                       />
                     </div>
-
                     <div className="form-group col-md-4 mb-2">
-                      <label>Display Order <span className="text-danger">*</span></label>
+                      <label>
+                        Display Order <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
                         name="displayOrder"
@@ -399,13 +445,14 @@ const IPDServiceCategory = () => {
                         placeholder="Enter order"
                       />
                     </div>
-
                     <div className="form-group col-md-4 mb-2">
-                      <label>Is Subcategory Required <span className="text-danger">*</span></label>
+                      <label>
+                        Subcategory Required <span className="text-danger">*</span>
+                      </label>
                       <select
                         className="form-select mt-1"
-                        name="isSubcategoryRequired"
-                        value={formData.isSubcategoryRequired}
+                        name="isSubCategoryRequired"
+                        value={formData.isSubCategoryRequired}
                         onChange={handleInputChange}
                         required
                         disabled={loading}
@@ -415,13 +462,14 @@ const IPDServiceCategory = () => {
                         <option value="n">No</option>
                       </select>
                     </div>
-
                     <div className="form-group col-md-4 mb-2">
-                      <label>GST Applicable <span className="text-danger">*</span></label>
+                      <label>
+                        GST Applicable <span className="text-danger">*</span>
+                      </label>
                       <select
                         className="form-select mt-1"
-                        name="gstApplicable"
-                        value={formData.gstApplicable}
+                        name="isGstApplicable"
+                        value={formData.isGstApplicable}
                         onChange={handleInputChange}
                         required
                         disabled={loading}
@@ -431,9 +479,11 @@ const IPDServiceCategory = () => {
                         <option value="n">No</option>
                       </select>
                     </div>
-
                     <div className="form-group col-md-4 mb-2">
-                      <label>GST Percentage {formData.gstApplicable === "y" && <span className="text-danger">*</span>}</label>
+                      <label>
+                        GST Percentage{" "}
+                        {formData.isGstApplicable === "y" && <span className="text-danger">*</span>}
+                      </label>
                       <input
                         className="form-control mt-1"
                         name="gstPercentage"
@@ -442,27 +492,12 @@ const IPDServiceCategory = () => {
                         min="0"
                         value={formData.gstPercentage}
                         onChange={handleInputChange}
-                        required={formData.gstApplicable === "y"}
-                        disabled={loading || formData.gstApplicable !== "y"}
+                        required={formData.isGstApplicable === "y"}
+                        disabled={loading || formData.isGstApplicable !== "y"}
                         placeholder="Enter percentage"
                       />
                     </div>
-
-                    {/* NEW FIELD: Billing Frequency */}
-                    <div className="form-group col-md-4 mb-2">
-                      <label>Billing Frequency</label>
-                      <input
-                        className="form-control mt-1"
-                        name="billingFrequency"
-                        type="text"
-                        value={formData.billingFrequency}
-                        onChange={handleInputChange}
-                        disabled={loading}
-                        placeholder="e.g., Per Day, Per Visit"
-                      />
-                    </div>
                   </div>
-
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                     <button
                       type="submit"
@@ -483,53 +518,57 @@ const IPDServiceCategory = () => {
                 </form>
               )}
 
-              {popupMessage && <Popup {...popupMessage} />}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block">
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button
+                          type="button"
+                          className="close"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
+                          <span>&times;</span>
+                        </button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to{" "}
+                          {confirmDialog.newStatus === "y" ? "activate" : "deactivate"}{" "}
+                          <strong>{confirmDialog.record?.categoryName}</strong>?
+                        </p>
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirmStatus(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {confirmDialog.isOpen && (
-        <div className="modal d-block">
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Status Change</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => handleConfirm(false)}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                <p>
-                  Are you sure you want to{" "}
-                  {confirmDialog.newStatus?.toLowerCase() === "y"
-                    ? "activate"
-                    : "deactivate"}{" "}
-                  <strong>{confirmDialog.record?.name}</strong>?
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => handleConfirm(false)}
-                >
-                  No
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleConfirm(true)}
-                >
-                  Yes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
