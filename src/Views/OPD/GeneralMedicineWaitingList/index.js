@@ -1498,7 +1498,7 @@ const GeneralMedicineWaitingList = () => {
     obgDetails: false,
     earExamination: false,
     gynaMaster: false,
-    dental: false,
+    dentalExamination: false,
     pregnancy: false,
   });
 
@@ -2953,10 +2953,21 @@ const GeneralMedicineWaitingList = () => {
     };
   };
 
-  const selectedPatientDepartmentId = Number(
-    selectedPatient?.deptId || selectedPatient?.departmentId || 0,
-  );
-  const shouldShowVisionExamination = isOphthalmologyDepartment || selectedPatientDepartmentId === OPHTHALMOLOGY_DEPARTMENT_CODE;
+  const selectedPatientDepartmentCode = String(
+    selectedPatient?.deptCode ||
+      selectedPatient?.departmentCode ||
+      selectedPatient?.departmentName ||
+      selectedPatient?.deptName ||
+      "",
+  ).trim().toUpperCase();
+  const shouldShowVisionExamination =
+    isOphthalmologyDepartment ||
+    selectedPatientDepartmentCode === OPHTHALMOLOGY_DEPARTMENT_CODE ||
+    selectedPatientDepartmentCode.includes("OPHTH");
+  const shouldShowDentalExamination =
+    isDentalDepartment ||
+    selectedPatientDepartmentCode === DENTAL_DEPARTMENT_CODE ||
+    selectedPatientDepartmentCode.includes("DENT");
 
   const validateSubmitForm = () => {
     const nextErrors = {};
@@ -5084,7 +5095,7 @@ const GeneralMedicineWaitingList = () => {
                   </div>
                 )}
                 {/* Dental Section */}
-                {isDentalDepartment && (
+                {shouldShowDentalExamination && (
                   <div className="card mb-3">
                     <div
                       className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
