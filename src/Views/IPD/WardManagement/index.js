@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react"
+import Swal from "sweetalert2"
 import { getRequest } from "../../../service/apiService"
 import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
@@ -110,6 +111,27 @@ const WardManagement = () => {
   }
 
   const handlePatientSelect = (patient) => {
+    if (patient.status === "NRW") {
+      Swal.fire({
+        title: "This patient not reported in ward",
+        text: "Do you want to admit this patient?",
+        icon: "warning",
+        showCancelButton: true,
+        confirmButtonColor: "#3085d6",
+        cancelButtonColor: "#d33",
+        confirmButtonText: "Patient reported",
+        cancelButtonText: "Cancel"
+      }).then((result) => {
+        if (result.isConfirmed) {
+          Swal.fire({
+            title: "Coming soon",
+            text: "This action will be available once the API is ready.",
+            icon: "info"
+          })
+        }
+      })
+      return
+    }
     setSelectedPatient(patient)
     setActiveTab("Clinical Dashboard")
   }
