@@ -1,17 +1,28 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_TRANSFER_REASON } from "../../../config/apiConfig";
+
+import {
+  FETCH_TRANSFER_REASON_ERR_MSG,
+  SAVE_TRANSFER_REASON_SUCC_MSG,
+  UPDATE_TRANSFER_REASON_SUCC_MSG,
+  DUPLICATE_TRANSFER_REASON_MSG,
+  FAILED_SAVE_TRANSFER_REASON_MSG,
+  FAILED_UPDATE_TRANSFER_REASON_STATUS_MSG,
+} from "../../../config/constants";
 
 const IPDTransferReason = () => {
   const [data, setData] = useState([]);
-  const [formData, setFormData] = useState({
-    transferReasonId: "",
-    name: "",
-    description: "",
-  });
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [showForm, setShowForm] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
+  const [formData, setFormData] = useState({
+    transferReasonName: "",
+    code: "",
+  });
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,92 +32,107 @@ const IPDTransferReason = () => {
     record: null,
     newStatus: "",
   });
-  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  const dummyData = [
-    { transferReasonId: 1, name: "Transfer to Higher Center", description: "Patient referred to higher facility", status: "y" },
-    { transferReasonId: 2, name: "Transfer to ICU", description: "Patient condition requires ICU", status: "y" },
-    { transferReasonId: 3, name: "Transfer to General Ward", description: "Patient stable, moved to general ward", status: "n" },
-    { transferReasonId: 4, name: "Transfer to HDU", description: "Patient needs high dependency care", status: "y" },
-    { transferReasonId: 5, name: "Transfer to Another Hospital", description: "Patient transferred to another hospital", status: "n" },
-  ];
+  // --------------------------------------------------------------
+  // API Calls
+  // --------------------------------------------------------------
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const response = await getRequest(`${MAS_TRANSFER_REASON}/getAll/${flag}`);
+      if (response?.response) {
+        setData(response.response);
+      } else {
+        throw new Error("Invalid response structure");
+      }
+    } catch (err) {
+      showPopup(FETCH_TRANSFER_REASON_ERR_MSG, "error");
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setData(dummyData);
+    fetchData(0); // 0 = all (active & inactive)
   }, []);
 
-  const filteredData = (data || []).filter((rec) =>
-    (rec?.name || "")
-      .toLowerCase()
-      .includes((searchQuery || "").toLowerCase())
-  );
-
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
+  // --------------------------------------------------------------
+  // Form Validation
+  // --------------------------------------------------------------
   const validateForm = (values) => {
-    return values.name;
+    return values.transferReasonName && values.code;
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const updatedForm = { ...formData, [name]: value };
-    setFormData(updatedForm);
-    setIsFormValid(validateForm(updatedForm));
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(validateForm(updated));
   };
 
   const resetForm = () => {
     setFormData({
-      transferReasonId: "",
-      name: "",
-      description: "",
+      transferReasonName: "",
+      code: "",
     });
     setIsFormValid(false);
   };
 
-  const isDuplicate = () => {
-    return data.some((rec) => {
-      if (editingRecord && rec.transferReasonId === editingRecord.transferReasonId)
-        return false;
-      return rec.name.toLowerCase() === formData.name.toLowerCase();
-    });
+  // --------------------------------------------------------------
+  // CRUD Handlers
+  // --------------------------------------------------------------
+  const handleSuccessAndClose = () => {
+    fetchData(0);           // refresh table
+    resetForm();
+    setEditingRecord(null);
+    setShowForm(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    if (isDuplicate()) {
-      showPopup("Duplicate entry: Name already exists.", "error");
+
+    // Local duplicate check
+    const duplicate = data.some(
+      (rec) =>
+        (rec.transferReasonName.toLowerCase() === formData.transferReasonName.trim().toLowerCase() ||
+          rec.code.toLowerCase() === formData.code.trim().toLowerCase()) &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+    if (duplicate) {
+      showPopup(DUPLICATE_TRANSFER_REASON_MSG, "error");
       return;
     }
 
     setLoading(true);
+    const payload = {
+      reasonName: formData.transferReasonName.trim(),
+      description: formData.code.trim(),
+    };
+
     try {
       if (editingRecord) {
-        const updated = data.map((item) =>
-          item.transferReasonId === editingRecord.transferReasonId
-            ? { ...item, ...formData }
-            : item
+        const response = await putRequest(
+          `${MAS_TRANSFER_REASON}/updateById/${editingRecord.id}`,
+          payload
         );
-        setData(updated);
-        showPopup("Record updated successfully!", "success", () => {
-          handleCancel();
-        });
+        if (response?.status === 200) {
+          showPopup(UPDATE_TRANSFER_REASON_SUCC_MSG, "success", handleSuccessAndClose);
+        } else {
+          throw new Error(response?.message || "Update failed");
+        }
       } else {
-        const newRecord = {
-          transferReasonId: Date.now(),
-          ...formData,
-          status: "y",
-        };
-        setData([newRecord, ...data]);
-        showPopup("Record added successfully!", "success", () => {
-          handleCancel();
-        });
+        const response = await postRequest(`${MAS_TRANSFER_REASON}/create`, payload);
+        if (response?.status === 201 || response?.status === 200) {
+          showPopup(SAVE_TRANSFER_REASON_SUCC_MSG, "success", handleSuccessAndClose);
+        } else {
+          throw new Error(response?.message || "Save failed");
+        }
       }
-    } catch (error) {
-      showPopup("Save Failed", "error");
+    } catch (err) {
+      console.error("Save error:", err);
+      showPopup(err.response?.data?.message || FAILED_SAVE_TRANSFER_REASON_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -115,9 +141,8 @@ const IPDTransferReason = () => {
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
-      transferReasonId: rec.transferReasonId,
-      name: rec.name,
-      description: rec.description,
+      transferReasonName: rec.transferReasonName,
+      code: rec.code,
     });
     setShowForm(true);
     setIsFormValid(true);
@@ -127,53 +152,53 @@ const IPDTransferReason = () => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+      newStatus: rec.status?.toUpperCase() === "Y" ? "N" : "Y",
     });
   };
 
-  const showPopup = (message, type, onClose) => {
+  const handleConfirmStatus = async (confirmed) => {
+    if (!confirmed || !confirmDialog.record) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    const record = confirmDialog.record;
+    const newStatus = confirmDialog.newStatus;
+    setLoading(true);
+    try {
+      const response = await putRequest(
+        `${MAS_TRANSFER_REASON}/status/${record.id}?status=${newStatus}`
+      );
+      if (response?.status === 200) {
+        showPopup(
+          `Transfer Reason "${record.transferReasonName}" ${
+            newStatus === "Y" ? "activated" : "deactivated"
+          } successfully!`,
+          "success",
+          () => fetchData(0)
+        );
+      } else {
+        throw new Error(response?.message || "Status update failed");
+      }
+    } catch (err) {
+      showPopup(FAILED_UPDATE_TRANSFER_REASON_STATUS_MSG, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  // --------------------------------------------------------------
+  // UI Helpers
+  // --------------------------------------------------------------
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-        if (onClose) onClose();
+        if (onCloseCallback) onCloseCallback();
       },
-    });
-  };
-
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.record) {
-      setLoading(true);
-      try {
-        const updated = data.map((item) =>
-          item.transferReasonId === confirmDialog.record.transferReasonId
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
-        );
-        setData(updated);
-        setPopupMessage({
-          message: `IPD Transfer Reason ${
-            confirmDialog.newStatus?.toLowerCase() === "y"
-              ? "activated"
-              : "deactivated"
-          } successfully!`,
-          type: "success",
-          onClose: () => {
-            setPopupMessage(null);
-            setCurrentPage(1);
-          },
-        });
-      } catch (error) {
-        showPopup("Failed to update status", "error");
-      } finally {
-        setLoading(false);
-      }
-    }
-    setConfirmDialog({
-      isOpen: false,
-      record: null,
-      newStatus: "",
     });
   };
 
@@ -186,8 +211,23 @@ const IPDTransferReason = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setData(dummyData);
+    fetchData(0);
   };
+
+  // Search & Pagination
+  const filteredData = (data || []).filter(
+    (rec) =>
+      rec.transferReasonName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.code?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
@@ -213,16 +253,18 @@ const IPDTransferReason = () => {
                       </span>
                     </div>
                   </form>
-                ) : (
-                  <></>
-                )}
+                ) : null}
                 <div className="d-flex align-items-center ms-auto">
                   {!showForm ? (
                     <>
                       <button
                         type="button"
                         className="btn btn-success me-2"
-                        onClick={() => setShowForm(true)}
+                        onClick={() => {
+                          resetForm();
+                          setEditingRecord(null);
+                          setShowForm(true);
+                        }}
                         disabled={loading}
                       >
                         <i className="mdi mdi-plus"></i> Add
@@ -231,8 +273,9 @@ const IPDTransferReason = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={handleRefresh}
+                        disabled={loading}
                       >
-                        <i className="mdi mdi-view-list"></i> Show All
+                        <i className="mdi mdi-refresh"></i> Show All
                       </button>
                     </>
                   ) : (
@@ -250,99 +293,108 @@ const IPDTransferReason = () => {
             </div>
 
             <div className="card-body">
-              {!showForm ? (
+              {loading && !showForm ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <>
-                  {loading && <div className="text-center">Loading...</div>}
-                  <div className="table-responsive">
+                  <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Transfer Reason ID</th>
                           <th>Name</th>
-                          <th>Description</th>
+                          <th>Code / Description</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.map((rec) => (
-                          <tr key={rec.transferReasonId}>
-                            <td>{rec.transferReasonId}</td>
-                            <td>{rec.name}</td>
-                            <td>{rec.description}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={rec.status?.toLowerCase() === "y"}
-                                  onChange={() => handleStatusChange(rec)}
-                                  id={`switch-${rec.transferReasonId}`}
-                                  disabled={loading}
-                                />
-                                <label className="form-check-label px-0" htmlFor={`switch-${rec.transferReasonId}`}>
-                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(rec)}
-                                disabled={rec.status?.toLowerCase() !== "y" || loading}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((rec) => (
+                            <tr key={rec.id}>
+                              <td>{rec.transferReasonName}</td>
+                              <td>{rec.code}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={rec.status?.toUpperCase() === "Y"}
+                                    onChange={() => handleStatusChange(rec)}
+                                    id={`switch-${rec.id}`}
+                                    disabled={loading}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${rec.id}`}
+                                  >
+                                    {rec.status?.toUpperCase() === "Y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(rec)}
+                                  disabled={rec.status?.toUpperCase() !== "Y" || loading}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="text-center">
+                              No transfer reasons found
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
-
                   {filteredData.length > 0 && (
                     <Pagination
                       totalItems={filteredData.length}
-                      itemsPerPage={itemsPerPage}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={setCurrentPage}
                     />
-                  )}
-                  {filteredData.length === 0 && !loading && (
-                    <div className="text-center mt-3">No records found</div>
                   )}
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
-                    <div className="form-group col-md-4">
-                      <label>Name <span className="text-danger">*</span></label>
+                    <div className="form-group col-md-4 mb-2">
+                      <label>
+                        Name <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
-                        name="name"
+                        name="transferReasonName"
                         type="text"
-                        value={formData.name}
+                        value={formData.transferReasonName}
                         onChange={handleInputChange}
                         required
                         disabled={loading}
                         placeholder="Enter name"
                       />
                     </div>
-
-                    <div className="form-group col-md-4">
-                      <label>Description</label>
+                    <div className="form-group col-md-4 mb-2">
+                      <label>
+                        Code <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
-                        name="description"
+                        name="code"
                         type="text"
-                        value={formData.description}
+                        value={formData.code}
                         onChange={handleInputChange}
+                        required
                         disabled={loading}
-                        placeholder="Enter description"
+                        placeholder="Enter code"
                       />
                     </div>
                   </div>
-
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                     <button
                       type="submit"
@@ -363,53 +415,57 @@ const IPDTransferReason = () => {
                 </form>
               )}
 
-              {popupMessage && <Popup {...popupMessage} />}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block">
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button
+                          type="button"
+                          className="close"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
+                          <span>&times;</span>
+                        </button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to{" "}
+                          {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
+                          <strong>{confirmDialog.record?.transferReasonName}</strong>?
+                        </p>
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirmStatus(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {confirmDialog.isOpen && (
-        <div className="modal d-block">
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Status Change</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => handleConfirm(false)}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                <p>
-                  Are you sure you want to{" "}
-                  {confirmDialog.newStatus?.toLowerCase() === "y"
-                    ? "activate"
-                    : "deactivate"}{" "}
-                  <strong>{confirmDialog.record?.name}</strong>?
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => handleConfirm(false)}
-                >
-                  No
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleConfirm(true)}
-                >
-                  Yes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

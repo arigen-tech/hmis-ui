@@ -1,17 +1,27 @@
 import { useState, useEffect } from "react";
 import Popup from "../../../Components/popup";
+import { postRequest, putRequest, getRequest } from "../../../service/apiService";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
+import { MAS_PATIENT_DISCHARGE_CONDITION } from "../../../config/apiConfig";
+import {
+  FETCH_DISCHARGE_CONDITION_ERR_MSG,
+  SAVE_DISCHARGE_CONDITION_SUCC_MSG,
+  UPDATE_DISCHARGE_CONDITION_SUCC_MSG,
+  DUPLICATE_DISCHARGE_CONDITION_MSG,
+  FAILED_SAVE_DISCHARGE_CONDITION_MSG,
+  FAILED_UPDATE_DISCHARGE_CONDITION_STATUS_MSG,
+} from "../../../config/constants";
 
 const PatientDischargeCondition = () => {
   const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [showForm, setShowForm] = useState(false);
+  const [editingRecord, setEditingRecord] = useState(null);
   const [formData, setFormData] = useState({
-    conditionId: "",
     conditionCode: "",
     conditionName: "",
   });
-  const [loading, setLoading] = useState(false);
-  const [showForm, setShowForm] = useState(false);
-  const [editingRecord, setEditingRecord] = useState(null);
   const [isFormValid, setIsFormValid] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [searchQuery, setSearchQuery] = useState("");
@@ -21,98 +31,107 @@ const PatientDischargeCondition = () => {
     record: null,
     newStatus: "",
   });
-  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
 
-  const dummyData = [
-    { conditionId: 1, conditionCode: "DC001", conditionName: "Stable", status: "y" },
-    { conditionId: 2, conditionCode: "DC002", conditionName: "Improved", status: "y" },
-    { conditionId: 3, conditionCode: "DC003", conditionName: "Critical", status: "n" },
-    { conditionId: 4, conditionCode: "DC004", conditionName: "Recovered", status: "y" },
-    { conditionId: 5, conditionCode: "DC005", conditionName: "Deceased", status: "n" },
-  ];
+  // --------------------------------------------------------------
+  // API Calls
+  // --------------------------------------------------------------
+  const fetchData = async (flag = 0) => {
+    setLoading(true);
+    try {
+      const response = await getRequest(`${MAS_PATIENT_DISCHARGE_CONDITION}/getAll/${flag}`);
+      if (response?.response) {
+        setData(response.response);
+      } else {
+        throw new Error("Invalid response structure");
+      }
+    } catch (err) {
+      showPopup(FETCH_DISCHARGE_CONDITION_ERR_MSG, "error");
+      console.error("Fetch error:", err);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    setData(dummyData);
+    fetchData(0); // 0 = all conditions (active & inactive)
   }, []);
 
-  const filteredData = (data || []).filter((rec) =>
-    (rec?.conditionName || "")
-      .toLowerCase()
-      .includes((searchQuery || "").toLowerCase()) ||
-    (rec?.conditionCode || "")
-      .toLowerCase()
-      .includes((searchQuery || "").toLowerCase())
-  );
-
-  const currentItems = filteredData.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-
+  // --------------------------------------------------------------
+  // Form Validation
+  // --------------------------------------------------------------
   const validateForm = (values) => {
     return values.conditionCode && values.conditionName;
   };
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
-    const updatedForm = { ...formData, [name]: value };
-    setFormData(updatedForm);
-    setIsFormValid(validateForm(updatedForm));
+    const updated = { ...formData, [name]: value };
+    setFormData(updated);
+    setIsFormValid(validateForm(updated));
   };
 
   const resetForm = () => {
     setFormData({
-      conditionId: "",
       conditionCode: "",
       conditionName: "",
     });
     setIsFormValid(false);
   };
 
-  const isDuplicate = () => {
-    return data.some((rec) => {
-      if (editingRecord && rec.conditionId === editingRecord.conditionId)
-        return false;
-      return (
-        rec.conditionCode.toLowerCase() === formData.conditionCode.toLowerCase() ||
-        rec.conditionName.toLowerCase() === formData.conditionName.toLowerCase()
-      );
-    });
+  // --------------------------------------------------------------
+  // CRUD Handlers
+  // --------------------------------------------------------------
+  const handleSuccessAndClose = () => {
+    fetchData(0);           // refresh table
+    resetForm();
+    setEditingRecord(null);
+    setShowForm(false);
   };
 
-  const handleSave = (e) => {
+  const handleSave = async (e) => {
     e.preventDefault();
     if (!isFormValid) return;
-    if (isDuplicate()) {
-      showPopup("Duplicate entry: Code or Name already exists.", "error");
+
+    // Local duplicate check
+    const duplicate = data.some(
+      (rec) =>
+        (rec.conditionCode.toLowerCase() === formData.conditionCode.trim().toLowerCase() ||
+          rec.conditionName.toLowerCase() === formData.conditionName.trim().toLowerCase()) &&
+        (!editingRecord || rec.id !== editingRecord.id)
+    );
+    if (duplicate) {
+      showPopup(DUPLICATE_DISCHARGE_CONDITION_MSG, "error");
       return;
     }
 
     setLoading(true);
+    const payload = {
+      conditionCode: formData.conditionCode.trim(),
+      conditionName: formData.conditionName.trim(),
+    };
+
     try {
       if (editingRecord) {
-        const updated = data.map((item) =>
-          item.conditionId === editingRecord.conditionId
-            ? { ...item, ...formData }
-            : item
+        const response = await putRequest(
+          `${MAS_PATIENT_DISCHARGE_CONDITION}/update/${editingRecord.id}`,
+          payload
         );
-        setData(updated);
-        showPopup("Record updated successfully!", "success", () => {
-          handleCancel();
-        });
+        if (response?.status === 200) {
+          showPopup(UPDATE_DISCHARGE_CONDITION_SUCC_MSG, "success", handleSuccessAndClose);
+        } else {
+          throw new Error(response?.message || "Update failed");
+        }
       } else {
-        const newRecord = {
-          conditionId: Date.now(),
-          ...formData,
-          status: "y",
-        };
-        setData([newRecord, ...data]);
-        showPopup("Record added successfully!", "success", () => {
-          handleCancel();
-        });
+        const response = await postRequest(`${MAS_PATIENT_DISCHARGE_CONDITION}/create`, payload);
+        if (response?.status === 201 || response?.status === 200) {
+          showPopup(SAVE_DISCHARGE_CONDITION_SUCC_MSG, "success", handleSuccessAndClose);
+        } else {
+          throw new Error(response?.message || "Save failed");
+        }
       }
-    } catch (error) {
-      showPopup("Save Failed", "error");
+    } catch (err) {
+      console.error("Save error:", err);
+      showPopup(err.response?.data?.message || FAILED_SAVE_DISCHARGE_CONDITION_MSG, "error");
     } finally {
       setLoading(false);
     }
@@ -121,7 +140,6 @@ const PatientDischargeCondition = () => {
   const handleEdit = (rec) => {
     setEditingRecord(rec);
     setFormData({
-      conditionId: rec.conditionId,
       conditionCode: rec.conditionCode,
       conditionName: rec.conditionName,
     });
@@ -133,53 +151,53 @@ const PatientDischargeCondition = () => {
     setConfirmDialog({
       isOpen: true,
       record: rec,
-      newStatus: rec.status?.toLowerCase() === "y" ? "n" : "y",
+      newStatus: rec.status?.toUpperCase() === "Y" ? "N" : "Y",
     });
   };
 
-  const showPopup = (message, type, onClose) => {
+  const handleConfirmStatus = async (confirmed) => {
+    if (!confirmed || !confirmDialog.record) {
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+      return;
+    }
+
+    const record = confirmDialog.record;
+    const newStatus = confirmDialog.newStatus;
+    setLoading(true);
+    try {
+      const response = await putRequest(
+        `${MAS_PATIENT_DISCHARGE_CONDITION}/status/${record.id}?status=${newStatus}`
+      );
+      if (response?.status === 200) {
+        showPopup(
+          `Discharge Condition "${record.conditionName}" ${
+            newStatus === "Y" ? "activated" : "deactivated"
+          } successfully!`,
+          "success",
+          () => fetchData(0)
+        );
+      } else {
+        throw new Error(response?.message || "Status update failed");
+      }
+    } catch (err) {
+      showPopup(FAILED_UPDATE_DISCHARGE_CONDITION_STATUS_MSG, "error");
+    } finally {
+      setLoading(false);
+      setConfirmDialog({ isOpen: false, record: null, newStatus: "" });
+    }
+  };
+
+  // --------------------------------------------------------------
+  // UI Helpers
+  // --------------------------------------------------------------
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
       onClose: () => {
         setPopupMessage(null);
-        if (onClose) onClose();
+        if (onCloseCallback) onCloseCallback();
       },
-    });
-  };
-
-  const handleConfirm = async (confirmed) => {
-    if (confirmed && confirmDialog.record) {
-      setLoading(true);
-      try {
-        const updated = data.map((item) =>
-          item.conditionId === confirmDialog.record.conditionId
-            ? { ...item, status: confirmDialog.newStatus }
-            : item
-        );
-        setData(updated);
-        setPopupMessage({
-          message: `Patient Discharge Condition ${
-            confirmDialog.newStatus?.toLowerCase() === "y"
-              ? "activated"
-              : "deactivated"
-          } successfully!`,
-          type: "success",
-          onClose: () => {
-            setPopupMessage(null);
-            setCurrentPage(1);
-          },
-        });
-      } catch (error) {
-        showPopup("Failed to update status", "error");
-      } finally {
-        setLoading(false);
-      }
-    }
-    setConfirmDialog({
-      isOpen: false,
-      record: null,
-      newStatus: "",
     });
   };
 
@@ -192,8 +210,23 @@ const PatientDischargeCondition = () => {
   const handleRefresh = () => {
     setSearchQuery("");
     setCurrentPage(1);
-    setData(dummyData);
+    fetchData(0);
   };
+
+  // Search & Pagination
+  const filteredData = (data || []).filter(
+    (rec) =>
+      rec.conditionName?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      rec.conditionCode?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery]);
+
+  const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+  const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+  const currentItems = filteredData.slice(indexOfFirst, indexOfLast);
 
   return (
     <div className="content-wrapper">
@@ -219,16 +252,18 @@ const PatientDischargeCondition = () => {
                       </span>
                     </div>
                   </form>
-                ) : (
-                  <></>
-                )}
+                ) : null}
                 <div className="d-flex align-items-center ms-auto">
                   {!showForm ? (
                     <>
                       <button
                         type="button"
                         className="btn btn-success me-2"
-                        onClick={() => setShowForm(true)}
+                        onClick={() => {
+                          resetForm();
+                          setEditingRecord(null);
+                          setShowForm(true);
+                        }}
                         disabled={loading}
                       >
                         <i className="mdi mdi-plus"></i> Add
@@ -237,8 +272,9 @@ const PatientDischargeCondition = () => {
                         type="button"
                         className="btn btn-success me-2"
                         onClick={handleRefresh}
+                        disabled={loading}
                       >
-                        <i className="mdi mdi-view-list"></i> Show All
+                        <i className="mdi mdi-refresh"></i> Show All
                       </button>
                     </>
                   ) : (
@@ -256,14 +292,14 @@ const PatientDischargeCondition = () => {
             </div>
 
             <div className="card-body">
-              {!showForm ? (
+              {loading && !showForm ? (
+                <LoadingScreen />
+              ) : !showForm ? (
                 <>
-                  {loading && <div className="text-center">Loading...</div>}
-                  <div className="table-responsive">
+                  <div className="table-responsive packagelist">
                     <table className="table table-bordered table-hover align-middle">
                       <thead className="table-light">
                         <tr>
-                          <th>Condition ID</th>
                           <th>Condition Code</th>
                           <th>Condition Name</th>
                           <th>Status</th>
@@ -271,58 +307,66 @@ const PatientDischargeCondition = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.map((rec) => (
-                          <tr key={rec.conditionId}>
-                            <td>{rec.conditionId}</td>
-                            <td>{rec.conditionCode}</td>
-                            <td>{rec.conditionName}</td>
-                            <td>
-                              <div className="form-check form-switch">
-                                <input
-                                  className="form-check-input"
-                                  type="checkbox"
-                                  checked={rec.status?.toLowerCase() === "y"}
-                                  onChange={() => handleStatusChange(rec)}
-                                  id={`switch-${rec.conditionId}`}
-                                  disabled={loading}
-                                />
-                                <label className="form-check-label px-0" htmlFor={`switch-${rec.conditionId}`}>
-                                  {rec.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
-                                </label>
-                              </div>
-                            </td>
-                            <td>
-                              <button
-                                className="btn btn-sm btn-success me-2"
-                                onClick={() => handleEdit(rec)}
-                                disabled={rec.status?.toLowerCase() !== "y" || loading}
-                              >
-                                <i className="fa fa-pencil"></i>
-                              </button>
+                        {currentItems.length > 0 ? (
+                          currentItems.map((rec) => (
+                            <tr key={rec.id}>
+                              <td>{rec.conditionCode}</td>
+                              <td>{rec.conditionName}</td>
+                              <td>
+                                <div className="form-check form-switch">
+                                  <input
+                                    className="form-check-input"
+                                    type="checkbox"
+                                    checked={rec.status?.toUpperCase() === "Y"}
+                                    onChange={() => handleStatusChange(rec)}
+                                    id={`switch-${rec.id}`}
+                                    disabled={loading}
+                                  />
+                                  <label
+                                    className="form-check-label px-0"
+                                    htmlFor={`switch-${rec.id}`}
+                                  >
+                                    {rec.status?.toUpperCase() === "Y" ? "Active" : "Deactivated"}
+                                  </label>
+                                </div>
+                              </td>
+                              <td>
+                                <button
+                                  className="btn btn-sm btn-success me-2"
+                                  onClick={() => handleEdit(rec)}
+                                  disabled={rec.status?.toUpperCase() !== "Y" || loading}
+                                >
+                                  <i className="fa fa-pencil"></i>
+                                </button>
+                              </td>
+                            </tr>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="4" className="text-center">
+                              No discharge conditions found
                             </td>
                           </tr>
-                        ))}
+                        )}
                       </tbody>
                     </table>
                   </div>
-
                   {filteredData.length > 0 && (
                     <Pagination
                       totalItems={filteredData.length}
-                      itemsPerPage={itemsPerPage}
+                      itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                       currentPage={currentPage}
                       onPageChange={setCurrentPage}
                     />
-                  )}
-                  {filteredData.length === 0 && !loading && (
-                    <div className="text-center mt-3">No records found</div>
                   )}
                 </>
               ) : (
                 <form className="forms row" onSubmit={handleSave}>
                   <div className="row">
-                    <div className="form-group col-md-4">
-                      <label>Condition Code <span className="text-danger">*</span></label>
+                    <div className="form-group col-md-4 mb-2">
+                      <label>
+                        Condition Code <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
                         name="conditionCode"
@@ -334,9 +378,10 @@ const PatientDischargeCondition = () => {
                         placeholder="Enter code"
                       />
                     </div>
-
-                    <div className="form-group col-md-4">
-                      <label>Condition Name <span className="text-danger">*</span></label>
+                    <div className="form-group col-md-4 mb-2">
+                      <label>
+                        Condition Name <span className="text-danger">*</span>
+                      </label>
                       <input
                         className="form-control mt-1"
                         name="conditionName"
@@ -349,7 +394,6 @@ const PatientDischargeCondition = () => {
                       />
                     </div>
                   </div>
-
                   <div className="form-group col-md-12 d-flex justify-content-end mt-4">
                     <button
                       type="submit"
@@ -370,53 +414,57 @@ const PatientDischargeCondition = () => {
                 </form>
               )}
 
-              {popupMessage && <Popup {...popupMessage} />}
+              {popupMessage && (
+                <Popup
+                  message={popupMessage.message}
+                  type={popupMessage.type}
+                  onClose={popupMessage.onClose}
+                />
+              )}
+
+              {confirmDialog.isOpen && (
+                <div className="modal d-block">
+                  <div className="modal-dialog">
+                    <div className="modal-content">
+                      <div className="modal-header">
+                        <h5 className="modal-title">Confirm Status Change</h5>
+                        <button
+                          type="button"
+                          className="close"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
+                          <span>&times;</span>
+                        </button>
+                      </div>
+                      <div className="modal-body">
+                        <p>
+                          Are you sure you want to{" "}
+                          {confirmDialog.newStatus === "Y" ? "activate" : "deactivate"}{" "}
+                          <strong>{confirmDialog.record?.conditionName}</strong>?
+                        </p>
+                      </div>
+                      <div className="modal-footer">
+                        <button
+                          className="btn btn-secondary"
+                          onClick={() => handleConfirmStatus(false)}
+                        >
+                          No
+                        </button>
+                        <button
+                          className="btn btn-primary"
+                          onClick={() => handleConfirmStatus(true)}
+                        >
+                          Yes
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </div>
       </div>
-
-      {confirmDialog.isOpen && (
-        <div className="modal d-block">
-          <div className="modal-dialog">
-            <div className="modal-content">
-              <div className="modal-header">
-                <h5 className="modal-title">Confirm Status Change</h5>
-                <button
-                  type="button"
-                  className="close"
-                  onClick={() => handleConfirm(false)}
-                >
-                  <span>&times;</span>
-                </button>
-              </div>
-              <div className="modal-body">
-                <p>
-                  Are you sure you want to{" "}
-                  {confirmDialog.newStatus?.toLowerCase() === "y"
-                    ? "activate"
-                    : "deactivate"}{" "}
-                  <strong>{confirmDialog.record?.conditionName}</strong>?
-                </p>
-              </div>
-              <div className="modal-footer">
-                <button
-                  className="btn btn-secondary"
-                  onClick={() => handleConfirm(false)}
-                >
-                  No
-                </button>
-                <button
-                  className="btn btn-primary"
-                  onClick={() => handleConfirm(true)}
-                >
-                  Yes
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };

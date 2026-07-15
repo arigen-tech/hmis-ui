@@ -1323,3 +1323,44 @@ export const ADD_FACILITY_SUCC_MSG = "Facility added successfully!";
 export const UPDATE_FACILITY_SUCC_MSG = "Facility updated successfully!";
 export const FETCH_FACILITY_ERR_MSG = "Failed to fetch facility data";
 export const FETCH_MED_ADV_ERR_MSG = "Failed to load medical advices"; export const DUPLICATE_MED_ADV ="Medical advice already exists for this department!"; export const UPDATE_MED_ADV_SUCC_MSG ="Medical advice updated successfully!"; export const ADD_MED_ADV_SUCC_MSG ="New medical advice added successfully!";
+
+// IPD Service Category Master
+export const FETCH_IPD_CATEGORY_ERR_MSG = "Failed to fetch IPD service categories.";
+export const SAVE_IPD_CATEGORY_SUCC_MSG = "IPD service category saved successfully!";
+export const UPDATE_IPD_CATEGORY_SUCC_MSG = "IPD service category updated successfully!";
+export const DUPLICATE_IPD_CATEGORY_MSG = "Duplicate code or name already exists.";
+export const FAILED_SAVE_IPD_CATEGORY_MSG = "Failed to save the category.";
+export const FAILED_UPDATE_IPD_CATEGORY_STATUS_MSG = "Failed to update status.";
+
+// IPD Service Subcategory Master
+export const FETCH_IPD_SUBCATEGORY_ERR_MSG = "Failed to fetch IPD service subcategories.";
+export const SAVE_IPD_SUBCATEGORY_SUCC_MSG = "IPD service subcategory saved successfully!";
+export const UPDATE_IPD_SUBCATEGORY_SUCC_MSG = "IPD service subcategory updated successfully!";
+export const DUPLICATE_IPD_SUBCATEGORY_MSG = "Duplicate code or name already exists.";
+export const FAILED_SAVE_IPD_SUBCATEGORY_MSG = "Failed to save the subcategory.";
+export const FAILED_UPDATE_IPD_SUBCATEGORY_STATUS_MSG = "Failed to update status.";
+export const FETCH_IPD_CATEGORY_DROPDOWN_ERR_MSG = "Failed to load categories dropdown.";
+
+// IPD Transfer Reason Master
+export const FETCH_TRANSFER_REASON_ERR_MSG = "Failed to fetch IPD transfer reasons.";
+export const SAVE_TRANSFER_REASON_SUCC_MSG = "IPD transfer reason saved successfully!";
+export const UPDATE_TRANSFER_REASON_SUCC_MSG = "IPD transfer reason updated successfully!";
+export const DUPLICATE_TRANSFER_REASON_MSG = "Duplicate name or code already exists.";
+export const FAILED_SAVE_TRANSFER_REASON_MSG = "Failed to save the transfer reason.";
+export const FAILED_UPDATE_TRANSFER_REASON_STATUS_MSG = "Failed to update status.";
+
+// Patient Discharge Condition Master
+export const FETCH_DISCHARGE_CONDITION_ERR_MSG = "Failed to fetch patient discharge conditions.";
+export const SAVE_DISCHARGE_CONDITION_SUCC_MSG = "Patient discharge condition saved successfully!";
+export const UPDATE_DISCHARGE_CONDITION_SUCC_MSG = "Patient discharge condition updated successfully!";
+export const DUPLICATE_DISCHARGE_CONDITION_MSG = "Duplicate code or name already exists.";
+export const FAILED_SAVE_DISCHARGE_CONDITION_MSG = "Failed to save the discharge condition.";
+export const FAILED_UPDATE_DISCHARGE_CONDITION_STATUS_MSG = "Failed to update status.";
+
+// Patient Discharge Reason Master
+export const FETCH_DISCHARGE_REASON_ERR_MSG = "Failed to fetch patient discharge reasons.";
+export const SAVE_DISCHARGE_REASON_SUCC_MSG = "Patient discharge reason saved successfully!";
+export const UPDATE_DISCHARGE_REASON_SUCC_MSG = "Patient discharge reason updated successfully!";
+export const DUPLICATE_DISCHARGE_REASON_MSG = "Duplicate code or name already exists.";
+export const FAILED_SAVE_DISCHARGE_REASON_MSG = "Failed to save the discharge reason.";
+export const FAILED_UPDATE_DISCHARGE_REASON_STATUS_MSG = "Failed to update status.";
