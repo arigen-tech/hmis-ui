@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest } from "../../../service/apiService"
+import { GET_WARD_BY_DEPARTMENT } from "../../../config/apiConfig"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
 import BedTransfer from "../BedTransfer"
@@ -15,6 +17,26 @@ const WardManagement = () => {
   const [activeTab, setActiveTab] = useState("Clinical Dashboard")
   const [showPatientList, setShowPatientList] = useState(true)
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false)
+  const [wards, setWards] = useState([])
+  const [selectedWard, setSelectedWard] = useState(null)
+
+  useEffect(() => {
+    const fetchWards = async () => {
+      try {
+        const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId") || 1
+        const response = await getRequest(`${GET_WARD_BY_DEPARTMENT}?departmentId=${deptId}`)
+        if (response && response.response) {
+          setWards(response.response)
+          if (response.response.length > 0) {
+            setSelectedWard(response.response[0])
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching wards by department:", error)
+      }
+    }
+    fetchWards()
+  }, [])
 
   // Added "IPD Initial Assessment" right after Clinical Dashboard
   const caseSheetTabs = [
@@ -136,7 +158,30 @@ const WardManagement = () => {
           <div className="card form-card">
             <div className="card-header">
               <div className="d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">WARD MANAGEMENT</h4>
+                <div className="d-flex align-items-center">
+                  <h4 className="card-title p-2 mb-0 me-3">WARD MANAGEMENT</h4>
+                  {wards.length > 1 ? (
+                    <select
+                      className="form-select form-select-sm fw-bold text-dark"
+                      style={{ width: "auto", minWidth: "200px", fontWeight: "700", borderColor: "#adb5bd" }}
+                      value={selectedWard?.wardId || ""}
+                      onChange={(e) => {
+                        const ward = wards.find(w => w.wardId === Number(e.target.value))
+                        setSelectedWard(ward)
+                      }}
+                    >
+                      {wards.map((ward) => (
+                        <option key={ward.wardId} value={ward.wardId} style={{ fontWeight: "normal" }}>
+                          {ward.wardName ? ward.wardName.trim() : ""}
+                        </option>
+                      ))}
+                    </select>
+                  ) : wards.length === 1 ? (
+                    <span className="badge bg-info text-dark fs-6 px-3 py-2 fw-bold" style={{ fontWeight: "700" }}>
+                      {wards[0].wardName ? wards[0].wardName.trim() : ""}
+                    </span>
+                  ) : null}
+                </div>
                 {selectedPatient && (
                   <div className="flex-grow-1 d-flex justify-content-end">
                     <button className="btn btn-light btn-sm" onClick={handleBackToCards}>
