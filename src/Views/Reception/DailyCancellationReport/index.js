@@ -41,6 +41,48 @@ import {
   DATA_NOT_FOUND_WRT_SELECTION_CRITERIA_WARN_MSG,
 } from "../../../config/constants";
 
+// ---------- Lab / Radiology mock data (for UI demonstration) ----------
+const LAB_RAD_MOCK_DATA = [
+  {
+    patientName: "Ananya Sharma",
+    mobileNumber: "9876543210",
+    age: "28Y / Female",
+    departmentName: "Laboratory",
+    serviceName: "CBC",
+    orderDateTime: "2026-07-10T09:30:00",
+    cancellationDateTime: "2026-07-11T14:15:00",
+    cancelledBy: "Dr. Rao",
+    cancellationReason: "Patient refused",
+  },
+  {
+    patientName: "Vikram Singh",
+    mobileNumber: "8765432109",
+    age: "35Y / Male",
+    departmentName: "Radiology",
+    serviceName: "X-Ray Chest",
+    orderDateTime: "2026-07-09T11:00:00",
+    cancellationDateTime: "2026-07-10T09:45:00",
+    cancelledBy: "Reception",
+    cancellationReason: "Machine fault",
+  },
+  {
+    patientName: "Meera Patel",
+    mobileNumber: "7654321098",
+    age: "42Y / Female",
+    departmentName: "Laboratory",
+    serviceName: "Lipid Profile",
+    orderDateTime: "2026-07-12T08:15:00",
+    cancellationDateTime: "2026-07-12T10:00:00",
+    cancelledBy: "Self",
+    cancellationReason: "Rescheduled",
+  },
+];
+
+const LAB_RAD_DEPT_OPTIONS = [
+  { id: "LAB", name: "Laboratory" },
+  { id: "RADIOLOGY", name: "Radiology" },
+];
+
 const DailyCancellationReport = () => {
   // ========================= O P D   S T A T E =========================
   const [fromDate, setFromDate] = useState("");
@@ -384,7 +426,7 @@ const DailyCancellationReport = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">Daily Cancellation Report</h4>
+              <h4 className="card-title p-2 mb-0">Daily OPD Cancellation Report</h4>
             </div>
             <div className="card-body">
               {/* OPD filters */}
