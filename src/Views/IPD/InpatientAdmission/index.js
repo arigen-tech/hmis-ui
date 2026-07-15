@@ -232,6 +232,7 @@ const InpatientAdmission = () => {
           mobileNo: data.personal?.mobileNo || prev.mobileNo,
           age: data.personal?.age || prev.age,
           gender: data.personal?.genderName || (data.personal?.gender === 29 ? "Male" : data.personal?.gender === 30 ? "Female" : "Other") || prev.gender,
+          dietPreference: data.personal?.dietPreferenceId || data.personal?.dietPreference || prev.dietPreference,
 
           patientAddress1: data.address?.address1 || prev.patientAddress1,
           patientAddress2: data.address?.address2 || prev.patientAddress2,
@@ -291,6 +292,7 @@ const InpatientAdmission = () => {
           patientData.careLevel === "Critical" ? "HDU" :
             patientData.careLevel === "ICU" ? "ICU" : prev.admissionCareType,
         // Add more auto-population as needed
+        dietPreference: patientData.dietPreferenceId || patientData.dietPreference || prev.dietPreference,
       }));
     }
     
@@ -1057,6 +1059,7 @@ const InpatientAdmission = () => {
 
       formDataToSend.append("patientName", formData.patientName || "");
       formDataToSend.append("uhid", formData.uhid || "");
+      formDataToSend.append("dietPreferenceId", formData.dietPreference || "");
 
       const deptObj = departments.find(d => d.departmentName === formData.department);
       formDataToSend.append("departmentId", deptObj?.id || "");
