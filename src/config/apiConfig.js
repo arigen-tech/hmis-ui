@@ -714,12 +714,21 @@ export const ABDM_M2_FETCH_RECORDS = `/api/v1/abdm/m2/consent/fetch-records`;
 
 export const MAS_MEDICAL_ADVICE = `${MASTERS}/masOpdMedicalAdvise`;
 
-export const IPD_PATIENT_WAITING_LIST = `/ipd/ipdPatientWaitingList`;
-export const GET_WARD_BY_CATEGORY = `/ipd/getWardByCategory`;
-export const GET_ROOM_BY_WARD = `/ipd/getRoomByWard`;
-export const GET_BED_BY_ROOM = '/ipd/getBedByRoom';
-export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveIpdPatientDetails';
-export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardByDepartment`;
-export const GET_WARD_WISE_DETAILS = `/ipd/getWardWiseDetails`;
+export const IPD_PATIENT_WAITING_LIST = `/ipd/pendingAdmissionList`;
+export const GET_WARD_BY_CATEGORY = `/ipd/getWardDetailsByCategory`;
+export const GET_ROOM_BY_WARD = `/ipd/getRoomDetailsByWard`;
+export const GET_BED_BY_ROOM = '/ipd/getBedDetailsByRoom';
+export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveAdmissionDetails';
+export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardDetailsByDepartment`;
+export const GET_WARD_WISE_DETAILS = `/ipd/getNursingDashboardByWard`;
+export const UPDATE_ADMISSION_INTERNAL_STATUS = `/ipd/updateAdmissionInternalStatus`;
 
+export const IPD_INTERNAL_STATUS_NRW = 1;
+export const IPD_INTERNAL_STATUS_RWD = 2;
+export const IPD_INTERNAL_STATUS_IWD = 3;
+export const IPD_INTERNAL_STATUS_TRP = 4;
+export const IPD_INTERNAL_STATUS_IOT = 5;
+export const IPD_INTERNAL_STATUS_ILR = 6;
+export const IPD_INTERNAL_STATUS_RFD = 7;
+export const IPD_INTERNAL_STATUS_DIP = 8;
 
