@@ -209,6 +209,12 @@ export const MAS_PATIENT_CONDITION = `${MASTERS}/masPatientCondition`;
 export const MAS_PATIENT_CONDITION_GET_ALL = `${MAS_PATIENT_CONDITION}/getAll/1`;
 
 
+export const MAS_IPD_SERVICE_CATEGORY = `${MASTERS}/ipdCategory`;
+export const MAS_IPD_SERVICE_SUBCATEGORY = `${MASTERS}/ipdServiceSubcategory`;
+export const MAS_TRANSFER_REASON = `${MASTERS}/transferReason`;
+export const MAS_PATIENT_DISCHARGE_CONDITION = `${MASTERS}/masPatientDischargeCondition`;
+export const MAS_DISCHARGE_REASON = `${MASTERS}/masDischargeReason`;
+
 //OPD
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
 export const OPTH_MAS_NEAR_VISION = `${MASTERS}/opthMasNearVision/getAll/1`;
