@@ -111,6 +111,9 @@ const WardManagement = () => {
   }
 
   const handlePatientSelect = (patient) => {
+    if (patient.status === "VACANT") {
+      return
+    }
     if (patient.status === "NRW") {
       Swal.fire({
         title: "This patient not reported in ward",
@@ -293,76 +296,83 @@ const WardManagement = () => {
                     </div>
                   ) : (
                     <div className="row g-2">
-                      {patientData.map((patient) => (
-                        <div key={patient.id} className="col-xxl col-xl col-lg col-md col-sm-6 col-6">
-                          <div
-                            className="card p-1"
-                            style={{
-                              minHeight: "140px",
-                              cursor: "pointer",
-                              transition: "all 0.3s ease",
-                              backgroundColor: getBoxBackgroundColor(patient.status),
-                              color: getTextColor(patient.status),
-                              border: `2px solid ${getBorderColor(patient.status)}`,
-                              borderRadius: "6px"
-                            }}
-                            onClick={() => handlePatientSelect(patient)}
-                            onMouseEnter={(e) => {
-                              e.currentTarget.style.transform = 'translateY(-3px)'
-                              e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)'
-                            }}
-                            onMouseLeave={(e) => {
-                              e.currentTarget.style.transform = 'translateY(0)'
-                              e.currentTarget.style.boxShadow = 'none'
-                            }}
-                          >
-                            <div className="text-center mb-1">
-                              <span className="badge bg-dark w-100" style={{ opacity: 0.9, fontSize: "0.7rem", padding: "0.2em 0.4em" }}>
-                                {patient.bedNo}
-                              </span>
-                            </div>
-                            <div className="text-center mb-1">
-                              <div className="fw-bold" style={{ fontSize: "0.8rem" }}>
-                                {patient.patientName}
-                                {patient.ageGender && (
-                                  <span className="ms-1" style={{ fontSize: "0.7rem", opacity: 0.8 }}>
-                                    ({patient.ageGender})
-                                  </span>
-                                )}
-                              </div>
-                            </div>
-                            {patient.admissionNo ? (
+                      {patientData.map((patient) => {
+                        const isVacant = patient.status === "VACANT";
+                        return (
+                          <div key={patient.id} className="col-xxl col-xl col-lg col-md col-sm-6 col-6">
+                            <div
+                              className="card p-1"
+                              style={{
+                                minHeight: "140px",
+                                cursor: isVacant ? "default" : "pointer",
+                                transition: "all 0.3s ease",
+                                backgroundColor: getBoxBackgroundColor(patient.status),
+                                color: getTextColor(patient.status),
+                                border: `2px solid ${getBorderColor(patient.status)}`,
+                                borderRadius: "6px"
+                              }}
+                              onClick={() => !isVacant && handlePatientSelect(patient)}
+                              onMouseEnter={(e) => {
+                                if (!isVacant) {
+                                  e.currentTarget.style.transform = 'translateY(-3px)'
+                                  e.currentTarget.style.boxShadow = '0 4px 8px rgba(0,0,0,0.1)'
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                if (!isVacant) {
+                                  e.currentTarget.style.transform = 'translateY(0)'
+                                  e.currentTarget.style.boxShadow = 'none'
+                                }
+                              }}
+                            >
                               <div className="text-center mb-1">
-                                <div className="small fw-bold" style={{ fontSize: "0.65rem" }}>{patient.admissionNo}</div>
-                                {patient.admissionDate && (
-                                  <div className="small" style={{ fontSize: "0.6rem", opacity: 0.8 }}>{patient.admissionDate}</div>
-                                )}
-                              </div>
-                            ) : (
-                              <div className="text-center mb-1">
-                                <div className="small fw-bold" style={{ fontSize: "0.65rem" }}>-</div>
-                              </div>
-                            )}
-                            {patient.doctorName && (
-                              <div className="text-center mb-1">
-                                <div className="small text-truncate" style={{ fontSize: "0.6rem", opacity: 0.9 }}>{patient.doctorName}</div>
-                              </div>
-                            )}
-                            {patient.currentDay > 0 && (
-                              <div className="text-center">
-                                <span className="badge bg-dark" style={{ fontSize: "0.6rem", padding: "0.2em 0.5em" }}>
-                                  DAY-{patient.currentDay}
+                                <span className="badge bg-dark w-100" style={{ opacity: 0.9, fontSize: "0.7rem", padding: "0.2em 0.4em" }}>
+                                  {patient.bedNo}
                                 </span>
                               </div>
-                            )}
-                            <div className="text-center mt-1">
-                              <span className={`badge bg-${getStatusBadgeColor(patient.status)} text-white`} style={{ fontSize: '0.6rem', padding: '0.2em 0.5em' }}>
-                                {patient.status === 'VACANT' ? 'VACANT' : patient.status}
-                              </span>
+                              <div className="text-center mb-1">
+                                <div className="fw-bold" style={{ fontSize: "0.8rem" }}>
+                                  {patient.patientName}
+                                  {patient.ageGender && (
+                                    <span className="ms-1" style={{ fontSize: "0.7rem", opacity: 0.8 }}>
+                                      ({patient.ageGender})
+                                    </span>
+                                  )}
+                                </div>
+                              </div>
+                              {patient.admissionNo ? (
+                                <div className="text-center mb-1">
+                                  <div className="small fw-bold" style={{ fontSize: "0.65rem" }}>{patient.admissionNo}</div>
+                                  {patient.admissionDate && (
+                                    <div className="small" style={{ fontSize: "0.6rem", opacity: 0.8 }}>{patient.admissionDate}</div>
+                                  )}
+                                </div>
+                              ) : (
+                                <div className="text-center mb-1">
+                                  <div className="small fw-bold" style={{ fontSize: "0.65rem" }}>-</div>
+                                </div>
+                              )}
+                              {patient.doctorName && (
+                                <div className="text-center mb-1">
+                                  <div className="small text-truncate" style={{ fontSize: "0.6rem", opacity: 0.9 }}>{patient.doctorName}</div>
+                                </div>
+                              )}
+                              {patient.currentDay > 0 && (
+                                <div className="text-center">
+                                  <span className="badge bg-dark" style={{ fontSize: "0.6rem", padding: "0.2em 0.5em" }}>
+                                    DAY-{patient.currentDay}
+                                  </span>
+                                </div>
+                              )}
+                              <div className="text-center mt-1">
+                                <span className={`badge bg-${getStatusBadgeColor(patient.status)} text-white`} style={{ fontSize: '0.6rem', padding: '0.2em 0.5em' }}>
+                                  {patient.status === 'VACANT' ? 'VACANT' : patient.status}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      ))}
+                        )
+                      })}
                     </div>
                   )}
                 </div>
@@ -392,28 +402,32 @@ const WardManagement = () => {
                             </div>
                           ) : (
                             <div className="list-group list-group-flush">
-                              {patientData.map((patient) => (
-                                <button
-                                  key={patient.id}
-                                  className={`list-group-item list-group-item-action ${selectedPatient?.id === patient.id ? 'active' : ''}`}
-                                  onClick={() => handlePatientSelect(patient)}
-                                  style={{ borderLeft: `2px solid ${getBorderColor(patient.status)}`, cursor: 'pointer', borderRadius: 0 }}
-                                >
-                                  <div className="d-flex justify-content-between align-items-start">
-                                    <div className="flex-grow-1">
-                                      <div className="fw-bold" style={{ fontSize: "0.75rem", lineHeight: "1.2" }}>
-                                        {patient.patientName}
-                                      </div>
-                                      {patient.doctorName && patient.status !== "VACANT" && (
-                                        <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>
-                                          <i className="fa fa-stethoscope me-1"></i>
-                                          {patient.doctorName.split(' ')[1] || patient.doctorName}
+                              {patientData.map((patient) => {
+                                const isVacant = patient.status === "VACANT";
+                                return (
+                                  <button
+                                    key={patient.id}
+                                    className={`list-group-item list-group-item-action ${selectedPatient?.id === patient.id ? 'active' : ''}`}
+                                    onClick={() => !isVacant && handlePatientSelect(patient)}
+                                    style={{ borderLeft: `2px solid ${getBorderColor(patient.status)}`, cursor: isVacant ? 'default' : 'pointer', borderRadius: 0 }}
+                                    disabled={isVacant}
+                                  >
+                                    <div className="d-flex justify-content-between align-items-start">
+                                      <div className="flex-grow-1">
+                                        <div className="fw-bold" style={{ fontSize: "0.75rem", lineHeight: "1.2" }}>
+                                          {patient.patientName}
                                         </div>
-                                      )}
+                                        {patient.doctorName && patient.status !== "VACANT" && (
+                                          <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>
+                                            <i className="fa fa-stethoscope me-1"></i>
+                                            {patient.doctorName.split(' ')[1] || patient.doctorName}
+                                          </div>
+                                        )}
+                                      </div>
                                     </div>
-                                  </div>
-                                </button>
-                              ))}
+                                  </button>
+                                )
+                              })}
                             </div>
                           )}
                         </div>
