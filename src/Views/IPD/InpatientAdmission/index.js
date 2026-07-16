@@ -118,7 +118,6 @@ const InpatientAdmission = () => {
       {
         id: 1,
         docType: "",
-        docNumber: "",
         remarks: "",
         file: null,
         fileName: ""
@@ -657,7 +656,6 @@ const InpatientAdmission = () => {
         {
           id: prev.documents.length + 1,
           docType: "",
-          docNumber: "",
           remarks: "",
           file: null,
           fileName: ""
@@ -1879,7 +1877,6 @@ const InpatientAdmission = () => {
                         <thead>
                           <tr>
                             <th width="250">Document Type</th>
-                            <th width="150">Document Number</th>
                             <th>Remarks</th>
                             <th width="200">File Upload</th>
                             <th width="80">Action</th>
@@ -1901,15 +1898,6 @@ const InpatientAdmission = () => {
                                     </option>
                                   ))}
                                 </select>
-                              </td>
-                              <td>
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={doc.docNumber}
-                                  onChange={(e) => handleDocumentChange(index, 'docNumber', e.target.value)}
-                                  placeholder="Doc Number"
-                                />
                               </td>
                               <td>
                                 <input
