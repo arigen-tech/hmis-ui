@@ -1,232 +1,471 @@
-import { useState, useMemo } from "react";
-import Popup from "../../../Components/popup";
+import { useEffect, useMemo, useState } from "react";
+import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import Popup from "../../../Components/popup";
+import {
+  BILLING_REFUND_PATIENT_LIST,
+  FILTER_LAB_DEPT,
+  FILTER_OPD_DEPT,
+  FILTER_RADIO_DEPT,
+  PATIENT_BILLING_REFUND_DETAILS,
+  REQUEST_PARAM_FROM_DATE,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_PATIENT_NAME,
+  REQUEST_PARAM_SIZE,
+  REQUEST_PARAM_TO_DATE,
+} from "../../../config/apiConfig";
+import { getRequest } from "../../../service/apiService";
 
-/**
- * Mock refund data – updated to include new fields:
- * age, gender, registrationDate, billingType
- */
-const MOCK_REFUNDS = [
-  {
-    id: 1,
-    registrationNo: "REG-1001",
-    patientName: "Ananya Sharma",
-    mobileNo: "9876543210",
-    age: 28,
-    gender: "Female",
-    billingType: "OPD Consultation",
-    registrationDate: "05/07/2026",
-    billingAmount: 500,
-    cancelledDate: "10/07/2026",
-    refundDate: "12/07/2026",
-    refundStatus: "Completed",
-    refundAmount: 500,
-    refundMode: "UPI",
-    transactionRefNo: "UPI123456",
-    processedBy: "Dr. Rao",
-  },
-  {
-    id: 2,
-    registrationNo: "REG-1002",
-    patientName: "Vikram Singh",
-    mobileNo: "8765432109",
-    age: 35,
-    gender: "Male",
-    billingType: "Laboratory",
-    registrationDate: "01/07/2026",
-    billingAmount: 800,
-    cancelledDate: "11/07/2026",
-    refundDate: "-",
-    refundStatus: "Pending",
-    refundAmount: 800,
-    refundMode: "-",
-    transactionRefNo: "-",
-    processedBy: "-",
-  },
-  {
-    id: 3,
-    registrationNo: "REG-1003",
-    patientName: "Meera Patel",
-    mobileNo: "7654321098",
-    age: 42,
-    gender: "Female",
-    billingType: "Radiology",
-    registrationDate: "03/07/2026",
-    billingAmount: 1200,
-    cancelledDate: "09/07/2026",
-    refundDate: "13/07/2026",
-    refundStatus: "Completed",
-    refundAmount: 1200,
-    refundMode: "Card",
-    transactionRefNo: "TXN98765",
-    processedBy: "Admin",
-  },
-  {
-    id: 4,
-    registrationNo: "REG-1004",
-    patientName: "Rahul Gupta",
-    mobileNo: "9876543211",
-    age: 31,
-    gender: "Male",
-    billingType: "OPD Consultation",
-    registrationDate: "02/07/2026",
-    billingAmount: 300,
-    cancelledDate: "12/07/2026",
-    refundDate: "-",
-    refundStatus: "Pending",
-    refundAmount: 300,
-    refundMode: "-",
-    transactionRefNo: "-",
-    processedBy: "-",
-  },
-  {
-    id: 5,
-    registrationNo: "REG-1005",
-    patientName: "Sneha Iyer",
-    mobileNo: "9876543212",
-    age: 26,
-    gender: "Female",
-    billingType: "Laboratory",
-    registrationDate: "04/07/2026",
-    billingAmount: 950,
-    cancelledDate: "08/07/2026",
-    refundDate: "14/07/2026",
-    refundStatus: "Completed",
-    refundAmount: 950,
-    refundMode: "Cash",
-    transactionRefNo: "CASH-0001",
-    processedBy: "Reception",
-  },
+const SERVICE_OPTIONS = [
+  { value: "All", label: "All" },
+  { value: FILTER_OPD_DEPT, label: "OPD" },
+  { value: FILTER_LAB_DEPT, label: "Laboratory" },
+  { value: FILTER_RADIO_DEPT, label: "Radiology" },
 ];
 
+const DEFAULT_FILTERS = {
+  patientName: "",
+  mobileNo: "",
+  billingService: "All",
+  refundStatus: "All",
+  fromDate: "",
+  toDate: "",
+};
+
 const BillingRefundDetails = () => {
-  // ---------- Search state ----------
+  const [patientName, setPatientName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [billingService, setBillingService] = useState("All");
   const [fromDate, setFromDate] = useState("");
   const [toDate, setToDate] = useState("");
-  const [refundStatus, setRefundStatus] = useState("All"); // "Pending", "Completed", "All"
+  const [refundStatus, setRefundStatus] = useState("All");
 
-  // ---------- Pagination state ----------
-  const [currentPage, setCurrentPage] = useState(0);
-  const itemsPerPage = DEFAULT_ITEMS_PER_PAGE;
+  const [appliedFilters, setAppliedFilters] = useState(DEFAULT_FILTERS);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalElements, setTotalElements] = useState(0);
+  const [refundRows, setRefundRows] = useState([]);
+  const [loading, setLoading] = useState(false);
 
-  // ---------- View popup state ----------
   const [viewData, setViewData] = useState(null);
   const [showViewPopup, setShowViewPopup] = useState(false);
-
-  // ---------- Popup messages ----------
+  const [detailRows, setDetailRows] = useState([]);
+  const [detailLoading, setDetailLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
 
-  // ---------- Helper for date comparisons ----------
-  const parseDate = (dateStr) => {
-    if (!dateStr || dateStr === "-") return null;
-    const [day, month, year] = dateStr.split("/");
-    return new Date(year, month - 1, day);
-  };
+  const totalPages = Math.ceil(totalElements / DEFAULT_ITEMS_PER_PAGE);
 
-  // ---------- Filter logic (client side) ----------
-  const filteredData = useMemo(() => {
-    let data = [...MOCK_REFUNDS];
-
-    // Apply search filters
-    if (mobileNo.trim()) {
-      data = data.filter((item) => item.mobileNo.includes(mobileNo.trim()));
-    }
-
-    if (billingService !== "All") {
-      data = data.filter((item) => item.billingType === billingService);
-    }
-
-    // Date range filter – depends on refundStatus
-    if (fromDate || toDate) {
-      const from = fromDate ? new Date(fromDate) : null;
-      const to = toDate ? new Date(toDate) : null;
-
-      data = data.filter((item) => {
-        let targetDate = null;
-
-        if (refundStatus === "Pending") {
-          targetDate = parseDate(item.cancelledDate);
-        } else if (refundStatus === "Completed") {
-          targetDate = parseDate(item.refundDate);
-        } else {
-          // "All": use cancelledDate for pending, refundDate for completed
-          if (item.refundStatus === "Pending") {
-            targetDate = parseDate(item.cancelledDate);
-          } else {
-            targetDate = parseDate(item.refundDate);
-          }
-        }
-
-        if (!targetDate) return false;
-
-        if (from && targetDate < from) return false;
-        if (to && targetDate > to) return false;
-        return true;
-      });
-    }
-
-    // Filter by status (radio button)
-    if (refundStatus !== "All") {
-      data = data.filter((item) => item.refundStatus === refundStatus);
-    }
-
-    return data;
-  }, [mobileNo, billingService, fromDate, toDate, refundStatus]);
-
-  // ---------- Pagination slice ----------
-  const totalElements = filteredData.length;
-  const totalPages = Math.ceil(totalElements / itemsPerPage);
-  const startIdx = currentPage * itemsPerPage;
-  const currentPageData = filteredData.slice(startIdx, startIdx + itemsPerPage);
-
-  // ---------- Handlers ----------
-  const handleSearch = () => {
-    setCurrentPage(0);
-  };
-
-  const handleReset = () => {
-    setMobileNo("");
-    setBillingService("All");
-    setFromDate("");
-    setToDate("");
-    setRefundStatus("All");
-    setCurrentPage(0);
-  };
-
-  const handlePageChange = (page) => {
-    setCurrentPage(page - 1);
-  };
-
-  const handleView = (item) => {
-    setViewData(item);
-    setShowViewPopup(true);
-  };
-
-  const handleExport = () => {
+  const showPopup = (message, type = "info") => {
     setPopupMessage({
-      message: "Export Refund Register (Completed refunds only) triggered. (Mock action)",
-      type: "info",
+      message,
+      type,
       onClose: () => setPopupMessage(null),
     });
   };
 
+  const formatApiDate = (value) => {
+    if (!value) return "-";
+
+    const text = String(value).trim();
+    if (!text || text === "-") return "-";
+
+    if (/^\d{4}-\d{2}-\d{2}$/.test(text)) {
+      const [year, month, day] = text.split("-");
+      return `${day}/${month}/${year}`;
+    }
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(text)) {
+      return text;
+    }
+
+    const date = new Date(text);
+    if (Number.isNaN(date.getTime())) {
+      return text;
+    }
+
+    const day = String(date.getDate()).padStart(2, "0");
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const year = date.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
+
+  const formatAgeGender = (age, gender) => {
+    const ageText = age === null || age === undefined || String(age).trim() === "" ? "-" : String(age).trim();
+    const genderText = gender === null || gender === undefined || String(gender).trim() === "" ? "-" : String(gender).trim();
+
+    if (ageText === "-" && genderText === "-") {
+      return "-";
+    }
+
+    if (ageText === "-") {
+      return genderText;
+    }
+
+    if (genderText === "-") {
+      return ageText;
+    }
+
+    return `${ageText} / ${genderText}`;
+  };
+
+  const formatCurrency = (value) => {
+    if (value === null || value === undefined || value === "") {
+      return "-";
+    }
+
+    const amount = Number(value);
+    if (Number.isNaN(amount)) {
+      return String(value);
+    }
+
+    return `Rs. ${amount.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
+  };
+
+  const normalizeRefundStatus = (value) => {
+    const status = String(value || "").trim().toLowerCase();
+
+    if (!status) return "";
+    if (["completed", "complete", "done", "paid", "y", "yes"].includes(status)) {
+      return "Completed";
+    }
+    if (["pending", "p", "n"].includes(status)) {
+      return "Pending";
+    }
+
+    return String(value).trim();
+  };
+
+  const getRefundBadgeClass = (status) => {
+    return normalizeRefundStatus(status) === "Completed"
+      ? "bg-success"
+      : "bg-warning text-dark";
+  };
+
+  const fetchRefundList = async (page = 0, filters = appliedFilters) => {
+    try {
+      setLoading(true);
+
+      const params = new URLSearchParams({
+        [REQUEST_PARAM_PAGE]: String(page),
+        [REQUEST_PARAM_SIZE]: String(DEFAULT_ITEMS_PER_PAGE),
+      });
+
+      if (filters.patientName.trim()) {
+        params.append(REQUEST_PARAM_PATIENT_NAME, filters.patientName.trim());
+      }
+
+      if (filters.mobileNo.trim()) {
+        params.append("mobileNo", filters.mobileNo.trim());
+      }
+
+      if (filters.billingService !== "All") {
+        params.append("billingService", filters.billingService);
+      }
+
+      if (filters.refundStatus !== "All") {
+        params.append("refundStatus", filters.refundStatus);
+      }
+
+      if (filters.fromDate) {
+        params.append(REQUEST_PARAM_FROM_DATE, filters.fromDate);
+      }
+
+      if (filters.toDate) {
+        params.append(REQUEST_PARAM_TO_DATE, filters.toDate);
+      }
+
+      const data = await getRequest(`${BILLING_REFUND_PATIENT_LIST}?${params.toString()}`);
+      const pageData = data?.response ?? {};
+      const content = Array.isArray(pageData.content) ? pageData.content : [];
+
+      setRefundRows(content);
+      setTotalElements(Number(pageData.totalElements || 0));
+    } catch (error) {
+      console.error("Failed to fetch billing refund list:", error);
+      setRefundRows([]);
+      setTotalElements(0);
+      showPopup("Unable to load billing refund records.", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchRefundDetails = async (billingHeaderId) => {
+    if (!billingHeaderId) {
+      setDetailRows([]);
+      showPopup("Unable to load refund details because the billing ID is missing.", "error");
+      return;
+    }
+
+    try {
+      setDetailLoading(true);
+      const data = await getRequest(`${PATIENT_BILLING_REFUND_DETAILS}/${billingHeaderId}`);
+      setDetailRows(Array.isArray(data?.response) ? data.response : []);
+    } catch (error) {
+      console.error("Failed to fetch billing refund details:", error);
+      setDetailRows([]);
+      showPopup("Unable to load refund details.", "error");
+    } finally {
+      setDetailLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchRefundList(currentPage - 1, appliedFilters);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [currentPage, appliedFilters]);
+
+  const visibleRows = useMemo(() => refundRows, [refundRows]);
+
+  const handleSearch = () => {
+    setCurrentPage(1);
+    setAppliedFilters({
+      patientName,
+      mobileNo,
+      billingService,
+      refundStatus,
+      fromDate,
+      toDate,
+    });
+  };
+
+  const handleReset = () => {
+    setPatientName("");
+    setMobileNo("");
+    setBillingService("All");
+    setRefundStatus("All");
+    setFromDate("");
+    setToDate("");
+    setCurrentPage(1);
+    setAppliedFilters(DEFAULT_FILTERS);
+  };
+
+  const handlePageChange = (page) => {
+    setCurrentPage(page);
+  };
+
+  const handleView = async (item) => {
+    setViewData(item);
+    setShowViewPopup(true);
+    setDetailRows([]);
+    await fetchRefundDetails(item.billingHeaderId);
+  };
+
+  const handleExport = () => {
+    showPopup("Export refund register is not wired yet.", "info");
+  };
+
+  const selectedRefundDetail = detailRows[0] ?? null;
+
+  if (loading && refundRows.length === 0) {
+    return <LoadingScreen />;
+  }
+
   return (
     <div className="content-wrapper">
+      {popupMessage && <Popup {...popupMessage} />}
+
+      {showViewPopup && viewData && (
+        <div
+          className="modal d-block"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <div
+            className="modal-dialog modal-dialog-centered"
+            style={{
+              margin: "0 auto",
+              position: "fixed",
+              top: "50%",
+              left: "55%",
+              transform: "translate(-50%, -50%)",
+              width: "50%",
+              maxWidth: "560px",
+              height: "auto",
+              maxHeight: "80vh",
+            }}
+          >
+            <div className="modal-content">
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title">Refund Details</h5>
+                <button
+                  type="button"
+                  className="btn-close btn-close-white"
+                  onClick={() => {
+                    setShowViewPopup(false);
+                    setViewData(null);
+                    setDetailRows([]);
+                    setDetailLoading(false);
+                  }}
+                />
+              </div>
+              <div className="modal-body">
+                {/* <div className="row">
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Registration No.</label>
+                    <p>{viewData.registrationNo || "-"}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Patient Name</label>
+                    <p>{viewData.patientName || "-"}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Mobile No.</label>
+                    <p>{viewData.mobileNo || "-"}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Age / Gender</label>
+                    <p>{formatAgeGender(viewData.age, viewData.gender)}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Billing Type</label>
+                    <p>{viewData.billingType || "-"}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Department</label>
+                    <p>{viewData.departmentName || "-"}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Registration Date</label>
+                    <p>{formatApiDate(viewData.date)}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Cancelled Date</label>
+                    <p>{formatApiDate(viewData.cancelledDate)}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Refund Date</label>
+                    <p>{formatApiDate(viewData.refundDate)}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Billing Amount</label>
+                    <p>Rs. {viewData.billingAmount ?? "-"}</p>
+                  </div>
+                  <div className="col-md-6 mb-3">
+                    <label className="fw-bold">Refund Status</label>
+                    <p>
+                      <span
+                        className={`badge ${getRefundBadgeClass(
+                          viewData.refundStatus,
+                        )}`}
+                      >
+                        {normalizeRefundStatus(viewData.refundStatus) ||
+                          viewData.refundStatus ||
+                          "-"}
+                      </span>
+                    </p>
+                  </div>
+                </div> */}
+
+                <hr className="my-4" />
+
+                <div className="d-flex justify-content-between align-items-center mb-3">
+                  <h6 className="fw-bold mb-0">Refund Details</h6>
+                  {detailLoading && (
+                    <span className="text-muted small">Loading details...</span>
+                  )}
+                </div>
+
+                {!detailLoading && !selectedRefundDetail ? (
+                  <div className="text-center text-muted py-4 border rounded">
+                    No refund details found
+                  </div>
+                ) : (
+                  <div className="border rounded overflow-hidden">
+                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                      <span className="text-muted">Refund Status</span>
+                      <span
+                        className={`badge ${getRefundBadgeClass(
+                          selectedRefundDetail?.refundStatus ?? viewData.refundStatus,
+                        )}`}
+                      >
+                        {normalizeRefundStatus(
+                          selectedRefundDetail?.refundStatus ?? viewData.refundStatus,
+                        ) || "-"}
+                      </span>
+                    </div>
+                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                      <span className="text-muted">Refund Amount</span>
+                      <span className="fw-semibold">
+                        {formatCurrency(selectedRefundDetail?.refundAmount)}
+                      </span>
+                    </div>
+                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                      <span className="text-muted">Refund Mode</span>
+                      <span className="fw-semibold">
+                        {selectedRefundDetail?.refundMode || "-"}
+                      </span>
+                    </div>
+                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                      <span className="text-muted">Transaction / Reference No.</span>
+                      <span className="fw-semibold">
+                        {selectedRefundDetail?.transactionNumber || "-"}
+                      </span>
+                    </div>
+                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3 border-bottom">
+                      <span className="text-muted">Refund Date</span>
+                      <span className="fw-semibold">
+                        {formatApiDate(
+                          selectedRefundDetail?.refundDate ?? viewData.refundDate,
+                        )}
+                      </span>
+                    </div>
+                    <div className="detail-row d-flex justify-content-between align-items-center px-3 py-3">
+                      <span className="text-muted">Processed By</span>
+                      <span className="fw-semibold">
+                        {selectedRefundDetail?.processedBy || "-"}
+                      </span>
+                    </div>
+                  </div>
+                )}
+              </div>
+              <div className="modal-footer">
+                <button
+                  className="btn btn-secondary"
+                  onClick={() => {
+                    setShowViewPopup(false);
+                    setViewData(null);
+                    setDetailRows([]);
+                    setDetailLoading(false);
+                  }}
+                >
+                  Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="card form-card">
         <div className="card-header d-flex justify-content-between align-items-center">
           <h4 className="card-title">Billing Refund Details</h4>
         </div>
 
         <div className="card-body">
-          {/* Search Panel */}
           <div className="mb-3">
             <div className="row g-3 align-items-end">
-              {/* Mobile No */}
               <div className="col-md-2">
                 <div className="form-group mb-0">
-                  <label className="form-label fw-bold mb-1">Patient Mobile No.</label>
+                  <label className="form-label fw-bold mb-1">
+                    Patient Name
+                  </label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    placeholder="Enter patient name"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                  />
+                </div>
+              </div>
+
+              <div className="col-md-2">
+                <div className="form-group mb-0">
+                  <label className="form-label fw-bold mb-1">
+                    Patient Mobile No.
+                  </label>
                   <input
                     type="text"
                     className="form-control"
@@ -237,24 +476,25 @@ const BillingRefundDetails = () => {
                 </div>
               </div>
 
-              {/* Billing Service */}
               <div className="col-md-2">
                 <div className="form-group mb-0">
-                  <label className="form-label fw-bold mb-1">Billing Service</label>
+                  <label className="form-label fw-bold mb-1">
+                    Billing Service
+                  </label>
                   <select
                     className="form-select"
                     value={billingService}
                     onChange={(e) => setBillingService(e.target.value)}
                   >
-                    <option value="All">All</option>
-                    <option value="OPD Consultation">OPD Consultation</option>
-                    <option value="Laboratory">Laboratory</option>
-                    <option value="Radiology">Radiology</option>
+                    {SERVICE_OPTIONS.map((option) => (
+                      <option key={option.value} value={option.value}>
+                        {option.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
 
-              {/* From Date */}
               <div className="col-md-2">
                 <div className="form-group mb-0">
                   <label className="form-label fw-bold mb-1">From Date</label>
@@ -267,7 +507,6 @@ const BillingRefundDetails = () => {
                 </div>
               </div>
 
-              {/* To Date */}
               <div className="col-md-2">
                 <div className="form-group mb-0">
                   <label className="form-label fw-bold mb-1">To Date</label>
@@ -280,11 +519,12 @@ const BillingRefundDetails = () => {
                 </div>
               </div>
 
-              {/* Refund Status Radio */}
               <div className="col-md-4">
                 <div className="form-group mb-0">
-                  <label className="form-label fw-bold mb-1">Refund Status</label>
-                  <div className="d-flex gap-3">
+                  <label className="form-label fw-bold mb-1">
+                    Refund Status
+                  </label>
+                  <div className="d-flex gap-3 flex-wrap">
                     <div className="form-check">
                       <input
                         className="form-check-input"
@@ -309,7 +549,10 @@ const BillingRefundDetails = () => {
                         checked={refundStatus === "Completed"}
                         onChange={(e) => setRefundStatus(e.target.value)}
                       />
-                      <label className="form-check-label" htmlFor="statusCompleted">
+                      <label
+                        className="form-check-label"
+                        htmlFor="statusCompleted"
+                      >
                         Completed
                       </label>
                     </div>
@@ -332,23 +575,21 @@ const BillingRefundDetails = () => {
               </div>
             </div>
 
-            {/* Action Buttons */}
             <div className="row mt-3">
               <div className="col-md-12 d-flex justify-content-end gap-2">
                 <button className="btn btn-primary" onClick={handleSearch}>
                   Search
                 </button>
-                <button className="btn btn-secondary" onClick={handleReset}>
-                  <i className="fas fa-redo-alt me-1"></i> Reset
-                </button>
-                <button className="btn btn-info" onClick={handleExport}>
-                  <i className=" me-1"></i> Export Refund Register
+                  <button className="btn btn-secondary" onClick={handleReset}>
+                    <i className="fas fa-redo-alt me-1"></i> Reset
+                  </button>
+                  <button className="btn btn-info" onClick={handleExport}>
+                    <i className="me-1"></i> Export Refund Register
                 </button>
               </div>
             </div>
           </div>
 
-          {/* Data Table – NEW COLUMNS */}
           <div className="table-responsive">
             <table className="table table-bordered table-hover align-middle">
               <thead className="table-light">
@@ -367,25 +608,27 @@ const BillingRefundDetails = () => {
                 </tr>
               </thead>
               <tbody>
-                {currentPageData.length > 0 ? (
-                  currentPageData.map((item) => (
-                    <tr key={item.id}>
-                      <td>{item.registrationNo}</td>
-                      <td>{item.patientName}</td>
-                      <td>{item.mobileNo}</td>
-                      <td>{item.age}Y / {item.gender}</td>
-                      <td>{item.billingType}</td>
-                      <td>{item.registrationDate}</td>
-                      <td>₹{item.billingAmount}</td>
-                      <td>{item.cancelledDate}</td>
-                      <td>{item.refundDate}</td>
+                {visibleRows.length > 0 ? (
+                  visibleRows.map((item) => (
+                    <tr key={item.visitId || item.billingHeaderId || item.registrationNo}>
+                      <td>{item.registrationNo || "-"}</td>
+                      <td>{item.patientName || "-"}</td>
+                      <td>{item.mobileNo || "-"}</td>
+                      <td>{formatAgeGender(item.age, item.gender)}</td>
+                      <td>{item.billingType || "-"}</td>
+                      <td>{formatApiDate(item.date)}</td>
+                      <td>Rs. {item.billingAmount ?? "-"}</td>
+                      <td>{formatApiDate(item.cancelledDate)}</td>
+                      <td>{formatApiDate(item.refundDate)}</td>
                       <td>
                         <span
-                          className={`badge ${
-                            item.refundStatus === "Completed" ? "bg-success" : "bg-warning text-dark"
-                          }`}
+                          className={`badge ${getRefundBadgeClass(
+                            item.refundStatus,
+                          )}`}
                         >
-                          {item.refundStatus}
+                          {normalizeRefundStatus(item.refundStatus) ||
+                            item.refundStatus ||
+                            "-"}
                         </span>
                       </td>
                       <td>
@@ -393,7 +636,7 @@ const BillingRefundDetails = () => {
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => handleView(item)}
                         >
-                          <i className=" me-1"></i> View
+                          View
                         </button>
                       </td>
                     </tr>
@@ -401,20 +644,7 @@ const BillingRefundDetails = () => {
                 ) : (
                   <tr>
                     <td colSpan="11" className="text-center text-muted py-4">
-                      <i className="fas fa-search fa-2x mb-3"></i>
-                      <p>No refund records found</p>
-                      {(mobileNo ||
-                        billingService !== "All" ||
-                        fromDate ||
-                        toDate ||
-                        refundStatus !== "All") && (
-                        <button
-                          className="btn btn-sm btn-outline-secondary mt-2"
-                          onClick={handleReset}
-                        >
-                          Reset Search
-                        </button>
-                      )}
+                  No refund records found
                     </td>
                   </tr>
                 )}
@@ -422,93 +652,17 @@ const BillingRefundDetails = () => {
             </table>
           </div>
 
-          {/* Pagination */}
-          {currentPageData.length > 0 && totalPages > 0 && (
+          {totalElements > 0 && (
             <Pagination
               totalItems={totalElements}
-              itemsPerPage={itemsPerPage}
-              currentPage={currentPage + 1}
+              itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+              currentPage={currentPage}
               onPageChange={handlePageChange}
               totalPages={totalPages}
             />
           )}
         </div>
       </div>
-
-      {/* Popup message (for export simulation) */}
-      {popupMessage && <Popup {...popupMessage} />}
-
-      {/* View Refund Details Modal – CONTENT REDUCED */}
-      {showViewPopup && viewData && (
-        <div className="modal d-block" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
-          <div
-            className="modal-dialog modal-dialog-centered"
-            style={{
-              margin: "0 auto",
-              position: "fixed",
-              top: "50%",
-              left: "55%",
-              transform: "translate(-50%, -50%)",
-              width: "50%",
-              maxWidth: "500px",
-              height: "auto",
-              maxHeight: "80vh",
-            }}
-          >
-            <div className="modal-content">
-              <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">Refund Details</h5>
-                <button
-                  type="button"
-                  className="btn-close btn-close-white"
-                  onClick={() => setShowViewPopup(false)}
-                ></button>
-              </div>
-              <div className="modal-body">
-                <div className="row">
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Refund Status</label>
-                    <p>
-                      <span
-                        className={`badge ${
-                          viewData.refundStatus === "Completed" ? "bg-success" : "bg-warning text-dark"
-                        }`}
-                      >
-                        {viewData.refundStatus}
-                      </span>
-                    </p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Refund Amount</label>
-                    <p>₹{viewData.refundAmount}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Refund Mode</label>
-                    <p>{viewData.refundMode}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Transaction / Ref. No.</label>
-                    <p>{viewData.transactionRefNo}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Refund Date</label>
-                    <p>{viewData.refundDate}</p>
-                  </div>
-                  <div className="col-md-6 mb-3">
-                    <label className="fw-bold">Processed By</label>
-                    <p>{viewData.processedBy}</p>
-                  </div>
-                </div>
-              </div>
-              <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={() => setShowViewPopup(false)}>
-                  Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 };
