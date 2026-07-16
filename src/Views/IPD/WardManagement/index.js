@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
-import { getRequest } from "../../../service/apiService"
-import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS } from "../../../config/apiConfig"
+import { getRequest, putRequest } from "../../../service/apiService"
+import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
@@ -12,7 +12,7 @@ import DietOrderHistory from "../Diet"
 import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
-import IPDInitialAssessment from "../IPDInitialAssessment"   // imported (already present)
+import IPDInitialAssessment from "../IPDInitialAssessment"
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -42,43 +42,45 @@ const WardManagement = () => {
     fetchWards()
   }, [])
 
-  useEffect(() => {
+  const fetchBeds = async () => {
     if (!selectedWard) return
-    const fetchBeds = async () => {
-      try {
-        setLoadingBeds(true)
-        const response = await getRequest(`${GET_WARD_WISE_DETAILS}/${selectedWard.wardId}`)
-        if (response && response.response) {
-          const mappedBeds = response.response.map((bed) => ({
-            id: bed.bedId,
-            bedNo: bed.bedNumber || `Bed-${bed.bedId}`,
-            patientName: bed.patientName || "Vacant",
-            ageGender: [bed.age, bed.gender].filter(Boolean).join("/") || "",
-            admissionNo: bed.admissionNo || "",
-            admissionDate: bed.admitDate || "",
-            doctorName: bed.doctorName || "",
-            from: "",
-            days: bed.days || 0,
-            currentDay: bed.days || 0,
-            status: !bed.ipdInternalStatus || String(bed.ipdInternalStatus).trim().toUpperCase() === "VACANT"
-              ? "VACANT"
-              : (String(bed.ipdInternalStatus).trim().toUpperCase() === "RWD" ? "RW" : String(bed.ipdInternalStatus).trim().toUpperCase()),
-            ward: selectedWard.wardName,
-            diagnosis: "",
-            admissionTime: "",
-            patientId: bed.patientId
-          }))
-          setPatientData(mappedBeds)
-        } else {
-          setPatientData([])
-        }
-      } catch (error) {
-        console.error("Error fetching bed data:", error)
+    try {
+      setLoadingBeds(true)
+      const response = await getRequest(`${GET_WARD_WISE_DETAILS}/${selectedWard.wardId}`)
+      if (response && response.response) {
+        const mappedBeds = response.response.map((bed) => ({
+          id: bed.bedId,
+          bedNo: bed.bedNumber || `Bed-${bed.bedId}`,
+          patientName: bed.patientName || "Vacant",
+          ageGender: [bed.age, bed.gender].filter(Boolean).join("/") || "",
+          admissionNo: bed.admissionNo || "",
+          admissionDate: bed.admitDate || "",
+          doctorName: bed.doctorName || "",
+          from: "",
+          days: bed.days || 0,
+          currentDay: bed.days || 0,
+          status: !bed.ipdInternalStatus || String(bed.ipdInternalStatus).trim().toUpperCase() === "VACANT"
+            ? "VACANT"
+            : (String(bed.ipdInternalStatus).trim().toUpperCase() === "RWD" ? "RW" : String(bed.ipdInternalStatus).trim().toUpperCase()),
+          ward: selectedWard.wardName,
+          diagnosis: "",
+          admissionTime: "",
+          patientId: bed.patientId,
+          inpatientId: bed.ipdPatientId
+        }))
+        setPatientData(mappedBeds)
+      } else {
         setPatientData([])
-      } finally {
-        setLoadingBeds(false)
       }
+    } catch (error) {
+      console.error("Error fetching bed data:", error)
+      setPatientData([])
+    } finally {
+      setLoadingBeds(false)
     }
+  }
+
+  useEffect(() => {
     fetchBeds()
   }, [selectedWard])
 
@@ -124,13 +126,40 @@ const WardManagement = () => {
         cancelButtonColor: "#d33",
         confirmButtonText: "Patient reported",
         cancelButtonText: "Cancel"
-      }).then((result) => {
+      }).then(async (result) => {
         if (result.isConfirmed) {
-          Swal.fire({
-            title: "Coming soon",
-            text: "This action will be available once the API is ready.",
-            icon: "info"
-          })
+          if (!patient.inpatientId) {
+            Swal.fire({
+              title: "Error",
+              text: "Inpatient Admission ID not found for this patient.",
+              icon: "error"
+            })
+            return
+          }
+          try {
+            const res = await putRequest(`${UPDATE_ADMISSION_INTERNAL_STATUS}/${patient.inpatientId}/${IPD_INTERNAL_STATUS_RWD}`, {})
+            if (res && (res.status === 200 || res.status === 201)) {
+              Swal.fire({
+                title: "Success",
+                text: "Patient reported to ward successfully.",
+                icon: "success"
+              })
+              fetchBeds()
+            } else {
+              Swal.fire({
+                title: "Error",
+                text: res?.data?.message || "Failed to update patient status.",
+                icon: "error"
+              })
+            }
+          } catch (error) {
+            console.error("Error updating patient status:", error)
+            Swal.fire({
+              title: "Error",
+              text: "Something went wrong while reporting the patient.",
+              icon: "error"
+            })
+          }
         }
       })
       return
