@@ -1,4 +1,6 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
+import { getRequest } from "../../../service/apiService";
+import { MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL } from "../../../config/apiConfig";
 
 // ------------------------- DROPDOWN / OPTION DATA -------------------------
 const consciousnessOptions = ["Alert", "Drowsy", "Confused", "Disoriented", "Stuporous", "Unconscious"];
@@ -106,6 +108,32 @@ const IPDInitialAssessment = () => {
   // ---------- FORM STATE ----------
   const [nursing, setNursing] = useState(initialNursing);
   const [medical, setMedical] = useState(initialMedical);
+  const [assessmentOptions, setAssessmentOptions] = useState({});
+
+  useEffect(() => {
+    const fetchAssessmentMasterData = async () => {
+      try {
+        const res = await getRequest(MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL);
+        if (res?.status === 200 && res?.response) {
+          const grouped = res.response.reduce((acc, curr) => {
+            const key = curr.categoryCode;
+            if (!acc[key]) acc[key] = [];
+            acc[key].push(curr);
+            return acc;
+          }, {});
+          
+          Object.keys(grouped).forEach(key => {
+            grouped[key].sort((a, b) => (a.displayOrder || 0) - (b.displayOrder || 0));
+          });
+          
+          setAssessmentOptions(grouped);
+        }
+      } catch (error) {
+        console.error("Error fetching nursing assessment master data:", error);
+      }
+    };
+    fetchAssessmentMasterData();
+  }, []);
 
   const updateNursing = (field, value) => {
     setNursing((prev) => ({ ...prev, [field]: value }));
@@ -210,8 +238,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("consciousness", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {consciousnessOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.CONSCIOUSNESS || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -263,8 +291,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("mobility", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {mobilityOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.MOBILITY_STATUS || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -280,8 +308,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("fallRiskScore", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {fallRiskOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.FALL_RISK || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -297,8 +325,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("pressureSoreRisk", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {pressureSoreOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.PRESSURE_SORE_RISK || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -314,8 +342,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("skinCondition", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {skinConditionOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.SKIN_CONDITION || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -355,8 +383,8 @@ const IPDInitialAssessment = () => {
                     disabled={nursing.ivLine !== "Yes"}
                   >
                     <option value="">Select</option>
-                    {ivSiteOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.IV_SITE || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -386,8 +414,8 @@ const IPDInitialAssessment = () => {
                     disabled={nursing.catheter !== "Yes"}
                   >
                     <option value="">Select</option>
-                    {catheterTypeOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.CATHETER_TYPE || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -417,8 +445,8 @@ const IPDInitialAssessment = () => {
                     disabled={nursing.drain !== "Yes"}
                   >
                     <option value="">Select</option>
-                    {drainTypeOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.DRAIN_TYPE || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -434,8 +462,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("nutritionRisk", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {nutritionRiskOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.NUTRITION_RISK || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
@@ -461,8 +489,8 @@ const IPDInitialAssessment = () => {
                     onChange={(e) => updateNursing("infectionRisk", e.target.value)}
                   >
                     <option value="">Select</option>
-                    {infectionRiskOptions.map((opt) => (
-                      <option key={opt} value={opt}>{opt}</option>
+                    {(assessmentOptions.INFECTION_RISK || []).map((opt) => (
+                      <option key={opt.assessmentValueId} value={opt.valueName}>{opt.valueName}</option>
                     ))}
                   </select>
                 </div>
