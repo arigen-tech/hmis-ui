@@ -208,6 +208,8 @@ export const MAS_ADMISSION_SOURCE_GET_ALL = `${MAS_ADMISSION_SOURCE}/getAll/1`;
 export const MAS_PATIENT_CONDITION = `${MASTERS}/masPatientCondition`;
 export const MAS_PATIENT_CONDITION_GET_ALL = `${MAS_PATIENT_CONDITION}/getAll/1`;
 
+export const MAS_IP_NURSING_ASSESSMENT_VALUE = `${MASTERS}/masIpNursingAssessmentValue`;
+export const MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL = `${MAS_IP_NURSING_ASSESSMENT_VALUE}/getAll/1`;
 
 export const MAS_IPD_SERVICE_CATEGORY = `${MASTERS}/ipdCategory`;
 export const MAS_IPD_SERVICE_SUBCATEGORY = `${MASTERS}/ipdServiceSubcategory`;
@@ -722,6 +724,7 @@ export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveAdmissionDetails';
 export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardDetailsByDepartment`;
 export const GET_WARD_WISE_DETAILS = `/ipd/getNursingDashboardByWard`;
 export const UPDATE_ADMISSION_INTERNAL_STATUS = `/ipd/updateAdmissionInternalStatus`;
+export const SAVE_NURSING_MEDICAL_ASSESSMENT = `/ipd/saveNursingMedicalAssessment`;
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
 export const IPD_INTERNAL_STATUS_RWD = 2;

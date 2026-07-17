@@ -994,13 +994,13 @@ const InpatientAdmission = () => {
       formDataToSend.append("admissionTime", admissionTime);
 
       const admissionCategoryObj = admissionCategories.find(c => c.admissionCategoryName === formData.admissionCategory);
-      formDataToSend.append("admissionCategoryId", admissionCategoryObj?.id || "");
+      formDataToSend.append("admissionCategoryId", admissionCategoryObj?.admissionCategoryId || admissionCategoryObj?.id || "");
 
       const admissionTypeObj = admissionTypes.find(t => t.admissionTypeName === formData.admissionType);
-      formDataToSend.append("admissionTypeId", admissionTypeObj?.id || "");
+      formDataToSend.append("admissionTypeId", admissionTypeObj?.admissionTypeId || admissionTypeObj?.id || "");
 
       const admissionSourceObj = admissionSources.find(s => s.admissionSourceName === formData.admissionSource);
-      formDataToSend.append("admissionSourceId", admissionSourceObj?.id || "");
+      formDataToSend.append("admissionSourceId", admissionSourceObj?.admissionSourceId || admissionSourceObj?.id || "");
 
       const patientConditionObj = patientConditions.find(c => c.patientConditionName === formData.patientCondition);
       formDataToSend.append("patientConditionId", patientConditionObj?.patientConditionId || "");
@@ -1470,7 +1470,7 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Category</option>
                           {admissionCategories.map(category => (
-                            <option key={category.id} value={category.admissionCategoryName}>
+                            <option key={category.admissionCategoryId || category.id} value={category.admissionCategoryName}>
                               {category.admissionCategoryName}
                             </option>
                           ))}
@@ -1489,7 +1489,7 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Type</option>
                           {admissionTypes.map(type => (
-                            <option key={type.id} value={type.admissionTypeName}>
+                            <option key={type.admissionTypeId || type.id} value={type.admissionTypeName}>
                               {type.admissionTypeName}
                             </option>
                           ))}
@@ -1508,7 +1508,7 @@ const InpatientAdmission = () => {
                         >
                           <option value="">Select Source</option>
                           {admissionSources.map(source => (
-                            <option key={source.id} value={source.admissionSourceName}>
+                            <option key={source.admissionSourceId || source.id} value={source.admissionSourceName}>
                               {source.admissionSourceName}
                             </option>
                           ))}
