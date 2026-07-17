@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
-import { getRequest } from "../../../service/apiService";
-import { MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL } from "../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../service/apiService";
+import { MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL, SAVE_NURSING_MEDICAL_ASSESSMENT } from "../../../config/apiConfig";
 
 // ------------------------- DROPDOWN / OPTION DATA -------------------------
 const consciousnessOptions = ["Alert", "Drowsy", "Confused", "Disoriented", "Stuporous", "Unconscious"];
@@ -104,7 +104,7 @@ const YesNoRadio = ({ name, value, onChange }) => (
   </div>
 );
 
-const IPDInitialAssessment = () => {
+const IPDInitialAssessment = ({ selectedPatient }) => {
   // ---------- FORM STATE ----------
   const [nursing, setNursing] = useState(initialNursing);
   const [medical, setMedical] = useState(initialMedical);
@@ -183,23 +183,73 @@ const IPDInitialAssessment = () => {
   };
 
   // ---------- ACTIONS ----------
-  const handleSaveDraft = () => {
-    alert("Draft saved:\n" + JSON.stringify({ nursing, medical }, null, 2));
-  };
-
-  const handleFinalize = () => {
-    const missing = getMissingFields();
-    if (missing.length > 0) {
-      alert("Please fill all mandatory fields before finalizing:\n\n" + missing.join(", "));
+  const handleSubmit = async () => {
+    if (!selectedPatient?.inpatientId) {
+      alert("Inpatient ID is missing. Please select a valid patient first.");
       return;
     }
-    alert("Assessment finalized:\n" + JSON.stringify({ nursing, medical }, null, 2));
-  };
 
-  const handleClear = () => {
-    if (window.confirm("Clear all entered data on this form?")) {
-      setNursing(initialNursing);
-      setMedical(initialMedical);
+    const missing = getMissingFields();
+    if (missing.length > 0) {
+      alert("Please fill all mandatory fields before submitting:\n\n" + missing.join(", "));
+      return;
+    }
+
+    const [systolicStr, diastolicStr] = (medical.bp || "").split("/");
+
+    const payload = {
+      inpatientId: selectedPatient.inpatientId,
+      hospitalId: Number(sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12),
+      consciousness: nursing.consciousness || "",
+      gcsScore: Number(nursing.gcsScore) || 0,
+      painScore: Number(nursing.painScore) || 0,
+      mobilityStatus: nursing.mobility || "",
+      fallRisk: nursing.fallRiskScore || "",
+      pressureSoreRisk: nursing.pressureSoreRisk || "",
+      skinCondition: nursing.skinCondition || "",
+      skinRemarks: nursing.skinRemarks || "",
+      ivLinePresent: nursing.ivLine === "Yes" ? "Y" : "N",
+      ivSite: nursing.ivSite || "",
+      catheterPresent: nursing.catheter === "Yes" ? "Y" : "N",
+      catheterType: nursing.catheterType || "",
+      drainPresent: nursing.drain === "Yes" ? "Y" : "N",
+      drainType: nursing.drainType || "",
+      nutritionRisk: nursing.nutritionRisk || "",
+      nutritionRemarks: nursing.nutritionRemarks || "",
+      infectionRisk: nursing.infectionRisk || "",
+      infectionRemarks: nursing.infectionRemarks || "",
+      patientOrientationDone: nursing.patientOrientation === "Yes" ? "Y" : "N",
+      relativeOrientationDone: nursing.relativeOrientation === "Yes" ? "Y" : "N",
+      nursingCarePlan: nursing.nursingCarePlan || "",
+      chiefComplaint: medical.chiefComplaint || "",
+      historyPresentIllness: medical.historyOfPresentIllness || "",
+      familyHistory: medical.familyHistory || "",
+      medicationHistory: medical.medicationHistory || "",
+      allergies: medical.allergies || "",
+      pulse: Number(medical.pulse) || 0,
+      systolicBp: Number(systolicStr) || 0,
+      diastolicBp: Number(diastolicStr) || 0,
+      temperature: Number(medical.temperature) || 0,
+      respiratoryRate: Number(medical.rr) || 0,
+      spo2: Number(medical.spo2) || 0,
+      generalExaminationNotes: medical.generalExamNotes || "",
+      rsExamination: medical.rs || "",
+      cvsExamination: medical.cvs || "",
+      paExamination: medical.pa || "",
+      cnsExamination: medical.cns || "",
+      provisionalDiagnosis: medical.provisionalDiagnosis || ""
+    };
+
+    try {
+      const response = await postRequest(SAVE_NURSING_MEDICAL_ASSESSMENT, payload);
+      if (response && (response.status === 200 || response.status === 201)) {
+        alert("Assessment submitted successfully!");
+      } else {
+        alert(response?.message || "Failed to submit assessment.");
+      }
+    } catch (error) {
+      console.error("Error submitting assessment:", error);
+      alert("An error occurred while submitting the assessment. Please try again.");
     }
   };
 
@@ -776,14 +826,8 @@ const IPDInitialAssessment = () => {
       {/* ======================= BOTTOM ACTION BAR ======================= */}
       <div className=" m-3">
         <div className="card-body d-flex justify-content-end gap-2">
-          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={handleSaveDraft}>
-            <i className="mdi mdi-content-save-outline me-1"></i>Save Draft
-          </button>
-          <button type="button" className="btn btn-sm btn-success" onClick={handleFinalize}>
-            <i className="mdi mdi-check me-1"></i>Finalize
-          </button>
-          <button type="button" className="btn btn-sm btn-light" onClick={handleClear}>
-            <i className="mdi mdi-eraser me-1"></i>Clear
+          <button type="button" className="btn btn-sm btn-success" onClick={handleSubmit}>
+            <i className="mdi mdi-check me-1"></i>Submit
           </button>
           <button type="button" className="btn btn-sm btn-outline-danger" onClick={handleCancel}>
             <i className="mdi mdi-close me-1"></i>Cancel
