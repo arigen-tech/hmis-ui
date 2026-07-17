@@ -537,7 +537,7 @@ const ToothBox = ({
       </div>
       <div className="d-flex justify-content-center flex-wrap">
         <div className="d-flex flex-wrap justify-content-center">
-          {adultLowerLeft.map(tooth => (
+          {adultLowerRight.map(tooth => (
             <ToothBox
               key={tooth}
               tooth={tooth}
@@ -551,7 +551,7 @@ const ToothBox = ({
         </div>
         <div className="mx-2"></div>
         <div className="d-flex flex-wrap justify-content-center">
-          {adultLowerRight.map(tooth => (
+          {adultLowerLeft.map(tooth => (
             <ToothBox
               key={tooth}
               tooth={tooth}
@@ -623,7 +623,7 @@ const ToothBox = ({
       </div>
       <div className="d-flex justify-content-center flex-wrap">
         <div className="d-flex flex-wrap justify-content-center">
-          {childLowerLeft.map(tooth => (
+          {childLowerRight.map(tooth => (
             <ToothBox
               key={tooth}
               tooth={tooth}
@@ -634,10 +634,12 @@ const ToothBox = ({
               onClick={() => handleToothClick(tooth, false)}
             />
           ))}
+
         </div>
         <div className="mx-2"></div>
         <div className="d-flex flex-wrap justify-content-center">
-          {childLowerRight.map(tooth => (
+
+          {childLowerLeft.map(tooth => (
             <ToothBox
               key={tooth}
               tooth={tooth}
