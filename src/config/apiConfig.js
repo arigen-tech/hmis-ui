@@ -386,6 +386,8 @@ export const RESCHEDULE_APPOINTMENT = `/registration/rescheduleAppointment`;
 export const PATIENT_FOLLOW_UP_DETAILS = "/registration/getPatientDetails";
 export const GET_CANCELLED_APPOINTMENTS =
   "/registration/getCancelledAppointments";
+export const BILLING_REFUND_PATIENT_LIST = `/billing/billingRefundPatientList`;
+export const PATIENT_BILLING_REFUND_DETAILS = `/billing/patientBillingRefundDetails`;
 export const GET_TOKENS = `/registration/getAppointmentSlots`;
 export const SET_VITALS = `/patient/saveVitalDetails`;
 

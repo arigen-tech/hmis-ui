@@ -184,31 +184,6 @@ const IPDInitialAssessment = () => {
 
   return (
     <div>
-      {/* ======================= HEADER WITH BUTTONS ======================= */}
-      <div className="card shadow-sm mb-3">
-        <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
-          <strong>
-            <i className="mdi mdi-account-details me-2"></i>
-            IPD INITIAL ASSESSMENT
-          </strong>
-          <div className="d-flex gap-2">
-            <button type="button" className="btn btn-sm btn-outline-light" onClick={handleSaveDraft}>
-              <i className="mdi mdi-content-save-outline me-1"></i>Save Draft
-            </button>
-            <button type="button" className="btn btn-sm btn-success" onClick={handleFinalize}>
-              <i className="mdi mdi-check me-1"></i>Finalize
-            </button>
-            <button type="button" className="btn btn-sm btn-light" onClick={handleClear}>
-              <i className="mdi mdi-eraser me-1"></i>Clear
-            </button>
-            <button type="button" className="btn btn-sm btn-outline-light" onClick={handleCancel}>
-              <i className="mdi mdi-close me-1"></i>Cancel
-            </button>
-          </div>
-        </div>
-        {/* -- Patient/admission info strip has been removed -- */}
-      </div>
-
       {/* ======================= MAIN FORM ======================= */}
       <div className="row g-3">
         {/* ---------------------------------------------------------------- */}
@@ -767,6 +742,24 @@ const IPDInitialAssessment = () => {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ======================= BOTTOM ACTION BAR ======================= */}
+      <div className=" m-3">
+        <div className="card-body d-flex justify-content-end gap-2">
+          <button type="button" className="btn btn-sm btn-outline-secondary" onClick={handleSaveDraft}>
+            <i className="mdi mdi-content-save-outline me-1"></i>Save Draft
+          </button>
+          <button type="button" className="btn btn-sm btn-success" onClick={handleFinalize}>
+            <i className="mdi mdi-check me-1"></i>Finalize
+          </button>
+          <button type="button" className="btn btn-sm btn-light" onClick={handleClear}>
+            <i className="mdi mdi-eraser me-1"></i>Clear
+          </button>
+          <button type="button" className="btn btn-sm btn-outline-danger" onClick={handleCancel}>
+            <i className="mdi mdi-close me-1"></i>Cancel
+          </button>
         </div>
       </div>
     </div>
