@@ -61,6 +61,7 @@ export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
 export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
 export const MAS_DRUGSCHEDULE = `${MASTERS}/masDrugSchedule`;
 export const MAS_ITEMFACILTY = `${MASTERS}/masItemFacility`;
+export const MAS_VISIT_TYPE_GET_ALL = `${MASTERS}/masVisitType/getAll/1`;
 
 export const DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;

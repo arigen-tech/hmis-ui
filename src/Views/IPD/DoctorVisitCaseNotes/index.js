@@ -1,12 +1,20 @@
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
+import { getRequest } from "../../../service/apiService"
+import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL } from "../../../config/apiConfig"
 
 const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("doctorVisit") // "doctorVisit" | "diagnosis"
 
+  const [departments, setDepartments] = useState([])
+  const [doctors, setDoctors] = useState([])
+  const [visitTypes, setVisitTypes] = useState([])
+
   // State for Doctor Visit Form
   const [doctorVisitForm, setDoctorVisitForm] = useState({
     visitDateTime: "",
+    doctorId: "",
     doctorName: "",
+    departmentId: "",
     department: "",
     visitType: "Normal",
     doctorNotes: "",
@@ -126,9 +134,91 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   ]
   const [icdSearchResults, setIcdSearchResults] = useState([])
 
-  const doctorOptions = [...new Set(doctorVisitHistory.map((item) => item.doctorName))]
-  const departmentOptions = [...new Set(doctorVisitHistory.map((item) => item.department))]
-  const visitTypeOptions = ["Normal", "ICU", "Emergency"]
+  useEffect(() => {
+    const fetchDropdownData = async () => {
+      try {
+        const deptRes = await getRequest(GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL);
+        if (deptRes && deptRes.response) {
+          setDepartments(deptRes.response);
+        } else if (Array.isArray(deptRes)) {
+          setDepartments(deptRes);
+        }
+
+        const visitTypeRes = await getRequest(MAS_VISIT_TYPE_GET_ALL);
+        if (visitTypeRes && visitTypeRes.response) {
+          setVisitTypes(visitTypeRes.response);
+        } else if (Array.isArray(visitTypeRes)) {
+          setVisitTypes(visitTypeRes);
+        }
+      } catch (error) {
+        console.error("Error fetching dropdown data:", error);
+      }
+    };
+    fetchDropdownData();
+  }, []);
+
+  const handleVisitTypeChange = (e) => {
+    const val = e.target.value;
+    const selectedVt = visitTypes.find(vt => (vt.visitTypeId == val || vt.visitTypeName === val || vt.visitTypeCode === val));
+    setDoctorVisitForm(prev => ({
+      ...prev,
+      visitTypeId: selectedVt?.visitTypeId || "",
+      visitType: selectedVt?.visitTypeName || val
+    }));
+  };
+
+  const handleDepartmentChange = async (e) => {
+    const deptId = e.target.value;
+    const selectedDept = departments.find(d => (d.id == deptId || d.departmentId == deptId));
+    const deptName = selectedDept ? (selectedDept.departmentName || selectedDept.name) : "";
+
+    setDoctorVisitForm(prev => ({
+      ...prev,
+      departmentId: deptId,
+      department: deptName,
+      doctorId: "",
+      doctorName: ""
+    }));
+
+    if (deptId) {
+      try {
+        const response = await getRequest(`${DOCTOR_BY_SPECIALITY}${deptId}`);
+        if (response && response.response) {
+          setDoctors(response.response);
+        } else if (Array.isArray(response)) {
+          setDoctors(response);
+        } else {
+          setDoctors([]);
+        }
+      } catch (error) {
+        console.error("Error fetching doctors by speciality:", error);
+        setDoctors([]);
+      }
+    } else {
+      setDoctors([]);
+    }
+  };
+
+  const handleDoctorChange = (e) => {
+    const docId = e.target.value;
+    const selectedDoc = doctors.find(d => (d.userId == docId || d.id == docId));
+    let docName = "";
+    if (selectedDoc) {
+      if (selectedDoc.firstName) {
+        docName = [selectedDoc.firstName, selectedDoc.middleName, selectedDoc.lastName].filter(Boolean).join(" ");
+      } else if (selectedDoc.name) {
+        docName = selectedDoc.name;
+      } else if (selectedDoc.userName) {
+        docName = selectedDoc.userName;
+      }
+    }
+
+    setDoctorVisitForm(prev => ({
+      ...prev,
+      doctorId: docId,
+      doctorName: docName
+    }));
+  };
 
   const handleDoctorVisitFormChange = (e) => {
     const { name, value } = e.target
@@ -148,9 +238,12 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     setDoctorVisitHistory([newVisit, ...doctorVisitHistory])
     setDoctorVisitForm({
       visitDateTime: "",
+      doctorId: "",
       doctorName: "",
+      departmentId: "",
       department: "",
-      visitType: "Normal",
+      visitTypeId: "",
+      visitType: "",
       doctorNotes: "",
       investigationSummary: "",
       medicineSummary: "",
@@ -158,6 +251,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
       carePlanChanges: "",
       nextFollowUpPlan: ""
     })
+    setDoctors([])
     alert("Doctor visit notes saved successfully!")
   }
 
@@ -303,31 +397,43 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
             {/* Form Fields */}
             <div className="row g-3 mb-4">
               <div className="col-md-4">
-                <label className="form-label">Doctor Name</label>
+                <label className="form-label">Department/Speciality</label>
                 <select
                   className="form-select"
-                  name="doctorName"
-                  value={doctorVisitForm.doctorName}
-                  onChange={handleDoctorVisitFormChange}
+                  name="departmentId"
+                  value={doctorVisitForm.departmentId}
+                  onChange={handleDepartmentChange}
                 >
-                  <option value="">Select Doctor</option>
-                  {doctorOptions.map((doctor) => (
-                    <option key={doctor} value={doctor}>{doctor}</option>
+                  <option value="">Select Department</option>
+                  {departments.map((dept) => (
+                    <option key={dept.id || dept.departmentId} value={dept.id || dept.departmentId}>
+                      {dept.departmentName || dept.name}
+                    </option>
                   ))}
                 </select>
               </div>
               <div className="col-md-4">
-                <label className="form-label">Department/Speciality</label>
+                <label className="form-label">Doctor Name</label>
                 <select
                   className="form-select"
-                  name="department"
-                  value={doctorVisitForm.department}
-                  onChange={handleDoctorVisitFormChange}
+                  name="doctorId"
+                  value={doctorVisitForm.doctorId}
+                  onChange={handleDoctorChange}
+                  disabled={!doctorVisitForm.departmentId}
                 >
-                  <option value="">Select Department</option>
-                  {departmentOptions.map((dept) => (
-                    <option key={dept} value={dept}>{dept}</option>
-                  ))}
+                  <option value="">
+                    {!doctorVisitForm.departmentId ? "Select Department First" : "Select Doctor"}
+                  </option>
+                  {doctors.map((doctor) => {
+                    const docName = doctor.firstName
+                      ? [doctor.firstName, doctor.middleName, doctor.lastName].filter(Boolean).join(" ")
+                      : (doctor.name || doctor.userName || `Doctor #${doctor.userId || doctor.id}`);
+                    return (
+                      <option key={doctor.userId || doctor.id} value={doctor.userId || doctor.id}>
+                        {docName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
               <div className="col-md-4">
@@ -335,11 +441,14 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 <select
                   className="form-select"
                   name="visitType"
-                  value={doctorVisitForm.visitType}
-                  onChange={handleDoctorVisitFormChange}
+                  value={doctorVisitForm.visitTypeId || doctorVisitForm.visitType}
+                  onChange={handleVisitTypeChange}
                 >
-                  {visitTypeOptions.map((type) => (
-                    <option key={type} value={type}>{type}</option>
+                  <option value="">Select Visit Type</option>
+                  {visitTypes.map((vt) => (
+                    <option key={vt.visitTypeId || vt.id} value={vt.visitTypeId || vt.visitTypeName}>
+                      {vt.visitTypeName}
+                    </option>
                   ))}
                 </select>
               </div>
