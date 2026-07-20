@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest, postRequest } from "../../../service/apiService"
+import { SAVE_VITALS_DETAILS, GET_VITALS_DETAILS_BY_INPATIENT_ID } from "../../../config/apiConfig"
 
 const VitalsandMonitoring = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
@@ -102,18 +104,130 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     ))
   }
 
-  const handleVitalsSubmit = () => {
+  const parseDateToISO = (dateStr, timeStr) => {
+    try {
+      if (!dateStr) return new Date().toISOString()
+      let yyyy, mm, dd
+      if (dateStr.includes("/")) {
+        const parts = dateStr.split("/")
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            [yyyy, mm, dd] = parts
+          } else {
+            [dd, mm, yyyy] = parts
+          }
+        }
+      } else if (dateStr.includes("-")) {
+        const parts = dateStr.split("-")
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            [yyyy, mm, dd] = parts
+          } else {
+            [dd, mm, yyyy] = parts
+          }
+        }
+      }
+      if (yyyy && mm && dd) {
+        const time = timeStr && timeStr.trim() ? timeStr.trim() : "00:00"
+        const isoStr = `${yyyy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}T${time}:00.000Z`
+        const d = new Date(isoStr)
+        if (!isNaN(d.getTime())) {
+          return d.toISOString()
+        }
+      }
+      return new Date().toISOString()
+    } catch (e) {
+      return new Date().toISOString()
+    }
+  }
+
+  const formatDateAndTime = (datetimeStr) => {
+    if (!datetimeStr) return { date: "", time: "" }
+    const d = new Date(datetimeStr)
+    if (isNaN(d.getTime())) return { date: "", time: "" }
+    const day = String(d.getDate()).padStart(2, "0")
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, "0")
+    const minutes = String(d.getMinutes()).padStart(2, "0")
+    return {
+      date: `${day}/${month}/${year}`,
+      time: `${hours}:${minutes}`
+    }
+  }
+
+  const fetchVitalsDetails = async () => {
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || 26
+    if (!inpatientId) return
+
+    try {
+      const response = await getRequest(`${GET_VITALS_DETAILS_BY_INPATIENT_ID}/${inpatientId}`)
+      if (response && response.response && Array.isArray(response.response)) {
+        const sorted = [...response.response].sort((a, b) => new Date(a.observationDatetime) - new Date(b.observationDatetime))
+        const mapped = sorted.map(item => {
+          const { date, time } = formatDateAndTime(item.observationDatetime)
+          return {
+            id: item.vitalId || Date.now() + Math.random(),
+            date: date,
+            time: time,
+            temperature: item.temperature !== null && item.temperature !== undefined ? String(item.temperature) : "",
+            temperatureUnit: "°F",
+            pulse: item.pulse !== null && item.pulse !== undefined ? String(item.pulse) : "",
+            pulseUnit: "bpm",
+            respiration: item.respiration !== null && item.respiration !== undefined ? String(item.respiration) : "",
+            bpSystolic: item.bpSystolic !== null && item.bpSystolic !== undefined ? String(item.bpSystolic) : "",
+            bpDiastolic: item.bpDiastolic !== null && item.bpDiastolic !== undefined ? String(item.bpDiastolic) : "",
+            bpUnit: "mm/Hg",
+            o2Saturation: item.spo2 !== null && item.spo2 !== undefined ? `${item.spo2}%` : "",
+            bowel: "Normal",
+            pain: item.painScore !== null && item.painScore !== undefined ? String(item.painScore) : ""
+          }
+        })
+        setVitalsHistory([...mapped, emptyVitalsRow()])
+      }
+    } catch (error) {
+      console.error("Error fetching vitals details:", error)
+    }
+  }
+
+  useEffect(() => {
+    fetchVitalsDetails()
+  }, [selectedPatient])
+
+  const handleVitalsSubmit = async () => {
     const lastRow = vitalsHistory[vitalsHistory.length - 1]
-    if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic) {
+    if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic && !lastRow.respiration && !lastRow.o2Saturation && !lastRow.pain) {
       alert("Please fill in at least one vital before submitting.")
       return
     }
-    const newEmpty = emptyVitalsRow()
-    setVitalsHistory(prev => [
-      ...prev.slice(0, -1),
-      { ...lastRow },
-      newEmpty
-    ])
+
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26)
+    const observationDatetime = parseDateToISO(lastRow.date, lastRow.time)
+
+    const payload = {
+      inpatientId: inpatientId,
+      observationDatetime: observationDatetime,
+      temperature: lastRow.temperature ? Number(lastRow.temperature) : null,
+      pulse: lastRow.pulse ? Number(lastRow.pulse) : null,
+      bpSystolic: lastRow.bpSystolic ? Number(lastRow.bpSystolic) : null,
+      bpDiastolic: lastRow.bpDiastolic ? Number(lastRow.bpDiastolic) : null,
+      respiration: lastRow.respiration ? Number(lastRow.respiration) : null,
+      spo2: lastRow.o2Saturation ? Number(String(lastRow.o2Saturation).replace("%", "")) : null,
+      painScore: lastRow.pain !== "" && lastRow.pain !== null && lastRow.pain !== undefined ? Number(lastRow.pain) : null
+    }
+
+    try {
+      const response = await postRequest(SAVE_VITALS_DETAILS, payload)
+      if (response && (response.status === 200 || response.message === "success")) {
+        alert(response.response || "Vitals details saved successfully")
+        await fetchVitalsDetails()
+      } else {
+        alert(response?.message || "Failed to save vitals details.")
+      }
+    } catch (error) {
+      console.error("Error saving vitals details:", error)
+      alert("Error saving vitals details. Please try again.")
+    }
   }
 
   const handleDeleteVitals = (id) => {
