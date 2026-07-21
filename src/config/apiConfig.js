@@ -61,6 +61,7 @@ export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
 export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
 export const MAS_DRUGSCHEDULE = `${MASTERS}/masDrugSchedule`;
 export const MAS_ITEMFACILTY = `${MASTERS}/masItemFacility`;
+export const MAS_VISIT_TYPE_GET_ALL = `${MASTERS}/masVisitType/getAll/1`;
 
 export const DG_UOM = `${MASTERS}/dgUom`;
 export const MAS_BRAND = `${MASTERS}/masBrand`;
@@ -725,6 +726,8 @@ export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardDetailsByDepartment`;
 export const GET_WARD_WISE_DETAILS = `/ipd/getNursingDashboardByWard`;
 export const UPDATE_ADMISSION_INTERNAL_STATUS = `/ipd/updateAdmissionInternalStatus`;
 export const SAVE_NURSING_MEDICAL_ASSESSMENT = `/ipd/saveNursingMedicalAssessment`;
+export const SAVE_VITALS_DETAILS = `/ipd/saveVitalsDetails`;
+export const GET_VITALS_DETAILS_BY_INPATIENT_ID = `/ipd/getVitalsDetailsByInpatientId`;
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
 export const IPD_INTERNAL_STATUS_RWD = 2;

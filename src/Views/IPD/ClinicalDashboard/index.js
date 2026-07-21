@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest } from "../../../service/apiService"
+import { GET_VITALS_DETAILS_BY_INPATIENT_ID } from "../../../config/apiConfig"
 
 // ─── SVG Semicircle Gauge ────────────────────────────────────
 const SemiGauge = ({ value, min, max, zones, label, unit, size = 160 }) => {
@@ -61,7 +63,7 @@ const SemiGauge = ({ value, min, max, zones, label, unit, size = 160 }) => {
           </g>
         )
       })}
-      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#334" strokeWidth={size * 0.022} strokeLinecap="round" />
+      <line x1={cx} y1={cy} x2={nx} y2={ny} stroke="#334" strokeWidth={size * 0.022} strokeLinecap="round" style={{ transition: "all 0.8s ease-out" }} />
       <circle cx={cx} cy={cy} r={size * 0.04} fill="#334" />
       <text x={cx} y={cy + size * 0.18} textAnchor="middle" fontSize={size * 0.13} fontWeight="500" fill="#334">
         {value} {unit}
@@ -251,12 +253,12 @@ const RR_ZONES = [
 // ─── Dummy patient data ─────────────────────────────────────
 const dummyPatientData = {
   vitals: {
-    bpSystolic: 142,
-    bpDiastolic: 88,
-    temperature: 100.2,
-    heartRate: 112,
-    spo2: 93,
-    respiration: 22
+    bpSystolic: 70,
+    bpDiastolic: 50,
+    temperature: 94,
+    heartRate: 40,
+    spo2: 80,
+    respiration: 8
   },
   intakeOutput: {
     intake: 1800,
@@ -279,8 +281,37 @@ const getStatus = (zones, value) => {
 // ─── Main Component with Tabs ─────────────────────────────────
 const ClinicalDashboard = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
+  const [vitals, setVitals] = useState(dummyPatientData.vitals)
 
-  const vitals = dummyPatientData.vitals
+  useEffect(() => {
+    setVitals(dummyPatientData.vitals)
+
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || 26
+    if (!inpatientId) return
+
+    const fetchLatestVitals = async () => {
+      try {
+        const response = await getRequest(`${GET_VITALS_DETAILS_BY_INPATIENT_ID}/${inpatientId}`)
+        if (response && response.response && Array.isArray(response.response) && response.response.length > 0) {
+          const sorted = [...response.response].sort((a, b) => new Date(b.observationDatetime) - new Date(a.observationDatetime))
+          const latest = sorted[0]
+          setVitals({
+            bpSystolic: latest.bpSystolic !== null && latest.bpSystolic !== undefined ? Number(latest.bpSystolic) : dummyPatientData.vitals.bpSystolic,
+            bpDiastolic: latest.bpDiastolic !== null && latest.bpDiastolic !== undefined ? Number(latest.bpDiastolic) : dummyPatientData.vitals.bpDiastolic,
+            temperature: latest.temperature !== null && latest.temperature !== undefined ? Number(latest.temperature) : dummyPatientData.vitals.temperature,
+            heartRate: latest.pulse !== null && latest.pulse !== undefined ? Number(latest.pulse) : dummyPatientData.vitals.heartRate,
+            spo2: latest.spo2 !== null && latest.spo2 !== undefined ? Number(latest.spo2) : dummyPatientData.vitals.spo2,
+            respiration: latest.respiration !== null && latest.respiration !== undefined ? Number(latest.respiration) : dummyPatientData.vitals.respiration,
+          })
+        }
+      } catch (error) {
+        console.error("Error fetching latest vitals for clinical dashboard:", error)
+      }
+    }
+
+    fetchLatestVitals()
+  }, [selectedPatient])
+
   const intakeOutput = dummyPatientData.intakeOutput
 
   // Generate previous 3 days data with different scenarios

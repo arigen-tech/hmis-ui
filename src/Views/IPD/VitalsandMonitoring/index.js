@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest, postRequest } from "../../../service/apiService"
+import { SAVE_VITALS_DETAILS, GET_VITALS_DETAILS_BY_INPATIENT_ID } from "../../../config/apiConfig"
 
 const VitalsandMonitoring = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
@@ -45,39 +47,10 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     remarks: ""
   })
 
+  const [loading, setLoading] = useState(false)
+  const [saving, setSaving] = useState(false)
+
   const [vitalsHistory, setVitalsHistory] = useState([
-    {
-      id: 1,
-      date: "19/01/2026",
-      time: "16:20",
-      temperature: "97.6",
-      temperatureUnit: "°F",
-      pulse: "98",
-      pulseUnit: "bpm",
-      respiration: "56",
-      bpSystolic: "120",
-      bpDiastolic: "69",
-      bpUnit: "mm/Hg",
-      o2Saturation: "98%",
-      bowel: "Normal",
-      pain: "0"
-    },
-    {
-      id: 2,
-      date: "23/03/2026",
-      time: "15:01",
-      temperature: "98.4",
-      temperatureUnit: "°F",
-      pulse: "82",
-      pulseUnit: "bpm",
-      respiration: "18",
-      bpSystolic: "118",
-      bpDiastolic: "74",
-      bpUnit: "mm/Hg",
-      o2Saturation: "99%",
-      bowel: "Normal",
-      pain: "1"
-    },
     emptyVitalsRow()
   ])
 
@@ -102,18 +75,142 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     ))
   }
 
-  const handleVitalsSubmit = () => {
+  const parseDateToISO = (dateStr, timeStr) => {
+    try {
+      if (!dateStr) return new Date().toISOString()
+      let yyyy, mm, dd
+      if (dateStr.includes("/")) {
+        const parts = dateStr.split("/")
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            [yyyy, mm, dd] = parts
+          } else {
+            [dd, mm, yyyy] = parts
+          }
+        }
+      } else if (dateStr.includes("-")) {
+        const parts = dateStr.split("-")
+        if (parts.length === 3) {
+          if (parts[0].length === 4) {
+            [yyyy, mm, dd] = parts
+          } else {
+            [dd, mm, yyyy] = parts
+          }
+        }
+      }
+      if (yyyy && mm && dd) {
+        const time = timeStr && timeStr.trim() ? timeStr.trim() : "00:00"
+        const isoStr = `${yyyy}-${String(mm).padStart(2, "0")}-${String(dd).padStart(2, "0")}T${time}:00.000Z`
+        const d = new Date(isoStr)
+        if (!isNaN(d.getTime())) {
+          return d.toISOString()
+        }
+      }
+      return new Date().toISOString()
+    } catch (e) {
+      return new Date().toISOString()
+    }
+  }
+
+  const formatDateAndTime = (datetimeStr) => {
+    if (!datetimeStr) return { date: "", time: "" }
+    const d = new Date(datetimeStr)
+    if (isNaN(d.getTime())) return { date: "", time: "" }
+    const day = String(d.getDate()).padStart(2, "0")
+    const month = String(d.getMonth() + 1).padStart(2, "0")
+    const year = d.getFullYear()
+    const hours = String(d.getHours()).padStart(2, "0")
+    const minutes = String(d.getMinutes()).padStart(2, "0")
+    return {
+      date: `${day}/${month}/${year}`,
+      time: `${hours}:${minutes}`
+    }
+  }
+
+  const fetchVitalsDetails = async () => {
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || 26
+    if (!inpatientId) {
+      setVitalsHistory([emptyVitalsRow()])
+      return
+    }
+
+    setLoading(true)
+    try {
+      const response = await getRequest(`${GET_VITALS_DETAILS_BY_INPATIENT_ID}/${inpatientId}`)
+      if (response && response.response && Array.isArray(response.response)) {
+        const sorted = [...response.response].sort((a, b) => new Date(a.observationDatetime) - new Date(b.observationDatetime))
+        const mapped = sorted.map(item => {
+          const { date, time } = formatDateAndTime(item.observationDatetime)
+          return {
+            id: item.vitalId || Date.now() + Math.random(),
+            date: date,
+            time: time,
+            temperature: item.temperature !== null && item.temperature !== undefined ? String(item.temperature) : "",
+            temperatureUnit: "°F",
+            pulse: item.pulse !== null && item.pulse !== undefined ? String(item.pulse) : "",
+            pulseUnit: "bpm",
+            respiration: item.respiration !== null && item.respiration !== undefined ? String(item.respiration) : "",
+            bpSystolic: item.bpSystolic !== null && item.bpSystolic !== undefined ? String(item.bpSystolic) : "",
+            bpDiastolic: item.bpDiastolic !== null && item.bpDiastolic !== undefined ? String(item.bpDiastolic) : "",
+            bpUnit: "mm/Hg",
+            o2Saturation: item.spo2 !== null && item.spo2 !== undefined ? `${item.spo2}%` : "",
+            bowel: "Normal",
+            pain: item.painScore !== null && item.painScore !== undefined ? String(item.painScore) : ""
+          }
+        })
+        setVitalsHistory([...mapped, emptyVitalsRow()])
+      } else {
+        setVitalsHistory([emptyVitalsRow()])
+      }
+    } catch (error) {
+      console.error("Error fetching vitals details:", error)
+      setVitalsHistory([emptyVitalsRow()])
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  useEffect(() => {
+    fetchVitalsDetails()
+  }, [selectedPatient])
+
+  const handleVitalsSubmit = async () => {
     const lastRow = vitalsHistory[vitalsHistory.length - 1]
-    if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic) {
+    if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic && !lastRow.respiration && !lastRow.o2Saturation && !lastRow.pain) {
       alert("Please fill in at least one vital before submitting.")
       return
     }
-    const newEmpty = emptyVitalsRow()
-    setVitalsHistory(prev => [
-      ...prev.slice(0, -1),
-      { ...lastRow },
-      newEmpty
-    ])
+
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26)
+    const observationDatetime = parseDateToISO(lastRow.date, lastRow.time)
+
+    const payload = {
+      inpatientId: inpatientId,
+      observationDatetime: observationDatetime,
+      temperature: lastRow.temperature ? Number(lastRow.temperature) : null,
+      pulse: lastRow.pulse ? Number(lastRow.pulse) : null,
+      bpSystolic: lastRow.bpSystolic ? Number(lastRow.bpSystolic) : null,
+      bpDiastolic: lastRow.bpDiastolic ? Number(lastRow.bpDiastolic) : null,
+      respiration: lastRow.respiration ? Number(lastRow.respiration) : null,
+      spo2: lastRow.o2Saturation ? Number(String(lastRow.o2Saturation).replace("%", "")) : null,
+      painScore: lastRow.pain !== "" && lastRow.pain !== null && lastRow.pain !== undefined ? Number(lastRow.pain) : null
+    }
+
+    setSaving(true)
+    try {
+      const response = await postRequest(SAVE_VITALS_DETAILS, payload)
+      if (response && (response.status === 200 || response.message === "success")) {
+        alert(response.response || "Vitals details saved successfully")
+        await fetchVitalsDetails()
+      } else {
+        alert(response?.message || "Failed to save vitals details.")
+      }
+    } catch (error) {
+      console.error("Error saving vitals details:", error)
+      alert("Error saving vitals details. Please try again.")
+    } finally {
+      setSaving(false)
+    }
   }
 
   const handleDeleteVitals = (id) => {
@@ -221,195 +318,210 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
             <strong>Vitals Entry</strong>
           </div>
           <div className="card-body p-0">
-            <div className="table-responsive">
-              <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
-                <thead className="table-light">
-                  <tr>
-                    <th style={{ maxWidth: "60px" }}>Date</th>
-                    <th style={{ minWidth: "60px" }}>Time</th>
-                    <th style={{ minWidth: "130px" }}>Temp.</th>
-                    <th style={{ minWidth: "130px" }}>Pulse</th>
-                    <th style={{ minWidth: "60px" }}>Respiration</th>
-                    <th style={{ minWidth: "60px" }}>BP</th>
-                    <th style={{ minWidth: "60px" }}>O₂ Saturation</th>
-                    <th style={{ minWidth: "60px" }}>Bowel</th>
-                    <th style={{ minWidth: "60px" }}>Pain</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {vitalsHistory.map((vitals, index) => {
-                    const isEditable = isLastRow(index, vitalsHistory)
-                    return (
-                      <tr key={vitals.id} className={isEditable ? "" : "table-secondary"}>
-                        <td>
-                          {isEditable ? (
-                            <input
-                              type="date"
-                              className="form-control form-control-sm"
-                              value={vitals.date.includes("/") ? vitals.date.split("/").reverse().join("-") : vitals.date}
-                              onChange={(e) => {
-                                const newDate = e.target.value.split("-").reverse().join("/")
-                                handleVitalsCellChange(vitals.id, "date", newDate)
-                              }}
-                            />
-                          ) : (
-                            <span>{vitals.date}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <input
-                              type="time"
-                              className="form-control form-control-sm"
-                              value={vitals.time}
-                              onChange={(e) => handleVitalsCellChange(vitals.id, "time", e.target.value)}
-                            />
-                          ) : (
-                            <span>{vitals.time}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <div className="input-group input-group-sm">
+            {loading ? (
+              <div className="text-center py-4">
+                <div className="spinner-border text-primary" role="status">
+                  <span className="visually-hidden">Loading...</span>
+                </div>
+              </div>
+            ) : (
+              <div className="table-responsive">
+                <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.8rem" }}>
+                  <thead className="table-light">
+                    <tr>
+                      <th style={{ maxWidth: "60px" }}>Date</th>
+                      <th style={{ minWidth: "60px" }}>Time</th>
+                      <th style={{ minWidth: "130px" }}>Temp.</th>
+                      <th style={{ minWidth: "130px" }}>Pulse</th>
+                      <th style={{ minWidth: "60px" }}>Respiration</th>
+                      <th style={{ minWidth: "60px" }}>BP</th>
+                      <th style={{ minWidth: "60px" }}>O₂ Saturation</th>
+                      <th style={{ minWidth: "60px" }}>Bowel</th>
+                      <th style={{ minWidth: "60px" }}>Pain</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {vitalsHistory.map((vitals, index) => {
+                      const isEditable = isLastRow(index, vitalsHistory)
+                      return (
+                        <tr key={vitals.id} className={isEditable ? "" : "table-secondary"}>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="date"
+                                className="form-control form-control-sm"
+                                value={vitals.date.includes("/") ? vitals.date.split("/").reverse().join("-") : vitals.date}
+                                onChange={(e) => {
+                                  const newDate = e.target.value.split("-").reverse().join("/")
+                                  handleVitalsCellChange(vitals.id, "date", newDate)
+                                }}
+                              />
+                            ) : (
+                              <span>{vitals.date}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="time"
+                                className="form-control form-control-sm"
+                                value={vitals.time}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "time", e.target.value)}
+                              />
+                            ) : (
+                              <span>{vitals.time}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <div className="input-group input-group-sm">
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={vitals.temperature}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "temperature", e.target.value)}
+                                  placeholder="Temp"
+                                />
+                                <select
+                                  className="form-select form-select-sm"
+                                  style={{ width: "60px" }}
+                                  value={vitals.temperatureUnit}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "temperatureUnit", e.target.value)}
+                                >
+                                  <option>°F</option>
+                                  <option>°C</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <span>{vitals.temperature} {vitals.temperatureUnit}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <div className="input-group input-group-sm">
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={vitals.pulse}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "pulse", e.target.value)}
+                                  placeholder="Pulse"
+                                />
+                                <select
+                                  className="form-select form-select-sm"
+                                  style={{ width: "70px" }}
+                                  value={vitals.pulseUnit}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "pulseUnit", e.target.value)}
+                                >
+                                  <option>bpm</option>
+                                  <option>mmHg</option>
+                                </select>
+                              </div>
+                            ) : (
+                              <span>{vitals.pulse} {vitals.pulseUnit}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
                               <input
                                 type="text"
-                                className="form-control"
-                                value={vitals.temperature}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "temperature", e.target.value)}
-                                placeholder="Temp"
+                                className="form-control form-control-sm"
+                                value={vitals.respiration}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "respiration", e.target.value)}
+                                placeholder="breaths/min"
                               />
+                            ) : (
+                              <span>{vitals.respiration}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <div className="input-group input-group-sm">
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={vitals.bpSystolic}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpSystolic", e.target.value)}
+                                  placeholder="Sys"
+                                />
+                                <span className="input-group-text">/</span>
+                                <input
+                                  type="text"
+                                  className="form-control"
+                                  value={vitals.bpDiastolic}
+                                  onChange={(e) => handleVitalsCellChange(vitals.id, "bpDiastolic", e.target.value)}
+                                  placeholder="Dia"
+                                />
+                              </div>
+                            ) : (
+                              <span>{vitals.bpSystolic}/{vitals.bpDiastolic}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={vitals.o2Saturation}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "o2Saturation", e.target.value)}
+                                placeholder="e.g. 98%"
+                              />
+                            ) : (
+                              <span>{vitals.o2Saturation}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
                               <select
                                 className="form-select form-select-sm"
-                                style={{ width: "60px" }}
-                                value={vitals.temperatureUnit}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "temperatureUnit", e.target.value)}
+                                value={vitals.bowel}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "bowel", e.target.value)}
                               >
-                                <option>°F</option>
-                                <option>°C</option>
+                                <option value="">Select</option>
+                                <option value="Normal">Normal</option>
+                                <option value="Constipation">Constipation</option>
+                                <option value="Diarrhea">Diarrhea</option>
                               </select>
-                            </div>
-                          ) : (
-                            <span>{vitals.temperature} {vitals.temperatureUnit}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <div className="input-group input-group-sm">
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={vitals.pulse}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "pulse", e.target.value)}
-                                placeholder="Pulse"
-                              />
+                            ) : (
+                              <span>{vitals.bowel || "—"}</span>
+                            )}
+                          </td>
+                          <td>
+                            {isEditable ? (
                               <select
                                 className="form-select form-select-sm"
-                                style={{ width: "70px" }}
-                                value={vitals.pulseUnit}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "pulseUnit", e.target.value)}
+                                value={vitals.pain}
+                                onChange={(e) => handleVitalsCellChange(vitals.id, "pain", e.target.value)}
                               >
-                                <option>bpm</option>
-                                <option>mmHg</option>
+                                <option value="">Select</option>
+                                <option value="0">0 - No Pain</option>
+                                <option value="1">1 - Mild</option>
+                                <option value="2">2 - Moderate</option>
+                                <option value="3">3 - Severe</option>
                               </select>
-                            </div>
-                          ) : (
-                            <span>{vitals.pulse} {vitals.pulseUnit}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={vitals.respiration}
-                              onChange={(e) => handleVitalsCellChange(vitals.id, "respiration", e.target.value)}
-                              placeholder="breaths/min"
-                            />
-                          ) : (
-                            <span>{vitals.respiration}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <div className="input-group input-group-sm">
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={vitals.bpSystolic}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "bpSystolic", e.target.value)}
-                                placeholder="Sys"
-                              />
-                              <span className="input-group-text">/</span>
-                              <input
-                                type="text"
-                                className="form-control"
-                                value={vitals.bpDiastolic}
-                                onChange={(e) => handleVitalsCellChange(vitals.id, "bpDiastolic", e.target.value)}
-                                placeholder="Dia"
-                              />
-                            </div>
-                          ) : (
-                            <span>{vitals.bpSystolic}/{vitals.bpDiastolic}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={vitals.o2Saturation}
-                              onChange={(e) => handleVitalsCellChange(vitals.id, "o2Saturation", e.target.value)}
-                              placeholder="e.g. 98%"
-                            />
-                          ) : (
-                            <span>{vitals.o2Saturation}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <select
-                              className="form-select form-select-sm"
-                              value={vitals.bowel}
-                              onChange={(e) => handleVitalsCellChange(vitals.id, "bowel", e.target.value)}
-                            >
-                              <option value="">Select</option>
-                              <option value="Normal">Normal</option>
-                              <option value="Constipation">Constipation</option>
-                              <option value="Diarrhea">Diarrhea</option>
-                            </select>
-                          ) : (
-                            <span>{vitals.bowel || "—"}</span>
-                          )}
-                        </td>
-                        <td>
-                          {isEditable ? (
-                            <select
-                              className="form-select form-select-sm"
-                              value={vitals.pain}
-                              onChange={(e) => handleVitalsCellChange(vitals.id, "pain", e.target.value)}
-                            >
-                              <option value="">Select</option>
-                              <option value="0">0 - No Pain</option>
-                              <option value="1">1 - Mild</option>
-                              <option value="2">2 - Moderate</option>
-                              <option value="3">3 - Severe</option>
-                            </select>
-                          ) : (
-                            <span>{vitals.pain || "—"}</span>
-                          )}
-                        </td>
-                      </tr>
-                    )
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            ) : (
+                              <span>{vitals.pain || "—"}</span>
+                            )}
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
           <div className="d-flex gap-2 justify-content-end py-2 px-2">
-            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
-              Save
+            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit} disabled={saving}>
+              {saving ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Saving...
+                </>
+              ) : (
+                "Save"
+              )}
             </button>
-            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit}>
+            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit} disabled={saving}>
               Print
             </button>
           </div>
