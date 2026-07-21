@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
-import { getRequest } from "../../../service/apiService"
-import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL } from "../../../config/apiConfig"
+import { getRequest, postRequest } from "../../../service/apiService"
+
+import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY } from "../../../config/apiConfig"
 
 const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("doctorVisit") // "doctorVisit" | "diagnosis"
@@ -25,51 +26,10 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     nextFollowUpPlan: ""
   })
 
+  const [loadingHistory, setLoadingHistory] = useState(false)
+
   // State for storing doctor visit history
-  const [doctorVisitHistory, setDoctorVisitHistory] = useState([
-    {
-      id: 1,
-      visitDateTime: "2026-03-24T10:15",
-      doctorName: "Dr. Vinay",
-      department: "Ortho",
-      visitType: "Normal",
-      capturedBy: "Nurse A",
-      doctorNotes: "Fever improved, platelet stabilizing",
-      investigationSummary: "CBC, Dengue NS1",
-      medicineSummary: "Inj Ceftriaxone 1g IV BD, PCM 650 mg",
-      procedureSummary: "Nil",
-      carePlanChanges: "Continue IV fluids",
-      nextFollowUpPlan: "Review platelets tomorrow"
-    },
-    {
-      id: 2,
-      visitDateTime: "2026-03-24T06:30",
-      doctorName: "Dr. Sharma",
-      department: "GenMed",
-      visitType: "Emergency",
-      capturedBy: "Nurse B",
-      doctorNotes: "Patient had high fever, weakness",
-      investigationSummary: "CBC advised",
-      medicineSummary: "PCM given",
-      procedureSummary: "Nil",
-      carePlanChanges: "Monitor vitals",
-      nextFollowUpPlan: "Review in evening"
-    },
-    {
-      id: 3,
-      visitDateTime: "2026-03-23T09:00",
-      doctorName: "Dr. Vinay",
-      department: "Ortho",
-      visitType: "ICU",
-      capturedBy: "Nurse A",
-      doctorNotes: "Platelets low, under observation",
-      investigationSummary: "Repeat CBC",
-      medicineSummary: "IV fluids started",
-      procedureSummary: "Nil",
-      carePlanChanges: "Continue monitoring",
-      nextFollowUpPlan: "Review CBC report"
-    }
-  ])
+  const [doctorVisitHistory, setDoctorVisitHistory] = useState([])
 
   // Diagnosis state
   const [diagnosisList, setDiagnosisList] = useState([
@@ -134,10 +94,35 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   ]
   const [icdSearchResults, setIcdSearchResults] = useState([])
 
+  const fetchDoctorVisitHistory = async () => {
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.inPatientId || 27;
+    if (!inpatientId) return;
+    setLoadingHistory(true);
+    try {
+      const response = await getRequest(`${GET_DAILY_CASE_SHEET_ENTRY}/${inpatientId}`);
+      if (response && response.response && Array.isArray(response.response)) {
+        setDoctorVisitHistory(response.response);
+      } else if (Array.isArray(response)) {
+        setDoctorVisitHistory(response);
+      } else {
+        setDoctorVisitHistory([]);
+      }
+    } catch (error) {
+      console.error("Error fetching doctor visit history:", error);
+      setDoctorVisitHistory([]);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchDoctorVisitHistory();
+  }, [selectedPatient]);
+
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const deptRes = await getRequest(GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL);
+        const deptRes = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_WARD_DEPT}`);
         if (deptRes && deptRes.response) {
           setDepartments(deptRes.response);
         } else if (Array.isArray(deptRes)) {
@@ -159,10 +144,10 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
 
   const handleVisitTypeChange = (e) => {
     const val = e.target.value;
-    const selectedVt = visitTypes.find(vt => (vt.visitTypeId == val || vt.visitTypeName === val || vt.visitTypeCode === val));
+    const selectedVt = visitTypes.find(vt => (vt.visitTypeId == val || vt.id == val || vt.visitTypeName === val || vt.visitTypeCode === val));
     setDoctorVisitForm(prev => ({
       ...prev,
-      visitTypeId: selectedVt?.visitTypeId || "",
+      visitTypeId: selectedVt?.visitTypeId || selectedVt?.id || val,
       visitType: selectedVt?.visitTypeName || val
     }));
   };
@@ -225,34 +210,55 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     setDoctorVisitForm(prev => ({ ...prev, [name]: value }))
   }
 
-  const handleSaveDoctorVisit = () => {
-    if (!doctorVisitForm.visitDateTime || !doctorVisitForm.doctorName) {
-      alert("Please fill in Visit Date/Time and Doctor Name")
+  const handleSaveDoctorVisit = async () => {
+    if (!doctorVisitForm.doctorId) {
+      alert("Please select Doctor Name")
       return
     }
-    const newVisit = {
-      id: doctorVisitHistory.length + 1,
-      ...doctorVisitForm,
-      capturedBy: "Current Nurse"
+
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.inPatientId || 27)
+
+    const payload = {
+      inpatientId: inpatientId,
+      doctorId: Number(doctorVisitForm.doctorId),
+      visitType: Number(doctorVisitForm.visitTypeId || doctorVisitForm.visitType || 0),
+      visitDepartmentId: Number(doctorVisitForm.departmentId),
+      doctorNotes: doctorVisitForm.doctorNotes || "",
+      investigationSummary: doctorVisitForm.investigationSummary || "",
+      medicineSummary: doctorVisitForm.medicineSummary || "",
+      procedureSummary: doctorVisitForm.procedureSummary || "",
+      carePlanChanges: doctorVisitForm.carePlanChanges || "",
+      nextFollowUpPlan: doctorVisitForm.nextFollowUpPlan || ""
     }
-    setDoctorVisitHistory([newVisit, ...doctorVisitHistory])
-    setDoctorVisitForm({
-      visitDateTime: "",
-      doctorId: "",
-      doctorName: "",
-      departmentId: "",
-      department: "",
-      visitTypeId: "",
-      visitType: "",
-      doctorNotes: "",
-      investigationSummary: "",
-      medicineSummary: "",
-      procedureSummary: "",
-      carePlanChanges: "",
-      nextFollowUpPlan: ""
-    })
-    setDoctors([])
-    alert("Doctor visit notes saved successfully!")
+
+    try {
+      const response = await postRequest(SAVE_DAILY_CASE_SHEET_ENTRY, payload)
+      if (response && (response.status === 200 || response.status === 201 || response.status === "200" || response.message === "success" || response.response || response.caseSheetEntryId)) {
+        await fetchDoctorVisitHistory()
+        setDoctorVisitForm({
+          visitDateTime: "",
+          doctorId: "",
+          doctorName: "",
+          departmentId: "",
+          department: "",
+          visitTypeId: "",
+          visitType: "",
+          doctorNotes: "",
+          investigationSummary: "",
+          medicineSummary: "",
+          procedureSummary: "",
+          carePlanChanges: "",
+          nextFollowUpPlan: ""
+        })
+        setDoctors([])
+        alert("Doctor visit notes saved successfully!")
+      } else {
+        alert(response?.message || "Failed to save doctor visit notes.")
+      }
+    } catch (error) {
+      console.error("Error saving doctor visit notes:", error)
+      alert("An error occurred while saving doctor visit notes.")
+    }
   }
 
   const formatDateTime = (dateTimeStr) => {
@@ -446,7 +452,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 >
                   <option value="">Select Visit Type</option>
                   {visitTypes.map((vt) => (
-                    <option key={vt.visitTypeId || vt.id} value={vt.visitTypeId || vt.visitTypeName}>
+                    <option key={vt.visitTypeId || vt.id} value={vt.visitTypeId || vt.id || vt.visitTypeName}>
                       {vt.visitTypeName}
                     </option>
                   ))}
@@ -530,30 +536,42 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
             {/* Doctor Visit History */}
             <div>
               <h6 className="mb-3">Doctor Visit History</h6>
-              {doctorVisitHistory.map((visit) => (
-                <div key={visit.id} className="card mb-3">
-                  <div className="card-header bg-light">
-                    <div className="d-flex justify-content-between align-items-center">
-                      <div>
-                        <strong>{formatDateTime(visit.visitDateTime)}</strong> | 
-                        <span className="ms-2">{visit.doctorName}</span> | 
-                        <span className="ms-2 text-muted">{visit.department}</span>
-                      </div>
-                      <div className="text-muted small">
-                        Captured By: {visit.capturedBy}
-                      </div>
-                    </div>
-                  </div>
-                  <div className="card-body">
-                    <div className="mb-2"><strong>Notes:</strong> {visit.doctorNotes}</div>
-                    <div className="mb-2"><strong>Investigation:</strong> {visit.investigationSummary}</div>
-                    <div className="mb-2"><strong>Medicines:</strong> {visit.medicineSummary}</div>
-                    <div className="mb-2"><strong>Procedure:</strong> {visit.procedureSummary}</div>
-                    <div className="mb-2"><strong>Plan:</strong> {visit.carePlanChanges}</div>
-                    <div><strong>Follow-up:</strong> {visit.nextFollowUpPlan}</div>
+              {loadingHistory ? (
+                <div className="text-center py-4">
+                  <div className="spinner-border text-primary" role="status">
+                    <span className="visually-hidden">Loading...</span>
                   </div>
                 </div>
-              ))}
+              ) : doctorVisitHistory.length === 0 ? (
+                <div className="text-muted text-center py-3">No doctor visit history found.</div>
+              ) : (
+                doctorVisitHistory.map((visit) => (
+                  <div key={visit.caseSheetEntryId || visit.id} className="card mb-3">
+                    <div className="card-header bg-light">
+                      <div className="d-flex justify-content-between align-items-center">
+                        <div>
+                          <strong>{formatDateTime(visit.visitDateTime)}</strong> | 
+                          <span className="ms-2">{visit.doctorName}</span> | 
+                          <span className="ms-2 text-muted">{visit.departmentName || visit.department}</span>
+                        </div>
+                        {visit.capturedBy && (
+                          <div className="text-muted small">
+                            Captured By: {visit.capturedBy}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                    <div className="card-body">
+                      <div className="mb-2"><strong>Notes:</strong> {visit.notes || visit.doctorNotes}</div>
+                      <div className="mb-2"><strong>Investigation:</strong> {visit.investigation || visit.investigationSummary}</div>
+                      <div className="mb-2"><strong>Medicines:</strong> {visit.medicines || visit.medicineSummary}</div>
+                      <div className="mb-2"><strong>Procedure:</strong> {visit.procedure || visit.procedureSummary}</div>
+                      <div className="mb-2"><strong>Plan:</strong> {visit.plan || visit.carePlanChanges}</div>
+                      <div><strong>Follow-up:</strong> {visit.followUp || visit.nextFollowUpPlan}</div>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

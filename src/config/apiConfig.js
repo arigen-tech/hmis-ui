@@ -728,6 +728,9 @@ export const UPDATE_ADMISSION_INTERNAL_STATUS = `/ipd/updateAdmissionInternalSta
 export const SAVE_NURSING_MEDICAL_ASSESSMENT = `/ipd/saveNursingMedicalAssessment`;
 export const SAVE_VITALS_DETAILS = `/ipd/saveVitalsDetails`;
 export const GET_VITALS_DETAILS_BY_INPATIENT_ID = `/ipd/getVitalsDetailsByInpatientId`;
+export const SAVE_DAILY_CASE_SHEET_ENTRY = `/ipd/saveDailyCaseSheetEntry`;
+export const GET_DAILY_CASE_SHEET_ENTRY = `/ipd/getDailyCaseSheetEntry`;
+
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
 export const IPD_INTERNAL_STATUS_RWD = 2;
