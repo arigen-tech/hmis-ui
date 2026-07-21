@@ -1,11 +1,11 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import {
   getRequest,
   postRequest,
   putRequest,
 } from "../../../service/apiService";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
@@ -80,6 +80,7 @@ const RadiologyBookingRegisteredPatient = () => {
   });
   const [showForm, setShowForm] = useState(false);
   const navigate = useNavigate();
+  const location = useLocation();
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 0,
@@ -94,6 +95,7 @@ const RadiologyBookingRegisteredPatient = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const prefillSearchRef = useRef(null);
 
   const [image, setImage] = useState(placeholderImage);
   const [isCameraOn, setIsCameraOn] = useState(false);
@@ -870,43 +872,73 @@ const RadiologyBookingRegisteredPatient = () => {
     }
   }
 
-  const handleSearch = async (page = 0) => {
-    if (typeof page !== "number") {
-      page = Number(page) || 0;
-    }
-    setSearchLoading(true);
-    try {
-      const payload = {
-        mobileNo: searchFormData.mobileNo || null,
-        patientName: searchFormData.patientName || null,
-      };
+  const handleSearch = useCallback(
+    async (page = 0, searchOverride = null) => {
+      if (typeof page !== "number") {
+        page = Number(page) || 0;
+      }
+      setSearchLoading(true);
+      try {
+        const payload = {
+          mobileNo:
+            searchOverride?.mobileNo ?? (searchFormData.mobileNo || null),
+          patientName:
+            searchOverride?.patientName ?? (searchFormData.patientName || null),
+        };
 
-      const res = await postRequest(
-        `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
-        payload,
-      );
+        const res = await postRequest(
+          `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
+          payload,
+        );
 
-      if (res?.response) {
-        const pageData = res.response;
+        if (res?.response) {
+          const pageData = res.response;
 
-        setPatients(pageData?.content || []);
-        setTotalPages(pageData?.totalPages || 0);
-        setTotalElements(pageData?.totalElements || 0);
-      } else {
+          setPatients(pageData?.content || []);
+          setTotalPages(pageData?.totalPages || 0);
+          setTotalElements(pageData?.totalElements || 0);
+        } else {
+          setTotalPages(0);
+          setTotalElements(0);
+          showPopup("No patients found", "info");
+        }
+      } catch (error) {
+        console.error("Error searching patients:", error);
+        showPopup("Failed to search patients", "error");
+        setPatients([]);
         setTotalPages(0);
         setTotalElements(0);
-        showPopup("No patients found", "info");
+      } finally {
+        setSearchLoading(false);
       }
-    } catch (error) {
-      console.error("Error searching patients:", error);
-      showPopup("Failed to search patients", "error");
-      setPatients([]);
-      setTotalPages(0);
-      setTotalElements(0);
-    } finally {
-      setSearchLoading(false);
+    },
+    [itemsPerPage, searchFormData.mobileNo, searchFormData.patientName],
+  );
+
+  useEffect(() => {
+    const prefillSearch = location.state;
+
+    if (!prefillSearch?.patientName && !prefillSearch?.mobileNo) {
+      return;
     }
-  };
+
+    // Keep the prefilled search from firing repeatedly on the same navigation.
+    if (prefillSearchRef.current === location.key) {
+      return;
+    }
+    prefillSearchRef.current = location.key;
+
+    const patientName = prefillSearch.patientName || "";
+    const mobileNo = prefillSearch.mobileNo || "";
+
+    setSearchFormData((prev) => ({
+      ...prev,
+      patientName,
+      mobileNo,
+    }));
+
+    handleSearch(0, { patientName, mobileNo });
+  }, [location.key]);
 
   const handleBook = async (patient) => {
     try {
