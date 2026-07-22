@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest } from "../../../service/apiService"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -58,6 +60,53 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     priority: "Normal",
     clinicalNotes: ""
   })
+
+  const [wardsList, setWardsList] = useState([])
+  const [targetWardBeds, setTargetWardBeds] = useState([])
+  const [loadingBeds, setLoadingBeds] = useState(false)
+
+  useEffect(() => {
+    const fetchWards = async () => {
+      try {
+        const response = await getRequest(MAS_WARD_GET_ALL_ACTIVE)
+        if (response && response.response && Array.isArray(response.response)) {
+          setWardsList(response.response)
+        } else if (Array.isArray(response)) {
+          setWardsList(response)
+        }
+      } catch (error) {
+        console.error("Error fetching ward master:", error)
+      }
+    }
+    fetchWards()
+  }, [])
+
+  useEffect(() => {
+    const fetchBedsByWard = async () => {
+      if (!requestForm.targetWardId) {
+        setTargetWardBeds([])
+        return
+      }
+      setLoadingBeds(true)
+      try {
+        const response = await getRequest(`${GET_BED_DETAILS_BY_WARD}/${requestForm.targetWardId}`)
+        if (response && response.response && Array.isArray(response.response)) {
+          setTargetWardBeds(response.response)
+        } else if (Array.isArray(response)) {
+          setTargetWardBeds(response)
+        } else {
+          setTargetWardBeds([])
+        }
+      } catch (error) {
+        console.error("Error fetching bed details by ward:", error)
+        setTargetWardBeds([])
+      } finally {
+        setLoadingBeds(false)
+      }
+    }
+
+    fetchBedsByWard()
+  }, [requestForm.targetWardId])
 
   // Transfer list (tx table: ip_transfer_request)
   const [transfers, setTransfers] = useState([
@@ -137,14 +186,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     setRequestForm(prev => ({ ...prev, [name]: value, ...(name === "targetWardId" ? { targetBed: "" } : {}) }))
   }
 
-  const selectedWard = WARDS_MASTER.find(w => w.id === parseInt(requestForm.targetWardId))
+  const selectedWard = wardsList.find(w => (w.wardId == requestForm.targetWardId || w.id == requestForm.targetWardId)) || WARDS_MASTER.find(w => w.id === parseInt(requestForm.targetWardId))
 
   const handleSubmitRequest = () => {
     if (!requestForm.targetWardId || !requestForm.doctorInCharge || !requestForm.reason) {
       alert("Please fill Target Ward, Doctor In Charge, and Reason")
       return
     }
-    const ward = WARDS_MASTER.find(w => w.id === parseInt(requestForm.targetWardId))
+    const ward = wardsList.find(w => (w.wardId == requestForm.targetWardId || w.id == requestForm.targetWardId)) || WARDS_MASTER.find(w => w.id === parseInt(requestForm.targetWardId))
     const now = new Date().toISOString()
     const newTransfer = {
       id: transfers.length + 1,
@@ -157,7 +206,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
       admissionDate: selectedPatient?.admissionDate || "",
       fromWard: selectedPatient?.ward || "",
       fromBed: selectedPatient?.bedNo || "",
-      targetWard: ward?.name || "",
+      targetWard: ward ? ((ward.wardName || ward.name)?.trim()) : "",
       targetBed: requestForm.targetBed || "",
       allocatedBed: "",
       doctorInCharge: requestForm.doctorInCharge,
@@ -412,7 +461,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
       {activeView === "request" && (
         <div className="card">
           <div className="card-header bg-primary text-white py-2">
-            <strong>BED TRANSFER REQUEST</strong>
+            <strong>WARD / BED TRANSFER REQUEST</strong>
             <span className="ms-3 small opacity-75">[{generateTRFNo()}] | {formatDateTime(new Date().toISOString())}</span>
           </div>
           <div className="card-body">
@@ -431,19 +480,41 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
                 <label className="form-label small fw-bold">Target Ward</label>
                 <select className="form-select form-select-sm" name="targetWardId" value={requestForm.targetWardId} onChange={handleRequestFormChange}>
                   <option value="">Select Ward </option>
-                  {WARDS_MASTER.map(w => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
-                  ))}
+                  {wardsList.length > 0
+                    ? wardsList.map(w => (
+                        <option key={w.wardId || w.id} value={w.wardId || w.id}>
+                          {(w.wardName || w.name)?.trim()}
+                        </option>
+                      ))
+                    : WARDS_MASTER.map(w => (
+                        <option key={w.id} value={w.id}>{w.name}</option>
+                      ))
+                  }
                 </select>
               </div>
 
               <div className="col-md-6">
                 <label className="form-label small fw-bold">Preferred Bed</label>
-                <select className="form-select form-select-sm" name="targetBed" value={requestForm.targetBed} onChange={handleRequestFormChange} disabled={!selectedWard}>
-                  <option value="">Any Available</option>
-                  {selectedWard?.beds.map(b => (
-                    <option key={b} value={b}>{b}</option>
-                  ))}
+                <select
+                  className="form-select form-select-sm"
+                  name="targetBed"
+                  value={requestForm.targetBed}
+                  onChange={handleRequestFormChange}
+                  disabled={!requestForm.targetWardId || loadingBeds}
+                >
+                  <option value="">
+                    {loadingBeds ? "Loading beds..." : "Any Available"}
+                  </option>
+                  {targetWardBeds.length > 0
+                    ? targetWardBeds.map(b => (
+                        <option key={b.bedId || b.bedNo} value={b.bedNo || b.bedId}>
+                          {b.bedNo || b.bedId}
+                        </option>
+                      ))
+                    : selectedWard?.beds?.map(b => (
+                        <option key={b} value={b}>{b}</option>
+                      ))
+                  }
                 </select>
               </div>
 
