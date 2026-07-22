@@ -1,4 +1,6 @@
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { getRequest, postRequest } from "../../../service/apiService"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -12,29 +14,6 @@ const TRANSFER_STATUS = {
   CANCELLED: "Cancelled"
 }
 
-const TRANSFER_REASONS_MASTER = [
-  { id: 1, reason: "Clinical Condition" },
-  { id: 2, reason: "Patient Request" },
-  { id: 3, reason: "Bed Management" },
-  { id: 4, reason: "Other" }
-]
-
-const WARDS_MASTER = [
-  { id: 1, name: "General Ward - 1", beds: ["GW1-B01", "GW1-B02", "GW1-B03", "GW1-B04", "GW1-B05"] },
-  { id: 2, name: "General Ward - 2", beds: ["GW2-B01", "GW2-B02", "GW2-B03", "GW2-B04"] },
-  { id: 3, name: "ICU", beds: ["ICU-B01", "ICU-B02", "ICU-B03"] },
-  { id: 4, name: "Isolation Ward", beds: ["ISO-B01", "ISO-B02"] },
-  { id: 5, name: "Deluxe Ward", beds: ["DLX-B01", "DLX-B02", "DLX-B03"] }
-]
-
-const DOCTORS_MASTER = [
-  "Dr. Anita Sharma",
-  "Dr. Rahul Verma",
-  "Dr. Priya Menon",
-  "Dr. Kavita Nair",
-  "Dr. Amit Gupta"
-]
-
 const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
   const [activeView, setActiveView] = useState("request") // "request" | "pendingList" | "transferredList"
   const [selectedPendingTransfer, setSelectedPendingTransfer] = useState(null) // for detail view
@@ -44,7 +23,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
   const [showReviewModal, setShowReviewModal] = useState(false)
   const [reviewTransfer, setReviewTransfer] = useState(null)
   const [reviewAllocatedBed, setReviewAllocatedBed] = useState("")
-  
+
   // Store selected beds for each pending transfer (in detail view)
   const [selectedBedForTransfer, setSelectedBedForTransfer] = useState("")
 
@@ -52,12 +31,151 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
   const [requestForm, setRequestForm] = useState({
     targetWardId: "",
     targetBed: "",
+    departmentId: "",
     doctorInCharge: "",
     reason: "",
     otherReason: "",
     priority: "Normal",
     clinicalNotes: ""
   })
+
+  const [wardsList, setWardsList] = useState([])
+  const [targetWardBeds, setTargetWardBeds] = useState([])
+  const [loadingBeds, setLoadingBeds] = useState(false)
+  const [transferReasonsList, setTransferReasonsList] = useState([])
+  const [departments, setDepartments] = useState([])
+  const [doctors, setDoctors] = useState([])
+
+  useEffect(() => {
+    const fetchWards = async () => {
+      try {
+        const response = await getRequest(MAS_WARD_GET_ALL_ACTIVE)
+        if (response && response.response && Array.isArray(response.response)) {
+          setWardsList(response.response)
+        } else if (Array.isArray(response)) {
+          setWardsList(response)
+        }
+      } catch (error) {
+        console.error("Error fetching ward master:", error)
+      }
+    }
+    fetchWards()
+  }, [])
+
+  useEffect(() => {
+    const fetchTransferReasons = async () => {
+      try {
+        const response = await getRequest(MAS_TRANSFER_REASON_GET_ALL)
+        const data = response?.response || response
+        if (Array.isArray(data)) {
+          const mapped = data.map(r => ({
+            id: r.id,
+            reason: r.transferReasonName
+          }))
+          mapped.sort((a, b) => a.id - b.id)
+          setTransferReasonsList(mapped)
+        }
+      } catch (error) {
+        console.error("Error fetching transfer reasons:", error)
+      }
+    }
+    fetchTransferReasons()
+  }, [])
+
+  useEffect(() => {
+    const fetchDepartments = async () => {
+      try {
+        const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_WARD_DEPT}`)
+        const data = response?.response || response
+        if (Array.isArray(data)) {
+          setDepartments(data)
+        }
+      } catch (error) {
+        console.error("Error fetching departments:", error)
+      }
+    }
+    fetchDepartments()
+  }, [])
+
+  useEffect(() => {
+    const fetchDoctors = async () => {
+      if (!requestForm.departmentId) {
+        setDoctors([])
+        return
+      }
+      try {
+        const response = await getRequest(`${DOCTOR_BY_SPECIALITY}${requestForm.departmentId}`)
+        const data = response?.response || response
+        if (Array.isArray(data)) {
+          setDoctors(data)
+        } else {
+          setDoctors([])
+        }
+      } catch (error) {
+        console.error("Error fetching doctors:", error)
+        setDoctors([])
+      }
+    }
+    fetchDoctors()
+  }, [requestForm.departmentId])
+
+  const [detailWardBeds, setDetailWardBeds] = useState([])
+
+  useEffect(() => {
+    const fetchBedsByWard = async () => {
+      if (!requestForm.targetWardId) {
+        setTargetWardBeds([])
+        return
+      }
+      setLoadingBeds(true)
+      try {
+        const response = await getRequest(`${GET_BED_DETAILS_BY_WARD}/${requestForm.targetWardId}`)
+        if (response && response.response && Array.isArray(response.response)) {
+          setTargetWardBeds(response.response)
+        } else if (Array.isArray(response)) {
+          setTargetWardBeds(response)
+        } else {
+          setTargetWardBeds([])
+        }
+      } catch (error) {
+        console.error("Error fetching bed details by ward:", error)
+        setTargetWardBeds([])
+      } finally {
+        setLoadingBeds(false)
+      }
+    }
+
+    fetchBedsByWard()
+  }, [requestForm.targetWardId])
+
+  useEffect(() => {
+    const fetchDetailBeds = async () => {
+      const activeTransfer = selectedPendingTransfer || reviewTransfer
+      if (!activeTransfer) {
+        setDetailWardBeds([])
+        return
+      }
+      const ward = wardsList.find(w => (w.wardName || w.name)?.trim() === activeTransfer.targetWard?.trim())
+      const wardId = ward?.wardId || ward?.id
+      if (!wardId) {
+        setDetailWardBeds([])
+        return
+      }
+      try {
+        const response = await getRequest(`${GET_BED_DETAILS_BY_WARD}/${wardId}`)
+        const data = response?.response || response
+        if (Array.isArray(data)) {
+          setDetailWardBeds(data)
+        } else {
+          setDetailWardBeds([])
+        }
+      } catch (error) {
+        console.error("Error fetching detail beds:", error)
+        setDetailWardBeds([])
+      }
+    }
+    fetchDetailBeds()
+  }, [selectedPendingTransfer, reviewTransfer, wardsList])
 
   // Transfer list (tx table: ip_transfer_request)
   const [transfers, setTransfers] = useState([
@@ -134,43 +252,88 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
 
   const handleRequestFormChange = (e) => {
     const { name, value } = e.target
-    setRequestForm(prev => ({ ...prev, [name]: value, ...(name === "targetWardId" ? { targetBed: "" } : {}) }))
+    setRequestForm(prev => ({
+      ...prev,
+      [name]: value,
+      ...(name === "targetWardId" ? { targetBed: "" } : {}),
+      ...(name === "departmentId" ? { doctorInCharge: "" } : {})
+    }))
   }
 
-  const selectedWard = WARDS_MASTER.find(w => w.id === parseInt(requestForm.targetWardId))
+  const selectedWard = wardsList.find(w => (w.wardId == requestForm.targetWardId || w.id == requestForm.targetWardId))
 
-  const handleSubmitRequest = () => {
-    if (!requestForm.targetWardId || !requestForm.doctorInCharge || !requestForm.reason) {
-      alert("Please fill Target Ward, Doctor In Charge, and Reason")
+  const handleSubmitRequest = async () => {
+    if (!requestForm.targetWardId || !requestForm.departmentId || !requestForm.doctorInCharge || !requestForm.reason) {
+      alert("Please fill Target Ward, Target Department, Doctor In Charge, and Reason")
       return
     }
-    const ward = WARDS_MASTER.find(w => w.id === parseInt(requestForm.targetWardId))
-    const now = new Date().toISOString()
-    const newTransfer = {
-      id: transfers.length + 1,
-      trfNo: generateTRFNo(),
-      transferDate: now,
-      patientName: selectedPatient?.patientName || "Unknown Patient",
-      gender: selectedPatient?.ageGender?.split("/")[1]?.trim() || "M",
-      age: selectedPatient?.ageGender?.split("/")[0]?.trim() || "",
-      admissionNo: selectedPatient?.admissionNo || "",
-      admissionDate: selectedPatient?.admissionDate || "",
-      fromWard: selectedPatient?.ward || "",
-      fromBed: selectedPatient?.bedNo || "",
-      targetWard: ward?.name || "",
-      targetBed: requestForm.targetBed || "",
-      allocatedBed: "",
-      doctorInCharge: requestForm.doctorInCharge,
-      reason: requestForm.reason === "Other" ? requestForm.otherReason : requestForm.reason,
-      priority: requestForm.priority,
-      clinicalNotes: requestForm.clinicalNotes,
-      status: TRANSFER_STATUS.REQUESTED,
-      cancelRemarks: ""
+
+    const ward = wardsList.find(w => (w.wardId == requestForm.targetWardId || w.id == requestForm.targetWardId))
+    const selectedBedObj = targetWardBeds.find(b => b.bedId == requestForm.targetBed)
+    const bedNoStr = selectedBedObj ? selectedBedObj.bedNo : requestForm.targetBed
+
+    // Resolve IDs for API payload
+    const fromWardObj = wardsList.find(w => (w.wardName || w.name)?.trim() === selectedPatient?.ward?.trim())
+    const fromWardId = fromWardObj?.wardId || fromWardObj?.id || 0
+
+    const docObj = doctors.find(d => {
+      const docName = d.firstName ? [d.firstName, d.middleName, d.lastName].filter(Boolean).join(" ") : (d.name || d.userName || "");
+      return docName === requestForm.doctorInCharge;
+    });
+    const doctorId = docObj ? (docObj.userId || docObj.id) : 0;
+
+    const reasonObj = transferReasonsList.find(r => r.reason === requestForm.reason)
+    const transferReasonId = reasonObj ? reasonObj.id : 0
+
+    const payload = {
+      inpatientId: selectedPatient?.inpatientId || 0,
+      patientId: selectedPatient?.patientId || 0,
+      fromWard: fromWardId,
+      fromBed: selectedPatient?.id || 0,
+      toWard: Number(requestForm.targetWardId),
+      toBed: Number(requestForm.targetBed) || 0,
+      doctorId: doctorId,
+      priority: requestForm.priority || "Normal",
+      transferReasonId: transferReasonId,
+      clinicalNotes: requestForm.clinicalNotes || ""
     }
-    setTransfers([newTransfer, ...transfers])
-    setRequestForm({ targetWardId: "", targetBed: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })
-    alert(`Transfer Request ${newTransfer.trfNo} submitted successfully!`)
-    setActiveView("pendingList")
+
+    try {
+      const apiResponse = await postRequest(SAVE_BED_TRANSFER_REQUEST, payload)
+      if (apiResponse && (apiResponse.status === 200 || apiResponse.status === "success" || apiResponse.message === "success")) {
+        const now = new Date().toISOString()
+        const newTransfer = {
+          id: apiResponse.response?.id || (transfers.length + 1),
+          trfNo: apiResponse.response?.trfNo || generateTRFNo(),
+          transferDate: apiResponse.response?.transferDate || now,
+          patientName: selectedPatient?.patientName || "Unknown Patient",
+          gender: selectedPatient?.ageGender?.split("/")[1]?.trim() || "M",
+          age: selectedPatient?.ageGender?.split("/")[0]?.trim() || "",
+          admissionNo: selectedPatient?.admissionNo || "",
+          admissionDate: selectedPatient?.admissionDate || "",
+          fromWard: selectedPatient?.ward || "",
+          fromBed: selectedPatient?.bedNo || "",
+          targetWard: ward ? ((ward.wardName || ward.name)?.trim()) : "",
+          targetBed: bedNoStr || "",
+          allocatedBed: "",
+          doctorInCharge: requestForm.doctorInCharge,
+          reason: requestForm.reason === "Other" ? requestForm.otherReason : requestForm.reason,
+          priority: requestForm.priority,
+          clinicalNotes: requestForm.clinicalNotes,
+          status: TRANSFER_STATUS.REQUESTED,
+          cancelRemarks: ""
+        }
+        setTransfers([newTransfer, ...transfers])
+        setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })
+        alert(`Transfer Request ${newTransfer.trfNo} submitted successfully!`)
+        setActiveView("pendingList")
+      } else {
+        alert("Failed to submit transfer request: " + (apiResponse?.message || "unknown error"))
+      }
+    } catch (error) {
+      console.error("Error submitting transfer request:", error)
+      alert("Error submitting transfer request. Please try again.")
+    }
   }
 
   const handleOpenReview = (transfer) => {
@@ -280,8 +443,6 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     return map[status] || "•"
   }
 
-  const reviewWard = reviewTransfer ? WARDS_MASTER.find(w => w.name === reviewTransfer.targetWard) : null
-
   // Filter transfers
   const pendingTransfers = transfers.filter(t => t.status === TRANSFER_STATUS.PENDING || t.status === TRANSFER_STATUS.REQUESTED)
   const transferredList = transfers.filter(t => 
@@ -292,7 +453,6 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
 
   // Detail view for a pending transfer
   const renderPendingDetail = (transfer) => {
-    const targetWardDetails = WARDS_MASTER.find(w => w.name === transfer.targetWard)
     const currentSelectedBed = selectedBedForTransfer || transfer.targetBed || ""
 
     return (
@@ -344,8 +504,10 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
                     onChange={(e) => setSelectedBedForTransfer(e.target.value)}
                   >
                     <option value="">Select Bed</option>
-                    {targetWardDetails?.beds.map(b => (
-                      <option key={b} value={b}>{b}</option>
+                    {detailWardBeds.map(b => (
+                      <option key={b.bedId || b.bedNo} value={b.bedNo || b.bedId}>
+                        {b.bedNo || b.bedId}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -412,7 +574,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
       {activeView === "request" && (
         <div className="card">
           <div className="card-header bg-primary text-white py-2">
-            <strong>BED TRANSFER REQUEST</strong>
+            <strong>WARD / BED TRANSFER REQUEST</strong>
             <span className="ms-3 small opacity-75">[{generateTRFNo()}] | {formatDateTime(new Date().toISOString())}</span>
           </div>
           <div className="card-body">
@@ -431,18 +593,42 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
                 <label className="form-label small fw-bold">Target Ward</label>
                 <select className="form-select form-select-sm" name="targetWardId" value={requestForm.targetWardId} onChange={handleRequestFormChange}>
                   <option value="">Select Ward </option>
-                  {WARDS_MASTER.map(w => (
-                    <option key={w.id} value={w.id}>{w.name}</option>
+                  {wardsList.map(w => (
+                    <option key={w.wardId || w.id} value={w.wardId || w.id}>
+                      {(w.wardName || w.name)?.trim()}
+                    </option>
                   ))}
                 </select>
               </div>
 
               <div className="col-md-6">
                 <label className="form-label small fw-bold">Preferred Bed</label>
-                <select className="form-select form-select-sm" name="targetBed" value={requestForm.targetBed} onChange={handleRequestFormChange} disabled={!selectedWard}>
-                  <option value="">Any Available</option>
-                  {selectedWard?.beds.map(b => (
-                    <option key={b} value={b}>{b}</option>
+                <select
+                  className="form-select form-select-sm"
+                  name="targetBed"
+                  value={requestForm.targetBed}
+                  onChange={handleRequestFormChange}
+                  disabled={!requestForm.targetWardId || loadingBeds}
+                >
+                  <option value="">
+                    {loadingBeds ? "Loading beds..." : "Any Available"}
+                  </option>
+                  {targetWardBeds.map(b => (
+                    <option key={b.bedId || b.bedNo} value={b.bedId}>
+                      {b.bedNo || `Bed-${b.bedId}`}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div className="col-md-6">
+                <label className="form-label small fw-bold">Target Department <span className="text-danger">*</span></label>
+                <select className="form-select form-select-sm" name="departmentId" value={requestForm.departmentId} onChange={handleRequestFormChange}>
+                  <option value="">Select Department</option>
+                  {departments.map(d => (
+                    <option key={d.id || d.departmentId} value={d.id || d.departmentId}>
+                      {d.departmentName || d.name}
+                    </option>
                   ))}
                 </select>
               </div>
@@ -451,9 +637,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
                 <label className="form-label small fw-bold">Doctor In Charge <span className="text-danger">*</span></label>
                 <select className="form-select form-select-sm" name="doctorInCharge" value={requestForm.doctorInCharge} onChange={handleRequestFormChange}>
                   <option value=""> Select Doctor </option>
-                  {DOCTORS_MASTER.map(d => (
-                    <option key={d} value={d}>{d}</option>
-                  ))}
+                  {doctors.map(d => {
+                    const docName = d.firstName ? [d.firstName, d.middleName, d.lastName].filter(Boolean).join(" ") : (d.name || d.userName || "");
+                    return (
+                      <option key={d.userId || d.id} value={docName}>
+                        {docName}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 
@@ -479,7 +670,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
               <div className="col-12">
                 <label className="form-label small fw-bold">Reason for Transfer</label>
                 <div className="d-flex gap-3 flex-wrap mb-2">
-                  {TRANSFER_REASONS_MASTER.map(r => (
+                  {transferReasonsList.map(r => (
                     <div className="form-check" key={r.id}>
                       <input
                         className="form-check-input"
@@ -521,7 +712,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
                 <button className="btn btn-primary btn-sm me-2" onClick={handleSubmitRequest}>
                   Submit Request
                 </button>
-                <button className="btn btn-outline-secondary btn-sm" onClick={() => setRequestForm({ targetWardId: "", targetBed: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })}>
+                <button className="btn btn-outline-secondary btn-sm" onClick={() => setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })}>
                   Clear
                 </button>
               </div>
@@ -668,8 +859,10 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
                       onChange={e => setReviewAllocatedBed(e.target.value)}
                     >
                       <option value="">Select Bed </option>
-                      {(reviewWard?.beds || []).map(b => (
-                        <option key={b} value={b}>{b}</option>
+                      {detailWardBeds.map(b => (
+                        <option key={b.bedId || b.bedNo} value={b.bedNo || b.bedId}>
+                          {b.bedNo || b.bedId}
+                        </option>
                       ))}
                     </select>
                   </div>

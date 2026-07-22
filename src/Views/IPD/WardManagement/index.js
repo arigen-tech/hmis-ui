@@ -94,7 +94,7 @@ const WardManagement = () => {
     "Vitals & Monitoring",
     "Nursing Care / Procedures",
     "Diet",
-    "Bed Transfer",
+    "Ward / Bed Transfer",
     "Shift Handover",
     "Discharge"
   ]
@@ -563,7 +563,7 @@ const WardManagement = () => {
                               <DoctorVisitCaseNotes selectedPatient={selectedPatient} />
                             )}
 
-                            {activeTab === "Bed Transfer" && (
+                            {activeTab === "Ward / Bed Transfer" && (
                               <BedTransfer selectedPatient={selectedPatient} />
                             )}
 
@@ -592,7 +592,7 @@ const WardManagement = () => {
                               activeTab !== "IPD Initial Assessment" &&
                               activeTab !== "Doctor Visit / Case Notes" &&
                               activeTab !== "Medication & Treatment (MAR)" &&
-                              activeTab !== "Bed Transfer" &&
+                              activeTab !== "Ward / Bed Transfer" &&
                               activeTab !== "Vitals & Monitoring" &&
                               activeTab !== "Investigations / Orders" &&
                               activeTab !== "Diet" &&
