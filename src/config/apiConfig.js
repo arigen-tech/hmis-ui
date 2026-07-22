@@ -215,6 +215,7 @@ export const MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL = `${MAS_IP_NURSING_ASSESSM
 export const MAS_IPD_SERVICE_CATEGORY = `${MASTERS}/ipdCategory`;
 export const MAS_IPD_SERVICE_SUBCATEGORY = `${MASTERS}/ipdServiceSubcategory`;
 export const MAS_TRANSFER_REASON = `${MASTERS}/transferReason`;
+export const MAS_TRANSFER_REASON_GET_ALL = `${MAS_TRANSFER_REASON}/getAll/1`;
 export const MAS_PATIENT_DISCHARGE_CONDITION = `${MASTERS}/masPatientDischargeCondition`;
 export const MAS_DISCHARGE_REASON = `${MASTERS}/masDischargeReason`;
 
@@ -731,6 +732,7 @@ export const SAVE_VITALS_DETAILS = `/ipd/saveVitalsDetails`;
 export const GET_VITALS_DETAILS_BY_INPATIENT_ID = `/ipd/getVitalsDetailsByInpatientId`;
 export const SAVE_DAILY_CASE_SHEET_ENTRY = `/ipd/saveDailyCaseSheetEntry`;
 export const GET_DAILY_CASE_SHEET_ENTRY = `/ipd/getDailyCaseSheetEntry`;
+export const SAVE_BED_TRANSFER_REQUEST = '/ipd/saveBedTransferRequest';
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
