@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST } from "../../../config/apiConfig"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -14,7 +14,7 @@ const TRANSFER_STATUS = {
   CANCELLED: "Cancelled"
 }
 
-const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
+const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   const [activeView, setActiveView] = useState("request") // "request" | "pendingList" | "transferredList"
   const [selectedPendingTransfer, setSelectedPendingTransfer] = useState(null) // for detail view
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -177,6 +177,66 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     fetchDetailBeds()
   }, [selectedPendingTransfer, reviewTransfer, wardsList])
 
+  const [loadingPendingList, setLoadingPendingList] = useState(false);
+
+  useEffect(() => {
+    const fetchPendingTransfers = async () => {
+      const wardId = selectedWard?.wardId || selectedWard?.id || 0;
+      if (!wardId) return;
+      try {
+        setLoadingPendingList(true);
+        const response = await getRequest(`${WARD_PENDING_TRANSFER_REQUEST_LIST}/${wardId}?wardIds=${wardId}`);
+        const data = response?.response || response;
+        if (Array.isArray(data)) {
+          // Map to the frontend transfers schema
+          const mapped = data.map((t, index) => {
+            // Determine status based on logic:
+            // if "fromWardId" === wardId -> Requested
+            // if "toWardId" === wardId -> Pending Acceptance
+            let status = TRANSFER_STATUS.REQUESTED;
+            if (t.fromWardId === wardId) {
+              status = TRANSFER_STATUS.REQUESTED;
+            } else if (t.toWardId === wardId) {
+              status = TRANSFER_STATUS.PENDING;
+            }
+            
+            return {
+              id: t.inpatientId || index + 1,
+              trfNo: t.transferNo || `TRF${String(index + 1).padStart(6, '0')}`,
+              transferDate: t.transferDateTime || new Date().toISOString(),
+              patientName: t.patientName || "Unknown Patient",
+              gender: t.gender || "M",
+              age: t.age || "",
+              admissionNo: t.admissionNo || "",
+              admissionDate: t.admissionDate || "",
+              fromWard: t.fromWardName || "",
+              fromBed: t.fromBedName || "",
+              targetWard: t.toWardName || "",
+              targetBed: t.toBedName || "",
+              allocatedBed: "",
+              doctorInCharge: t.doctorName || "",
+              reason: t.transferReason || "",
+              priority: t.priority || "Normal",
+              clinicalNotes: t.clinicalNotes || "",
+              status: status,
+              cancelRemarks: "",
+              raw: t
+            };
+          });
+          setTransfers(mapped);
+        } else {
+          setTransfers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching ward pending transfer list:", error);
+        setTransfers([]);
+      } finally {
+        setLoadingPendingList(false);
+      }
+    };
+    fetchPendingTransfers();
+  }, [selectedWard]);
+
   // Transfer list (tx table: ip_transfer_request)
   const [transfers, setTransfers] = useState([
     {
@@ -259,8 +319,6 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
       ...(name === "departmentId" ? { doctorInCharge: "" } : {})
     }))
   }
-
-  const selectedWard = wardsList.find(w => (w.wardId == requestForm.targetWardId || w.id == requestForm.targetWardId))
 
   const handleSubmitRequest = async () => {
     if (!requestForm.targetWardId || !requestForm.departmentId || !requestForm.doctorInCharge || !requestForm.reason) {
@@ -515,12 +573,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
             </div>
           </div>
           <div className="card-footer bg-white">
-            <button 
-              className="btn btn-success btn-sm me-2"
-              onClick={() => handleAcceptTransfer(transfer, currentSelectedBed)}
-            >
-              Accept Transfer
-            </button>
+            {transfer.status === TRANSFER_STATUS.PENDING && (
+              <button 
+                className="btn btn-success btn-sm me-2"
+                onClick={() => handleAcceptTransfer(transfer, currentSelectedBed)}
+              >
+                Accept Transfer
+              </button>
+            )}
             <button 
               className="btn btn-danger btn-sm"
               onClick={() => handleOpenCancel(transfer.id)}
