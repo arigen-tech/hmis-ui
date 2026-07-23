@@ -724,6 +724,7 @@ export const GET_ROOM_BY_WARD = `/ipd/getRoomDetailsByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedDetailsByRoom';
 export const GET_BED_DETAILS_BY_WARD = `/ipd/getBedDetailsByWard`;
 export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveAdmissionDetails';
+export const SAVE_IPD_INVESTIGATION_ORDER = '/ipd/saveInpatientBookingInvestigation';
 export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardDetailsByDepartment`;
 export const GET_WARD_WISE_DETAILS = `/ipd/getNursingDashboardByWard`;
 export const UPDATE_ADMISSION_INTERNAL_STATUS = `/ipd/updateAdmissionInternalStatus`;

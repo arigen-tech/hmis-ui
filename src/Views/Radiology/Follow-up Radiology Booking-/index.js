@@ -51,7 +51,9 @@ import {
   DUPLICATE_INV,
   RADIOLOGY_REG_SUCC_MSG,
   RADIOLOGY_REGISTER_SUCC_MSG,
+  UNABLE_TO_LOAD_PATIENT_DETAILS,
 } from "../../../config/constants";
+import Swal from "sweetalert2";
 
 const RadiologyBookingRegisteredPatient = () => {
   const [errors, setErrors] = useState({});
@@ -186,7 +188,7 @@ const RadiologyBookingRegisteredPatient = () => {
 
   useEffect(() => {
     if (formData.gender && genderData.length > 0) {
-      fetchInvestigationDetails(Number(formData.gender)).then(inv => {
+      fetchInvestigationDetails(Number(formData.gender)).then((inv) => {
         if (inv && inv.length > 0) setInvestigationItems(inv);
       });
     }
@@ -772,8 +774,11 @@ const RadiologyBookingRegisteredPatient = () => {
     }
   }
 
-  async function fetchInvestigationDetails(genderValue, currentGenderData = genderData) {
-    debugger
+  async function fetchInvestigationDetails(
+    genderValue,
+    currentGenderData = genderData,
+  ) {
+    debugger;
     setLoading(true);
     try {
       const selectedGender = currentGenderData.find(
@@ -948,6 +953,10 @@ const RadiologyBookingRegisteredPatient = () => {
         `${PATIENT_FOLLOW_UP_DETAILS}/${patient.id}?serviceCategoryCode=${RADIOLOGY_SERVICE_CATAGORY}`,
       );
 
+      if (!res?.response) {
+        throw new Error(res?.message || "Patient details not found.");
+      }
+
       const data = res?.response;
 
       const mappedData = {
@@ -1008,37 +1017,33 @@ const RadiologyBookingRegisteredPatient = () => {
 
       setFormData(mappedData);
 
-    await Promise.all([
-      fetchGenderData(),
-      fetchRelationData(),
-      fetchCountryData(),
-      fetchGstConfiguration(),
-    ]);
+      await Promise.all([
+        fetchGenderData(),
+        fetchRelationData(),
+        fetchCountryData(),
+        fetchGstConfiguration(),
+      ]);
 
-        if (mappedData.country) {
-      await fetchStates(mappedData.country);
-    }
-    if (mappedData.state) {
-      await fetchDistrict(mappedData.state);
-    }
-    if (mappedData.nokCountry) {
-      await fetchNokStates(mappedData.nokCountry);
-    }
-    if (mappedData.nokState) {
-      await fetchNokDistrict(mappedData.nokState);
-    }
-    
+      if (mappedData.country) {
+        await fetchStates(mappedData.country);
+      }
+      if (mappedData.state) {
+        await fetchDistrict(mappedData.state);
+      }
+      if (mappedData.nokCountry) {
+        await fetchNokStates(mappedData.nokCountry);
+      }
+      if (mappedData.nokState) {
+        await fetchNokDistrict(mappedData.nokState);
+      }
 
-    
-    // Fetch package items
-    await fetchPackageInvestigationDetails(1);
-
-
+      // Fetch package items
+      await fetchPackageInvestigationDetails(1);
 
       setShowPatientDetails(true);
-    } catch (e) {
-      console.error(e);
-      showPopup("Failed to fetch patient details", "error");
+    } catch (error) {
+      console.error(error);
+      showPopup(error?.message || "Failed to fetch patient details", "warning");
     }
     // finally {
     //   setLoading(false);
@@ -2155,8 +2160,11 @@ const RadiologyBookingRegisteredPatient = () => {
                                         investigationItems.length === 0 &&
                                         formData.gender
                                       ) {
-                                        fetchInvestigationDetails(Number(formData.gender)).then(inv => {
-                                          if (inv && inv.length > 0) setInvestigationItems(inv);
+                                        fetchInvestigationDetails(
+                                          Number(formData.gender),
+                                        ).then((inv) => {
+                                          if (inv && inv.length > 0)
+                                            setInvestigationItems(inv);
                                         });
                                       }
                                     } else {
@@ -2172,8 +2180,11 @@ const RadiologyBookingRegisteredPatient = () => {
                                       investigationItems.length === 0 &&
                                       formData.gender
                                     ) {
-                                      fetchInvestigationDetails(Number(formData.gender)).then(inv => {
-                                        if (inv && inv.length > 0) setInvestigationItems(inv);
+                                      fetchInvestigationDetails(
+                                        Number(formData.gender),
+                                      ).then((inv) => {
+                                        if (inv && inv.length > 0)
+                                          setInvestigationItems(inv);
                                       });
                                     }
                                   }}
@@ -2202,7 +2213,9 @@ const RadiologyBookingRegisteredPatient = () => {
                                               (item.investigationName || "")
                                                 .toLowerCase()
                                                 .includes(
-                                                  (row.name || "").toLowerCase(),
+                                                  (
+                                                    row.name || ""
+                                                  ).toLowerCase(),
                                                 ),
                                             )
                                             .map((item, i) => {
@@ -2337,7 +2350,9 @@ const RadiologyBookingRegisteredPatient = () => {
                                               (item.packName || "")
                                                 .toLowerCase()
                                                 .includes(
-                                                  (row.name || "").toLowerCase(),
+                                                  (
+                                                    row.name || ""
+                                                  ).toLowerCase(),
                                                 ),
                                             )
                                             .map((item, i) => (

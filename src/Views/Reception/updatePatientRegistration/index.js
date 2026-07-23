@@ -1236,7 +1236,7 @@ const UpdatePatientRegistration = () => {
           response = await request;
         }
       }
-      debugger;
+      // debugger;
       if (response.status === 200) {
         const data = response.response;
         const personal = data.personal || {};

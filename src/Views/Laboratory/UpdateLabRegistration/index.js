@@ -1004,6 +1004,11 @@ const UpdateLabRegistration = () => {
         `${PATIENT_FOLLOW_UP_DETAILS}/${patient.id}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
       );
 
+      if (!res?.response) {
+        showPopup(res?.message || "Failed to fetch patient details", "warning");
+        return;
+      }
+
       const data = res?.response;
 
       const mappedData = {
