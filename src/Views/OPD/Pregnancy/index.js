@@ -1,7 +1,11 @@
 import React, { useState, forwardRef, useImperativeHandle } from "react";
 
 const PregnancySection = forwardRef((props, ref) => {
-  const { readOnly = false, opdPatientDetailsId = null } = props;
+  const {
+    readOnly = false,
+    opdPatientDetailsId = null,
+    emitWhenNotPregnant = false,
+  } = props;
   const [pregnancyData, setPregnancyData] = useState({
     pregnant: false,
     lmpDate: "",
@@ -14,8 +18,9 @@ const PregnancySection = forwardRef((props, ref) => {
   // Expose methods to parent component
   useImperativeHandle(ref, () => ({
     getData: () => {
-      // Only return data if pregnant is true
-      if (!pregnancyData.pregnant) {
+      // Return data only when pregnant or when the parent explicitly wants
+      // an inactive record to be persisted.
+      if (!pregnancyData.pregnant && !emitWhenNotPregnant) {
         return null;
       }
       return {

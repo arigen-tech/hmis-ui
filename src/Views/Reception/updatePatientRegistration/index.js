@@ -1,9 +1,9 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import LoadingScreen from "../../../Components/Loading";
 import Swal from "sweetalert2";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import DatePicker from "../../../Components/DatePicker";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import ABHACreationModal from "../ABHACreationModel";
 import ABHAVerificationModal from "../ABHAVerificationModel";
 import { integrationService } from "../../../service/integrationService";
@@ -76,6 +76,7 @@ import { getRequest, postRequest } from "../../../service/apiService";
 
 const UpdatePatientRegistration = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   async function fetchHospitalDetails() {
     try {
       setLoading(true);
@@ -208,6 +209,7 @@ const UpdatePatientRegistration = () => {
   const [pageInput, setPageInput] = useState("");
   const [searchPerformed, setSearchPerformed] = useState(false);
   const [editLoadingId, setEditLoadingId] = useState(null);
+  const prefillSearchRef = useRef(null);
   // ABHA State
   const [showAbhaCreationModal, setShowAbhaCreationModal] = useState(false);
   const [showAbhaVerificationModal, setShowAbhaVerificationModal] =
@@ -624,46 +626,85 @@ const UpdatePatientRegistration = () => {
     setPatientDetailForm(next);
   };
 
-  const handleSearch = async (page = 0) => {
-    setCurrentPage(page + 1);
+  const handleSearch = useCallback(
+    async (page = 0, searchOverride = null) => {
+      setCurrentPage(page + 1);
 
-    if (typeof page !== "number") {
-      page = 0;
-    }
-    setSearchLoading(true);
-    try {
-      const payload = {
-        mobileNo: formData.mobileNo || null,
-        patientName: formData.patientName || null,
-      };
-
-      const response = await postRequest(
-        `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
-        payload,
-      );
-
-      if (response?.response) {
-        const pageData = response.response;
-
-        setPatients(pageData.content || []);
-        setTotalPages(Number(response.response.totalPages) || 1);
-        setTotalElements(
-          response.response?.totalElements ||
-            response.response?.total_elements ||
-            0,
-        );
-        setSearchPerformed(true);
-      } else {
-        setPatients([]);
-        Swal.fire("Info", NO_PATIENTS_FOUND_MSG, "info");
+      if (typeof page !== "number") {
+        page = 0;
       }
-    } catch (error) {
-      console.error(error);
-      Swal.fire("Error", SEARCH_PATIENTS_FAILED_MSG, "error");
-    } finally {
-      setSearchLoading(false);
+      setSearchLoading(true);
+      try {
+        const searchPayload = {
+          mobileNo: searchOverride?.mobileNo ?? formData.mobileNo ?? null,
+          patientName: searchOverride?.patientName ?? formData.patientName ?? null,
+        };
+
+        const payload = {
+          mobileNo: searchPayload.mobileNo || null,
+          patientName: searchPayload.patientName || null,
+        };
+
+        const response = await postRequest(
+          `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
+          payload,
+        );
+
+        if (response?.response) {
+          const pageData = response.response;
+
+          setPatients(pageData.content || []);
+          setTotalPages(Number(response.response.totalPages) || 1);
+          setTotalElements(
+            response.response?.totalElements ||
+              response.response?.total_elements ||
+              0,
+          );
+          setSearchPerformed(true);
+        } else {
+          setPatients([]);
+          Swal.fire("Info", NO_PATIENTS_FOUND_MSG, "info");
+        }
+      } catch (error) {
+        console.error(error);
+        Swal.fire("Error", SEARCH_PATIENTS_FAILED_MSG, "error");
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [formData.mobileNo, formData.patientName, itemsPerPage],
+  );
+
+  useEffect(() => {
+    const prefillSearch = location.state;
+
+    if (!prefillSearch?.patientName && !prefillSearch?.mobileNo) {
+      return;
     }
-  };
+
+    // React.StrictMode can mount this screen twice in development.
+    // Guard by location key so the auto-prefill/search only runs once per navigation.
+    if (prefillSearchRef.current === location.key) {
+      return;
+    }
+    prefillSearchRef.current = location.key;
+
+    const patientName = prefillSearch.patientName || "";
+    const mobileNo = prefillSearch.mobileNo || "";
+
+    setFormData((prev) => ({
+      ...prev,
+      patientName,
+      mobileNo,
+    }));
+    setSearchQuery(patientName);
+    setMobileQuery(mobileNo);
+
+    handleSearch(0, {
+      patientName,
+      mobileNo,
+    });
+  }, [location.key]);
 
   const handleReset = () => {
     setFormData({
@@ -1195,7 +1236,7 @@ const UpdatePatientRegistration = () => {
           response = await request;
         }
       }
-      debugger;
+      // debugger;
       if (response.status === 200) {
         const data = response.response;
         const personal = data.personal || {};
@@ -2041,8 +2082,7 @@ const UpdatePatientRegistration = () => {
             timer: 1000,
             allowOutsideClick: false,
           }).then(() => {
-            navigate("/OPDBillingDetails");
-            window.location.reload();
+            navigate("/OPDBillingDetails", { replace: true });
           });
         } else if (resp) {
           Swal.fire({

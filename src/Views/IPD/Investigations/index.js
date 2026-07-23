@@ -1,24 +1,13 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import Swal from "sweetalert2";
+import { getRequest, postRequest } from "../../../service/apiService";
+import {
+  LABOLATORY_MAIN_CHARGECODE_ID,
+  MAS_INVESTIGATION,
+  REDIOLOGY_MAIN_CHARGECODE_ID,
+  SAVE_IPD_INVESTIGATION_ORDER,
+} from "../../../config/apiConfig";
 
-// ------------------------- LAB INVESTIGATION DATA (for entry) -------------------------
-const labTests = [
-  { id: 1, testName: "CBC", sample: "Blood", container: "EDTA", resultUnit: "g/dL" },
-  { id: 2, testName: "LFT", sample: "Blood", container: "Plain", resultUnit: "IU/L" },
-  { id: 3, testName: "RFT", sample: "Blood", container: "Plain", resultUnit: "mg/dL" },
-  { id: 4, testName: "Thyroid Profile", sample: "Blood", container: "Plain", resultUnit: "µIU/mL" },
-  { id: 5, testName: "Urine Routine", sample: "Urine", container: "Sterile", resultUnit: "—" },
-];
-
-// ------------------------- RADIOLOGY INVESTIGATION DATA (for entry) -------------------------
-const radiologyTests = [
-  { id: 1, name: "X-Ray Chest" },
-  { id: 2, name: "CT Scan" },
-  { id: 3, name: "MRI Brain" },
-  { id: 4, name: "Ultrasound Abdomen" },
-  { id: 5, name: "Mammography" },
-];
-
-// ------------------------- DUMMY DATA FOR ORDER TRACKING -------------------------
 const dummyLabOrders = [
   {
     orderNo: "LAB-001",
@@ -91,134 +80,155 @@ const dummyRadiologyOrders = [
   },
 ];
 
-// Simple Pagination component (mock – replace with your actual component)
 const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   if (totalPages <= 1) return null;
+
   return (
     <nav>
       <ul className="pagination justify-content-end mt-3">
         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onPageChange(currentPage - 1)}>Previous</button>
+          <button className="page-link" onClick={() => onPageChange(currentPage - 1)} type="button">
+            Previous
+          </button>
         </li>
         {[...Array(totalPages)].map((_, i) => (
           <li key={i} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
-            <button className="page-link" onClick={() => onPageChange(i + 1)}>{i + 1}</button>
+            <button className="page-link" onClick={() => onPageChange(i + 1)} type="button">
+              {i + 1}
+            </button>
           </li>
         ))}
         <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onPageChange(currentPage + 1)}>Next</button>
+          <button className="page-link" onClick={() => onPageChange(currentPage + 1)} type="button">
+            Next
+          </button>
         </li>
       </ul>
     </nav>
   );
 };
 
-const InvestigationOrderandTracking = () => {
-  const [activeTab, setActiveTab] = useState("lab"); // "lab", "radiology", "tracking"
+const normalizeLabInvestigation = (item, index) => ({
+  id: item?.investigationId ?? item?.id ?? index,
+  testName: item?.testName ?? item?.investigationName ?? item?.name ?? "",
+  sample: item?.sample ?? item?.sampleName ?? item?.sampleDescription ?? "",
+  container: item?.container ?? item?.collectionName ?? item?.containerName ?? "",
+  resultUnit: item?.resultUnit ?? item?.uomName ?? item?.unitName ?? "",
+});
 
-  // ---------- LAB ENTRY STATE (with remarks) ----------
-  const [labRows, setLabRows] = useState([
-    {
-      id: Date.now() + 1,
-      testName: "CBC",
-      sample: "Blood",
-      container: "EDTA",
-      resultUnit: "g/dL",
-      remarks: "",
-      dropdownOpen: false,
-      searchText: "CBC",
-    },
-    {
-      id: Date.now() + 2,
-      testName: "LFT",
-      sample: "Blood",
-      container: "Plain",
-      resultUnit: "IU/L",
-      remarks: "",
-      dropdownOpen: false,
-      searchText: "LFT",
-    },
-  ]);
+const normalizeRadiologyInvestigation = (item, index) => ({
+  id: item?.investigationId ?? item?.id ?? index,
+  name: item?.name ?? item?.investigationName ?? "",
+});
 
-  // ---------- RADIOLOGY ENTRY STATE (with remarks) ----------
-  const [radiologyRows, setRadiologyRows] = useState([
-    { id: Date.now() + 1, investigation: "X-Ray Chest", date: "2026-01-04", remarks: "", dropdownOpen: false, searchText: "X-Ray Chest" },
-    { id: Date.now() + 2, investigation: "CT Scan", date: "2026-01-04", remarks: "", dropdownOpen: false, searchText: "CT Scan" },
-  ]);
+const InvestigationOrderandTracking = ({ selectedPatient }) => {
+  const [activeTab, setActiveTab] = useState("lab");
+  const [labTests, setLabTests] = useState([]);
+  const [radiologyTests, setRadiologyTests] = useState([]);
 
-  // ---------- ORDER TRACKING STATE ----------
-  const [trackingType, setTrackingType] = useState("lab"); // "lab" or "radiology"
+  const createLabRow = () => ({
+    id: Date.now(),
+    testName: "",
+    sample: "",
+    container: "",
+    resultUnit: "",
+    remarks: "",
+    dropdownOpen: false,
+    searchText: "",
+  });
+
+  const createRadiologyRow = () => ({
+    id: Date.now(),
+    investigation: "",
+    date: new Date().toISOString().split("T")[0],
+    remarks: "",
+    dropdownOpen: false,
+    searchText: "",
+  });
+
+  const [labRows, setLabRows] = useState([createLabRow()]);
+
+  const [radiologyRows, setRadiologyRows] = useState([createRadiologyRow()]);
+
+  const [trackingType, setTrackingType] = useState("lab");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
 
-  // Paginate lab orders
-  const paginatedLabOrders = dummyLabOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
-  // Paginate radiology orders
-  const paginatedRadiologyOrders = dummyRadiologyOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage
-  );
+  useEffect(() => {
+    const fetchInvestigations = async () => {
+      try {
+        const [labRes, radiologyRes] = await Promise.all([
+          getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${LABOLATORY_MAIN_CHARGECODE_ID}`),
+          getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${REDIOLOGY_MAIN_CHARGECODE_ID}`),
+        ]);
 
-  // Reset page when tracking type changes
+        if (labRes?.status === 200 && Array.isArray(labRes.response)) {
+          setLabTests(labRes.response.map(normalizeLabInvestigation));
+        }
+
+        if (radiologyRes?.status === 200 && Array.isArray(radiologyRes.response)) {
+          setRadiologyTests(radiologyRes.response.map(normalizeRadiologyInvestigation));
+        }
+      } catch (error) {
+        console.error("Error fetching investigations:", error);
+      }
+    };
+
+    fetchInvestigations();
+  }, []);
+
+  const paginatedLabOrders = dummyLabOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedRadiologyOrders = dummyRadiologyOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+
   const handleTrackingTypeChange = (type) => {
     setTrackingType(type);
     setCurrentPage(1);
   };
 
-  // ======================= LAB ENTRY HELPER FUNCTIONS =======================
   const addLabRow = () => {
-    const newRow = {
-      id: Date.now(),
-      testName: "",
-      sample: "",
-      container: "",
-      resultUnit: "",
-      remarks: "",
-      dropdownOpen: false,
-      searchText: "",
-    };
-    setLabRows([...labRows, newRow]);
+    setLabRows([...labRows, createLabRow()]);
   };
 
   const updateLabRow = (id, field, value) => {
-    setLabRows(labRows.map(row => row.id === id ? { ...row, [field]: value } : row));
+    setLabRows(labRows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
   const selectLabTest = (id, test) => {
-    setLabRows(labRows.map(row =>
-      row.id === id
-        ? {
-            ...row,
-            testName: test.testName,
-            sample: test.sample,
-            container: test.container,
-            resultUnit: test.resultUnit,
-            searchText: test.testName,
-            dropdownOpen: false,
-          }
-        : row
-    ));
+    setLabRows(
+      labRows.map((row) =>
+        row.id === id
+          ? {
+              ...row,
+              testName: test.testName,
+              sample: test.sample,
+              container: test.container,
+              resultUnit: test.resultUnit,
+              searchText: test.testName,
+              dropdownOpen: false,
+            }
+          : row,
+      ),
+    );
   };
 
   const deleteLabRow = (id) => {
     if (labRows.length === 1) return;
-    setLabRows(labRows.filter(row => row.id !== id));
+    setLabRows(labRows.filter((row) => row.id !== id));
   };
 
   const handleLabTestNameChange = (id, value) => {
-    setLabRows(labRows.map(row =>
-      row.id === id
-        ? { ...row, searchText: value, testName: "", sample: "", container: "", resultUnit: "", dropdownOpen: true }
-        : row
-    ));
+    setLabRows(
+      labRows.map((row) =>
+        row.id === id
+          ? { ...row, searchText: value, testName: "", sample: "", container: "", resultUnit: "", dropdownOpen: true }
+          : row,
+      ),
+    );
   };
 
   const toggleLabDropdown = (id, open) => {
-    setLabRows(labRows.map(row => row.id === id ? { ...row, dropdownOpen: open } : row));
+    setLabRows(labRows.map((row) => (row.id === id ? { ...row, dropdownOpen: open } : row)));
   };
 
   const handleLabBlur = (id) => {
@@ -227,49 +237,42 @@ const InvestigationOrderandTracking = () => {
 
   const getFilteredLabTests = (searchText) => {
     if (!searchText) return labTests;
-    return labTests.filter(test => test.testName.toLowerCase().includes(searchText.toLowerCase()));
+    return labTests.filter((test) => (test.testName || "").toLowerCase().includes(searchText.toLowerCase()));
   };
 
-  // ======================= RADIOLOGY ENTRY HELPER FUNCTIONS =======================
   const addRadiologyRow = () => {
-    const newRow = {
-      id: Date.now(),
-      investigation: "",
-      date: new Date().toISOString().split("T")[0],
-      remarks: "",
-      dropdownOpen: false,
-      searchText: "",
-    };
-    setRadiologyRows([...radiologyRows, newRow]);
+    setRadiologyRows([...radiologyRows, createRadiologyRow()]);
   };
 
   const updateRadiologyRow = (id, field, value) => {
-    setRadiologyRows(radiologyRows.map(row => row.id === id ? { ...row, [field]: value } : row));
+    setRadiologyRows(radiologyRows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
   };
 
   const selectRadiologyTest = (id, test) => {
-    setRadiologyRows(radiologyRows.map(row =>
-      row.id === id
-        ? { ...row, investigation: test.name, searchText: test.name, dropdownOpen: false }
-        : row
-    ));
+    setRadiologyRows(
+      radiologyRows.map((row) =>
+        row.id === id
+          ? { ...row, investigation: test.name, searchText: test.name, dropdownOpen: false }
+          : row,
+      ),
+    );
   };
 
   const deleteRadiologyRow = (id) => {
     if (radiologyRows.length === 1) return;
-    setRadiologyRows(radiologyRows.filter(row => row.id !== id));
+    setRadiologyRows(radiologyRows.filter((row) => row.id !== id));
   };
 
   const handleRadiologySearchChange = (id, value) => {
-    setRadiologyRows(radiologyRows.map(row =>
-      row.id === id
-        ? { ...row, searchText: value, investigation: "", dropdownOpen: true }
-        : row
-    ));
+    setRadiologyRows(
+      radiologyRows.map((row) =>
+        row.id === id ? { ...row, searchText: value, investigation: "", dropdownOpen: true } : row,
+      ),
+    );
   };
 
   const toggleRadiologyDropdown = (id, open) => {
-    setRadiologyRows(radiologyRows.map(row => row.id === id ? { ...row, dropdownOpen: open } : row));
+    setRadiologyRows(radiologyRows.map((row) => (row.id === id ? { ...row, dropdownOpen: open } : row)));
   };
 
   const handleRadiologyBlur = (id) => {
@@ -278,19 +281,91 @@ const InvestigationOrderandTracking = () => {
 
   const getFilteredRadiologyTests = (searchText) => {
     if (!searchText) return radiologyTests;
-    return radiologyTests.filter(test => test.name.toLowerCase().includes(searchText.toLowerCase()));
+    return radiologyTests.filter((test) => (test.name || "").toLowerCase().includes(searchText.toLowerCase()));
   };
 
-  // ======================= SAVE HANDLERS (demo) =======================
   const handleSaveLab = () => {
-    alert("Lab investigations saved:\n" + JSON.stringify(labRows, null, 2));
+    handleSaveInvestigations("lab");
   };
 
   const handleSaveRadiology = () => {
-    alert("Radiology investigations saved:\n" + JSON.stringify(radiologyRows, null, 2));
+    handleSaveInvestigations("radiology");
   };
 
-  // ======================= TRACKING HANDLERS =======================
+  const buildPayloadRows = (rows, type) =>
+    rows
+      .filter((row) => row.searchText?.trim())
+      .map((row) => {
+        const matchedTest = type === "lab"
+          ? labTests.find((test) => test.testName === row.testName || test.testName === row.searchText)
+          : radiologyTests.find((test) => test.name === row.investigation || test.name === row.searchText);
+
+        return {
+          id: matchedTest?.id ?? null,
+          appointmentDate: type === "radiology" ? row.date || null : null,
+          checkStatus: true,
+          remarks: row.remarks || "",
+          type,
+          sample: row.sample || "",
+          container: row.container || "",
+          resultUnit: row.resultUnit || "",
+        };
+      })
+      .filter((row) => row.id != null);
+
+  const handleSaveInvestigations = async (type) => {
+    if (!selectedPatient?.patientId || !selectedPatient?.inpatientId) {
+      Swal.fire({
+        icon: "warning",
+        title: "Patient not selected",
+        text: "Please select an admitted IPD patient before saving investigations.",
+      });
+      return;
+    }
+
+    const rows = type === "lab" ? labRows : radiologyRows;
+    const investigationReq = buildPayloadRows(rows, type);
+
+    if (investigationReq.length === 0) {
+      Swal.fire({
+        icon: "warning",
+        title: "No investigations",
+        text: "Please add at least one investigation before saving.",
+      });
+      return;
+    }
+
+    const payload = {
+      patientId: selectedPatient.patientId,
+      inpatientId: selectedPatient.inpatientId,
+      investigationReq,
+    };
+
+    try {
+      const response = await postRequest(SAVE_IPD_INVESTIGATION_ORDER, payload);
+      if (response?.status === 200) {
+        Swal.fire({
+          icon: "success",
+          title: "Saved",
+          text: response?.message || "Investigations saved successfully.",
+        });
+      } else {
+        Swal.fire({
+          icon: "error",
+          title: "Save failed",
+          text: response?.message || "Unable to save investigations.",
+        });
+      }
+    } catch (error) {
+      console.error("Error saving investigations:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Save failed",
+        text: "Something went wrong while saving investigations.",
+      });
+    }
+  };
+
   const handleViewReport = (order) => {
     alert(`Viewing report for order: ${order.orderNo}`);
   };
@@ -299,15 +374,14 @@ const InvestigationOrderandTracking = () => {
     alert(`Opening DICOM study for order: ${order.orderNo}`);
   };
 
-  // ======================= RENDER =======================
   return (
     <div>
-      {/* Three main tabs - made even smaller with reduced font and padding */}
       <div className="d-flex gap-2 mb-3">
         <button
           className={`btn btn-sm ${activeTab === "lab" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveTab("lab")}
           style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          type="button"
         >
           Lab Investigation
         </button>
@@ -315,6 +389,7 @@ const InvestigationOrderandTracking = () => {
           className={`btn btn-sm ${activeTab === "radiology" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveTab("radiology")}
           style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          type="button"
         >
           Radiology Investigation
         </button>
@@ -322,12 +397,12 @@ const InvestigationOrderandTracking = () => {
           className={`btn btn-sm ${activeTab === "tracking" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveTab("tracking")}
           style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          type="button"
         >
           Order Tracking
         </button>
       </div>
 
-      {/* ======================= LAB ENTRY SECTION ======================= */}
       {activeTab === "lab" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
@@ -452,7 +527,7 @@ const InvestigationOrderandTracking = () => {
               </table>
             </div>
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn btn-primary btn-sm" onClick={handleSaveLab}>
+              <button className="btn btn-primary btn-sm" onClick={handleSaveLab} type="button">
                 Save Lab Orders
               </button>
             </div>
@@ -460,7 +535,6 @@ const InvestigationOrderandTracking = () => {
         </div>
       )}
 
-      {/* ======================= RADIOLOGY ENTRY SECTION ======================= */}
       {activeTab === "radiology" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
@@ -564,7 +638,7 @@ const InvestigationOrderandTracking = () => {
               </table>
             </div>
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn btn-primary btn-sm" onClick={handleSaveRadiology}>
+              <button className="btn btn-primary btn-sm" onClick={handleSaveRadiology} type="button">
                 Save Radiology Orders
               </button>
             </div>
@@ -572,14 +646,12 @@ const InvestigationOrderandTracking = () => {
         </div>
       )}
 
-      {/* ======================= ORDER TRACKING SECTION ======================= */}
       {activeTab === "tracking" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2">
             <strong>Order Tracking</strong>
           </div>
           <div className="card-body">
-            {/* Radio buttons to switch between Lab and Radiology orders */}
             <div className="mb-2 d-flex align-items-center">
               <label className="me-3">
                 <input
@@ -605,7 +677,6 @@ const InvestigationOrderandTracking = () => {
               </label>
             </div>
 
-            {/* Lab Orders Table */}
             {trackingType === "lab" && (
               <>
                 <div className="table-responsive">
@@ -669,7 +740,6 @@ const InvestigationOrderandTracking = () => {
               </>
             )}
 
-            {/* Radiology Orders Table (no Sample ID, add DICOM Eye) */}
             {trackingType === "radiology" && (
               <>
                 <div className="table-responsive">
@@ -716,6 +786,7 @@ const InvestigationOrderandTracking = () => {
                                 <button
                                   className="btn btn-sm btn-success"
                                   onClick={() => handleViewDicomEye(row)}
+                                  type="button"
                                 >
                                   <i className="fa fa-eye"></i>
                                 </button>
