@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { getRequest, postRequest } from "../../../service/apiService"
-import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST } from "../../../config/apiConfig"
+import { getRequest, postRequest, putRequest } from "../../../service/apiService"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -400,30 +400,46 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
     setShowReviewModal(true)
   }
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     if (!reviewAllocatedBed) { alert("Please allocate a bed before accepting"); return }
     
-    setTransfers(prev => prev.map(t =>
-      t.id === reviewTransfer.id
-        ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: reviewAllocatedBed }
-        : t
-    ))
-    
-    if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === reviewTransfer.admissionNo) {
-      const updatedPatient = {
-        ...selectedPatient,
-        ward: reviewTransfer.targetWard,
-        bedNo: reviewAllocatedBed
+    const inpatientId = reviewTransfer.raw?.inpatientId || reviewTransfer.id || 0
+
+    try {
+      const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/C`)
+      const isSuccess = response && 
+                        (response.status === 200 || response.status === 201) && 
+                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+
+      if (isSuccess) {
+        setTransfers(prev => prev.map(t =>
+          t.id === reviewTransfer.id
+            ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: reviewAllocatedBed }
+            : t
+        ))
+        
+        if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === reviewTransfer.admissionNo) {
+          const updatedPatient = {
+            ...selectedPatient,
+            ward: reviewTransfer.targetWard,
+            bedNo: reviewAllocatedBed
+          }
+          setSelectedPatient(updatedPatient)
+        }
+        
+        alert(`Transfer ${reviewTransfer.trfNo} ACCEPTED. Bed ${reviewAllocatedBed} allocated.\n\n✓ ip_transfer_request updated to ACCEPTED\n✓ ip_bed_allocation new entry created\n✓ Main inpatient table Ward/Bed updated\n✓ Billing table updated (ward change)`)
+        
+        setShowReviewModal(false)
+        setReviewTransfer(null)
+        setActiveView("pendingList")
+        setSelectedPendingTransfer(null)
+      } else {
+        alert("Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"))
       }
-      setSelectedPatient(updatedPatient)
+    } catch (error) {
+      console.error("Error accepting transfer:", error)
+      alert("Error accepting transfer: " + (error.message || "Please try again."))
     }
-    
-    alert(`Transfer ${reviewTransfer.trfNo} ACCEPTED. Bed ${reviewAllocatedBed} allocated.\n\n✓ ip_transfer_request updated to ACCEPTED\n✓ ip_bed_allocation new entry created\n✓ Main inpatient table Ward/Bed updated\n✓ Billing table updated (ward change)`)
-    
-    setShowReviewModal(false)
-    setReviewTransfer(null)
-    setActiveView("pendingList")
-    setSelectedPendingTransfer(null)
   }
 
   const handleMarkCompleted = (id) => {
@@ -436,47 +452,81 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
     setShowCancelModal(true)
   }
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!cancelRemarks.trim()) { alert("Please enter cancel remarks"); return }
-    setTransfers(prev => prev.map(t =>
-      t.id === cancelTargetId
-        ? { ...t, status: TRANSFER_STATUS.CANCELLED, cancelRemarks }
-        : t
-    ))
-    setShowCancelModal(false)
-    setCancelTargetId(null)
-    alert("Transfer cancelled. Main inpatient record NOT changed.")
-    // If we were viewing a pending transfer detail, go back to list
-    if (selectedPendingTransfer) {
-      setSelectedPendingTransfer(null)
-      setActiveView("pendingList")
+    
+    const targetTransfer = transfers.find(t => t.id === cancelTargetId)
+    const inpatientId = targetTransfer?.raw?.inpatientId || cancelTargetId || 0
+
+    try {
+      const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/R`)
+      const isSuccess = response && 
+                        (response.status === 200 || response.status === 201) && 
+                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+
+      if (isSuccess) {
+        setTransfers(prev => prev.map(t =>
+          t.id === cancelTargetId
+            ? { ...t, status: TRANSFER_STATUS.CANCELLED, cancelRemarks }
+            : t
+        ))
+        setShowCancelModal(false)
+        setCancelTargetId(null)
+        alert("Transfer cancelled successfully.")
+        // If we were viewing a pending transfer detail, go back to list
+        if (selectedPendingTransfer) {
+          setSelectedPendingTransfer(null)
+          setActiveView("pendingList")
+        }
+      } else {
+        alert("Failed to cancel transfer: " + (response?.data?.message || response?.message || "unknown error"))
+      }
+    } catch (error) {
+      console.error("Error cancelling transfer:", error)
+      alert("Error cancelling transfer: " + (error.message || "Please try again."))
     }
   }
 
-  const handleAcceptTransfer = (transfer, allocatedBed) => {
+  const handleAcceptTransfer = async (transfer, allocatedBed) => {
     if (!allocatedBed) {
       alert("Please allocate a bed before accepting")
       return
     }
     
-    setTransfers(prev => prev.map(t =>
-      t.id === transfer.id
-        ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: allocatedBed }
-        : t
-    ))
-    
-    if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === transfer.admissionNo) {
-      const updatedPatient = {
-        ...selectedPatient,
-        ward: transfer.targetWard,
-        bedNo: allocatedBed
+    const inpatientId = transfer.raw?.inpatientId || transfer.id || 0
+
+    try {
+      const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/C`)
+      const isSuccess = response && 
+                        (response.status === 200 || response.status === 201) && 
+                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+
+      if (isSuccess) {
+        setTransfers(prev => prev.map(t =>
+          t.id === transfer.id
+            ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: allocatedBed }
+            : t
+        ))
+        
+        if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === transfer.admissionNo) {
+          const updatedPatient = {
+            ...selectedPatient,
+            ward: transfer.targetWard,
+            bedNo: allocatedBed
+          }
+          setSelectedPatient(updatedPatient)
+        }
+        
+        alert(`Transfer ${transfer.trfNo} ACCEPTED. Bed ${allocatedBed} allocated.\n\n✓ Main inpatient table Ward/Bed updated`)
+        setActiveView("pendingList")
+        setSelectedPendingTransfer(null)
+      } else {
+        alert("Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"))
       }
-      setSelectedPatient(updatedPatient)
+    } catch (error) {
+      console.error("Error accepting transfer:", error)
+      alert("Error accepting transfer: " + (error.message || "Please try again."))
     }
-    
-    alert(`Transfer ${transfer.trfNo} ACCEPTED. Bed ${allocatedBed} allocated.\n\n✓ Main inpatient table Ward/Bed updated`)
-    setActiveView("pendingList")
-    setSelectedPendingTransfer(null)
   }
 
   const getStatusBadge = (status) => {
