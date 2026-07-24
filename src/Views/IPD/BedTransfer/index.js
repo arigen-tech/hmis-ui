@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest, putRequest } from "../../../service/apiService"
 import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS, WARD_TRANSFER_LIST } from "../../../config/apiConfig"
+import Swal from "sweetalert2"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -322,7 +323,11 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
 
   const handleSubmitRequest = async () => {
     if (!requestForm.targetWardId || !requestForm.departmentId || !requestForm.doctorInCharge || !requestForm.reason) {
-      alert("Please fill Target Ward, Target Department, Doctor In Charge, and Reason")
+      Swal.fire({
+        title: "Warning",
+        text: "Please fill Target Ward, Target Department, Doctor In Charge, and Reason",
+        icon: "warning"
+      })
       return
     }
 
@@ -384,14 +389,26 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
         }
         setTransfers([newTransfer, ...transfers])
         setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })
-        alert(`Transfer Request ${newTransfer.trfNo} submitted successfully!`)
+        Swal.fire({
+          title: "Success",
+          text: `Transfer Request ${newTransfer.trfNo} submitted successfully!`,
+          icon: "success"
+        })
         setActiveView("pendingList")
       } else {
-        alert("Failed to submit transfer request: " + (apiResponse?.message || "unknown error"))
+        Swal.fire({
+          title: "Error",
+          text: "Failed to submit transfer request: " + (apiResponse?.message || "unknown error"),
+          icon: "error"
+        })
       }
     } catch (error) {
       console.error("Error submitting transfer request:", error)
-      alert("Error submitting transfer request. Please try again.")
+      Swal.fire({
+        title: "Error",
+        text: "Error submitting transfer request. Please try again.",
+        icon: "error"
+      })
     }
   }
 
@@ -402,8 +419,15 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   }
 
   const handleAccept = async () => {
-    if (!reviewAllocatedBed) { alert("Please allocate a bed before accepting"); return }
-    
+    if (!reviewAllocatedBed) {
+      Swal.fire({
+        title: "Warning",
+        text: "Please allocate a bed before accepting",
+        icon: "warning"
+      })
+      return
+    }
+
     const inpatientId = reviewTransfer.raw?.inpatientId || reviewTransfer.id || 0
 
     try {
@@ -428,18 +452,36 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
           setSelectedPatient(updatedPatient)
         }
         
-        alert(`Transfer ${reviewTransfer.trfNo} ACCEPTED. Bed ${reviewAllocatedBed} allocated.\n\n✓ ip_transfer_request updated to ACCEPTED\n✓ ip_bed_allocation new entry created\n✓ Main inpatient table Ward/Bed updated\n✓ Billing table updated (ward change)`)
+        Swal.fire({
+          title: "Success",
+          html: `Transfer <b>${reviewTransfer.trfNo}</b> ACCEPTED. Bed <b>${reviewAllocatedBed}</b> allocated.<br/><br/>
+                 <div class="text-start ps-4">
+                   ✓ ip_transfer_request updated to ACCEPTED<br/>
+                   ✓ ip_bed_allocation new entry created<br/>
+                   ✓ Main inpatient table Ward/Bed updated<br/>
+                   ✓ Billing table updated (ward change)
+                 </div>`,
+          icon: "success"
+        })
         
         setShowReviewModal(false)
         setReviewTransfer(null)
         setActiveView("pendingList")
         setSelectedPendingTransfer(null)
       } else {
-        alert("Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"))
+        Swal.fire({
+          title: "Error",
+          text: "Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"),
+          icon: "error"
+        })
       }
     } catch (error) {
       console.error("Error accepting transfer:", error)
-      alert("Error accepting transfer: " + (error.message || "Please try again."))
+      Swal.fire({
+        title: "Error",
+        text: "Error accepting transfer: " + (error.message || "Please try again."),
+        icon: "error"
+      })
     }
   }
 
@@ -454,7 +496,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   }
 
   const handleConfirmCancel = async () => {
-    if (!cancelRemarks.trim()) { alert("Please enter cancel remarks"); return }
+    if (!cancelRemarks.trim()) {
+      Swal.fire({
+        title: "Warning",
+        text: "Please enter cancel remarks",
+        icon: "warning"
+      })
+      return
+    }
     
     const targetTransfer = transfers.find(t => t.id === cancelTargetId)
     const inpatientId = targetTransfer?.raw?.inpatientId || cancelTargetId || 0
@@ -473,24 +522,40 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
         ))
         setShowCancelModal(false)
         setCancelTargetId(null)
-        alert("Transfer cancelled successfully.")
+        Swal.fire({
+          title: "Success",
+          text: "Transfer cancelled successfully.",
+          icon: "success"
+        })
         // If we were viewing a pending transfer detail, go back to list
         if (selectedPendingTransfer) {
           setSelectedPendingTransfer(null)
           setActiveView("pendingList")
         }
       } else {
-        alert("Failed to cancel transfer: " + (response?.data?.message || response?.message || "unknown error"))
+        Swal.fire({
+          title: "Error",
+          text: "Failed to cancel transfer: " + (response?.data?.message || response?.message || "unknown error"),
+          icon: "error"
+        })
       }
     } catch (error) {
       console.error("Error cancelling transfer:", error)
-      alert("Error cancelling transfer: " + (error.message || "Please try again."))
+      Swal.fire({
+        title: "Error",
+        text: "Error cancelling transfer: " + (error.message || "Please try again."),
+        icon: "error"
+      })
     }
   }
 
   const handleAcceptTransfer = async (transfer, allocatedBed) => {
     if (!allocatedBed) {
-      alert("Please allocate a bed before accepting")
+      Swal.fire({
+        title: "Warning",
+        text: "Please allocate a bed before accepting",
+        icon: "warning"
+      })
       return
     }
     
@@ -518,15 +583,30 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
           setSelectedPatient(updatedPatient)
         }
         
-        alert(`Transfer ${transfer.trfNo} ACCEPTED. Bed ${allocatedBed} allocated.\n\n✓ Main inpatient table Ward/Bed updated`)
+        Swal.fire({
+          title: "Success",
+          html: `Transfer <b>${transfer.trfNo}</b> ACCEPTED. Bed <b>${allocatedBed}</b> allocated.<br/><br/>
+                 <div class="text-start ps-4">
+                   ✓ Main inpatient table Ward/Bed updated
+                 </div>`,
+          icon: "success"
+        })
         setActiveView("pendingList")
         setSelectedPendingTransfer(null)
       } else {
-        alert("Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"))
+        Swal.fire({
+          title: "Error",
+          text: "Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"),
+          icon: "error"
+        })
       }
     } catch (error) {
       console.error("Error accepting transfer:", error)
-      alert("Error accepting transfer: " + (error.message || "Please try again."))
+      Swal.fire({
+        title: "Error",
+        text: "Error accepting transfer: " + (error.message || "Please try again."),
+        icon: "error"
+      })
     }
   }
 
