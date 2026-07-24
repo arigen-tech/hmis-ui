@@ -54,6 +54,7 @@ const WardManagement = () => {
           patientName: bed.patientName || "Vacant",
           ageGender: [bed.age, bed.gender].filter(Boolean).join("/") || "",
           admissionNo: bed.admissionNo || "",
+          uhidNo: bed.uhidNo || bed.uhidNO || bed.uhid || "",
           admissionDate: bed.admitDate || "",
           doctorName: bed.doctorName || "",
           from: "",
@@ -143,8 +144,12 @@ const WardManagement = () => {
                 title: "Success",
                 text: "Patient reported to ward successfully.",
                 icon: "success"
+              }).then(() => {
+                const updatedPatient = { ...patient, status: "RW" }
+                setSelectedPatient(updatedPatient)
+                setActiveTab("Clinical Dashboard")
+                fetchBeds()
               })
-              fetchBeds()
             } else {
               Swal.fire({
                 title: "Error",
