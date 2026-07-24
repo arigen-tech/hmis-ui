@@ -5,7 +5,7 @@ import Pagination from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from 'react-router-dom';
-import { IPD_PATIENT_WAITING_LIST } from "../../../config/apiConfig";
+import { IPD_PATIENT_WAITING_LIST, PATIENT_FOLLOW_UP_DETAILS, API_HOST } from "../../../config/apiConfig";
 
 const PatientListForAdmission = () => {
     const [patientList, setPatientList] = useState([]);
@@ -116,8 +116,39 @@ const PatientListForAdmission = () => {
     const currentPatients = patientList;
 
     // Navigate to admission form with patient data
-    const handleAdmitPatient = (patient) => {
-        navigate("/InpatientAdmission", { state: { patientData: patient } });
+    const handleAdmitPatient = async (patient) => {
+        const patientId = patient.patientId || patient.id || patient.opdPatientDetailsId;
+        if (!patientId) {
+            showPopup("Patient ID not found.", "error");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const tokenStr = localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+            const tokenHeader = tokenStr ? { Authorization: `Bearer ${tokenStr}` } : {};
+
+            const response = await fetch(`${API_HOST}${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...tokenHeader
+                }
+            });
+
+            const resData = await response.json();
+            if (response.ok && resData.status !== 400 && resData.status !== 500) {
+                navigate("/InpatientAdmission", { state: { patientData: patient } });
+            } else {
+                const msg = resData?.message || "The patient is currently admitted. Service registration is not allowed for this patient.";
+                showPopup(msg, "error");
+            }
+        } catch (err) {
+            console.error("Error fetching patient details:", err);
+            showPopup("An error occurred while validating the patient. Please try again.", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const handleCancelAdmission = (patientId) => {
