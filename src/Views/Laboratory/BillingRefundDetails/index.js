@@ -161,7 +161,7 @@ const BillingRefundDetails = () => {
       }
 
       if (filters.billingService !== "All") {
-        params.append("billingService", filters.billingService);
+        params.append("billingServiceType", filters.billingService);
       }
 
       if (filters.refundStatus !== "All") {

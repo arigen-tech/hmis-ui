@@ -1,3 +1,4 @@
+import { data } from "react-router-dom";
 import { API_HOST } from "../config/apiConfig";
 const BASE_URL = API_HOST;
 
@@ -23,9 +24,13 @@ export const getRequest = async (endpoint, headers = {}) => {
         ...headers,
       },
     });
-    if (!response.ok) {
-      throw new Error(`GET request failed: ${response.status}`);
-    }
+if (!response.ok) {
+    throw {
+        status: response.status,
+        message: data.message,
+        response: data
+    };
+}
     return await response.json();
   } catch (error) {
     console.error("GET Error:", error);
