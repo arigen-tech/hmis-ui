@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest, putRequest } from "../../../service/apiService"
-import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS } from "../../../config/apiConfig"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS, WARD_TRANSFER_LIST } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -178,6 +178,8 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   }, [selectedPendingTransfer, reviewTransfer, wardsList])
 
   const [loadingPendingList, setLoadingPendingList] = useState(false);
+  const [loadingCompletedList, setLoadingCompletedList] = useState(false);
+  const [completedTransfers, setCompletedTransfers] = useState([]);
 
   useEffect(() => {
     const fetchPendingTransfers = async () => {
@@ -191,15 +193,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
           // Map to the frontend transfers schema
           const mapped = data.map((t, index) => {
             // Determine status based on logic:
-            // if "fromWardId" === wardId -> Requested
-            // if "toWardId" === wardId -> Pending Acceptance
+            // if "toWardId" === wardId -> Pending Acceptance, else -> Requested
             let status = TRANSFER_STATUS.REQUESTED;
-            if (t.fromWardId === wardId) {
-              status = TRANSFER_STATUS.REQUESTED;
-            } else if (t.toWardId === wardId) {
+            if (t.toWardId === wardId) {
               status = TRANSFER_STATUS.PENDING;
+            } else {
+              status = TRANSFER_STATUS.REQUESTED;
             }
-            
+
             return {
               id: t.inpatientId || index + 1,
               trfNo: t.transferNo || `TRF${String(index + 1).padStart(6, '0')}`,
@@ -235,69 +236,64 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
         setLoadingPendingList(false);
       }
     };
+
+    const fetchCompletedTransfers = async () => {
+      const wardId = selectedWard?.wardId || selectedWard?.id || 0;
+      if (!wardId) return;
+      try {
+        setLoadingCompletedList(true);
+        const response = await getRequest(`${WARD_TRANSFER_LIST}/${wardId}?wardIds=${wardId}`);
+        const data = response?.response || response;
+        if (Array.isArray(data)) {
+          const mapped = data.map((t, index) => {
+            let status = TRANSFER_STATUS.COMPLETED;
+            if (t.transferStatus === "C") {
+              status = TRANSFER_STATUS.COMPLETED;
+            } else if (t.transferStatus === "R") {
+              status = TRANSFER_STATUS.CANCELLED;
+            }
+            return {
+              id: t.inpatientId || index + 1,
+              trfNo: t.transferNo || `TRF${String(index + 1).padStart(6, '0')}`,
+              transferDate: t.transferDateTime || new Date().toISOString(),
+              patientName: t.patientName || "Unknown Patient",
+              gender: t.gender || "M",
+              age: t.age || "",
+              admissionNo: t.admissionNo || "",
+              uhidNo: t.uhidNO || t.uhidNo || t.uhid || "",
+              admissionDate: t.admissionDate || "",
+              fromWard: t.fromWardName || "",
+              fromBed: t.fromBedName || "",
+              targetWard: t.toWardName || "",
+              targetBed: t.toBedName || "",
+              allocatedBed: t.toBedName || "",
+              doctorInCharge: t.doctorName || "",
+              reason: t.transferReason || "",
+              priority: t.priority || "Normal",
+              clinicalNotes: t.clinicalNotes || "",
+              status: status,
+              cancelRemarks: "",
+              raw: t
+            };
+          });
+          setCompletedTransfers(mapped);
+        } else {
+          setCompletedTransfers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching ward completed transfer list:", error);
+        setCompletedTransfers([]);
+      } finally {
+        setLoadingCompletedList(false);
+      }
+    };
+
     fetchPendingTransfers();
+    fetchCompletedTransfers();
   }, [selectedWard]);
 
   // Transfer list (tx table: ip_transfer_request)
-  const [transfers, setTransfers] = useState([
-    {
-      id: 1,
-      trfNo: "TRF000121",
-      transferDate: "2026-03-24T08:45",
-      patientName: "Ramesh Kumar",
-      gender: "M", age: 56,
-      admissionNo: "ADM1023",
-      uhidNo: "UHID1023",
-      admissionDate: "2026-03-22",
-      fromWard: "General Ward - 1", fromBed: "GW1-B04",
-      targetWard: "ICU", targetBed: "ICU-B02",
-      allocatedBed: "",
-      doctorInCharge: "Dr. Sharma",
-      reason: "Clinical Condition",
-      priority: "Emergency",
-      clinicalNotes: "Patient requires ICU monitoring due to oxygen drop.",
-      status: TRANSFER_STATUS.COMPLETED,
-      cancelRemarks: ""
-    },
-    {
-      id: 2,
-      trfNo: "TRF000122",
-      transferDate: "2026-03-24T09:10",
-      patientName: "Sita Devi",
-      gender: "F", age: 62,
-      admissionNo: "ADM1045",
-      uhidNo: "UHID1045",
-      admissionDate: "2026-03-23",
-      fromWard: "General Ward - 2", fromBed: "GW2-B02",
-      targetWard: "General Ward - 1", targetBed: "GW1-B03",
-      allocatedBed: "",
-      doctorInCharge: "Dr. Anita Sharma",
-      reason: "Patient Request",
-      priority: "Normal",
-      clinicalNotes: "Patient requested shift closer to family.",
-      status: TRANSFER_STATUS.PENDING,
-      cancelRemarks: ""
-    },
-    {
-      id: 3,
-      trfNo: "TRF000123",
-      transferDate: "2026-03-24T09:25",
-      patientName: "Mohan Singh",
-      gender: "M", age: 48,
-      admissionNo: "ADM1050",
-      uhidNo: "UHID1050",
-      admissionDate: "2026-03-24",
-      fromWard: "Emergency", fromBed: "ER-B01",
-      targetWard: "ICU", targetBed: "ICU-B01",
-      allocatedBed: "",
-      doctorInCharge: "Dr. Priya Menon",
-      reason: "Bed Management",
-      priority: "Normal",
-      clinicalNotes: "Shifting from ER to main ward.",
-      status: TRANSFER_STATUS.REQUESTED,
-      cancelRemarks: ""
-    }
-  ])
+  const [transfers, setTransfers] = useState([])
 
   const generateTRFNo = () => {
     const maxId = transfers.length > 0 ? Math.max(...transfers.map(t => parseInt(t.trfNo.replace("TRF", "")))) : 0
@@ -558,11 +554,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
 
   // Filter transfers
   const pendingTransfers = transfers.filter(t => t.status === TRANSFER_STATUS.PENDING || t.status === TRANSFER_STATUS.REQUESTED)
-  const transferredList = transfers.filter(t => 
-    t.status === TRANSFER_STATUS.ACCEPTED || 
-    t.status === TRANSFER_STATUS.COMPLETED || 
-    t.status === TRANSFER_STATUS.CANCELLED
-  )
+  const transferredList = [
+    ...transfers.filter(t =>
+      t.status === TRANSFER_STATUS.ACCEPTED ||
+      t.status === TRANSFER_STATUS.COMPLETED ||
+      t.status === TRANSFER_STATUS.CANCELLED
+    ),
+    ...completedTransfers
+  ]
 
   // Detail view for a pending transfer
   const renderPendingDetail = (transfer) => {
