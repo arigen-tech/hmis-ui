@@ -105,7 +105,7 @@ const WardManagement = () => {
   const stats = {
     vacantBeds: patientData.filter(p => p.status === 'VACANT').length,
     reportedToWard: patientData.filter(p => p.status === 'RW').length,
-    transferPending: patientData.filter(p => p.status === 'TP').length,
+    transferPending: patientData.filter(p => p.status === 'TRP').length,
     inOperationTheater: patientData.filter(p => p.status === 'OT').length,
     inLaborRoom: patientData.filter(p => p.status === 'LR').length,
     readyForDischarge: patientData.filter(p => p.status === 'RD').length,
@@ -182,7 +182,7 @@ const WardManagement = () => {
       case "VACANT": return "#d4edda"
       case "NRW": return "#f8d7da"
       case "RW": return "#cce5ff"
-      case "TP": return "#fff3cd"
+      case "TRP": return "#fff3cd"
       case "OT": return "#d1ecf1"
       case "LR": return "#f8d7da"
       case "RD": return "#fff3cd"
@@ -197,7 +197,7 @@ const WardManagement = () => {
       case "VACANT": return "#28a745"
       case "NRW": return "#dc3545"
       case "RW": return "#007bff"
-      case "TP": return "#fd7e14"
+      case "TRP": return "#fd7e14"
       case "OT": return "#17a2b8"
       case "LR": return "#e83e8c"
       case "RD": return "#ffc107"
@@ -210,7 +210,7 @@ const WardManagement = () => {
       case "VACANT": return "success"
       case "NRW": return "danger"
       case "RW": return "primary"
-      case "TP": return "warning"
+      case "TRP": return "warning"
       case "OT": return "info"
       case "LR": return "danger"
       case "RD": return "warning"
@@ -223,7 +223,7 @@ const WardManagement = () => {
       case "VACANT": return "Vacant"
       case "NRW": return "Not Reported to Ward"
       case "RW": return "Reported to Ward"
-      case "TP": return "Transferred Patient"
+      case "TRP": return "Transferred Patient"
       case "OT": return "In Operation Theater"
       case "LR": return "In Labor Room"
       case "RD": return "Ready for Discharge"
@@ -640,7 +640,7 @@ const WardManagement = () => {
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div style={{ width: "20px", height: "20px", backgroundColor: "#fff3cd", border: "2px solid #fd7e14", borderRadius: "4px" }}></div>
-                              <span><strong>TP</strong> - Transferred Patient</span>
+                              <span><strong>TRP</strong> - Transferred Patient</span>
                             </div>
                           </div>
                           <div className="col-md-6">
