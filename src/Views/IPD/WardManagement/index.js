@@ -54,6 +54,7 @@ const WardManagement = () => {
           patientName: bed.patientName || "Vacant",
           ageGender: [bed.age, bed.gender].filter(Boolean).join("/") || "",
           admissionNo: bed.admissionNo || "",
+          uhidNo: bed.uhidNo || bed.uhidNO || bed.uhid || "",
           admissionDate: bed.admitDate || "",
           doctorName: bed.doctorName || "",
           from: "",

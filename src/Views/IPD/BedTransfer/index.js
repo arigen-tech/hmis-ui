@@ -208,6 +208,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
               gender: t.gender || "M",
               age: t.age || "",
               admissionNo: t.admissionNo || "",
+              uhidNo: t.uhidNO || t.uhidNo || t.uhid || "",
               admissionDate: t.admissionDate || "",
               fromWard: t.fromWardName || "",
               fromBed: t.fromBedName || "",
@@ -246,6 +247,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       patientName: "Ramesh Kumar",
       gender: "M", age: 56,
       admissionNo: "ADM1023",
+      uhidNo: "UHID1023",
       admissionDate: "2026-03-22",
       fromWard: "General Ward - 1", fromBed: "GW1-B04",
       targetWard: "ICU", targetBed: "ICU-B02",
@@ -264,6 +266,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       patientName: "Sita Devi",
       gender: "F", age: 62,
       admissionNo: "ADM1045",
+      uhidNo: "UHID1045",
       admissionDate: "2026-03-23",
       fromWard: "General Ward - 2", fromBed: "GW2-B02",
       targetWard: "General Ward - 1", targetBed: "GW1-B03",
@@ -282,6 +285,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       patientName: "Mohan Singh",
       gender: "M", age: 48,
       admissionNo: "ADM1050",
+      uhidNo: "UHID1050",
       admissionDate: "2026-03-24",
       fromWard: "Emergency", fromBed: "ER-B01",
       targetWard: "ICU", targetBed: "ICU-B01",
@@ -368,6 +372,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
           gender: selectedPatient?.ageGender?.split("/")[1]?.trim() || "M",
           age: selectedPatient?.ageGender?.split("/")[0]?.trim() || "",
           admissionNo: selectedPatient?.admissionNo || "",
+          uhidNo: selectedPatient?.uhidNo || selectedPatient?.uhid || "",
           admissionDate: selectedPatient?.admissionDate || "",
           fromWard: selectedPatient?.ward || "",
           fromBed: selectedPatient?.bedNo || "",
@@ -588,7 +593,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                 <p className="mb-1"><strong>Transfer No:</strong> {transfer.trfNo}</p>
                 <p className="mb-1"><strong>Date/Time:</strong> {formatDateTime(transfer.transferDate)}</p>
                 <p className="mb-1"><strong>Patient:</strong> {transfer.patientName}</p>
-                <p className="mb-1"><strong>UHID:</strong> {transfer.admissionNo}</p>
+                <p className="mb-1"><strong>UHID:</strong> {transfer.uhidNo || ""}</p>
               </div>
               <div className="col-md-6">
                 <p className="mb-1"><strong>From:</strong> {transfer.fromWard} / {transfer.fromBed}</p>
@@ -692,7 +697,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
               <div className="row g-2 mb-3 p-2 bg-light rounded">
                 <div className="col-md-12 small">
                   <strong>Patient:</strong> {selectedPatient.patientName} ({selectedPatient.ageGender}) | 
-                  <strong> UHID:</strong> {selectedPatient.admissionNo} | 
+                  <strong> UHID:</strong> {selectedPatient.uhidNo || ""} | 
                   <strong> Current Location:</strong> {selectedPatient.ward} / {selectedPatient.bedNo}
                 </div>
               </div>
@@ -844,7 +849,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                   <th>Gender/Age</th>
                   <th>Admission No / Date</th>
                   <th>From Ward/Bed</th>
-                  <th>To Ward</th>
+                  <th>To Ward/Bed</th>
                   <th>Reason</th>
                   <th>Status</th>
                 </tr>
@@ -865,7 +870,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                     <td>{t.gender} / {t.age}</td>
                     <td>{t.admissionNo} / {formatDate(t.admissionDate)}</td>
                     <td>{t.fromWard} / {t.fromBed}</td>
-                    <td>{t.targetWard}</td>
+                    <td>{t.targetWard} / {t.targetBed || "TBD"}</td>
                     <td>{t.reason}</td>
                     <td>
                       <span className={`badge bg-${getStatusBadge(t.status)}`}>
@@ -897,7 +902,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                   <th>Gender/Age</th>
                   <th>Admission No / Date</th>
                   <th>From Ward/Bed</th>
-                  <th>To Ward</th>
+                  <th>To Ward/Bed</th>
                   <th>Reason</th>
                   <th>Status</th>
                 </tr>
@@ -942,7 +947,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                     <p className="mb-1"><strong>Transfer No:</strong> {reviewTransfer.trfNo}</p>
                     <p className="mb-1"><strong>Date/Time:</strong> {formatDateTime(reviewTransfer.transferDate)}</p>
                     <p className="mb-1"><strong>Patient:</strong> {reviewTransfer.patientName}</p>
-                    <p className="mb-1"><strong>UHID:</strong> {reviewTransfer.admissionNo}</p>
+                    <p className="mb-1"><strong>UHID:</strong> {reviewTransfer.uhidNo || ""}</p>
                   </div>
                   <div className="col-md-6">
                     <p className="mb-1"><strong>From:</strong> {reviewTransfer.fromWard} / {reviewTransfer.fromBed}</p>
