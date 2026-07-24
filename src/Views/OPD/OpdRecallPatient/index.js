@@ -162,6 +162,7 @@ const OpdRRecallPatient = () => {
   const obgDetailsRef = useRef(null);
   const earExaminationRef = useRef(null);
   const [recallPregnancyData, setRecallPregnancyData] = useState(null);
+  const detailTemplateFetchRef = useRef(null);
 
   const loggedInDepartmentCode =
     sessionStorage.getItem("departmentCode") ||
@@ -1519,6 +1520,7 @@ const OpdRRecallPatient = () => {
 
     try {
       setIsSubmitting(true);
+      const pregnancyDetails = pregnancyRef.current?.getData?.();
 
       if (!selectedPatient.visitId) {
         showPopup("Visit ID missing!", "error");
@@ -1700,6 +1702,8 @@ const OpdRRecallPatient = () => {
           referralData.referTo === "Internal"
             ? referralData.currentPriorityNo
             : null,
+
+        pregnancyDetails,
       };
 
       // Make the API call
@@ -2411,10 +2415,15 @@ const OpdRRecallPatient = () => {
   };
 
   useEffect(() => {
-    if (showDetailView && selectedPatient) {
+    if (showDetailView && selectedPatient?.visitId) {
+      if (detailTemplateFetchRef.current === selectedPatient.visitId) {
+        return;
+      }
+
+      detailTemplateFetchRef.current = selectedPatient.visitId;
       fetchInvestigationTemplates();
     }
-  }, [showDetailView, selectedPatient]);
+  }, [showDetailView, selectedPatient?.visitId]);
 
   useEffect(() => {
     if (investigationTypes.length > 0 && !investigationType) {
@@ -2846,6 +2855,7 @@ const OpdRRecallPatient = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
     setRecallPregnancyData(null);
+    detailTemplateFetchRef.current = null;
     setPsychiatristAssessment(null);
     if (pregnancyRef.current?.resetForm) {
       pregnancyRef.current.resetForm();
@@ -4115,25 +4125,25 @@ const OpdRRecallPatient = () => {
                           </div>
 
                           {String(selectedPatient?.gender || "").toLowerCase() ===
-                            "female" &&
-                            selectedPatient?.pregnancyDetails && (
-                              <div className="mb-3">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <label className="form-label fw-bold m-0">
-                                    Pregnancy Details
-                                  </label>
-                                </div>
-                                <div className="mt-2">
-                                  <PregnancySection
-                                    ref={pregnancyRef}
-                                    readOnly
-                                    opdPatientDetailsId={
-                                      selectedPatient?.opdPatientId ?? null
-                                    }
-                                  />
-                                </div>
+                            "female" && (
+                            <div className="mb-3">
+                              <div className="d-flex justify-content-between align-items-center">
+                                <label className="form-label fw-bold m-0">
+                                  Pregnancy Details
+                                </label>
                               </div>
-                            )}
+                              <div className="mt-2">
+                                <PregnancySection
+                                  ref={pregnancyRef}
+                                  readOnly={false}
+                                  emitWhenNotPregnant
+                                  opdPatientDetailsId={
+                                    selectedPatient?.opdPatientId ?? null
+                                  }
+                                />
+                              </div>
+                            </div>
+                          )}
 
                           {psychiatristAssessment?.rows?.length > 0 && (
                             <div className="mb-3 border rounded p-3 bg-light">

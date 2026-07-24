@@ -1,7 +1,7 @@
-import { useState, useRef, useEffect, useMemo } from "react";
+import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
-import { useNavigate } from "react-router-dom";
+import { useLocation, useNavigate } from "react-router-dom";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
@@ -67,6 +67,7 @@ const UpdateLabRegistration = () => {
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const navigate = useNavigate();
+  const location = useLocation();
   const [gstConfig, setGstConfig] = useState({
     gstApplicable: true,
     gstPercent: 0,
@@ -83,6 +84,7 @@ const UpdateLabRegistration = () => {
   // Pagination states
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage] = useState(5);
+  const prefillSearchRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState("");
   const [mobileQuery, setMobileQuery] = useState("");
   const [pageInput, setPageInput] = useState("");
@@ -919,43 +921,80 @@ const UpdateLabRegistration = () => {
     }
   }
 
-  const handleSearch = async (page = 0) => {
-    setSearchLoading(true);
+  const handleSearch = useCallback(
+    async (page = 0, searchOverride = null) => {
+      if (typeof page !== "number") {
+        page = Number(page) || 0;
+      }
+      setSearchLoading(true);
 
-    if (!searchFormData.mobileNo.trim() && !searchFormData.patientName.trim()) {
-      showPopup("Please enter Mobile No or Patient Name", "warning");
+      const mobileNo =
+        searchOverride?.mobileNo ?? (searchFormData.mobileNo || "");
+      const patientName =
+        searchOverride?.patientName ?? (searchFormData.patientName || "");
+
+      if (!mobileNo.trim() && !patientName.trim()) {
+        showPopup("Please enter Mobile No or Patient Name", "warning");
+        setSearchLoading(false);
+        return;
+      }
+      try {
+        const payload = {
+          mobileNo: mobileNo || null,
+          patientName: patientName || null,
+        };
+
+        const res = await postRequest(
+          `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
+          payload,
+        );
+
+        if (res?.response) {
+          const pageData = res.response;
+
+          setPatients(pageData.content || []);
+          setTotalPages(pageData.totalPages || 0);
+          setTotalElements(pageData.totalElements || 0);
+        } else {
+          setPatients([]);
+          setTotalPages(0);
+          setTotalElements(0);
+          showPopup("No patients found", "info");
+        }
+      } catch (error) {
+        console.error(error);
+        showPopup("Search failed", "error");
+      } finally {
+        setSearchLoading(false);
+      }
+    },
+    [itemsPerPage, searchFormData.mobileNo, searchFormData.patientName],
+  );
+
+  useEffect(() => {
+    const prefillSearch = location.state;
+
+    if (!prefillSearch?.patientName && !prefillSearch?.mobileNo) {
       return;
     }
-    try {
-      const payload = {
-        mobileNo: searchFormData.mobileNo || null,
-        patientName: searchFormData.patientName || null,
-      };
 
-      const res = await postRequest(
-        `${FOLLOWUP_PATIENTS_LIST}?page=${page}&size=${itemsPerPage}`,
-        payload,
-      );
-
-      if (res?.response) {
-        const pageData = res.response;
-
-        setPatients(pageData.content || []);
-        setTotalPages(pageData.totalPages || 0);
-        setTotalElements(pageData.totalElements || 0);
-      } else {
-        setPatients([]);
-        setTotalPages(0);
-        setTotalElements(0);
-        showPopup("No patients found", "info");
-      }
-    } catch (error) {
-      console.error(error);
-      showPopup("Search failed", "error");
-    } finally {
-      setSearchLoading(false);
+    // Prevent repeated auto-searches when the screen remounts or re-renders.
+    if (prefillSearchRef.current === location.key) {
+      return;
     }
-  };
+    prefillSearchRef.current = location.key;
+
+    const patientName = prefillSearch.patientName || "";
+    const mobileNo = prefillSearch.mobileNo || "";
+
+    setSearchFormData((prev) => ({
+      ...prev,
+      patientName,
+      mobileNo,
+    }));
+
+    handleSearch(0, { patientName, mobileNo });
+  }, [location.key]);
 
   const handleBook = async (patient) => {
     try {
@@ -964,6 +1003,11 @@ const UpdateLabRegistration = () => {
       const res = await getRequest(
         `${PATIENT_FOLLOW_UP_DETAILS}/${patient.id}?serviceCategoryCode=${LAB_SERVICE_CATAGORY}`,
       );
+
+      if (!res?.response) {
+        showPopup(res?.message || "Failed to fetch patient details", "warning");
+        return;
+      }
 
       const data = res?.response;
 

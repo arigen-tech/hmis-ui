@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import Popup from "../../../Components/popup";
 import {
   API_HOST,
@@ -143,8 +144,30 @@ const PatientRegistrationRadiologyBooking = () => {
             relation,
           );
           if (isDuplicate) {
-            showPopup(DUPLICATE_PATIENT, "warning");
             setIsDuplicatePatient(true);
+            const fullName = [
+              formData.firstName,
+              formData.middleName,
+              formData.lastName,
+            ]
+              .filter(Boolean)
+              .join(" ")
+              .trim();
+
+            Swal.fire({
+              title: "Duplicate Found!",
+              text: DUPLICATE_PATIENT,
+              icon: "warning",
+              confirmButtonText: "View Matching Patients",
+              allowOutsideClick: false,
+            }).then(() => {
+              navigate("/RadiologyBookingRegisteredPatient", {
+                state: {
+                  patientName: firstName,
+                  mobileNo,
+                },
+              });
+            });
           } else {
             setIsDuplicatePatient(false);
           }
@@ -2698,6 +2721,7 @@ const PatientRegistrationRadiologyBooking = () => {
                     <button
                       type="button"
                       className="btn btn-primary me-2"
+                      disabled={loading || isDuplicatePatient}
                       onClick={async () => {
                         const missingFields = getMissingMandatoryFields();
                         if (loading) return;

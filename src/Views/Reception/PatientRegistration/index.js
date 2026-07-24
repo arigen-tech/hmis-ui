@@ -235,6 +235,116 @@ const PatientRegistration = () => {
 
   const [showConsentModal, setShowConsentModal] = useState(false);
 
+  const handleReset = () => {
+    setRegistrationMode("withAppointment");
+    setErrors({});
+    setImageURL("");
+    setIsDuplicatePatient(false);
+    setDateResetKey((prev) => prev + 1);
+    setAppointments([
+      {
+        id: 0,
+        speciality: "",
+        selDoctorId: "",
+        selSession: "",
+        selDate: null,
+        departmentName: "",
+        doctorName: "",
+        sessionName: "",
+        discount: 0,
+        netAmount: "0.00",
+        gst: "0.00",
+        totalAmount: "0.00",
+        tokenNo: null,
+        tokenStartTime: "",
+        tokenEndTime: "",
+        selectedTimeSlot: "",
+      },
+    ]);
+    setNextAppointmentId(1);
+    setAbhaNumber("");
+    setFormData({
+      imageurl: "",
+      firstName: "",
+      middleName: "",
+      lastName: "",
+      mobileNo: "",
+      gender: "",
+      relation: "",
+      dob: "",
+      age: "",
+      email: "",
+      address1: "",
+      address2: "",
+      country: "",
+      state: "",
+      district: "",
+      city: "",
+      pinCode: "",
+      nokFirstName: "",
+      nokMiddleName: "",
+      nokLastName: "",
+      nokEmail: "",
+      nokMobile: "",
+      nokAddress1: "",
+      nokAddress2: "",
+      nokCountry: "",
+      nokState: "",
+      nokDistrict: "",
+      nokCity: "",
+      nokPinCode: "",
+      emergencyFirstName: "",
+      emergencyLastName: "",
+      emergencyMobile: "",
+      height: "",
+      weight: "",
+      temperature: "",
+      systolicBP: "",
+      diastolicBP: "",
+      pulse: "",
+      bmi: "",
+      rr: "",
+      spo2: "",
+      speciality: "",
+      doctor: "",
+      session: "",
+      appointmentDate: "",
+      maritalStatus: "",
+      religion: "",
+      emergencyRelationId: "",
+      nokRelation: "",
+      idealWeight: "",
+      varation: "",
+      department: "",
+      selDoctorId: "",
+      selSession: "",
+      registrationCost: "",
+      abhaNumber: "",
+    });
+    setImage(placeholderImage);
+    setIsCameraOn(false);
+    setShowAbhaCreationModal(false);
+    setShowAbhaVerificationModal(false);
+    setAbhaMode("existing");
+    setCreateState(createInitialCreateState());
+    setAbhaData({
+      abhaNumber: "",
+      consentName: "",
+      aadhaarNo: "",
+      consent1: true,
+      consent2: true,
+      consent3: true,
+      consent4: true,
+      consent5: true,
+      consent6: true,
+      consent7: true,
+      otp: "",
+      verified: false,
+      abhaAddress: "",
+    });
+    setShowConsentModal(false);
+  };
+
   const isFormValid = () => {
     // Required fields
     const requiredFields = [
@@ -1238,8 +1348,26 @@ const PatientRegistration = () => {
             relation,
           );
           if (isDuplicate) {
-            Swal.fire("Duplicate Found!", DUPLICATE_PATIENT, "warning");
             setIsDuplicatePatient(true);
+            const fullName = [formData.firstName, formData.middleName, formData.lastName]
+              .filter(Boolean)
+              .join(" ")
+              .trim();
+
+            Swal.fire({
+              title: "Duplicate Found!",
+              text: DUPLICATE_PATIENT,
+              icon: "warning",
+              confirmButtonText: "View Matching Patients",
+              allowOutsideClick: false,
+            }).then(() => {
+              navigate("/AppointmentForFollowUpPatient", {
+                state: {
+                  patientName: firstName,
+                  mobileNo,
+                },
+              });
+            });
           } else {
             setIsDuplicatePatient(false);
           }
@@ -1952,8 +2080,7 @@ const PatientRegistration = () => {
               timer: 1000,
               allowOutsideClick: false,
             }).then(() => {
-              navigate("/OPDBillingDetails");
-              window.location.reload();
+              navigate("/OPDBillingDetails", { replace: true });
             });
           } else if (resp) {
             Swal.fire({
@@ -1976,7 +2103,7 @@ const PatientRegistration = () => {
                   },
                 });
               } else if (result.dismiss === Swal.DismissReason.cancel) {
-                window.location.reload();
+                handleReset();
               }
             });
           } else if (patientResp) {
@@ -1994,14 +2121,14 @@ const PatientRegistration = () => {
               confirmButtonText: "OK",
               allowOutsideClick: false,
             }).then(() => {
-              window.location.reload();
+              handleReset();
             });
           } else {
             Swal.fire({
               icon: "success",
               title: "Patient Registered",
               text: PATIENT_REGISTERED_SUCCESS_TITLE,
-            }).then(() => window.location.reload());
+            }).then(() => handleReset());
           }
         } else {
           Swal.fire({
@@ -3501,7 +3628,7 @@ const PatientRegistration = () => {
                     <button
                       type="submit"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid()}
+                      disabled={!isFormValid() || isDuplicatePatient}
                       onClick={sendRegistrationRequest}
                     >
                       Registration

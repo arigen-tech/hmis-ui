@@ -564,7 +564,7 @@ const WardManagement = () => {
                             )}
 
                             {activeTab === "Ward / Bed Transfer" && (
-                              <BedTransfer selectedPatient={selectedPatient} />
+                              <BedTransfer selectedPatient={selectedPatient} selectedWard={selectedWard} />
                             )}
 
                             {activeTab === "Vitals & Monitoring" && (
