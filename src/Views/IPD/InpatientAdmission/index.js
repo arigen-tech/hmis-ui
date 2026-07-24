@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest, postRequestWithFormData } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -181,9 +181,41 @@ const InpatientAdmission = () => {
   
   // NEW: Dropdown options for new sections
   const yesNoOptions = ["Yes", "No"];
-  const consentTakenByOptions = ["Nurse Anita", "Nurse Priya", "Doctor", "Reception", "Other Staff"];
   const paymentTypeOptions = ["Self", "Insurance", "Corporate", "Government", "Other"];
   const paymentModeOptions = ["Cash", "UPI", "Card", "Cheque", "Net Banking", "Wallet"];
+
+  const usernameFromSession = localStorage.getItem("username") || sessionStorage.getItem("username") || "Logged In User";
+  const [currentUser, setCurrentUser] = useState(usernameFromSession);
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const username = localStorage.getItem("username") || sessionStorage.getItem("username");
+      if (!username) return;
+      try {
+        const res = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${username}`);
+        if (res && res.status === 200 && res.response) {
+          const docName = res.response.firstName
+            ? [res.response.firstName, res.response.middleName, res.response.lastName].filter(Boolean).join(" ")
+            : (res.response.name || res.response.userName || username);
+          setCurrentUser(docName);
+        }
+      } catch (error) {
+        console.error("Error fetching logged-in user profile:", error);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  useEffect(() => {
+    if (currentUser) {
+      setFormData(prev => ({
+        ...prev,
+        consentTakenBy: prev.consentTakenBy || currentUser
+      }));
+    }
+  }, [currentUser]);
+
+  const consentTakenByOptions = [currentUser];
 
   // Initialize with patient data
   const fetchPatientData = async (id) => {

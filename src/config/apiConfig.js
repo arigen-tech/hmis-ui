@@ -734,6 +734,8 @@ export const GET_VITALS_DETAILS_BY_INPATIENT_ID = `/ipd/getVitalsDetailsByInpati
 export const SAVE_DAILY_CASE_SHEET_ENTRY = `/ipd/saveDailyCaseSheetEntry`;
 export const GET_DAILY_CASE_SHEET_ENTRY = `/ipd/getDailyCaseSheetEntry`;
 export const SAVE_BED_TRANSFER_REQUEST = '/ipd/saveBedTransferRequest';
+export const WARD_PENDING_TRANSFER_REQUEST_LIST = '/ipd/wardPendingToTransferRequestList';
+export const UPDATE_TRANSFER_REQUEST_STATUS = '/ipd/wardPendingToTransferRequestStatusCompleteAndReject';
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;

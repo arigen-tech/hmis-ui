@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
-import { getRequest, postRequest } from "../../../service/apiService"
-import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST } from "../../../config/apiConfig"
+import { getRequest, postRequest, putRequest } from "../../../service/apiService"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS } from "../../../config/apiConfig"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -14,7 +14,7 @@ const TRANSFER_STATUS = {
   CANCELLED: "Cancelled"
 }
 
-const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
+const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   const [activeView, setActiveView] = useState("request") // "request" | "pendingList" | "transferredList"
   const [selectedPendingTransfer, setSelectedPendingTransfer] = useState(null) // for detail view
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -177,6 +177,66 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     fetchDetailBeds()
   }, [selectedPendingTransfer, reviewTransfer, wardsList])
 
+  const [loadingPendingList, setLoadingPendingList] = useState(false);
+
+  useEffect(() => {
+    const fetchPendingTransfers = async () => {
+      const wardId = selectedWard?.wardId || selectedWard?.id || 0;
+      if (!wardId) return;
+      try {
+        setLoadingPendingList(true);
+        const response = await getRequest(`${WARD_PENDING_TRANSFER_REQUEST_LIST}/${wardId}?wardIds=${wardId}`);
+        const data = response?.response || response;
+        if (Array.isArray(data)) {
+          // Map to the frontend transfers schema
+          const mapped = data.map((t, index) => {
+            // Determine status based on logic:
+            // if "fromWardId" === wardId -> Requested
+            // if "toWardId" === wardId -> Pending Acceptance
+            let status = TRANSFER_STATUS.REQUESTED;
+            if (t.fromWardId === wardId) {
+              status = TRANSFER_STATUS.REQUESTED;
+            } else if (t.toWardId === wardId) {
+              status = TRANSFER_STATUS.PENDING;
+            }
+            
+            return {
+              id: t.inpatientId || index + 1,
+              trfNo: t.transferNo || `TRF${String(index + 1).padStart(6, '0')}`,
+              transferDate: t.transferDateTime || new Date().toISOString(),
+              patientName: t.patientName || "Unknown Patient",
+              gender: t.gender || "M",
+              age: t.age || "",
+              admissionNo: t.admissionNo || "",
+              admissionDate: t.admissionDate || "",
+              fromWard: t.fromWardName || "",
+              fromBed: t.fromBedName || "",
+              targetWard: t.toWardName || "",
+              targetBed: t.toBedName || "",
+              allocatedBed: "",
+              doctorInCharge: t.doctorName || "",
+              reason: t.transferReason || "",
+              priority: t.priority || "Normal",
+              clinicalNotes: t.clinicalNotes || "",
+              status: status,
+              cancelRemarks: "",
+              raw: t
+            };
+          });
+          setTransfers(mapped);
+        } else {
+          setTransfers([]);
+        }
+      } catch (error) {
+        console.error("Error fetching ward pending transfer list:", error);
+        setTransfers([]);
+      } finally {
+        setLoadingPendingList(false);
+      }
+    };
+    fetchPendingTransfers();
+  }, [selectedWard]);
+
   // Transfer list (tx table: ip_transfer_request)
   const [transfers, setTransfers] = useState([
     {
@@ -260,8 +320,6 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     }))
   }
 
-  const selectedWard = wardsList.find(w => (w.wardId == requestForm.targetWardId || w.id == requestForm.targetWardId))
-
   const handleSubmitRequest = async () => {
     if (!requestForm.targetWardId || !requestForm.departmentId || !requestForm.doctorInCharge || !requestForm.reason) {
       alert("Please fill Target Ward, Target Department, Doctor In Charge, and Reason")
@@ -342,30 +400,46 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     setShowReviewModal(true)
   }
 
-  const handleAccept = () => {
+  const handleAccept = async () => {
     if (!reviewAllocatedBed) { alert("Please allocate a bed before accepting"); return }
     
-    setTransfers(prev => prev.map(t =>
-      t.id === reviewTransfer.id
-        ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: reviewAllocatedBed }
-        : t
-    ))
-    
-    if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === reviewTransfer.admissionNo) {
-      const updatedPatient = {
-        ...selectedPatient,
-        ward: reviewTransfer.targetWard,
-        bedNo: reviewAllocatedBed
+    const inpatientId = reviewTransfer.raw?.inpatientId || reviewTransfer.id || 0
+
+    try {
+      const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/C`)
+      const isSuccess = response && 
+                        (response.status === 200 || response.status === 201) && 
+                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+
+      if (isSuccess) {
+        setTransfers(prev => prev.map(t =>
+          t.id === reviewTransfer.id
+            ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: reviewAllocatedBed }
+            : t
+        ))
+        
+        if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === reviewTransfer.admissionNo) {
+          const updatedPatient = {
+            ...selectedPatient,
+            ward: reviewTransfer.targetWard,
+            bedNo: reviewAllocatedBed
+          }
+          setSelectedPatient(updatedPatient)
+        }
+        
+        alert(`Transfer ${reviewTransfer.trfNo} ACCEPTED. Bed ${reviewAllocatedBed} allocated.\n\n✓ ip_transfer_request updated to ACCEPTED\n✓ ip_bed_allocation new entry created\n✓ Main inpatient table Ward/Bed updated\n✓ Billing table updated (ward change)`)
+        
+        setShowReviewModal(false)
+        setReviewTransfer(null)
+        setActiveView("pendingList")
+        setSelectedPendingTransfer(null)
+      } else {
+        alert("Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"))
       }
-      setSelectedPatient(updatedPatient)
+    } catch (error) {
+      console.error("Error accepting transfer:", error)
+      alert("Error accepting transfer: " + (error.message || "Please try again."))
     }
-    
-    alert(`Transfer ${reviewTransfer.trfNo} ACCEPTED. Bed ${reviewAllocatedBed} allocated.\n\n✓ ip_transfer_request updated to ACCEPTED\n✓ ip_bed_allocation new entry created\n✓ Main inpatient table Ward/Bed updated\n✓ Billing table updated (ward change)`)
-    
-    setShowReviewModal(false)
-    setReviewTransfer(null)
-    setActiveView("pendingList")
-    setSelectedPendingTransfer(null)
   }
 
   const handleMarkCompleted = (id) => {
@@ -378,47 +452,81 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
     setShowCancelModal(true)
   }
 
-  const handleConfirmCancel = () => {
+  const handleConfirmCancel = async () => {
     if (!cancelRemarks.trim()) { alert("Please enter cancel remarks"); return }
-    setTransfers(prev => prev.map(t =>
-      t.id === cancelTargetId
-        ? { ...t, status: TRANSFER_STATUS.CANCELLED, cancelRemarks }
-        : t
-    ))
-    setShowCancelModal(false)
-    setCancelTargetId(null)
-    alert("Transfer cancelled. Main inpatient record NOT changed.")
-    // If we were viewing a pending transfer detail, go back to list
-    if (selectedPendingTransfer) {
-      setSelectedPendingTransfer(null)
-      setActiveView("pendingList")
+    
+    const targetTransfer = transfers.find(t => t.id === cancelTargetId)
+    const inpatientId = targetTransfer?.raw?.inpatientId || cancelTargetId || 0
+
+    try {
+      const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/R`)
+      const isSuccess = response && 
+                        (response.status === 200 || response.status === 201) && 
+                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+
+      if (isSuccess) {
+        setTransfers(prev => prev.map(t =>
+          t.id === cancelTargetId
+            ? { ...t, status: TRANSFER_STATUS.CANCELLED, cancelRemarks }
+            : t
+        ))
+        setShowCancelModal(false)
+        setCancelTargetId(null)
+        alert("Transfer cancelled successfully.")
+        // If we were viewing a pending transfer detail, go back to list
+        if (selectedPendingTransfer) {
+          setSelectedPendingTransfer(null)
+          setActiveView("pendingList")
+        }
+      } else {
+        alert("Failed to cancel transfer: " + (response?.data?.message || response?.message || "unknown error"))
+      }
+    } catch (error) {
+      console.error("Error cancelling transfer:", error)
+      alert("Error cancelling transfer: " + (error.message || "Please try again."))
     }
   }
 
-  const handleAcceptTransfer = (transfer, allocatedBed) => {
+  const handleAcceptTransfer = async (transfer, allocatedBed) => {
     if (!allocatedBed) {
       alert("Please allocate a bed before accepting")
       return
     }
     
-    setTransfers(prev => prev.map(t =>
-      t.id === transfer.id
-        ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: allocatedBed }
-        : t
-    ))
-    
-    if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === transfer.admissionNo) {
-      const updatedPatient = {
-        ...selectedPatient,
-        ward: transfer.targetWard,
-        bedNo: allocatedBed
+    const inpatientId = transfer.raw?.inpatientId || transfer.id || 0
+
+    try {
+      const response = await putRequest(`${UPDATE_TRANSFER_REQUEST_STATUS}/${inpatientId}/C`)
+      const isSuccess = response && 
+                        (response.status === 200 || response.status === 201) && 
+                        (!response.data || response.data.status === 200 || response.data.status === "success" || response.data.message === "success" || response.data.status === undefined);
+
+      if (isSuccess) {
+        setTransfers(prev => prev.map(t =>
+          t.id === transfer.id
+            ? { ...t, status: TRANSFER_STATUS.ACCEPTED, allocatedBed: allocatedBed }
+            : t
+        ))
+        
+        if (setSelectedPatient && selectedPatient && selectedPatient.admissionNo === transfer.admissionNo) {
+          const updatedPatient = {
+            ...selectedPatient,
+            ward: transfer.targetWard,
+            bedNo: allocatedBed
+          }
+          setSelectedPatient(updatedPatient)
+        }
+        
+        alert(`Transfer ${transfer.trfNo} ACCEPTED. Bed ${allocatedBed} allocated.\n\n✓ Main inpatient table Ward/Bed updated`)
+        setActiveView("pendingList")
+        setSelectedPendingTransfer(null)
+      } else {
+        alert("Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"))
       }
-      setSelectedPatient(updatedPatient)
+    } catch (error) {
+      console.error("Error accepting transfer:", error)
+      alert("Error accepting transfer: " + (error.message || "Please try again."))
     }
-    
-    alert(`Transfer ${transfer.trfNo} ACCEPTED. Bed ${allocatedBed} allocated.\n\n✓ Main inpatient table Ward/Bed updated`)
-    setActiveView("pendingList")
-    setSelectedPendingTransfer(null)
   }
 
   const getStatusBadge = (status) => {
@@ -515,12 +623,14 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient }) => {
             </div>
           </div>
           <div className="card-footer bg-white">
-            <button 
-              className="btn btn-success btn-sm me-2"
-              onClick={() => handleAcceptTransfer(transfer, currentSelectedBed)}
-            >
-              Accept Transfer
-            </button>
+            {transfer.status === TRANSFER_STATUS.PENDING && (
+              <button 
+                className="btn btn-success btn-sm me-2"
+                onClick={() => handleAcceptTransfer(transfer, currentSelectedBed)}
+              >
+                Accept Transfer
+              </button>
+            )}
             <button 
               className="btn btn-danger btn-sm"
               onClick={() => handleOpenCancel(transfer.id)}
