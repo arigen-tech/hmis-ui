@@ -146,8 +146,15 @@ const CTInvestigation = () => {
   };
 
   /* ---------------- POPUP ---------------- */
-  const showPopup = (message, type = "success") => {
-    setPopupMessage({ message, type, onClose: () => setPopupMessage(null) });
+  const showPopup = (message, type = "success", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) onCloseCallback();
+      }
+    });
   };
 
   /* ---------------- COMPLETE INVESTIGATION ---------------- */
@@ -187,15 +194,16 @@ const CTInvestigation = () => {
         if (response?.status === 200) {
           showPopup(
             `Investigation ${confirmDialog.action === "complete" ? "Completed" : "Cancelled"} Successfully`,
-            "success"
+            "success",
+            () => {
+              // Refresh the list to reflect the change
+              if (isSearchMode) {
+                fetchPendingInvestigations(currentPage, searchName, searchContact, true);
+              } else {
+                fetchPendingInvestigations(currentPage, "", "", false);
+              }
+            }
           );
-
-          // Refresh the list to reflect the change
-          if (isSearchMode) {
-            fetchPendingInvestigations(currentPage, searchName, searchContact, true);
-          } else {
-            fetchPendingInvestigations(currentPage, "", "", false);
-          }
         } else {
           showPopup(`Failed to ${confirmDialog.action} investigation`, "error");
         }

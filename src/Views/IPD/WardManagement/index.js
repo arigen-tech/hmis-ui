@@ -23,10 +23,12 @@ const WardManagement = () => {
   const [selectedWard, setSelectedWard] = useState(null)
   const [patientData, setPatientData] = useState([])
   const [loadingBeds, setLoadingBeds] = useState(false)
+  const [loadingWards, setLoadingWards] = useState(false)
 
   useEffect(() => {
     const fetchWards = async () => {
       try {
+        setLoadingWards(true)
         const deptId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId") || 1
         const response = await getRequest(`${GET_WARD_BY_DEPARTMENT}?departmentId=${deptId}`)
         if (response && response.response) {
@@ -37,6 +39,8 @@ const WardManagement = () => {
         }
       } catch (error) {
         console.error("Error fetching wards by department:", error)
+      } finally {
+        setLoadingWards(false)
       }
     }
     fetchWards()
@@ -240,7 +244,14 @@ const WardManagement = () => {
               <div className="d-flex justify-content-between align-items-center">
                 <div className="d-flex align-items-center">
                   <h4 className="card-title p-2 mb-0 me-3">WARD MANAGEMENT</h4>
-                  {wards.length > 1 ? (
+                  {loadingWards ? (
+                    <div className="d-flex align-items-center ms-2">
+                      <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                        <span className="visually-hidden">Loading...</span>
+                      </div>
+                      <span className="text-muted small">Loading Wards...</span>
+                    </div>
+                  ) : wards.length > 1 ? (
                     <select
                       className="form-select form-select-sm fw-bold text-dark"
                       style={{ width: "auto", minWidth: "200px", fontWeight: "700", borderColor: "#adb5bd" }}
@@ -260,7 +271,9 @@ const WardManagement = () => {
                     <span className="badge bg-info text-dark fs-6 px-3 py-2 fw-bold" style={{ fontWeight: "700" }}>
                       {wards[0].wardName ? wards[0].wardName.trim() : ""}
                     </span>
-                  ) : null}
+                  ) : (
+                    <span className="text-muted small ms-2">No Wards Available</span>
+                  )}
                 </div>
                 {selectedPatient && (
                   <div className="flex-grow-1 d-flex justify-content-end">
