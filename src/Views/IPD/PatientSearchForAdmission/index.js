@@ -5,7 +5,7 @@ import Pagination from "../../../Components/Pagination";
 import Popup from "../../../Components/popup";
 import { useLocation } from 'react-router-dom';
 import { postRequest } from "../../../service/apiService";
-import { FOLLOWUP_PATIENTS_LIST } from "../../../config/apiConfig";
+import { FOLLOWUP_PATIENTS_LIST, PATIENT_FOLLOW_UP_DETAILS, API_HOST } from "../../../config/apiConfig";
 
 const PatientSearchForAdmission = () => {
     const location = useLocation();
@@ -86,8 +86,39 @@ const PatientSearchForAdmission = () => {
         handleSearch(1);
     };
 
-    const handleProceedForAdmission = (patient) => {
-        navigate("/InpatientAdmission", { state: { patientData: patient } });
+    const handleProceedForAdmission = async (patient) => {
+        const patientId = patient.patientId || patient.id || patient.opdPatientDetailsId;
+        if (!patientId) {
+            showPopup("Patient ID not found.", "error");
+            return;
+        }
+
+        try {
+            setLoading(true);
+            const tokenStr = localStorage.getItem("token") || sessionStorage.getItem("token") || "";
+            const tokenHeader = tokenStr ? { Authorization: `Bearer ${tokenStr}` } : {};
+
+            const response = await fetch(`${API_HOST}${PATIENT_FOLLOW_UP_DETAILS}/${patientId}`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    ...tokenHeader
+                }
+            });
+
+            const resData = await response.json();
+            if (response.ok && resData.status !== 400 && resData.status !== 500) {
+                navigate("/InpatientAdmission", { state: { patientData: patient } });
+            } else {
+                const msg = resData?.message || "The patient is currently admitted. Service registration is not allowed for this patient.";
+                showPopup(msg, "error");
+            }
+        } catch (err) {
+            console.error("Error fetching patient details:", err);
+            showPopup("An error occurred while validating the patient. Please try again.", "error");
+        } finally {
+            setLoading(false);
+        }
     };
 
     const currentItems = patients;

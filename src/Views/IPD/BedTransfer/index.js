@@ -917,31 +917,50 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                 </tr>
               </thead>
               <tbody>
-                {pendingTransfers.map(t => (
-                  <tr 
-                    key={t.id} 
-                    style={{ cursor: "pointer" }} 
-                    onClick={() => {
-                      setSelectedPendingTransfer(t)
-                      setSelectedBedForTransfer(t.targetBed || "")
-                    }}
-                  >
-                    <td >{t.trfNo}</td>
-                    <td>{formatDateTime(t.transferDate)}</td>
-                    <td>{t.patientName}</td>
-                    <td>{t.gender} / {t.age}</td>
-                    <td>{t.admissionNo} / {formatDate(t.admissionDate)}</td>
-                    <td>{t.fromWard} / {t.fromBed}</td>
-                    <td>{t.targetWard} / {t.targetBed || "TBD"}</td>
-                    <td>{t.reason}</td>
-                    <td>
-                      <span className={`badge bg-${getStatusBadge(t.status)}`}>
-                         {t.status}
-                      </span>
-                      {t.cancelRemarks && <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>Note: {t.cancelRemarks}</div>}
+                {loadingPendingList ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-4">
+                      <div className="d-flex justify-content-center align-items-center">
+                        <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <span className="text-muted">Loading pending transfers...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : pendingTransfers.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-3 text-muted">
+                      No pending transfers found.
+                    </td>
+                  </tr>
+                ) : (
+                  pendingTransfers.map(t => (
+                    <tr 
+                      key={t.id} 
+                      style={{ cursor: "pointer" }} 
+                      onClick={() => {
+                        setSelectedPendingTransfer(t)
+                        setSelectedBedForTransfer(t.targetBed || "")
+                      }}
+                    >
+                      <td >{t.trfNo}</td>
+                      <td>{formatDateTime(t.transferDate)}</td>
+                      <td>{t.patientName}</td>
+                      <td>{t.gender} / {t.age}</td>
+                      <td>{t.admissionNo} / {formatDate(t.admissionDate)}</td>
+                      <td>{t.fromWard} / {t.fromBed}</td>
+                      <td>{t.targetWard} / {t.targetBed || "TBD"}</td>
+                      <td>{t.reason}</td>
+                      <td>
+                        <span className={`badge bg-${getStatusBadge(t.status)}`}>
+                           {t.status}
+                        </span>
+                        {t.cancelRemarks && <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>Note: {t.cancelRemarks}</div>}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
@@ -970,24 +989,43 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
                 </tr>
               </thead>
               <tbody>
-                {transferredList.map(t => (
-                  <tr key={t.id}>
-                    <td >{t.trfNo}</td>
-                    <td>{formatDateTime(t.transferDate)}</td>
-                    <td>{t.patientName}</td>
-                    <td>{t.gender} / {t.age}</td>
-                    <td>{t.admissionNo} / {formatDate(t.admissionDate)}</td>
-                    <td>{t.fromWard} / {t.fromBed}</td>
-                    <td>{t.targetWard} {t.allocatedBed ? `/ ${t.allocatedBed}` : ""}</td>
-                    <td>{t.reason}</td>
-                    <td>
-                      <span >
-                         {t.status}
-                      </span>
-                      {t.cancelRemarks && <div className="text-muted mt-1" >Note: {t.cancelRemarks}</div>}
+                {loadingCompletedList ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-4">
+                      <div className="d-flex justify-content-center align-items-center">
+                        <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <span className="text-muted">Loading transferred list...</span>
+                      </div>
                     </td>
                   </tr>
-                ))}
+                ) : transferredList.length === 0 ? (
+                  <tr>
+                    <td colSpan={9} className="text-center py-3 text-muted">
+                      No transfers found.
+                    </td>
+                  </tr>
+                ) : (
+                  transferredList.map(t => (
+                    <tr key={t.id}>
+                      <td >{t.trfNo}</td>
+                      <td>{formatDateTime(t.transferDate)}</td>
+                      <td>{t.patientName}</td>
+                      <td>{t.gender} / {t.age}</td>
+                      <td>{t.admissionNo} / {formatDate(t.admissionDate)}</td>
+                      <td>{t.fromWard} / {t.fromBed}</td>
+                      <td>{t.targetWard} {t.allocatedBed ? `/ ${t.allocatedBed}` : ""}</td>
+                      <td>{t.reason}</td>
+                      <td>
+                        <span >
+                           {t.status}
+                        </span>
+                        {t.cancelRemarks && <div className="text-muted mt-1" >Note: {t.cancelRemarks}</div>}
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
