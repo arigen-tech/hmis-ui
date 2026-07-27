@@ -252,6 +252,13 @@ import IPDServiceCategory from './Views/Masters/IPDServiceCategory';
 import PatientDischargeCondition from './Views/Masters/PatientDischargeCondition';
 import PatientDischargeReason from './Views/Masters/PatientDischargeReason';
 import BillingRefundDetails from './Views/Laboratory/BillingRefundDetails';
+import CreatePreauthRequest from './Views/IPD/TPA/PreAuthRequest';
+import PreAuthViewAndUpdate from './Views/IPD/TPA/PreAuthViewAndUpdate';
+import InsuranceResponse from './Views/IPD/TPA/InsuranceResponse';
+import PatientBillSettlement from './Views/IPD/TPA/PatientBillSettlement';
+import CreateClaimRequest from './Views/IPD/TPA/CreateClaimRequest';
+import PendingIpdBillList from './Views/IPD/TPA/PendingIpdBillList';
+import DieticianDashboard from './Views/IPD/Dietician/DieticianDashboard';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -503,8 +510,8 @@ function App() {
                 <Route path="/PendingForIssue" element={<PendingForIssue/>} />
                 <Route path="/BloodInventoryStockReport" element={<BloodInventoryStockReport/>} />
                 <Route path="/ComponentWiseStockReport" element={<ComponentWiseStockReport/>} />
-                {/* <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} /> */}
-                <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
+                  {/* <Route path="/ComponentExpiryReport" element={<ComponentExpiryReport/>} /> */}
+                  <Route path="/DiscardAnalysisReport" element={<DiscardAnalysisReport/>} />
                 <Route path="/UsageByWardOTReport" element={<UsageByWardOTReport/>} />
                 <Route path="/printBarcode" element={<PrintBarcode/>} />
                 <Route path="/BloodBankStockAndAvailability" element={<BloodBankStockAndAvailability/>} />
@@ -537,7 +544,13 @@ function App() {
                 <Route path="/PatientDischargeCondition" element={<PatientDischargeCondition/>} />
                 <Route path="/PatientDischargeReason" element={<PatientDischargeReason/>} />
                 <Route path="/BillingRefundDetails" element={<BillingRefundDetails/>} />
-
+                <Route path="/CreatePreauthRequest" element={<CreatePreauthRequest/>} />
+                <Route path="/PreAuthViewAndUpdate" element={<PreAuthViewAndUpdate/>} />
+                <Route path="/InsuranceResponse" element={<InsuranceResponse/>} />
+                <Route path="/PatientBillSettlement" element={<PatientBillSettlement/>} />
+                <Route path="/CreateClaimRequest" element={<CreateClaimRequest/>} />
+                <Route path="/PendingIpdBillList" element={<PendingIpdBillList/>} />
+                <Route path="/DieticianDashboard" element={<DieticianDashboard/>} />
                 
                 </Route>
             </Route>
