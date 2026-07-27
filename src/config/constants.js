@@ -1364,3 +1364,14 @@ export const UPDATE_DISCHARGE_REASON_SUCC_MSG = "Patient discharge reason update
 export const DUPLICATE_DISCHARGE_REASON_MSG = "Duplicate code or name already exists.";
 export const FAILED_SAVE_DISCHARGE_REASON_MSG = "Failed to save the discharge reason.";
 export const FAILED_UPDATE_DISCHARGE_REASON_STATUS_MSG = "Failed to update status.";
+
+// IPD Patient List for Admission
+export const PATIENT_LIST_FETCH_ERR = "Failed to load patient data. Please try again.";
+export const PATIENT_LIST_FETCH_ERR_POPUP = "Failed to load patient data";
+export const PATIENT_LIST_SEARCH_APPLIED = "Search applied";
+export const PATIENT_LIST_PATIENT_ID_NOT_FOUND = "Patient ID not found.";
+export const PATIENT_LIST_ALREADY_ADMITTED_ERR = "The patient is currently admitted. Service registration is not allowed for this patient.";
+export const PATIENT_LIST_VALIDATION_ERR = "An error occurred while validating the patient. Please try again.";
+export const PATIENT_LIST_CANCEL_ADMISSION_MSG = (patientId) => `Admission cancelled for ID: ${patientId}`;
+export const PATIENT_LIST_NO_PATIENTS_FOUND = "No patients found matching your search criteria.";
+export const PATIENT_LIST_LOADING_MSG = "Loading patient list...";
