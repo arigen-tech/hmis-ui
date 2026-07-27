@@ -10,15 +10,31 @@ import {
   DOCTOR_VISIT_SELECT_STATUS_WARN,
   DOCTOR_VISIT_ENTER_DIAG_TEXT_WARN,
   DOCTOR_VISIT_SELECT_ICD_WARN,
-  DOCTOR_VISIT_DIAG_ADDED_SUCC
+  DOCTOR_VISIT_DIAG_ADDED_SUCC,
+  DIAGNOSIS_TYPE_WORKING,
+  DIAGNOSIS_TYPE_ICD,
+  DIAGNOSIS_TYPE_WORKING_LABEL,
+  DIAGNOSIS_TYPE_ICD_LABEL,
+  DIAGNOSIS_STATUS_ACTIVE,
+  DIAGNOSIS_STATUS_CONFIRMED,
+  DIAGNOSIS_STATUS_INACTIVE,
+  DIAGNOSIS_STATUS_ACTIVE_LABEL,
+  DIAGNOSIS_STATUS_CONFIRMED_LABEL,
+  DIAGNOSIS_STATUS_INACTIVE_LABEL,
+  SAVE_IP_DIAGNOSIS_SUCC,
+  SAVE_IP_DIAGNOSIS_ERR,
+  SAVE_IP_DIAGNOSIS_API_ERR,
+  DEBOUNCE_SEARCH_IN_MILLIS
 } from "../../../config/constants"
 
-import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY } from "../../../config/apiConfig"
+import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY, SAVE_IP_DIAGNOSIS_ENTRY, MAS_ICD_GET_ALL_END_URL, GET_IP_DIAGNOSIS_ENTRY } from "../../../config/apiConfig"
 
 const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("doctorVisit") // "doctorVisit" | "diagnosis"
   const [popupMessage, setPopupMessage] = useState(null)
   const [isSaving, setIsSaving] = useState(false)
+  const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false)
+  const [modalError, setModalError] = useState("")
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
@@ -60,35 +76,8 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [doctorVisitHistory, setDoctorVisitHistory] = useState([])
 
   // Diagnosis state
-  const [diagnosisList, setDiagnosisList] = useState([
-    {
-      id: 1,
-      date: "15-Nov-25",
-      type: "ICD",
-      diagnosisText: "Dengue Fever",
-      icdCode: "A90",
-      status: "Confirmed",
-      remarks: "Confirmed after NS1 positive"
-    },
-    {
-      id: 2,
-      date: "13-Nov-25",
-      type: "WORKING",
-      diagnosisText: "Probable Dengue",
-      icdCode: "-",
-      status: "Active",
-      remarks: ""
-    },
-    {
-      id: 3,
-      date: "11-Nov-25",
-      type: "WORKING",
-      diagnosisText: "Fever with thrombocytopenia",
-      icdCode: "-",
-      status: "Active",
-      remarks: ""
-    }
-  ])
+  const [diagnosisList, setDiagnosisList] = useState([])
+  const [loadingDiagnosis, setLoadingDiagnosis] = useState(false)
 
   // Diagnosis modals state
   const [showViewDiagnosisModal, setShowViewDiagnosisModal] = useState(false)
@@ -102,6 +91,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     icdSearch: "",
     icdCode: "",
     icdName: "",
+    icdId: 0,
     status: "",
     date: new Date().toISOString().slice(0, 16),
     remarks: ""
@@ -143,8 +133,56 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     }
   };
 
+  const formatDate = (dateStr) => {
+    if (!dateStr) return "-";
+    try {
+      const dateObj = new Date(dateStr);
+      return dateObj.toLocaleDateString('en-GB', {
+        day: '2-digit',
+        month: 'short',
+        year: '2-digit'
+      }).replace(/ /g, '-');
+    } catch (e) {
+      return dateStr;
+    }
+  };
+
+  const fetchDiagnosisList = async () => {
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.inPatientId;
+    if (!inpatientId) return;
+    setLoadingDiagnosis(true);
+    try {
+      const response = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${inpatientId}`);
+      if (response && response.response && Array.isArray(response.response)) {
+        const mappedList = response.response.map((diag, index) => {
+          const typeLabel = diag.diagnosisType === "I" ? DIAGNOSIS_TYPE_ICD_LABEL : (diag.diagnosisType === "W" ? DIAGNOSIS_TYPE_WORKING_LABEL : "-");
+          const statusLabel = diag.status === "A" ? DIAGNOSIS_STATUS_ACTIVE_LABEL : (diag.status === "C" ? DIAGNOSIS_STATUS_CONFIRMED_LABEL : (diag.status === "I" ? DIAGNOSIS_STATUS_INACTIVE_LABEL : "-"));
+          return {
+            id: index + 1,
+            date: formatDate(diag.dateTime),
+            type: typeLabel,
+            diagnosisText: diag.diagnosis || diag.icdName || "",
+            icdCode: diag.icdCode || "-",
+            status: statusLabel,
+            remarks: diag.remark || "",
+            dateTime: diag.dateTime
+          };
+        });
+        setDiagnosisList(mappedList);
+      } else {
+        setDiagnosisList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching diagnosis list:", error);
+      setDiagnosisList([]);
+    } finally {
+      setLoadingDiagnosis(false);
+    }
+  };
+
   useEffect(() => {
     fetchDoctorVisitHistory();
+    fetchDiagnosisList();
   }, [selectedPatient]);
 
   useEffect(() => {
@@ -316,8 +354,35 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   }
 
   // Diagnosis handlers
-  const handleViewDiagnosis = (diagnosis) => {
-    setSelectedDiagnosis(diagnosis)
+  useEffect(() => {
+    const isSelected = addDiagnosisForm.icdCode && addDiagnosisForm.icdSearch === `${addDiagnosisForm.icdCode} - ${addDiagnosisForm.icdName}`;
+    if (addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_ICD && addDiagnosisForm.icdSearch.trim().length > 0 && !isSelected) {
+      const delayDebounceFn = setTimeout(async () => {
+        try {
+          const response = await getRequest(`${MAS_ICD_GET_ALL_END_URL}?flag=1&page=0&size=10&search=${addDiagnosisForm.icdSearch}`);
+          if (response && response.response && response.response.content) {
+            setIcdSearchResults(response.response.content);
+          } else if (response && response.response && Array.isArray(response.response)) {
+            setIcdSearchResults(response.response);
+          } else if (Array.isArray(response)) {
+            setIcdSearchResults(response);
+          } else {
+            setIcdSearchResults([]);
+          }
+        } catch (error) {
+          console.error("Error searching ICD codes:", error);
+          setIcdSearchResults([]);
+        }
+      }, DEBOUNCE_SEARCH_IN_MILLIS);
+
+      return () => clearTimeout(delayDebounceFn);
+    } else {
+      setIcdSearchResults([]);
+    }
+  }, [addDiagnosisForm.icdSearch, addDiagnosisForm.diagnosisType]);
+
+  const handleViewDiagnosis = (diag) => {
+    setSelectedDiagnosis(diag)
     setShowViewDiagnosisModal(true)
   }
 
@@ -333,86 +398,94 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
       icdSearch: "",
       icdCode: "",
       icdName: "",
+      icdId: 0,
       status: "",
       date: new Date().toISOString().slice(0, 16),
       remarks: ""
     })
     setIcdSearchResults([])
+    setModalError("")
     setShowAddDiagnosisModal(true)
   }
 
   const handleCloseAddModal = () => {
+    setModalError("")
     setShowAddDiagnosisModal(false)
   }
 
   const handleAddDiagnosisFormChange = (e) => {
     const { name, value } = e.target
     setAddDiagnosisForm(prev => ({ ...prev, [name]: value }))
-
-    if (name === "icdSearch") {
-      if (value.trim().length > 1) {
-        const results = icdDatabase.filter(
-          icd =>
-            icd.code.toLowerCase().includes(value.toLowerCase()) ||
-            icd.name.toLowerCase().includes(value.toLowerCase())
-        )
-        setIcdSearchResults(results)
-      } else {
-        setIcdSearchResults([])
-      }
-    }
   }
 
   const handleSelectIcd = (icd) => {
     setAddDiagnosisForm(prev => ({
       ...prev,
-      icdSearch: `${icd.code} - ${icd.name}`,
-      icdCode: icd.code,
-      icdName: icd.name
+      icdSearch: `${icd.icdCode} - ${icd.icdName}`,
+      icdCode: icd.icdCode,
+      icdName: icd.icdName,
+      icdId: icd.icdId
     }))
     setIcdSearchResults([])
   }
 
-  const handleSaveDiagnosis = () => {
+  const handleSaveDiagnosis = async () => {
+    setModalError("")
+
     if (!addDiagnosisForm.diagnosisType) {
-      showPopup(DOCTOR_VISIT_SELECT_DIAG_TYPE_WARN, "warning")
+      setModalError(DOCTOR_VISIT_SELECT_DIAG_TYPE_WARN)
       return
     }
     if (!addDiagnosisForm.status) {
-      showPopup(DOCTOR_VISIT_SELECT_STATUS_WARN, "warning")
+      setModalError(DOCTOR_VISIT_SELECT_STATUS_WARN)
       return
     }
-    if (addDiagnosisForm.diagnosisType === "WORKING" && !addDiagnosisForm.diagnosisText) {
-      showPopup(DOCTOR_VISIT_ENTER_DIAG_TEXT_WARN, "warning")
+    if (addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_WORKING && !addDiagnosisForm.diagnosisText) {
+      setModalError(DOCTOR_VISIT_ENTER_DIAG_TEXT_WARN)
       return
     }
-    if (addDiagnosisForm.diagnosisType === "ICD" && !addDiagnosisForm.icdCode) {
-      showPopup(DOCTOR_VISIT_SELECT_ICD_WARN, "warning")
+    if (addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_ICD && !addDiagnosisForm.icdCode) {
+      setModalError(DOCTOR_VISIT_SELECT_ICD_WARN)
       return
     }
 
-    const dateObj = new Date(addDiagnosisForm.date)
-    const formattedDate = dateObj.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: '2-digit'
-    }).replace(/ /g, '-')
+    setIsSavingDiagnosis(true)
 
-    const newDiagnosis = {
-      id: diagnosisList.length + 1,
-      date: formattedDate,
-      type: addDiagnosisForm.diagnosisType,
-      diagnosisText: addDiagnosisForm.diagnosisType === "ICD"
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.inPatientId || 0)
+    const patientId = Number(selectedPatient?.patientId || 0)
+    const departmentId = Number(sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId") || 40)
+
+    const payload = {
+      inpatientId: inpatientId,
+      patientId: patientId,
+      departmentId: departmentId,
+      diagnosisType: addDiagnosisForm.diagnosisType,
+      diagnosisText: addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_ICD
         ? addDiagnosisForm.icdName
         : addDiagnosisForm.diagnosisText,
-      icdCode: addDiagnosisForm.diagnosisType === "ICD" ? addDiagnosisForm.icdCode : "-",
       status: addDiagnosisForm.status,
-      remarks: addDiagnosisForm.remarks
+      dateTime: new Date(addDiagnosisForm.date).toISOString(),
+      remark: addDiagnosisForm.remarks || "",
+      icdId: addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_ICD ? Number(addDiagnosisForm.icdId || 0) : 0
     }
 
-    setDiagnosisList([newDiagnosis, ...diagnosisList])
-    setShowAddDiagnosisModal(false)
-    showPopup(DOCTOR_VISIT_DIAG_ADDED_SUCC, "success")
+    try {
+      const response = await postRequest(SAVE_IP_DIAGNOSIS_ENTRY, payload)
+      if (response && (response.status === 200 || response.message === "success" || response.response === "IP diagnosis entry saved successfully")) {
+        showPopup(SAVE_IP_DIAGNOSIS_SUCC, "success", () => {
+          setShowAddDiagnosisModal(false)
+          setIsSavingDiagnosis(false)
+          fetchDiagnosisList()
+        })
+      } else {
+        setModalError(response?.message || SAVE_IP_DIAGNOSIS_ERR)
+        setIsSavingDiagnosis(false)
+      }
+    } catch (error) {
+      console.error("Error saving diagnosis:", error)
+      setModalError(SAVE_IP_DIAGNOSIS_API_ERR)
+      setIsSavingDiagnosis(false)
+    }
   }
 
   return (
@@ -649,22 +722,38 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {diagnosisList.map((diag) => (
-                    <tr key={diag.id}>
-                      <td>{diag.date}</td>
-                      <td>{diag.type}</td>
-                      <td>{diag.diagnosisText}</td>
-                      <td>{diag.status}</td>
-                      <td>
-                        <button
-                          className="btn btn-sm btn-outline-info"
-                          onClick={() => handleViewDiagnosis(diag)}
-                        >
-                          View
-                        </button>
+                  {loadingDiagnosis ? (
+                    <tr>
+                      <td colSpan="5" className="text-center py-3">
+                        <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        Loading diagnoses...
                       </td>
                     </tr>
-                  ))}
+                  ) : diagnosisList.length === 0 ? (
+                    <tr>
+                      <td colSpan="5" className="text-center py-3 text-muted">No diagnoses found.</td>
+                    </tr>
+                  ) : (
+                    diagnosisList.map((diag) => (
+                      <tr key={diag.id}>
+                        <td>{diag.date}</td>
+                        <td>{diag.type}</td>
+                        <td>{diag.diagnosisText}</td>
+                        <td>{diag.status}</td>
+                        <td>
+                          <button
+                            className="btn btn-sm btn-outline-info"
+                            style={{ fontSize: "0.6rem", padding: "0.1rem 0.3rem" }}
+                            onClick={() => handleViewDiagnosis(diag)}
+                          >
+                            View
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
                 </tbody>
               </table>
             </div>
@@ -713,36 +802,42 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 <button type="button" className="btn-close" onClick={handleCloseAddModal}></button>
               </div>
               <div className="modal-body">
+                {modalError && (
+                  <div className="alert alert-danger py-2 px-3 small mb-3 d-flex justify-content-between align-items-center">
+                    <span>{modalError}</span>
+                    <button type="button" className="btn-close small" style={{ fontSize: "0.5rem" }} onClick={() => setModalError("")}></button>
+                  </div>
+                )}
                 <div className="mb-3">
                   <label className="form-label">Diagnosis Type:</label>
                   <div className="d-flex gap-3">
                     <div className="form-check">
-                      <input className="form-check-input" type="radio" name="diagnosisType" value="WORKING" checked={addDiagnosisForm.diagnosisType === "WORKING"} onChange={handleAddDiagnosisFormChange} />
-                      <label className="form-check-label">Working Diagnosis</label>
+                      <input className="form-check-input" type="radio" name="diagnosisType" value={DIAGNOSIS_TYPE_WORKING} checked={addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_WORKING} onChange={handleAddDiagnosisFormChange} />
+                      <label className="form-check-label">{DIAGNOSIS_TYPE_WORKING_LABEL}</label>
                     </div>
                     <div className="form-check">
-                      <input className="form-check-input" type="radio" name="diagnosisType" value="ICD" checked={addDiagnosisForm.diagnosisType === "ICD"} onChange={handleAddDiagnosisFormChange} />
-                      <label className="form-check-label">ICD Diagnosis</label>
+                      <input className="form-check-input" type="radio" name="diagnosisType" value={DIAGNOSIS_TYPE_ICD} checked={addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_ICD} onChange={handleAddDiagnosisFormChange} />
+                      <label className="form-check-label">{DIAGNOSIS_TYPE_ICD_LABEL}</label>
                     </div>
                   </div>
                 </div>
 
-                {addDiagnosisForm.diagnosisType === "WORKING" && (
+                {addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_WORKING && (
                   <div className="mb-3">
                     <label className="form-label">Diagnosis Text:</label>
                     <input type="text" className="form-control" name="diagnosisText" value={addDiagnosisForm.diagnosisText} onChange={handleAddDiagnosisFormChange} />
                   </div>
                 )}
 
-                {addDiagnosisForm.diagnosisType === "ICD" && (
+                {addDiagnosisForm.diagnosisType === DIAGNOSIS_TYPE_ICD && (
                   <div className="mb-3">
                     <label className="form-label">Search ICD Code:</label>
                     <input type="text" className="form-control" name="icdSearch" placeholder="Search by code or name..." value={addDiagnosisForm.icdSearch} onChange={handleAddDiagnosisFormChange} autoComplete="off" />
                     {icdSearchResults.length > 0 && (
                       <div className="border rounded bg-white mt-1" style={{ maxHeight: "150px", overflowY: "auto" }}>
                         {icdSearchResults.map((icd) => (
-                          <div key={icd.code} className="px-3 py-2 border-bottom" style={{ cursor: "pointer" }} onClick={() => handleSelectIcd(icd)}>
-                            <strong>{icd.code}</strong> - {icd.name}
+                          <div key={icd.icdId || icd.id || icd.icdCode} className="px-3 py-2 border-bottom" style={{ cursor: "pointer" }} onClick={() => handleSelectIcd(icd)}>
+                            <strong>{icd.icdCode}</strong> - {icd.icdName}
                           </div>
                         ))}
                       </div>
@@ -753,10 +848,14 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 <div className="mb-3">
                   <label className="form-label">Status:</label>
                   <div className="d-flex gap-3">
-                    {["Active", "Confirmed", "Inactive"].map((s) => (
-                      <div className="form-check" key={s}>
-                        <input className="form-check-input" type="radio" name="status" value={s} checked={addDiagnosisForm.status === s} onChange={handleAddDiagnosisFormChange} />
-                        <label className="form-check-label">{s}</label>
+                    {[
+                      { value: DIAGNOSIS_STATUS_ACTIVE, label: DIAGNOSIS_STATUS_ACTIVE_LABEL },
+                      { value: DIAGNOSIS_STATUS_CONFIRMED, label: DIAGNOSIS_STATUS_CONFIRMED_LABEL },
+                      { value: DIAGNOSIS_STATUS_INACTIVE, label: DIAGNOSIS_STATUS_INACTIVE_LABEL }
+                    ].map((s) => (
+                      <div className="form-check" key={s.value}>
+                        <input className="form-check-input" type="radio" name="status" value={s.value} checked={addDiagnosisForm.status === s.value} onChange={handleAddDiagnosisFormChange} />
+                        <label className="form-check-label">{s.label}</label>
                       </div>
                     ))}
                   </div>
@@ -773,8 +872,10 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={handleCloseAddModal}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSaveDiagnosis}>Save Diagnosis</button>
+                <button className="btn btn-secondary" onClick={handleCloseAddModal} disabled={isSavingDiagnosis}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSaveDiagnosis} disabled={isSavingDiagnosis}>
+                  {isSavingDiagnosis ? "Saving..." : "Save Diagnosis"}
+                </button>
               </div>
             </div>
           </div>

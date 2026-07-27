@@ -1406,3 +1406,20 @@ export const BED_TRANSFER_CANCEL_REMARKS_WARN = "Please enter cancel remarks";
 export const BED_TRANSFER_CANCEL_SUCCESS = "Transfer cancelled successfully.";
 export const BED_TRANSFER_CANCEL_FAILURE = "Failed to cancel transfer: ";
 export const BED_TRANSFER_CANCEL_ERROR = "Error cancelling transfer: ";
+
+// IPD Diagnosis
+export const DIAGNOSIS_TYPE_WORKING = "W";
+export const DIAGNOSIS_TYPE_ICD = "I";
+export const DIAGNOSIS_TYPE_WORKING_LABEL = "Working Diagnosis";
+export const DIAGNOSIS_TYPE_ICD_LABEL = "ICD Diagnosis";
+
+export const DIAGNOSIS_STATUS_ACTIVE = "A";
+export const DIAGNOSIS_STATUS_CONFIRMED = "C";
+export const DIAGNOSIS_STATUS_INACTIVE = "I";
+export const DIAGNOSIS_STATUS_ACTIVE_LABEL = "Active";
+export const DIAGNOSIS_STATUS_CONFIRMED_LABEL = "Confirmed";
+export const DIAGNOSIS_STATUS_INACTIVE_LABEL = "Inactive";
+
+export const SAVE_IP_DIAGNOSIS_SUCC = "IP diagnosis entry saved successfully";
+export const SAVE_IP_DIAGNOSIS_ERR = "Failed to save IP diagnosis entry.";
+export const SAVE_IP_DIAGNOSIS_API_ERR = "An error occurred while saving the diagnosis.";
