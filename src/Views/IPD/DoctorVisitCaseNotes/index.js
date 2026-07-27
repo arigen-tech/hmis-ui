@@ -35,6 +35,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false)
   const [modalError, setModalError] = useState("")
+  const [modalSuccess, setModalSuccess] = useState("")
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
@@ -405,11 +406,13 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     })
     setIcdSearchResults([])
     setModalError("")
+    setModalSuccess("")
     setShowAddDiagnosisModal(true)
   }
 
   const handleCloseAddModal = () => {
     setModalError("")
+    setModalSuccess("")
     setShowAddDiagnosisModal(false)
   }
 
@@ -472,11 +475,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     try {
       const response = await postRequest(SAVE_IP_DIAGNOSIS_ENTRY, payload)
       if (response && (response.status === 200 || response.message === "success" || response.response === "IP diagnosis entry saved successfully")) {
-        showPopup(SAVE_IP_DIAGNOSIS_SUCC, "success", () => {
-          setShowAddDiagnosisModal(false)
-          setIsSavingDiagnosis(false)
-          fetchDiagnosisList()
-        })
+        setModalSuccess(SAVE_IP_DIAGNOSIS_SUCC)
       } else {
         setModalError(response?.message || SAVE_IP_DIAGNOSIS_ERR)
         setIsSavingDiagnosis(false)
@@ -486,6 +485,13 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
       setModalError(SAVE_IP_DIAGNOSIS_API_ERR)
       setIsSavingDiagnosis(false)
     }
+  }
+
+  const handleSuccessOk = () => {
+    setModalSuccess("")
+    setIsSavingDiagnosis(false)
+    setShowAddDiagnosisModal(false)
+    fetchDiagnosisList()
   }
 
   return (
@@ -808,6 +814,16 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                     <button type="button" className="btn-close small" style={{ fontSize: "0.5rem" }} onClick={() => setModalError("")}></button>
                   </div>
                 )}
+                {modalSuccess && (
+                  <div className="alert alert-success py-2 px-3 small mb-3 d-flex flex-column gap-2">
+                    <div className="d-flex justify-content-between align-items-center">
+                      <span>{modalSuccess}</span>
+                    </div>
+                    <div className="text-end">
+                      <button type="button" className="btn btn-success btn-xs" style={{ fontSize: "0.6rem", padding: "0.2rem 0.5rem" }} onClick={handleSuccessOk}>OK</button>
+                    </div>
+                  </div>
+                )}
                 <div className="mb-3">
                   <label className="form-label">Diagnosis Type:</label>
                   <div className="d-flex gap-3">
@@ -872,8 +888,8 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary" onClick={handleCloseAddModal} disabled={isSavingDiagnosis}>Cancel</button>
-                <button className="btn btn-primary" onClick={handleSaveDiagnosis} disabled={isSavingDiagnosis}>
+                <button className="btn btn-secondary" onClick={handleCloseAddModal} disabled={isSavingDiagnosis || !!modalSuccess}>Cancel</button>
+                <button className="btn btn-primary" onClick={handleSaveDiagnosis} disabled={isSavingDiagnosis || !!modalSuccess}>
                   {isSavingDiagnosis ? "Saving..." : "Save Diagnosis"}
                 </button>
               </div>
