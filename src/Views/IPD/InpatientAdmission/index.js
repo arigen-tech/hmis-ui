@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest, postRequestWithFormData } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, FILTER_OPD_DEPT } from "../../../config/apiConfig";
+import { IPD_ADMISSION_LOAD_PATIENT_ERR, IPD_ADMISSION_CORRECT_ERRORS, IPD_ADMISSION_SAVE_SUCCESS, IPD_ADMISSION_SAVE_FAILURE } from "../../../config/constants";
 import LoadingScreen from "../../../Components/Loading";
 
 const InpatientAdmission = () => {
@@ -294,7 +295,7 @@ const InpatientAdmission = () => {
       }
     } catch (error) {
       console.error("Error fetching patient data:", error);
-      showPopup("Failed to load patient data", "error");
+      showPopup(IPD_ADMISSION_LOAD_PATIENT_ERR, "error");
     } finally {
       setLoading(false);
     }
@@ -403,7 +404,7 @@ const InpatientAdmission = () => {
         setPatientConditions(conditionResponse.response);
       }
       
-      const deptResponse = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=WARD`);
+      const deptResponse = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
       if (deptResponse && deptResponse.response) {
         setDepartments(deptResponse.response);
       }
@@ -999,7 +1000,7 @@ const InpatientAdmission = () => {
     e.preventDefault();
     
     if (!validateForm()) {
-      showPopup("Please correct the errors in the form", "error");
+      showPopup(IPD_ADMISSION_CORRECT_ERRORS, "error");
       return;
     }
     
@@ -1110,16 +1111,16 @@ const InpatientAdmission = () => {
       const response = await postRequestWithFormData(SAVE_IPD_PATIENT_DETAILS, formDataToSend);
       
       if (response && response.status === 200 && response.message === "success") {
-        showPopup(response.response || "IPD patient details saved successfully", "success", () => {
+        showPopup(response.response || IPD_ADMISSION_SAVE_SUCCESS, "success", () => {
           navigate(-1); // Go back to patient list
         });
       } else {
-        showPopup(response?.response || "Failed to admit patient. Please try again.", "error");
+        showPopup(response?.response || IPD_ADMISSION_SAVE_FAILURE, "error");
       }
       
     } catch (error) {
       console.error("Error admitting patient:", error);
-      showPopup("Failed to admit patient. Please try again.", "error");
+      showPopup(IPD_ADMISSION_SAVE_FAILURE, "error");
     } finally {
       setSaving(false);
     }

@@ -1,10 +1,37 @@
 import React, { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
+import Popup from "../../../Components/popup"
+import {
+  DOCTOR_VISIT_SELECT_DOCTOR_WARN,
+  DOCTOR_VISIT_SAVE_SUCC,
+  DOCTOR_VISIT_SAVE_ERR,
+  DOCTOR_VISIT_API_ERR,
+  DOCTOR_VISIT_SELECT_DIAG_TYPE_WARN,
+  DOCTOR_VISIT_SELECT_STATUS_WARN,
+  DOCTOR_VISIT_ENTER_DIAG_TEXT_WARN,
+  DOCTOR_VISIT_SELECT_ICD_WARN,
+  DOCTOR_VISIT_DIAG_ADDED_SUCC
+} from "../../../config/constants"
 
-import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY } from "../../../config/apiConfig"
+import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY } from "../../../config/apiConfig"
 
 const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("doctorVisit") // "doctorVisit" | "diagnosis"
+  const [popupMessage, setPopupMessage] = useState(null)
+  const [isSaving, setIsSaving] = useState(false)
+
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+        if (onCloseCallback) {
+          onCloseCallback()
+        }
+      }
+    })
+  }
 
   const [departments, setDepartments] = useState([])
   const [doctors, setDoctors] = useState([])
@@ -122,7 +149,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
-        const deptRes = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_WARD_DEPT}`);
+        const deptRes = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
         if (deptRes && deptRes.response) {
           setDepartments(deptRes.response);
         } else if (Array.isArray(deptRes)) {
@@ -212,9 +239,11 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
 
   const handleSaveDoctorVisit = async () => {
     if (!doctorVisitForm.doctorId) {
-      alert("Please select Doctor Name")
+      showPopup(DOCTOR_VISIT_SELECT_DOCTOR_WARN, "warning")
       return
     }
+
+    setIsSaving(true)
 
     const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.inPatientId || 27)
 
@@ -251,13 +280,13 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
           nextFollowUpPlan: ""
         })
         setDoctors([])
-        alert("Doctor visit notes saved successfully!")
+        showPopup(DOCTOR_VISIT_SAVE_SUCC, "success", () => setIsSaving(false))
       } else {
-        alert(response?.message || "Failed to save doctor visit notes.")
+        showPopup(response?.message || DOCTOR_VISIT_SAVE_ERR, "error", () => setIsSaving(false))
       }
     } catch (error) {
       console.error("Error saving doctor visit notes:", error)
-      alert("An error occurred while saving doctor visit notes.")
+      showPopup(DOCTOR_VISIT_API_ERR, "error", () => setIsSaving(false))
     }
   }
 
@@ -333,19 +362,19 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
 
   const handleSaveDiagnosis = () => {
     if (!addDiagnosisForm.diagnosisType) {
-      alert("Please select Diagnosis Type")
+      showPopup(DOCTOR_VISIT_SELECT_DIAG_TYPE_WARN, "warning")
       return
     }
     if (!addDiagnosisForm.status) {
-      alert("Please select Status")
+      showPopup(DOCTOR_VISIT_SELECT_STATUS_WARN, "warning")
       return
     }
     if (addDiagnosisForm.diagnosisType === "WORKING" && !addDiagnosisForm.diagnosisText) {
-      alert("Please enter Diagnosis Text")
+      showPopup(DOCTOR_VISIT_ENTER_DIAG_TEXT_WARN, "warning")
       return
     }
     if (addDiagnosisForm.diagnosisType === "ICD" && !addDiagnosisForm.icdCode) {
-      alert("Please search and select an ICD Code")
+      showPopup(DOCTOR_VISIT_SELECT_ICD_WARN, "warning")
       return
     }
 
@@ -370,11 +399,18 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
 
     setDiagnosisList([newDiagnosis, ...diagnosisList])
     setShowAddDiagnosisModal(false)
-    alert("Diagnosis added successfully!")
+    showPopup(DOCTOR_VISIT_DIAG_ADDED_SUCC, "success")
   }
 
   return (
     <div>
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       {/* ─── TAB TOGGLE ─── */}
       <div className="d-flex gap-2 mb-3">
         <button
@@ -525,8 +561,12 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 />
               </div>
               <div className="col-12">
-                <button className="btn btn-primary btn-sm" onClick={handleSaveDoctorVisit}>
-                  <i className="fa fa-save me-1"></i> Save Visit
+                <button
+                  className="btn btn-primary btn-sm"
+                  onClick={handleSaveDoctorVisit}
+                  disabled={isSaving}
+                >
+                  <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save Visit"}
                 </button>
               </div>
             </div>

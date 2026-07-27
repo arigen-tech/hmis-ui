@@ -1375,3 +1375,34 @@ export const PATIENT_LIST_VALIDATION_ERR = "An error occurred while validating t
 export const PATIENT_LIST_CANCEL_ADMISSION_MSG = (patientId) => `Admission cancelled for ID: ${patientId}`;
 export const PATIENT_LIST_NO_PATIENTS_FOUND = "No patients found matching your search criteria.";
 export const PATIENT_LIST_LOADING_MSG = "Loading patient list...";
+
+// IPD Doctor Visit / Case Notes
+export const DOCTOR_VISIT_SELECT_DOCTOR_WARN = "Please select Doctor Name";
+export const DOCTOR_VISIT_SAVE_SUCC = "Doctor visit notes saved successfully!";
+export const DOCTOR_VISIT_SAVE_ERR = "Failed to save doctor visit notes.";
+export const DOCTOR_VISIT_API_ERR = "An error occurred while saving doctor visit notes.";
+export const DOCTOR_VISIT_SELECT_DIAG_TYPE_WARN = "Please select Diagnosis Type";
+export const DOCTOR_VISIT_SELECT_STATUS_WARN = "Please select Status";
+export const DOCTOR_VISIT_ENTER_DIAG_TEXT_WARN = "Please enter Diagnosis Text";
+export const DOCTOR_VISIT_SELECT_ICD_WARN = "Please search and select an ICD Code";
+export const DOCTOR_VISIT_DIAG_ADDED_SUCC = "Diagnosis added successfully!";
+
+// IPD Inpatient Admission
+export const IPD_ADMISSION_LOAD_PATIENT_ERR = "Failed to load patient data";
+export const IPD_ADMISSION_CORRECT_ERRORS = "Please correct the errors in the form";
+export const IPD_ADMISSION_SAVE_SUCCESS = "IPD patient details saved successfully";
+export const IPD_ADMISSION_SAVE_FAILURE = "Failed to admit patient. Please try again.";
+
+// IPD Bed Transfer
+export const BED_TRANSFER_FILL_REQUIRED_FIELDS = "Please fill Target Ward, Target Department, Doctor In Charge, and Reason";
+export const BED_TRANSFER_SUBMIT_SUCCESS = "Transfer Request submitted successfully!";
+export const BED_TRANSFER_SUBMIT_FAILURE = "Failed to submit transfer request: ";
+export const BED_TRANSFER_SUBMIT_ERROR = "Error submitting transfer request. Please try again.";
+export const BED_TRANSFER_ALLOCATE_BED_WARN = "Please allocate a bed before accepting";
+export const BED_TRANSFER_ACCEPT_SUCCESS = "Transfer accepted successfully.";
+export const BED_TRANSFER_ACCEPT_FAILURE = "Failed to accept transfer: ";
+export const BED_TRANSFER_ACCEPT_ERROR = "Error accepting transfer: ";
+export const BED_TRANSFER_CANCEL_REMARKS_WARN = "Please enter cancel remarks";
+export const BED_TRANSFER_CANCEL_SUCCESS = "Transfer cancelled successfully.";
+export const BED_TRANSFER_CANCEL_FAILURE = "Failed to cancel transfer: ";
+export const BED_TRANSFER_CANCEL_ERROR = "Error cancelling transfer: ";
