@@ -2,6 +2,7 @@ import { useState, useRef, useEffect, useMemo, useCallback } from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import { getRequest, postRequest } from "../../../service/apiService";
 import { useLocation, useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
@@ -1005,7 +1006,11 @@ const UpdateLabRegistration = () => {
       );
 
       if (!res?.response) {
-        showPopup(res?.message || "Failed to fetch patient details", "warning");
+        Swal.fire(
+          "Error",
+          res?.message || "Failed to fetch patient details",
+          "error",
+        );
         return;
       }
 
@@ -1079,7 +1084,11 @@ const UpdateLabRegistration = () => {
       setShowPatientDetails(true);
     } catch (e) {
       console.error(e);
-      showPopup("Failed to fetch patient details", "error");
+      Swal.fire(
+        "Error",
+        e?.message || "Failed to fetch patient details",
+        "error",
+      );
     }
     // finally {
     //   setLoading(false);

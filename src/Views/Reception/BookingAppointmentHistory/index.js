@@ -498,7 +498,6 @@ useEffect(() => {
     const formatToISODate = (dateInput) => {
       if (!dateInput) return getTodayDate();
 
-      // If it's already in YYYY-MM-DD format
       if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return dateInput;
       }
@@ -795,18 +794,20 @@ useEffect(() => {
         );
 
         if (res.status === 200) {
-          Swal.fire({
-            icon: "success",
-            title: "Success",
-            text: `${RESCHEDULE_SUCCESS}`,
-            timer: 2000,
-          });
+
           setShowReschedulePopup(false);
           setSelectedToken(null);
           setSelectedSlot(null);
           setShowTimeSlots(false);
           setAvailableTokens([]);
-          handleSearch(); // Refresh the list
+        await Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: `${RESCHEDULE_SUCCESS}`,
+            timer: 2000,
+          });
+
+         await handleSearch(); // Refresh the list
         } else {
           throw new Error(res.message || "Server error");
         }
@@ -871,16 +872,18 @@ useEffect(() => {
         const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
 
         if (res.status === 200) {
-          Swal.fire({
+          setShowCancelPopup(false);
+          setSelectedReason("");
+          setPatientToCancel(null);
+
+         await Swal.fire({
             icon: "success",
             title: "Cancelled",
             text: `${CANCELLATION_SUCCESS}`,
             timer: 2000,
           });
-          setShowCancelPopup(false);
-          setSelectedReason("");
-          setPatientToCancel(null);
-          handleSearch();
+
+          await handleSearch();
         } else {
           throw new Error(res.message || "Server error");
         }

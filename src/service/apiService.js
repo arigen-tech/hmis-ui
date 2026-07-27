@@ -24,14 +24,27 @@ export const getRequest = async (endpoint, headers = {}) => {
         ...headers,
       },
     });
-if (!response.ok) {
-    throw {
+
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const data = isJsonResponse ? await response.json() : await response.text();
+
+    if (!response.ok) {
+      const message =
+        (data && typeof data === "object" && data.message) ||
+        (typeof data === "string" && data) ||
+        response.statusText ||
+        "Request failed";
+
+      throw {
         status: response.status,
-        message: data.message,
-        response: data
-    };
-}
-    return await response.json();
+        message,
+        response: data,
+      };
+    }
+
+    return data;
   } catch (error) {
     console.error("GET Error:", error);
     throw error;

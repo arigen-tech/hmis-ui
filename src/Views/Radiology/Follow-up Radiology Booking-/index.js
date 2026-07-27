@@ -954,7 +954,12 @@ const RadiologyBookingRegisteredPatient = () => {
       );
 
       if (!res?.response) {
-        throw new Error(res?.message || "Patient details not found.");
+        Swal.fire(
+          "Error",
+          res?.message || "Patient details not found.",
+          "error",
+        );
+        return;
       }
 
       const data = res?.response;
@@ -1043,7 +1048,11 @@ const RadiologyBookingRegisteredPatient = () => {
       setShowPatientDetails(true);
     } catch (error) {
       console.error(error);
-      showPopup(error?.message || "Failed to fetch patient details", "warning");
+      Swal.fire(
+        "Error",
+        error?.message || "Failed to fetch patient details",
+        "error",
+      );
     }
     // finally {
     //   setLoading(false);
