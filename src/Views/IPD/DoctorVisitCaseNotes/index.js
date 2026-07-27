@@ -44,7 +44,8 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     doctorName: "",
     departmentId: "",
     department: "",
-    visitType: "Normal",
+    visitTypeId: "",
+    visitType: "",
     doctorNotes: "",
     investigationSummary: "",
     medicineSummary: "",
@@ -157,10 +158,21 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
         }
 
         const visitTypeRes = await getRequest(MAS_VISIT_TYPE_GET_ALL);
+        let loadedVisitTypes = [];
         if (visitTypeRes && visitTypeRes.response) {
-          setVisitTypes(visitTypeRes.response);
+          loadedVisitTypes = visitTypeRes.response;
         } else if (Array.isArray(visitTypeRes)) {
-          setVisitTypes(visitTypeRes);
+          loadedVisitTypes = visitTypeRes;
+        }
+        setVisitTypes(loadedVisitTypes);
+
+        const normalType = loadedVisitTypes.find(vt => vt.visitTypeCode === "NORMAL" || vt.visitTypeName?.toLowerCase().includes("normal"));
+        if (normalType) {
+          setDoctorVisitForm(prev => ({
+            ...prev,
+            visitTypeId: normalType.visitTypeId || normalType.id || "",
+            visitType: normalType.visitTypeName || ""
+          }));
         }
       } catch (error) {
         console.error("Error fetching dropdown data:", error);
@@ -250,7 +262,7 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     const payload = {
       inpatientId: inpatientId,
       doctorId: Number(doctorVisitForm.doctorId),
-      visitType: Number(doctorVisitForm.visitTypeId || doctorVisitForm.visitType || 0),
+      visitType: Number(doctorVisitForm.visitTypeId || 0),
       visitDepartmentId: Number(doctorVisitForm.departmentId),
       doctorNotes: doctorVisitForm.doctorNotes || "",
       investigationSummary: doctorVisitForm.investigationSummary || "",
@@ -264,14 +276,15 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
       const response = await postRequest(SAVE_DAILY_CASE_SHEET_ENTRY, payload)
       if (response && (response.status === 200 || response.status === 201 || response.status === "200" || response.message === "success" || response.response || response.caseSheetEntryId)) {
         await fetchDoctorVisitHistory()
+        const normalType = visitTypes.find(vt => vt.visitTypeCode === "NORMAL" || vt.visitTypeName?.toLowerCase().includes("normal"));
         setDoctorVisitForm({
           visitDateTime: "",
           doctorId: "",
           doctorName: "",
           departmentId: "",
           department: "",
-          visitTypeId: "",
-          visitType: "",
+          visitTypeId: normalType?.visitTypeId || normalType?.id || "",
+          visitType: normalType?.visitTypeName || "",
           doctorNotes: "",
           investigationSummary: "",
           medicineSummary: "",
