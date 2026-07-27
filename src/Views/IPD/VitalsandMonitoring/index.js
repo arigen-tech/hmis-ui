@@ -57,16 +57,22 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   const [intakeEntries, setIntakeEntries] = useState([
     { id: 1, date: "2026-03-30", time: "08:00", oralRt: "Oral", type: "Water", qty: 200, iv: "NS", ivQty: 500, total: 700, remarks: "" },
     { id: 2, date: "2026-03-30", time: "12:00", oralRt: "Oral", type: "Juice", qty: 150, iv: "", ivQty: 0, total: 150, remarks: "" },
-    { id: 3, date: "2026-03-29", time: "18:00", oralRt: "RT", type: "Soup", qty: 250, iv: "RL", ivQty: 500, total: 750, remarks: "" },
-    emptyIntakeRow()
+    { id: 3, date: "2026-03-29", time: "18:00", oralRt: "RT", type: "Soup", qty: 250, iv: "RL", ivQty: 500, total: 750, remarks: "" }
   ])
 
   const [outputEntries, setOutputEntries] = useState([
     { id: 1, date: "2026-03-30", time: "06:00", urine: 300, stool: 0, vomit: 0, as: 0, total: 300, remarks: "" },
     { id: 2, date: "2026-03-30", time: "10:00", urine: 250, stool: 0, vomit: 0, as: 0, total: 250, remarks: "" },
-    { id: 3, date: "2026-03-29", time: "22:00", urine: 400, stool: 0, vomit: 50, as: 0, total: 450, remarks: "" },
-    emptyOutputRow()
+    { id: 3, date: "2026-03-29", time: "22:00", urine: 400, stool: 0, vomit: 50, as: 0, total: 450, remarks: "" }
   ])
+
+  // ─── ADD INTAKE/OUTPUT MODAL STATE ───
+  const createModalIntakeRow = () => ({ id: Date.now() + Math.random(), typeRoute: "", item: "", qty: "" })
+  const createModalOutputRow = () => ({ id: Date.now() + Math.random(), item: "", qty: "" })
+
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [modalIntakeRows, setModalIntakeRows] = useState([createModalIntakeRow()])
+  const [modalOutputRows, setModalOutputRows] = useState([createModalOutputRow()])
 
   // Vitals handlers
   const handleVitalsCellChange = (id, field, value) => {
@@ -221,80 +227,106 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     }
   }
 
-  // Intake handlers
-  const handleIntakeCellChange = (id, field, value) => {
-    setIntakeEntries(prev => prev.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [field]: value }
-        updated.total = (parseInt(updated.qty) || 0) + (parseInt(updated.ivQty) || 0)
-        return updated
-      }
-      return item
-    }))
-  }
-
-  const handleIntakeSubmit = () => {
-    const lastRow = intakeEntries[intakeEntries.length - 1]
-    if (!lastRow.oralRt && !lastRow.type && !lastRow.iv && !lastRow.qty && !lastRow.ivQty) {
-      alert("Please fill in at least one intake field before submitting.")
-      return
-    }
-    const newEmpty = emptyIntakeRow()
-    setIntakeEntries(prev => [
-      ...prev.slice(0, -1),
-      { ...lastRow },
-      newEmpty
-    ])
-  }
-
-  const handleDeleteIntake = (id) => {
-    const isLast = intakeEntries[intakeEntries.length - 1].id === id
-    if (isLast) return
-    if (window.confirm("Are you sure you want to delete this intake entry?")) {
-      setIntakeEntries(prev => prev.filter(entry => entry.id !== id))
-    }
-  }
-
-  // Output handlers
-  const handleOutputCellChange = (id, field, value) => {
-    setOutputEntries(prev => prev.map(item => {
-      if (item.id === id) {
-        const updated = { ...item, [field]: value === "" ? "" : parseInt(value) || 0 }
-        updated.total = (parseInt(updated.urine) || 0) + (parseInt(updated.stool) || 0) + (parseInt(updated.vomit) || 0) + (parseInt(updated.as) || 0)
-        return updated
-      }
-      return item
-    }))
-  }
-
-  const handleOutputSubmit = () => {
-    const lastRow = outputEntries[outputEntries.length - 1]
-    if (!lastRow.urine && !lastRow.stool && !lastRow.vomit && !lastRow.as) {
-      alert("Please fill in at least one output field before submitting.")
-      return
-    }
-    const newEmpty = emptyOutputRow()
-    setOutputEntries(prev => [
-      ...prev.slice(0, -1),
-      { ...lastRow },
-      newEmpty
-    ])
-  }
-
-  const handleDeleteOutput = (id) => {
-    const isLast = outputEntries[outputEntries.length - 1].id === id
-    if (isLast) return
-    if (window.confirm("Are you sure you want to delete this output entry?")) {
-      setOutputEntries(prev => prev.filter(entry => entry.id !== id))
-    }
-  }
-
   const isLastRow = (index, array) => index === array.length - 1
+
+  // ─── Add Intake/Output Modal handlers ───
+  const handleOpenAddModal = () => {
+    setModalIntakeRows([createModalIntakeRow()])
+    setModalOutputRows([createModalOutputRow()])
+    setShowAddModal(true)
+  }
+
+  const addModalIntakeRow = () => {
+    setModalIntakeRows(prev => [...prev, createModalIntakeRow()])
+  }
+
+  const updateModalIntakeRow = (id, field, value) => {
+    setModalIntakeRows(prev => prev.map(row => (row.id === id ? { ...row, [field]: value } : row)))
+  }
+
+  const deleteModalIntakeRow = (id) => {
+    setModalIntakeRows(prev => (prev.length === 1 ? prev : prev.filter(row => row.id !== id)))
+  }
+
+  const addModalOutputRow = () => {
+    setModalOutputRows(prev => [...prev, createModalOutputRow()])
+  }
+
+  const updateModalOutputRow = (id, field, value) => {
+    setModalOutputRows(prev => prev.map(row => (row.id === id ? { ...row, [field]: value } : row)))
+  }
+
+  const deleteModalOutputRow = (id) => {
+    setModalOutputRows(prev => (prev.length === 1 ? prev : prev.filter(row => row.id !== id)))
+  }
+
+  const modalIntakeTotalQty = modalIntakeRows.reduce((sum, row) => sum + (parseInt(row.qty) || 0), 0)
+  const modalOutputTotalQty = modalOutputRows.reduce((sum, row) => sum + (parseInt(row.qty) || 0), 0)
+
+  const handleSaveIntakeOutputModal = () => {
+    const filledIntakeRows = modalIntakeRows.filter(row => row.typeRoute || row.item || row.qty)
+    const filledOutputRows = modalOutputRows.filter(row => row.item || row.qty)
+
+    if (filledIntakeRows.length === 0 && filledOutputRows.length === 0) {
+      alert("Please fill in at least one intake or output row before saving.")
+      return
+    }
+
+    if (filledIntakeRows.length > 0) {
+      const newIntakeEntries = filledIntakeRows.map(row => {
+        const qty = parseInt(row.qty) || 0
+        return {
+          id: Date.now() + Math.random(),
+          date: new Date().toISOString().split("T")[0],
+          time: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+          oralRt: row.typeRoute,
+          type: row.item,
+          qty: qty,
+          iv: "",
+          ivQty: "",
+          total: qty,
+          remarks: ""
+        }
+      })
+      setIntakeEntries(prev => [
+        ...prev,
+        ...newIntakeEntries
+      ])
+    }
+
+    if (filledOutputRows.length > 0) {
+      const newOutputEntries = filledOutputRows.map(row => {
+        const qty = parseInt(row.qty) || 0
+        const entry = {
+          id: Date.now() + Math.random(),
+          date: new Date().toISOString().split("T")[0],
+          time: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
+          urine: 0,
+          stool: 0,
+          vomit: 0,
+          as: 0,
+          total: qty,
+          remarks: ""
+        }
+        if (row.item === "Urine") entry.urine = qty
+        else if (row.item === "Stool") entry.stool = qty
+        else if (row.item === "Vomitus") entry.vomit = qty
+        else if (row.item === "AS") entry.as = qty
+        return entry
+      })
+      setOutputEntries(prev => [
+        ...prev,
+        ...newOutputEntries
+      ])
+    }
+
+    setShowAddModal(false)
+  }
 
   return (
     <div>
       {/* ─── TAB TOGGLE ─── */}
-      <div className="d-flex gap-2 mb-3">
+      <div className="d-flex gap-2 mb-3 align-items-center">
         <button
           className={`btn btn-sm ${activeView === "vitals" ? "btn-primary" : "btn-outline-primary"}`}
           onClick={() => setActiveView("vitals")}
@@ -308,6 +340,14 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
           style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
         >
           Intake & Output
+        </button>
+        <button
+          className="btn btn-sm btn-success"
+          onClick={handleOpenAddModal}
+          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          type="button"
+        >
+          + Add Intake/Output
         </button>
       </div>
 
@@ -553,138 +593,22 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {intakeEntries.map((entry, index) => {
-                      const isEditable = isLastRow(index, intakeEntries)
-                      return (
-                        <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="date"
-                                className="form-control form-control-sm"
-                                value={entry.date}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "date", e.target.value)}
-                              />
-                            ) : (
-                              <span>{entry.date}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="time"
-                                className="form-control form-control-sm"
-                                value={entry.time}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "time", e.target.value)}
-                              />
-                            ) : (
-                              <span>{entry.time}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <select
-                                className="form-select form-select-sm"
-                                value={entry.oralRt}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "oralRt", e.target.value)}
-                              >
-                                <option value="">Select</option>
-                                <option value="Oral">Oral</option>
-                                <option value="RT">RT</option>
-                              </select>
-                            ) : (
-                              <span>{entry.oralRt || "—"}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <select
-                                className="form-select form-select-sm"
-                                value={entry.type}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "type", e.target.value)}
-                              >
-                                <option value="">Select</option>
-                                <option value="Water">Water</option>
-                                <option value="Juice">Juice</option>
-                                <option value="Milk">Milk</option>
-                                <option value="Soup">Soup</option>
-                                <option value="Feed">Feed</option>
-                              </select>
-                            ) : (
-                              <span>{entry.type || "—"}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={entry.qty}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "qty", e.target.value)}
-                                placeholder="ml"
-                              />
-                            ) : (
-                              <span>{entry.qty || 0} ml</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <select
-                                className="form-select form-select-sm"
-                                value={entry.iv}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "iv", e.target.value)}
-                              >
-                                <option value="">Select</option>
-                                <option value="NS">NS (Normal Saline)</option>
-                                <option value="RL">RL (Ringer's Lactate)</option>
-                                <option value="DNS">DNS (Dextrose)</option>
-                                <option value="Blood">Blood</option>
-                              </select>
-                            ) : (
-                              <span>{entry.iv || "—"}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={entry.ivQty}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "ivQty", e.target.value)}
-                                placeholder="ml"
-                              />
-                            ) : (
-                              <span>{entry.ivQty || 0} ml</span>
-                            )}
-                          </td>
-                          <td>{entry.total} ml</td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                value={entry.remarks}
-                                onChange={(e) => handleIntakeCellChange(entry.id, "remarks", e.target.value)}
-                                placeholder="Remarks"
-                              />
-                            ) : (
-                              <span>{entry.remarks || "—"}</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {intakeEntries.map((entry) => (
+                      <tr key={entry.id} className="table-secondary">
+                        <td><span>{entry.date}</span></td>
+                        <td><span>{entry.time}</span></td>
+                        <td><span>{entry.oralRt || "—"}</span></td>
+                        <td><span>{entry.type || "—"}</span></td>
+                        <td><span>{entry.qty || 0} ml</span></td>
+                        <td><span>{entry.iv || "—"}</span></td>
+                        <td><span>{entry.ivQty || 0} ml</span></td>
+                        <td>{entry.total} ml</td>
+                        <td><span>{entry.remarks || "—"}</span></td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
-            </div>
-            <div className="d-flex gap-2 justify-content-end px-2 py-2">
-              <button className="btn btn-success btn-sm" onClick={handleIntakeSubmit}>
-                Save
-              </button>
-              <button className="btn btn-success btn-sm">
-                Print
-              </button>
             </div>
           </div>
 
@@ -709,114 +633,198 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {outputEntries.map((entry, index) => {
-                      const isEditable = isLastRow(index, outputEntries)
-                      return (
-                        <tr key={entry.id} className={isEditable ? "" : "table-secondary"}>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="date"
-                                className="form-control form-control-sm"
-                                value={entry.date}
-                                onChange={(e) => handleOutputCellChange(entry.id, "date", e.target.value)}
-                              />
-                            ) : (
-                              <span>{entry.date}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="time"
-                                className="form-control form-control-sm"
-                                value={entry.time}
-                                onChange={(e) => handleOutputCellChange(entry.id, "time", e.target.value)}
-                              />
-                            ) : (
-                              <span>{entry.time}</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={entry.urine}
-                                onChange={(e) => handleOutputCellChange(entry.id, "urine", e.target.value)}
-                                placeholder="ml"
-                              />
-                            ) : (
-                              <span>{entry.urine} ml</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={entry.stool}
-                                onChange={(e) => handleOutputCellChange(entry.id, "stool", e.target.value)}
-                                placeholder="ml"
-                              />
-                            ) : (
-                              <span>{entry.stool} ml</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={entry.vomit}
-                                onChange={(e) => handleOutputCellChange(entry.id, "vomit", e.target.value)}
-                                placeholder="ml"
-                              />
-                            ) : (
-                              <span>{entry.vomit} ml</span>
-                            )}
-                          </td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="number"
-                                className="form-control form-control-sm"
-                                value={entry.as}
-                                onChange={(e) => handleOutputCellChange(entry.id, "as", e.target.value)}
-                                placeholder="ml"
-                              />
-                            ) : (
-                              <span>{entry.as} ml</span>
-                            )}
-                          </td>
-                          <td>{entry.total} ml</td>
-                          <td>
-                            {isEditable ? (
-                              <input
-                                type="text"
-                                className="form-control form-control-sm"
-                                value={entry.remarks}
-                                onChange={(e) => handleOutputCellChange(entry.id, "remarks", e.target.value)}
-                                placeholder="Remarks"
-                              />
-                            ) : (
-                              <span>{entry.remarks || "—"}</span>
-                            )}
-                          </td>
-                        </tr>
-                      )
-                    })}
+                    {outputEntries.map((entry) => (
+                      <tr key={entry.id} className="table-secondary">
+                        <td><span>{entry.date}</span></td>
+                        <td><span>{entry.time}</span></td>
+                        <td><span>{entry.urine} ml</span></td>
+                        <td><span>{entry.stool} ml</span></td>
+                        <td><span>{entry.vomit} ml</span></td>
+                        <td><span>{entry.as} ml</span></td>
+                        <td>{entry.total} ml</td>
+                        <td><span>{entry.remarks || "—"}</span></td>
+                      </tr>
+                    ))}
                   </tbody>
                 </table>
               </div>
             </div>
-            <div className="d-flex gap-2 justify-content-end px-2 py-2">
-              <button className="btn btn-success btn-sm" onClick={handleOutputSubmit}>
-                Save
-              </button>
-              <button className="btn btn-success btn-sm">
-                Print
-              </button>
+          </div>
+        </div>
+      )}
+
+      {/* ─── ADD INTAKE/OUTPUT MODAL ─── */}
+      {showAddModal && (
+        <div 
+          className="modal show d-block" 
+          tabIndex="-1" 
+          style={{
+            backgroundColor: 'rgba(0,0,0,0.5)',
+            zIndex: 1050,
+            display: 'flex',
+            justifyContent: 'flex-end', 
+            alignItems: 'center',
+            paddingLeft: '5rem'
+          }}
+        >
+          <div className="modal-dialog modal-dialog-centered modal-lg">
+            <div className="modal-content">
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title">Add Intake / Output</h5>
+                <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                {/* Intake Section */}
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h6 className="mb-0">Intake</h6>
+                  <button type="button" className="btn btn-sm btn-success" onClick={addModalIntakeRow}>
+                    + Add Row
+                  </button>
+                </div>
+                <div className="table-responsive mb-2">
+                  <table className="table table-bordered table-sm align-middle mb-0" style={{ fontSize: "0.8rem" }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "8%" }}>Sl.No</th>
+                        <th style={{ width: "27%" }}>Type/Route</th>
+                        <th style={{ width: "27%" }}>Item</th>
+                        <th style={{ width: "23%" }}>Qty (ml)</th>
+                        <th style={{ width: "15%" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalIntakeRows.map((row, idx) => (
+                        <tr key={row.id}>
+                          <td className="text-center">{idx + 1}</td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={row.typeRoute}
+                              onChange={(e) => updateModalIntakeRow(row.id, "typeRoute", e.target.value)}
+                            >
+                              <option value="">Select</option>
+                              <option value="Oral">Oral</option>
+                              <option value="RT">RT</option>
+                            </select>
+                          </td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={row.item}
+                              onChange={(e) => updateModalIntakeRow(row.id, "item", e.target.value)}
+                            >
+                              <option value="">Select</option>
+                              <option value="Water">Water</option>
+                              <option value="Juice">Juice</option>
+                              <option value="Milk">Milk</option>
+                              <option value="Soup">Soup</option>
+                              <option value="Feed">Feed</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={row.qty}
+                              onChange={(e) => updateModalIntakeRow(row.id, "qty", e.target.value)}
+                              placeholder="ml"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => deleteModalIntakeRow(row.id)}
+                              disabled={modalIntakeRows.length === 1}
+                            >
+                              X
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="3" className="text-end fw-bold">Total Quantity</td>
+                        <td className="fw-bold">{modalIntakeTotalQty} ml</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+
+                <hr />
+
+                {/* Output Section */}
+                <div className="d-flex justify-content-between align-items-center mb-2">
+                  <h6 className="mb-0">Output</h6>
+                  <button type="button" className="btn btn-sm btn-success" onClick={addModalOutputRow}>
+                    + Add Row
+                  </button>
+                </div>
+                <div className="table-responsive">
+                  <table className="table table-bordered table-sm align-middle mb-0" style={{ fontSize: "0.8rem" }}>
+                    <thead className="table-light">
+                      <tr>
+                        <th style={{ width: "10%" }}>Sl.No</th>
+                        <th style={{ width: "45%" }}>Item</th>
+                        <th style={{ width: "30%" }}>Qty (ml)</th>
+                        <th style={{ width: "15%" }}>Action</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {modalOutputRows.map((row, idx) => (
+                        <tr key={row.id}>
+                          <td className="text-center">{idx + 1}</td>
+                          <td>
+                            <select
+                              className="form-select form-select-sm"
+                              value={row.item}
+                              onChange={(e) => updateModalOutputRow(row.id, "item", e.target.value)}
+                            >
+                              <option value="">Select</option>
+                              <option value="Urine">Urine</option>
+                              <option value="Stool">Stool</option>
+                              <option value="Vomitus">Vomitus</option>
+                              <option value="AS">AS</option>
+                            </select>
+                          </td>
+                          <td>
+                            <input
+                              type="number"
+                              className="form-control form-control-sm"
+                              value={row.qty}
+                              onChange={(e) => updateModalOutputRow(row.id, "qty", e.target.value)}
+                              placeholder="ml"
+                            />
+                          </td>
+                          <td className="text-center">
+                            <button
+                              type="button"
+                              className="btn btn-danger btn-sm"
+                              onClick={() => deleteModalOutputRow(row.id)}
+                              disabled={modalOutputRows.length === 1}
+                            >
+                              X
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot>
+                      <tr>
+                        <td colSpan="2" className="text-end fw-bold">Total Quantity</td>
+                        <td className="fw-bold">{modalOutputTotalQty} ml</td>
+                        <td></td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
+                <button className="btn btn-primary btn-sm" onClick={handleSaveIntakeOutputModal}>Save</button>
+              </div>
             </div>
           </div>
         </div>
