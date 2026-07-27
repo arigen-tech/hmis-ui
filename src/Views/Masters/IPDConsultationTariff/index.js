@@ -628,7 +628,6 @@ const IPDConsultationTariff = () => {
   return (
     <div className="content-wrapper">
       <div className="row">
-        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
@@ -730,7 +729,16 @@ const IPDConsultationTariff = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.length > 0 ? (
+                        {loading ? (
+                          <tr>
+                            <td colSpan="9" className="text-center py-4">
+                              <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              Loading IPD Consultation Tariff data...
+                            </td>
+                          </tr>
+                        ) : data.length > 0 ? (
                           data.map((rec) => (
                             <tr key={rec.id}>
                               <td style={{ textTransform: "capitalize" }}>{rec.serviceCategory || '-'}</td>
