@@ -1,4 +1,5 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
@@ -80,6 +81,45 @@ const dummyRadiologyOrders = [
   },
 ];
 
+// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4, // 4 px gap below the input
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "200px",
+        overflowY: "auto",
+        backgroundColor: "#fff",
+        border: "1px solid #ccc",
+        borderRadius: "4px",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      });
+    };
+
+    updatePosition();
+
+    // Re-position on scroll or resize
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(<div style={style}>{children}</div>, document.body);
+};
+
 const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   if (totalPages <= 1) return null;
@@ -154,6 +194,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const [trackingType, setTrackingType] = useState("lab");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 5;
+
+  // Refs for portal-positioned dropdown inputs
+  const labInputRefs = useRef({});
+  const radiologyInputRefs = useRef({});
 
   useEffect(() => {
     const fetchInvestigations = async () => {
@@ -438,6 +482,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                         <td className="text-center">{idx + 1}</td>
                         <td className="position-relative">
                           <input
+                            ref={(el) => { labInputRefs.current[row.id] = el; }}
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
@@ -446,19 +491,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             onBlur={() => handleLabBlur(row.id)}
                             placeholder="Type or select test"
                           />
-                          {row.dropdownOpen && filteredTests.length > 0 && (
-                            <ul
-                              className="list-group position-absolute w-100 mt-1"
-                              style={{
-                                zIndex: 1000,
-                                maxHeight: "200px",
-                                overflowY: "auto",
-                                backgroundColor: "#fff",
-                                border: "1px solid #ccc",
-                                borderRadius: "4px",
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                              }}
-                            >
+                          <PortalDropdown
+                            anchorRef={{ current: labInputRefs.current[row.id] }}
+                            show={row.dropdownOpen && filteredTests.length > 0}
+                          >
+                            <ul className="list-group mb-0">
                               {filteredTests.map((test) => (
                                 <li
                                   key={test.id}
@@ -471,7 +508,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                 </li>
                               ))}
                             </ul>
-                          )}
+                          </PortalDropdown>
                         </td>
                         <td>
                           <input
@@ -568,6 +605,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                         <td className="text-center">{idx + 1}</td>
                         <td className="position-relative">
                           <input
+                            ref={(el) => { radiologyInputRefs.current[row.id] = el; }}
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
@@ -576,19 +614,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             onBlur={() => handleRadiologyBlur(row.id)}
                             placeholder="Type or select investigation"
                           />
-                          {row.dropdownOpen && filteredTests.length > 0 && (
-                            <ul
-                              className="list-group position-absolute w-100 mt-1"
-                              style={{
-                                zIndex: 1000,
-                                maxHeight: "200px",
-                                overflowY: "auto",
-                                backgroundColor: "#fff",
-                                border: "1px solid #ccc",
-                                borderRadius: "4px",
-                                boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-                              }}
-                            >
+                          <PortalDropdown
+                            anchorRef={{ current: radiologyInputRefs.current[row.id] }}
+                            show={row.dropdownOpen && filteredTests.length > 0}
+                          >
+                            <ul className="list-group mb-0">
                               {filteredTests.map((test) => (
                                 <li
                                   key={test.id}
@@ -601,7 +631,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                 </li>
                               ))}
                             </ul>
-                          )}
+                          </PortalDropdown>
                         </td>
                         <td>
                           <input
