@@ -68,7 +68,7 @@ const WardManagement = () => {
             ? "VACANT"
             : (String(bed.ipdInternalStatus).trim().toUpperCase() === "RWD" ? "RW" : String(bed.ipdInternalStatus).trim().toUpperCase()),
           ward: selectedWard.wardName,
-          diagnosis: "",
+          diagnosis: bed.diagnosis || "",
           admissionTime: "",
           patientId: bed.patientId,
           inpatientId: bed.ipdPatientId
@@ -401,7 +401,7 @@ const WardManagement = () => {
                               )}
                               {patient.doctorName && (
                                 <div className="text-center mb-1">
-                                  <div className="small text-truncate" style={{ fontSize: "0.6rem", opacity: 0.9 }}>{patient.doctorName}</div>
+                                  <div className="small text-truncate" style={{ fontSize: "0.6rem", opacity: 0.9 }}>Dr. {patient.doctorName}</div>
                                 </div>
                               )}
                               {patient.currentDay > 0 && (
@@ -467,7 +467,7 @@ const WardManagement = () => {
                                         {patient.doctorName && patient.status !== "VACANT" && (
                                           <div className="text-muted mt-1" style={{ fontSize: "0.6rem" }}>
                                             <i className="fa fa-stethoscope me-1"></i>
-                                            {patient.doctorName.split(' ')[1] || patient.doctorName}
+                                            Dr. {patient.doctorName}
                                           </div>
                                         )}
                                       </div>
@@ -527,7 +527,7 @@ const WardManagement = () => {
                                 </div>
                                 <div>
                                   <i className="fa fa-stethoscope me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>Dr: {selectedPatient.doctorName.split(' ')[1] || selectedPatient.doctorName}</span>
+                                  <span style={{ fontSize: '0.8rem' }}>Dr. {selectedPatient.doctorName}</span>
                                 </div>
                                 <div>
                                   <i className="fa fa-flask me-1" style={{ fontSize: '0.85rem' }}></i>
