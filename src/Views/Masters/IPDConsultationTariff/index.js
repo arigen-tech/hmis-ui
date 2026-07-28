@@ -3,7 +3,7 @@ import Popup from "../../../Components/popup";
 import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, postRequest, putRequest } from "../../../service/apiService";
-import { MAS_SERVICE_CATEGORY, MAS_DEPARTMENT, DOCTOR, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT } from "../../../config/apiConfig";
+import { MAS_SERVICE_CATEGORY, MAS_DEPARTMENT, DOCTOR, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT } from "../../../config/apiConfig";
 
 const IPDConsultationTariff = () => {
   const [data, setData] = useState([]);
@@ -174,7 +174,7 @@ const IPDConsultationTariff = () => {
 
   const fetchDepartments = async () => {
     try {
-      const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_WARD_DEPT}`);
+      const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
       if (response.status === 200 && Array.isArray(response.response)) {
         setDepartmentData(response.response);
         return response.response;
@@ -628,7 +628,6 @@ const IPDConsultationTariff = () => {
   return (
     <div className="content-wrapper">
       <div className="row">
-        {loading && <LoadingScreen />}
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
@@ -730,7 +729,16 @@ const IPDConsultationTariff = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {data.length > 0 ? (
+                        {loading ? (
+                          <tr>
+                            <td colSpan="9" className="text-center py-4">
+                              <div className="spinner-border spinner-border-sm text-primary me-2" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              Loading IPD Consultation Tariff data...
+                            </td>
+                          </tr>
+                        ) : data.length > 0 ? (
                           data.map((rec) => (
                             <tr key={rec.id}>
                               <td style={{ textTransform: "capitalize" }}>{rec.serviceCategory || '-'}</td>

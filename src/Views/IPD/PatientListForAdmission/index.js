@@ -6,11 +6,24 @@ import LoadingScreen from "../../../Components/Loading";
 import { useNavigate } from "react-router-dom";
 import { useLocation } from 'react-router-dom';
 import { IPD_PATIENT_WAITING_LIST, PATIENT_FOLLOW_UP_DETAILS, API_HOST } from "../../../config/apiConfig";
+import {
+    PATIENT_LIST_FETCH_ERR,
+    PATIENT_LIST_FETCH_ERR_POPUP,
+    PATIENT_LIST_SEARCH_APPLIED,
+    PATIENT_LIST_PATIENT_ID_NOT_FOUND,
+    PATIENT_LIST_ALREADY_ADMITTED_ERR,
+    PATIENT_LIST_VALIDATION_ERR,
+    PATIENT_LIST_CANCEL_ADMISSION_MSG,
+    PATIENT_LIST_NO_PATIENTS_FOUND,
+    PATIENT_LIST_LOADING_MSG
+} from "../../../config/constants";
 
 const PatientListForAdmission = () => {
     const [patientList, setPatientList] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [tableLoading, setTableLoading] = useState(false);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
     const location = useLocation();
     const navigate = useNavigate();
 
@@ -28,7 +41,11 @@ const PatientListForAdmission = () => {
 
     const fetchPatientData = async (page = 1, search = searchParams) => {
         try {
-            setLoading(true);
+            if (isInitialLoad) {
+                setLoading(true);
+            } else {
+                setTableLoading(true);
+            }
             setError(null);
 
             const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || 12;
@@ -54,10 +71,12 @@ const PatientListForAdmission = () => {
 
         } catch (err) {
             console.error("Error fetching patient data:", err);
-            setError("Failed to load patient data. Please try again.");
-            showPopup("Failed to load patient data", "error");
+            setError(PATIENT_LIST_FETCH_ERR);
+            showPopup(PATIENT_LIST_FETCH_ERR_POPUP, "error");
         } finally {
             setLoading(false);
+            setTableLoading(false);
+            setIsInitialLoad(false);
         }
     };
 
@@ -87,7 +106,7 @@ const PatientListForAdmission = () => {
         e.preventDefault();
         setCurrentPage(1);
         fetchPatientData(1, searchParams);
-        showPopup("Search applied", "success");
+        showPopup(PATIENT_LIST_SEARCH_APPLIED, "success");
     };
 
     const handleResetSearch = () => {
@@ -99,7 +118,6 @@ const PatientListForAdmission = () => {
         setSearchParams(resetParams);
         setCurrentPage(1);
         fetchPatientData(1, resetParams);
-        showPopup("Search filters cleared", "info");
     };
 
     const formatDate = (dateString) => {
@@ -119,7 +137,7 @@ const PatientListForAdmission = () => {
     const handleAdmitPatient = async (patient) => {
         const patientId = patient.patientId || patient.id || patient.opdPatientDetailsId;
         if (!patientId) {
-            showPopup("Patient ID not found.", "error");
+            showPopup(PATIENT_LIST_PATIENT_ID_NOT_FOUND, "error");
             return;
         }
 
@@ -140,12 +158,12 @@ const PatientListForAdmission = () => {
             if (response.ok && resData.status !== 400 && resData.status !== 500) {
                 navigate("/InpatientAdmission", { state: { patientData: patient } });
             } else {
-                const msg = resData?.message || "The patient is currently admitted. Service registration is not allowed for this patient.";
+                const msg = resData?.message || PATIENT_LIST_ALREADY_ADMITTED_ERR;
                 showPopup(msg, "error");
             }
         } catch (err) {
             console.error("Error fetching patient details:", err);
-            showPopup("An error occurred while validating the patient. Please try again.", "error");
+            showPopup(PATIENT_LIST_VALIDATION_ERR, "error");
         } finally {
             setLoading(false);
         }
@@ -153,7 +171,7 @@ const PatientListForAdmission = () => {
 
     const handleCancelAdmission = (patientId) => {
         console.log("Cancelling admission for:", patientId);
-        showPopup(`Admission cancelled for ID: ${patientId}`, "warning");
+        showPopup(PATIENT_LIST_CANCEL_ADMISSION_MSG(patientId), "warning");
     };
 
     const handleNewAdmission = () => {
@@ -260,102 +278,128 @@ const PatientListForAdmission = () => {
                                 </form>
                             </div>
 
-                            {totalItems === 0 ? (
-                                <div className="alert alert-info" role="alert">
-                                    No patients found matching your search criteria.
-                                </div>
-                            ) : (
-                                <div className="table-responsive">
-                                    <table className="table table-bordered table-hover align-middle">
-                                        <thead>
-                                            <tr>
-                                                <th>Sr. NO</th>
-                                                <th>Patient Name</th>
-                                                <th>Mobile No</th>
-                                                <th>Age / Gender</th>
-                                                <th>Admission Advise Date</th>
-                                                <th>Doctor</th>
-                                                <th>Department</th>
-                                                <th>Ward</th>
-                                                <th>Admission Type</th>
-                                                <th>Admission Source</th>
-                                                <th>Care Level</th>
-                                                <th>Actions</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {currentPatients.map((patient, index) => (
-                                                <tr key={patient.opdPatientDetailsId || index}>
-                                                    <td>{indexOfFirstItem + index + 1}</td>
-                                                    <td>
-                                                        <div className="d-flex align-items-center">
-                                                            <div>
-                                                                <strong>{patient.patientName}</strong>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>{patient.patientMobileNo || patient.mobileNo}</td>
-                                                    <td>{patient.age} / {patient.gender}</td>
-                                                    <td>{formatDate(patient.admissionAdviseDate)}</td>
-                                                    <td>{patient.doctorName}</td>
-                                                    <td>{patient.department}</td>
-                                                    <td>
-                                                        <span className="badge bg-light text-dark">
-                                                            {patient.wardName || patient.ward}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {patient.admissionType ? (
-                                                            <span
-                                                                className={`badge ${patient.admissionType === 'Emergency' ? 'bg-danger' : 'bg-primary'}`}
-                                                            >
-                                                                {patient.admissionType}
-                                                            </span>
-                                                        ) : (
-                                                            ''
-                                                        )}
-                                                    </td>
-                                                    <td>
-                                                        <span className="badge bg-info">
-                                                            {patient.admissionSource || '-'}
-                                                        </span>
-                                                    </td>
-                                                    <td>
-                                                        {patient.careLevel || patient.careLevelName}
-                                                    </td>
-                                                    <td>
-                                                        <div className="d-flex gap-2">
-                                                            <button
-                                                                className="btn btn-success btn-sm"
-                                                                onClick={() => handleAdmitPatient(patient)}
-                                                                title="Admit Patient"
-                                                            >
-                                                                Admit
-                                                            </button>
-                                                            <button
-                                                                className="btn btn-danger btn-sm"
-                                                                onClick={() => handleCancelAdmission(patient.opdPatientDetailsId)}
-                                                                title="Cancel Admission"
-                                                            >
-                                                                Cancel
-                                                            </button>
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                        </tbody>
-                                    </table>
-                                </div>
-                            )}
+                            <div style={{ position: "relative", minHeight: "200px" }}>
+                                {tableLoading && (
+                                    <div
+                                        style={{
+                                            position: "absolute",
+                                            top: 0,
+                                            left: 0,
+                                            width: "100%",
+                                            height: "100%",
+                                            backgroundColor: "rgba(255, 255, 255, 0.7)",
+                                            display: "flex",
+                                            justifyContent: "center",
+                                            alignItems: "center",
+                                            zIndex: 5,
+                                        }}
+                                    >
+                                        <div className="d-flex flex-column align-items-center">
+                                            <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                                                <span className="visually-hidden">Loading...</span>
+                                            </div>
+                                            <span className="mt-2 fw-bold text-primary">{PATIENT_LIST_LOADING_MSG}</span>
+                                        </div>
+                                    </div>
+                                )}
 
-                            {totalItems > 0 && (
-                                <Pagination
-                                    totalItems={totalItems}
-                                    itemsPerPage={itemsPerPage}
-                                    currentPage={currentPage}
-                                    onPageChange={setCurrentPage}
-                                />
-                            )}
+                                {totalItems === 0 ? (
+                                    <div className="alert alert-info" role="alert">
+                                        {PATIENT_LIST_NO_PATIENTS_FOUND}
+                                    </div>
+                                ) : (
+                                    <div className="table-responsive">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead>
+                                                <tr>
+                                                    <th>Sr. NO</th>
+                                                    <th>Patient Name</th>
+                                                    <th>Mobile No</th>
+                                                    <th>Age / Gender</th>
+                                                    <th>Admission Advise Date</th>
+                                                    <th>Doctor</th>
+                                                    <th>Department</th>
+                                                    <th>Ward</th>
+                                                    <th>Admission Type</th>
+                                                    <th>Admission Source</th>
+                                                    <th>Care Level</th>
+                                                    <th>Actions</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentPatients.map((patient, index) => (
+                                                    <tr key={patient.opdPatientDetailsId || index}>
+                                                        <td>{indexOfFirstItem + index + 1}</td>
+                                                        <td>
+                                                            <div className="d-flex align-items-center">
+                                                                <div>
+                                                                    <strong>{patient.patientName}</strong>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>{patient.patientMobileNo || patient.mobileNo}</td>
+                                                        <td>{patient.age} / {patient.gender}</td>
+                                                        <td>{formatDate(patient.admissionAdviseDate)}</td>
+                                                        <td>{patient.doctorName}</td>
+                                                        <td>{patient.department}</td>
+                                                        <td>
+                                                            <span className="badge bg-light text-dark">
+                                                                {patient.wardName || patient.ward}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            {patient.admissionType ? (
+                                                                <span
+                                                                    className={`badge ${patient.admissionType === 'Emergency' ? 'bg-danger' : 'bg-primary'}`}
+                                                                >
+                                                                    {patient.admissionType}
+                                                                </span>
+                                                            ) : (
+                                                                ''
+                                                            )}
+                                                        </td>
+                                                        <td>
+                                                            <span className="badge bg-info">
+                                                                {patient.admissionSource || '-'}
+                                                            </span>
+                                                        </td>
+                                                        <td>
+                                                            {patient.careLevel || patient.careLevelName}
+                                                        </td>
+                                                        <td>
+                                                            <div className="d-flex gap-2">
+                                                                <button
+                                                                    className="btn btn-success btn-sm"
+                                                                    onClick={() => handleAdmitPatient(patient)}
+                                                                    title="Admit Patient"
+                                                                >
+                                                                    Admit
+                                                                </button>
+                                                                <button
+                                                                    className="btn btn-danger btn-sm"
+                                                                    onClick={() => handleCancelAdmission(patient.opdPatientDetailsId)}
+                                                                    title="Cancel Admission"
+                                                                >
+                                                                    Cancel
+                                                                </button>
+                                                            </div>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                )}
+
+                                {totalItems > 0 && (
+                                    <Pagination
+                                        totalItems={totalItems}
+                                        itemsPerPage={itemsPerPage}
+                                        currentPage={currentPage}
+                                        onPageChange={setCurrentPage}
+                                    />
+                                )}
+                            </div>
                         </div>
                     </div>
                 </div>
