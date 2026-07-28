@@ -261,6 +261,7 @@ const validRoutes = [
   "/CreateClaimRequest",
   "/PendingIpdBillList",
   "/DieticianDashboard",
+  "/IPDAdvanceCollection",
 ];
 
 // Routes that should bypass authorization
