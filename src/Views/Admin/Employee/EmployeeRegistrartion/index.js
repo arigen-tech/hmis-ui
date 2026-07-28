@@ -20,6 +20,7 @@ import {
   CREATE_EMPLOYEE,
   CREATE_APPROVE_EMPLOYEE,
 } from "../../../../config/apiConfig";
+
 import { getRequest ,postRequestWithFormData  } from "../../../../service/apiService";
 import LoadingScreen from "../../../../Components/Loading";
 import Popup from "../../../../Components/popup";
@@ -46,6 +47,7 @@ const EmployeeRegistration = () => {
     mobileNo: "",
     identificationType: "",
     registrationNo: "",
+    registrationNumber: "",
 
     employmentTypeId: "",
     employeeTypeId: "",
@@ -130,7 +132,7 @@ const EmployeeRegistration = () => {
 
   useEffect(() => {
     fetchCountryData();
-    fetchDepartmentData();
+    // fetchDepartmentData();
     fetchGenderData();
     fetchIdTypeData();
     fetchRoleData();
@@ -139,6 +141,14 @@ const EmployeeRegistration = () => {
     fetchSpecialtyCenterData();
     fetchLanguageData();
   }, []);
+
+  const clearFieldError = (field) => {
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      delete newErrors[field];
+      return newErrors;
+    });
+  };
 
   const showPopup = (message, type = "info") => {
     setPopupMessage({
@@ -265,7 +275,6 @@ const EmployeeRegistration = () => {
       }
     } catch (error) {
       console.error("Error fetching languages:", error);
-      showPopup("Failed to load languages", "error");
     } finally {
       setLoading(false);
     }
@@ -450,6 +459,9 @@ const EmployeeRegistration = () => {
       stateId: "",
       districtId: "",
     }));
+    clearFieldError("countryId");
+    clearFieldError("stateId");
+    clearFieldError("districtId");
   };
 
   const removeLanguageRow = (index) => {
@@ -465,6 +477,8 @@ const EmployeeRegistration = () => {
       stateId: id,
       districtId: "",
     }));
+    clearFieldError("stateId");
+    clearFieldError("districtId");
     fetchDistrictData(stateCode);
   };
 
@@ -473,6 +487,7 @@ const EmployeeRegistration = () => {
       ...prevState,
       districtId: districtId,
     }));
+    clearFieldError("districtId");
   };
 
   const handleLanguageChange = (
@@ -495,6 +510,7 @@ const EmployeeRegistration = () => {
           : item,
       ),
     }));
+    clearArrayFieldError("languages", index, field);
   };
 
   const handleGenderChange = (gendersId) => {
@@ -502,6 +518,7 @@ const EmployeeRegistration = () => {
       ...prevState,
       genderId: gendersId,
     }));
+    clearFieldError("genderId");
   };
 
   const handleDepartmentChange = (departmentId) => {
@@ -516,14 +533,17 @@ const EmployeeRegistration = () => {
       ...prevState,
       employmentTypeId: emptTypeId,
     }));
+    clearFieldError("employmentTypeId");
   };
 
   const handleEmployeeTypeChange = (empTypeId) => {
     setFormData((prevState) => ({
       ...prevState,
       employeeTypeId: empTypeId,
-      designationId: "", // ✅ reset correct field
+      designationId: "",
     }));
+    clearFieldError("employeeTypeId");
+    clearFieldError("designationId");
 
     setDesignationData([]);
     setSelectedDesignationId("");
@@ -534,17 +554,12 @@ const EmployeeRegistration = () => {
   };
 
   const handleDesignationChange = (designationId) => {
-    console.log("Designation Changed to:", designationId);
-
     setSelectedDesignationId(designationId);
-    setFormData((prevState) => {
-      console.log("Previous designationId:", prevState.designationId);
-      console.log("New designationId being set:", designationId);
-      return {
-        ...prevState,
-        designationId: designationId,
-      };
-    });
+    setFormData((prevState) => ({
+      ...prevState,
+      designationId: designationId,
+    }));
+    clearFieldError("designationId");
   };
 
   const handleRoleChange = (role) => {
@@ -552,6 +567,7 @@ const EmployeeRegistration = () => {
       ...prevState,
       roleId: role,
     }));
+    clearFieldError("roleId");
   };
 
   const handleIdTypeChange = (idTypeId) => {
@@ -559,17 +575,20 @@ const EmployeeRegistration = () => {
       ...prevState,
       identificationType: idTypeId,
     }));
+    clearFieldError("identificationType");
   };
 
   const handleInputMobileChange = (e) => {
     const { id, value } = e.target;
     const numericValue = value.replace(/\D/g, "");
     setFormData((prevData) => ({ ...prevData, [id]: numericValue }));
+    clearFieldError(id);
   };
 
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
+    clearFieldError(id);
   };
 
   const openPreview = (url, type, fileName, section) => {
@@ -591,88 +610,6 @@ const EmployeeRegistration = () => {
       fileName: "",
       section: "",
     });
-  };
-
-  const handleFileWithPreview = (e, section, index = null) => {
-    const file = e.target.files[0];
-    if (!file) return;
-
-    const fileNameMap = {
-      profile: "Profile image",
-      idDocument: "ID document",
-      qualification: "Qualification file",
-      document: "Document file",
-    };
-
-    const fileName = fileNameMap[section] || "File";
-
-    const validation = validateUploadedFile(file, fileName);
-    if (!validation.isValid) {
-      showPopup(validation.error, "error");
-      e.target.value = "";
-      return;
-    }
-
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      switch (section) {
-        case "profile":
-          setFormData((prev) => ({
-            ...prev,
-            profilePicName: file,
-            profilePicPreview: reader.result,
-            profilePicType: file.type,
-          }));
-          break;
-
-        case "idDocument":
-          setFormData((prev) => ({
-            ...prev,
-            idDocumentName: file,
-            idDocumentPreview: reader.result,
-            idDocumentType: file.type,
-          }));
-          break;
-
-        case "qualification":
-          setFormData((prev) => ({
-            ...prev,
-            qualification: prev.qualification.map((item, i) =>
-              i === index
-                ? {
-                    ...item,
-                    filePath: file,
-                    filePreview: reader.result,
-                    fileName: file.name,
-                    fileType: file.type,
-                  }
-                : item,
-            ),
-          }));
-          break;
-
-        case "document":
-          setFormData((prev) => ({
-            ...prev,
-            document: prev.document.map((item, i) =>
-              i === index
-                ? {
-                    ...item,
-                    filePath: file,
-                    filePreview: reader.result,
-                    fileName: file.name,
-                    fileType: file.type,
-                  }
-                : item,
-            ),
-          }));
-          break;
-
-        default:
-          break;
-      }
-    };
-    reader.readAsDataURL(file);
   };
 
   const addLanguageRow = () => {
@@ -846,6 +783,7 @@ const EmployeeRegistration = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+    clearArrayFieldError("qualification", index, field);
   };
 
   const handleQualificationYearChange = (index, field, value) => {
@@ -858,15 +796,6 @@ const EmployeeRegistration = () => {
     }));
   };
 
-  const handleDocumentChange = (index, field, value) => {
-    setFormData((prev) => ({
-      ...prev,
-      document: prev.document.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item,
-      ),
-    }));
-  };
-
   const handleSpecialtyCenterChange = (index, field, value) => {
     setFormData((prev) => ({
       ...prev,
@@ -874,8 +803,8 @@ const EmployeeRegistration = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+    clearArrayFieldError("specialtyCenter", index, field);
 
-    // Only set specialtySearch for the current row
     if (field === "specialtyCenterName") {
       setSpecialtySearch(value);
     }
@@ -888,6 +817,7 @@ const EmployeeRegistration = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+    clearArrayFieldError("workExperiences", index, field);
   };
 
   const handlemembershipsChange = (index, field, value) => {
@@ -897,6 +827,7 @@ const EmployeeRegistration = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+    clearArrayFieldError("memberships", index, field);
   };
 
   const handleSpecialtyInterestChange = (index, field, value) => {
@@ -906,6 +837,7 @@ const EmployeeRegistration = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+    clearArrayFieldError("specialtyInterest", index, field);
   };
 
   const handleAwardsDistinctionChange = (index, field, value) => {
@@ -915,12 +847,24 @@ const EmployeeRegistration = () => {
         i === index ? { ...item, [field]: value } : item,
       ),
     }));
+    clearArrayFieldError("awardsDistinction", index, field);
+  };
+
+  const handleDocumentChange = (index, field, value) => {
+    setFormData((prev) => ({
+      ...prev,
+      document: prev.document.map((item, i) =>
+        i === index ? { ...item, [field]: value } : item,
+      ),
+    }));
+    clearArrayFieldError("document", index, field);
   };
 
   // Form Validation
   const validateForm = () => {
     const newErrors = {};
 
+    // Basic fields validation
     const basicFields = [
       { field: "firstName", message: "First Name is required" },
       { field: "lastName", message: "Last Name is required" },
@@ -935,12 +879,21 @@ const EmployeeRegistration = () => {
       { field: "mobileNo", message: "Mobile Number is required" },
       { field: "identificationType", message: "ID Type is required" },
       { field: "registrationNo", message: "ID Number is required" },
+      {
+        field: "registrationNumber",
+        message: "Registration Number is required",
+      },
       { field: "employmentTypeId", message: "Employment Type is required" },
       { field: "employeeTypeId", message: "Employee Type is required" },
       { field: "roleId", message: "Role is required" },
       { field: "designationId", message: "Designation is required" },
       { field: "totalExperience", message: "Total Experience is required" },
       { field: "qualifications", message: "Qualifications is required" },
+      {
+        field: "profileDescription",
+        message: "Profile Description is required",
+      },
+
       {
         field: "medicalRegistrationNo",
         message: "Medical Registration Number is required",
@@ -953,13 +906,21 @@ const EmployeeRegistration = () => {
       }
     });
 
+    // Department validation (conditional)
     if (
       viewDept &&
       (!formData.departmentId || formData.departmentId.toString().trim() === "")
     ) {
       newErrors.departmentId = "Department is required";
     }
-    if (formData.profilePicName) {
+
+    // Profile Image validation
+    if (
+      !formData.profilePicName ||
+      !(formData.profilePicName instanceof File)
+    ) {
+      newErrors.profilePicName = "Profile Image is required";
+    } else {
       const profileValidation = validateUploadedFile(
         formData.profilePicName,
         "Profile image",
@@ -967,11 +928,15 @@ const EmployeeRegistration = () => {
       if (!profileValidation.isValid) {
         newErrors.profilePicName = profileValidation.error;
       }
-    } else {
-      newErrors.profilePicName = "Profile Image is required";
     }
 
-    if (formData.idDocumentName) {
+    // ID Document validation
+    if (
+      !formData.idDocumentName ||
+      !(formData.idDocumentName instanceof File)
+    ) {
+      newErrors.idDocumentName = "ID Document is required";
+    } else {
       const idValidation = validateUploadedFile(
         formData.idDocumentName,
         "ID document",
@@ -979,13 +944,13 @@ const EmployeeRegistration = () => {
       if (!idValidation.isValid) {
         newErrors.idDocumentName = idValidation.error;
       }
-    } else {
-      newErrors.idDocumentName = "ID Document is required";
     }
 
     // Phone number format validation
-    if (formData.mobileNo && formData.mobileNo.length !== 10) {
-      newErrors.mobileNo = "Mobile number must be 10 digits";
+    if (formData.mobileNo) {
+      if (formData.mobileNo.length !== 10) {
+        newErrors.mobileNo = "Mobile number must be 10 digits";
+      }
     }
 
     // Pincode validation
@@ -993,6 +958,7 @@ const EmployeeRegistration = () => {
       newErrors.pincode = "Pincode must be 6 digits";
     }
 
+    // Qualification validation
     const qualificationErrors = [];
     formData.qualification.forEach((qual, index) => {
       const qualErrors = {};
@@ -1010,7 +976,7 @@ const EmployeeRegistration = () => {
         qualErrors.completionYear =
           "Valid Year of Completion is required (YYYY)";
       }
-      if (!qual.filePath) {
+      if (!qual.filePath || !(qual.filePath instanceof File)) {
         qualErrors.filePath = "Qualification file is required";
       } else {
         const fileValidation = validateUploadedFile(
@@ -1033,20 +999,15 @@ const EmployeeRegistration = () => {
     const specialtyCenterErrors = [];
     formData.specialtyCenter.forEach((center, index) => {
       const centerErrors = {};
-
-      // Check specialtyCenterName
       if (
         !center.specialtyCenterName ||
         center.specialtyCenterName.toString().trim() === ""
       ) {
         centerErrors.specialtyCenterName = "Specialty Center Name is required";
       }
-
-      // Check centerId - convert to string first
       if (!center.centerId || center.centerId.toString().trim() === "") {
         centerErrors.centerId = "Center ID is required";
       }
-
       if (Object.keys(centerErrors).length > 0) {
         specialtyCenterErrors[index] = centerErrors;
       }
@@ -1055,9 +1016,30 @@ const EmployeeRegistration = () => {
       newErrors.specialtyCenter = specialtyCenterErrors;
     }
 
-    if (specialtyCenterErrors.length > 0) {
-      newErrors.specialtyCenter = specialtyCenterErrors;
+    // Language Validation
+    const languageErrors = [];
+    formData.languages.forEach((language, index) => {
+      const langErrors = {};
+      if (
+        !language.languageName ||
+        language.languageName.toString().trim() === ""
+      ) {
+        langErrors.languageName = "Language is required";
+      }
+      if (
+        !language.languageIdValue ||
+        language.languageIdValue.toString().trim() === ""
+      ) {
+        langErrors.languageIdValue = "Language ID is required";
+      }
+      if (Object.keys(langErrors).length > 0) {
+        languageErrors[index] = langErrors;
+      }
+    });
+    if (languageErrors.length > 0) {
+      newErrors.languages = languageErrors;
     }
+
     // Work Experience Validation
     const workExperienceErrors = [];
     formData.workExperiences.forEach((exp, index) => {
@@ -1106,34 +1088,6 @@ const EmployeeRegistration = () => {
       newErrors.specialtyInterest = specialtyInterestErrors;
     }
 
-    // Language Validation
-    const languageErrors = [];
-    formData.languages.forEach((language, index) => {
-      const langErrors = {};
-
-      if (
-        !language.languageName ||
-        language.languageName.toString().trim() === ""
-      ) {
-        langErrors.languageName = "Language is required";
-      }
-
-      // Also validate that we have the language ID
-      if (
-        !language.languageIdValue ||
-        language.languageIdValue.toString().trim() === ""
-      ) {
-        langErrors.languageIdValue = "Language ID is required";
-      }
-
-      if (Object.keys(langErrors).length > 0) {
-        languageErrors[index] = langErrors;
-      }
-    });
-    if (languageErrors.length > 0) {
-      newErrors.languages = languageErrors;
-    }
-
     // Awards & Distinctions Validation
     const awardsErrors = [];
     formData.awardsDistinction.forEach((award, index) => {
@@ -1149,14 +1103,14 @@ const EmployeeRegistration = () => {
       newErrors.awardsDistinction = awardsErrors;
     }
 
-    // Required Documents Validation
+    // Documents Validation
     const documentErrors = [];
     formData.document.forEach((doc, index) => {
       const docErrors = {};
       if (!doc.documentName || doc.documentName.trim() === "") {
         docErrors.documentName = "Document Name is required";
       }
-      if (!doc.filePath) {
+      if (!doc.filePath || !(doc.filePath instanceof File)) {
         docErrors.filePath = "Document file is required";
       } else {
         const fileValidation = validateUploadedFile(
@@ -1175,68 +1129,52 @@ const EmployeeRegistration = () => {
       newErrors.document = documentErrors;
     }
 
-    // Set errors and return validation result
+    // Set errors
     setErrors(newErrors);
 
+    // Return first error for popup
     if (Object.keys(newErrors).length > 0) {
-      // Show first error in popup
-      const firstError = Object.values(newErrors)[0];
-      const errorMessage =
-        typeof firstError === "object"
-          ? Object.values(firstError)[0]
-          : firstError;
+      // Find the first error message
+      let firstErrorMessage = "";
+      let firstErrorField = "";
 
-      showPopup(errorMessage || "Please fill all required fields", "error");
-
-      // Scroll to the first error
-      setTimeout(() => {
-        const firstErrorField = document.querySelector(".is-invalid");
-        if (firstErrorField) {
-          firstErrorField.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-          firstErrorField.focus();
+      for (const [key, value] of Object.entries(newErrors)) {
+        if (typeof value === "string") {
+          firstErrorMessage = value;
+          firstErrorField = key;
+          break;
+        } else if (Array.isArray(value)) {
+          for (const [index, errorObj] of value.entries()) {
+            if (errorObj && typeof errorObj === "object") {
+              const firstFieldError = Object.values(errorObj)[0];
+              if (firstFieldError) {
+                firstErrorMessage = firstFieldError;
+                firstErrorField = `${key}[${index}]`;
+                break;
+              }
+            }
+          }
+          if (firstErrorMessage) break;
         }
-      }, 100);
-
-      return false;
-    }
-
-    // Validate phone number format
-    if (formData.mobileNo.length !== 10) {
-      showPopup("Mobile number must be 10 digits", "error");
-      return false;
-    }
-
-    // Validate pincode
-    if (formData.pincode.length !== 6) {
-      showPopup("Pincode must be 6 digits", "error");
-      return false;
-    }
-
-    if (formData.profilePicName) {
-      const profileValidation = validateUploadedFile(
-        formData.profilePicName,
-        "Profile image",
-      );
-      if (!profileValidation.isValid) {
-        newErrors.profilePicName = profileValidation.error;
       }
-    } else {
-      newErrors.profilePicName = "Profile Image is required";
-    }
 
-    if (formData.idDocumentName) {
-      const idValidation = validateUploadedFile(
-        formData.idDocumentName,
-        "ID document",
-      );
-      if (!idValidation.isValid) {
-        newErrors.idDocumentName = idValidation.error;
+      if (firstErrorMessage) {
+        showPopup(firstErrorMessage, "error");
+
+        // Scroll to the error field
+        setTimeout(() => {
+          const errorElements = document.querySelectorAll(".is-invalid");
+          if (errorElements.length > 0) {
+            errorElements[0].scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            errorElements[0].focus();
+          }
+        }, 100);
       }
-    } else {
-      newErrors.idDocumentName = "ID Document is required";
+
+      return false;
     }
 
     return true;
@@ -1277,18 +1215,37 @@ const EmployeeRegistration = () => {
       "mobileNo",
       "identificationType",
       "registrationNo",
+      "registrationNumber",
       "employeeTypeId",
       "designationId",
       "employmentTypeId",
       "roleId",
       "totalExperience",
       "qualifications",
+      "profileDescription",
       "medicalRegistrationNo",
     ];
 
     if (viewDept) {
       requiredFields.push("departmentId");
     }
+
+    // Check files
+    const filesValid =
+      formData.profilePicName instanceof File &&
+      formData.idDocumentName instanceof File;
+
+    // Check arrays
+    const qualificationValid =
+      formData.qualification.length > 0 &&
+      formData.qualification.every(
+        (qual) =>
+          qual.qualificationName &&
+          qual.institutionName &&
+          qual.completionYear &&
+          qual.completionYear.length === 4 &&
+          qual.filePath instanceof File,
+      );
 
     const languagesValid =
       formData.languages.length > 0 &&
@@ -1300,64 +1257,212 @@ const EmployeeRegistration = () => {
           lang.languageIdValue.toString().trim() !== "",
       );
 
-    const basicFieldsValid = requiredFields.every(
-      (field) => formData[field] && formData[field].toString().trim() !== "",
-    );
-
-    // Check files
-    const filesValid = !!formData.profilePicName && !!formData.idDocumentName;
-
-    // Check arrays - ensure they're not empty and all required fields are filled
-    const qualificationValid =
-      formData.qualification.length > 0 &&
-      formData.qualification.every(
-        (qual) =>
-          qual.qualificationName &&
-          qual.institutionName &&
-          qual.completionYear &&
-          qual.filePath,
-      );
-
     const specialtyCenterValid =
       formData.specialtyCenter.length > 0 &&
       formData.specialtyCenter.every(
-        (center) => center.specialtyCenterName && center.centerId,
+        (center) =>
+          center.specialtyCenterName &&
+          center.specialtyCenterName.trim() !== "" &&
+          center.centerId &&
+          center.centerId.toString().trim() !== "",
       );
 
     const workExperienceValid =
       formData.workExperiences.length > 0 &&
-      formData.workExperiences.every((exp) => exp.organizationName);
+      formData.workExperiences.every(
+        (exp) => exp.organizationName && exp.organizationName.trim() !== "",
+      );
 
     const membershipValid =
       formData.memberships.length > 0 &&
-      formData.memberships.every((member) => member.levelName);
+      formData.memberships.every(
+        (member) => member.levelName && member.levelName.trim() !== "",
+      );
 
     const specialtyInterestValid =
       formData.specialtyInterest.length > 0 &&
       formData.specialtyInterest.every(
-        (interest) => interest.specialtyInterestName,
+        (interest) =>
+          interest.specialtyInterestName &&
+          interest.specialtyInterestName.trim() !== "",
       );
 
     const awardsValid =
       formData.awardsDistinction.length > 0 &&
-      formData.awardsDistinction.every((award) => award.awardName);
+      formData.awardsDistinction.every(
+        (award) => award.awardName && award.awardName.trim() !== "",
+      );
 
     const documentsValid =
       formData.document.length > 0 &&
-      formData.document.every((doc) => doc.documentName && doc.filePath);
+      formData.document.every(
+        (doc) =>
+          doc.documentName &&
+          doc.documentName.trim() !== "" &&
+          doc.filePath instanceof File,
+      );
+
+    const basicFieldsValid = requiredFields.every(
+      (field) => formData[field] && formData[field].toString().trim() !== "",
+    );
+
+    // Phone and pincode validation
+    const mobileValid = formData.mobileNo && formData.mobileNo.length === 10;
+    const pincodeValid = formData.pincode && formData.pincode.length === 6;
 
     return (
       basicFieldsValid &&
       filesValid &&
       qualificationValid &&
+      languagesValid &&
       specialtyCenterValid &&
       workExperienceValid &&
       membershipValid &&
-      languagesValid &&
       specialtyInterestValid &&
       awardsValid &&
-      documentsValid
+      documentsValid &&
+      mobileValid &&
+      pincodeValid
     );
+  };
+
+  const handleFileWithPreview = (e, section, index = null) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const fileNameMap = {
+      profile: "Profile image",
+      idDocument: "ID document",
+      qualification: "Qualification file",
+      document: "Document file",
+    };
+
+    const fileName = fileNameMap[section] || "File";
+
+    const validation = validateUploadedFile(file, fileName);
+    if (!validation.isValid) {
+      showPopup(validation.error, "error");
+      e.target.value = "";
+      return;
+    }
+
+    // Clear previous errors for this section
+    if (section === "profile") {
+      clearFieldError("profilePicName");
+    } else if (section === "idDocument") {
+      clearFieldError("idDocumentName");
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      switch (section) {
+        case "profile":
+          setFormData((prev) => ({
+            ...prev,
+            profilePicName: file,
+            profilePicPreview: reader.result,
+            profilePicType: file.type,
+          }));
+          break;
+
+        case "idDocument":
+          setFormData((prev) => ({
+            ...prev,
+            idDocumentName: file,
+            idDocumentPreview: reader.result,
+            idDocumentType: file.type,
+          }));
+          break;
+
+        case "qualification":
+          setFormData((prev) => ({
+            ...prev,
+            qualification: prev.qualification.map((item, i) =>
+              i === index
+                ? {
+                    ...item,
+                    filePath: file,
+                    filePreview: reader.result,
+                    fileName: file.name,
+                    fileType: file.type,
+                  }
+                : item,
+            ),
+          }));
+          // Clear qualification errors for this index
+          if (errors.qualification && Array.isArray(errors.qualification)) {
+            setErrors((prev) => {
+              const newErrors = { ...prev };
+              if (newErrors.qualification && newErrors.qualification[index]) {
+                delete newErrors.qualification[index];
+                if (Object.keys(newErrors.qualification).length === 0) {
+                  delete newErrors.qualification;
+                }
+              }
+              return newErrors;
+            });
+          }
+          break;
+
+        case "document":
+          setFormData((prev) => ({
+            ...prev,
+            document: prev.document.map((item, i) =>
+              i === index
+                ? {
+                    ...item,
+                    filePath: file,
+                    filePreview: reader.result,
+                    fileName: file.name,
+                    fileType: file.type,
+                  }
+                : item,
+            ),
+          }));
+          // Clear document errors for this index
+          if (errors.document && Array.isArray(errors.document)) {
+            setErrors((prev) => {
+              const newErrors = { ...prev };
+              if (newErrors.document && newErrors.document[index]) {
+                delete newErrors.document[index];
+                if (Object.keys(newErrors.document).length === 0) {
+                  delete newErrors.document;
+                }
+              }
+              return newErrors;
+            });
+          }
+          break;
+
+        default:
+          break;
+      }
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const clearArrayFieldError = (section, index, field) => {
+    setErrors((prev) => {
+      const newErrors = { ...prev };
+      if (
+        newErrors[section] &&
+        Array.isArray(newErrors[section]) &&
+        newErrors[section][index]
+      ) {
+        delete newErrors[section][index][field];
+        if (Object.keys(newErrors[section][index]).length === 0) {
+          delete newErrors[section][index];
+        }
+        if (
+          newErrors[section].every(
+            (item) => item === null || item === undefined,
+          )
+        ) {
+          delete newErrors[section];
+        }
+      }
+      return newErrors;
+    });
   };
 
   const prepareFormData = () => {
@@ -1373,7 +1478,7 @@ const EmployeeRegistration = () => {
     formDataToSend.append("middleName", formData.middleName || "");
     formDataToSend.append(
       "dob",
-      new Date(formData.dob).toISOString().split("T")[0],
+      formData.dob ? new Date(formData.dob).toISOString().split("T")[0] : "",
     );
     formDataToSend.append("genderId", formData.genderId.toString());
     formDataToSend.append("address1", formData.address1);
@@ -1385,6 +1490,10 @@ const EmployeeRegistration = () => {
     formDataToSend.append("mobileNo", formData.mobileNo);
     formDataToSend.append("registrationNo", formData.registrationNo);
     formDataToSend.append(
+      "registrationNumber",
+      formData.registrationNumber || "",
+    );
+    formDataToSend.append(
       "identificationType",
       formData.identificationType.toString(),
     );
@@ -1394,10 +1503,14 @@ const EmployeeRegistration = () => {
       formData.employmentTypeId.toString(),
     );
     formDataToSend.append("roleId", formData.roleId.toString());
-    formDataToSend.append(
-      "fromDate",
-      new Date(formData.fromDate).toISOString(),
-    );
+    if (formData.fromDate) {
+      formDataToSend.append(
+        "fromDate",
+        new Date(formData.fromDate).toISOString(),
+      );
+    } else {
+      formDataToSend.append("fromDate", "");
+    }
     formDataToSend.append(
       "profileDescription",
       formData.profileDescription || "",
@@ -1557,183 +1670,184 @@ const EmployeeRegistration = () => {
     return formDataToSend;
   };
 
-const handleReset = () => {
-  setFormData({
-    ...initialFormData,
-    languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
-    qualification: [
-      {
-        employeeQualificationId: 1,
-        institutionName: "",
-        completionYear: "",
-        qualificationName: "",
-        filePath: null,
-      },
-    ],
-    document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
-    specialtyCenter: [
-      { specialtyCenterId: 1, specialtyCenterName: "", centerId: "" },
-    ],
-    workExperiences: [{ experienceId: 1, organizationName: "" }],
-    memberships: [{ membershipsId: 1, levelName: "" }],
-    specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
-    awardsDistinction: [{ awardId: 1, awardName: "" }],
-    profilePicPreview: null,
-    profilePicType: null,
-    idDocumentPreview: null,
-    idDocumentType: null,
-  });
+  const handleReset = () => {
+    setFormData({
+      ...initialFormData,
+      languages: [{ languageId: 1, languageName: "", languageIdValue: "" }],
+      registrationNumber: "",
+      fromDate: "",
+      dob: "",
+      qualification: [
+        {
+          employeeQualificationId: 1,
+          institutionName: "",
+          completionYear: "",
+          qualificationName: "",
+          filePath: null,
+        },
+      ],
+      document: [{ employeeDocumentId: 1, documentName: "", filePath: null }],
+      specialtyCenter: [
+        { specialtyCenterId: 1, specialtyCenterName: "", centerId: "" },
+      ],
+      workExperiences: [{ experienceId: 1, organizationName: "" }],
+      memberships: [{ membershipsId: 1, levelName: "" }],
+      specialtyInterest: [{ interestId: 1, specialtyInterestName: "" }],
+      awardsDistinction: [{ awardId: 1, awardName: "" }],
+      profilePicPreview: null,
+      profilePicType: null,
+      idDocumentPreview: null,
+      idDocumentType: null,
+    });
 
-  setErrors({});
+    setErrors({});
 
-  if (profileEditorRef.current) {
-    profileEditorRef.current.setData("");
-  }
-
-  const fileInputs = [
-    "profilePicName",
-    "idDocumentName",
-    ...formData.qualification.map((_, index) => `qualification_${index}`),
-    ...formData.document.map((_, index) => `document_${index}`),
-  ];
-
-  fileInputs.forEach((id) => {
-    const input = document.getElementById(id);
-    if (input) input.value = "";
-  });
-
-  setPreviewModal({
-    show: false,
-    type: "",
-    url: "",
-    fileName: "",
-    section: "",
-  });
-
-  setSpecialtySearch(null);
-  setSelectedDesignationId("");
-  setDesignationData([]);
-};
-
-const handleCreate = async () => {
-  if (!validateForm()) {
-    return;
-  }
-
-  if (!validateAllFilesBeforeSubmit()) {
-    return;
-  }
-
-  const formDataToSend = prepareFormData();
-  if (!formDataToSend) return;
-
-  setLoading(true);
-  try {
-    const response = await postRequestWithFormData(
-      CREATE_EMPLOYEE,  
-      formDataToSend   
-    );
-
-    console.log("Success Response:", response);
-
-    if (response && (response.status === 200 || response.status === 201)) {
-      showPopup("Employee created successfully", "success");
-      handleReset();
-    } else {
-      const errorMessage = response?.message || "Unknown error occurred";
-      throw new Error(errorMessage);
+    if (profileEditorRef.current) {
+      profileEditorRef.current.setData("");
     }
-  } catch (error) {
-    console.error("Error creating employee:", error);
-    
-    if (error.message?.includes("Mobile number already registered") || 
-        error.message?.includes("409") ||
-        error.response?.status === 409) {
-      showPopup(
-        error.message || "Mobile number already registered",
-        "error"
-      );
-      setErrors((prev) => ({
-        ...prev,
-        mobileNo: error.message || "This mobile number is already registered",
-      }));
-      setTimeout(() => {
-        const mobileField = document.getElementById("mobileNo");
-        if (mobileField) {
-          mobileField.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-          mobileField.focus();
-        }
-      }, 100);
+
+    const fileInputs = [
+      "profilePicName",
+      "idDocumentName",
+      ...formData.qualification.map((_, index) => `qualification_${index}`),
+      ...formData.document.map((_, index) => `document_${index}`),
+    ];
+
+    fileInputs.forEach((id) => {
+      const input = document.getElementById(id);
+      if (input) input.value = "";
+    });
+
+    setPreviewModal({
+      show: false,
+      type: "",
+      url: "",
+      fileName: "",
+      section: "",
+    });
+
+    setSpecialtySearch(null);
+    setSelectedDesignationId("");
+    setDesignationData([]);
+  };
+
+  const handleCreate = async () => {
+    if (!validateForm()) {
       return;
     }
 
-    showPopup(
-      error.message || "Error submitting form. Please try again.",
-      "error"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
-
-const handleCreateWithApprove = async () => {
-  const formDataToSend = prepareFormData();
-  if (!formDataToSend) return;
-
-  setLoading(true);
-  try {
-    const response = await postRequestWithFormData(
-      CREATE_APPROVE_EMPLOYEE,
-      formDataToSend
-    );
-
-    console.log("Success Response:", response);
-
-    if (response && (response.status === 200 || response.status === 201)) {
-      showPopup("Employee created and approved successfully", "success");
-      handleReset();
-    } else {
-      const errorMessage = response?.message || "Unknown error occurred";
-      throw new Error(errorMessage);
-    }
-  } catch (error) {
-    console.error("Error creating and approving employee:", error);
-    
-    if (error.message?.includes("Mobile number already registered") || 
-        error.message?.includes("409") ||
-        error.response?.status === 409) {
-      showPopup(
-        error.message || "Mobile number already registered",
-        "error"
-      );
-      setErrors((prev) => ({
-        ...prev,
-        mobileNo: error.message || "This mobile number is already registered",
-      }));
-      setTimeout(() => {
-        const mobileField = document.getElementById("mobileNo");
-        if (mobileField) {
-          mobileField.scrollIntoView({
-            behavior: "smooth",
-            block: "center",
-          });
-          mobileField.focus();
-        }
-      }, 100);
+    if (!validateAllFilesBeforeSubmit()) {
       return;
     }
-    
-    showPopup(
-      error.message || "Error creating and approving employee",
-      "error"
-    );
-  } finally {
-    setLoading(false);
-  }
-};
+
+    const formDataToSend = prepareFormData();
+    if (!formDataToSend) return;
+
+    setLoading(true);
+    try {
+      const response = await postRequestWithFormData(
+        CREATE_EMPLOYEE,
+        formDataToSend,
+      );
+
+      console.log("Success Response:", response);
+
+      if (response && (response.status === 200 || response.status === 201)) {
+        showPopup("Employee created successfully", "success");
+        handleReset();
+      } else {
+        const errorMessage = response?.message || "Unknown error occurred";
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error creating employee:", error);
+
+      if (
+        error.message?.includes("Mobile number already registered") ||
+        error.message?.includes("409") ||
+        error.response?.status === 409
+      ) {
+        showPopup(error.message || "Mobile number already registered", "error");
+        setErrors((prev) => ({
+          ...prev,
+          mobileNo: error.message || "This mobile number is already registered",
+        }));
+        setTimeout(() => {
+          const mobileField = document.getElementById("mobileNo");
+          if (mobileField) {
+            mobileField.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            mobileField.focus();
+          }
+        }, 100);
+        return;
+      }
+
+      showPopup(
+        error.message || "Error submitting form. Please try again.",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleCreateWithApprove = async () => {
+    const formDataToSend = prepareFormData();
+    if (!formDataToSend) return;
+
+    setLoading(true);
+    try {
+      const response = await postRequestWithFormData(
+        CREATE_APPROVE_EMPLOYEE,
+        formDataToSend,
+      );
+
+      console.log("Success Response:", response);
+
+      if (response && (response.status === 200 || response.status === 201)) {
+        showPopup("Employee created and approved successfully", "success");
+        handleReset();
+      } else {
+        const errorMessage = response?.message || "Unknown error occurred";
+        throw new Error(errorMessage);
+      }
+    } catch (error) {
+      console.error("Error creating and approving employee:", error);
+
+      if (
+        error.message?.includes("Mobile number already registered") ||
+        error.message?.includes("409") ||
+        error.response?.status === 409
+      ) {
+        showPopup(error.message || "Mobile number already registered", "error");
+        setErrors((prev) => ({
+          ...prev,
+          mobileNo: error.message || "This mobile number is already registered",
+        }));
+        setTimeout(() => {
+          const mobileField = document.getElementById("mobileNo");
+          if (mobileField) {
+            mobileField.scrollIntoView({
+              behavior: "smooth",
+              block: "center",
+            });
+            mobileField.focus();
+          }
+        }, 100);
+        return;
+      }
+
+      showPopup(
+        error.message || "Error creating and approving employee",
+        "error",
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   return (
     <>
@@ -1775,13 +1889,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.firstName ? "is-invalid" : ""}`}
                               id="firstName"
                               placeholder="First Name"
                               onChange={handleInputChange}
                               value={formData.firstName}
                               maxLength={mlenght}
                             />
+                            {errors.firstName && (
+                              <div className="invalid-feedback">
+                                {errors.firstName}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">Middle Name</label>
@@ -1802,13 +1921,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.lastName ? "is-invalid" : ""}`}
                               id="lastName"
                               placeholder="Last Name"
                               onChange={handleInputChange}
                               value={formData.lastName}
                               maxLength={mlenght}
                             />
+                            {errors.lastName && (
+                              <div className="invalid-feedback">
+                                {errors.lastName}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -1820,17 +1944,22 @@ const handleCreateWithApprove = async () => {
                               required
                               id="dob"
                               value={formData.dob}
-                              className="form-control"
+                              className={`form-control ${errors.dob ? "is-invalid" : ""}`}
                               max={new Date().toISOString().split("T")[0]}
                               onChange={handleInputChange}
                             />
+                            {errors.dob && (
+                              <div className="invalid-feedback">
+                                {errors.dob}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
                               Gender <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.genderId ? "is-invalid" : ""}`}
                               style={{ paddingRight: "40px" }}
                               value={formData.genderId}
                               onChange={(e) =>
@@ -1845,6 +1974,11 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.genderId && (
+                              <div className="invalid-feedback">
+                                {errors.genderId}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -1854,17 +1988,22 @@ const handleCreateWithApprove = async () => {
                               required
                               id="address1"
                               value={formData.address1}
-                              className="form-control"
+                              className={`form-control ${errors.address1 ? "is-invalid" : ""}`}
                               onChange={handleInputChange}
                               placeholder="Address"
-                            ></textarea>
+                            />
+                            {errors.address1 && (
+                              <div className="invalid-feedback">
+                                {errors.address1}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
                               Country <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.countryId ? "is-invalid" : ""}`}
                               value={formData.countryId}
                               onChange={(e) => {
                                 const selectedCountry = countryData.find(
@@ -1875,7 +2014,6 @@ const handleCreateWithApprove = async () => {
                                   selectedCountry.countryCode,
                                   selectedCountry.id,
                                 );
-
                                 fetchStateData(selectedCountry.id);
                               }}
                               disabled={loading}
@@ -1887,13 +2025,18 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.countryId && (
+                              <div className="invalid-feedback">
+                                {errors.countryId}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
                               State <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.stateId ? "is-invalid" : ""}`}
                               value={formData.stateId}
                               onChange={(e) => {
                                 const selectedState = stateData.find(
@@ -1916,13 +2059,18 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.stateId && (
+                              <div className="invalid-feedback">
+                                {errors.stateId}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
                               District <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.districtId ? "is-invalid" : ""}`}
                               value={formData.districtId}
                               onChange={(e) =>
                                 handleDistrictChange(e.target.value)
@@ -1936,6 +2084,11 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.districtId && (
+                              <div className="invalid-feedback">
+                                {errors.districtId}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -1944,13 +2097,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.city ? "is-invalid" : ""}`}
                               id="city"
                               placeholder="City"
                               onChange={handleInputChange}
                               value={formData.city}
                               maxLength={mlenght}
                             />
+                            {errors.city && (
+                              <div className="invalid-feedback">
+                                {errors.city}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -1959,7 +2117,7 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.pincode ? "is-invalid" : ""}`}
                               id="pincode"
                               placeholder="Pincode"
                               onChange={handleInputMobileChange}
@@ -1969,6 +2127,11 @@ const handleCreateWithApprove = async () => {
                               inputMode="numeric"
                               pattern="\d*"
                             />
+                            {errors.pincode && (
+                              <div className="invalid-feedback">
+                                {errors.pincode}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -1977,7 +2140,7 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.mobileNo ? "is-invalid" : ""}`}
                               id="mobileNo"
                               placeholder="Mobile No."
                               onChange={handleInputMobileChange}
@@ -1987,14 +2150,18 @@ const handleCreateWithApprove = async () => {
                               inputMode="numeric"
                               pattern="\d*"
                             />
+                            {errors.mobileNo && (
+                              <div className="invalid-feedback">
+                                {errors.mobileNo}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
-                              ID Type
-                              <span className="text-danger">*</span>
+                              ID Type <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.identificationType ? "is-invalid" : ""}`}
                               style={{ paddingRight: "40px" }}
                               value={formData.identificationType}
                               onChange={(e) =>
@@ -2012,6 +2179,11 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.identificationType && (
+                              <div className="invalid-feedback">
+                                {errors.identificationType}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -2020,13 +2192,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.registrationNo ? "is-invalid" : ""}`}
                               id="registrationNo"
                               placeholder="ID Number"
                               onChange={handleInputChange}
                               value={formData.registrationNo}
                               maxLength={mlenght}
                             />
+                            {errors.registrationNo && (
+                              <div className="invalid-feedback">
+                                {errors.registrationNo}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -2039,13 +2216,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="file"
                               id="idDocumentName"
-                              className="form-control"
+                              className={`form-control ${errors.idDocumentName ? "is-invalid" : ""}`}
                               accept=".jpg,.jpeg,.png,.pdf"
                               onChange={(e) =>
                                 handleFileWithPreview(e, "idDocument")
                               }
                               style={{ fontSize: "12px", padding: "4px 8px" }}
                             />
+                            {errors.idDocumentName && (
+                              <div className="invalid-feedback">
+                                {errors.idDocumentName}
+                              </div>
+                            )}
                             {formData.idDocumentPreview && (
                               <div className="mt-1 d-flex align-items-center gap-1">
                                 <small
@@ -2149,7 +2331,7 @@ const handleCreateWithApprove = async () => {
                             </label>
                             <input
                               type="number"
-                              className="form-control"
+                              className={`form-control ${errors.totalExperience ? "is-invalid" : ""}`}
                               id="totalExperience"
                               value={formData.totalExperience}
                               placeholder="Enter total experience in years"
@@ -2166,6 +2348,11 @@ const handleCreateWithApprove = async () => {
                                 }
                               }}
                             />
+                            {errors.totalExperience && (
+                              <div className="invalid-feedback">
+                                {errors.totalExperience}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -2174,10 +2361,18 @@ const handleCreateWithApprove = async () => {
                             </label>
                             <input
                               type="text"
-                              className="form-control"
+                              className={`form-control ${errors.registrationNumber ? "is-invalid" : ""}`}
+                              id="registrationNumber"
                               placeholder="Registration Number"
+                              onChange={handleInputChange}
+                              value={formData.registrationNumber || ""}
                               maxLength={mlenght}
                             />
+                            {errors.registrationNumber && (
+                              <div className="invalid-feedback">
+                                {errors.registrationNumber}
+                              </div>
+                            )}
                           </div>
                           {viewDept && (
                             <div className="col-md-4">
@@ -2212,7 +2407,7 @@ const handleCreateWithApprove = async () => {
                               <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.employeeTypeId ? "is-invalid" : ""}`}
                               style={{ paddingRight: "40px" }}
                               value={formData.employeeTypeId}
                               onChange={(e) =>
@@ -2232,6 +2427,11 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.employeeTypeId && (
+                              <div className="invalid-feedback">
+                                {errors.employeeTypeId}
+                              </div>
+                            )}
                           </div>
 
                           <div className="col-md-4">
@@ -2239,7 +2439,7 @@ const handleCreateWithApprove = async () => {
                               Designation <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.designationId ? "is-invalid" : ""}`}
                               style={{ paddingRight: "40px" }}
                               value={formData.designationId}
                               onChange={(e) =>
@@ -2255,11 +2455,15 @@ const handleCreateWithApprove = async () => {
                                   key={designation.designationId}
                                   value={designation.designationId}
                                 >
-                                  {designation.designationName}{" "}
-                                  {/* Adjust field name based on your API response */}
+                                  {designation.designationName}
                                 </option>
                               ))}
                             </select>
+                            {errors.designationId && (
+                              <div className="invalid-feedback">
+                                {errors.designationId}
+                              </div>
+                            )}
                           </div>
 
                           <div className="col-md-4">
@@ -2268,7 +2472,7 @@ const handleCreateWithApprove = async () => {
                               <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.employmentTypeId ? "is-invalid" : ""}`}
                               style={{ paddingRight: "40px" }}
                               value={formData.employmentTypeId}
                               onChange={(e) =>
@@ -2285,6 +2489,11 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.employmentTypeId && (
+                              <div className="invalid-feedback">
+                                {errors.employmentTypeId}
+                              </div>
+                            )}
                           </div>
 
                           <div className="col-md-4">
@@ -2292,7 +2501,7 @@ const handleCreateWithApprove = async () => {
                               Role <span className="text-danger">*</span>
                             </label>
                             <select
-                              className="form-select"
+                              className={`form-select ${errors.roleId ? "is-invalid" : ""}`}
                               style={{ paddingRight: "40px" }}
                               value={formData.roleId}
                               onChange={(e) =>
@@ -2307,6 +2516,11 @@ const handleCreateWithApprove = async () => {
                                 </option>
                               ))}
                             </select>
+                            {errors.roleId && (
+                              <div className="invalid-feedback">
+                                {errors.roleId}
+                              </div>
+                            )}
                           </div>
 
                           <div className="col-md-4">
@@ -2331,13 +2545,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.medicalRegistrationNo ? "is-invalid" : ""}`}
                               id="medicalRegistrationNo"
                               placeholder="Medical Registration Number"
                               onChange={handleInputChange}
                               value={formData.medicalRegistrationNo}
                               maxLength={mlenght}
                             />
+                            {errors.medicalRegistrationNo && (
+                              <div className="invalid-feedback">
+                                {errors.medicalRegistrationNo}
+                              </div>
+                            )}
                           </div>
                           <div className="col-md-4">
                             <label className="form-label">
@@ -2347,13 +2566,18 @@ const handleCreateWithApprove = async () => {
                             <input
                               type="text"
                               required
-                              className="form-control"
+                              className={`form-control ${errors.qualifications ? "is-invalid" : ""}`}
                               id="qualifications"
                               placeholder="Enter qualifications"
                               onChange={handleInputChange}
                               value={formData.qualifications}
                               maxLength={mlenght}
                             />
+                            {errors.qualifications && (
+                              <div className="invalid-feedback">
+                                {errors.qualifications}
+                              </div>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -2364,7 +2588,10 @@ const handleCreateWithApprove = async () => {
                             (Max 1MB, JPG/PNG)
                           </small>
                         </label>
-                        <div className="d-flex flex-column align-items-center border p-2">
+                        <div
+                          className={`d-flex flex-column align-items-center border p-2 ${errors.profilePicName ? "border-danger" : ""}`}
+                        >
+                          {/* ❌ MISSING: Image preview div */}
                           <div
                             style={{
                               width: "100%",
@@ -2408,13 +2635,18 @@ const handleCreateWithApprove = async () => {
                           <input
                             type="file"
                             id="profilePicName"
-                            className="form-control mt-2"
+                            className={`form-control mt-2 ${errors.profilePicName ? "is-invalid" : ""}`}
                             accept="image/*"
                             onChange={(e) =>
                               handleFileWithPreview(e, "profile")
                             }
                             style={{ fontSize: "12px", padding: "4px 8px" }}
                           />
+                          {errors.profilePicName && (
+                            <div className="invalid-feedback d-block">
+                              {errors.profilePicName}
+                            </div>
+                          )}
                           {formData.profilePicPreview && (
                             <div
                               className="d-flex gap-1 mt-1"
@@ -2469,11 +2701,12 @@ const handleCreateWithApprove = async () => {
 
                       <div className="col-md-12">
                         <label className="form-label">
-                          Profile Description
+                          Profile Description{" "}
+                          <span className="text-danger">*</span>
                         </label>
                         <div className="form-group col-md-10">
                           <div
-                            className="form-label"
+                            className={`form-label ${errors.profileDescription ? "border-danger" : ""}`}
                             style={{
                               border: "1px solid #ced4da",
                               borderRadius: "6px",
@@ -2507,6 +2740,11 @@ const handleCreateWithApprove = async () => {
                               onChange={handleProfileEditorChange}
                             />
                           </div>
+                          {errors.profileDescription && (
+                            <div className="invalid-feedback d-block">
+                              {errors.profileDescription}
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -3822,7 +4060,7 @@ const handleCreateWithApprove = async () => {
               onClick={handleCreate}
               type="button"
               className="btn btn-primary me-2"
-              disabled={loading || !isFormValid()}
+              disabled={loading}
               style={{ minWidth: "120px" }}
             >
               {loading ? (
@@ -3838,7 +4076,7 @@ const handleCreateWithApprove = async () => {
                 "Submit"
               )}
             </button>
-  {/*          <button
+            {/*          <button
               onClick={handleCreateWithApprove}
               type="button"
               className="btn btn-success"
@@ -4012,4 +4250,4 @@ const handleCreateWithApprove = async () => {
   );
 };
 
-export default EmployeeRegistration;
+export default EmployeeRegistration;  
