@@ -1,7 +1,21 @@
 import { useState, useEffect, useCallback } from "react"
 import { getRequest, postRequest, putRequest } from "../../../service/apiService"
-import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_WARD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS, WARD_TRANSFER_LIST } from "../../../config/apiConfig"
+import { MAS_WARD_GET_ALL_ACTIVE, GET_BED_DETAILS_BY_WARD, MAS_TRANSFER_REASON_GET_ALL, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT, SAVE_BED_TRANSFER_REQUEST, WARD_PENDING_TRANSFER_REQUEST_LIST, UPDATE_TRANSFER_REQUEST_STATUS, WARD_TRANSFER_LIST } from "../../../config/apiConfig"
 import Swal from "sweetalert2"
+import {
+  BED_TRANSFER_FILL_REQUIRED_FIELDS,
+  BED_TRANSFER_SUBMIT_SUCCESS,
+  BED_TRANSFER_SUBMIT_FAILURE,
+  BED_TRANSFER_SUBMIT_ERROR,
+  BED_TRANSFER_ALLOCATE_BED_WARN,
+  BED_TRANSFER_ACCEPT_SUCCESS,
+  BED_TRANSFER_ACCEPT_FAILURE,
+  BED_TRANSFER_ACCEPT_ERROR,
+  BED_TRANSFER_CANCEL_REMARKS_WARN,
+  BED_TRANSFER_CANCEL_SUCCESS,
+  BED_TRANSFER_CANCEL_FAILURE,
+  BED_TRANSFER_CANCEL_ERROR
+} from "../../../config/constants"
 
 // ─── STATUS FLOW ─────────────────────────────────────────────
 // Requested (Ward 1) → Pending Acceptance (Ward 2) → Accepted (Ward 2) → Completed
@@ -86,7 +100,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   useEffect(() => {
     const fetchDepartments = async () => {
       try {
-        const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_WARD_DEPT}`)
+        const response = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`)
         const data = response?.response || response
         if (Array.isArray(data)) {
           setDepartments(data)
@@ -325,7 +339,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
     if (!requestForm.targetWardId || !requestForm.departmentId || !requestForm.doctorInCharge || !requestForm.reason) {
       Swal.fire({
         title: "Warning",
-        text: "Please fill Target Ward, Target Department, Doctor In Charge, and Reason",
+        text: BED_TRANSFER_FILL_REQUIRED_FIELDS,
         icon: "warning"
       })
       return
@@ -365,7 +379,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       const apiResponse = await postRequest(SAVE_BED_TRANSFER_REQUEST, payload)
       if (apiResponse && (apiResponse.status === 200 || apiResponse.status === "success" || apiResponse.message === "success")) {
         const trfNo = apiResponse.response?.transferNo || apiResponse.response?.trfNo || "";
-        const trfMsg = trfNo ? `Transfer Request ${trfNo} submitted successfully!` : "Transfer Request submitted successfully!";
+        const trfMsg = trfNo ? `Transfer Request ${trfNo} submitted successfully!` : BED_TRANSFER_SUBMIT_SUCCESS;
         Swal.fire({
           title: "Success",
           text: trfMsg,
@@ -379,7 +393,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       } else {
         Swal.fire({
           title: "Error",
-          text: "Failed to submit transfer request: " + (apiResponse?.message || "unknown error"),
+          text: BED_TRANSFER_SUBMIT_FAILURE + (apiResponse?.message || "unknown error"),
           icon: "error"
         })
       }
@@ -387,7 +401,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       console.error("Error submitting transfer request:", error)
       Swal.fire({
         title: "Error",
-        text: "Error submitting transfer request. Please try again.",
+        text: BED_TRANSFER_SUBMIT_ERROR,
         icon: "error"
       })
     }
@@ -403,7 +417,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
     if (!reviewAllocatedBed) {
       Swal.fire({
         title: "Warning",
-        text: "Please allocate a bed before accepting",
+        text: BED_TRANSFER_ALLOCATE_BED_WARN,
         icon: "warning"
       })
       return
@@ -452,7 +466,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       } else {
         Swal.fire({
           title: "Error",
-          text: "Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"),
+          text: BED_TRANSFER_ACCEPT_FAILURE + (response?.data?.message || response?.message || "unknown error"),
           icon: "error"
         })
       }
@@ -460,7 +474,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       console.error("Error accepting transfer:", error)
       Swal.fire({
         title: "Error",
-        text: "Error accepting transfer: " + (error.message || "Please try again."),
+        text: BED_TRANSFER_ACCEPT_ERROR + (error.message || "Please try again."),
         icon: "error"
       })
     }
@@ -480,7 +494,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
     if (!cancelRemarks.trim()) {
       Swal.fire({
         title: "Warning",
-        text: "Please enter cancel remarks",
+        text: BED_TRANSFER_CANCEL_REMARKS_WARN,
         icon: "warning"
       })
       return
@@ -498,7 +512,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       if (isSuccess) {
         Swal.fire({
           title: "Success",
-          text: "Transfer cancelled successfully.",
+          text: BED_TRANSFER_CANCEL_SUCCESS,
           icon: "success"
         }).then(() => {
           setTransfers(prev => prev.map(t =>
@@ -517,7 +531,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       } else {
         Swal.fire({
           title: "Error",
-          text: "Failed to cancel transfer: " + (response?.data?.message || response?.message || "unknown error"),
+          text: BED_TRANSFER_CANCEL_FAILURE + (response?.data?.message || response?.message || "unknown error"),
           icon: "error"
         })
       }
@@ -525,7 +539,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       console.error("Error cancelling transfer:", error)
       Swal.fire({
         title: "Error",
-        text: "Error cancelling transfer: " + (error.message || "Please try again."),
+        text: BED_TRANSFER_CANCEL_ERROR + (error.message || "Please try again."),
         icon: "error"
       })
     }
@@ -535,7 +549,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
     if (!allocatedBed) {
       Swal.fire({
         title: "Warning",
-        text: "Please allocate a bed before accepting",
+        text: BED_TRANSFER_ALLOCATE_BED_WARN,
         icon: "warning"
       })
       return
@@ -579,7 +593,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       } else {
         Swal.fire({
           title: "Error",
-          text: "Failed to accept transfer: " + (response?.data?.message || response?.message || "unknown error"),
+          text: BED_TRANSFER_ACCEPT_FAILURE + (response?.data?.message || response?.message || "unknown error"),
           icon: "error"
         })
       }
@@ -587,7 +601,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
       console.error("Error accepting transfer:", error)
       Swal.fire({
         title: "Error",
-        text: "Error accepting transfer: " + (error.message || "Please try again."),
+        text: BED_TRANSFER_ACCEPT_ERROR + (error.message || "Please try again."),
         icon: "error"
       })
     }

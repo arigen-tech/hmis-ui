@@ -254,6 +254,13 @@ const validRoutes = [
   "/PatientDischargeCondition",
   "/PatientDischargeReason",
   "/BillingRefundDetails",
+  "/CreatePreauthRequest",  
+  "/PreAuthViewAndUpdate",
+  "/InsuranceResponse",
+  "/PatientBillSettlement",
+  "/CreateClaimRequest",
+  "/PendingIpdBillList",
+  "/DieticianDashboard",
 ];
 
 // Routes that should bypass authorization

@@ -293,19 +293,37 @@ const ClinicalDashboard = ({ selectedPatient }) => {
       try {
         const response = await getRequest(`${GET_VITALS_DETAILS_BY_INPATIENT_ID}/${inpatientId}`)
         if (response && response.response && Array.isArray(response.response) && response.response.length > 0) {
-          const sorted = [...response.response].sort((a, b) => new Date(b.observationDatetime) - new Date(a.observationDatetime))
-          const latest = sorted[0]
+          const calculateAverage = (key, dataArray) => {
+            const validValues = dataArray
+              .map(item => {
+                const val = key === 'heartRate' ? item.pulse : item[key]
+                return val !== null && val !== undefined && val !== "" ? Number(val) : null
+              })
+              .filter(val => val !== null && !isNaN(val))
+
+            if (validValues.length === 0) return null
+            const sum = validValues.reduce((acc, curr) => acc + curr, 0)
+            return sum / validValues.length
+          }
+
+          const avgBpSystolic = calculateAverage('bpSystolic', response.response)
+          const avgBpDiastolic = calculateAverage('bpDiastolic', response.response)
+          const avgTemperature = calculateAverage('temperature', response.response)
+          const avgHeartRate = calculateAverage('heartRate', response.response)
+          const avgSpo2 = calculateAverage('spo2', response.response)
+          const avgRespiration = calculateAverage('respiration', response.response)
+
           setVitals({
-            bpSystolic: latest.bpSystolic !== null && latest.bpSystolic !== undefined ? Number(latest.bpSystolic) : dummyPatientData.vitals.bpSystolic,
-            bpDiastolic: latest.bpDiastolic !== null && latest.bpDiastolic !== undefined ? Number(latest.bpDiastolic) : dummyPatientData.vitals.bpDiastolic,
-            temperature: latest.temperature !== null && latest.temperature !== undefined ? Number(latest.temperature) : dummyPatientData.vitals.temperature,
-            heartRate: latest.pulse !== null && latest.pulse !== undefined ? Number(latest.pulse) : dummyPatientData.vitals.heartRate,
-            spo2: latest.spo2 !== null && latest.spo2 !== undefined ? Number(latest.spo2) : dummyPatientData.vitals.spo2,
-            respiration: latest.respiration !== null && latest.respiration !== undefined ? Number(latest.respiration) : dummyPatientData.vitals.respiration,
+            bpSystolic: avgBpSystolic !== null ? Math.round(avgBpSystolic) : dummyPatientData.vitals.bpSystolic,
+            bpDiastolic: avgBpDiastolic !== null ? Math.round(avgBpDiastolic) : dummyPatientData.vitals.bpDiastolic,
+            temperature: avgTemperature !== null ? Math.round(avgTemperature * 10) / 10 : dummyPatientData.vitals.temperature,
+            heartRate: avgHeartRate !== null ? Math.round(avgHeartRate) : dummyPatientData.vitals.heartRate,
+            spo2: avgSpo2 !== null ? Math.round(avgSpo2) : dummyPatientData.vitals.spo2,
+            respiration: avgRespiration !== null ? Math.round(avgRespiration) : dummyPatientData.vitals.respiration,
           })
         }
       } catch (error) {
-        console.error("Error fetching latest vitals for clinical dashboard:", error)
+        console.error("Error fetching vitals for clinical dashboard:", error)
       }
     }
 
