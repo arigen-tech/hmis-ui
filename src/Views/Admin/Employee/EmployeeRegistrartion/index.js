@@ -20,10 +20,8 @@ import {
   CREATE_EMPLOYEE,
   CREATE_APPROVE_EMPLOYEE,
 } from "../../../../config/apiConfig";
-import {
-  getRequest,
-  postRequestWithFormData,
-} from "../../../../service/apiService";
+
+import { getRequest ,postRequestWithFormData  } from "../../../../service/apiService";
 import LoadingScreen from "../../../../Components/Loading";
 import Popup from "../../../../Components/popup";
 import validateUploadedFile from "../../../../Components/FileSize";
