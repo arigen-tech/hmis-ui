@@ -21,6 +21,7 @@ import {
   CREATE_APPROVE_EMPLOYEE,
 } from "../../../../config/apiConfig";
 import { getRequest ,postRequestWithFormData  } from "../../../../service/apiService";
+import LoadingScreen from "../../../../Components/Loading";
 import Popup from "../../../../Components/popup";
 import validateUploadedFile from "../../../../Components/FileSize";
 
@@ -1736,6 +1737,7 @@ const handleCreateWithApprove = async () => {
 
   return (
     <>
+      {loading && <LoadingScreen />}
       <div className="d-flex body py-3">
         <div className="container-xxl">
           {popupMessage && (

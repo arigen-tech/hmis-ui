@@ -125,6 +125,8 @@ export const CREATE_USER_APPLICATION = `/configuration/createApplication`;
 export const UPDATE_USER_APPLICATION = `/configuration/updateApplication`;
 export const UPDATE_STATUS_USER_APPLICATION = `/configuration/changeApplicationStatus`;
 export const GET_URL_BY_ROLES = `/configuration/getUrlsByRoles`;
+export const CREATE_APPOINTMENT_SETUP = `/admin/createOrUpdateAppointmentSetup`;
+export const GET_APPOINTMENT_SETUP = `/admin/getAppointmentSetup`;
 
 export const TEMPLATES = `/mas-templates`;
 export const APPLICATION = `/mas-applications`;

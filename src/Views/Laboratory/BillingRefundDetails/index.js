@@ -45,6 +45,9 @@ const BillingRefundDetails = () => {
   const [totalElements, setTotalElements] = useState(0);
   const [refundRows, setRefundRows] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [searchLoading, setSearchLoading] = useState(false);
+  const [resetLoading, setResetLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
 
   const [viewData, setViewData] = useState(null);
   const [showViewPopup, setShowViewPopup] = useState(false);
@@ -144,8 +147,13 @@ const BillingRefundDetails = () => {
   };
 
   const fetchRefundList = async (page = 0, filters = appliedFilters) => {
+    const shouldShowPageLoading = refundRows.length === 0;
+
     try {
-      setLoading(true);
+      setTableLoading(true);
+      if (shouldShowPageLoading) {
+        setLoading(true);
+      }
 
       const params = new URLSearchParams({
         [REQUEST_PARAM_PAGE]: String(page),
@@ -188,7 +196,12 @@ const BillingRefundDetails = () => {
       setTotalElements(0);
       showPopup("Unable to load billing refund records.", "error");
     } finally {
-      setLoading(false);
+      setTableLoading(false);
+      if (shouldShowPageLoading) {
+        setLoading(false);
+      }
+      setSearchLoading(false);
+      setResetLoading(false);
     }
   };
 
@@ -220,6 +233,7 @@ const BillingRefundDetails = () => {
   const visibleRows = useMemo(() => refundRows, [refundRows]);
 
   const handleSearch = () => {
+    setSearchLoading(true);
     setCurrentPage(1);
     setAppliedFilters({
       patientName,
@@ -231,7 +245,16 @@ const BillingRefundDetails = () => {
     });
   };
 
-  const handleReset = () => {
+  const handleBillingServiceChange = (value) => {
+    setBillingService(value);
+  };
+
+  const handleRefundStatusChange = (value) => {
+    setRefundStatus(value);
+  };
+
+  const handleReset = async () => {
+    setResetLoading(true);
     setPatientName("");
     setMobileNo("");
     setBillingService("All");
@@ -239,7 +262,17 @@ const BillingRefundDetails = () => {
     setFromDate("");
     setToDate("");
     setCurrentPage(1);
-    setAppliedFilters(DEFAULT_FILTERS);
+    const defaultFilters = {
+      ...DEFAULT_FILTERS,
+      patientName: "",
+      mobileNo: "",
+      billingService: "All",
+      refundStatus: "All",
+      fromDate: "",
+      toDate: "",
+    };
+    setAppliedFilters(defaultFilters);
+    await fetchRefundList(0, defaultFilters);
   };
 
   const handlePageChange = (page) => {
@@ -484,7 +517,7 @@ const BillingRefundDetails = () => {
                   <select
                     className="form-select"
                     value={billingService}
-                    onChange={(e) => setBillingService(e.target.value)}
+                    onChange={(e) => handleBillingServiceChange(e.target.value)}
                   >
                     {SERVICE_OPTIONS.map((option) => (
                       <option key={option.value} value={option.value}>
@@ -533,7 +566,7 @@ const BillingRefundDetails = () => {
                         id="statusPending"
                         value="Pending"
                         checked={refundStatus === "Pending"}
-                        onChange={(e) => setRefundStatus(e.target.value)}
+                        onChange={(e) => handleRefundStatusChange(e.target.value)}
                       />
                       <label className="form-check-label" htmlFor="statusPending">
                         Pending
@@ -547,7 +580,7 @@ const BillingRefundDetails = () => {
                         id="statusCompleted"
                         value="Completed"
                         checked={refundStatus === "Completed"}
-                        onChange={(e) => setRefundStatus(e.target.value)}
+                        onChange={(e) => handleRefundStatusChange(e.target.value)}
                       />
                       <label
                         className="form-check-label"
@@ -564,7 +597,7 @@ const BillingRefundDetails = () => {
                         id="statusAll"
                         value="All"
                         checked={refundStatus === "All"}
-                        onChange={(e) => setRefundStatus(e.target.value)}
+                        onChange={(e) => handleRefundStatusChange(e.target.value)}
                       />
                       <label className="form-check-label" htmlFor="statusAll">
                         All
@@ -577,21 +610,66 @@ const BillingRefundDetails = () => {
 
             <div className="row mt-3">
               <div className="col-md-12 d-flex justify-content-end gap-2">
-                <button className="btn btn-primary" onClick={handleSearch}>
-                  Search
+                <button
+                  type="button"
+                  className="btn btn-primary"
+                  onClick={handleSearch}
+                  disabled={searchLoading}
+                >
+                  {searchLoading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      />
+                      Searching...
+                    </>
+                  ) : (
+                    "Search"
+                  )}
                 </button>
-                  <button className="btn btn-secondary" onClick={handleReset}>
-                    <i className="fas fa-redo-alt me-1"></i> Reset
-                  </button>
-                  <button className="btn btn-info" onClick={handleExport}>
-                    <i className="me-1"></i> Export Refund Register
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleReset}
+                  disabled={resetLoading}
+                >
+                  {resetLoading ? (
+                    <>
+                      <span
+                        className="spinner-border spinner-border-sm me-2"
+                        role="status"
+                        aria-hidden="true"
+                      />
+                      Resetting...
+                    </>
+                  ) : (
+                    <>
+                      <i className="fas fa-redo-alt me-1"></i> Reset
+                    </>
+                  )}
+                </button>
+                <button type="button" className="btn btn-info" onClick={handleExport}>
+                  <i className="me-1"></i> Export Refund Register
                 </button>
               </div>
             </div>
           </div>
 
-          <div className="table-responsive">
-            <table className="table table-bordered table-hover align-middle">
+          <div className="table-responsive packagelist position-relative">
+            {tableLoading && refundRows.length > 0 && (
+              <div
+                className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                style={{ backgroundColor: "rgba(255,255,255,0.7)", zIndex: 2 }}
+              >
+                <div className="text-center">
+                  <div className="spinner-border text-primary" role="status" />
+                  <div className="mt-2 text-muted">Loading table...</div>
+                </div>
+              </div>
+            )}
+            <table className="table table-bordered table-hover align-middle mb-0">
               <thead className="table-light">
                 <tr>
                   <th>Registration No.</th>
@@ -633,6 +711,7 @@ const BillingRefundDetails = () => {
                       </td>
                       <td>
                         <button
+                          type="button"
                           className="btn btn-sm btn-outline-primary"
                           onClick={() => handleView(item)}
                         >
@@ -644,7 +723,7 @@ const BillingRefundDetails = () => {
                 ) : (
                   <tr>
                     <td colSpan="11" className="text-center text-muted py-4">
-                  No refund records found
+                      No refund records found
                     </td>
                   </tr>
                 )}
