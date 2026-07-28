@@ -3,9 +3,7 @@ import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
 import { getRequest, postRequest } from "../../../service/apiService";
 import {
-  LABOLATORY_MAIN_CHARGECODE_ID,
   MAS_INVESTIGATION,
-  REDIOLOGY_MAIN_CHARGECODE_ID,
   SAVE_IPD_INVESTIGATION_ORDER,
 } from "../../../config/apiConfig";
 
@@ -81,6 +79,7 @@ const dummyRadiologyOrders = [
   },
 ];
 
+
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
@@ -120,7 +119,12 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
   return createPortal(<div style={style}>{children}</div>, document.body);
 };
 
-const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => {
+const Pagination = ({
+  totalItems,
+  itemsPerPage,
+  currentPage,
+  onPageChange,
+}) => {
   const totalPages = Math.ceil(totalItems / itemsPerPage);
   if (totalPages <= 1) return null;
 
@@ -128,19 +132,36 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
     <nav>
       <ul className="pagination justify-content-end mt-3">
         <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onPageChange(currentPage - 1)} type="button">
+          <button
+            className="page-link"
+            onClick={() => onPageChange(currentPage - 1)}
+            type="button"
+          >
             Previous
           </button>
         </li>
         {[...Array(totalPages)].map((_, i) => (
-          <li key={i} className={`page-item ${currentPage === i + 1 ? "active" : ""}`}>
-            <button className="page-link" onClick={() => onPageChange(i + 1)} type="button">
+          <li
+            key={i}
+            className={`page-item ${currentPage === i + 1 ? "active" : ""}`}
+          >
+            <button
+              className="page-link"
+              onClick={() => onPageChange(i + 1)}
+              type="button"
+            >
               {i + 1}
             </button>
           </li>
         ))}
-        <li className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}>
-          <button className="page-link" onClick={() => onPageChange(currentPage + 1)} type="button">
+        <li
+          className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}
+        >
+          <button
+            className="page-link"
+            onClick={() => onPageChange(currentPage + 1)}
+            type="button"
+          >
             Next
           </button>
         </li>
@@ -151,16 +172,48 @@ const Pagination = ({ totalItems, itemsPerPage, currentPage, onPageChange }) => 
 
 const normalizeLabInvestigation = (item, index) => ({
   id: item?.investigationId ?? item?.id ?? index,
+  investigationName: item?.investigationName ?? item?.testName ?? item?.name ?? "",
   testName: item?.testName ?? item?.investigationName ?? item?.name ?? "",
   sample: item?.sample ?? item?.sampleName ?? item?.sampleDescription ?? "",
-  container: item?.container ?? item?.collectionName ?? item?.containerName ?? "",
+  container:
+    item?.container ?? item?.collectionName ?? item?.containerName ?? "",
   resultUnit: item?.resultUnit ?? item?.uomName ?? item?.unitName ?? "",
+  price: Number(item?.price ?? item?.amount ?? item?.rate ?? 0),
+  discount: Number(item?.disc ?? item?.discount ?? 0),
 });
 
 const normalizeRadiologyInvestigation = (item, index) => ({
   id: item?.investigationId ?? item?.id ?? index,
+  investigationName: item?.investigationName ?? item?.name ?? "",
   name: item?.name ?? item?.investigationName ?? "",
+  price: Number(item?.price ?? item?.amount ?? item?.rate ?? 0),
+  discount: Number(item?.disc ?? item?.discount ?? 0),
 });
+
+const getGenderApplicable = (selectedPatient) => {
+  const rawGender =
+    selectedPatient?.gender ??
+    selectedPatient?.patientGender ??
+    selectedPatient?.sex ??
+    selectedPatient?.genderCode ??
+    "";
+
+  const ageGenderPart =
+    typeof selectedPatient?.ageGender === "string"
+      ? selectedPatient.ageGender.split("/").pop()?.trim()
+      : "";
+
+  const genderValue = String(rawGender || ageGenderPart || "")
+    .trim()
+    .toLowerCase();
+
+  if (!genderValue) return "";
+  if (genderValue === "male" || genderValue === "m") return "m";
+  if (genderValue === "female" || genderValue === "f") return "f";
+  return genderValue.charAt(0);
+};
+
+const getTodayDateString = () => new Date().toISOString().split("T")[0];
 
 const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const [activeTab, setActiveTab] = useState("lab");
@@ -180,8 +233,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
 
   const createRadiologyRow = () => ({
     id: Date.now(),
-    investigation: "",
-    date: new Date().toISOString().split("T")[0],
+    investigationName: "",
+    date: getTodayDateString(),
     remarks: "",
     dropdownOpen: false,
     searchText: "",
@@ -201,29 +254,58 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
 
   useEffect(() => {
     const fetchInvestigations = async () => {
+      const genderApplicable = getGenderApplicable(selectedPatient);
+
+      if (!genderApplicable) {
+        setLabTests([]);
+        setRadiologyTests([]);
+        return;
+      }
+
       try {
         const [labRes, radiologyRes] = await Promise.all([
-          getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${LABOLATORY_MAIN_CHARGECODE_ID}`),
-          getRequest(`${MAS_INVESTIGATION}/getAll/0?mainChargeCodeId=${REDIOLOGY_MAIN_CHARGECODE_ID}`),
+          getRequest(
+            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`,
+          ),
+          getRequest(
+            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&radioFlag=true`,
+          ),
         ]);
 
         if (labRes?.status === 200 && Array.isArray(labRes.response)) {
           setLabTests(labRes.response.map(normalizeLabInvestigation));
+        } else {
+          setLabTests([]);
         }
 
-        if (radiologyRes?.status === 200 && Array.isArray(radiologyRes.response)) {
-          setRadiologyTests(radiologyRes.response.map(normalizeRadiologyInvestigation));
+        if (
+          radiologyRes?.status === 200 &&
+          Array.isArray(radiologyRes.response)
+        ) {
+          setRadiologyTests(
+            radiologyRes.response.map(normalizeRadiologyInvestigation),
+          );
+        } else {
+          setRadiologyTests([]);
         }
       } catch (error) {
         console.error("Error fetching investigations:", error);
+        setLabTests([]);
+        setRadiologyTests([]);
       }
     };
 
     fetchInvestigations();
-  }, []);
+  }, [selectedPatient]);
 
-  const paginatedLabOrders = dummyLabOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
-  const paginatedRadiologyOrders = dummyRadiologyOrders.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
+  const paginatedLabOrders = dummyLabOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
+  const paginatedRadiologyOrders = dummyRadiologyOrders.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage,
+  );
 
   const handleTrackingTypeChange = (type) => {
     setTrackingType(type);
@@ -235,20 +317,23 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const updateLabRow = (id, field, value) => {
-    setLabRows(labRows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+    setLabRows(
+      labRows.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+    );
   };
 
   const selectLabTest = (id, test) => {
+    const testName = test.investigationName || test.testName || "";
     setLabRows(
       labRows.map((row) =>
         row.id === id
           ? {
               ...row,
-              testName: test.testName,
+              testName,
               sample: test.sample,
               container: test.container,
               resultUnit: test.resultUnit,
-              searchText: test.testName,
+              searchText: testName,
               dropdownOpen: false,
             }
           : row,
@@ -265,14 +350,34 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     setLabRows(
       labRows.map((row) =>
         row.id === id
-          ? { ...row, searchText: value, testName: "", sample: "", container: "", resultUnit: "", dropdownOpen: true }
-          : row,
+          ? {
+              ...row,
+              searchText: value,
+              testName: "",
+              sample: "",
+              container: "",
+              resultUnit: "",
+              dropdownOpen: true,
+            }
+          : { ...row, dropdownOpen: false },
+      ),
+    );
+  };
+
+  const openLabDropdown = (id) => {
+    setLabRows(
+      labRows.map((row) =>
+        row.id === id ? { ...row, dropdownOpen: true } : row,
       ),
     );
   };
 
   const toggleLabDropdown = (id, open) => {
-    setLabRows(labRows.map((row) => (row.id === id ? { ...row, dropdownOpen: open } : row)));
+    setLabRows(
+      labRows.map((row) =>
+        row.id === id ? { ...row, dropdownOpen: open } : row,
+      ),
+    );
   };
 
   const handleLabBlur = (id) => {
@@ -280,8 +385,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const getFilteredLabTests = (searchText) => {
-    if (!searchText) return labTests;
-    return labTests.filter((test) => (test.testName || "").toLowerCase().includes(searchText.toLowerCase()));
+    const query = (searchText || "").trim().toLowerCase();
+    if (!query) return labTests;
+    return labTests.filter((test) =>
+      (test.investigationName || test.testName || "").toLowerCase().includes(query),
+    );
   };
 
   const addRadiologyRow = () => {
@@ -289,14 +397,23 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const updateRadiologyRow = (id, field, value) => {
-    setRadiologyRows(radiologyRows.map((row) => (row.id === id ? { ...row, [field]: value } : row)));
+    setRadiologyRows(
+      radiologyRows.map((row) =>
+        row.id === id ? { ...row, [field]: value } : row,
+      ),
+    );
   };
 
   const selectRadiologyTest = (id, test) => {
     setRadiologyRows(
       radiologyRows.map((row) =>
         row.id === id
-          ? { ...row, investigation: test.name, searchText: test.name, dropdownOpen: false }
+          ? {
+              ...row,
+              investigationName: test.investigationName,
+              searchText: test.investigationName,
+              dropdownOpen: false,
+            }
           : row,
       ),
     );
@@ -310,13 +427,32 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const handleRadiologySearchChange = (id, value) => {
     setRadiologyRows(
       radiologyRows.map((row) =>
-        row.id === id ? { ...row, searchText: value, investigation: "", dropdownOpen: true } : row,
+        row.id === id
+          ? {
+              ...row,
+              searchText: value,
+              investigationName: "",
+              dropdownOpen: true,
+            }
+          : { ...row, dropdownOpen: false },
+      ),
+    );
+  };
+
+  const openRadiologyDropdown = (id) => {
+    setRadiologyRows(
+      radiologyRows.map((row) =>
+        row.id === id ? { ...row, dropdownOpen: true } : row,
       ),
     );
   };
 
   const toggleRadiologyDropdown = (id, open) => {
-    setRadiologyRows(radiologyRows.map((row) => (row.id === id ? { ...row, dropdownOpen: open } : row)));
+    setRadiologyRows(
+      radiologyRows.map((row) =>
+        row.id === id ? { ...row, dropdownOpen: open } : row,
+      ),
+    );
   };
 
   const handleRadiologyBlur = (id) => {
@@ -324,8 +460,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const getFilteredRadiologyTests = (searchText) => {
-    if (!searchText) return radiologyTests;
-    return radiologyTests.filter((test) => (test.name || "").toLowerCase().includes(searchText.toLowerCase()));
+    const query = (searchText || "").trim().toLowerCase();
+    if (!query) return radiologyTests;
+    return radiologyTests.filter((test) =>
+      (test.investigationName || "").toLowerCase().includes(query),
+    );
   };
 
   const handleSaveLab = () => {
@@ -340,13 +479,24 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     rows
       .filter((row) => row.searchText?.trim())
       .map((row) => {
-        const matchedTest = type === "lab"
-          ? labTests.find((test) => test.testName === row.testName || test.testName === row.searchText)
-          : radiologyTests.find((test) => test.name === row.investigation || test.name === row.searchText);
+        const matchedTest =
+          type === "lab"
+            ? labTests.find(
+                (test) =>
+                  test.testName === row.testName ||
+                  test.investigationName === row.testName ||
+                  test.testName === row.searchText ||
+                  test.investigationName === row.searchText,
+              )
+            : radiologyTests.find(
+                (test) =>
+                  test.investigationName === row.investigationName ||
+                  test.investigationName === row.searchText,
+              );
 
         return {
           id: matchedTest?.id ?? null,
-          appointmentDate: type === "radiology" ? row.date || null : null,
+          appointmentDate: type === "radiology" ? row.date || getTodayDateString() : null,
           checkStatus: true,
           remarks: row.remarks || "",
           type,
@@ -388,11 +538,16 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     try {
       const response = await postRequest(SAVE_IPD_INVESTIGATION_ORDER, payload);
       if (response?.status === 200) {
-        Swal.fire({
+        await Swal.fire({
           icon: "success",
           title: "Saved",
           text: response?.message || "Investigations saved successfully.",
         });
+        if (type === "lab") {
+          setLabRows([createLabRow()]);
+        } else {
+          setRadiologyRows([createRadiologyRow()]);
+        }
       } else {
         Swal.fire({
           icon: "error",
@@ -469,7 +624,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                     <th style={{ width: "20%" }}>Test Name</th>
                     <th style={{ width: "12%" }}>Sample</th>
                     <th style={{ width: "12%" }}>Container</th>
-                    <th style={{ width: "15%" }}>Result Unit</th>
+                    {/* <th style={{ width: "15%" }}>Result Unit</th> */}
                     <th style={{ width: "20%" }}>Remarks</th>
                     <th style={{ width: "10%" }}>Action</th>
                   </tr>
@@ -486,8 +641,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
-                            onChange={(e) => handleLabTestNameChange(row.id, e.target.value)}
-                            onFocus={() => toggleLabDropdown(row.id, true)}
+                            autoComplete="off"
+                            onChange={(e) =>
+                              handleLabTestNameChange(row.id, e.target.value)
+                            }
+                            onFocus={() => openLabDropdown(row.id)}
                             onBlur={() => handleLabBlur(row.id)}
                             placeholder="Type or select test"
                           />
@@ -496,17 +654,44 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             show={row.dropdownOpen && filteredTests.length > 0}
                           >
                             <ul className="list-group mb-0">
-                              {filteredTests.map((test) => (
-                                <li
-                                  key={test.id}
-                                  className="list-group-item list-group-item-action"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={() => selectLabTest(row.id, test)}
-                                  onMouseDown={(e) => e.preventDefault()}
-                                >
-                                  {test.testName}
-                                </li>
-                              ))}
+                              {filteredTests.map((test) => {
+                                const hasDiscount = test.discount && test.discount > 0;
+                                const displayPrice = test.price || 0;
+                                const discountAmount = hasDiscount ? test.discount : 0;
+                                const finalPrice = hasDiscount
+                                  ? displayPrice - discountAmount
+                                  : displayPrice;
+
+                                return (
+                                  <li
+                                    key={test.id}
+                                    className="list-group-item list-group-item-action"
+                                    style={{
+                                      cursor: "pointer",
+                                      backgroundColor: "#e3e8e6",
+                                    }}
+                                    onClick={() => selectLabTest(row.id, test)}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                  >
+                                    <div>
+                                      <strong>{test.investigationName || test.testName}</strong>
+                                      <div className="d-flex justify-content-between">
+                                        <span>
+                                          {test.price === null || test.price === undefined
+                                            ? "Price not configured"
+                                            : `₹${finalPrice.toFixed(2)}`}
+                                        </span>
+                                        
+                                      </div>
+                                      {test.investigationType && (
+                                        <small className="text-muted">
+                                          Type: {test.investigationType}
+                                        </small>
+                                      )}
+                                    </div>
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </PortalDropdown>
                         </td>
@@ -514,8 +699,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                           <input
                             type="text"
                             className="form-control form-control-sm"
+                            disabled
                             value={row.sample}
-                            onChange={(e) => updateLabRow(row.id, "sample", e.target.value)}
+                            onChange={(e) =>
+                              updateLabRow(row.id, "sample", e.target.value)
+                            }
                             placeholder="Sample type"
                           />
                         </td>
@@ -524,7 +712,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             type="text"
                             className="form-control form-control-sm"
                             value={row.container}
-                            onChange={(e) => updateLabRow(row.id, "container", e.target.value)}
+                            disabled
+                            onChange={(e) =>
+                              updateLabRow(row.id, "container", e.target.value)
+                            }
                             placeholder="Container"
                           />
                         </td>
@@ -532,17 +723,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                           <input
                             type="text"
                             className="form-control form-control-sm"
-                            value={row.resultUnit}
-                            onChange={(e) => updateLabRow(row.id, "resultUnit", e.target.value)}
-                            placeholder="Unit"
-                          />
-                        </td>
-                        <td>
-                          <input
-                            type="text"
-                            className="form-control form-control-sm"
                             value={row.remarks}
-                            onChange={(e) => updateLabRow(row.id, "remarks", e.target.value)}
+                            onChange={(e) =>
+                              updateLabRow(row.id, "remarks", e.target.value)
+                            }
                             placeholder="Remarks"
                           />
                         </td>
@@ -564,7 +748,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               </table>
             </div>
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn btn-primary btn-sm" onClick={handleSaveLab} type="button">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveLab}
+                type="button"
+              >
                 Save Lab Orders
               </button>
             </div>
@@ -592,14 +780,15 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                   <tr>
                     <th style={{ width: "5%" }}>S.No</th>
                     <th style={{ width: "35%" }}>Investigation</th>
-                    <th style={{ width: "20%" }}>Date</th>
-                    <th style={{ width: "25%" }}>Remarks</th>
+                    <th style={{ width: "35%" }}>Remarks</th>
                     <th style={{ width: "10%" }}>Action</th>
                   </tr>
                 </thead>
                 <tbody>
                   {radiologyRows.map((row, idx) => {
-                    const filteredTests = getFilteredRadiologyTests(row.searchText);
+                    const filteredTests = getFilteredRadiologyTests(
+                      row.searchText,
+                    );
                     return (
                       <tr key={row.id}>
                         <td className="text-center">{idx + 1}</td>
@@ -609,8 +798,13 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
-                            onChange={(e) => handleRadiologySearchChange(row.id, e.target.value)}
-                            onFocus={() => toggleRadiologyDropdown(row.id, true)}
+                            onChange={(e) =>
+                              handleRadiologySearchChange(
+                                row.id,
+                                e.target.value,
+                              )
+                            }
+                            onFocus={() => openRadiologyDropdown(row.id)}
                             onBlur={() => handleRadiologyBlur(row.id)}
                             placeholder="Type or select investigation"
                           />
@@ -627,7 +821,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                   onClick={() => selectRadiologyTest(row.id, test)}
                                   onMouseDown={(e) => e.preventDefault()}
                                 >
-                                  {test.name}
+                                  {test.investigationName}
                                 </li>
                               ))}
                             </ul>
@@ -635,18 +829,16 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                         </td>
                         <td>
                           <input
-                            type="date"
-                            className="form-control form-control-sm"
-                            value={row.date}
-                            onChange={(e) => updateRadiologyRow(row.id, "date", e.target.value)}
-                          />
-                        </td>
-                        <td>
-                          <input
                             type="text"
                             className="form-control form-control-sm"
                             value={row.remarks}
-                            onChange={(e) => updateRadiologyRow(row.id, "remarks", e.target.value)}
+                            onChange={(e) =>
+                              updateRadiologyRow(
+                                row.id,
+                                "remarks",
+                                e.target.value,
+                              )
+                            }
                             placeholder="Remarks"
                           />
                         </td>
@@ -668,7 +860,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               </table>
             </div>
             <div className="d-flex justify-content-end mt-3">
-              <button className="btn btn-primary btn-sm" onClick={handleSaveRadiology} type="button">
+              <button
+                className="btn btn-primary btn-sm"
+                onClick={handleSaveRadiology}
+                type="button"
+              >
                 Save Radiology Orders
               </button>
             </div>
@@ -711,7 +907,9 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               <>
                 <div className="table-responsive">
                   <table className="table table-bordered table-hover">
-                    <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                    <thead
+                      style={{ backgroundColor: "#9db4c0", color: "black" }}
+                    >
                       <tr>
                         <th>Order No</th>
                         <th>Order Date</th>
@@ -774,7 +972,9 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               <>
                 <div className="table-responsive">
                   <table className="table table-bordered table-hover">
-                    <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                    <thead
+                      style={{ backgroundColor: "#9db4c0", color: "black" }}
+                    >
                       <tr>
                         <th>Order No</th>
                         <th>Order Date</th>

@@ -10,6 +10,7 @@ import LoadingScreen from "../../../Components/Loading/index";
 import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 
 const Approveemployee = () => {
   const [departmentData, setDepartmentData] = useState([]);
@@ -102,18 +103,18 @@ const Approveemployee = () => {
   };
 
   const handleConfirm = async (confirmed) => {
+    setConfirmDialog({
+      isOpen: false,
+      employeeId: null,
+      departmentId: null,
+    });
+
     if (confirmed) {
       await approveEmployee(
         confirmDialog.employeeId,
         confirmDialog.departmentId,
       );
     }
-
-    setConfirmDialog({
-      isOpen: false,
-      employeeId: null,
-      departmentId: null,
-    });
   };
 
   const approveEmployee = async (employeeId, departmentId) => {
@@ -125,9 +126,12 @@ const Approveemployee = () => {
       );
 
       if (response.status === 200) {
-        showPopup("Employee approved successfully", "success");
-        fetchEmployeeData();
+        setLoading(false);
+        showPopup("Employee approved successfully", "success", () => {
+          fetchEmployeeData();
+        });
       } else {
+        setLoading(false);
         showPopup(
           "Failed to approve employee: " +
             (response.message || "Unknown error"),
@@ -136,12 +140,11 @@ const Approveemployee = () => {
       }
     } catch (error) {
       console.error("Error approving employee:", error);
+      setLoading(false);
       showPopup(
         "Error approving employee: " + (error.message || "Unknown error"),
         "error",
       );
-    } finally {
-      setLoading(false);
     }
   };
   const filteredEmployees = employeeData.filter((employee) =>
@@ -154,11 +157,16 @@ const Approveemployee = () => {
   const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredEmployees.slice(indexOfFirst, indexOfLast);
 
-  const showPopup = (message, type = "info") => {
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
       message,
       type,
-      onClose: () => setPopupMessage(null),
+      onClose: () => {
+        setPopupMessage(null);
+        if (onCloseCallback) {
+          onCloseCallback();
+        }
+      },
     });
   };
 
@@ -245,6 +253,7 @@ const Approveemployee = () => {
                     </td>
                     <td>
                       <button
+                        type="button"
                         className="btn btn-warning"
                         disabled={!selectedDepartments[employee.employeeId]}
                         onClick={() =>
@@ -274,67 +283,36 @@ const Approveemployee = () => {
             />
           </div>
 
-          {confirmDialog.isOpen && (
-            <div
-              className="modal d-block"
-              tabIndex="-1"
-              role="dialog"
-              style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
-            >
-              <div className="modal-dialog" role="document">
-                <div className="modal-content">
-                  <div className="modal-header">
-                    <h5 className="modal-title">Confirm Approval</h5>
-                    <button
-                      type="button"
-                      className="close"
-                      onClick={() => handleConfirm(false)}
-                    >
-                      <span>&times;</span>
-                    </button>
-                  </div>
-                  <div className="modal-body">
-                    <p>
-                      Are you sure you want to approve{" "}
-                      <strong>
-                        {
-                          employeeData.find(
-                            (emp) => emp.id === confirmDialog.employeeId,
-                          )?.firstName
-                        }{" "}
-                        {
-                          employeeData.find(
-                            (emp) => emp.id === confirmDialog.employeeId,
-                          )?.lastName
-                        }
-                      </strong>{" "}
-                      with department{" "}
-                      <strong>
-                        {getDepartmentName(confirmDialog.departmentId)}
-                      </strong>
-                      ?
-                    </p>
-                  </div>
-                  <div className="modal-footer">
-                    <button
-                      type="button"
-                      className="btn btn-secondary"
-                      onClick={() => handleConfirm(false)}
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      type="button"
-                      className="btn btn-primary"
-                      onClick={() => handleConfirm(true)}
-                    >
-                      Confirm
-                    </button>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )}
+<ConfirmationPopup
+  show={confirmDialog.isOpen}
+  type="danger"
+  message={
+    <>
+      Are you sure you want to approve{" "}
+      <strong>
+        {
+          employeeData.find(
+            (emp) => emp.employeeId === confirmDialog.employeeId
+          )?.firstName
+        }{" "}
+        {
+          employeeData.find(
+            (emp) => emp.employeeId === confirmDialog.employeeId
+          )?.lastName
+        }
+      </strong>{" "}
+      with department{" "}
+      <strong>
+        {getDepartmentName(confirmDialog.departmentId)}
+      </strong>
+      ?
+    </>
+  }
+  confirmText="Confirm"
+  cancelText="Cancel"
+  onConfirm={() => handleConfirm(true)}
+  onCancel={() => handleConfirm(false)}
+/>
         </div>
       </div>
     </div>

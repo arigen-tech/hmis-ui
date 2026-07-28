@@ -7,6 +7,8 @@ import {
   FILTER_OPD_DEPT,
   GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL,
   REQUEST_PARAM_DEPARTMENT_TYPE_CODE,
+  CREATE_APPOINTMENT_SETUP,
+  GET_APPOINTMENT_SETUP,
 } from "../../../../config/apiConfig";
 import {
   getRequest,
@@ -15,7 +17,7 @@ import {
 } from "../../../../service/apiService";
 import Popup from "../../../../Components/popup";
 import LoadingScreen from "../../../../Components/Loading";
-import {APPOINTMENT_REQUIRED_FIELDS} from "../../../../config/constants"
+import { APPOINTMENT_REQUIRED_FIELDS } from "../../../../config/constants";
 
 const AppointmentSetup = () => {
   const [popup, setPopup] = useState("");
@@ -35,13 +37,19 @@ const AppointmentSetup = () => {
   const [modifiedFields, setModifiedFields] = useState({});
   const [dataFromDB, setDataFromDB] = useState(false);
 
-  const showPopup = (message, type = "info") => {
-    setPopupMessage({
-      message,
-      type,
-      onClose: () => {
-        setPopupMessage(null);
-      },
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    return new Promise((resolve) => {
+      setPopupMessage({
+        message,
+        type,
+        onClose: () => {
+          setPopupMessage(null);
+          if (onCloseCallback) {
+            onCloseCallback();
+          }
+          resolve();
+        },
+      });
     });
   };
 
@@ -120,7 +128,9 @@ const AppointmentSetup = () => {
   const fetchDepartmentData = async () => {
     setLoading(true);
     try {
-      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      const data = await getRequest(
+        `${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`,
+      );
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response;
         setDepartmentData(data.response);
@@ -151,7 +161,7 @@ const AppointmentSetup = () => {
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
-    } 
+    }
   };
 
   const fetchSessionData = async () => {
@@ -181,8 +191,12 @@ const AppointmentSetup = () => {
     try {
       setLoading(true);
       setModifiedFields({});
-      const url = `${APPOINTMENT}/getAppointmentSetup?deptId=${department}&doctorId=${doctor}&sessionId=${session}`;
-      const data = await getRequest(url);
+      const params = new URLSearchParams({
+        deptId: department,
+        doctorId: doctor,
+        sessionId: session,
+      });
+      const data = await getRequest(`${GET_APPOINTMENT_SETUP}?${params}`);
       if (data?.status === 200 && data?.response) {
         const { startTime, endTime, timeTaken, days } = data.response;
         setAppointmentData(data.response);
@@ -200,7 +214,9 @@ const AppointmentSetup = () => {
                 endTime:
                   dayConfig.endTime !== null ? String(dayConfig.endTime) : "",
                 startTime:
-                  dayConfig.startTime !== null ? String(dayConfig.startTime) : "",
+                  dayConfig.startTime !== null
+                    ? String(dayConfig.startTime)
+                    : "",
                 startToken:
                   dayConfig.startToken !== null
                     ? String(dayConfig.startToken)
@@ -367,10 +383,7 @@ const AppointmentSetup = () => {
     e.preventDefault();
 
     if (hasInvalidRow()) {
-      showPopup(
-        APPOINTMENT_REQUIRED_FIELDS,
-        "error",
-      );
+      showPopup(APPOINTMENT_REQUIRED_FIELDS, "error");
       return;
     }
 
@@ -422,17 +435,22 @@ const AppointmentSetup = () => {
 
     try {
       setLoading(true);
-      const response = await postRequest(`${APPOINTMENT}/createAppointmentSetup`, requestData);
+      const response = await postRequest(
+        `${CREATE_APPOINTMENT_SETUP}`,
+        requestData,
+      );
 
       if (response.status === 200) {
         showPopup(
-          response.message ||
+          response.response?.msg ||
             `Appointment ${appointmentData ? "updated" : "created"} successfully!`,
           "success",
+          () => {
+            // Mirror DoctorRoaster behavior: run the follow-up work only after OK.
+            setModifiedFields({});
+            handleReset();
+          },
         );
-        setOriginalDaysConfig(JSON.parse(JSON.stringify(daysConfig)));
-        setModifiedFields({});
-        handleReset();
       } else {
         showPopup(
           `Failed to ${appointmentData ? "update" : "create"} Appointment. Please try again.`,

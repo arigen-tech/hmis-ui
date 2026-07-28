@@ -357,7 +357,6 @@ useEffect(() => {
     }
 
     setSearchLoading(true);
-    setShowReport(false);
     setCurrentPage(1);
 
     try {
@@ -498,7 +497,6 @@ useEffect(() => {
     const formatToISODate = (dateInput) => {
       if (!dateInput) return getTodayDate();
 
-      // If it's already in YYYY-MM-DD format
       if (dateInput.match(/^\d{4}-\d{2}-\d{2}$/)) {
         return dateInput;
       }
@@ -795,18 +793,20 @@ useEffect(() => {
         );
 
         if (res.status === 200) {
-          Swal.fire({
-            icon: "success",
-            title: "Success",
-            text: `${RESCHEDULE_SUCCESS}`,
-            timer: 2000,
-          });
+
           setShowReschedulePopup(false);
           setSelectedToken(null);
           setSelectedSlot(null);
           setShowTimeSlots(false);
           setAvailableTokens([]);
-          handleSearch(); // Refresh the list
+        await Swal.fire({
+            icon: "success",
+            title: "Success",
+            text: `${RESCHEDULE_SUCCESS}`,
+            timer: 2000,
+          });
+
+         await handleSearch(); // Refresh the list
         } else {
           throw new Error(res.message || "Server error");
         }
@@ -871,16 +871,18 @@ useEffect(() => {
         const res = await postRequest(CANCEL_APPOINTMENT, cancelRequest);
 
         if (res.status === 200) {
-          Swal.fire({
+          setShowCancelPopup(false);
+          setSelectedReason("");
+          setPatientToCancel(null);
+
+         await Swal.fire({
             icon: "success",
             title: "Cancelled",
             text: `${CANCELLATION_SUCCESS}`,
             timer: 2000,
           });
-          setShowCancelPopup(false);
-          setSelectedReason("");
-          setPatientToCancel(null);
-          handleSearch();
+
+          await handleSearch();
         } else {
           throw new Error(res.message || "Server error");
         }
@@ -917,7 +919,6 @@ useEffect(() => {
               </h4>
             </div>
             <div className="card-body">
-              {searchLoading && <LoadingScreen />}
                 <div className="row mb-4">
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Mobile Number</label>
@@ -950,6 +951,7 @@ useEffect(() => {
 
                 <div className="col-md-4 d-flex align-items-end">
                   <button
+                    type="button"
                     className="btn btn-success"
                     onClick={handleSearch}
                     disabled={searchLoading}
@@ -979,7 +981,7 @@ useEffect(() => {
                       <div className="card-header">
                         <div className="d-flex justify-content-between align-items-center">
                           <h5 className="card-title mb-0">
-                            Reschedule Appointment or Cancel Appointment
+                             Appointments
                           </h5>
                         </div>
                       </div>
@@ -1156,15 +1158,17 @@ useEffect(() => {
                         />
                       </div>
 
-                      <div className="col-md-6">
-                        <label className="form-label">Doctor</label>
-                        <input
-                          type="text"
-                          className="form-control bg-light"
-                          value={rescheduleData.doctorName}
+                      {isOpdReschedule && (
+                        <div className="col-md-6">
+                          <label className="form-label">Doctor</label>
+                          <input
+                            type="text"
+                            className="form-control bg-light"
+                            value={rescheduleData.doctorName}
                           readOnly
                         />
                       </div>
+                    )}
 
                       <div className="col-md-6">
                         <DatePicker
