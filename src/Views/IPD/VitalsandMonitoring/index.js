@@ -1,6 +1,14 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
 import { SAVE_VITALS_DETAILS, GET_VITALS_DETAILS_BY_INPATIENT_ID } from "../../../config/apiConfig"
+import Popup from "../../../Components/popup"
+import {
+  VITALS_FILL_ONE_WARN,
+  VITALS_SAVE_SUCCESS,
+  VITALS_SAVE_FAILURE,
+  VITALS_SAVE_ERROR,
+  VITALS_FILL_INTAKE_OUTPUT_WARN
+} from "../../../config/constants"
 
 const VitalsandMonitoring = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
@@ -49,6 +57,20 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [popupMessage, setPopupMessage] = useState(null)
+
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+        if (onCloseCallback) {
+          onCloseCallback()
+        }
+      }
+    })
+  }
 
   const [vitalsHistory, setVitalsHistory] = useState([
     emptyVitalsRow()
@@ -183,7 +205,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   const handleVitalsSubmit = async () => {
     const lastRow = vitalsHistory[vitalsHistory.length - 1]
     if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic && !lastRow.respiration && !lastRow.o2Saturation && !lastRow.pain) {
-      alert("Please fill in at least one vital before submitting.")
+      showPopup(VITALS_FILL_ONE_WARN, "warning")
       return
     }
 
@@ -206,14 +228,14 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     try {
       const response = await postRequest(SAVE_VITALS_DETAILS, payload)
       if (response && (response.status === 200 || response.message === "success")) {
-        alert(response.response || "Vitals details saved successfully")
+        showPopup(response.response || VITALS_SAVE_SUCCESS, "success")
         await fetchVitalsDetails()
       } else {
-        alert(response?.message || "Failed to save vitals details.")
+        showPopup(response?.message || VITALS_SAVE_FAILURE, "error")
       }
     } catch (error) {
       console.error("Error saving vitals details:", error)
-      alert("Error saving vitals details. Please try again.")
+      showPopup(VITALS_SAVE_ERROR, "error")
     } finally {
       setSaving(false)
     }
@@ -268,7 +290,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     const filledOutputRows = modalOutputRows.filter(row => row.item || row.qty)
 
     if (filledIntakeRows.length === 0 && filledOutputRows.length === 0) {
-      alert("Please fill in at least one intake or output row before saving.")
+      showPopup(VITALS_FILL_INTAKE_OUTPUT_WARN, "warning")
       return
     }
 
@@ -325,6 +347,13 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
 
   return (
     <div>
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       {/* ─── TAB TOGGLE ─── */}
       <div className="d-flex gap-2 mb-3 align-items-center">
         <button
