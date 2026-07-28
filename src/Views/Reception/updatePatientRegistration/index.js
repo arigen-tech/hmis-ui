@@ -74,12 +74,14 @@ import {
 } from "../../../config/constants";
 import { getRequest, postRequest } from "../../../service/apiService";
 
+const processedPrefillNavigationKeys = new Set();
+const processedMasterDataNavigationKeys = new Set();
+
 const UpdatePatientRegistration = () => {
   const navigate = useNavigate();
   const location = useLocation();
   async function fetchHospitalDetails() {
     try {
-      setLoading(true);
       const data = await getRequest(
         `${HOSPITAL}/${sessionStorage.getItem("hospitalId")}`,
       );
@@ -95,14 +97,11 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
   }
 
   async function fetchAllStateData() {
     try {
-      setLoading(true);
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setStateData(data.response);
@@ -112,14 +111,11 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
   }
 
   async function fetchAllDistrictData() {
     try {
-      setLoading(true);
       const data = await getRequest(`${ALL_DISTRICT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDistrictData(data.response);
@@ -129,13 +125,10 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
   }
 
   const loadMasterData = async () => {
-    setLoading(true);
     try {
       await Promise.allSettled([
         fetchGenderData(),
@@ -158,8 +151,6 @@ const UpdatePatientRegistration = () => {
         text: "Some master data could not be loaded. You may need to refresh the page.",
         confirmButtonText: "OK",
       });
-    } finally {
-      setLoading(false);
     }
   };
   const [availableTokens, setAvailableTokens] = useState([]);
@@ -188,6 +179,7 @@ const UpdatePatientRegistration = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     mobileNo: "",
@@ -627,13 +619,17 @@ const UpdatePatientRegistration = () => {
   };
 
   const handleSearch = useCallback(
-    async (page = 0, searchOverride = null) => {
+    async (page = 0, searchOverride = null, showButtonLoading = true) => {
       setCurrentPage(page + 1);
 
       if (typeof page !== "number") {
         page = 0;
       }
-      setSearchLoading(true);
+      if (showButtonLoading) {
+        setSearchLoading(true);
+      } else {
+        setTableLoading(true);
+      }
       try {
         const searchPayload = {
           mobileNo: searchOverride?.mobileNo ?? formData.mobileNo ?? null,
@@ -670,6 +666,7 @@ const UpdatePatientRegistration = () => {
         Swal.fire("Error", SEARCH_PATIENTS_FAILED_MSG, "error");
       } finally {
         setSearchLoading(false);
+        setTableLoading(false);
       }
     },
     [formData.mobileNo, formData.patientName, itemsPerPage],
@@ -677,17 +674,19 @@ const UpdatePatientRegistration = () => {
 
   useEffect(() => {
     const prefillSearch = location.state;
+    const navigationKey = location.key || location.pathname;
 
     if (!prefillSearch?.patientName && !prefillSearch?.mobileNo) {
       return;
     }
 
     // React.StrictMode can mount this screen twice in development.
-    // Guard by location key so the auto-prefill/search only runs once per navigation.
-    if (prefillSearchRef.current === location.key) {
+    // Guard by navigation key so the auto-prefill/search only runs once per navigation.
+    if (processedPrefillNavigationKeys.has(navigationKey)) {
       return;
     }
-    prefillSearchRef.current = location.key;
+    processedPrefillNavigationKeys.add(navigationKey);
+    prefillSearchRef.current = navigationKey;
 
     const patientName = prefillSearch.patientName || "";
     const mobileNo = prefillSearch.mobileNo || "";
@@ -703,8 +702,8 @@ const UpdatePatientRegistration = () => {
     handleSearch(0, {
       patientName,
       mobileNo,
-    });
-  }, [location.key]);
+    }, false);
+  }, [location.key, location.pathname, location.state]);
 
   const handleReset = () => {
     setFormData({
@@ -1202,10 +1201,13 @@ const UpdatePatientRegistration = () => {
   };
 
   useEffect(() => {
+    const navigationKey = location.key || location.pathname;
     if (masterDataLoadedRef.current) return;
+    if (processedMasterDataNavigationKeys.has(navigationKey)) return;
     masterDataLoadedRef.current = true;
+    processedMasterDataNavigationKeys.add(navigationKey);
     loadMasterData();
-  }, []);
+  }, [location.key, location.pathname]);
 
   const handleEdit = async (patient) => {
     try {
@@ -1433,8 +1435,6 @@ const UpdatePatientRegistration = () => {
       }
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
-    } finally {
-      setLoading(false);
     }
   }
 
@@ -1504,7 +1504,6 @@ const UpdatePatientRegistration = () => {
 
   async function fetchAllSessions() {
     try {
-      setLoading(true);
       const data = await getRequest(`${GET_SESSION}1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setSession(data.response);
@@ -1574,7 +1573,6 @@ const UpdatePatientRegistration = () => {
 
   async function fetchNokAllStates(value) {
     try {
-      setLoading(true);
       const data = await getRequest(`${ALL_STATE}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setNokStateData(data.response);
@@ -1618,7 +1616,6 @@ const UpdatePatientRegistration = () => {
 
   async function fetchDepartment() {
     try {
-      setLoading(true);
       const data = await getRequest(`${ALL_DEPARTMENT}/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
         const filteredDepartments = data.response.filter(
@@ -1670,7 +1667,6 @@ const UpdatePatientRegistration = () => {
 
   async function fetchDoctor(value) {
     try {
-      setLoading(true);
       const data = await getRequest(`${DOCTOR_BY_SPECIALITY}${value}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
@@ -2176,7 +2172,7 @@ const UpdatePatientRegistration = () => {
   // Handle page change without refreshing
   const handlePageChange = (page) => {
     setCurrentPage(page);
-    handleSearch(page - 1);
+    handleSearch(page - 1, null, false);
   };
 
   const handleFormSubmit = (e) => {
@@ -2683,6 +2679,7 @@ const UpdatePatientRegistration = () => {
 
                   <button
                     className="btn btn-secondary ms-auto me-3"
+                    type="button"
                     onClick={handleReset}
                   >
                     <i className="icofont-arrow-left me-1"></i> Back to Search
@@ -2751,6 +2748,7 @@ const UpdatePatientRegistration = () => {
                           )}
                           <button
                             className="btn btn-outline-primary btn-sm mt-2"
+                            type="button"
                             onClick={useAbhaData}
                           >
                             <i className="bi bi-arrow-right me-1"></i>
@@ -4066,7 +4064,7 @@ const UpdatePatientRegistration = () => {
                       className="btn btn-primary me-2"
                       onClick={() => {
                         setCurrentPage(1);
-                        handleSearch(0);
+                        handleSearch(0, null, true);
                       }}
                       disabled={searchLoading} // Use searchLoading instead of loading
                     >
@@ -4076,7 +4074,7 @@ const UpdatePatientRegistration = () => {
                             className="spinner-border spinner-border-sm me-2"
                             role="status"
                             aria-hidden="true"
-                          ></span>
+                          />
                           Searching...
                         </>
                       ) : (
@@ -4094,7 +4092,18 @@ const UpdatePatientRegistration = () => {
 
                   {searchPerformed && patients.length > 0 && (
                     <div className="col-md-12">
-                      <div className="table-responsive packagelist">
+                      <div className="table-responsive packagelist position-relative">
+                        {tableLoading && (
+                          <div
+                            className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                            style={{ backgroundColor: "rgba(255,255,255,0.72)", zIndex: 2 }}
+                          >
+                            <div className="text-center">
+                              <div className="spinner-border text-primary" role="status" />
+                              <div className="mt-2 text-muted">Searching...</div>
+                            </div>
+                          </div>
+                        )}
                         <table className="table table-bordered table-hover align-middle">
                           <thead className="table-light">
                             <tr>

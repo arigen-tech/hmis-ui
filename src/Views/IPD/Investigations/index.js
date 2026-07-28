@@ -79,44 +79,6 @@ const dummyRadiologyOrders = [
   },
 ];
 
-// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
-const PortalDropdown = ({ anchorRef, show, children }) => {
-  const [style, setStyle] = useState({});
-
-  useEffect(() => {
-    if (!show || !anchorRef?.current) return;
-
-    const updatePosition = () => {
-      const rect = anchorRef.current.getBoundingClientRect();
-      setStyle({
-        position: "fixed",
-        top: rect.bottom + 4, // 4 px gap below the input
-        left: rect.left,
-        width: rect.width,
-        zIndex: 99999,
-        maxHeight: "200px",
-        overflowY: "auto",
-        backgroundColor: "#fff",
-        border: "1px solid #ccc",
-        borderRadius: "4px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-      });
-    };
-
-    updatePosition();
-
-    // Re-position on scroll or resize
-    window.addEventListener("scroll", updatePosition, true);
-    window.addEventListener("resize", updatePosition);
-    return () => {
-      window.removeEventListener("scroll", updatePosition, true);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [show, anchorRef]);
-
-  if (!show) return null;
-  return createPortal(<div style={style}>{children}</div>, document.body);
-};
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -210,7 +172,8 @@ const Pagination = ({
 
 const normalizeLabInvestigation = (item, index) => ({
   id: item?.investigationId ?? item?.id ?? index,
-  testName: item?.investigationName ?? item?.testName ?? item?.name ?? "",
+  investigationName: item?.investigationName ?? item?.testName ?? item?.name ?? "",
+  testName: item?.testName ?? item?.investigationName ?? item?.name ?? "",
   sample: item?.sample ?? item?.sampleName ?? item?.sampleDescription ?? "",
   container:
     item?.container ?? item?.collectionName ?? item?.containerName ?? "",
@@ -222,6 +185,7 @@ const normalizeLabInvestigation = (item, index) => ({
 const normalizeRadiologyInvestigation = (item, index) => ({
   id: item?.investigationId ?? item?.id ?? index,
   investigationName: item?.investigationName ?? item?.name ?? "",
+  name: item?.name ?? item?.investigationName ?? "",
   price: Number(item?.price ?? item?.amount ?? item?.rate ?? 0),
   discount: Number(item?.disc ?? item?.discount ?? 0),
 });
@@ -359,16 +323,17 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const selectLabTest = (id, test) => {
+    const testName = test.investigationName || test.testName || "";
     setLabRows(
       labRows.map((row) =>
         row.id === id
           ? {
               ...row,
-              testName: test.testName,
+              testName,
               sample: test.sample,
               container: test.container,
               resultUnit: test.resultUnit,
-              searchText: test.testName,
+              searchText: testName,
               dropdownOpen: false,
             }
           : row,
@@ -423,7 +388,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     const query = (searchText || "").trim().toLowerCase();
     if (!query) return labTests;
     return labTests.filter((test) =>
-      (test.testName || "").toLowerCase().includes(query),
+      (test.investigationName || test.testName || "").toLowerCase().includes(query),
     );
   };
 
@@ -519,7 +484,9 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
             ? labTests.find(
                 (test) =>
                   test.testName === row.testName ||
-                  test.testName === row.searchText,
+                  test.investigationName === row.testName ||
+                  test.testName === row.searchText ||
+                  test.investigationName === row.searchText,
               )
             : radiologyTests.find(
                 (test) =>
@@ -674,7 +641,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
-                            placeholder="Search Investigation..."
                             autoComplete="off"
                             onChange={(e) =>
                               handleLabTestNameChange(row.id, e.target.value)
@@ -688,17 +654,44 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             show={row.dropdownOpen && filteredTests.length > 0}
                           >
                             <ul className="list-group mb-0">
-                              {filteredTests.map((test) => (
-                                <li
-                                  key={test.id}
-                                  className="list-group-item list-group-item-action"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={() => selectLabTest(row.id, test)}
-                                  onMouseDown={(e) => e.preventDefault()}
-                                >
-                                  {test.testName}
-                                </li>
-                              ))}
+                              {filteredTests.map((test) => {
+                                const hasDiscount = test.discount && test.discount > 0;
+                                const displayPrice = test.price || 0;
+                                const discountAmount = hasDiscount ? test.discount : 0;
+                                const finalPrice = hasDiscount
+                                  ? displayPrice - discountAmount
+                                  : displayPrice;
+
+                                return (
+                                  <li
+                                    key={test.id}
+                                    className="list-group-item list-group-item-action"
+                                    style={{
+                                      cursor: "pointer",
+                                      backgroundColor: "#e3e8e6",
+                                    }}
+                                    onClick={() => selectLabTest(row.id, test)}
+                                    onMouseDown={(e) => e.preventDefault()}
+                                  >
+                                    <div>
+                                      <strong>{test.investigationName || test.testName}</strong>
+                                      <div className="d-flex justify-content-between">
+                                        <span>
+                                          {test.price === null || test.price === undefined
+                                            ? "Price not configured"
+                                            : `₹${finalPrice.toFixed(2)}`}
+                                        </span>
+                                        
+                                      </div>
+                                      {test.investigationType && (
+                                        <small className="text-muted">
+                                          Type: {test.investigationType}
+                                        </small>
+                                      )}
+                                    </div>
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </PortalDropdown>
                         </td>
@@ -828,7 +821,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                   onClick={() => selectRadiologyTest(row.id, test)}
                                   onMouseDown={(e) => e.preventDefault()}
                                 >
-                                  {test.name}
+                                  {test.investigationName}
                                 </li>
                               ))}
                             </ul>

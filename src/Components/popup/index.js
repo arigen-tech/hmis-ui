@@ -15,7 +15,7 @@ const Popup = ({ message, type = "default", onClose }) => {
         };
       case "error":
         return {
-          icon: "✘",
+          icon: "✕",
           iconColor: "text-danger",
           buttonColor: "btn btn-danger",
           titleColor: "text-danger",
@@ -40,7 +40,7 @@ const Popup = ({ message, type = "default", onClose }) => {
   const handleClose = () => {
     setIsVisible(false);
     if (onClose) {
-      onClose(); 
+      onClose();
     }
   };
 
@@ -51,9 +51,15 @@ const Popup = ({ message, type = "default", onClose }) => {
   return ReactDOM.createPortal(
     <div
       className="position-fixed top-0 start-0 w-100 h-100 bg-black bg-opacity-50 d-flex justify-content-center align-items-center"
-      style={{ zIndex: 1050 }}
+      style={{ zIndex: 1080 }}
+      role="presentation"
     >
-      <div className="bg-white rounded shadow p-4 text-center" style={{ maxWidth: "90%", width: "25rem" }}>
+      <div
+        className="bg-white rounded shadow p-4 text-center"
+        style={{ maxWidth: "90%", width: "25rem" }}
+        role="dialog"
+        aria-modal="true"
+      >
         <div
           className={`d-flex align-items-center justify-content-center rounded-circle border border-4 ${styles.iconColor} mb-4 mx-auto`}
           style={{
@@ -65,6 +71,7 @@ const Popup = ({ message, type = "default", onClose }) => {
         </div>
         <h3 className={`mb-4 ${styles.titleColor}`}>{message}</h3>
         <button
+          type="button"
           className={`${styles.buttonColor} fw-bold px-4 py-2`}
           onClick={handleClose}
         >
@@ -72,9 +79,8 @@ const Popup = ({ message, type = "default", onClose }) => {
         </button>
       </div>
     </div>,
-    document.body
+    document.body,
   );
 };
 
 export default Popup;
-

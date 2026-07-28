@@ -357,7 +357,6 @@ useEffect(() => {
     }
 
     setSearchLoading(true);
-    setShowReport(false);
     setCurrentPage(1);
 
     try {
@@ -920,7 +919,6 @@ useEffect(() => {
               </h4>
             </div>
             <div className="card-body">
-              {searchLoading && <LoadingScreen />}
                 <div className="row mb-4">
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Mobile Number</label>
@@ -953,6 +951,7 @@ useEffect(() => {
 
                 <div className="col-md-4 d-flex align-items-end">
                   <button
+                    type="button"
                     className="btn btn-success"
                     onClick={handleSearch}
                     disabled={searchLoading}
@@ -982,7 +981,7 @@ useEffect(() => {
                       <div className="card-header">
                         <div className="d-flex justify-content-between align-items-center">
                           <h5 className="card-title mb-0">
-                            Reschedule Appointment or Cancel Appointment
+                             Appointments
                           </h5>
                         </div>
                       </div>
@@ -1159,15 +1158,17 @@ useEffect(() => {
                         />
                       </div>
 
-                      <div className="col-md-6">
-                        <label className="form-label">Doctor</label>
-                        <input
-                          type="text"
-                          className="form-control bg-light"
-                          value={rescheduleData.doctorName}
+                      {isOpdReschedule && (
+                        <div className="col-md-6">
+                          <label className="form-label">Doctor</label>
+                          <input
+                            type="text"
+                            className="form-control bg-light"
+                            value={rescheduleData.doctorName}
                           readOnly
                         />
                       </div>
+                    )}
 
                       <div className="col-md-6">
                         <DatePicker

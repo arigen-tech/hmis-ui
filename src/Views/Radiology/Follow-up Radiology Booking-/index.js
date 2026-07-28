@@ -77,6 +77,7 @@ const RadiologyBookingRegisteredPatient = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
   const [formData, setFormData] = useState({
     rows: [],
   });
@@ -641,7 +642,10 @@ const RadiologyBookingRegisteredPatient = () => {
       return;
     }
     setCurrentPage(1);
-    handleSearch(0);
+    setSearchLoading(true);
+    handleSearch(0).finally(() => {
+      setSearchLoading(false);
+    });
   };
 
   const removeRow = (index) => {
@@ -882,7 +886,7 @@ const RadiologyBookingRegisteredPatient = () => {
       if (typeof page !== "number") {
         page = Number(page) || 0;
       }
-      setSearchLoading(true);
+      setTableLoading(true);
       try {
         const payload = {
           mobileNo:
@@ -914,7 +918,7 @@ const RadiologyBookingRegisteredPatient = () => {
         setTotalPages(0);
         setTotalElements(0);
       } finally {
-        setSearchLoading(false);
+        setTableLoading(false);
       }
     },
     [itemsPerPage, searchFormData.mobileNo, searchFormData.patientName],
@@ -2998,7 +3002,7 @@ const RadiologyBookingRegisteredPatient = () => {
                       type="button"
                       className="btn btn-primary me-2"
                       onClick={handleSearchClick}
-                      disabled={searchLoading}
+                      disabled={searchLoading || tableLoading}
                     >
                       {searchLoading ? (
                         <>
@@ -3020,7 +3024,26 @@ const RadiologyBookingRegisteredPatient = () => {
 
                   {patients.length > 0 && (
                     <div className="col-md-12">
-                      <div className="table-responsive packagelist">
+                      <div className="table-responsive packagelist position-relative">
+                        {tableLoading && ( // Add loading overlay
+                          <div
+                            className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.72)",
+                              zIndex: 2,
+                            }}
+                          >
+                            <div className="text-center">
+                              <div
+                                className="spinner-border text-primary"
+                                role="status"
+                              />
+                              <div className="mt-2 text-muted">
+                                Searching...
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <table className="table table-bordered table-hover align-middle">
                           <thead className="table-light">
                             <tr>
@@ -3047,6 +3070,7 @@ const RadiologyBookingRegisteredPatient = () => {
                                     type="button"
                                     className="btn btn-success btn-sm d-flex align-items-center gap-2"
                                     onClick={() => handleBook(p)}
+                                    disabled={tableLoading} // Add disabled state
                                   >
                                     Book
                                     <i className="icofont-calendar"></i>

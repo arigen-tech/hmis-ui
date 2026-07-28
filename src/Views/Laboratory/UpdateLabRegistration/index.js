@@ -92,6 +92,7 @@ const UpdateLabRegistration = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [searchLoading, setSearchLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
 
   // Main form data
   const [formData, setFormData] = useState({
@@ -927,7 +928,7 @@ const UpdateLabRegistration = () => {
       if (typeof page !== "number") {
         page = Number(page) || 0;
       }
-      setSearchLoading(true);
+      setTableLoading(true);
 
       const mobileNo =
         searchOverride?.mobileNo ?? (searchFormData.mobileNo || "");
@@ -966,7 +967,7 @@ const UpdateLabRegistration = () => {
         console.error(error);
         showPopup("Search failed", "error");
       } finally {
-        setSearchLoading(false);
+        setTableLoading(false);
       }
     },
     [itemsPerPage, searchFormData.mobileNo, searchFormData.patientName],
@@ -3059,11 +3060,25 @@ const UpdateLabRegistration = () => {
                       className="btn btn-primary me-2"
                       onClick={() => {
                         setCurrentPage(1);
-                        handleSearch(0);
+                        setSearchLoading(true);
+                        handleSearch(0).finally(() => {
+                          setSearchLoading(false);
+                        });
                       }}
-                      disabled={loading}
+                      disabled={searchLoading || tableLoading}
                     >
-                      {loading ? "Searching..." : "Search"}
+                      {searchLoading ? (
+                        <>
+                          <span
+                            className="spinner-border spinner-border-sm me-2"
+                            role="status"
+                            aria-hidden="true"
+                          />
+                          Searching...
+                        </>
+                      ) : (
+                        "Search"
+                      )}
                     </button>
                     <button
                       type="button"
@@ -3076,7 +3091,26 @@ const UpdateLabRegistration = () => {
 
                   {patients.length > 0 && (
                     <div className="col-md-12">
-                      <div className="table-responsive packagelist">
+                      <div className="table-responsive packagelist position-relative">
+                        {tableLoading && (
+                          <div
+                            className="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center"
+                            style={{
+                              backgroundColor: "rgba(255,255,255,0.72)",
+                              zIndex: 2,
+                            }}
+                          >
+                            <div className="text-center">
+                              <div
+                                className="spinner-border text-primary"
+                                role="status"
+                              />
+                              <div className="mt-2 text-muted">
+                                Searching...
+                              </div>
+                            </div>
+                          </div>
+                        )}
                         <table className="table table-bordered table-hover align-middle">
                           <thead className="table-light">
                             <tr>
@@ -3103,6 +3137,7 @@ const UpdateLabRegistration = () => {
                                     type="button"
                                     className="btn btn-success btn-sm"
                                     onClick={() => handleBook(patient)}
+                                    disabled={tableLoading}
                                   >
                                     Book
                                     <span className="ms-2">
