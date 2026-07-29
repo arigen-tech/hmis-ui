@@ -1,6 +1,46 @@
 import React, { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
+
+// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4, // 4 px gap below the input
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "200px",
+        overflowY: "auto",
+        backgroundColor: "#fff",
+        border: "1px solid #ccc",
+        borderRadius: "4px",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      });
+    };
+
+    updatePosition();
+
+    // Re-position on scroll or resize
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(<div style={style}>{children}</div>, document.body);
+};
 
 const DischargeFromWard = () => {
   const [activeTab, setActiveTab] = useState("summary");
@@ -36,6 +76,7 @@ const DischargeFromWard = () => {
         total: "", // auto-calculated, readonly
         route: "Oral",
         instruction: "",
+        dropdownOpen: false,
       },
     ],
     adviseOnDischarge: "",
@@ -66,6 +107,9 @@ const DischargeFromWard = () => {
   const courseOfHospitalStayToolbarRef = useRef(null);
   const adviseOnDischargeToolbarRef = useRef(null);
   const followUpToolbarRef = useRef(null);
+
+  // Refs for portal-positioned medicine name dropdown inputs
+  const medicineInputRefs = useRef({});
 
   // CKEditor configuration
   const editorConfig = {
@@ -194,6 +238,54 @@ const DischargeFromWard = () => {
     });
   };
 
+  // ---------- Medicine Name searchable dropdown handlers ----------
+  const handleMedicineNameChange = (index, value) => {
+    setDischargeData((prev) => {
+      const updated = prev.medicationOnDischarge.map((med, i) =>
+        i === index
+          ? { ...med, medicineName: value, dropdownOpen: true }
+          : { ...med, dropdownOpen: false }
+      );
+      return { ...prev, medicationOnDischarge: updated };
+    });
+  };
+
+  const openMedicineDropdown = (index) => {
+    setDischargeData((prev) => {
+      const updated = prev.medicationOnDischarge.map((med, i) =>
+        i === index ? { ...med, dropdownOpen: true } : med
+      );
+      return { ...prev, medicationOnDischarge: updated };
+    });
+  };
+
+  const toggleMedicineDropdown = (index, open) => {
+    setDischargeData((prev) => {
+      const updated = prev.medicationOnDischarge.map((med, i) =>
+        i === index ? { ...med, dropdownOpen: open } : med
+      );
+      return { ...prev, medicationOnDischarge: updated };
+    });
+  };
+
+  const handleMedicineBlur = (index) => {
+    setTimeout(() => toggleMedicineDropdown(index, false), 150);
+  };
+
+  const selectMedicine = (index, name) => {
+    setDischargeData((prev) => {
+      const updated = [...prev.medicationOnDischarge];
+      updated[index] = { ...updated[index], medicineName: name, dropdownOpen: false };
+      return { ...prev, medicationOnDischarge: updated };
+    });
+  };
+
+  const getFilteredMedicines = (searchText) => {
+    const query = (searchText || "").trim().toLowerCase();
+    if (!query) return medicineList;
+    return medicineList.filter((name) => name.toLowerCase().includes(query));
+  };
+
   const addMedicationRow = () => {
     setDischargeData((prev) => ({
       ...prev,
@@ -206,6 +298,7 @@ const DischargeFromWard = () => {
           total: "",
           route: "Oral",
           instruction: "",
+          dropdownOpen: false,
         },
       ],
     }));
@@ -552,7 +645,7 @@ const DischargeFromWard = () => {
                   <table className="table table-bordered table-sm align-middle mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th>Medicine Name</th>
+                        <th style={{ minWidth: "280px  " }}>Medicine Name</th>
                         <th>Dosage</th>
                         <th>Frequency</th>
                         <th>Total </th>
@@ -562,122 +655,155 @@ const DischargeFromWard = () => {
                       </tr>
                     </thead>
                     <tbody>
-                      {dischargeData.medicationOnDischarge.map((med, index) => (
-                        <tr key={index}>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              list="medicineList"
-                              value={med.medicineName}
-                              onChange={(e) =>
-                                handleMedicationRowChange(
-                                  index,
-                                  "medicineName",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="Type medicine"
-                            />
-                            <datalist id="medicineList">
-                              {medicineList.map((name) => (
-                                <option key={name} value={name} />
-                              ))}
-                            </datalist>
-                          </td>
-                          <td>
-                            <input
-                              type="number"
-                              className="form-control form-control-sm"
-                              value={med.dosage}
-                              onChange={(e) =>
-                                handleMedicationRowChange(
-                                  index,
-                                  "dosage",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="e.g., 500"
-                              min="0"
-                              step="any"
-                            />
-                          </td>
-                          <td>
-                            <select
-                              className="form-select form-select-sm"
-                              value={med.frequency}
-                              onChange={(e) =>
-                                handleMedicationRowChange(
-                                  index,
-                                  "frequency",
-                                  e.target.value
-                                )
-                              }
+                      {dischargeData.medicationOnDischarge.map((med, index) => {
+                        const filteredMedicines = getFilteredMedicines(
+                          med.medicineName
+                        );
+                        return (
+                          <tr key={index}>
+                            <td
+                              className="position-relative"
+                              style={{ minWidth: "220px" }}
                             >
-                              {frequencyOptions.map((f) => (
-                                <option key={f.value} value={f.value}>
-                                  {f.label}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm bg-light"
-                              value={med.total || "Auto"}
-                              readOnly
-                              style={{ cursor: "default" }}
-                            />
-                          </td>
-                          <td>
-                            <select
-                              className="form-select form-select-sm"
-                              value={med.route}
-                              onChange={(e) =>
-                                handleMedicationRowChange(
-                                  index,
-                                  "route",
-                                  e.target.value
-                                )
-                              }
-                            >
-                              {routeOptions.map((route) => (
-                                <option key={route} value={route}>
-                                  {route}
-                                </option>
-                              ))}
-                            </select>
-                          </td>
-                          <td>
-                            <input
-                              type="text"
-                              className="form-control form-control-sm"
-                              value={med.instruction}
-                              onChange={(e) =>
-                                handleMedicationRowChange(
-                                  index,
-                                  "instruction",
-                                  e.target.value
-                                )
-                              }
-                              placeholder="e.g., After meals"
-                            />
-                          </td>
-                          <td className="text-center">
-                            <button
-                              className="btn btn-danger btn-sm"
-                              onClick={() => removeMedicationRow(index)}
-                              disabled={
-                                dischargeData.medicationOnDischarge.length === 1
-                              }
-                              title="Remove this medication"
-                            >
-                              <i className="fa fa-times"></i>
-                            </button>
-                          </td>
-                        </tr>
-                      ))}
+                              <input
+                                ref={(el) => {
+                                  medicineInputRefs.current[index] = el;
+                                }}
+                                type="text"
+                                className="form-control form-control-sm"
+                                autoComplete="off"
+                                value={med.medicineName}
+                                onChange={(e) =>
+                                  handleMedicineNameChange(
+                                    index,
+                                    e.target.value
+                                  )
+                                }
+                                onFocus={() => openMedicineDropdown(index)}
+                                onBlur={() => handleMedicineBlur(index)}
+                                placeholder="Type medicine"
+                              />
+                              <PortalDropdown
+                                anchorRef={{
+                                  current: medicineInputRefs.current[index],
+                                }}
+                                show={
+                                  med.dropdownOpen &&
+                                  filteredMedicines.length > 0
+                                }
+                              >
+                                <ul className="list-group mb-0">
+                                  {filteredMedicines.map((name) => (
+                                    <li
+                                      key={name}
+                                      className="list-group-item list-group-item-action"
+                                      style={{ cursor: "pointer" }}
+                                      onMouseDown={(e) => e.preventDefault()}
+                                      onClick={() =>
+                                        selectMedicine(index, name)
+                                      }
+                                    >
+                                      {name}
+                                    </li>
+                                  ))}
+                                </ul>
+                              </PortalDropdown>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={med.dosage}
+                                onChange={(e) =>
+                                  handleMedicationRowChange(
+                                    index,
+                                    "dosage",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., 500"
+                                min="0"
+                                step="any"
+                              />
+                            </td>
+                            <td>
+                              <select
+                                className="form-select form-select-sm"
+                                value={med.frequency}
+                                onChange={(e) =>
+                                  handleMedicationRowChange(
+                                    index,
+                                    "frequency",
+                                    e.target.value
+                                  )
+                                }
+                              >
+                                {frequencyOptions.map((f) => (
+                                  <option key={f.value} value={f.value}>
+                                    {f.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm bg-light"
+                                value={med.total || "Auto"}
+                                readOnly
+                                style={{ cursor: "default" }}
+                              />
+                            </td>
+                            <td>
+                              <select
+                                className="form-select form-select-sm"
+                                value={med.route}
+                                onChange={(e) =>
+                                  handleMedicationRowChange(
+                                    index,
+                                    "route",
+                                    e.target.value
+                                  )
+                                }
+                              >
+                                {routeOptions.map((route) => (
+                                  <option key={route} value={route}>
+                                    {route}
+                                  </option>
+                                ))}
+                              </select>
+                            </td>
+                            <td>
+                              <input
+                                type="text"
+                                className="form-control form-control-sm"
+                                value={med.instruction}
+                                onChange={(e) =>
+                                  handleMedicationRowChange(
+                                    index,
+                                    "instruction",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="e.g., After meals"
+                              />
+                            </td>
+                            <td className="text-center">
+                              <button
+                                className="btn btn-danger btn-sm"
+                                onClick={() => removeMedicationRow(index)}
+                                disabled={
+                                  dischargeData.medicationOnDischarge
+                                    .length === 1
+                                }
+                                title="Remove this medication"
+                              >
+                                <i className="fa fa-times"></i>
+                              </button>
+                            </td>
+                          </tr>
+                        );
+                      })}
                     </tbody>
                   </table>
                 </div>
