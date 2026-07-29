@@ -1,6 +1,25 @@
 import { useState, useEffect } from "react"
 import { getRequest, postRequest } from "../../../service/apiService"
-import { SAVE_VITALS_DETAILS, GET_VITALS_DETAILS_BY_INPATIENT_ID } from "../../../config/apiConfig"
+import {
+  SAVE_VITALS_DETAILS,
+  SAVE_INTAKE_OUTPUT_DETAILS,
+  GET_VITALS_DETAILS_BY_INPATIENT_ID,
+  GET_INTAKE_OUTPUT_DETAILS,
+  GET_ALL_ACT_MAS_INTAKE_TYPE,
+  GET_ALL_ACT_MAS_INTAKE_ITEM,
+  GET_ALL_ACT_MAS_OUTPUT_TYPE
+} from "../../../config/apiConfig"
+import Popup from "../../../Components/popup"
+import {
+  VITALS_FILL_ONE_WARN,
+  VITALS_SAVE_SUCCESS,
+  VITALS_SAVE_FAILURE,
+  VITALS_SAVE_ERROR,
+  VITALS_FILL_INTAKE_OUTPUT_WARN,
+  INTAKE_OUTPUT_SAVE_SUCCESS,
+  INTAKE_OUTPUT_SAVE_FAILURE,
+  INTAKE_OUTPUT_SAVE_ERROR
+} from "../../../config/constants"
 
 const VitalsandMonitoring = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
@@ -49,22 +68,74 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
 
   const [loading, setLoading] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [savingIntakeOutput, setSavingIntakeOutput] = useState(false)
+  const [popupMessage, setPopupMessage] = useState(null)
+
+  const [intakeTypes, setIntakeTypes] = useState([])
+  const [allItems, setAllItems] = useState([])
+  const [outputTypes, setOutputTypes] = useState([])
+
+  const fetchIntakeTypes = async () => {
+    try {
+      const response = await getRequest(GET_ALL_ACT_MAS_INTAKE_TYPE)
+      if (response && response.status === 200 && Array.isArray(response.response)) {
+        setIntakeTypes(response.response.filter(t => t.status?.toLowerCase() === "y"))
+      } else {
+        setIntakeTypes([])
+      }
+    } catch (error) {
+      console.error("Error fetching intake types:", error)
+      setIntakeTypes([])
+    }
+  }
+
+  const fetchIntakeItems = async () => {
+    try {
+      const response = await getRequest(GET_ALL_ACT_MAS_INTAKE_ITEM)
+      if (response && response.status === 200 && Array.isArray(response.response)) {
+        setAllItems(response.response.filter(item => item.status?.toLowerCase() === "y"))
+      } else {
+        setAllItems([])
+      }
+    } catch (error) {
+      console.error("Error fetching intake items:", error)
+      setAllItems([])
+    }
+  }
+
+  const fetchOutputTypes = async () => {
+    try {
+      const response = await getRequest(GET_ALL_ACT_MAS_OUTPUT_TYPE)
+      if (response && response.status === 200 && Array.isArray(response.response)) {
+        setOutputTypes(response.response.filter(o => o.status?.toLowerCase() === "y"))
+      } else {
+        setOutputTypes([])
+      }
+    } catch (error) {
+      console.error("Error fetching output types:", error)
+      setOutputTypes([])
+    }
+  }
+
+  const showPopup = (message, type = "info", onCloseCallback = null) => {
+    setPopupMessage({
+      message,
+      type,
+      onClose: () => {
+        setPopupMessage(null)
+        if (onCloseCallback) {
+          onCloseCallback()
+        }
+      }
+    })
+  }
 
   const [vitalsHistory, setVitalsHistory] = useState([
     emptyVitalsRow()
   ])
 
-  const [intakeEntries, setIntakeEntries] = useState([
-    { id: 1, date: "2026-03-30", time: "08:00", oralRt: "Oral", type: "Water", qty: 200, iv: "NS", ivQty: 500, total: 700, remarks: "" },
-    { id: 2, date: "2026-03-30", time: "12:00", oralRt: "Oral", type: "Juice", qty: 150, iv: "", ivQty: 0, total: 150, remarks: "" },
-    { id: 3, date: "2026-03-29", time: "18:00", oralRt: "RT", type: "Soup", qty: 250, iv: "RL", ivQty: 500, total: 750, remarks: "" }
-  ])
-
-  const [outputEntries, setOutputEntries] = useState([
-    { id: 1, date: "2026-03-30", time: "06:00", urine: 300, stool: 0, vomit: 0, as: 0, total: 300, remarks: "" },
-    { id: 2, date: "2026-03-30", time: "10:00", urine: 250, stool: 0, vomit: 0, as: 0, total: 250, remarks: "" },
-    { id: 3, date: "2026-03-29", time: "22:00", urine: 400, stool: 0, vomit: 50, as: 0, total: 450, remarks: "" }
-  ])
+  const [intakeEntries, setIntakeEntries] = useState([])
+  const [outputEntries, setOutputEntries] = useState([])
 
   // ─── ADD INTAKE/OUTPUT MODAL STATE ───
   const createModalIntakeRow = () => ({ id: Date.now() + Math.random(), typeRoute: "", item: "", qty: "" })
@@ -176,14 +247,86 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     }
   }
 
+  const [loadingIntakeOutput, setLoadingIntakeOutput] = useState(false)
+
+  const fetchIntakeOutputDetails = async () => {
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || 26
+    if (!inpatientId) {
+      setIntakeEntries([])
+      setOutputEntries([])
+      return
+    }
+
+    setLoadingIntakeOutput(true)
+    try {
+      const response = await getRequest(`${GET_INTAKE_OUTPUT_DETAILS}/${inpatientId}`)
+      if (response && response.status === 200 && Array.isArray(response.response)) {
+        const sorted = [...response.response].sort((a, b) => new Date(a.dateTime) - new Date(b.dateTime))
+        
+        const intakeMapped = sorted
+          .filter(entry => entry.ioType === "I")
+          .map(entry => {
+            const { date, time } = formatDateAndTime(entry.dateTime)
+            const isIV = entry.intakeTypeName?.toLowerCase().includes("iv")
+            return {
+              id: entry.ioEntryId,
+              date: date,
+              time: time,
+              oralRt: isIV ? "" : entry.intakeTypeName,
+              type: isIV ? "" : entry.intakeItemName,
+              qty: isIV ? 0 : entry.quantity,
+              iv: isIV ? entry.intakeItemName : "",
+              ivQty: isIV ? entry.quantity : 0,
+              total: entry.quantity,
+              remarks: "—"
+            }
+          })
+
+        const outputMapped = sorted
+          .filter(entry => entry.ioType === "O")
+          .map(entry => {
+            const { date, time } = formatDateAndTime(entry.dateTime)
+            const name = entry.outputName?.toLowerCase().trim()
+            return {
+              id: entry.ioEntryId,
+              date: date,
+              time: time,
+              urine: name === "urine" ? entry.quantity : 0,
+              stool: name === "stool" ? entry.quantity : 0,
+              vomit: (name === "vomit" || name === "vomitus") ? entry.quantity : 0,
+              as: name === "as" ? entry.quantity : 0,
+              total: entry.quantity,
+              remarks: "—"
+            }
+          })
+
+        setIntakeEntries(intakeMapped)
+        setOutputEntries(outputMapped)
+      } else {
+        setIntakeEntries([])
+        setOutputEntries([])
+      }
+    } catch (error) {
+      console.error("Error fetching intake/output details:", error)
+      setIntakeEntries([])
+      setOutputEntries([])
+    } finally {
+      setLoadingIntakeOutput(false)
+    }
+  }
+
   useEffect(() => {
     fetchVitalsDetails()
+    fetchIntakeOutputDetails()
+    fetchIntakeTypes()
+    fetchIntakeItems()
+    fetchOutputTypes()
   }, [selectedPatient])
 
   const handleVitalsSubmit = async () => {
     const lastRow = vitalsHistory[vitalsHistory.length - 1]
     if (!lastRow.temperature && !lastRow.pulse && !lastRow.bpSystolic && !lastRow.respiration && !lastRow.o2Saturation && !lastRow.pain) {
-      alert("Please fill in at least one vital before submitting.")
+      showPopup(VITALS_FILL_ONE_WARN, "warning")
       return
     }
 
@@ -206,14 +349,14 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     try {
       const response = await postRequest(SAVE_VITALS_DETAILS, payload)
       if (response && (response.status === 200 || response.message === "success")) {
-        alert(response.response || "Vitals details saved successfully")
+        showPopup(response.response || VITALS_SAVE_SUCCESS, "success")
         await fetchVitalsDetails()
       } else {
-        alert(response?.message || "Failed to save vitals details.")
+        showPopup(response?.message || VITALS_SAVE_FAILURE, "error")
       }
     } catch (error) {
       console.error("Error saving vitals details:", error)
-      alert("Error saving vitals details. Please try again.")
+      showPopup(VITALS_SAVE_ERROR, "error")
     } finally {
       setSaving(false)
     }
@@ -233,6 +376,7 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   const handleOpenAddModal = () => {
     setModalIntakeRows([createModalIntakeRow()])
     setModalOutputRows([createModalOutputRow()])
+    setSavingIntakeOutput(false)
     setShowAddModal(true)
   }
 
@@ -241,7 +385,15 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   }
 
   const updateModalIntakeRow = (id, field, value) => {
-    setModalIntakeRows(prev => prev.map(row => (row.id === id ? { ...row, [field]: value } : row)))
+    setModalIntakeRows(prev => prev.map(row => {
+      if (row.id === id) {
+        if (field === "typeRoute") {
+          return { ...row, typeRoute: value, item: "" }
+        }
+        return { ...row, [field]: value }
+      }
+      return row
+    }))
   }
 
   const deleteModalIntakeRow = (id) => {
@@ -263,68 +415,85 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   const modalIntakeTotalQty = modalIntakeRows.reduce((sum, row) => sum + (parseInt(row.qty) || 0), 0)
   const modalOutputTotalQty = modalOutputRows.reduce((sum, row) => sum + (parseInt(row.qty) || 0), 0)
 
-  const handleSaveIntakeOutputModal = () => {
+  const handleSaveIntakeOutputModal = async () => {
     const filledIntakeRows = modalIntakeRows.filter(row => row.typeRoute || row.item || row.qty)
     const filledOutputRows = modalOutputRows.filter(row => row.item || row.qty)
 
     if (filledIntakeRows.length === 0 && filledOutputRows.length === 0) {
-      alert("Please fill in at least one intake or output row before saving.")
+      showPopup(VITALS_FILL_INTAKE_OUTPUT_WARN, "warning")
       return
     }
 
-    if (filledIntakeRows.length > 0) {
-      const newIntakeEntries = filledIntakeRows.map(row => {
-        const qty = parseInt(row.qty) || 0
-        return {
-          id: Date.now() + Math.random(),
-          date: new Date().toISOString().split("T")[0],
-          time: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          oralRt: row.typeRoute,
-          type: row.item,
-          qty: qty,
-          iv: "",
-          ivQty: "",
-          total: qty,
-          remarks: ""
-        }
-      })
-      setIntakeEntries(prev => [
-        ...prev,
-        ...newIntakeEntries
-      ])
+    // Validation
+    for (const row of filledIntakeRows) {
+      if (!row.typeRoute || !row.item || !row.qty) {
+        showPopup("Please fill all fields (Type/Route, Item, and Quantity) for each added Intake row.", "warning")
+        return
+      }
     }
 
-    if (filledOutputRows.length > 0) {
-      const newOutputEntries = filledOutputRows.map(row => {
-        const qty = parseInt(row.qty) || 0
-        const entry = {
-          id: Date.now() + Math.random(),
-          date: new Date().toISOString().split("T")[0],
-          time: new Date().toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" }),
-          urine: 0,
-          stool: 0,
-          vomit: 0,
-          as: 0,
-          total: qty,
-          remarks: ""
-        }
-        if (row.item === "Urine") entry.urine = qty
-        else if (row.item === "Stool") entry.stool = qty
-        else if (row.item === "Vomitus") entry.vomit = qty
-        else if (row.item === "AS") entry.as = qty
-        return entry
-      })
-      setOutputEntries(prev => [
-        ...prev,
-        ...newOutputEntries
-      ])
+    for (const row of filledOutputRows) {
+      if (!row.item || !row.qty) {
+        showPopup("Please fill all fields (Item and Quantity) for each added Output row.", "warning")
+        return
+      }
     }
 
-    setShowAddModal(false)
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26)
+    const entries = []
+
+    filledIntakeRows.forEach(row => {
+      entries.push({
+        ioType: "I",
+        intakeTypeId: Number(row.typeRoute),
+        intakeItemId: Number(row.item),
+        outputTypeId: null,
+        quantity: Number(row.qty) || 0
+      })
+    })
+
+    filledOutputRows.forEach(row => {
+      entries.push({
+        ioType: "O",
+        intakeTypeId: null,
+        intakeItemId: null,
+        outputTypeId: Number(row.item),
+        quantity: Number(row.qty) || 0
+      })
+    })
+
+    const payload = {
+      inpatientId: inpatientId,
+      entries: entries
+    }
+
+    setSavingIntakeOutput(true)
+    try {
+      const response = await postRequest(SAVE_INTAKE_OUTPUT_DETAILS, payload)
+      if (response && (response.status === 200 || response.message === "success")) {
+        showPopup(response.response || INTAKE_OUTPUT_SAVE_SUCCESS, "success")
+        await fetchIntakeOutputDetails()
+        setShowAddModal(false)
+      } else {
+        showPopup(response?.message || INTAKE_OUTPUT_SAVE_FAILURE, "error")
+      }
+    } catch (error) {
+      console.error("Error saving intake/output details:", error)
+      showPopup(INTAKE_OUTPUT_SAVE_ERROR, "error")
+    } finally {
+      setSavingIntakeOutput(false)
+    }
   }
 
   return (
     <div>
+      {popupMessage && (
+        <Popup
+          message={popupMessage.message}
+          type={popupMessage.type}
+          onClose={popupMessage.onClose}
+        />
+      )}
       {/* ─── TAB TOGGLE ─── */}
       <div className="d-flex gap-2 mb-3 align-items-center">
         <button
@@ -593,19 +762,34 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {intakeEntries.map((entry) => (
-                      <tr key={entry.id} className="table-secondary">
-                        <td><span>{entry.date}</span></td>
-                        <td><span>{entry.time}</span></td>
-                        <td><span>{entry.oralRt || "—"}</span></td>
-                        <td><span>{entry.type || "—"}</span></td>
-                        <td><span>{entry.qty || 0} ml</span></td>
-                        <td><span>{entry.iv || "—"}</span></td>
-                        <td><span>{entry.ivQty || 0} ml</span></td>
-                        <td>{entry.total} ml</td>
-                        <td><span>{entry.remarks || "—"}</span></td>
+                    {loadingIntakeOutput ? (
+                      <tr>
+                        <td colSpan="9" className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-success me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          Loading intake entries...
+                        </td>
                       </tr>
-                    ))}
+                    ) : intakeEntries.length > 0 ? (
+                      intakeEntries.map((entry) => (
+                        <tr key={entry.id} className="table-secondary">
+                          <td><span>{entry.date}</span></td>
+                          <td><span>{entry.time}</span></td>
+                          <td><span>{entry.oralRt || "—"}</span></td>
+                          <td><span>{entry.type || "—"}</span></td>
+                          <td><span>{entry.qty || 0} ml</span></td>
+                          <td><span>{entry.iv || "—"}</span></td>
+                          <td><span>{entry.ivQty || 0} ml</span></td>
+                          <td>{entry.total} ml</td>
+                          <td><span>{entry.remarks || "—"}</span></td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="9" className="text-center py-3 text-muted">No intake records found</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -633,18 +817,33 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {outputEntries.map((entry) => (
-                      <tr key={entry.id} className="table-secondary">
-                        <td><span>{entry.date}</span></td>
-                        <td><span>{entry.time}</span></td>
-                        <td><span>{entry.urine} ml</span></td>
-                        <td><span>{entry.stool} ml</span></td>
-                        <td><span>{entry.vomit} ml</span></td>
-                        <td><span>{entry.as} ml</span></td>
-                        <td>{entry.total} ml</td>
-                        <td><span>{entry.remarks || "—"}</span></td>
+                    {loadingIntakeOutput ? (
+                      <tr>
+                        <td colSpan="8" className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-warning me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          Loading output entries...
+                        </td>
                       </tr>
-                    ))}
+                    ) : outputEntries.length > 0 ? (
+                      outputEntries.map((entry) => (
+                        <tr key={entry.id} className="table-secondary">
+                          <td><span>{entry.date}</span></td>
+                          <td><span>{entry.time}</span></td>
+                          <td><span>{entry.urine} ml</span></td>
+                          <td><span>{entry.stool} ml</span></td>
+                          <td><span>{entry.vomit} ml</span></td>
+                          <td><span>{entry.as} ml</span></td>
+                          <td>{entry.total} ml</td>
+                          <td><span>{entry.remarks || "—"}</span></td>
+                        </tr>
+                      ))
+                    ) : (
+                      <tr>
+                        <td colSpan="8" className="text-center py-3 text-muted">No output records found</td>
+                      </tr>
+                    )}
                   </tbody>
                 </table>
               </div>
@@ -703,8 +902,11 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                               onChange={(e) => updateModalIntakeRow(row.id, "typeRoute", e.target.value)}
                             >
                               <option value="">Select</option>
-                              <option value="Oral">Oral</option>
-                              <option value="RT">RT</option>
+                              {intakeTypes.map(t => (
+                                <option key={t.intakeTypeId} value={t.intakeTypeId}>
+                                  {t.intakeTypeName}
+                                </option>
+                              ))}
                             </select>
                           </td>
                           <td>
@@ -712,13 +914,16 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                               className="form-select form-select-sm"
                               value={row.item}
                               onChange={(e) => updateModalIntakeRow(row.id, "item", e.target.value)}
+                              disabled={!row.typeRoute}
                             >
                               <option value="">Select</option>
-                              <option value="Water">Water</option>
-                              <option value="Juice">Juice</option>
-                              <option value="Milk">Milk</option>
-                              <option value="Soup">Soup</option>
-                              <option value="Feed">Feed</option>
+                              {allItems
+                                .filter(item => String(item.intakeTypeId) === String(row.typeRoute))
+                                .map(item => (
+                                  <option key={item.intakeItemId} value={item.intakeItemId}>
+                                    {item.intakeItemName}
+                                  </option>
+                                ))}
                             </select>
                           </td>
                           <td>
@@ -783,10 +988,11 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                               onChange={(e) => updateModalOutputRow(row.id, "item", e.target.value)}
                             >
                               <option value="">Select</option>
-                              <option value="Urine">Urine</option>
-                              <option value="Stool">Stool</option>
-                              <option value="Vomitus">Vomitus</option>
-                              <option value="AS">AS</option>
+                              {outputTypes.map(o => (
+                                <option key={o.outputTypeId} value={o.outputTypeId}>
+                                  {o.outputTypeName}
+                                </option>
+                              ))}
                             </select>
                           </td>
                           <td>
@@ -822,8 +1028,10 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                 </div>
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={handleSaveIntakeOutputModal}>Save</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => setShowAddModal(false)} disabled={savingIntakeOutput}>Cancel</button>
+                <button className="btn btn-primary btn-sm" onClick={handleSaveIntakeOutputModal} disabled={savingIntakeOutput}>
+                  {savingIntakeOutput ? "Saving..." : "Save"}
+                </button>
               </div>
             </div>
           </div>
