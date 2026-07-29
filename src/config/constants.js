@@ -1423,3 +1423,13 @@ export const DIAGNOSIS_STATUS_INACTIVE_LABEL = "Inactive";
 export const SAVE_IP_DIAGNOSIS_SUCC = "IP diagnosis entry saved successfully";
 export const SAVE_IP_DIAGNOSIS_ERR = "Failed to save IP diagnosis entry.";
 export const SAVE_IP_DIAGNOSIS_API_ERR = "An error occurred while saving the diagnosis.";
+
+// IPD Vitals and Monitoring
+export const VITALS_FILL_ONE_WARN = "Please fill in at least one vital before submitting.";
+export const VITALS_SAVE_SUCCESS = "Vitals details saved successfully";
+export const VITALS_SAVE_FAILURE = "Failed to save vitals details.";
+export const VITALS_SAVE_ERROR = "Error saving vitals details. Please try again.";
+export const VITALS_FILL_INTAKE_OUTPUT_WARN = "Please fill in at least one intake or output row before saving.";
+export const INTAKE_OUTPUT_SAVE_SUCCESS = "Intake/Output details saved successfully";
+export const INTAKE_OUTPUT_SAVE_FAILURE = "Failed to save Intake/Output details.";
+export const INTAKE_OUTPUT_SAVE_ERROR = "Error saving Intake/Output details. Please try again.";

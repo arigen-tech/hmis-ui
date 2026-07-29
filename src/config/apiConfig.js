@@ -58,6 +58,11 @@ export const MAS_SPECIALITY_CENTER = `${MASTERS}/masSpecialty`;
 export const MAS_EMPLOYEE_TYPE = `${MASTERS}/employeeType`;
 export const CHECK_AVAILABILITY_TOKEN = `/doctor/checkAllAvailableTokens`;
 export const GET_ALL_REASONS = `${MASTERS}/cancel-payment-reason`;
+
+// IPD Vitals / Intake / Output masters
+export const GET_ALL_ACT_MAS_INTAKE_TYPE = `${MASTERS}/masIntakeType/getAll/1`;
+export const GET_ALL_ACT_MAS_INTAKE_ITEM = `${MASTERS}/masIntakeItem/getAll/1`;
+export const GET_ALL_ACT_MAS_OUTPUT_TYPE = `${MASTERS}/masOutputType/getAll/1`;
 export const MAS_LANGUAGES = `${MASTERS}/masLanguage`;
 export const MAS_DRUGSCHEDULE = `${MASTERS}/masDrugSchedule`;
 export const MAS_ITEMFACILTY = `${MASTERS}/masItemFacility`;
@@ -732,7 +737,9 @@ export const GET_WARD_WISE_DETAILS = `/ipd/getNursingDashboardByWard`;
 export const UPDATE_ADMISSION_INTERNAL_STATUS = `/ipd/updateAdmissionInternalStatus`;
 export const SAVE_NURSING_MEDICAL_ASSESSMENT = `/ipd/saveNursingMedicalAssessment`;
 export const SAVE_VITALS_DETAILS = `/ipd/saveVitalsDetails`;
+export const SAVE_INTAKE_OUTPUT_DETAILS = `/ipd/saveIntakeOutputDetails`;
 export const GET_VITALS_DETAILS_BY_INPATIENT_ID = `/ipd/getVitalsDetailsByInpatientId`;
+export const GET_INTAKE_OUTPUT_DETAILS = `/ipd/getIntakeOutputDetails`;
 export const SAVE_DAILY_CASE_SHEET_ENTRY = `/ipd/saveDailyCaseSheetEntry`;
 export const GET_DAILY_CASE_SHEET_ENTRY = `/ipd/getDailyCaseSheetEntry`;
 export const SAVE_BED_TRANSFER_REQUEST = '/ipd/saveBedTransferRequest';
