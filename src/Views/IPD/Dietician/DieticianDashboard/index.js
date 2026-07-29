@@ -28,54 +28,54 @@ const DieticianDashboard = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Dashboard grid data - UI only placeholder rows matching the wireframe
+  // Dashboard grid data - Updated with new patients
   const [dietData, setDietData] = useState([
     {
-      uhid: "UHID-000101",
-      patientName: "Ramesh Kumar",
-      mobileNo: "98XXXX1234",
-      admissionNo: "ADM-2025-000345",
-      wardBed: "General Ward-A / Bed-05",
+      uhid: "UHID-000512",
+      patientName: "Sunita Reddy",
+      mobileNo: "98XXXX6789",
+      admissionNo: "ADM-2025-000789",
+      wardBed: "General Ward-C / Bed-02",
+      currentDietCategory: "Diabetic",
+      dietStatus: "Active",
+      specialInstruction: "Low sugar, no sweets",
+    },
+    {
+      uhid: "UHID-000623",
+      patientName: "Vikram Singh",
+      mobileNo: "97XXXX2345",
+      admissionNo: "ADM-2025-000812",
+      wardBed: "ICU-2 / Bed-04",
       currentDietCategory: "Liquid",
       dietStatus: "Active",
-      specialInstruction: "Post-surgery",
+      specialInstruction: "NPO, only clear fluids",
     },
     {
-      uhid: "UHID-000214",
-      patientName: "Anita Sharma",
-      mobileNo: "97XXXX5678",
-      admissionNo: "ADM-2025-000412",
-      wardBed: "ICU-1 / Bed-02",
-      currentDietCategory: "Liquid",
+      uhid: "UHID-000734",
+      patientName: "Kavita Nair",
+      mobileNo: "99XXXX8765",
+      admissionNo: "ADM-2025-000901",
+      wardBed: "HDU-1 / Bed-03",
+      currentDietCategory: "Cardiac",
       dietStatus: "Active",
-      specialInstruction: "NPO except meds",
+      specialInstruction: "Low sodium, low fat",
     },
     {
-      uhid: "UHID-000178",
-      patientName: "Mohan Singh",
-      mobileNo: "99XXXX3344",
-      admissionNo: "ADM-2025-000289",
-      wardBed: "HDU-2 / Bed-01",
-      currentDietCategory: "Renal",
-      dietStatus: "Active",
-      specialInstruction: "Low potassium, low salt",
-    },
-    {
-      uhid: "UHID-000245",
-      patientName: "Pooja Verma",
-      mobileNo: "96XXXX8899",
-      admissionNo: "ADM-2025-000501",
-      wardBed: "Maternity Ward / Bed-07",
+      uhid: "UHID-000845",
+      patientName: "Arjun Mehta",
+      mobileNo: "96XXXX4321",
+      admissionNo: "ADM-2025-001023",
+      wardBed: "Maternity Ward / Bed-05",
       currentDietCategory: "Normal",
       dietStatus: "Active",
-      specialInstruction: "Lactating mother diet",
+      specialInstruction: "High protein, lactation diet",
     },
     {
-      uhid: "UHID-000309",
-      patientName: "Suresh Patel",
-      mobileNo: "95XXXX7712",
-      admissionNo: "ADM-2025-000566",
-      wardBed: "General Ward-B / Bed-03",
+      uhid: "UHID-000956",
+      patientName: "Lakshmi Iyer",
+      mobileNo: "95XXXX7890",
+      admissionNo: "ADM-2025-001145",
+      wardBed: "General Ward-D / Bed-01",
       currentDietCategory: "-",
       dietStatus: "Not Assigned",
       specialInstruction: "-",
@@ -140,88 +140,89 @@ const DieticianDashboard = () => {
 
   // ---------- Patient Profile (Auto-Populated, Read-Only) ----------
   const [patientProfile, setPatientProfile] = useState({
-    patientId: "E00001",
-    title: "Mr.",
-    firstName: "First Name",
-    lastName: "Last Name",
-    gender: "Male",
-    age: "65",
+    patientId: "P00042",
+    title: "Ms.",
+    firstName: "Ananya",
+    lastName: "Sharma",
+    gender: "Female",
+    age: "42",
   });
 
   // ---------- Health Information (Auto-Populated, Read-Only) ----------
   const [healthInfo, setHealthInfo] = useState({
-    height: "170",
-    weight: "80",
-    temperature: "98.6",
-    bpSystolic: "140",
-    bpDiastolic: "90",
-    pulse: "80",
-    bmi: "27.7",
-    rr: "16",
-    spo2: "98",
-    bloodSugarLevels: "90",
-    bloodCholesterolLevels: "190",
-    chronicDisease: "Hypertension",
+    height: "162",
+    weight: "68",
+    temperature: "98.4",
+    bpSystolic: "135",
+    bpDiastolic: "85",
+    pulse: "76",
+    bmi: "25.9",
+    rr: "18",
+    spo2: "99",
+    bloodSugarLevels: "110",
+    bloodCholesterolLevels: "205",
+    chronicDisease: "Type 2 Diabetes, Hypertension",
   });
 
   // ---------- Ward Details (Auto-Populated, Read-Only) ----------
   const [wardDetails, setWardDetails] = useState({
-    wardBed: "General Ward-A / Bed-05",
-    admissionNo: "ADM-2025-000345",
-    admissionDate: "10-Aug-2025",
-    attendingDoctor: "Dr. S. Verma",
+    wardBed: "ICU-2 / Bed-04",
+    admissionNo: "ADM-2025-000812",
+    admissionDate: "15-Sep-2025",
+    attendingDoctor: "Dr. R. Deshmukh",
   });
 
-  // ---------- Diet History (Previous diet entries - shown if not first entry) ----------
+  // ---------- Diet History (Previous diet entries) ----------
   const [dietHistory, setDietHistory] = useState([
     {
       id: 1,
-      dietCategory: "Diabetic",
-      fromDateTime: "10-Aug-2025 08:00",
-      toDateTime: "12-Aug-2025 09:00",
-      specialInstruction: "No sugar, low carb",
-      orderedBy: "Dietician - Dr. Neha Mehta",
+      dietCategory: "Normal",
+      fromDateTime: "15-Sep-2025 10:00",
+      toDateTime: "17-Sep-2025 08:00",
+      specialInstruction: "Regular diet",
+      orderedBy: "Dietician - Dr. Anjali Kulkarni",
       status: "Completed",
-      completedOn: "12-Aug-2025 09:00",
+      completedOn: "17-Sep-2025 08:00",
     },
     {
       id: 2,
       dietCategory: "Liquid",
-      fromDateTime: "12-Aug-2025 09:01",
-      toDateTime: "14-Aug-2025 07:30",
-      specialInstruction: "Post-surgery",
-      orderedBy: "Doctor - Dr. S. Verma",
+      fromDateTime: "17-Sep-2025 08:01",
+      toDateTime: "19-Sep-2025 09:00",
+      specialInstruction: "Clear liquids, avoid dairy",
+      orderedBy: "Doctor - Dr. S. Deshmukh",
       status: "Completed",
-      completedOn: "14-Aug-2025 07:30",
+      completedOn: "19-Sep-2025 09:00",
     },
     {
       id: 3,
-      dietCategory: "Soft",
-      fromDateTime: "14-Aug-2025 07:31",
-      toDateTime: "16-Aug-2025 08:00",
-      specialInstruction: "Easy digest",
+      dietCategory: "Diabetic",
+      fromDateTime: "19-Sep-2025 09:01",
+      toDateTime: "22-Sep-2025 07:30",
+      specialInstruction: "Low carb, sugar-free",
       orderedBy: "Dietician - Ms. Kavita Rao",
       status: "Completed",
-      completedOn: "16-Aug-2025 08:00",
+      completedOn: "22-Sep-2025 07:30",
     },
     {
       id: 4,
-      dietCategory: "Normal",
-      fromDateTime: "16-Aug-2025 08:01",
+      dietCategory: "Cardiac",
+      fromDateTime: "22-Sep-2025 07:31",
       toDateTime: null,
-      specialInstruction: "High protein",
+      specialInstruction: "Low sodium, low fat",
       orderedBy: "Dietician - Ms. Kavita Rao",
       status: "Active",
       completedOn: null,
     },
   ]);
 
-  // ---------- New Diet Entry (Manual Entry) ----------
+  // ---------- New Diet Entry ----------
   const [newDietEntry, setNewDietEntry] = useState({
     dietCategory: "",
     specialInstruction: "",
     effectiveFrom: "",
-    orderedBy: "Dietician - Ms. Kavita Rao", // auto-filled from logged in user
+    orderedBy: "Dietician - Ms. Kavita Rao",
+    remarks: "",
   });
 
   const [errors, setErrors] = useState({});
@@ -266,14 +267,12 @@ const DieticianDashboard = () => {
   // Stop / discontinue an existing (active) diet entry before assigning a new one
   const handleStopDiet = (entryId) => {
     setIsStopping(entryId);
-    // UI only - placeholder for stop diet action
     console.log("Stopping diet entry:", entryId);
     setIsStopping(null);
   };
 
   const handleSaveNewDiet = () => {
     setIsSaving(true);
-    // UI only - placeholder for save action
     console.log("Saving new diet entry:", newDietEntry);
     setIsSaving(false);
   };
@@ -291,62 +290,59 @@ const DieticianDashboard = () => {
      ============================ TRACKING VIEW STATE ========================
      ========================================================================= */
 
-  // ---------- Patient Details (Read-Only) ----------
   const [patientDetails, setPatientDetails] = useState({
-    patientName: "Anita Sharma",
-    admissionNo: "ADM-2025-000412",
+    patientName: "Vikram Singh",
+    admissionNo: "ADM-2025-000812",
   });
 
-  // ---------- Diet Order (Read-Only) ----------
   const [dietOrder, setDietOrder] = useState({
     dietCategory: "Liquid",
-    specialInstruction: "Post-surgery, NPO except meds",
-    effectiveFrom: "12-Aug-2025 09:01 AM",
-    orderedBy: "Dietician - Ms. Kavita Rao",
+    specialInstruction: "NPO, only clear fluids",
+    effectiveFrom: "17-Sep-2025 08:01 AM",
+    orderedBy: "Doctor - Dr. S. Deshmukh",
   });
 
-  // ---------- Diet Execution History + Capture (Unified Table) ----------
   const [executionEntries, setExecutionEntries] = useState([
     {
       id: 1,
       meal: "Breakfast",
-      date: "15-Aug-2025",
+      date: "18-Sep-2025",
       served: "Yes",
-      timeServed: "08:10 AM",
+      timeServed: "08:20 AM",
       quantity: "Full",
       reasonIfNil: "-",
       shift: "Morning",
-      enteredBy: "Nurse Anita",
+      enteredBy: "Nurse Priya",
       status: "Finalized",
     },
     {
       id: 2,
       meal: "Lunch",
-      date: "15-Aug-2025",
-      served: "Yes",
-      timeServed: "01:05 PM",
-      quantity: "Half",
-      reasonIfNil: "Nausea",
+      date: "18-Sep-2025",
+      served: "No",
+      timeServed: "-",
+      quantity: "Nil",
+      reasonIfNil: "Nausea, vomiting",
       shift: "Afternoon",
-      enteredBy: "Nurse Anita",
+      enteredBy: "Nurse Priya",
       status: "Finalized",
     },
     {
       id: 3,
       meal: "Dinner",
-      date: "15-Aug-2025",
-      served: "No",
-      timeServed: "-",
-      quantity: "Nil",
-      reasonIfNil: "NPO",
+      date: "18-Sep-2025",
+      served: "Yes",
+      timeServed: "07:50 PM",
+      quantity: "Half",
+      reasonIfNil: "-",
       shift: "Night",
-      enteredBy: "Nurse Rohit",
+      enteredBy: "Nurse Rahul",
       status: "Finalized",
     },
     {
       id: 4,
       meal: "New Entry",
-      date: "16-Aug-2025",
+      date: "19-Sep-2025",
       served: "-",
       timeServed: "-",
       quantity: "-",
@@ -358,7 +354,6 @@ const DieticianDashboard = () => {
   ]);
 
   const handleAddNewEntry = () => {
-    // UI only - placeholder for adding a new meal execution entry
     console.log("Add new diet execution entry");
   };
 
@@ -379,7 +374,6 @@ const DieticianDashboard = () => {
             <div className="card form-card">
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">
-                  <i className="icofont-clip-board me-2"></i>
                   Diet Execution History &amp; Tracking
                 </h4>
                 <button
@@ -392,22 +386,17 @@ const DieticianDashboard = () => {
               </div>
 
               <div className="card-body p-2 pb-0">
-                {/* ============ PATIENT DETAILS ============ */}
+                {/* Patient Details */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header border-bottom-1 py-3">
-                        <h6 className="fw-bold mb-0">
-                          <i className="icofont-user-alt-7 me-2"></i>
-                          Patient Details
-                        </h6>
+                        <h6 className="fw-bold mb-0">Patient Details</h6>
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Patient Name
-                            </label>
+                            <label className="form-label">Patient Name</label>
                             <input
                               type="text"
                               className="form-control"
@@ -417,9 +406,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Admission No
-                            </label>
+                            <label className="form-label">Admission No</label>
                             <input
                               type="text"
                               className="form-control"
@@ -434,25 +421,17 @@ const DieticianDashboard = () => {
                   </div>
                 </div>
 
-                {/* ============ DIET ORDER (READ-ONLY) ============ */}
+                {/* Diet Order */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header border-bottom-1 py-3">
-                        <h6 className="fw-bold mb-0">
-                          <i className="icofont-food-basket me-2"></i>
-                          Diet Order
-                          <span className="badge bg-secondary ms-2">
-                            Read-Only
-                          </span>
-                        </h6>
+                        <h6 className="fw-bold mb-0">Diet Order</h6>
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Diet Category
-                            </label>
+                            <label className="form-label">Diet Category</label>
                             <input
                               type="text"
                               className="form-control"
@@ -462,9 +441,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Special Instruction
-                            </label>
+                            <label className="form-label">Special Instruction</label>
                             <input
                               type="text"
                               className="form-control"
@@ -474,9 +451,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Effective From
-                            </label>
+                            <label className="form-label">Effective From</label>
                             <input
                               type="text"
                               className="form-control"
@@ -486,9 +461,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-2">
-                            <label className="form-label">
-                              Ordered By
-                            </label>
+                            <label className="form-label">Ordered By</label>
                             <input
                               type="text"
                               className="form-control"
@@ -503,18 +476,12 @@ const DieticianDashboard = () => {
                   </div>
                 </div>
 
-                {/* ============ DIET EXECUTION HISTORY + CAPTURE (UNIFIED TABLE) ============ */}
+                {/* Diet Execution History + Capture */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header border-bottom-1 py-3">
-                        <h6 className="fw-bold mb-0">
-                          <i className="icofont-table me-2"></i>
-                          Diet Execution History + Capture
-                          <span className="badge bg-info text-dark ms-2">
-                            Unified Table
-                          </span>
-                        </h6>
+                        <h6 className="fw-bold mb-0">Diet Execution History </h6>
                       </div>
                       <div className="card-body">
                         <div className="table-responsive">
@@ -557,22 +524,13 @@ const DieticianDashboard = () => {
                           </table>
                         </div>
 
-                        <button
+                        {/* <button
                           type="button"
                           className="btn btn-success btn-sm"
                           onClick={handleAddNewEntry}
                         >
-                          <i className="icofont-plus me-1"></i>
                           New Entry
-                        </button>
-
-                        <div className="mt-2 mb-3">
-                          <small className="text-muted">
-                            <i className="icofont-info-circle me-1"></i>
-                            This view shows what has been captured by the
-                            Nursing Station for tracking purposes.
-                          </small>
-                        </div>
+                        </button> */}
                       </div>
                     </div>
                   </div>
@@ -597,10 +555,7 @@ const DieticianDashboard = () => {
           <div className="col-12 grid-margin stretch-card">
             <div className="card form-card">
               <div className="card-header d-flex justify-content-between align-items-center">
-                <h4 className="card-title p-2 mb-0">
-                  <i className="icofont-cutlery me-2"></i>
-                  Patient Diet Entry
-                </h4>
+                <h4 className="card-title p-2 mb-0">Patient Diet Entry</h4>
                 <button
                   type="button"
                   className="btn btn-secondary"
@@ -622,24 +577,17 @@ const DieticianDashboard = () => {
                   </div>
                 )}
 
-                {/* ============ PATIENT PROFILE & HEALTH INFORMATION ============ */}
+                {/* Patient Profile */}
                 <div className="row mb-3">
                   <div className="col-md-12">
                     <div className="card shadow mb-3">
-                      <div
-                        className="card-header py-2"
-                       
-                      >
-                        <h6 className="fw-bold mb-0">
-                          Patient Profile
-                        </h6>
+                      <div className="card-header py-2">
+                        <h6 className="fw-bold mb-0">Patient Profile</h6>
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Patient ID
-                            </label>
+                            <label className="form-label">Patient ID</label>
                             <input
                               type="text"
                               className="form-control"
@@ -659,9 +607,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              First Name
-                            </label>
+                            <label className="form-label">First Name</label>
                             <input
                               type="text"
                               className="form-control"
@@ -671,9 +617,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Last Name
-                            </label>
+                            <label className="form-label">Last Name</label>
                             <input
                               type="text"
                               className="form-control"
@@ -707,179 +651,92 @@ const DieticianDashboard = () => {
                     </div>
                   </div>
 
+                  {/* Health Information - redesigned for compactness */}
                   <div className="col-md-12">
                     <div className="card shadow mb-3">
-                      <div
-                        className="card-header py-2"
-                      
-                      >
-                        <h6 className="fw-bold mb-0">
-                          Health Information
-                        </h6>
+                      <div className="card-header py-2">
+                        <h6 className="fw-bold mb-0">Health Information</h6>
                       </div>
                       <div className="card-body">
-                        <form className="vital">
-                          <div className="row g-3 align-items-center">
-                            {/* Patient Height */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                Height<span className="text-danger">*</span>
-                              </label>
+                        <div className="row g-3">
+                          {/* Height */}
+                          <div className="col-md-3">
+                            <label className="form-label">Height <span className="text-danger">*</span></label>
+                            <div className="input-group">
                               <input
                                 type="number"
                                 className="form-control"
-                                min={0}
-                                placeholder="Height"
-                                name="height"
                                 value={healthInfo.height}
                                 readOnly
                                 disabled
                               />
                               <span className="input-group-text">cm</span>
                             </div>
+                          </div>
 
-                            {/* Weight */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                Weight<span className="text-danger">*</span>
-                              </label>
+                          {/* Weight */}
+                          <div className="col-md-3">
+                            <label className="form-label">Weight <span className="text-danger">*</span></label>
+                            <div className="input-group">
                               <input
                                 type="number"
-                                min={0}
                                 className="form-control"
-                                placeholder="Weight"
-                                name="weight"
                                 value={healthInfo.weight}
                                 readOnly
                                 disabled
                               />
                               <span className="input-group-text">kg</span>
                             </div>
+                          </div>
 
-                            {/* Temperature */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                Temperature<span className="text-danger">*</span>
-                              </label>
+                          {/* BP Systolic */}
+                          <div className="col-md-3">
+                            <label className="form-label">BP Systolic <span className="text-danger">*</span></label>
+                            <div className="input-group">
                               <input
                                 type="number"
-                                min={0}
                                 className="form-control"
-                                placeholder="Temperature"
-                                name="temperature"
-                                value={healthInfo.temperature}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">°F</span>
-                            </div>
-
-                            {/* BP (Systolic / Diastolic) */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                BP<span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="number"
-                                min={0}
-                                className="form-control"
-                                placeholder="Systolic"
-                                name="systolicBP"
                                 value={healthInfo.bpSystolic}
                                 readOnly
                                 disabled
                               />
-                              <span className="input-group-text">/</span>
+                              <span className="input-group-text">mmHg</span>
+                            </div>
+                          </div>
+
+                          {/* BP Diastolic */}
+                          <div className="col-md-3">
+                            <label className="form-label">BP Diastolic <span className="text-danger">*</span></label>
+                            <div className="input-group">
                               <input
                                 type="number"
-                                min={0}
                                 className="form-control"
-                                placeholder="Diastolic"
-                                name="diastolicBP"
                                 value={healthInfo.bpDiastolic}
                                 readOnly
                                 disabled
                               />
                               <span className="input-group-text">mmHg</span>
                             </div>
+                          </div>
 
-                            {/* Pulse */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                Pulse<span className="text-danger">*</span>
-                              </label>
+                          {/* Pulse */}
+                          <div className="col-md-3">
+                            <label className="form-label">Pulse <span className="text-danger">*</span></label>
+                            <div className="input-group">
                               <input
                                 type="number"
-                                min={0}
                                 className="form-control"
-                                placeholder="Pulse"
-                                name="pulse"
                                 value={healthInfo.pulse}
                                 readOnly
                                 disabled
                               />
                               <span className="input-group-text">/min</span>
                             </div>
-
-                            {/* BMI */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">BMI</label>
-                              <input
-                                type="number"
-                                min={0}
-                                className="form-control"
-                                placeholder="BMI"
-                                name="bmi"
-                                value={healthInfo.bmi}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">kg/m²</span>
-                            </div>
-
-                            {/* RR */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                RR<span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="number"
-                                min={0}
-                                className="form-control"
-                                placeholder="RR"
-                                name="rr"
-                                value={healthInfo.rr}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">/min</span>
-                            </div>
-
-                            {/* SpO2 */}
-                            <div className="col-md-4 d-flex">
-                              <label className="form-label me-2">
-                                SpO2<span className="text-danger">*</span>
-                              </label>
-                              <input
-                                type="number"
-                                min={0}
-                                className="form-control"
-                                placeholder="SpO2"
-                                name="spo2"
-                                value={healthInfo.spo2}
-                                readOnly
-                                disabled
-                              />
-                              <span className="input-group-text">%</span>
-                            </div>
                           </div>
-                        </form>
-                        {/* Additional health fields not in vital form */}
-                        <div className="row g-3 mt-3">
+
+                          {/* Blood Sugar Levels */}
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Blood Sugar Levels
-                            </label>
+                            <label className="form-label">Blood Sugar Levels</label>
                             <div className="input-group">
                               <input
                                 type="text"
@@ -891,10 +748,10 @@ const DieticianDashboard = () => {
                               <span className="input-group-text">mg/dl</span>
                             </div>
                           </div>
+
+                          {/* Blood Cholesterol Levels */}
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Blood Cholesterol Levels
-                            </label>
+                            <label className="form-label">Blood Cholesterol Levels</label>
                             <div className="input-group">
                               <input
                                 type="text"
@@ -906,10 +763,10 @@ const DieticianDashboard = () => {
                               <span className="input-group-text">mg/dl</span>
                             </div>
                           </div>
+
+                          {/* Chronic Disease */}
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Chronic Disease
-                            </label>
+                            <label className="form-label">Chronic Disease</label>
                             <input
                               type="text"
                               className="form-control"
@@ -924,24 +781,17 @@ const DieticianDashboard = () => {
                   </div>
                 </div>
 
-                {/* ============ WARD DETAILS ============ */}
+                {/* Ward Details */}
                 <div className="row mb-3">
                   <div className="col-md-12">
                     <div className="card shadow mb-3">
-                      <div
-                        className="card-header py-2"
-                      
-                      >
-                        <h6 className="fw-bold mb-0">
-                          Ward Details
-                        </h6>
+                      <div className="card-header py-2">
+                        <h6 className="fw-bold mb-0">Ward Details</h6>
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Ward / Bed
-                            </label>
+                            <label className="form-label">Ward / Bed</label>
                             <input
                               type="text"
                               className="form-control"
@@ -951,9 +801,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Admission No
-                            </label>
+                            <label className="form-label">Admission No</label>
                             <input
                               type="text"
                               className="form-control"
@@ -963,9 +811,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Admission Date
-                            </label>
+                            <label className="form-label">Admission Date</label>
                             <input
                               type="text"
                               className="form-control"
@@ -975,9 +821,7 @@ const DieticianDashboard = () => {
                             />
                           </div>
                           <div className="col-md-3">
-                            <label className="form-label">
-                              Attending Doctor
-                            </label>
+                            <label className="form-label">Attending Doctor</label>
                             <input
                               type="text"
                               className="form-control"
@@ -992,18 +836,16 @@ const DieticianDashboard = () => {
                   </div>
                 </div>
 
-                {/* ============ DIET HISTORY (shown only if previous entries exist) ============ */}
+                {/* Diet History */}
                 {dietHistory.length > 0 && (
                   <div className="row mb-3">
                     <div className="col-sm-12">
                       <div className="card shadow mb-3">
-                        <div className="card-header  justify-content-between align-items-center">
-                          <h6 className="fw-bold mb-0">
-                            Diet History
-                          </h6>
+                        <div className="card-header d-flex justify-content-between align-items-center">
+                          <h6 className="fw-bold mb-0">Diet History</h6>
                           <button
                             type="button"
-                            className="btn btn-sm btn-outline-primary"
+                            className="btn btn-light btn-sm"
                             onClick={handleViewFullDietHistory}
                           >
                             View Full Diet History / Nursing Tracking
@@ -1035,9 +877,7 @@ const DieticianDashboard = () => {
                                     <td>
                                       <span
                                         className="badge"
-                                        style={getStatusColor(
-                                          entry.status,
-                                        )}
+                                        style={getStatusColor(entry.status)}
                                       >
                                         {entry.status}
                                       </span>
@@ -1048,27 +888,21 @@ const DieticianDashboard = () => {
                                         <button
                                           type="button"
                                           className="btn btn-sm btn-danger"
-                                          onClick={() =>
-                                            handleStopDiet(entry.id)
-                                          }
-                                          disabled={
-                                            isStopping === entry.id
-                                          }
+                                          onClick={() => handleStopDiet(entry.id)}
+                                          disabled={isStopping === entry.id}
                                         >
                                           {isStopping === entry.id ? (
                                             <span
                                               className="spinner-border spinner-border-sm"
                                               role="status"
                                               aria-hidden="true"
-                                            ></span>
+                                            />
                                           ) : (
                                             "Stop"
                                           )}
                                         </button>
                                       ) : (
-                                        <span className="text-muted">
-                                          -
-                                        </span>
+                                        <span className="text-muted">-</span>
                                       )}
                                     </td>
                                   </tr>
@@ -1082,36 +916,26 @@ const DieticianDashboard = () => {
                   </div>
                 )}
 
-                {/* ============ NEW DIET ENTRY ============ */}
+                {/* New Diet Entry */}
                 <div className="row mb-3">
                   <div className="col-sm-12">
                     <div className="card shadow mb-3">
                       <div className="card-header border-bottom-1 py-3">
-                        <h6 className="fw-bold mb-0">
-                          New Diet Entry
-                         
-                        </h6>
+                        <h6 className="fw-bold mb-0">New Diet Entry</h6>
                       </div>
                       <div className="card-body">
                         <div className="row g-3">
-                          <div className="col-md-3">
-                            <label className="form-label">
-                              Diet Category *
-                            </label>
+                          <div className="col-md-2">
+                            <label className="form-label">Diet Category *</label>
                             <select
                               className={`form-select ${hasError("dietCategory")}`}
                               id="dietCategory"
                               value={newDietEntry.dietCategory}
                               onChange={handleNewEntryChange}
                             >
-                              <option value="">
-                                Select Diet Category
-                              </option>
+                              <option value="">Select Diet Category</option>
                               {dietCategoryOptions.map((option) => (
-                                <option
-                                  key={option.value}
-                                  value={option.value}
-                                >
+                                <option key={option.value} value={option.value}>
                                   {option.label}
                                 </option>
                               ))}
@@ -1123,9 +947,7 @@ const DieticianDashboard = () => {
                             )}
                           </div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Special Instruction
-                            </label>
+                            <label className="form-label">Special Instruction</label>
                             <textarea
                               className="form-control"
                               id="specialInstruction"
@@ -1133,12 +955,10 @@ const DieticianDashboard = () => {
                               value={newDietEntry.specialInstruction}
                               onChange={handleNewEntryChange}
                               rows={1}
-                            ></textarea>
+                            />
                           </div>
-                          <div className="col-md-3">
-                            <label className="form-label">
-                              Effective From *
-                            </label>
+                          <div className="col-md-2">
+                            <label className="form-label">Effective From *</label>
                             <input
                               type="datetime-local"
                               required
@@ -1154,9 +974,7 @@ const DieticianDashboard = () => {
                             )}
                           </div>
                           <div className="col-md-2">
-                            <label className="form-label">
-                              Ordered By
-                            </label>
+                            <label className="form-label">Ordered By</label>
                             <input
                               type="text"
                               className="form-control"
@@ -1165,13 +983,24 @@ const DieticianDashboard = () => {
                               disabled
                             />
                           </div>
+                          <div className="col-md-2">
+                            <label className="form-label">Remarks</label>
+                            <textarea
+                              className="form-control"
+                              id="remarks"
+                              placeholder="Enter Remarks"
+                              value={newDietEntry.remarks}
+                              onChange={handleNewEntryChange}
+                              rows={1}
+                            />
+                          </div>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
 
-                {/* ============ ACTION BUTTONS ============ */}
+                {/* Action Buttons */}
                 <div className="form-group col-md-12 d-flex justify-content-end mt-2 pb-3">
                   <button
                     type="button"
@@ -1185,7 +1014,7 @@ const DieticianDashboard = () => {
                           className="spinner-border spinner-border-sm me-2"
                           role="status"
                           aria-hidden="true"
-                        ></span>
+                        />
                         Saving...
                       </>
                     ) : (
@@ -1213,29 +1042,15 @@ const DieticianDashboard = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2 mb-0">
-                <i className="fa fa-cutlery me-2"></i>
-                Dashboard Grid - Diet Management
+                Diet Management
               </h4>
-              <button
-                type="button"
-                className="btn btn-sm btn-outline-secondary"
-                onClick={handleRefresh}
-                title="Refresh"
-                disabled={loading || isRefreshing}
-              >
-                <i
-                  className={`fa fa-refresh ${isRefreshing ? "fa-spin" : ""}`}
-                ></i>
-              </button>
             </div>
 
             <div className="card-body">
-              {/* ============ SEARCH ============ */}
+              {/* Search Section */}
               <div className="row mb-4">
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">
-                    Patient Name
-                  </label>
+                  <label className="form-label fw-bold">Patient Name</label>
                   <input
                     type="text"
                     className="form-control"
@@ -1277,7 +1092,7 @@ const DieticianDashboard = () => {
                           className="spinner-border spinner-border-sm me-2"
                           role="status"
                           aria-hidden="true"
-                        ></span>
+                        />
                         Searching...
                       </>
                     ) : (
@@ -1297,7 +1112,7 @@ const DieticianDashboard = () => {
                           className="spinner-border spinner-border-sm me-2"
                           role="status"
                           aria-hidden="true"
-                        ></span>
+                        />
                         Showing All...
                       </>
                     ) : (
@@ -1307,12 +1122,10 @@ const DieticianDashboard = () => {
                 </div>
               </div>
 
-              {/* ============ DIET GRID TABLE ============ */}
+              {/* Diet Grid Table */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
-                  <thead
-                    style={{ backgroundColor: "#95a5a6", color: "white" }}
-                  >
+                  <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
                     <tr>
                       <th>Patient Name / UHID</th>
                       <th>Mobile No</th>
@@ -1333,10 +1146,7 @@ const DieticianDashboard = () => {
                       </tr>
                     ) : dietData.length === 0 ? (
                       <tr>
-                        <td
-                          colSpan={8}
-                          className="text-center py-4 text-muted"
-                        >
+                        <td colSpan={8} className="text-center py-4 text-muted">
                           No patients found.
                         </td>
                       </tr>
@@ -1346,9 +1156,7 @@ const DieticianDashboard = () => {
                           <td>
                             {item.patientName}
                             <br />
-                            <small className="text-muted">
-                              {item.uhid}
-                            </small>
+                            <small className="text-muted">{item.uhid}</small>
                           </td>
                           <td>{item.mobileNo}</td>
                           <td>{item.admissionNo}</td>
