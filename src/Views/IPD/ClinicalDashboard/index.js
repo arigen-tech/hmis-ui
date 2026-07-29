@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react"
 import { getRequest } from "../../../service/apiService"
-import { GET_VITALS_DETAILS_BY_INPATIENT_ID } from "../../../config/apiConfig"
+import { GET_VITALS_DETAILS_BY_INPATIENT_ID, GET_INTAKE_OUTPUT_DETAILS } from "../../../config/apiConfig"
 
 // ─── SVG Semicircle Gauge ────────────────────────────────────
 const SemiGauge = ({ value, min, max, zones, label, unit, size = 160 }) => {
@@ -190,29 +190,6 @@ const FluidBalanceChart = ({ intake, output, balance, date }) => {
   )
 }
 
-// ─── Generate previous days data with varying intake/output ─────────────────
-const generatePreviousDayData = (dayOffset) => {
-  // Create variations where sometimes output is greater than intake
-  const scenarios = [
-    { intake: 1800, output: 1200 }, // Today's data - intake > output
-    { intake: 1100, output: 1500 }, // Day 1 - output > intake (negative balance)
-    { intake: 1400, output: 1300 }, // Day 2 - intake slightly higher
-    { intake: 950, output: 1250 }   // Day 3 - output > intake
-  ]
-  
-  const data = scenarios[dayOffset] || scenarios[0]
-  const balance = data.intake - data.output
-  
-  return { intake: data.intake, output: data.output, balance }
-}
-
-// ─── Get dates for previous days ─────────────────────────────────────
-const getDateString = (daysAgo) => {
-  const date = new Date()
-  date.setDate(date.getDate() - daysAgo)
-  return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-}
-
 // ─── Zones config per vital ──────────────────────────────────
 const BP_SYS_ZONES = [
   { from: 70, to: 90,  color: "#ffc107" },
@@ -278,13 +255,47 @@ const getStatus = (zones, value) => {
   return { label: "—", cls: "bg-secondary" }
 }
 
+// ─── History List Component ──────────────────────────────────
+const VitalHistoryList = ({ history, dataKey }) => {
+  const filtered = history.filter(item => {
+    const val = dataKey === 'heartRate' ? item.pulse : item[dataKey];
+    return val !== null && val !== undefined && val !== "";
+  }).slice(0, 5);
+
+  if (filtered.length === 0) {
+    return <div className="text-muted text-center mt-3" style={{ fontSize: "0.75rem" }}>No history</div>;
+  }
+
+  return (
+    <div className="d-flex flex-column gap-2 w-100 mt-2" style={{ fontSize: "0.75rem" }}>
+      {filtered.map((item, idx) => {
+        const d = new Date(item.observationDatetime);
+        const dateStr = d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short' });
+        const timeStr = d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const val = dataKey === 'heartRate' ? item.pulse : item[dataKey];
+        
+        return (
+          <div key={idx} className="d-flex justify-content-between align-items-center border-bottom pb-1 mb-1">
+            <span className="text-muted">{dateStr} <span className="ms-1">{timeStr}</span></span>
+            <span className="fw-semibold text-dark">{val}</span>
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Main Component with Tabs ─────────────────────────────────
 const ClinicalDashboard = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("vitals") // "vitals" | "intakeOutput"
   const [vitals, setVitals] = useState(dummyPatientData.vitals)
+  const [vitalsHistory, setVitalsHistory] = useState([])
+  const [ioData, setIoData] = useState([])
 
   useEffect(() => {
     setVitals(dummyPatientData.vitals)
+    setVitalsHistory([])
+    setIoData([])
 
     const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || 26
     if (!inpatientId) return
@@ -321,21 +332,80 @@ const ClinicalDashboard = ({ selectedPatient }) => {
             spo2: avgSpo2 !== null ? Math.round(avgSpo2) : dummyPatientData.vitals.spo2,
             respiration: avgRespiration !== null ? Math.round(avgRespiration) : dummyPatientData.vitals.respiration,
           })
+
+          const sorted = [...response.response].sort((a, b) => new Date(b.observationDatetime) - new Date(a.observationDatetime))
+          setVitalsHistory(sorted)
         }
       } catch (error) {
         console.error("Error fetching vitals for clinical dashboard:", error)
       }
     }
 
+    const fetchIntakeOutput = async () => {
+      try {
+        const response = await getRequest(`${GET_INTAKE_OUTPUT_DETAILS}/${inpatientId}`)
+        if (response?.response && Array.isArray(response.response)) {
+          const grouped = response.response.reduce((acc, curr) => {
+            if (!curr.dateTime) return acc;
+            const dateStr = curr.dateTime.split('T')[0];
+            if (!acc[dateStr]) {
+              acc[dateStr] = { intake: 0, output: 0, dateStr, rawDate: new Date(dateStr) };
+            }
+            if (curr.ioType === "I") {
+              acc[dateStr].intake += Number(curr.quantity || 0);
+            } else if (curr.ioType === "O") {
+              acc[dateStr].output += Number(curr.quantity || 0);
+            }
+            return acc;
+          }, {});
+
+          const processedData = Object.values(grouped).sort((a, b) => b.rawDate - a.rawDate).map(item => {
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+            const itemDate = new Date(item.rawDate);
+            itemDate.setHours(0, 0, 0, 0);
+            const diffTime = today - itemDate;
+            const diffDays = Math.round(diffTime / (1000 * 60 * 60 * 24));
+            
+            let dateLabel = "";
+            const formattedDate = item.rawDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            if (diffDays === 0) {
+              dateLabel = `Today (${formattedDate})`;
+            } else if (diffDays === 1) {
+              dateLabel = `1 Day Ago (${formattedDate})`;
+            } else if (diffDays > 1) {
+              dateLabel = `${diffDays} Days Ago (${formattedDate})`;
+            } else {
+              dateLabel = `${formattedDate}`;
+            }
+
+            const balance = item.intake - item.output;
+            let statusLabel = "";
+            if (item.intake > item.output) {
+               statusLabel = "Intake > Output";
+            } else if (item.output > item.intake) {
+               statusLabel = "Output > Intake";
+            } else {
+               statusLabel = "Intake = Output";
+            }
+
+            return {
+              ...item,
+              balance,
+              label: `${dateLabel} - ${statusLabel}`
+            };
+          });
+
+          setIoData(processedData);
+        }
+      } catch (error) {
+        console.error("Error fetching intake/output for clinical dashboard:", error)
+      }
+    }
+
     fetchLatestVitals()
+    fetchIntakeOutput()
   }, [selectedPatient])
-
-  const intakeOutput = dummyPatientData.intakeOutput
-
-  // Generate previous 3 days data with different scenarios
-  const day1 = generatePreviousDayData(1) // Output > Intake
-  const day2 = generatePreviousDayData(2) // Intake > Output
-  const day3 = generatePreviousDayData(3) // Output > Intake
 
   const bpSysStatus = getStatus(BP_SYS_ZONES, vitals.bpSystolic)
   const bpDiaStatus = getStatus(BP_DIA_ZONES, vitals.bpDiastolic)
@@ -371,17 +441,23 @@ const ClinicalDashboard = ({ selectedPatient }) => {
           <div className="row g-3 mb-4">
             <div className="col-md-4">
               <div className="card border h-100">
-                <div className="card-body py-3">
-                  <SemiGauge
-                    value={vitals.bpSystolic}
-                    min={70} max={200}
-                    zones={BP_SYS_ZONES}
-                    label="Systolic"
-                    unit="mmHg"
-                    size={160}
-                  />
-                  <div className="text-center mt-2">
-                    <span className={`badge ${bpSysStatus.cls}`}>{bpSysStatus.label}</span>
+                <div className="card-body py-2 d-flex flex-row align-items-center">
+                  <div className="d-flex flex-column align-items-center" style={{ width: "55%" }}>
+                    <SemiGauge
+                      value={vitals.bpSystolic}
+                      min={70} max={200}
+                      zones={BP_SYS_ZONES}
+                      label="Systolic"
+                      unit="mmHg"
+                      size={135}
+                    />
+                    <div className="text-center mt-1">
+                      <span className={`badge ${bpSysStatus.cls}`}>{bpSysStatus.label}</span>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column" style={{ width: "45%", borderLeft: "1px solid #eaeaea", paddingLeft: "12px", minHeight: "150px" }}>
+                    <h6 className="mb-0 text-center" style={{ fontSize: "0.75rem", color: "#6c757d", fontWeight: "600" }}>Recent (Top 5)</h6>
+                    <VitalHistoryList history={vitalsHistory} dataKey="bpSystolic" />
                   </div>
                 </div>
               </div>
@@ -389,30 +465,48 @@ const ClinicalDashboard = ({ selectedPatient }) => {
 
             <div className="col-md-4">
               <div className="card border h-100">
-                <div className="card-body py-3">
-                  <SemiGauge
-                    value={vitals.bpDiastolic}
-                    min={50} max={120}
-                    zones={BP_DIA_ZONES}
-                    label="Diastolic"
-                    unit="mmHg"
-                    size={160}
-                  />
+                <div className="card-body py-2 d-flex flex-row align-items-center">
+                  <div className="d-flex flex-column align-items-center" style={{ width: "55%" }}>
+                    <SemiGauge
+                      value={vitals.bpDiastolic}
+                      min={50} max={120}
+                      zones={BP_DIA_ZONES}
+                      label="Diastolic"
+                      unit="mmHg"
+                      size={135}
+                    />
+                    <div className="text-center mt-1">
+                      <span className={`badge ${bpDiaStatus.cls}`}>{bpDiaStatus.label}</span>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column" style={{ width: "45%", borderLeft: "1px solid #eaeaea", paddingLeft: "12px", minHeight: "150px" }}>
+                    <h6 className="mb-0 text-center" style={{ fontSize: "0.75rem", color: "#6c757d", fontWeight: "600" }}>Recent (Top 5)</h6>
+                    <VitalHistoryList history={vitalsHistory} dataKey="bpDiastolic" />
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="col-md-4">
               <div className="card border h-100">
-                <div className="card-body py-3">
-                  <SemiGauge
-                    value={vitals.heartRate}
-                    min={40} max={180}
-                    zones={HR_ZONES}
-                    label="Heart Rate"
-                    unit="bpm"
-                    size={160}
-                  />
+                <div className="card-body py-2 d-flex flex-row align-items-center">
+                  <div className="d-flex flex-column align-items-center" style={{ width: "55%" }}>
+                    <SemiGauge
+                      value={vitals.heartRate}
+                      min={40} max={180}
+                      zones={HR_ZONES}
+                      label="Heart Rate"
+                      unit="bpm"
+                      size={135}
+                    />
+                    <div className="text-center mt-1">
+                      <span className={`badge ${hrStatus.cls}`}>{hrStatus.label}</span>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column" style={{ width: "45%", borderLeft: "1px solid #eaeaea", paddingLeft: "12px", minHeight: "150px" }}>
+                    <h6 className="mb-0 text-center" style={{ fontSize: "0.75rem", color: "#6c757d", fontWeight: "600" }}>Recent (Top 5)</h6>
+                    <VitalHistoryList history={vitalsHistory} dataKey="heartRate" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -422,45 +516,72 @@ const ClinicalDashboard = ({ selectedPatient }) => {
           <div className="row g-3">
             <div className="col-md-4">
               <div className="card border h-100">
-                <div className="card-body py-3">
-                  <SemiGauge
-                    value={vitals.temperature}
-                    min={94} max={106}
-                    zones={TEMP_ZONES}
-                    label="Temperature"
-                    unit="°F"
-                    size={160}
-                  />
+                <div className="card-body py-2 d-flex flex-row align-items-center">
+                  <div className="d-flex flex-column align-items-center" style={{ width: "55%" }}>
+                    <SemiGauge
+                      value={vitals.temperature}
+                      min={94} max={106}
+                      zones={TEMP_ZONES}
+                      label="Temperature"
+                      unit="°F"
+                      size={135}
+                    />
+                    <div className="text-center mt-1">
+                      <span className={`badge ${tempStatus.cls}`}>{tempStatus.label}</span>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column" style={{ width: "45%", borderLeft: "1px solid #eaeaea", paddingLeft: "12px", minHeight: "150px" }}>
+                    <h6 className="mb-0 text-center" style={{ fontSize: "0.75rem", color: "#6c757d", fontWeight: "600" }}>Recent (Top 5)</h6>
+                    <VitalHistoryList history={vitalsHistory} dataKey="temperature" />
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="col-md-4">
               <div className="card border h-100">
-                <div className="card-body py-3">
-                  <SemiGauge
-                    value={vitals.spo2}
-                    min={80} max={100}
-                    zones={SPO2_ZONES}
-                    label="SpO₂"
-                    unit="%"
-                    size={160}
-                  />
+                <div className="card-body py-2 d-flex flex-row align-items-center">
+                  <div className="d-flex flex-column align-items-center" style={{ width: "55%" }}>
+                    <SemiGauge
+                      value={vitals.spo2}
+                      min={80} max={100}
+                      zones={SPO2_ZONES}
+                      label="SpO₂"
+                      unit="%"
+                      size={135}
+                    />
+                    <div className="text-center mt-1">
+                      <span className={`badge ${spo2Status.cls}`}>{spo2Status.label}</span>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column" style={{ width: "45%", borderLeft: "1px solid #eaeaea", paddingLeft: "12px", minHeight: "150px" }}>
+                    <h6 className="mb-0 text-center" style={{ fontSize: "0.75rem", color: "#6c757d", fontWeight: "600" }}>Recent (Top 5)</h6>
+                    <VitalHistoryList history={vitalsHistory} dataKey="spo2" />
+                  </div>
                 </div>
               </div>
             </div>
 
             <div className="col-md-4">
               <div className="card border h-100">
-                <div className="card-body py-3">
-                  <SemiGauge
-                    value={vitals.respiration}
-                    min={8} max={35}
-                    zones={RR_ZONES}
-                    label="Respiration"
-                    unit="/min"
-                    size={160}
-                  />
+                <div className="card-body py-2 d-flex flex-row align-items-center">
+                  <div className="d-flex flex-column align-items-center" style={{ width: "55%" }}>
+                    <SemiGauge
+                      value={vitals.respiration}
+                      min={8} max={35}
+                      zones={RR_ZONES}
+                      label="Respiration"
+                      unit="/min"
+                      size={135}
+                    />
+                    <div className="text-center mt-1">
+                      <span className={`badge ${rrStatus.cls}`}>{rrStatus.label}</span>
+                    </div>
+                  </div>
+                  <div className="d-flex flex-column" style={{ width: "45%", borderLeft: "1px solid #eaeaea", paddingLeft: "12px", minHeight: "150px" }}>
+                    <h6 className="mb-0 text-center" style={{ fontSize: "0.75rem", color: "#6c757d", fontWeight: "600" }}>Recent (Top 5)</h6>
+                    <VitalHistoryList history={vitalsHistory} dataKey="respiration" />
+                  </div>
                 </div>
               </div>
             </div>
@@ -493,44 +614,20 @@ const ClinicalDashboard = ({ selectedPatient }) => {
             </div>
           </div>
 
-          {/* Row 1: Today and 1 Day Ago */}
-          <div className="row g-4 mb-4">
-            <div className="col-md-6">
-              <FluidBalanceChart 
-                intake={intakeOutput.intake}
-                output={intakeOutput.output}
-                balance={intakeOutput.balance}
-                date={`Today (${getDateString(0)}) - Intake > Output`}
-              />
-            </div>
-            <div className="col-md-6">
-              <FluidBalanceChart 
-                intake={day1.intake}
-                output={day1.output}
-                balance={day1.balance}
-                date={`1 Day Ago (${getDateString(1)}) - Output > Intake`}
-              />
-            </div>
-          </div>
-
-          {/* Row 2: 2 Days Ago and 3 Days Ago */}
+          {/* Render Cards by Date */}
           <div className="row g-4">
-            <div className="col-md-6">
-              <FluidBalanceChart 
-                intake={day2.intake}
-                output={day2.output}
-                balance={day2.balance}
-                date={`2 Days Ago (${getDateString(2)}) - Intake > Output`}
-              />
-            </div>
-            <div className="col-md-6">
-              <FluidBalanceChart 
-                intake={day3.intake}
-                output={day3.output}
-                balance={day3.balance}
-                date={`3 Days Ago (${getDateString(3)}) - Output > Intake`}
-              />
-            </div>
+            {ioData.length > 0 ? ioData.map((data, index) => (
+              <div className="col-md-6" key={index}>
+                <FluidBalanceChart 
+                  intake={data.intake}
+                  output={data.output}
+                  balance={data.balance}
+                  date={data.label}
+                />
+              </div>
+            )) : (
+              <div className="col-12 text-center text-muted">No Intake/Output data available</div>
+            )}
           </div>
         </div>
       )}
