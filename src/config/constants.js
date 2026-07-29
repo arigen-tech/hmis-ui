@@ -1430,3 +1430,6 @@ export const VITALS_SAVE_SUCCESS = "Vitals details saved successfully";
 export const VITALS_SAVE_FAILURE = "Failed to save vitals details.";
 export const VITALS_SAVE_ERROR = "Error saving vitals details. Please try again.";
 export const VITALS_FILL_INTAKE_OUTPUT_WARN = "Please fill in at least one intake or output row before saving.";
+export const INTAKE_OUTPUT_SAVE_SUCCESS = "Intake/Output details saved successfully";
+export const INTAKE_OUTPUT_SAVE_FAILURE = "Failed to save Intake/Output details.";
+export const INTAKE_OUTPUT_SAVE_ERROR = "Error saving Intake/Output details. Please try again.";
