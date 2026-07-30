@@ -98,6 +98,8 @@ const Login = () => {
           localStorage.setItem("username", username);
           localStorage.setItem("userId", userId);
           localStorage.setItem("roleId", roleId);
+          localStorage.setItem("activeRoleId", roleId);
+          localStorage.setItem("assignedRoleIds", roleId);
           localStorage.setItem("AuthValidation", validTime);
           localStorage.setItem("isTokenValid", isTokenValid);
           localStorage.setItem("hospitalId", hospitalId);
@@ -110,6 +112,8 @@ const Login = () => {
           sessionStorage.setItem("username", username);
           localStorage.setItem("userId", userId);
           sessionStorage.setItem("roleId", roleId);
+          sessionStorage.setItem("activeRoleId", roleId);
+          sessionStorage.setItem("assignedRoleIds", roleId);
           sessionStorage.setItem("AuthValidation", validTime);
           sessionStorage.setItem("isTokenValid", isTokenValid);
           sessionStorage.setItem("hospitalId", hospitalId);

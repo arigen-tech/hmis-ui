@@ -74,7 +74,11 @@ const Sidebar = ({ collapsed, toggleSidebar }) => {
   const [searchText, setSearchText] = useState("")
   const location = useLocation()
 
-  const rolesId = localStorage.getItem("roleId") || sessionStorage.getItem("roleId")
+  const rolesId =
+    localStorage.getItem("activeRoleId") ||
+    sessionStorage.getItem("activeRoleId") ||
+    localStorage.getItem("roleId") ||
+    sessionStorage.getItem("roleId")
 
   useEffect(() => {
     fetchMenuData()

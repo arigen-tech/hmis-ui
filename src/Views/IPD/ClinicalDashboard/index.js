@@ -297,7 +297,7 @@ const ClinicalDashboard = ({ selectedPatient }) => {
     setVitalsHistory([])
     setIoData([])
 
-    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || 26
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id
     if (!inpatientId) return
 
     const fetchLatestVitals = async () => {
