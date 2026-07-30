@@ -8,7 +8,8 @@ import {
   MAS_PATIENT_CONDITION_GET_ALL, 
   MAS_FREQUENCY_GET_ALL, 
   MAS_ROUTE_GET_ALL, 
-  GET_ALL_DRUGS_BY_SECTION 
+  GET_ALL_DRUGS_BY_SECTION,
+  GET_IP_DIAGNOSIS_ENTRY
 } from "../../../config/apiConfig";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
@@ -69,6 +70,7 @@ const DischargeFromWard = () => {
   // ---------- Discharge Summary Form State ----------
   const [dischargeData, setDischargeData] = useState({
     finalDiagnosis: "",
+    primaryDiagnosis: "",
     presentComplaints: "",
     historyPresentIllness: "",
     personalPastHistory: "",
@@ -224,6 +226,33 @@ const DischargeFromWard = () => {
         }
       } catch (error) {
         console.error("Error fetching route:", error);
+      }
+
+      // Fetch Diagnosis
+      try {
+        const inpatientId = 30; // Hardcoded for testing; replace with dynamic ID from props or URL
+        const diagRes = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${inpatientId}`);
+        if (diagRes && diagRes.response && Array.isArray(diagRes.response)) {
+          const finalDiags = diagRes.response
+            .filter((d) => d.diagnosisType === "I")
+            .map((d) => d.diagnosis)
+            .filter(Boolean)
+            .join(", ");
+          
+          const primaryDiags = diagRes.response
+            .filter((d) => d.diagnosisType === "W")
+            .map((d) => d.diagnosis)
+            .filter(Boolean)
+            .join(", ");
+
+          setDischargeData((prev) => ({
+            ...prev,
+            finalDiagnosis: finalDiags,
+            primaryDiagnosis: primaryDiags,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching diagnosis:", error);
       }
     };
     fetchDropdowns();
@@ -548,6 +577,9 @@ const DischargeFromWard = () => {
                 <textarea
                   className="form-control"
                   rows="2"
+                  name="primaryDiagnosis"
+                  value={dischargeData.primaryDiagnosis}
+                  onChange={handleDischargeChange}
                   placeholder="Enter Primary Diagnosis"
                 />
               </div>
