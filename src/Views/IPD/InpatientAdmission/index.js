@@ -1066,7 +1066,6 @@ const InpatientAdmission = () => {
       formDataToSend.append("roomId", formData.roomId || "");
       formDataToSend.append("bedId", formData.bedId || "");
 
-      const primaryFinancial = formData.financialDetails[0] || {};
       const paymentTypeMap = {
         "Self": "1",
         "Insurance": "2",
@@ -1074,9 +1073,6 @@ const InpatientAdmission = () => {
         "Government": "4",
         "Other": "5"
       };
-      formDataToSend.append("paymentType", paymentTypeMap[primaryFinancial.paymentType] || "");
-      formDataToSend.append("advanceCollected", primaryFinancial.advanceCollected === "Yes" ? "1" : "0");
-      formDataToSend.append("advanceAmount", primaryFinancial.advanceAmount || "");
 
       const paymentModeMap = {
         "Cash": "1",
@@ -1086,7 +1082,20 @@ const InpatientAdmission = () => {
         "Net Banking": "5",
         "Wallet": "6"
       };
-      formDataToSend.append("paymentMode", paymentModeMap[primaryFinancial.paymentMode] || "");
+
+      if (formData.financialDetails && formData.financialDetails.length > 0) {
+        formData.financialDetails.forEach((financial, index) => {
+          if (financial.paymentType) {
+            formDataToSend.append(`paymentRequests[${index}].paymentType`, paymentTypeMap[financial.paymentType] || "");
+            formDataToSend.append(`paymentRequests[${index}].advanceCollected`, financial.advanceCollected === "Yes" ? "y" : "n");
+            formDataToSend.append(`paymentRequests[${index}].advanceAmount`, financial.advanceAmount || "");
+            
+            if (financial.paymentMode) {
+              formDataToSend.append(`paymentRequests[${index}].paymentMode`, paymentModeMap[financial.paymentMode] || "");
+            }
+          }
+        });
+      }
 
       formDataToSend.append("patientName", formData.patientName || "");
       formDataToSend.append("uhid", formData.uhid || "");
