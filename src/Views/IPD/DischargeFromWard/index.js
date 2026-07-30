@@ -526,7 +526,7 @@ const DischargeFromWard = () => {
             {/* Clinical Information */}
             <div className="row g-3">
               {/* Final Diagnosis - Regular Textarea */}
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label">
                   Final Diagnosis <span className="text-danger">*</span>
                 </label>
@@ -540,8 +540,20 @@ const DischargeFromWard = () => {
                 />
               </div>
 
+
+              <div className="col-md-4">
+                <label className="form-label">
+                  Primary Diagnosis <span className="text-danger">*</span>
+                </label>
+                <textarea
+                  className="form-control"
+                  rows="2"
+                  placeholder="Enter Primary Diagnosis"
+                />
+              </div>
+
               {/* Present Complaints - Regular Textarea */}
-              <div className="col-md-6">
+              <div className="col-md-4">
                 <label className="form-label">
                   Present Complaints <span className="text-danger">*</span>
                 </label>
@@ -733,7 +745,7 @@ const DischargeFromWard = () => {
                   <table className="table table-bordered table-sm align-middle mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th style={{ minWidth: "280px  " }}>Medicine Name</th>
+                        <th style={{ minWidth: "280px                           " }}>Medicine Name</th>
                         <th>Dosage</th>
                         <th>Frequency</th>
                         <th>Total </th>

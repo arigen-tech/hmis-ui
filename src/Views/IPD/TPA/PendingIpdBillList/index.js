@@ -1,30 +1,29 @@
-import { useState } from "react"
+import { useState, useMemo } from "react"
 import LoadingScreen from "../../../../Components/Loading"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination"
 
 const PendingIpdBillList = () => {
   const [loading, setLoading] = useState(false)
 
-  // States for filter fields
-  const [fromDate, setFromDate] = useState("")
-  const [toDate, setToDate] = useState("")
+  // Filter states
   const [wardFilter, setWardFilter] = useState("")
   const [billTypeFilter, setBillTypeFilter] = useState("")
-  const [statusFilter, setStatusFilter] = useState("")
-  const [searchKeyword, setSearchKeyword] = useState("")
+  // New amount filter states
+  const [amountFilter, setAmountFilter] = useState("") // '', 'gt50000', 'gt10000', 'other'
+  const [customAmount, setCustomAmount] = useState("")
 
-  // States for button spinners
+  // Button spinners
   const [isSearching, setIsSearching] = useState(false)
   const [isShowingAll, setIsShowingAll] = useState(false)
   const [isRefreshing, setIsRefreshing] = useState(false)
 
-  // Server-side pagination states
+  // Pagination states
   const [currentPage, setCurrentPage] = useState(1)
   const [totalPages, setTotalPages] = useState(0)
   const [totalElements, setTotalElements] = useState(0)
 
-  // IPD bill list data - UI only placeholder rows matching the wireframe
-  const [billData, setBillData] = useState([
+  // Full static data (unchanged)
+  const fullBillData = useMemo(() => [
     {
       admissionId: "ADM001",
       patientName: "Ravi Kumar",
@@ -90,9 +89,13 @@ const PendingIpdBillList = () => {
       outstandingAmount: "5,000",
       billStatus: "FINAL",
     },
-  ])
+  ], [])
 
-  // Ward dropdown options - UI only placeholders
+  // Filtered and paginated data
+  const [filteredData, setFilteredData] = useState(fullBillData)
+  const [displayData, setDisplayData] = useState(fullBillData.slice(0, DEFAULT_ITEMS_PER_PAGE))
+
+  // Ward dropdown options
   const wardOptions = [
     { id: 1, name: "Ward A" },
     { id: 2, name: "Ward B" },
@@ -107,11 +110,12 @@ const PendingIpdBillList = () => {
     { value: "Cash", label: "Cash" },
   ]
 
-  // Bill Status dropdown options
-  const statusOptions = [
-    { value: "OPEN", label: "Open" },
-    { value: "INTERIM", label: "Interim" },
-    { value: "FINAL", label: "Final" },
+  // Amount filter options
+  const amountOptions = [
+    { value: "", label: "Select Amount Filter" },
+    { value: "gt50000", label: "> 50,000" },
+    { value: "gt10000", label: "> 10,000" },
+    { value: "other", label: "Other" },
   ]
 
   const getStatusColor = (status) => {
@@ -127,46 +131,99 @@ const PendingIpdBillList = () => {
     }
   }
 
-  // Outstanding indicator dot: green = fully settled, yellow = partially outstanding, red = high outstanding
   const getOutstandingDotColor = (outstandingAmount) => {
     const value = parseFloat(String(outstandingAmount).replace(/,/g, "")) || 0;
-    if (value === 0) return "#28a745"; // green
-    if (value <= 10000) return "#ffc107"; // yellow
-    return "#dc3545"; // red
-  };
+    if (value === 0) return "#28a745";
+    if (value <= 10000) return "#ffc107";
+    return "#dc3545";
+  }
+
+  // Apply filters and pagination
+  const applyFiltersAndPaginate = (data, page) => {
+    // Filter
+    let filtered = data;
+
+    // Ward filter
+    if (wardFilter) {
+      const ward = wardOptions.find(w => w.id === parseInt(wardFilter))
+      if (ward) {
+        filtered = filtered.filter(item => item.wardRoom.includes(ward.name))
+      }
+    }
+
+    // Bill type filter
+    if (billTypeFilter) {
+      filtered = filtered.filter(item => item.billType === billTypeFilter)
+    }
+
+    // Amount filter
+    if (amountFilter) {
+      let threshold = 0
+      if (amountFilter === "gt50000") threshold = 50000
+      else if (amountFilter === "gt10000") threshold = 10000
+      else if (amountFilter === "other" && customAmount) {
+        threshold = parseFloat(customAmount.replace(/,/g, "")) || 0
+      }
+      if (threshold > 0) {
+        filtered = filtered.filter(item => {
+          const outstanding = parseFloat(String(item.outstandingAmount).replace(/,/g, "")) || 0
+          return outstanding > threshold
+        })
+      }
+    }
+
+    // Pagination
+    const total = filtered.length
+    const perPage = DEFAULT_ITEMS_PER_PAGE
+    const totalPages = Math.ceil(total / perPage) || 1
+    const safePage = Math.min(page, totalPages)
+    const start = (safePage - 1) * perPage
+    const end = start + perPage
+    const pageItems = filtered.slice(start, end)
+
+    setFilteredData(filtered)
+    setDisplayData(pageItems)
+    setTotalElements(total)
+    setTotalPages(totalPages)
+    setCurrentPage(safePage)
+  }
 
   // Handle page change
   const handlePageChange = (page) => {
-    setCurrentPage(page)
-    // fetchIpdBillList(page - 1)
+    applyFiltersAndPaginate(filteredData.length > 0 ? filteredData : fullBillData, page)
   }
 
   // Handle search with filters
   const handleSearch = async () => {
     setIsSearching(true)
     setCurrentPage(1)
-    // await fetchIpdBillList(0)
+    // Simulate async delay
+    await new Promise(resolve => setTimeout(resolve, 300))
+    applyFiltersAndPaginate(fullBillData, 1)
     setIsSearching(false)
   }
 
   const handleShowAll = async () => {
     setIsShowingAll(true)
 
-    setFromDate("")
-    setToDate("")
     setWardFilter("")
     setBillTypeFilter("")
-    setStatusFilter("")
-    setSearchKeyword("")
+    setAmountFilter("")
+    setCustomAmount("")
     setCurrentPage(1)
 
-    // await fetchIpdBillList(0)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    setFilteredData(fullBillData)
+    setDisplayData(fullBillData.slice(0, DEFAULT_ITEMS_PER_PAGE))
+    setTotalElements(fullBillData.length)
+    setTotalPages(Math.ceil(fullBillData.length / DEFAULT_ITEMS_PER_PAGE) || 1)
     setIsShowingAll(false)
   }
 
   const handleRefresh = async () => {
     setIsRefreshing(true)
-    // await fetchIpdBillList(currentPage - 1)
+    await new Promise(resolve => setTimeout(resolve, 300))
+    applyFiltersAndPaginate(filteredData.length > 0 ? filteredData : fullBillData, currentPage)
     setIsRefreshing(false)
   }
 
@@ -191,36 +248,13 @@ const PendingIpdBillList = () => {
               <h4 className="card-title p-2 mb-0">
                 Pending Tracking - IPD Bill List
               </h4>
-            
+              {/* Refresh button (optional) */}
+           
             </div>
 
             <div className="card-body">
               {/* ============ FILTERS ============ */}
-              <div className="row mb-4">
-                <div className="col-md-4">
-                  <label className="form-label fw-bold">Admission From Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={fromDate}
-                    onChange={(e) => {
-                      setFromDate(e.target.value)
-                    }}
-                    max={toDate || undefined}
-                  />
-                </div>
-                <div className="col-md-4">
-                  <label className="form-label fw-bold">Admission To Date</label>
-                  <input
-                    type="date"
-                    className="form-control"
-                    value={toDate}
-                    onChange={(e) => {
-                      setToDate(e.target.value)
-                    }}
-                    min={fromDate || undefined}
-                  />
-                </div>
+              <div className="row mb-3">
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Ward</label>
                   <select
@@ -236,6 +270,7 @@ const PendingIpdBillList = () => {
                     ))}
                   </select>
                 </div>
+
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Bill Type</label>
                   <select
@@ -252,34 +287,41 @@ const PendingIpdBillList = () => {
                   </select>
                 </div>
 
-                {/* <div className="col-md-4 mt-3">
-                  <label className="form-label fw-bold">Bill Status</label>
-                  <select
-                    className="form-select"
-                    value={statusFilter}
-                    onChange={(e) => setStatusFilter(e.target.value)}
-                  >
-                    <option value="">All Status</option>
-                    {statusOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div> */}
-                {/* <div className="col-md-4 mt-3">
-                  <label className="form-label fw-bold">
-                    Patient Name / Mobile / Admission ID
-                  </label>
-                  <input
-                    type="text"
-                    className="form-control"
-                    placeholder="Enter Patient Name, Mobile or Admission ID"
-                    value={searchKeyword}
-                    onChange={(e) => setSearchKeyword(e.target.value)}
-                  />
-                </div> */}
-                <div className="col-md-4 mt-3 d-flex align-items-end">
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Outstanding Amount</label>
+                  <div className="d-flex">
+                    <select
+                      className={`form-select ${amountFilter === "other" ? "flex-grow-1 me-1" : "w-100"}`}
+                      value={amountFilter}
+                      onChange={(e) => {
+                        setAmountFilter(e.target.value)
+                        if (e.target.value !== "other") {
+                          setCustomAmount("")
+                        }
+                      }}
+                    >
+                      {amountOptions.map((option) => (
+                        <option key={option.value} value={option.value}>
+                          {option.label}
+                        </option>
+                      ))}
+                    </select>
+                    {amountFilter === "other" && (
+                      <input
+                        type="text"
+                        className="form-control"
+                        style={{ width: "80px", flexShrink: 0 }}
+                        placeholder="e.g. 25000"
+                        value={customAmount}
+                        onChange={(e) => setCustomAmount(e.target.value)}
+                      />
+                    )}
+                  </div>
+                </div>
+              </div>
+
+              <div className="row mb-4">
+                <div className="col-md-12 d-flex align-items-end">
                   <button
                     type="button"
                     className="btn btn-primary me-2"
@@ -340,14 +382,14 @@ const PendingIpdBillList = () => {
                           <LoadingScreen />
                         </td>
                       </tr>
-                    ) : billData.length === 0 ? (
+                    ) : displayData.length === 0 ? (
                       <tr>
                         <td colSpan={12} className="text-center py-4 text-muted">
                           No pending IPD bills found.
                         </td>
                       </tr>
                     ) : (
-                      billData.map((item) => (
+                      displayData.map((item) => (
                         <tr key={item.admissionId}>
                           <td>{item.patientName}</td>
                           <td>{item.mobile}</td>
@@ -358,16 +400,13 @@ const PendingIpdBillList = () => {
                           <td>₹{item.totalAmount}</td>
                           <td>₹{item.insurancePayable}</td>
                           <td>
-                           
-                              ₹{item.patientPaid}
-                          </td>
-                          <td>
                             <span
                               className="d-inline-block rounded-circle me-2"
-                            
+                              style={{ width: "10px", height: "10px", backgroundColor: getOutstandingDotColor(item.outstandingAmount) }}
                             ></span>
-                            ₹{item.outstandingAmount}
+                            ₹{item.patientPaid}
                           </td>
+                          <td>₹{item.outstandingAmount}</td>
                           <td>
                             <span className="badge" style={getStatusColor(item.billStatus)}>
                               {item.billStatus}
@@ -380,8 +419,8 @@ const PendingIpdBillList = () => {
                               onClick={(e) => handleViewBillPdf(item, e)}
                               title="View Bill PDF"
                             >
-                              View 
-                              <i className="fa fa-file-pdf-o"></i>
+                              View
+                              <i className="fa fa-file-pdf-o ms-1"></i>
                             </button>
                           </td>
                         </tr>
