@@ -6,6 +6,7 @@ import TreatmentModal from "./TreatmentModal";
 import ClinicalHistoryPopup from "./ClinicalHistoryPopup";
 import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
+import Swal from "sweetalert2";
 import OBGDetails from "../OBGDetails";
 import EarExamination from "../EarExamination";
 import GynaMaster from "../GynaMaster";
@@ -14,7 +15,7 @@ import Psychiatrist from "../Psychiatrist";
 
 import {
   OPD_TEMPLATE,
-  OPD_TEMPLATE_GET_ALL,
+  OPD_TREATMENT_TEMPLATE_GET_ALL,
   MAS_INVESTIGATION,
   MAS_INVESTIGATION_UNIQUE_TYPES,
   OPD_PATIENT,
@@ -67,7 +68,7 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 import OpdVision from "../OpdVision";
-import { FLAG } from "../../../config/constants";
+import { CANCEL_PATIENT_CONFIRM, CANCEL_PATIENT_CONFIRMATION, FLAG } from "../../../config/constants";
 import { data } from "react-router-dom";
 import PregnancySection from "../Pregnancy";
 
@@ -1346,7 +1347,15 @@ const GeneralMedicineWaitingList = () => {
 
   const fetchOpdTemplateData = async () => {
     try {
-      const data = await getRequest(OPD_TEMPLATE_GET_ALL);
+      const queryParams = new URLSearchParams();
+      if (currentDoctorId) {
+        queryParams.append("doctorId", currentDoctorId);
+      }
+      const data = await getRequest(
+        `${OPD_TREATMENT_TEMPLATE_GET_ALL}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`,
+      );
 
       if (data.status === 200 && Array.isArray(data.response)) {
         setOpdTemplateData(data.response);
@@ -1889,8 +1898,14 @@ const GeneralMedicineWaitingList = () => {
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
       setInvestigationTemplateLoading(true);
+      const queryParams = new URLSearchParams();
+      if (searchFilters.doctorList) {
+        queryParams.append("doctorId", searchFilters.doctorList);
+      }
       const response = await getRequest(
-        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}`,
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`,
       );
       if (response && response.response) {
         setInvestigationTemplates(response.response);
@@ -2462,6 +2477,7 @@ const GeneralMedicineWaitingList = () => {
 
   const userId =
     localStorage.getItem("userId") || sessionStorage.getItem("userId");
+  const currentDoctorId = searchFilters.doctorList || userId || "";
 
   useEffect(() => {
     if (userId) {
@@ -3684,13 +3700,45 @@ const GeneralMedicineWaitingList = () => {
 
       if (response?.status === 200) {
         showPopupMessage("Update successfully.", "success");
-        handleSearch();
+        setWaitingList((prevList) => {
+          const updatedList = prevList.filter(
+            (item) => item.visitId !== visitId,
+          );
+
+          const nextTotalPages = Math.max(
+            1,
+            Math.ceil(updatedList.length / DEFAULT_ITEMS_PER_PAGE),
+          );
+          if (currentPage > nextTotalPages) {
+            setCurrentPage(nextTotalPages);
+          }
+
+          return updatedList;
+        });
+        setTotalRecords((prev) => Math.max(0, prev - 1));
       } else {
         showPopupMessage("Failed to update. Please try again.", "error");
       }
     } catch (error) {
       showPopupMessage("Failed to update. Please try again.", "error");
     }
+  };
+
+  const handleCloseRequest = (visitId) => {
+    Swal.fire({
+      title: "Confirm Close",
+      text: CANCEL_PATIENT_CONFIRMATION,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Yes",
+      cancelButtonText: "Cancel",
+      reverseButtons: false,
+      allowOutsideClick: false,
+    }).then((result) => {
+      if (result.isConfirmed) {
+        handleClose(visitId);
+      }
+    });
   };
 
   const handleCreateTemplate = () => {
@@ -4433,7 +4481,7 @@ const GeneralMedicineWaitingList = () => {
                     className="btn btn-secondary"
                     onClick={handleBackToList}
                   >
-                    <i className="mdi mdi-arrow-left"></i> Back to List
+                    <i className="icofont-arrow-left me-1"></i> Back to List
                   </button>
                 </div>
               </div>
@@ -7446,6 +7494,7 @@ const GeneralMedicineWaitingList = () => {
           show={showInvestigationModal}
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
+          doctorId={currentDoctorId}
           onTemplateSaved={(template) => {
             fetchInvestigationTemplates();
           }}
@@ -7455,6 +7504,7 @@ const GeneralMedicineWaitingList = () => {
           show={showTreatmentModal}
           onClose={handleCloseTreatmentModal}
           templateType={treatmentModalType}
+          doctorId={currentDoctorId}
           onTemplateSaved={() => {
             opdTemplateLoadedRef.current = false;
             fetchOpdTemplateData();
@@ -7872,7 +7922,9 @@ const GeneralMedicineWaitingList = () => {
                     <h5 className="modal-title">
                       {confirmationPopup.type === "success"
                         ? "Success"
-                        : "Information"}
+                        : confirmationPopup.type === "warning"
+                          ? "Confirm Close"
+                          : "Information"}
                     </h5>
                     <button
                       type="button"
@@ -7886,6 +7938,11 @@ const GeneralMedicineWaitingList = () => {
                         <i
                           className="mdi mdi-check-circle"
                           style={{ fontSize: "48px", color: "#28a745" }}
+                        ></i>
+                      ) : confirmationPopup.type === "warning" ? (
+                        <i
+                          className="mdi mdi-alert-circle"
+                          style={{ fontSize: "48px", color: "#ffc107" }}
                         ></i>
                       ) : (
                         <i
@@ -8114,7 +8171,7 @@ const GeneralMedicineWaitingList = () => {
                               className="btn btn-danger btn-sm"
                               onClick={(e) => {
                                 e.stopPropagation();
-                                handleClose(item.visitId);
+                                handleCloseRequest(item.visitId);
                               }}
                             >
                               CLOSE

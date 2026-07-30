@@ -130,16 +130,16 @@ const parseAppointmentDateTime = (dateInput) => {
   return isNaN(fallback.getTime()) ? null : fallback;
 };
 
-const formatDateForDisplay = (dateString) => {
-  const date = parseAppointmentDateTime(dateString);
+const formatDateForDisplay = (dateInput) => {
+  const date = parseAppointmentDateTime(dateInput);
 
   if (!date) return "";
 
   const day = String(date.getDate()).padStart(2, "0");
-  const month = MONTH_NAMES[date.getMonth()];
+  const month = String(date.getMonth() + 1).padStart(2, "0");
   const year = date.getFullYear();
 
-  return `${day}-${month}-${year}`;
+  return `${day}/${month}/${year}`;
 };
 
 const formatDateToDDMMYYYY = (dateInput) => {
@@ -194,7 +194,9 @@ const APPOINTMENT_TYPE_OPTIONS = [
 ];
 
 const getAppointmentStatusLabel = (status) => {
-  const normalizedStatus = String(status || "").trim().toLowerCase();
+  const normalizedStatus = String(status || "")
+    .trim()
+    .toLowerCase();
 
   switch (normalizedStatus) {
     case "c":
@@ -209,7 +211,9 @@ const getAppointmentStatusLabel = (status) => {
 };
 
 const getAppointmentStatusBadgeClass = (status) => {
-  const normalizedStatus = String(status || "").trim().toLowerCase();
+  const normalizedStatus = String(status || "")
+    .trim()
+    .toLowerCase();
 
   switch (normalizedStatus) {
     case "c":
@@ -224,7 +228,9 @@ const getAppointmentStatusBadgeClass = (status) => {
 };
 
 const isCancelledAppointment = (status) =>
-  String(status || "").trim().toLowerCase() === "c";
+  String(status || "")
+    .trim()
+    .toLowerCase() === "c";
 
 const BookingAppointmentHistory = () => {
   // UI States
@@ -235,9 +241,8 @@ const BookingAppointmentHistory = () => {
   const [popupMessage, setPopupMessage] = useState(null);
   const [reportData, setReportData] = useState([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [selectedDeptTypeCode, setSelectedDeptTypeCode] = useState(
-    FILTER_OPD_DEPT,
-  );
+  const [selectedDeptTypeCode, setSelectedDeptTypeCode] =
+    useState(FILTER_OPD_DEPT);
 
   // Reschedule Popup States
   const [showReschedulePopup, setShowReschedulePopup] = useState(false);
@@ -272,15 +277,15 @@ const BookingAppointmentHistory = () => {
   const [newDate, setNewDate] = useState("");
   const [newSession, setNewSession] = useState("");
 
-useEffect(() => {
-  const initializeData = async () => {
-    setInitialLoading(true);
-    await Promise.all([fetchSessions(), fetchCancellationReasons()]);
-    setInitialLoading(false);
-  };
-  
-  initializeData();
-}, []);
+  useEffect(() => {
+    const initializeData = async () => {
+      setInitialLoading(true);
+      await Promise.all([fetchSessions(), fetchCancellationReasons()]);
+      setInitialLoading(false);
+    };
+
+    initializeData();
+  }, []);
 
   // Fetch sessions
   const fetchSessions = async () => {
@@ -386,15 +391,14 @@ useEffect(() => {
             String(selectedDeptTypeCode || "").toUpperCase() ===
             FILTER_OPD_DEPT;
 
-          const appointmentSlot =
-            isOpdAppointment
-              ? formatAppointmentTime(
-                  appointment.appointmentStartTime,
-                  appointment.appointmentEndTime,
-                ) ||
-                getAppointmentTimeFromDateString(appointment.appointmentDate) ||
-                "N/A"
-              : "N/A";
+          const appointmentSlot = isOpdAppointment
+            ? formatAppointmentTime(
+                appointment.appointmentStartTime,
+                appointment.appointmentEndTime,
+              ) ||
+              getAppointmentTimeFromDateString(appointment.appointmentDate) ||
+              "N/A"
+            : "N/A";
 
           const displayDate =
             formatDateForDisplay(sourceDateTime) ||
@@ -513,9 +517,7 @@ useEffect(() => {
       return getTodayDate();
     };
     // Set initial data from existing appointment
-    const initialDate = formatToISODate(
-      patientData.shortDate || getTodayDate(),
-    );
+    const initialDate = patientData.shortDate || getTodayDate();
     setRescheduleData({
       department: patientData.departmentName,
       doctor: patientData.doctorName,
@@ -690,7 +692,6 @@ useEffect(() => {
           icon: "info",
           title: "No Tokens Available",
           text: res.message || NO_TOKENS_AVAILABLE_CRITERIA_MSG,
-          timer: 2000,
         });
         setAvailableTokens([]);
         setShowTimeSlots(false);
@@ -701,7 +702,6 @@ useEffect(() => {
         icon: "error",
         title: "Error",
         text: FETCH_TOKEN_AVAILABILITY_ERROR,
-        timer: 2000,
       });
       setAvailableTokens([]);
       setShowTimeSlots(false);
@@ -738,23 +738,30 @@ useEffect(() => {
       Swal.fire({
         icon: "warning",
         title: `${NO_TIME_SLOT_SELECTED}`,
-        text: `{SELECT_TIME_SLOT_FIRST}`,
-        timer: 2000,
+        text: "Please select a time slot first",
+        timer: 4000,
       });
       return;
     }
 
     const slotToUse = selectedSlot || selectedToken;
     const appointmentLabel = isOpdReschedule
-      ? `${newDate} at ${slotToUse.slot}`
-      : `${newDate}`;
+      ? `${formatDateToDDMMYYYY(newDate)} at ${slotToUse.slot}`
+      : formatDateToDDMMYYYY(newDate);
+
+    // Get session name for display
+    const sessionName =
+      sessions.find((s) => String(s.id) === String(newSession))?.sessionName ||
+      "";
 
     const result = await Swal.fire({
       title: `${CONFIRM_RESCHEDULE_TITLE}`,
       html: `
-        <p>Reschedule ${selectedPatient.patientName} to ${appointmentLabel}?</p>
-        <p><strong>Current:</strong> ${selectedPatient.displayDate}${selectedPatient.displayTime ? ` at ${selectedPatient.displayTime}` : ""}</p>
-      `,
+      <p>Reschedule ${selectedPatient.patientName} to ${appointmentLabel}?</p>
+      <p><strong>Current:</strong> ${formatDateToDDMMYYYY(selectedPatient.displayDate)}${
+        selectedPatient.displayTime ? ` at ${selectedPatient.displayTime}` : ""
+      }</p>
+    `,
       icon: "question",
       showCancelButton: true,
       confirmButtonText: "Yes, Reschedule",
@@ -763,13 +770,16 @@ useEffect(() => {
 
     if (result.isConfirmed) {
       Swal.showLoading();
+
       try {
         const appointmentDateInstant = isOpdReschedule
           ? `${newDate}T${slotToUse.start}:00Z`
           : `${newDate}T00:00:00Z`;
+
         const startTimeInstant = isOpdReschedule
           ? `${newDate}T${slotToUse.start}:00Z`
           : null;
+
         const endTimeInstant = isOpdReschedule
           ? `${newDate}T${slotToUse.end}:00Z`
           : null;
@@ -793,30 +803,61 @@ useEffect(() => {
         );
 
         if (res.status === 200) {
-
           setShowReschedulePopup(false);
           setSelectedToken(null);
           setSelectedSlot(null);
           setShowTimeSlots(false);
           setAvailableTokens([]);
-        await Swal.fire({
+
+          const oldDate = formatDateToDDMMYYYY(
+            selectedPatient.displayDate || selectedPatient.appointmentDate,
+          );
+          const oldTime =
+            selectedPatient.displayTime ||
+            selectedPatient.appointmentSlot ||
+            "";
+
+          const newTimeSlot = isOpdReschedule ? slotToUse.slot : "";
+
+          const formattedNewDate = formatDateToDDMMYYYY(newDate);
+
+          let successMessage = `Appointment for <strong>${selectedPatient.patientName}</strong> with Dr. <strong>${selectedPatient.doctorName}</strong> successfully moved from <strong>${oldDate}`;
+
+          if (oldTime && oldTime !== "N/A") {
+            successMessage += ` at ${oldTime}`;
+          }
+
+          successMessage += `</strong> to <strong>${formattedNewDate}`;
+
+          if (newTimeSlot) {
+            successMessage += ` at ${newTimeSlot}`;
+          }
+
+          if (sessionName && isOpdReschedule) {
+            successMessage += ` (${sessionName} session)`;
+          }
+
+          successMessage += `</strong>.`;
+
+          await Swal.fire({
             icon: "success",
-            title: "Success",
-            text: `${RESCHEDULE_SUCCESS}`,
-            timer: 2000,
+            title: "Reschedule Successful",
+            html: successMessage,
+            // confirmButtonText: "OK",
+            // confirmButtonColor: "#28a745",
           });
 
-         await handleSearch(); // Refresh the list
+          await handleSearch();
         } else {
           throw new Error(res.message || "Server error");
         }
       } catch (error) {
         console.error("Reschedule failed:", error);
+
         Swal.fire({
           icon: "error",
           title: "Error",
           text: error.message || `${RESCHEDULE_ERROR}`,
-          timer: 2000,
         });
       }
     }
@@ -829,7 +870,6 @@ useEffect(() => {
         icon: "warning",
         title: `${REASON_REQUIRED_TITLE}`,
         text: `${SELECT_CANCELLATION_REASON}`,
-        timer: 2000,
       });
       return;
     }
@@ -875,7 +915,7 @@ useEffect(() => {
           setSelectedReason("");
           setPatientToCancel(null);
 
-         await Swal.fire({
+          await Swal.fire({
             icon: "success",
             title: "Cancelled",
             text: `${CANCELLATION_SUCCESS}`,
@@ -904,9 +944,8 @@ useEffect(() => {
   const currentItems = reportData.slice(indexOfFirst, indexOfLast);
 
   if (initialLoading) {
-  return <LoadingScreen />;
-}
-
+    return <LoadingScreen />;
+  }
 
   return (
     <div className="content-wrapper">
@@ -919,7 +958,7 @@ useEffect(() => {
               </h4>
             </div>
             <div className="card-body">
-                <div className="row mb-4">
+              <div className="row mb-4">
                 <div className="col-md-4">
                   <label className="form-label fw-bold">Mobile Number</label>
                   <input
@@ -933,9 +972,7 @@ useEffect(() => {
                 </div>
 
                 <div className="col-md-4">
-                  <label className="form-label fw-bold">
-                    Appointment Type
-                  </label>
+                  <label className="form-label fw-bold">Appointment Type</label>
                   <select
                     className="form-select"
                     value={selectedDeptTypeCode}
@@ -972,17 +1009,13 @@ useEffect(() => {
                 </div>
               </div>
 
-
-
-              {showReport && !searchLoading  && reportData.length > 0 && (
+              {showReport && !searchLoading && reportData.length > 0 && (
                 <div className="row mt-4">
                   <div className="col-12">
                     <div className="card">
                       <div className="card-header">
                         <div className="d-flex justify-content-between align-items-center">
-                          <h5 className="card-title mb-0">
-                             Appointments
-                          </h5>
+                          <h5 className="card-title mb-0">Appointments</h5>
                         </div>
                       </div>
 
@@ -1117,10 +1150,12 @@ useEffect(() => {
                     <div className="row">
                       <div className="col-md-6">
                         <p>
-                          <strong>Patient:</strong> {selectedPatient.patientName}
+                          <strong>Patient:</strong>{" "}
+                          {selectedPatient.patientName}
                         </p>
                         <p>
-                          <strong>Mobile:</strong> {selectedPatient.mobileNumber}
+                          <strong>Mobile:</strong>{" "}
+                          {selectedPatient.mobileNumber}
                         </p>
                         <p>
                           <strong>Age:</strong> {selectedPatient.patientAge}
@@ -1165,10 +1200,10 @@ useEffect(() => {
                             type="text"
                             className="form-control bg-light"
                             value={rescheduleData.doctorName}
-                          readOnly
-                        />
-                      </div>
-                    )}
+                            readOnly
+                          />
+                        </div>
+                      )}
 
                       <div className="col-md-6">
                         <DatePicker
@@ -1193,7 +1228,9 @@ useEffect(() => {
                           <select
                             className="form-select"
                             value={rescheduleData.session}
-                            onChange={(e) => handleSessionChange(e.target.value)}
+                            onChange={(e) =>
+                              handleSessionChange(e.target.value)
+                            }
                             disabled={isFetchingTokens}
                           >
                             <option value="">Select Session</option>
@@ -1206,80 +1243,101 @@ useEffect(() => {
                         </div>
                       )}
 
-                      {isOpdReschedule && showTimeSlots && newSession && newDate && (
-                        <div className="col-md-12 mt-3">
-                          <div className="card">
-                            <div className="card-header bg-light">
-                              <h5 className="mb-0 fw-bold">Available Time Slots</h5>
-                              <p className="h6 mb-0 text-muted small">
-                                Date: {newDate.split("-").reverse().join("/")} | Session:{" "}
-                                {sessions.find((s) => String(s.id) === String(newSession))
-                                  ?.sessionName || "Selected Session"}
-                              </p>
-                            </div>
-                            <div className="card-body">
-                              {loadingTokens ? (
-                                <div className="text-center py-3">
-                                  <div className="spinner-border spinner-border-sm me-2"></div>
-                                  Loading time slots...
-                                </div>
-                              ) : availableTokens.length > 0 ? (
-                                <div>
-                                  <p className="text-primary fw-bold small mb-2">
-                                    {sessions.find((s) => String(s.id) === String(newSession))
-                                      ?.sessionName || "Selected Session"}{" "}
-                                    Session
-                                  </p>
-                                  <div className="row row-cols-6 g-2 justify-content-right">
-                                    {availableTokens.map((token, index) => {
-                                      const isAvailable = token.available;
-                                      const startTime = formatTimeToHHMM(token.startTime);
-                                      const endTime = formatTimeToHHMM(token.endTime);
-                                      const isSelected =
-                                        selectedSlot?.tokenNo === token.tokenNo;
-
-                                      return (
-                                        <div className="col" key={index}>
-                                          <button
-                                            type="button"
-                                            className={`btn ${isSelected ? "btn-outline-badge" : isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} w-100 d-flex flex-column align-items-center justify-content-center`}
-                                            style={{
-                                              height: "60px",
-                                              fontSize: "0.8rem",
-                                              borderRadius: "6px",
-                                              borderWidth: isSelected ? "2px" : "1.5px",
-                                            }}
-                                            onClick={() =>
-                                              isAvailable && handleTokenSelect(token)
-                                            }
-                                            disabled={!isAvailable}
-                                          >
-                                            <span className="fw-bold">{startTime}</span>
-                                            <span style={{ opacity: 0.6 }}>{endTime}</span>
-
-                                            {!isAvailable && (
-                                              <span
-                                                className="badge bg-danger mt-1"
-                                                style={{ fontSize: "0.6rem" }}
-                                              >
-                                                Booked
-                                              </span>
-                                            )}
-                                          </button>
-                                        </div>
-                                      );
-                                    })}
+                      {isOpdReschedule &&
+                        showTimeSlots &&
+                        newSession &&
+                        newDate && (
+                          <div className="col-md-12 mt-3">
+                            <div className="card">
+                              <div className="card-header bg-light">
+                                <h5 className="mb-0 fw-bold">
+                                  Available Time Slots
+                                </h5>
+                                <p className="h6 mb-0 text-muted small">
+                                  Date: {formatDateToDDMMYYYY(newDate)} |
+                                  Session:{" "}
+                                  {sessions.find(
+                                    (s) => String(s.id) === String(newSession),
+                                  )?.sessionName || "Selected Session"}
+                                </p>
+                              </div>
+                              <div className="card-body">
+                                {loadingTokens ? (
+                                  <div className="text-center py-3">
+                                    <div className="spinner-border spinner-border-sm me-2"></div>
+                                    Loading time slots...
                                   </div>
-                                </div>
-                              ) : (
-                                <div className="alert alert-info text-center py-2">
-                                  {NO_TIME_SLOTS}
-                                </div>
-                              )}
+                                ) : availableTokens.length > 0 ? (
+                                  <div>
+                                    <p className="text-primary fw-bold small mb-2">
+                                      {sessions.find(
+                                        (s) =>
+                                          String(s.id) === String(newSession),
+                                      )?.sessionName || "Selected Session"}{" "}
+                                      Session
+                                    </p>
+                                    <div className="row row-cols-6 g-2 justify-content-right">
+                                      {availableTokens.map((token, index) => {
+                                        const isAvailable = token.available;
+                                        const startTime = formatTimeToHHMM(
+                                          token.startTime,
+                                        );
+                                        const endTime = formatTimeToHHMM(
+                                          token.endTime,
+                                        );
+                                        const isSelected =
+                                          selectedSlot?.tokenNo ===
+                                          token.tokenNo;
+
+                                        return (
+                                          <div className="col" key={index}>
+                                            <button
+                                              type="button"
+                                              className={`btn ${isSelected ? "btn-outline-badge" : isAvailable ? "btn-outline-success" : "btn-outline-secondary disabled"} w-100 d-flex flex-column align-items-center justify-content-center`}
+                                              style={{
+                                                height: "60px",
+                                                fontSize: "0.8rem",
+                                                borderRadius: "6px",
+                                                borderWidth: isSelected
+                                                  ? "2px"
+                                                  : "1.5px",
+                                              }}
+                                              onClick={() =>
+                                                isAvailable &&
+                                                handleTokenSelect(token)
+                                              }
+                                              disabled={!isAvailable}
+                                            >
+                                              <span className="fw-bold">
+                                                {startTime}
+                                              </span>
+                                              <span style={{ opacity: 0.6 }}>
+                                                {endTime}
+                                              </span>
+
+                                              {!isAvailable && (
+                                                <span
+                                                  className="badge bg-danger mt-1"
+                                                  style={{ fontSize: "0.6rem" }}
+                                                >
+                                                  Booked
+                                                </span>
+                                              )}
+                                            </button>
+                                          </div>
+                                        );
+                                      })}
+                                    </div>
+                                  </div>
+                                ) : (
+                                  <div className="alert alert-info text-center py-2">
+                                    {NO_TIME_SLOTS}
+                                  </div>
+                                )}
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      )}
+                        )}
                     </div>
                   </div>
                 </div>

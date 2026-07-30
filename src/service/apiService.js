@@ -119,11 +119,26 @@ export const postRequest = async (endpoint, data, options = {}) => {
       body: isMultipart ? data : JSON.stringify(data),
     });
 
+    const isJsonResponse = response.headers
+      .get("content-type")
+      ?.includes("application/json");
+    const responseData = isJsonResponse ? await response.json() : await response.text();
+
     if (!response.ok) {
-      throw new Error(`POST request failed: ${response.status}`);
+      const message =
+        (responseData && typeof responseData === "object" && responseData.message) ||
+        (typeof responseData === "string" && responseData) ||
+        response.statusText ||
+        "Request failed";
+
+      throw {
+        status: response.status,
+        message,
+        response: responseData,
+      };
     }
 
-    return await response.json();
+    return responseData;
   } catch (error) {
     console.error("POST Error:", error);
     throw error;

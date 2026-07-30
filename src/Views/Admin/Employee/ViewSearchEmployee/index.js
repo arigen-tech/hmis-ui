@@ -215,6 +215,14 @@ const ViewSearchEmployee = () => {
     });
   };
 
+  const clearFieldError = (field) => {
+  setErrors((prev) => {
+    const newErrors = { ...prev };
+    delete newErrors[field];
+    return newErrors;
+  });
+};
+
   // Helper function to check if field has error
   const hasError = (field, index = null, subField = null) => {
     if (!errors[field]) return "";
@@ -281,6 +289,8 @@ const ViewSearchEmployee = () => {
       { field: "designationId", label: "Designation" },
       { field: "qualifications", label: "Qualifications" },
       { field: "medicalRegistrationNo", label: "Medical Registration Number" },
+      { field: "yearOfExperience", label: "Total Experience" },
+
     ];
 
     // Check basic fields
@@ -1037,31 +1047,29 @@ const ViewSearchEmployee = () => {
     return `${API_HOST}/api/employee/viewDocument?filePath=${encodeURIComponent(filePath)}`;
   };
 
-  const handleCountryChange = (id) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      countryId: id,
-      stateId: "",
-      districtId: "",
-    }));
-    setErrors((prev) => ({
-      ...prev,
-      countryId: "",
-      stateId: "",
-      districtId: "",
-    }));
-    fetchStateData(id);
-  };
+const handleCountryChange = (id) => {
+  setFormData((prevState) => ({
+    ...prevState,
+    countryId: id,
+    stateId: "",
+    districtId: "",
+  }));
+  clearFieldError("countryId");
+  clearFieldError("stateId");
+  clearFieldError("districtId");
+  fetchStateData(id);
+};
 
-  const handleStateChange = (id) => {
-    setFormData((prevState) => ({
-      ...prevState,
-      stateId: id,
-      districtId: "",
-    }));
-    setErrors((prev) => ({ ...prev, stateId: "", districtId: "" }));
-    fetchDistrictData(id);
-  };
+const handleStateChange = (id) => {
+  setFormData((prevState) => ({
+    ...prevState,
+    stateId: id,
+    districtId: "",
+  }));
+  clearFieldError("stateId");
+  clearFieldError("districtId");
+  fetchDistrictData(id);
+};
 
   const handleDistrictChange = (districtId) => {
     setFormData((prevState) => ({
@@ -1076,7 +1084,7 @@ const ViewSearchEmployee = () => {
       ...prevState,
       genderId: gendersId,
     }));
-    setErrors((prev) => ({ ...prev, genderId: "" }));
+ clearFieldError("genderId");
   };
 
   const handleEmploymentTypeChange = (emptTypeId) => {
@@ -1717,8 +1725,7 @@ const ViewSearchEmployee = () => {
   const handleInputChange = (e) => {
     const { id, value } = e.target;
     setFormData((prevData) => ({ ...prevData, [id]: value }));
-    // Clear error when user starts typing
-    setErrors((prev) => ({ ...prev, [id]: "" }));
+    clearFieldError(id);
   };
 
   const getSpecialtyNameById = (centerId) => {
@@ -1741,8 +1748,7 @@ const ViewSearchEmployee = () => {
     const { id, value } = e.target;
     const numericValue = value.replace(/\D/g, "");
     setFormData((prevData) => ({ ...prevData, [id]: numericValue }));
-    // Clear error when user starts typing
-    setErrors((prev) => ({ ...prev, [id]: "" }));
+    clearFieldError(id);
   };
 
   const handleSearch = () => {
@@ -1875,10 +1881,10 @@ const ViewSearchEmployee = () => {
     if (formData.middleName) {
       formDataToSend.append("middleName", formData.middleName);
     }
-    formDataToSend.append(
-      "dob",
-      new Date(formData.dob).toISOString().split("T")[0],
-    );
+formDataToSend.append(
+  "dob",
+  formData.dob ? new Date(formData.dob).toISOString().split("T")[0] : "",
+);
     formDataToSend.append("genderId", formData.genderId);
     formDataToSend.append("address1", formData.address1);
     formDataToSend.append("countryId", formData.countryId);
@@ -1898,18 +1904,18 @@ const ViewSearchEmployee = () => {
       formData.medicalRegistrationNo || "",
     );
 
-    // ✅ FIX: Use the correct field name from your DTO - masDesignationId
     if (formData.designationId) {
       formDataToSend.append("masDesignationId", formData.designationId);
     }
 
-    // fromDate handling
-    if (formData.fromDate) {
-      formDataToSend.append(
-        "fromDate",
-        new Date(formData.fromDate).toISOString(),
-      );
-    }
+if (formData.fromDate) {
+  formDataToSend.append(
+    "fromDate",
+    new Date(formData.fromDate).toISOString(),
+  );
+} else {
+  formDataToSend.append("fromDate", "");
+}
 
     formDataToSend.append(
       "profileDescription",
@@ -2816,75 +2822,64 @@ const ViewSearchEmployee = () => {
                           </div>
 
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Total Experience (Years)
-                            </label>
-                            <input
-                              type="number"
-                              className="form-control"
-                              id="yearOfExperience"
-                              value={formData.yearOfExperience}
-                              placeholder="Enter total experience in years"
-                              min="0"
-                              max="60"
-                              onChange={handleInputChange}
-                            />
-                          </div>
+  <label className="form-label">
+    Total Experience (Years) <span className="text-danger">*</span>
+  </label>
+  <input
+    type="number"
+    className={`form-control ${hasError("yearOfExperience")}`}
+    id="yearOfExperience"
+    value={formData.yearOfExperience}
+    placeholder="Enter total experience in years"
+    min="0"
+    max="60"
+    onChange={handleInputChange}
+  />
+  {getErrorMessage("yearOfExperience") && (
+    <div className="invalid-feedback">{getErrorMessage("yearOfExperience")}</div>
+  )}
+</div>
 
                           <div className="col-md-4">
-                            <label className="form-label">Designation *</label>
-                            <select
-                              className={`form-select ${hasError("designationId")}`}
-                              style={{ paddingRight: "40px" }}
-                              value={formData.designationId || ""}
-                              onChange={(e) =>
-                                handleDesignationChange(
-                                  parseInt(e.target.value, 10),
-                                )
-                              }
-                              disabled={loading || !formData.employeeTypeId}
-                            >
-                              <option value="">Select Designation</option>
-                              {designationData.map((designation) => (
-                                <option
-                                  key={designation.designationId}
-                                  value={designation.designationId}
-                                >
-                                  {designation.designationName}
-                                </option>
-                              ))}
-                            </select>
-                            {getErrorMessage("designationId") && (
-                              <div className="invalid-feedback">
-                                {getErrorMessage("designationId")}
-                              </div>
-                            )}
-                          </div>
+  <label className="form-label">Designation *</label>
+  <select
+    className={`form-select ${hasError("designationId")}`}
+    style={{ paddingRight: "40px" }}
+    value={formData.designationId || ""}
+    onChange={(e) => handleDesignationChange(parseInt(e.target.value, 10))}
+    disabled={loading || !formData.employeeTypeId}
+  >
+    <option value="">Select Designation</option>
+    {designationData.map((designation) => (
+      <option key={designation.designationId} value={designation.designationId}>
+        {designation.designationName}
+      </option>
+    ))}
+  </select>
+  {getErrorMessage("designationId") && (
+    <div className="invalid-feedback">{getErrorMessage("designationId")}</div>
+  )}
+</div>
                           <div className="col-md-4">
-                            <label className="form-label">Role Name *</label>
-                            <select
-                              className={`form-select ${hasError("roleId")}`}
-                              style={{ paddingRight: "40px" }}
-                              value={formData.roleId}
-                              onChange={(e) =>
-                                handleRoleChange(parseInt(e.target.value, 10))
-                              }
-                              disabled={loading}
-                            >
-                              <option value="">Select Role</option>
-                              {roleData.map((role) => (
-                                <option key={role.id} value={role.id}>
-                                  {role.roleDesc}
-                                </option>
-                              ))}
-                            </select>
-                            {getErrorMessage("roleId") && (
-                              <div className="invalid-feedback">
-                                {getErrorMessage("roleId")}
-                              </div>
-                            )}
-                          </div>
-
+  <label className="form-label">Role Name *</label>
+  <select
+    className={`form-select ${hasError("roleId")}`}
+    style={{ paddingRight: "40px" }}
+    value={formData.roleId}
+    onChange={(e) => handleRoleChange(parseInt(e.target.value, 10))}
+    disabled={loading}
+  >
+    <option value="">Select Role</option>
+    {roleData.map((role) => (
+      <option key={role.id} value={role.id}>
+        {role.roleDesc}
+      </option>
+    ))}
+  </select>
+  {getErrorMessage("roleId") && (
+    <div className="invalid-feedback">{getErrorMessage("roleId")}</div>
+  )}
+</div>
                           <div className="col-md-4">
                             <label className="form-label">
                               Period of Employment From Date
@@ -2899,108 +2894,82 @@ const ViewSearchEmployee = () => {
                           </div>
 
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Qualifications{" "}
-                              <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              className="form-control"
-                              id="qualifications"
-                              placeholder="Enter qualifications"
-                              onChange={handleInputChange}
-                              value={formData.qualifications}
-                              maxLength={mlenght}
-                            />
-                            {getErrorMessage("qualifications") && (
-                              <div className="invalid-feedback">
-                                {getErrorMessage("qualifications")}
-                              </div>
-                            )}
-                          </div>
+  <label className="form-label">
+    Qualifications <span className="text-danger">*</span>
+  </label>
+  <input
+    type="text"
+    required
+    className={`form-control ${hasError("qualifications")}`}
+    id="qualifications"
+    placeholder="Enter qualifications"
+    onChange={handleInputChange}
+    value={formData.qualifications}
+    maxLength={mlenght}
+  />
+  {getErrorMessage("qualifications") && (
+    <div className="invalid-feedback">{getErrorMessage("qualifications")}</div>
+  )}
+</div>
 
-                          {/* NEW: Medical Registration Number field */}
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Medical Registration Number{" "}
-                              <span className="text-danger">*</span>
-                            </label>
-                            <input
-                              type="text"
-                              required
-                              className="form-control"
-                              id="medicalRegistrationNo"
-                              placeholder="Medical Registration Number"
-                              onChange={handleInputChange}
-                              value={formData.medicalRegistrationNo}
-                              maxLength={mlenght}
-                            />
-                            {getErrorMessage("medicalRegistrationNo") && (
-                              <div className="invalid-feedback">
-                                {getErrorMessage("medicalRegistrationNo")}
-                              </div>
-                            )}
-                          </div>
+  <label className="form-label">
+    Medical Registration Number <span className="text-danger">*</span>
+  </label>
+  <input
+    type="text"
+    required
+    className={`form-control ${hasError("medicalRegistrationNo")}`}
+    id="medicalRegistrationNo"
+    placeholder="Medical Registration Number"
+    onChange={handleInputChange}
+    value={formData.medicalRegistrationNo}
+    maxLength={mlenght}
+  />
+  {getErrorMessage("medicalRegistrationNo") && (
+    <div className="invalid-feedback">{getErrorMessage("medicalRegistrationNo")}</div>
+  )}
+</div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Type of Employee *
-                            </label>
-                            <select
-                              className={`form-select ${hasError("employeeTypeId")}`}
-                              style={{ paddingRight: "40px" }}
-                              value={formData.employeeTypeId}
-                              onChange={(e) =>
-                                handleEmployeeTypeChange(
-                                  parseInt(e.target.value, 10),
-                                )
-                              }
-                              disabled={loading}
-                            >
-                              <option value="">Select Employee Type</option>
-                              {employeeTypeData.map((empType) => (
-                                <option
-                                  key={empType.userTypeId}
-                                  value={empType.userTypeId}
-                                >
-                                  {empType.userTypeName}
-                                </option>
-                              ))}
-                            </select>
-                            {getErrorMessage("employeeTypeId") && (
-                              <div className="invalid-feedback">
-                                {getErrorMessage("employeeTypeId")}
-                              </div>
-                            )}
-                          </div>
+  <label className="form-label">Type of Employee *</label>
+  <select
+    className={`form-select ${hasError("employeeTypeId")}`}
+    style={{ paddingRight: "40px" }}
+    value={formData.employeeTypeId}
+    onChange={(e) => handleEmployeeTypeChange(parseInt(e.target.value, 10))}
+    disabled={loading}
+  >
+    <option value="">Select Employee Type</option>
+    {employeeTypeData.map((empType) => (
+      <option key={empType.userTypeId} value={empType.userTypeId}>
+        {empType.userTypeName}
+      </option>
+    ))}
+  </select>
+  {getErrorMessage("employeeTypeId") && (
+    <div className="invalid-feedback">{getErrorMessage("employeeTypeId")}</div>
+  )}
+</div>
                           <div className="col-md-4">
-                            <label className="form-label">
-                              Type of Employment *
-                            </label>
-                            <select
-                              className={`form-select ${hasError("employmentTypeId")}`}
-                              style={{ paddingRight: "40px" }}
-                              value={formData.employmentTypeId}
-                              onChange={(e) =>
-                                handleEmploymentTypeChange(
-                                  parseInt(e.target.value, 10),
-                                )
-                              }
-                              disabled={loading}
-                            >
-                              <option value="">Select Employment Type</option>
-                              {employmentTypeData.map((emptType) => (
-                                <option key={emptType.id} value={emptType.id}>
-                                  {emptType.employmentType}
-                                </option>
-                              ))}
-                            </select>
-                            {getErrorMessage("employmentTypeId") && (
-                              <div className="invalid-feedback">
-                                {getErrorMessage("employmentTypeId")}
-                              </div>
-                            )}
-                          </div>
+  <label className="form-label">Type of Employment *</label>
+  <select
+    className={`form-select ${hasError("employmentTypeId")}`}
+    style={{ paddingRight: "40px" }}
+    value={formData.employmentTypeId}
+    onChange={(e) => handleEmploymentTypeChange(parseInt(e.target.value, 10))}
+    disabled={loading}
+  >
+    <option value="">Select Employment Type</option>
+    {employmentTypeData.map((emptType) => (
+      <option key={emptType.id} value={emptType.id}>
+        {emptType.employmentType}
+      </option>
+    ))}
+  </select>
+  {getErrorMessage("employmentTypeId") && (
+    <div className="invalid-feedback">{getErrorMessage("employmentTypeId")}</div>
+  )}
+</div>
                         </div>
                         <div className="col-md-12 mt-3">
                           <label className="form-label">
@@ -3568,11 +3537,11 @@ const ViewSearchEmployee = () => {
                                     <td>
                                       <div className="position-relative">
                                         <input
-                                          type="text"
-                                          className="form-control"
-                                          value={row.specialtyCenterName}
-                                          placeholder="Search specialty center..."
-                                          onChange={(e) => {
+  type="text"
+  className={`form-control ${errors.specialtyCenter?.[index]?.specialtyCenterName ? "is-invalid" : ""}`}
+  value={row.specialtyCenterName}
+  placeholder="Search specialty center..."
+  onChange={(e) => {
                                             const value = e.target.value;
                                             handleSpecialtyCenterChange(
                                               index,

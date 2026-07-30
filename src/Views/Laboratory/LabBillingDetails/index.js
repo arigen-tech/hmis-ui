@@ -716,10 +716,10 @@ const LabBillingDetails = () => {
               {showPatientDetails && (
                 <button
                   type="button"
-                  className="btn btn-outline-secondary"
+                  className="btn btn-secondary"
                   onClick={handleBackToList}
                 >
-                  <i className="mdi mdi-arrow-left"></i> Back to List
+                  <i className="icofont-arrow-left me-1"></i> Back to List
                 </button>
               )}
             </div>

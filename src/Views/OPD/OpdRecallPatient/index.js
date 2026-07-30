@@ -1191,10 +1191,22 @@ const OpdRRecallPatient = () => {
 
   const debounceInvestigationRef = useRef([]);
   const dropdownInvestigationRef = useRef(null);
+  const currentDoctorId =
+    sessionStorage.getItem("userId") ||
+    localStorage.getItem("userId") ||
+    "";
 
   const fetchOpdTemplateData = async () => {
     try {
-      const data = await getRequest(`${OPD_TEMPLATE}/getAll/1`);
+      const queryParams = new URLSearchParams();
+      if (currentDoctorId) {
+        queryParams.append("doctorId", currentDoctorId);
+      }
+      const data = await getRequest(
+        `${OPD_TEMPLATE}/getAllTreatmentTemplate/1${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`,
+      );
       if (data.status === 200 && Array.isArray(data.response)) {
         setOpdTemplateData(data.response);
       } else {
@@ -2035,8 +2047,14 @@ const OpdRRecallPatient = () => {
   const fetchInvestigationTemplates = async (flag = 1) => {
     try {
       setInvestigationTemplateLoading(true);
+      const queryParams = new URLSearchParams();
+      if (currentDoctorId) {
+        queryParams.append("doctorId", currentDoctorId);
+      }
       const response = await getRequest(
-        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}`,
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`,
       );
       if (response && response.response) {
         setInvestigationTemplates(response.response);
@@ -3836,7 +3854,7 @@ const OpdRRecallPatient = () => {
                     className="btn btn-secondary"
                     onClick={handleBackToList}
                   >
-                    <i className="mdi mdi-arrow-left"></i> Back to List
+                    <i className="icofont-arrow-left me-1"></i> Back to List
                   </button>
                 </div>
               </div>
@@ -6742,6 +6760,7 @@ const OpdRRecallPatient = () => {
           show={showInvestigationModal}
           onClose={handleCloseInvestigationModal}
           templateType={investigationModalType}
+          doctorId={currentDoctorId}
           onTemplateSaved={(template) => {
             fetchInvestigationTemplates();
           }}
@@ -6762,6 +6781,7 @@ const OpdRRecallPatient = () => {
           }}
           templateType={treatmentModalType}
           selectedTemplate={selectedTemplateForEdit}
+          doctorId={currentDoctorId}
           onTemplateSaved={handleTreatmentTemplateSaved}
         />
 
