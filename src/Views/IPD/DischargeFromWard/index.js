@@ -1,15 +1,18 @@
 import React, { useState, useEffect, useRef } from "react";
+import { useParams, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
-import { getRequest } from "../../../service/apiService";
+import { getRequest, postRequest } from "../../../service/apiService";
 import { 
   MAS_DISCHARGE_REASON_GET_ALL, 
   MAS_PATIENT_CONDITION_GET_ALL, 
   MAS_FREQUENCY_GET_ALL, 
-  MAS_ROUTE_GET_ALL, 
+  MAS_ROUTE_GET_ALL,
   GET_ALL_DRUGS_BY_SECTION,
-  GET_IP_DIAGNOSIS_ENTRY
+  GET_IP_DIAGNOSIS_ENTRY,
+  SAVE_DISCHARGE_SUMMARY,
+  GET_PAYMENT_STATUS
 } from "../../../config/apiConfig";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
@@ -51,18 +54,34 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
   return createPortal(<div style={style}>{children}</div>, document.body);
 };
 
-const DischargeFromWard = () => {
+const DischargeFromWard = ({ selectedPatient }) => {
+  const navigate = useNavigate();
+  const { id } = useParams();
+  
+  // Extract dynamic inpatientId from dashboard row data
+  const inpatientId = selectedPatient?.ipdPatientId || selectedPatient?.inpatientId || id;
+
   const [activeTab, setActiveTab] = useState("summary");
 
-  // ---------- Dummy Patient Data (view only) ----------
-  const patientDetails = {
-    patientName: "Ramesh Kumar",
-    uhid: "UHID-12345",
-    ipNo: "IP-2026-001",
-    age: "45 years",
-    gender: "Male",
-    admissionDate: "10-Apr-2026 10:30 AM",
-    consultant: "Dr. Vinay Sharma",
+  // ---------- Patient Data (from Dashboard) ----------
+  const patientDetails = selectedPatient ? {
+    patientName: selectedPatient.patientName || "Unknown",
+    uhid: selectedPatient.uhid || selectedPatient.patientId || "",
+    ipNo: selectedPatient.admissionNo || selectedPatient.ipdPatientId || "",
+    age: selectedPatient.age || "",
+    gender: selectedPatient.gender === "M" ? "Male" : selectedPatient.gender === "F" ? "Female" : selectedPatient.gender || "",
+    admissionDate: selectedPatient.admitDate || "",
+    consultant: selectedPatient.doctorName || "",
+    ward: selectedPatient.wardName || selectedPatient.roomName || "",
+    bed: selectedPatient.bedNumber || "",
+  } : {
+    patientName: "Unknown",
+    uhid: "",
+    ipNo: "",
+    age: "",
+    gender: "",
+    admissionDate: "",
+    consultant: "",
     ward: "General Ward",
     bed: "Bed No. 12",
   };
@@ -89,6 +108,7 @@ const DischargeFromWard = () => {
         dropdownOpen: false,
       },
     ],
+    deleteMedicationIds: [],
     adviseOnDischarge: "",
     followUp: "",
     billStatus: "FINAL",
@@ -230,7 +250,6 @@ const DischargeFromWard = () => {
 
       // Fetch Diagnosis
       try {
-        const inpatientId = 30; // Hardcoded for testing; replace with dynamic ID from props or URL
         const diagRes = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${inpatientId}`);
         if (diagRes && diagRes.response && Array.isArray(diagRes.response)) {
           const finalDiags = diagRes.response
@@ -253,6 +272,20 @@ const DischargeFromWard = () => {
         }
       } catch (error) {
         console.error("Error fetching diagnosis:", error);
+      }
+
+      // Fetch Payment Status
+      try {
+        const paymentRes = await getRequest(`${GET_PAYMENT_STATUS}/${inpatientId}`);
+        if (paymentRes && paymentRes.response) {
+          setDischargeData((prev) => ({
+            ...prev,
+            billStatus: paymentRes.response.billStatus ? paymentRes.response.billStatus.toUpperCase() : prev.billStatus,
+            paymentStatus: paymentRes.response.paymentStatus ? paymentRes.response.paymentStatus.toUpperCase() : prev.paymentStatus
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching payment status:", error);
       }
     };
     fetchDropdowns();
@@ -339,18 +372,28 @@ const DischargeFromWard = () => {
   const handleMedicationRowChange = (index, field, value) => {
     setDischargeData((prev) => {
       const updated = [...prev.medicationOnDischarge];
-      updated[index] = { ...updated[index], [field]: value };
+      const med = { ...updated[index] };
+      
+      let newDeleteIds = prev.deleteMedicationIds || [];
+      if (med.id) {
+        newDeleteIds = [...newDeleteIds, med.id];
+        delete med.id;
+      }
+      
+      med[field] = value;
+      updated[index] = med;
+      
       // Auto-calculate total if dosage and frequency are present
       if (field === "dosage" || field === "frequency") {
-        const dosage = parseFloat(updated[index].dosage) || 0;
+        const dosage = parseFloat(med.dosage) || 0;
         const freq = frequencyOptions.find(
-          (f) => f.value === updated[index].frequency
+          (f) => f.value === med.frequency
         );
         const multiplier = freq ? freq.multiplier : 0;
         const total = dosage * multiplier;
         updated[index].total = total > 0 ? total.toFixed(2) : "";
       }
-      return { ...prev, medicationOnDischarge: updated };
+      return { ...prev, medicationOnDischarge: updated, deleteMedicationIds: newDeleteIds };
     });
   };
 
@@ -394,8 +437,19 @@ const DischargeFromWard = () => {
   const selectMedicine = (index, name) => {
     setDischargeData((prev) => {
       const updated = [...prev.medicationOnDischarge];
-      updated[index] = { ...updated[index], medicineName: name, dropdownOpen: false };
-      return { ...prev, medicationOnDischarge: updated };
+      const med = { ...updated[index] };
+      
+      let newDeleteIds = prev.deleteMedicationIds || [];
+      if (med.id) {
+        newDeleteIds = [...newDeleteIds, med.id];
+        delete med.id;
+      }
+      
+      med.medicineName = name;
+      med.dropdownOpen = false;
+      updated[index] = med;
+      
+      return { ...prev, medicationOnDischarge: updated, deleteMedicationIds: newDeleteIds };
     });
   };
 
@@ -426,12 +480,18 @@ const DischargeFromWard = () => {
       alert("At least one medication row is required");
       return;
     }
-    setDischargeData((prev) => ({
-      ...prev,
-      medicationOnDischarge: prev.medicationOnDischarge.filter(
-        (_, i) => i !== index
-      ),
-    }));
+    setDischargeData((prev) => {
+      const rowToRemove = prev.medicationOnDischarge[index];
+      const newDeleteIds = rowToRemove.id 
+        ? [...(prev.deleteMedicationIds || []), rowToRemove.id] 
+        : (prev.deleteMedicationIds || []);
+
+      return {
+        ...prev,
+        medicationOnDischarge: prev.medicationOnDischarge.filter((_, i) => i !== index),
+        deleteMedicationIds: newDeleteIds
+      };
+    });
   };
 
   // ---------- Discharge Medications Handlers (separate tab) ----------
@@ -466,72 +526,109 @@ const DischargeFromWard = () => {
     }
   };
 
-  // ---------- Save Draft ----------
-  const handleSaveDraft = () => {
-    alert("Draft saved successfully!");
+  // ---------- Save / Submit Handlers ----------
+  const submitData = async (status) => {
+    if (status === "S" && dischargeData.paymentStatus !== "PAID") {
+      alert("Payment is not completed against the FINAL bill. Please clear payment before discharge.");
+      return;
+    }
+
+    if (status === "S") {
+      const requiredFields = [
+        "finalDiagnosis",
+        "primaryDiagnosis",
+        "presentComplaints",
+        "historyPresentIllness",
+        "onExamination",
+        "courseOfHospitalStay",
+        "adviseOnDischarge",
+        "dischargeDateTime",
+        "patientCondition",
+        "dischargeReason",
+      ];
+  
+      const missing = requiredFields.filter(
+        (field) =>
+          !dischargeData[field] ||
+          dischargeData[field] === "<p>&nbsp;</p>" ||
+          dischargeData[field].trim() === ""
+      );
+  
+      if (missing.length > 0) {
+        alert(`Please fill all required fields for submission: ${missing.join(", ")}`);
+        return;
+      }
+  
+      const invalidMedRows = dischargeData.medicationOnDischarge.some(
+        (med) =>
+          !med.medicineName.trim() ||
+          !med.dosage ||
+          parseFloat(med.dosage) <= 0 ||
+          !med.frequency ||
+          !med.route
+      );
+  
+      if (invalidMedRows) {
+        alert("Please ensure each medication row has a valid Medicine Name, Dosage (>0), Frequency, and Route.");
+        return;
+      }
+  
+      if (dischargeData.dischargeTo === "otherHospital" && !dischargeData.otherHospitalName.trim()) {
+        alert("Please enter the name of the hospital for transfer.");
+        return;
+      }
+    }
+
+    const payload = {
+      inpatientId: inpatientId,
+      dischargeDate: dischargeData.dischargeDateTime || new Date().toISOString(),
+      primaryDiagnosis: dischargeData.primaryDiagnosis || "",
+      secondaryDiagnosis: dischargeData.finalDiagnosis || "",
+      presentingComplaints: dischargeData.presentComplaints || "",
+      historyOfIllness: dischargeData.historyPresentIllness || "",
+      pastHistory: dischargeData.personalPastHistory || "",
+      examinationFindings: dischargeData.onExamination || "",
+      procedureDetails: dischargeData.procedureNotes || "",
+      hospitalCourse: dischargeData.courseOfHospitalStay || "",
+      conditionId: parseInt(dischargeData.patientCondition) || 0,
+      dischargeReasonId: parseInt(dischargeData.dischargeReason) || 0,
+      dischargedTo: dischargeData.dischargeTo || "",
+      referredHospitalName: dischargeData.otherHospitalName || "",
+      dischargeAdvice: dischargeData.adviseOnDischarge || "",
+      followUpAdvice: dischargeData.followUp || "",
+      status: status,
+      medications: dischargeData.medicationOnDischarge.filter(m => m.medicineName).map(med => ({
+        medicineName: med.medicineName || "",
+        dosage: med.dosage || "",
+        frequency: med.frequency || "",
+        totalDoses: parseFloat(med.total) || 0,
+        route: med.route || "",
+        instruction: med.instruction || ""
+      })),
+      deleteMedicationIds: dischargeData.deleteMedicationIds || []
+    };
+
+    try {
+      const response = await postRequest(SAVE_DISCHARGE_SUMMARY, payload);
+      if (response && response.status === 200) {
+        alert(status === "D" ? "Draft saved successfully!" : "Discharge completed! Bed will be released, patient status updated to DISCHARGED.");
+        // Clear delete tracking since it's saved now
+        setDischargeData(prev => ({...prev, deleteMedicationIds: []}));
+      } else {
+        alert("Failed to save discharge summary. " + (response?.message || ""));
+      }
+    } catch (error) {
+      console.error("Error saving discharge summary:", error);
+      alert("Error saving discharge summary. Please try again.");
+    }
   };
 
-  // ---------- Submit Discharge ----------
+  const handleSaveDraft = () => {
+    submitData("D");
+  };
+
   const handleSubmitDischarge = () => {
-    if (dischargeData.paymentStatus !== "PAID") {
-      alert(
-        "Payment is not completed against the FINAL bill. Please clear payment before discharge."
-      );
-      return;
-    }
-
-    const requiredFields = [
-      "finalDiagnosis",
-      "presentComplaints",
-      "historyPresentIllness",
-      "onExamination",
-      "courseOfHospitalStay",
-      "adviseOnDischarge",
-      "dischargeDateTime",
-      "patientCondition",
-      "dischargeReason",
-    ];
-
-    const missing = requiredFields.filter(
-      (field) =>
-        !dischargeData[field] ||
-        dischargeData[field] === "<p>&nbsp;</p>" ||
-        dischargeData[field].trim() === ""
-    );
-
-    if (missing.length > 0) {
-      alert(`Please fill all required fields: ${missing.join(", ")}`);
-      return;
-    }
-
-    // Check medication on discharge rows: each row must have medicineName, dosage, frequency, route
-    const invalidMedRows = dischargeData.medicationOnDischarge.some(
-      (med) =>
-        !med.medicineName.trim() ||
-        !med.dosage ||
-        parseFloat(med.dosage) <= 0 ||
-        !med.frequency ||
-        !med.route
-    );
-
-    if (invalidMedRows) {
-      alert(
-        "Please ensure each medication row has a valid Medicine Name, Dosage (>0), Frequency, and Route."
-      );
-      return;
-    }
-
-    if (
-      dischargeData.dischargeTo === "otherHospital" &&
-      !dischargeData.otherHospitalName.trim()
-    ) {
-      alert("Please enter the name of the hospital for transfer.");
-      return;
-    }
-
-    alert(
-      "Discharge completed! Bed will be released, patient status updated to DISCHARGED."
-    );
+    submitData("S");
   };
 
   const isSubmitDisabled = dischargeData.paymentStatus !== "PAID";
