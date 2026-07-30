@@ -685,6 +685,12 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                           <strong>{formatDateTime(visit.visitDateTime)}</strong> | 
                           <span className="ms-2">{visit.doctorName}</span> | 
                           <span className="ms-2 text-muted">{visit.departmentName || visit.department}</span>
+                          {visit.visitTypeName && (
+                            <>
+                              {" | "}
+                              <span className="ms-2 text-info">{visit.visitTypeName}</span>
+                            </>
+                          )}
                         </div>
                         {visit.capturedBy && (
                           <div className="text-muted small">
