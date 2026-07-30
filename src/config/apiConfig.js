@@ -225,6 +225,7 @@ export const MAS_TRANSFER_REASON = `${MASTERS}/transferReason`;
 export const MAS_TRANSFER_REASON_GET_ALL = `${MAS_TRANSFER_REASON}/getAll/1`;
 export const MAS_PATIENT_DISCHARGE_CONDITION = `${MASTERS}/masPatientDischargeCondition`;
 export const MAS_DISCHARGE_REASON = `${MASTERS}/masDischargeReason`;
+export const MAS_DISCHARGE_REASON_GET_ALL = `${MAS_DISCHARGE_REASON}/getAll/1`;
 
 //OPD
 export const OPTH_MAS_DISTANCE_VISION = `${MASTERS}/opthMasDistanceVision/getAll/1`;
@@ -240,6 +241,8 @@ export const DOCTOR_BY_DEPARTMENT = `${DOCTOR}/doctorsByDepartment`;
 export const MAS_OPD_SESSION_GET_ALL = `${MAS_OPD_SESSION}/getAll/1`;
 export const MAS_DEPARTMENT_GET_ALL = `${MAS_DEPARTMENT}/getAll/1`;
 export const MAS_FREQUENCY_GET_ALL = `${MAS_FREQUENCY}/getAll/1`;
+export const MAS_ROUTE = `${MASTERS}/masRoute`;
+export const MAS_ROUTE_GET_ALL = `${MAS_ROUTE}/getAll/1`;
 export const MAS_WARD_CATEGORY_GET_ALL = `${MAS_WARD_CATEGORY}/getAll/1`;
 export const MAS_WARD_GET_ALL = `${MASTERS}/masWard/getAll/0`;
 export const MAS_WARD_GET_ALL_ACTIVE = `${MASTERS}/masWard/getAll/1`;

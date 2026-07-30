@@ -2,6 +2,14 @@ import React, { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
+import { getRequest } from "../../../service/apiService";
+import { 
+  MAS_DISCHARGE_REASON_GET_ALL, 
+  MAS_PATIENT_CONDITION_GET_ALL, 
+  MAS_FREQUENCY_GET_ALL, 
+  MAS_ROUTE_GET_ALL, 
+  GET_ALL_DRUGS_BY_SECTION 
+} from "../../../config/apiConfig";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -72,9 +80,9 @@ const DischargeFromWard = () => {
       {
         medicineName: "",
         dosage: "",
-        frequency: "OD",
+        frequency: "",
         total: "", // auto-calculated, readonly
-        route: "Oral",
+        route: "",
         instruction: "",
         dropdownOpen: false,
       },
@@ -141,32 +149,111 @@ const DischargeFromWard = () => {
   };
 
   // Dropdown options
-  const conditionOptions = ["Stable", "Improved", "Critical", "Palliative"];
-  const reasonOptions = ["Recovered", "LAMA", "Death", "Referred"];
+  const [conditionOptions, setConditionOptions] = useState([]);
+  const [reasonOptions, setReasonOptions] = useState([]);
+  const [frequencyOptions, setFrequencyOptions] = useState([]);
+  const [routeOptions, setRouteOptions] = useState([]);
+
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      // Patient Condition
+      try {
+        const conditionRes = await getRequest(MAS_PATIENT_CONDITION_GET_ALL);
+        if (conditionRes && conditionRes.response) {
+          setConditionOptions(conditionRes.response);
+        } else if (Array.isArray(conditionRes)) {
+          setConditionOptions(conditionRes);
+        }
+      } catch (error) {
+        console.error("Error fetching patient condition:", error);
+      }
+
+      // Discharge Reason
+      try {
+        const reasonRes = await getRequest(MAS_DISCHARGE_REASON_GET_ALL);
+        if (reasonRes && reasonRes.response) {
+          setReasonOptions(reasonRes.response);
+        } else if (Array.isArray(reasonRes)) {
+          setReasonOptions(reasonRes);
+        }
+      } catch (error) {
+        console.error("Error fetching discharge reason:", error);
+      }
+
+      // Frequency
+      try {
+        const freqRes = await getRequest(MAS_FREQUENCY_GET_ALL);
+        if (freqRes && freqRes.response) {
+          setFrequencyOptions(
+            freqRes.response.map((f) => ({
+              label: f.frequencyName,
+              value: f.frequencyName,
+              multiplier: f.feq || 1,
+            }))
+          );
+        } else if (Array.isArray(freqRes)) {
+          setFrequencyOptions(
+            freqRes.map((f) => ({
+              label: f.frequencyName,
+              value: f.frequencyName,
+              multiplier: f.feq || 1,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching frequency:", error);
+      }
+
+      // Route
+      try {
+        const routeRes = await getRequest(MAS_ROUTE_GET_ALL);
+        if (routeRes && routeRes.response) {
+          setRouteOptions(
+            routeRes.response.map((r) => ({
+              label: r.routeName,
+              value: r.routeName,
+            }))
+          );
+        } else if (Array.isArray(routeRes)) {
+          setRouteOptions(
+            routeRes.map((r) => ({
+              label: r.routeName,
+              value: r.routeName,
+            }))
+          );
+        }
+      } catch (error) {
+        console.error("Error fetching route:", error);
+      }
+    };
+    fetchDropdowns();
+  }, []);
+
+  // Medication Search logic
+  const [dynamicMedicineList, setDynamicMedicineList] = useState([]);
+  const [searchTimeoutId, setSearchTimeoutId] = useState(null);
+
+  const fetchMedicines = async (searchText) => {
+    if (!searchText || searchText.length < 2) {
+      setDynamicMedicineList([]);
+      return;
+    }
+    try {
+      const response = await getRequest(`${GET_ALL_DRUGS_BY_SECTION}?flag=1&search=${searchText}&page=0&size=20`);
+      if (response && response.response && response.response.content) {
+        setDynamicMedicineList(response.response.content.map(item => item.nomenclature));
+      } else if (response && response.response && Array.isArray(response.response)) {
+        setDynamicMedicineList(response.response.map(item => item.nomenclature));
+      } else if (Array.isArray(response)) {
+        setDynamicMedicineList(response.map(item => item.nomenclature));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
 
   // Frequency options (with multiplier for auto-total)
-  const frequencyOptions = [
-    { label: "OD (once daily)", value: "OD", multiplier: 1 },
-    { label: "BD (twice daily)", value: "BD", multiplier: 2 },
-    { label: "TDS (thrice daily)", value: "TDS", multiplier: 3 },
-    { label: "QID (four times daily)", value: "QID", multiplier: 4 },
-  ];
 
-  const routeOptions = ["Oral", "IV", "IM", "SC", "Topical", "Inhalation"];
-
-  // Sample medicine list for autocomplete
-  const medicineList = [
-    "Paracetamol",
-    "Ceftriaxone",
-    "Amoxicillin",
-    "Metformin",
-    "Omeprazole",
-    "Losartan",
-    "Atorvastatin",
-    "Salbutamol",
-    "Furosemide",
-    "Warfarin",
-  ];
 
   // ---------- Discharge Medications (tabular) ----------
   const [dischargeMeds, setDischargeMeds] = useState([
@@ -248,6 +335,9 @@ const DischargeFromWard = () => {
       );
       return { ...prev, medicationOnDischarge: updated };
     });
+
+    if (searchTimeoutId) clearTimeout(searchTimeoutId);
+    setSearchTimeoutId(setTimeout(() => fetchMedicines(value), 300));
   };
 
   const openMedicineDropdown = (index) => {
@@ -281,9 +371,7 @@ const DischargeFromWard = () => {
   };
 
   const getFilteredMedicines = (searchText) => {
-    const query = (searchText || "").trim().toLowerCase();
-    if (!query) return medicineList;
-    return medicineList.filter((name) => name.toLowerCase().includes(query));
+    return dynamicMedicineList;
   };
 
   const addMedicationRow = () => {
@@ -294,9 +382,9 @@ const DischargeFromWard = () => {
         {
           medicineName: "",
           dosage: "",
-          frequency: "OD",
+          frequency: "",
           total: "",
-          route: "Oral",
+          route: "",
           instruction: "",
           dropdownOpen: false,
         },
@@ -750,6 +838,7 @@ const DischargeFromWard = () => {
                                   )
                                 }
                               >
+                                <option value="">Select</option>
                                 {frequencyOptions.map((f) => (
                                   <option key={f.value} value={f.value}>
                                     {f.label}
@@ -778,9 +867,10 @@ const DischargeFromWard = () => {
                                   )
                                 }
                               >
+                                <option value="">Select</option>
                                 {routeOptions.map((route) => (
-                                  <option key={route} value={route}>
-                                    {route}
+                                  <option key={route.value} value={route.value}>
+                                    {route.label}
                                   </option>
                                 ))}
                               </select>
@@ -950,8 +1040,8 @@ const DischargeFromWard = () => {
                     >
                       <option value="">Select condition</option>
                       {conditionOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
+                        <option key={opt.patientConditionId} value={opt.patientConditionId}>
+                          {opt.patientConditionName}
                         </option>
                       ))}
                     </select>
@@ -968,8 +1058,8 @@ const DischargeFromWard = () => {
                     >
                       <option value="">Select reason</option>
                       {reasonOptions.map((opt) => (
-                        <option key={opt} value={opt}>
-                          {opt}
+                        <option key={opt.id} value={opt.id}>
+                          {opt.reasonName}
                         </option>
                       ))}
                     </select>
