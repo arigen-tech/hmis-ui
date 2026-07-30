@@ -8,47 +8,9 @@ import {
   MAS_PATIENT_CONDITION_GET_ALL, 
   MAS_FREQUENCY_GET_ALL, 
   MAS_ROUTE_GET_ALL, 
-  GET_ALL_DRUGS_BY_SECTION 
+  GET_ALL_DRUGS_BY_SECTION,
+  GET_IP_DIAGNOSIS_ENTRY
 } from "../../../config/apiConfig";
-
-// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
-const PortalDropdown = ({ anchorRef, show, children }) => {
-  const [style, setStyle] = useState({});
-
-  useEffect(() => {
-    if (!show || !anchorRef?.current) return;
-
-    const updatePosition = () => {
-      const rect = anchorRef.current.getBoundingClientRect();
-      setStyle({
-        position: "fixed",
-        top: rect.bottom + 4, // 4 px gap below the input
-        left: rect.left,
-        width: rect.width,
-        zIndex: 99999,
-        maxHeight: "200px",
-        overflowY: "auto",
-        backgroundColor: "#fff",
-        border: "1px solid #ccc",
-        borderRadius: "4px",
-        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
-      });
-    };
-
-    updatePosition();
-
-    // Re-position on scroll or resize
-    window.addEventListener("scroll", updatePosition, true);
-    window.addEventListener("resize", updatePosition);
-    return () => {
-      window.removeEventListener("scroll", updatePosition, true);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [show, anchorRef]);
-
-  if (!show) return null;
-  return createPortal(<div style={style}>{children}</div>, document.body);
-};
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -108,6 +70,7 @@ const DischargeFromWard = () => {
   // ---------- Discharge Summary Form State ----------
   const [dischargeData, setDischargeData] = useState({
     finalDiagnosis: "",
+    primaryDiagnosis: "",
     presentComplaints: "",
     historyPresentIllness: "",
     personalPastHistory: "",
@@ -263,6 +226,33 @@ const DischargeFromWard = () => {
         }
       } catch (error) {
         console.error("Error fetching route:", error);
+      }
+
+      // Fetch Diagnosis
+      try {
+        const inpatientId = 30; // Hardcoded for testing; replace with dynamic ID from props or URL
+        const diagRes = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${inpatientId}`);
+        if (diagRes && diagRes.response && Array.isArray(diagRes.response)) {
+          const finalDiags = diagRes.response
+            .filter((d) => d.diagnosisType === "I")
+            .map((d) => d.diagnosis)
+            .filter(Boolean)
+            .join(", ");
+          
+          const primaryDiags = diagRes.response
+            .filter((d) => d.diagnosisType === "W")
+            .map((d) => d.diagnosis)
+            .filter(Boolean)
+            .join(", ");
+
+          setDischargeData((prev) => ({
+            ...prev,
+            finalDiagnosis: finalDiags,
+            primaryDiagnosis: primaryDiags,
+          }));
+        }
+      } catch (error) {
+        console.error("Error fetching diagnosis:", error);
       }
     };
     fetchDropdowns();
@@ -587,6 +577,9 @@ const DischargeFromWard = () => {
                 <textarea
                   className="form-control"
                   rows="2"
+                  name="primaryDiagnosis"
+                  value={dischargeData.primaryDiagnosis}
+                  onChange={handleDischargeChange}
                   placeholder="Enter Primary Diagnosis"
                 />
               </div>
