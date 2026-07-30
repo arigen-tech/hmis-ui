@@ -12,7 +12,8 @@ import {
   GET_ALL_DRUGS_BY_SECTION,
   GET_IP_DIAGNOSIS_ENTRY,
   SAVE_DISCHARGE_SUMMARY,
-  GET_PAYMENT_STATUS
+  GET_PAYMENT_STATUS,
+  GET_DISCHARGE_SUMMARY
 } from "../../../config/apiConfig";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
@@ -62,6 +63,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
   const inpatientId = selectedPatient?.ipdPatientId || selectedPatient?.inpatientId || id;
 
   const [activeTab, setActiveTab] = useState("summary");
+  const [isSaving, setIsSaving] = useState(false);
 
   // ---------- Patient Data (from Dashboard) ----------
   const patientDetails = selectedPatient ? {
@@ -246,6 +248,46 @@ const DischargeFromWard = ({ selectedPatient }) => {
         }
       } catch (error) {
         console.error("Error fetching route:", error);
+      }
+      
+      // Fetch Discharge Summary
+      try {
+        if (inpatientId) {
+          const summaryRes = await getRequest(`${GET_DISCHARGE_SUMMARY}/${inpatientId}`);
+          if (summaryRes && summaryRes.response) {
+            const data = summaryRes.response;
+            setDischargeData(prev => ({
+              ...prev,
+              dischargeDateTime: data.dischargeDate || prev.dischargeDateTime,
+              presentComplaints: data.presentingComplaints || prev.presentComplaints,
+              historyPresentIllness: data.historyOfIllness || prev.historyPresentIllness,
+              personalPastHistory: data.pastHistory || prev.personalPastHistory,
+              onExamination: data.examinationFindings || prev.onExamination,
+              procedureNotes: data.procedureDetails || prev.procedureNotes,
+              courseOfHospitalStay: data.hospitalCourse || prev.courseOfHospitalStay,
+              patientCondition: data.conditionId ? String(data.conditionId) : prev.patientCondition,
+              dischargeReason: data.dischargeReasonId ? String(data.dischargeReasonId) : prev.dischargeReason,
+              dischargeTo: data.dischargedTo || prev.dischargeTo,
+              otherHospitalName: data.referredHospitalName || prev.otherHospitalName,
+              adviseOnDischarge: data.dischargeAdvice || prev.adviseOnDischarge,
+              followUp: data.followUpAdvice || prev.followUp,
+              medicationOnDischarge: (data.medications && data.medications.length > 0)
+                ? data.medications.map(med => ({
+                    id: med.medicationId,
+                    medicineName: med.medicineName || "",
+                    dosage: med.dosage || "",
+                    frequency: med.frequency || "",
+                    total: med.totalDoses || "",
+                    route: med.route || "",
+                    instruction: med.instruction || "",
+                    dropdownOpen: false,
+                  }))
+                : prev.medicationOnDischarge
+            }));
+          }
+        }
+      } catch (error) {
+        console.error("Error fetching discharge summary:", error);
       }
 
       // Fetch Diagnosis
@@ -597,17 +639,20 @@ const DischargeFromWard = ({ selectedPatient }) => {
       dischargeAdvice: dischargeData.adviseOnDischarge || "",
       followUpAdvice: dischargeData.followUp || "",
       status: status,
-      medications: dischargeData.medicationOnDischarge.filter(m => m.medicineName).map(med => ({
-        medicineName: med.medicineName || "",
-        dosage: med.dosage || "",
-        frequency: med.frequency || "",
-        totalDoses: parseFloat(med.total) || 0,
-        route: med.route || "",
-        instruction: med.instruction || ""
-      })),
+      medications: dischargeData.medicationOnDischarge
+        .filter(m => m.medicineName && !m.id)
+        .map(med => ({
+          medicineName: med.medicineName || "",
+          dosage: med.dosage || "",
+          frequency: med.frequency || "",
+          totalDoses: parseFloat(med.total) || 0,
+          route: med.route || "",
+          instruction: med.instruction || ""
+        })),
       deleteMedicationIds: dischargeData.deleteMedicationIds || []
     };
 
+    setIsSaving(true);
     try {
       const response = await postRequest(SAVE_DISCHARGE_SUMMARY, payload);
       if (response && response.status === 200) {
@@ -620,6 +665,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
     } catch (error) {
       console.error("Error saving discharge summary:", error);
       alert("Error saving discharge summary. Please try again.");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -1248,16 +1295,17 @@ const DischargeFromWard = ({ selectedPatient }) => {
               <button
                 className="btn btn-secondary btn-sm"
                 onClick={handleSaveDraft}
+                disabled={isSaving}
               >
-                <i className="fa fa-save me-1"></i> Save (Draft)
+                <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save (Draft)"}
               </button>
               <button
                 className="btn btn-danger btn-sm"
                 onClick={handleSubmitDischarge}
-                disabled={isSubmitDisabled}
+                disabled={isSubmitDisabled || isSaving}
                 title={isSubmitDisabled ? "Payment not completed" : ""}
               >
-                Submit for Discharge
+                {isSaving ? "Submitting..." : "Submit for Discharge"}
               </button>
             </div>
           </div>

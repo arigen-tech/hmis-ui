@@ -764,5 +764,6 @@ export const IPD_INTERNAL_STATUS_DIP = 8;
 
 
 export const SAVE_DISCHARGE_SUMMARY = '/ipd/saveDischargeSummary';
+export const GET_DISCHARGE_SUMMARY = '/ipd/getDischargeSummary';
 
 export const GET_PAYMENT_STATUS = '/ipd/getPaymentStatus';
