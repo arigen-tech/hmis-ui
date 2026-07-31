@@ -1,8 +1,10 @@
-import React, { useState, useEffect, useRef, useContext } from 'react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
+import Swal from "sweetalert2";
 import notificationImg from "../../assets/images/xs/avatar1.jpg";
 import ProfileImg from "../../assets/images/profile_av.png";
-import { getRequest, getImageRequest } from "../../service/apiService";
+import { getRequest, getImageRequest, postRequest } from "../../service/apiService";
+import { SWITCH_USER_CONTEXT } from "../../config/apiConfig";
 import './header.css';
 
 const Header = ({ toggleSidebar, collapsed }) => {
@@ -13,6 +15,9 @@ const Header = ({ toggleSidebar, collapsed }) => {
   const [imageSrc, setImageSrc] = useState(null);
   const [showDropdown, setShowDropdown] = useState(false);
   const dropdownRef = useRef(null);
+  const [switchLoading, setSwitchLoading] = useState(false);
+  const [availableDepartments, setAvailableDepartments] = useState([]);
+  const [departmentId, setDepartmentId] = useState("");
 
   const allRoles = currentUserData?.rolesName?.split(",").map(role => role.trim()) || [];
   const displayedRoles = allRoles.length > 2 ? allRoles.slice(0, 2) : allRoles;
@@ -39,7 +44,12 @@ const Header = ({ toggleSidebar, collapsed }) => {
   useEffect(() => {
     fetchCurrentUserData();
     fetchImageSrc();
+    fetchSwitchOptions();
   }, []);
+
+  const getActiveStorage = () => {
+    return localStorage.getItem("token") ? localStorage : sessionStorage;
+  };
 
   const fetchCurrentUserData = async () => {
     setLoading(true);
@@ -85,6 +95,107 @@ const Header = ({ toggleSidebar, collapsed }) => {
       setImageSrc(imageUrl);
     } catch (error) {
       console.error("Error fetching image source", error);
+    }
+  };
+
+  const fetchSwitchOptions = async () => {
+    if (!currentUser) {
+      return;
+    }
+
+    try {
+      const departmentsResponse = await getRequest(`/master/user-departments/getByUserName/${currentUser}`);
+
+      let departments = [];
+      if (departmentsResponse?.response) {
+        departments = Array.isArray(departmentsResponse.response) ? departmentsResponse.response : [];
+      }
+      setAvailableDepartments(departments);
+
+      const storedDepartmentId =
+        localStorage.getItem("departmentId") ||
+        sessionStorage.getItem("departmentId") ||
+        "";
+
+      setDepartmentId(storedDepartmentId || (departments[0]?.departmentId?.toString() || ""));
+    } catch (error) {
+      console.error("Error loading switch options", error);
+    }
+  };
+
+  const handleSwitchContext = async () => {
+    if (!departmentId) {
+      return;
+    }
+
+    setSwitchLoading(true);
+    try {
+      const response = await postRequest(SWITCH_USER_CONTEXT, {
+        departmentId: Number(departmentId),
+      });
+
+      if (response?.response?.jwtToken) {
+        const {
+          jwtToken,
+          refreshToken,
+          username,
+          userId,
+          roleId,
+          jwtTokenExpiry,
+          hospitalId,
+          departmentId,
+          departmentName,
+          departmentCode,
+        } = response.response;
+
+        const storage = getActiveStorage();
+        const currentTime = Date.now();
+        const isTokenValid = jwtTokenExpiry > currentTime;
+
+        storage.setItem("token", jwtToken);
+        storage.setItem("refreshToken", refreshToken);
+        storage.setItem("username", username);
+        storage.setItem("userId", userId);
+        storage.setItem("roleId", roleId);
+        storage.setItem("activeRoleId", roleId);
+        storage.setItem("AuthValidation", jwtTokenExpiry);
+        storage.setItem("isTokenValid", isTokenValid);
+        storage.setItem("hospitalId", hospitalId);
+        storage.setItem("departmentId", departmentId);
+        storage.setItem("departmentName", departmentName);
+        storage.setItem("departmentCode", departmentCode);
+
+        await Swal.fire({
+          icon: "success",
+          title: "Department switched",
+          text: `Now using ${departmentName}`,
+          timer: 1500,
+          showConfirmButton: false,
+        });
+
+        navigate("/dashboard");
+        setTimeout(() => {
+          window.location.reload();
+        }, 50);
+      } else {
+        await Swal.fire({
+          icon: "error",
+          title: "Switch failed",
+          text: response?.message || "Unable to switch role/department.",
+        });
+      }
+    } catch (error) {
+      const message =
+        error?.response?.message ||
+        error?.message ||
+        "Unable to switch role/department.";
+      await Swal.fire({
+        icon: "error",
+        title: "Switch failed",
+        text: message,
+      });
+    } finally {
+      setSwitchLoading(false);
     }
   };
 
@@ -396,6 +507,33 @@ const Header = ({ toggleSidebar, collapsed }) => {
                       <div>
                         <hr className="dropdown-divider border-dark" />
                       </div>
+                    </div>
+                    <div className="px-3 pb-2">
+                      <div className="small text-muted mb-2">Switch department</div>
+                      <div className="mb-2">
+                        <label className="form-label mb-1 small">Department</label>
+                        <select
+                          className="form-select form-select-sm"
+                          value={departmentId}
+                          onChange={(e) => setDepartmentId(e.target.value)}
+                          disabled={switchLoading || availableDepartments.length === 0}
+                        >
+                          <option value="">Select department</option>
+                          {availableDepartments.map((dept) => (
+                            <option key={dept.departmentId ?? dept.id} value={dept.departmentId ?? dept.id}>
+                              {dept.departmentName || `Department ${dept.departmentId ?? dept.id}`}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <button
+                        type="button"
+                        className="btn btn-primary btn-sm w-100"
+                        onClick={handleSwitchContext}
+                        disabled={switchLoading || !departmentId}
+                      >
+                        {switchLoading ? "Switching..." : "Switch"}
+                      </button>
                     </div>
                     <div className="list-group m-2">
                       <a

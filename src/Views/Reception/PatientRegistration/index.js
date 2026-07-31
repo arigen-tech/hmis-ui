@@ -103,6 +103,7 @@ const PatientRegistration = () => {
   const [session, setSession] = useState([]);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
   const [dateResetKey, setDateResetKey] = useState(0);
+  const [cameraError, setCameraError] = useState(null);
   const [appointments, setAppointments] = useState([
     {
       id: 0,
@@ -834,15 +835,39 @@ const PatientRegistration = () => {
 
   const startCamera = async () => {
     try {
+      setCameraError(null);
       setIsCameraOn(true);
-      setTimeout(async () => {
-        stream = await navigator.mediaDevices.getUserMedia({ video: true });
-        if (videoRef.current) {
-          videoRef.current.srcObject = stream;
-        }
-      }, 100);
+
+      // Stop any existing stream first
+      if (videoRef.current?.srcObject) {
+        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+        videoRef.current.srcObject = null;
+      }
+
+      // Request camera with specific constraints
+      const stream = await navigator.mediaDevices.getUserMedia({
+        video: {
+          facingMode: "user",
+          width: { ideal: 640 },
+          height: { ideal: 480 },
+        },
+      });
+
+      if (videoRef.current) {
+        videoRef.current.srcObject = stream;
+        await videoRef.current.play();
+      }
     } catch (error) {
       console.error(CAMERA_ACCESS_ERROR_LOG, error);
+      setCameraError(error.message);
+      setIsCameraOn(false);
+
+      Swal.fire({
+        icon: "error",
+        title: "Camera Access Denied",
+        text: "Please allow camera access in your browser settings and try again.",
+        footer: "Error: " + error.message,
+      });
     }
   };
 
@@ -873,25 +898,44 @@ const PatientRegistration = () => {
       const video = videoRef.current;
       const canvas = canvasRef.current;
 
+      if (video.videoWidth === 0 || video.videoHeight === 0) {
+        Swal.fire(
+          "Error",
+          "Camera not ready. Please wait a moment.",
+          "warning",
+        );
+        return;
+      }
       canvas.width = video.videoWidth;
       canvas.height = video.videoHeight;
-
       const context = canvas.getContext("2d");
       context.drawImage(video, 0, 0, canvas.width, canvas.height);
       const imageData = canvas.toDataURL("image/png");
-
       setImage(imageData);
-      stopCamera();
       confirmUpload(imageData);
+      stopCamera();
     }
   };
 
   const stopCamera = () => {
-    if (videoRef.current && videoRef.current.srcObject) {
-      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
-      setIsCameraOn(false);
+    if (videoRef.current) {
+      if (videoRef.current.srcObject) {
+        const tracks = videoRef.current.srcObject.getTracks();
+        tracks.forEach((track) => {
+          track.stop();
+          track.enabled = false;
+        });
+        videoRef.current.srcObject = null;
+      }
     }
+    setIsCameraOn(false);
   };
+
+  useEffect(() => {
+    return () => {
+      stopCamera();
+    };
+  }, []);
 
   const confirmUpload = (imageData) => {
     Swal.fire({
@@ -963,7 +1007,12 @@ const PatientRegistration = () => {
   }
 
   const handleChange = (e) => {
-    const { name, value } = e.target;
+    const { name } = e.target;
+    let value = e.target.value;
+
+    if (["mobileNo", "nokMobile", "emergencyMobile"].includes(name)) {
+      value = value.replace(/\D/g, "").slice(0, 10);
+    }
 
     const updatedFormData = { ...formData, [name]: value };
     if (name == "dob") {
@@ -1349,7 +1398,11 @@ const PatientRegistration = () => {
           );
           if (isDuplicate) {
             setIsDuplicatePatient(true);
-            const fullName = [formData.firstName, formData.middleName, formData.lastName]
+            const fullName = [
+              formData.firstName,
+              formData.middleName,
+              formData.lastName,
+            ]
               .filter(Boolean)
               .join(" ")
               .trim();
@@ -1956,7 +2009,6 @@ const PatientRegistration = () => {
     if (validateForm() && validateVitalDetails()) {
       const currentAbhaNumber =
         abhaNumber || formData.abhaNumber || abhaData.abhaNumber || "";
-      debugger
       const requestData = {
         patient: {
           id: 0,
@@ -3231,11 +3283,12 @@ const PatientRegistration = () => {
                       <label className="form-label">Mobile No.</label>
                       <input
                         type="text"
+                        inputMode="numeric"
                         className="form-control"
-                        placeholder="Enter Mobile Number"
                         name="emergencyMobile"
                         value={formData.emergencyMobile}
                         onChange={handleChange}
+                        maxLength={10}
                       />
                     </div>
                   </div>

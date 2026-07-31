@@ -35,6 +35,7 @@ const InvestigationModal = ({
   templateType = "create",
   selectedTemplate = null,
   onTemplateSaved,
+  doctorId = "",
 }) => {
   // State management
   const [templateName, setTemplateName] = useState("");
@@ -83,7 +84,7 @@ const InvestigationModal = ({
         loadTemplateData(selectedTemplate);
       }
     }
-  }, [show, templateType, selectedTemplate]);
+  }, [show, templateType, selectedTemplate, doctorId]);
 
   useEffect(() => {
     if (allInvestigations.length > 0) {
@@ -136,8 +137,14 @@ const InvestigationModal = ({
   const fetchTemplates = async (flag = 1) => {
     try {
       setLoading(true);
+      const queryParams = new URLSearchParams();
+      if (doctorId) {
+        queryParams.append("doctorId", doctorId);
+      }
       const response = await getRequest(
-        `${OPD_TEMPLATE}/getInvestigationsTemplates/${flag}`,
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`,
       );
       if (response && response.status === 200 && response.response) {
         setTemplates(response.response);

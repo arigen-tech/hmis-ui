@@ -13,6 +13,7 @@ import {
   OPD_TEMPLATE,
   ITEM_CLASS,
   DRUG_TYPE,
+  OPD_TREATMENT_TEMPLATE_GET_ALL,
 } from "../../../../config/apiConfig";
 import DuplicatePopup from "../DuplicatePopup";
 import {
@@ -75,7 +76,13 @@ const TreatmentModal = ({
   templateType = "create",
   selectedTemplate = null,
   onTemplateSaved,
+  doctorId = "",
 }) => {
+  const resolvedDoctorId =
+    doctorId ||
+    localStorage.getItem("userId") ||
+    sessionStorage.getItem("userId") ||
+    "";
   // State management
   const [templateName, setTemplateName] = useState("");
   const [templateCode, setTemplateCode] = useState("");
@@ -192,7 +199,7 @@ const TreatmentModal = ({
 
       fetchData();
     }
-  }, [show, templateType]);
+  }, [show, templateType, resolvedDoctorId]);
 
   // Load template data when template is selected from dropdown
   useEffect(() => {
@@ -218,34 +225,17 @@ const TreatmentModal = ({
     dataLoaded,
   ]);
 
-  // Reload template data when drugs/frequencies become available
-  useEffect(() => {
-    if (
-      templateType === "edit" &&
-      selectedTemplateId &&
-      templates.length > 0 &&
-      dataLoaded
-    ) {
-      const template = templates.find(
-        (t) => t.templateId == selectedTemplateId,
-      );
-      if (template) {
-        console.log("Reloading template data with available drugs/frequencies");
-        loadTemplateData(template);
-      }
-    }
-  }, [
-    allDrugs,
-    allFrequencies,
-    selectedTemplateId,
-    templateType,
-    templates,
-    dataLoaded,
-  ]);
-
   const fetchTemplates = async (flag = 1) => {
     try {
-      const response = await getRequest(`${OPD_TEMPLATE}/getAll/${flag}`);
+      const queryParams = new URLSearchParams();
+      if (resolvedDoctorId) {
+        queryParams.append("doctorId", resolvedDoctorId);
+      }
+      const response = await getRequest(
+        `${OPD_TREATMENT_TEMPLATE_GET_ALL}${
+          queryParams.toString() ? `?${queryParams.toString()}` : ""
+        }`,
+      );
       if (response && response.response) {
         setTemplates(response.response);
         return true;
@@ -287,6 +277,22 @@ const TreatmentModal = ({
   };
 
   const handleDrugSearch = (value, index) => {
+    const oldDrugId = treatmentItems[index]?.drugId;
+
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        drugName: value,
+        drugId: null,
+      };
+      return updated;
+    });
+
+    if (oldDrugId) {
+      setSelectedDrugs((prev) => prev.filter((id) => id !== oldDrugId));
+    }
+
     setDrugSearch((prev) => {
       const updated = [...prev];
       updated[index] = value;
@@ -468,6 +474,7 @@ const TreatmentModal = ({
       });
 
       setTreatmentItems(items);
+      setDrugSearch(items.map((item) => item.drugName || ""));
 
       const drugIds = template.treatments
         .map((item) => item.itemId)
@@ -497,6 +504,7 @@ const TreatmentModal = ({
         },
       ]);
       setSelectedDrugs([]);
+      setDrugSearch([]);
     }
   };
 
@@ -547,6 +555,7 @@ const TreatmentModal = ({
         adispQty: null,
       },
     ]);
+    setDrugSearch((prev) => [...prev, ""]);
   };
 
   const handleRemoveTreatmentItem = (index) => {
@@ -574,6 +583,7 @@ const TreatmentModal = ({
     }
 
     let newItems = treatmentItems.filter((_, i) => i !== index);
+    const newSearch = drugSearch.filter((_, i) => i !== index);
 
     if (onlyOneRow) {
       newItems = [
@@ -595,6 +605,7 @@ const TreatmentModal = ({
     }
 
     setTreatmentItems(newItems);
+    setDrugSearch(newSearch);
   };
 
   // Calculate total based on itemClassId and adispQty
@@ -683,6 +694,11 @@ const TreatmentModal = ({
     newItems[index].total = calculatedTotal;
 
     setTreatmentItems(newItems);
+    setDrugSearch((prev) => {
+      const updated = [...prev];
+      updated[index] = drug.name;
+      return updated;
+    });
 
     setSelectedDrugs((prev) => {
       const withoutCurrent = prev.filter(
@@ -1104,9 +1120,11 @@ const TreatmentModal = ({
                               className="form-control form-control-sm"
                               placeholder="Search Drug..."
                               value={
-                                treatmentItems[index].drugName ||
-                                drugSearch[index] ||
-                                ""
+                                row.drugId
+                                  ? row.drugName || ""
+                                  : drugSearch[index] !== undefined
+                                    ? drugSearch[index]
+                                    : row.drugName || ""
                               }
                               onChange={(e) =>
                                 handleDrugSearch(e.target.value, index)
@@ -1260,6 +1278,7 @@ const TreatmentModal = ({
                         {/* Add Button */}
                         <td className="text-center align-middle" style={{ padding: "6px" }}>
                           <button
+                            type="button"
                             className="btn btn-primary btn-sm"
                             onClick={handleAddTreatmentItem}
                             disabled={!dataLoaded}
@@ -1280,6 +1299,7 @@ const TreatmentModal = ({
                         {/* Delete Button */}
                         <td className="text-center align-middle" style={{ padding: "6px" }}>
                           <button
+                            type="button"
                             className="btn btn-danger btn-sm"
                             onClick={() => handleRemoveTreatmentItem(index)}
                             disabled={
