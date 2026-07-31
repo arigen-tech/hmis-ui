@@ -109,6 +109,7 @@ const InpatientAdmission = () => {
         paymentType: "",
         advanceCollected: "No",
         advanceAmount: "",
+        estimationCost: "",
         paymentMode: "",
        
       }
@@ -757,6 +758,7 @@ const InpatientAdmission = () => {
           paymentType: "",
           advanceCollected: "No",
           advanceAmount: "",
+          estimationCost: "",
           paymentMode: "",
         }
       ]
@@ -1089,6 +1091,7 @@ const InpatientAdmission = () => {
             formDataToSend.append(`paymentRequests[${index}].paymentType`, paymentTypeMap[financial.paymentType] || "");
             formDataToSend.append(`paymentRequests[${index}].advanceCollected`, financial.advanceCollected === "Yes" ? "y" : "n");
             formDataToSend.append(`paymentRequests[${index}].advanceAmount`, financial.advanceAmount || "");
+            formDataToSend.append(`paymentRequests[${index}].estimationCost`, financial.estimationCost || "");
             
             if (financial.paymentMode) {
               formDataToSend.append(`paymentRequests[${index}].paymentMode`, paymentModeMap[financial.paymentMode] || "");
@@ -2006,6 +2009,7 @@ const InpatientAdmission = () => {
                             <th width="150">Payment Type</th>
                             <th width="150">Advance Collected</th>
                             <th width="150">Advance Amount</th>
+                            <th width="150">Estimate Cost</th>
                             <th width="150">Payment Mode</th>
                             <th width="80">Action</th>
                           </tr>
@@ -2050,6 +2054,20 @@ const InpatientAdmission = () => {
                                 />
                                 {errors[`financial_${index}_advanceAmount`] && (
                                   <div className="invalid-feedback d-block">{errors[`financial_${index}_advanceAmount`]}</div>
+                                )}
+                              </td>
+                              <td>
+                                <input
+                                  type="number"
+                                  className={`form-control form-control-sm ${errors[`financial_${index}_estimationCost`] ? "is-invalid" : ""}`}
+                                  value={financial.estimationCost || ""}
+                                  onChange={(e) => handleFinancialChange(index, 'estimationCost', e.target.value)}
+                                  placeholder="e.g., 50000"
+                                  min="0"
+                                  step="100"
+                                />
+                                {errors[`financial_${index}_estimationCost`] && (
+                                  <div className="invalid-feedback d-block">{errors[`financial_${index}_estimationCost`]}</div>
                                 )}
                               </td>
                               <td>

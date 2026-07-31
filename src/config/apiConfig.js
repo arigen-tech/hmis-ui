@@ -481,6 +481,7 @@ export const REQUEST_PARAM_TO_DATE = "toDate";
 export const REQUEST_PARAM_DEPARTMENT_ID = "departmentId";
 export const REQUEST_PARAM_DOCTOR_ID = "doctorId";
 export const REQUEST_PARAM_HOSPITAL_ID = "hospitalId";
+export const REQUEST_PARAM_PATIENT_ID = "patientId";
 export const REQUEST_PARAM_DEPARTMENT_TYPE_CODE = "departmentTypeCode";
 export const REQUEST_PARAM_GENDER_ID = "genderId";
 export const REQUEST_PARAM_ICD_ID = "icdId";
@@ -562,6 +563,7 @@ export const TAT_DETAIL_END_URL = `${LAB}/lab-tat/details`;
 export const TAT_DETAIL_REPORT_URL = `${ALL_REPORTS}/detailTat`;
 export const TAT_SUMMARY_REPORT_URL = `${ALL_REPORTS}/summaryTat`;
 export const TAT_SUMMARY_END_URL = `${LAB}/lab-tat/summary`;
+export const LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL= `${LAB}/orderTrackingByPatientId`;
 
 //opening balance entry
 
@@ -768,3 +770,4 @@ export const SAVE_DISCHARGE_SUMMARY = '/ipd/saveDischargeSummary';
 export const GET_DISCHARGE_SUMMARY = '/ipd/getDischargeSummary';
 
 export const GET_PAYMENT_STATUS = '/ipd/getPaymentStatus';
+export const GET_IPD_ADVANCE_COLLECTION = '/ipd/getIpdAdvanceCollection';

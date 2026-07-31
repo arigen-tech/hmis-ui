@@ -1,72 +1,25 @@
-import { useState, useMemo } from "react";
-
-// ---- Updated Mock data (UI demo only - replace with API integration later) ----
-const MOCK_ADMISSIONS = [
-  {
-    admissionNo: "IPD/2026/000145",
-    uhid: "UH000512",
-    patientName: "Sneha Patel",
-    age: 34,
-    gender: "F",
-    mobileNo: "9876543211",
-    ward: "Maternity",
-    room: "M-05",
-    bed: "Bed-02",
-    admissionDate: "28-Jul-2026",
-    attendingDoctor: "Dr. Anjali Mehta",
-    billingType: "Cash",
-  },
-  {
-    admissionNo: "IPD/2026/000156",
-    uhid: "UH000678",
-    patientName: "Amit Singh",
-    age: 58,
-    gender: "M",
-    mobileNo: "9876543212",
-    ward: "Cardiology",
-    room: "C-10",
-    bed: "Bed-04",
-    admissionDate: "29-Jul-2026",
-    attendingDoctor: "Dr. Rajesh Kumar",
-    billingType: "Insurance",
-  },
-  {
-    admissionNo: "IPD/2026/000167",
-    uhid: "UH000789",
-    patientName: "Priya Sharma",
-    age: 27,
-    gender: "F",
-    mobileNo: "9876543213",
-    ward: "General",
-    room: "G-08",
-    bed: "Bed-01",
-    admissionDate: "30-Jul-2026",
-    attendingDoctor: "Dr. Mahesh Verma",
-    billingType: "Cash",
-  },
-  {
-    admissionNo: "IPD/2026/000178",
-    uhid: "UH000890",
-    patientName: "Ravi Desai",
-    age: 72,
-    gender: "M",
-    mobileNo: "9876543214",
-    ward: "ICU",
-    room: "I-03",
-    bed: "Bed-02",
-    admissionDate: "31-Jul-2026",
-    attendingDoctor: "Dr. Sunil Rao",
-    billingType: "Insurance",
-  },
-];
+import { useState, useMemo, useEffect } from "react";
+import Pagination from "../../../Components/Pagination";
+import { getRequest } from "../../../service/apiService";
+import { GET_IPD_ADVANCE_COLLECTION } from "../../../config/apiConfig";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card", "Cheque"];
 
 const IPDAdvanceCollection = () => {
-  const [searchBy, setSearchBy] = useState("mobileNo");
-  const [searchValue, setSearchValue] = useState("");
-  const [admissionList, setAdmissionList] = useState(MOCK_ADMISSIONS);
+  // Search parameters
+  const [searchPatientName, setSearchPatientName] = useState("");
+  const [searchMobileNo, setSearchMobileNo] = useState("");
+  const [searchAdmissionNo, setSearchAdmissionNo] = useState("");
+  
+  // Pagination and data state
+  const [admissionList, setAdmissionList] = useState([]);
+  const [page, setPage] = useState(0);
+  const [size, setSize] = useState(5);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // UI state
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
 
@@ -78,36 +31,63 @@ const IPDAdvanceCollection = () => {
     { id: 2, mode: "UPI", amount: "" },
   ]);
 
-  const handleSearch = () => {
-    if (!searchValue.trim()) {
-      setAdmissionList(MOCK_ADMISSIONS);
-      return;
+  const fetchAdmissions = async (currentPage = page) => {
+    setIsLoading(true);
+    try {
+      let url = `${GET_IPD_ADVANCE_COLLECTION}?page=${currentPage}&size=${size}`;
+      if (searchPatientName.trim()) url += `&patientName=${searchPatientName.trim()}`;
+      if (searchMobileNo.trim()) url += `&mobileNo=${searchMobileNo.trim()}`;
+      if (searchAdmissionNo.trim()) url += `&admissionNo=${searchAdmissionNo.trim()}`;
+
+      const res = await getRequest(url);
+      if (res && res.response) {
+        setAdmissionList(res.response.content || []);
+        setTotalPages(res.response.totalPages || 0);
+        setTotalElements(res.response.totalElements || 0);
+        setPage(res.response.number || 0);
+      } else {
+        setAdmissionList([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      }
+    } catch (error) {
+      console.error("Error fetching IPD Advance Collection:", error);
+      setAdmissionList([]);
+    } finally {
+      setIsLoading(false);
     }
+  };
 
-    const filtered = MOCK_ADMISSIONS.filter((item) => {
-      if (searchBy === "mobileNo") {
-        return item.mobileNo.includes(searchValue.trim());
-      }
-      if (searchBy === "patientName") {
-        return item.patientName
-          .toLowerCase()
-          .includes(searchValue.trim().toLowerCase());
-      }
-      if (searchBy === "admissionNo") {
-        return item.admissionNo
-          .toLowerCase()
-          .includes(searchValue.trim().toLowerCase());
-      }
-      return true;
-    });
+  useEffect(() => {
+    fetchAdmissions();
+  }, [page]);
 
-    setAdmissionList(filtered);
+  const handleSearch = () => {
+    setPage(0);
+    fetchAdmissions(0);
   };
 
   const handleClear = () => {
-    setSearchBy("mobileNo");
-    setSearchValue("");
-    setAdmissionList(MOCK_ADMISSIONS);
+    setSearchPatientName("");
+    setSearchMobileNo("");
+    setSearchAdmissionNo("");
+    setPage(0);
+    // State updates are async, so we fetch without filters immediately
+    setIsLoading(true);
+    getRequest(`${GET_IPD_ADVANCE_COLLECTION}?page=0&size=${size}`)
+      .then(res => {
+        if (res && res.response) {
+          setAdmissionList(res.response.content || []);
+          setTotalPages(res.response.totalPages || 0);
+          setTotalElements(res.response.totalElements || 0);
+          setPage(res.response.number || 0);
+        } else {
+          setAdmissionList([]);
+          setTotalPages(0);
+        }
+      })
+      .catch(console.error)
+      .finally(() => setIsLoading(false));
   };
 
   const handleRowClick = (admission) => {
@@ -150,6 +130,17 @@ const IPDAdvanceCollection = () => {
       .toFixed(2);
   }, [paymentRows]);
 
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit"
+    });
+  };
+
   return (
     <div className="content-wrapper">
       <div className="row">
@@ -175,19 +166,40 @@ const IPDAdvanceCollection = () => {
                   <div className="mb-4">
                     <div className="card-body">
                       <div className="row g-3 align-items-end">
-                        <div className="col-md-5">
-                          <label className="form-label fw-semibold">
-                            Search
-                          </label>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Patient Name</label>
                           <input
                             type="text"
                             className="form-control"
-                            placeholder="Search by mobile no, patient no, admission no..."
-                            value={searchValue}
-                            onChange={(e) => setSearchValue(e.target.value)}
+                            placeholder="Enter patient name"
+                            value={searchPatientName}
+                            onChange={(e) => setSearchPatientName(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
                           />
                         </div>
-                        <div className="col-md-6">
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Mobile No</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter mobile no"
+                            value={searchMobileNo}
+                            onChange={(e) => setSearchMobileNo(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                          />
+                        </div>
+                        <div className="col-md-3">
+                          <label className="form-label fw-semibold">Admission No</label>
+                          <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Enter admission no"
+                            value={searchAdmissionNo}
+                            onChange={(e) => setSearchAdmissionNo(e.target.value)}
+                            onKeyDown={(e) => e.key === "Enter" && handleSearch()}
+                          />
+                        </div>
+                        <div className="col-md-3">
                           <div className="d-flex gap-2">
                             <button
                               type="button"
@@ -210,30 +222,37 @@ const IPDAdvanceCollection = () => {
                   </div>
 
                   {/* Active Admission Search Result */}
-                  {admissionList.length > 0 ? (
-                    <div className="table-responsive packagelist">
-                      <table className="table table-bordered table-hover align-middle">
-                        <thead className="table-light">
+                  <div className="table-responsive packagelist">
+                    <table className="table table-bordered table-hover align-middle">
+                      <thead className="table-light">
+                        <tr>
+                          <th>Admission No</th>
+                          <th>UHID</th>
+                          <th>Patient Name</th>
+                          <th>Age/Gender</th>
+                          <th>Mobile</th>
+                          <th>Ward/Room/Bed</th>
+                          <th>Admission Date</th>
+                          <th>Billing Type</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {isLoading ? (
                           <tr>
-                            <th>Admission No</th>
-                            <th>UHID</th>
-                            <th>Patient Name</th>
-                            <th>Age/Gender</th>
-                            <th>Mobile</th>
-                            <th>Ward/Room/Bed</th>
-                            <th>Admission Date</th>
-                            <th>Billing Type</th>
+                            <td colSpan="8" className="text-center py-4">
+                              <div className="spinner-border text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                            </td>
                           </tr>
-                        </thead>
-                        <tbody>
-                          {admissionList.map((item) => (
+                        ) : admissionList.length > 0 ? (
+                          admissionList.map((item) => (
                             <tr
                               key={item.admissionNo}
                               onClick={() => handleRowClick(item)}
                               role="button"
                               onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ")
-                                  handleRowClick(item);
+                                if (e.key === "Enter" || e.key === " ") handleRowClick(item);
                               }}
                               style={{ cursor: "pointer" }}
                             >
@@ -241,28 +260,39 @@ const IPDAdvanceCollection = () => {
                               <td>{item.uhid}</td>
                               <td>{item.patientName}</td>
                               <td>
-                                {item.age}/{item.gender}
+                                {item.age} / {item.gender}
                               </td>
                               <td>{item.mobileNo}</td>
                               <td>
-                                {item.ward}/{item.room}/{item.bed}
+                                {item.ward || "N/A"}/{item.room || "N/A"}/{item.bed || "N/A"}
                               </td>
-                              <td>{item.admissionDate}</td>
+                              <td>{formatDate(item.admissionDateTime)}</td>
                               <td>
                                 <span className="badge bg-info">
-                                  {item.billingType}
+                                  {item.billingType || "N/A"}
                                 </span>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="alert alert-info" role="alert">
-                      <i className="mdi mdi-information"></i> No active
-                      admissions found.
-                    </div>
+                          ))
+                        ) : (
+                          <tr>
+                            <td colSpan="8" className="text-center py-3 text-muted">
+                              No active admissions found.
+                            </td>
+                          </tr>
+                        )}
+                      </tbody>
+                    </table>
+                  </div>
+
+                  {/* Pagination Controls */}
+                  {admissionList.length > 0 && !isLoading && (
+                    <Pagination
+                      totalItems={totalElements}
+                      itemsPerPage={size}
+                      currentPage={page + 1}
+                      onPageChange={(p) => setPage(p - 1)}
+                    />
                   )}
                 </>
               )}
@@ -284,7 +314,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.admissionNo}
+                                value={selectedAdmission.admissionNo || ""}
                                 readOnly
                               />
                             </div>
@@ -294,7 +324,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.patientName}
+                                value={selectedAdmission.patientName || ""}
                                 readOnly
                               />
                             </div>
@@ -304,7 +334,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.uhid}
+                                value={selectedAdmission.uhid || ""}
                                 readOnly
                               />
                             </div>
@@ -314,11 +344,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={`${selectedAdmission.age} Years / ${
-                                  selectedAdmission.gender === "M"
-                                    ? "Male"
-                                    : "Female"
-                                }`}
+                                value={`${selectedAdmission.age || ""} / ${selectedAdmission.gender || ""}`}
                                 readOnly
                               />
                             </div>
@@ -328,7 +354,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.mobileNo}
+                                value={selectedAdmission.mobileNo || ""}
                                 readOnly
                               />
                             </div>
@@ -338,7 +364,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.admissionDate}
+                                value={formatDate(selectedAdmission.admissionDateTime)}
                                 readOnly
                               />
                             </div>
@@ -348,7 +374,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={`${selectedAdmission.ward} / ${selectedAdmission.room} / ${selectedAdmission.bed}`}
+                                value={`${selectedAdmission.ward || "N/A"} / ${selectedAdmission.room || "N/A"} / ${selectedAdmission.bed || "N/A"}`}
                                 readOnly
                               />
                             </div>
@@ -358,7 +384,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.attendingDoctor}
+                                value={selectedAdmission.attendingDoctor || "N/A"}
                                 readOnly
                               />
                             </div>
@@ -368,7 +394,7 @@ const IPDAdvanceCollection = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.billingType}
+                                value={selectedAdmission.billingType || ""}
                                 readOnly
                               />
                             </div>
@@ -393,9 +419,7 @@ const IPDAdvanceCollection = () => {
                                 type="date"
                                 className="form-control"
                                 value={collectionDate}
-                                onChange={(e) =>
-                                  setCollectionDate(e.target.value)
-                                }
+                                onChange={(e) => setCollectionDate(e.target.value)}
                               />
                             </div>
                           </div>
@@ -416,11 +440,7 @@ const IPDAdvanceCollection = () => {
                                       className="form-select"
                                       value={row.mode}
                                       onChange={(e) =>
-                                        handlePaymentRowChange(
-                                          row.id,
-                                          "mode",
-                                          e.target.value,
-                                        )
+                                        handlePaymentRowChange(row.id, "mode", e.target.value)
                                       }
                                     >
                                       {PAYMENT_MODES.map((mode) => (
@@ -439,11 +459,7 @@ const IPDAdvanceCollection = () => {
                                       min="0"
                                       step="0.01"
                                       onChange={(e) =>
-                                        handlePaymentRowChange(
-                                          row.id,
-                                          "amount",
-                                          e.target.value,
-                                        )
+                                        handlePaymentRowChange(row.id, "amount", e.target.value)
                                       }
                                     />
                                   </td>
@@ -482,17 +498,15 @@ const IPDAdvanceCollection = () => {
                     </div>
                   </div>
 
-                  {/* Submit and Reset Buttons - Commented out as per original */}
-                          <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                            <button
-                              type="button"
-                              className="btn btn-warning"
-                              disabled={Number(totalAmount) <= 0}
-                            >
-                             Submit
-                            </button>
-
-                    
+                  {/* Submit and Reset Buttons */}
+                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn btn-warning"
+                      disabled={Number(totalAmount) <= 0}
+                    >
+                      Submit
+                    </button>
                   </div> 
                 </>
               )}
