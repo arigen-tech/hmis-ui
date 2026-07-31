@@ -1,5 +1,5 @@
-// export const API_HOST = 'http://103.133.215.182:8081/hims';
-export const API_HOST = "http://localhost:8080";
+export const API_HOST = 'http://103.133.215.182:8081/hims';
+// export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
@@ -770,3 +770,4 @@ export const SAVE_DISCHARGE_SUMMARY = '/ipd/saveDischargeSummary';
 export const GET_DISCHARGE_SUMMARY = '/ipd/getDischargeSummary';
 
 export const GET_PAYMENT_STATUS = '/ipd/getPaymentStatus';
+export const GET_IPD_ADVANCE_COLLECTION = '/ipd/getIpdAdvanceCollection';
