@@ -61,6 +61,7 @@ const SampleValidation = () => {
       if (data.status === 200 && data.response) {
         const formattedData = formatHeaderData(data.response.content || []);
         setSampleList(formattedData);
+        console.log("Sample List is",formattedData);
         setTotalPages(data.response.totalPages || 0);
         setTotalElements(data.response.totalElements || 0);
         const hasFilters = searchData.patientName || searchData.mobileNo
@@ -143,6 +144,8 @@ const SampleValidation = () => {
       mobile_no: item.mobileNo || '',
       age: item.age || '',
       gender: item.gender || '',
+      department_name: item.departmentName || '',
+      dgOrderHdId: item.dgOrderHdId || null,
       modality: item.subChargeCodeName || '',
       doctor_name: item.doctorName || '',
       order_date: formatDate(item.orderDate),
@@ -340,7 +343,8 @@ const SampleValidation = () => {
           sampleHeaderId: selectedSample.sampleCollectionHeaderId,
           detailId: inv.detailsId,
           accepted: inv.accepted,
-          reason: inv.rejected ? inv.reason : ""
+          reason: inv.rejected ? inv.reason : "",
+          orderHdId: selectedSample.dgOrderHdId,
         }))
 
         console.log("Submitting validation payload:", JSON.stringify(requestPayload, null, 2));
@@ -495,6 +499,10 @@ const SampleValidation = () => {
                       <div className="col-md-4 mt-3">
                         <label className="form-label fw-bold">Gender</label>
                         <input type="text" className="form-control" value={selectedSample.gender} readOnly />
+                      </div>
+                       <div className="col-md-4 mt-3">
+                        <label className="form-label fw-bold">Department</label>
+                        <input type="text" className="form-control" value={selectedSample.department_name} readOnly />
                       </div>
                       <div className="col-md-12 mt-3">
                         <label className="form-label fw-bold">Brief Clinical Notes</label>
@@ -810,6 +818,7 @@ const SampleValidation = () => {
                           <th>Mobile No.</th>
                           <th>Age</th>
                           <th>Gender</th>
+                          <th>Department Name</th>
                           <th>Modality</th>
                           <th>Doctor Name</th>
                         </tr>
@@ -829,6 +838,7 @@ const SampleValidation = () => {
                               <td>{item.mobile_no}</td>
                               <td>{item.age}</td>
                               <td>{item.gender}</td>
+                              <td>{item.department_name}</td>
                               <td>{item.modality}</td>
                               <td>{item.doctor_name}</td>
                             </tr>

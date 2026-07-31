@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
@@ -481,6 +481,7 @@ export const REQUEST_PARAM_TO_DATE = "toDate";
 export const REQUEST_PARAM_DEPARTMENT_ID = "departmentId";
 export const REQUEST_PARAM_DOCTOR_ID = "doctorId";
 export const REQUEST_PARAM_HOSPITAL_ID = "hospitalId";
+export const REQUEST_PARAM_PATIENT_ID = "patientId";
 export const REQUEST_PARAM_DEPARTMENT_TYPE_CODE = "departmentTypeCode";
 export const REQUEST_PARAM_GENDER_ID = "genderId";
 export const REQUEST_PARAM_ICD_ID = "icdId";
@@ -562,6 +563,7 @@ export const TAT_DETAIL_END_URL = `${LAB}/lab-tat/details`;
 export const TAT_DETAIL_REPORT_URL = `${ALL_REPORTS}/detailTat`;
 export const TAT_SUMMARY_REPORT_URL = `${ALL_REPORTS}/summaryTat`;
 export const TAT_SUMMARY_END_URL = `${LAB}/lab-tat/summary`;
+export const LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL= `${LAB}/orderTrackingByPatientId`;
 
 //opening balance entry
 

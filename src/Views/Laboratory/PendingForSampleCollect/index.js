@@ -281,6 +281,7 @@ const PendingForSampleCollection = () => {
         const requestPayload = {
           visitId: selectedSample.visitId,
           orderHdId: selectedSample.orderHdId,
+          inpatientId:selectedSample.inPatientId,
           sampleCollectionReq: selectedSample.investigations
             .filter(inv => inv.collected)
             .map(inv => ({

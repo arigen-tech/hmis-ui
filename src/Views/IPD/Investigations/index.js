@@ -5,82 +5,22 @@ import { getRequest, postRequest } from "../../../service/apiService";
 import {
   MAS_INVESTIGATION,
   SAVE_IPD_INVESTIGATION_ORDER,
+  LAB_REPORT_URL_WRT_ORDER_HD,
+  REQUEST_PARAM_ORDER_HD_ID,
+  REQUEST_PARAM_FLAG,
+  STATUS_D,
+  REQUEST_PARAM_HOSPITAL_ID,
+  REQUEST_PARAM_PATIENT_ID,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_SIZE,
+  LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL,
 } from "../../../config/apiConfig";
+import { formatDateForDisplay } from "../../../utils/dateUtils";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
-const dummyLabOrders = [
-  {
-    orderNo: "LAB-001",
-    orderDate: "10-Apr-2026",
-    patientName: "John Doe",
-    mobileNo: "9876543210",
-    ageGender: "45 / M",
-    sampleId: "SMP-12345",
-    investigationName: "CBC, LFT",
-    investigationStatus: "Completed",
-    report: "View / Download",
-  },
-  {
-    orderNo: "LAB-002",
-    orderDate: "09-Apr-2026",
-    patientName: "Jane Smith",
-    mobileNo: "9876543211",
-    ageGender: "32 / F",
-    sampleId: "SMP-12346",
-    investigationName: "Thyroid Profile",
-    investigationStatus: "In Progress",
-    report: "Pending",
-  },
-  {
-    orderNo: "LAB-003",
-    orderDate: "08-Apr-2026",
-    patientName: "Robert Brown",
-    mobileNo: "9876543212",
-    ageGender: "28 / M",
-    sampleId: "SMP-12347",
-    investigationName: "Urine Routine",
-    investigationStatus: "Collected",
-    report: "Pending",
-  },
-];
-
-const dummyRadiologyOrders = [
-  {
-    orderNo: "RAD-001",
-    orderDate: "10-Apr-2026",
-    patientName: "Alice Johnson",
-    mobileNo: "9876543213",
-    ageGender: "55 / F",
-    investigationName: "X-Ray Chest",
-    investigationStatus: "Completed",
-    report: "View / Download",
-    dicomEye: "View Study",
-  },
-  {
-    orderNo: "RAD-002",
-    orderDate: "09-Apr-2026",
-    patientName: "Michael Lee",
-    mobileNo: "9876543214",
-    ageGender: "62 / M",
-    investigationName: "CT Scan Abdomen",
-    investigationStatus: "Scheduled",
-    report: "Pending",
-    dicomEye: "Not Available",
-  },
-  {
-    orderNo: "RAD-003",
-    orderDate: "08-Apr-2026",
-    patientName: "Emma Wilson",
-    mobileNo: "9876543215",
-    ageGender: "40 / F",
-    investigationName: "MRI Brain",
-    investigationStatus: "Report Ready",
-    report: "View / Download",
-    dicomEye: "View Study",
-  },
-];
-
-
-// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
+// ----------------------------------------------------------------------------
+// PortalDropdown Component
+// ----------------------------------------------------------------------------
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
 
@@ -91,7 +31,7 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
       const rect = anchorRef.current.getBoundingClientRect();
       setStyle({
         position: "fixed",
-        top: rect.bottom + 4, // 4 px gap below the input
+        top: rect.bottom + 4,
         left: rect.left,
         width: rect.width,
         zIndex: 99999,
@@ -105,8 +45,6 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
     };
 
     updatePosition();
-
-    // Re-position on scroll or resize
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
@@ -119,6 +57,12 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
   return createPortal(<div style={style}>{children}</div>, document.body);
 };
 
+const hospitalId =
+  localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
+
+// ----------------------------------------------------------------------------
+// Pagination Component
+// ----------------------------------------------------------------------------
 const Pagination = ({
   totalItems,
   itemsPerPage,
@@ -170,13 +114,15 @@ const Pagination = ({
   );
 };
 
+// ----------------------------------------------------------------------------
+// Normalization helpers
+// ----------------------------------------------------------------------------
 const normalizeLabInvestigation = (item, index) => ({
   id: item?.investigationId ?? item?.id ?? index,
   investigationName: item?.investigationName ?? item?.testName ?? item?.name ?? "",
   testName: item?.testName ?? item?.investigationName ?? item?.name ?? "",
   sample: item?.sample ?? item?.sampleName ?? item?.sampleDescription ?? "",
-  container:
-    item?.container ?? item?.collectionName ?? item?.containerName ?? "",
+  container: item?.container ?? item?.collectionName ?? item?.containerName ?? "",
   resultUnit: item?.resultUnit ?? item?.uomName ?? item?.unitName ?? "",
   price: Number(item?.price ?? item?.amount ?? item?.rate ?? 0),
   discount: Number(item?.disc ?? item?.discount ?? 0),
@@ -215,11 +161,15 @@ const getGenderApplicable = (selectedPatient) => {
 
 const getTodayDateString = () => new Date().toISOString().split("T")[0];
 
+// ----------------------------------------------------------------------------
+// Main Component
+// ----------------------------------------------------------------------------
 const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const [activeTab, setActiveTab] = useState("lab");
   const [labTests, setLabTests] = useState([]);
   const [radiologyTests, setRadiologyTests] = useState([]);
 
+  // ---------- Lab order entry state ----------
   const createLabRow = () => ({
     id: Date.now(),
     testName: "",
@@ -230,7 +180,9 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     dropdownOpen: false,
     searchText: "",
   });
+  const [labRows, setLabRows] = useState([createLabRow()]);
 
+  // ---------- Radiology order entry state ----------
   const createRadiologyRow = () => ({
     id: Date.now(),
     investigationName: "",
@@ -239,23 +191,29 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     dropdownOpen: false,
     searchText: "",
   });
-
-  const [labRows, setLabRows] = useState([createLabRow()]);
-
   const [radiologyRows, setRadiologyRows] = useState([createRadiologyRow()]);
 
+  // ---------- Tracking state ----------
   const [trackingType, setTrackingType] = useState("lab");
-  const [currentPage, setCurrentPage] = useState(1);
+  const [trackingData, setTrackingData] = useState([]);
+  const [totalElements, setTotalElements] = useState(0);
+  const [trackingCurrentPage, setTrackingCurrentPage] = useState(1);
+  const [trackingLoading, setTrackingLoading] = useState(false);
   const itemsPerPage = 5;
 
-  // Refs for portal-positioned dropdown inputs
+  // PDF viewing states
+  const [pdfUrl, setPdfUrl] = useState(null);
+  const [selectedRecord, setSelectedRecord] = useState(null);
+  const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
+
+  // Refs for portal dropdowns
   const labInputRefs = useRef({});
   const radiologyInputRefs = useRef({});
 
+  // ---------- Fetch investigations for dropdowns ----------
   useEffect(() => {
     const fetchInvestigations = async () => {
       const genderApplicable = getGenderApplicable(selectedPatient);
-
       if (!genderApplicable) {
         setLabTests([]);
         setRadiologyTests([]);
@@ -265,10 +223,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       try {
         const [labRes, radiologyRes] = await Promise.all([
           getRequest(
-            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`,
+            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}`
           ),
           getRequest(
-            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&radioFlag=true`,
+            `${MAS_INVESTIGATION}/price-details?genderApplicable=${genderApplicable}&radioFlag=true`
           ),
         ]);
 
@@ -283,7 +241,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           Array.isArray(radiologyRes.response)
         ) {
           setRadiologyTests(
-            radiologyRes.response.map(normalizeRadiologyInvestigation),
+            radiologyRes.response.map(normalizeRadiologyInvestigation)
           );
         } else {
           setRadiologyTests([]);
@@ -298,27 +256,138 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     fetchInvestigations();
   }, [selectedPatient]);
 
-  const paginatedLabOrders = dummyLabOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
-  const paginatedRadiologyOrders = dummyRadiologyOrders.slice(
-    (currentPage - 1) * itemsPerPage,
-    currentPage * itemsPerPage,
-  );
+  // ---------- Fetch tracking data from API (only for lab) ----------
+  const fetchTrackingData = async (page = 1) => {
+    if (!selectedPatient?.patientId) {
+      setTrackingData([]);
+      setTotalElements(0);
+      return;
+    }
 
-  const handleTrackingTypeChange = (type) => {
-    setTrackingType(type);
-    setCurrentPage(1);
+    setTrackingLoading(true);
+    try {
+      const patientId = selectedPatient.patientId;
+      const queryString = new URLSearchParams({
+        [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || "",
+        [REQUEST_PARAM_PATIENT_ID]: patientId,
+        [REQUEST_PARAM_PAGE]: String(page - 1),
+        [REQUEST_PARAM_SIZE]: String(itemsPerPage),
+      }).toString();
+      const url = `${LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL}?${queryString}`;
+      const response = await getRequest(url);
+
+      if (response?.status === 200 && response?.response) {
+        const pageData = response.response;
+        const content = pageData.content || [];
+        const total = pageData.totalElements || 0;
+
+        const mappedData = content.map((item) => ({
+          dgOrderHdId: item.dgOrderHdId,
+          orderNo: item.orderNum || "",
+          orderDate: formatDateForDisplay(item.orderDate) || "",
+          patientName: item.patientName || "",
+          mobileNo: item.mobileNum || "",
+          ageGender: `${item.age || ""} / ${item.gender || ""}`,
+          sampleId: item.generatedSampleId || "",
+          investigationName: item.investigationName || "",
+          investigationStatus: item.orderStatusName || "N/A",
+          report: item.orderStatusId === 6 ? "View / Download" : "—",
+        }));
+
+        setTrackingData(mappedData);
+        setTotalElements(total);
+      } else {
+        setTrackingData([]);
+        setTotalElements(0);
+      }
+    } catch (error) {
+      console.error("Error fetching tracking data:", error);
+      setTrackingData([]);
+      setTotalElements(0);
+    } finally {
+      setTrackingLoading(false);
+    }
   };
 
+  // Trigger fetch only when tracking tab is active and trackingType is "lab"
+  useEffect(() => {
+    if (activeTab === "tracking" && trackingType === "lab") {
+      fetchTrackingData(trackingCurrentPage);
+    }
+    // If trackingType is "radiology", we don't fetch and keep data empty
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, trackingType, trackingCurrentPage, selectedPatient]);
+
+  // ---------- Handle tracking type change with popup for radiology ----------
+  const handleTrackingTypeChange = (type) => {
+    if (type === "radiology") {
+      Swal.fire({
+        icon: "info",
+        title: "Not Implemented",
+        text: "Radiology orders tracking functionality is not implemented yet.",
+      });
+      return; // Keep current trackingType (lab)
+    }
+    setTrackingType(type);
+    setTrackingCurrentPage(1);
+  };
+
+  // ---------- PDF Report Generation ----------
+  const isGeneratingPdf = (dgOrderHdId) => generatingPdfIds.has(dgOrderHdId);
+
+  const generateLabReport = async (record) => {
+    const dgOrderHdId = record.dgOrderHdId;
+    if (!dgOrderHdId) {
+      Swal.fire({
+        icon: "error",
+        title: "Invalid Order ID",
+        text: "Cannot generate report without an order ID.",
+      });
+      return;
+    }
+
+    setGeneratingPdfIds((prev) => new Set(prev).add(dgOrderHdId));
+    setPdfUrl(null);
+    setSelectedRecord(record);
+
+    try {
+      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${dgOrderHdId}&${REQUEST_PARAM_FLAG}=${STATUS_D}`;
+      const response = await fetch(url, {
+        method: "GET",
+        headers: { Accept: "application/pdf" },
+      });
+
+      if (!response.ok) throw new Error("Failed to generate PDF");
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+    } catch (error) {
+      console.error("Error generating PDF", error);
+      Swal.fire({
+        icon: "error",
+        title: "PDF Generation Failed",
+        text: "Could not generate lab report. Please try again.",
+      });
+    } finally {
+      setGeneratingPdfIds((prev) => {
+        const newSet = new Set(prev);
+        newSet.delete(dgOrderHdId);
+        return newSet;
+      });
+    }
+  };
+
+  const handleViewReport = (record) => generateLabReport(record);
+
+  // ---------- Lab order handlers ----------
   const addLabRow = () => {
     setLabRows([...labRows, createLabRow()]);
   };
 
   const updateLabRow = (id, field, value) => {
     setLabRows(
-      labRows.map((row) => (row.id === id ? { ...row, [field]: value } : row)),
+      labRows.map((row) => (row.id === id ? { ...row, [field]: value } : row))
     );
   };
 
@@ -336,8 +405,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               searchText: testName,
               dropdownOpen: false,
             }
-          : row,
-      ),
+          : row
+      )
     );
   };
 
@@ -359,24 +428,24 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               resultUnit: "",
               dropdownOpen: true,
             }
-          : { ...row, dropdownOpen: false },
-      ),
+          : { ...row, dropdownOpen: false }
+      )
     );
   };
 
   const openLabDropdown = (id) => {
     setLabRows(
       labRows.map((row) =>
-        row.id === id ? { ...row, dropdownOpen: true } : row,
-      ),
+        row.id === id ? { ...row, dropdownOpen: true } : row
+      )
     );
   };
 
   const toggleLabDropdown = (id, open) => {
     setLabRows(
       labRows.map((row) =>
-        row.id === id ? { ...row, dropdownOpen: open } : row,
-      ),
+        row.id === id ? { ...row, dropdownOpen: open } : row
+      )
     );
   };
 
@@ -388,10 +457,13 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     const query = (searchText || "").trim().toLowerCase();
     if (!query) return labTests;
     return labTests.filter((test) =>
-      (test.investigationName || test.testName || "").toLowerCase().includes(query),
+      (test.investigationName || test.testName || "")
+        .toLowerCase()
+        .includes(query)
     );
   };
 
+  // ---------- Radiology order handlers ----------
   const addRadiologyRow = () => {
     setRadiologyRows([...radiologyRows, createRadiologyRow()]);
   };
@@ -399,8 +471,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const updateRadiologyRow = (id, field, value) => {
     setRadiologyRows(
       radiologyRows.map((row) =>
-        row.id === id ? { ...row, [field]: value } : row,
-      ),
+        row.id === id ? { ...row, [field]: value } : row
+      )
     );
   };
 
@@ -414,8 +486,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               searchText: test.investigationName,
               dropdownOpen: false,
             }
-          : row,
-      ),
+          : row
+      )
     );
   };
 
@@ -434,24 +506,24 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               investigationName: "",
               dropdownOpen: true,
             }
-          : { ...row, dropdownOpen: false },
-      ),
+          : { ...row, dropdownOpen: false }
+      )
     );
   };
 
   const openRadiologyDropdown = (id) => {
     setRadiologyRows(
       radiologyRows.map((row) =>
-        row.id === id ? { ...row, dropdownOpen: true } : row,
-      ),
+        row.id === id ? { ...row, dropdownOpen: true } : row
+      )
     );
   };
 
   const toggleRadiologyDropdown = (id, open) => {
     setRadiologyRows(
       radiologyRows.map((row) =>
-        row.id === id ? { ...row, dropdownOpen: open } : row,
-      ),
+        row.id === id ? { ...row, dropdownOpen: open } : row
+      )
     );
   };
 
@@ -463,10 +535,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     const query = (searchText || "").trim().toLowerCase();
     if (!query) return radiologyTests;
     return radiologyTests.filter((test) =>
-      (test.investigationName || "").toLowerCase().includes(query),
+      (test.investigationName || "").toLowerCase().includes(query)
     );
   };
 
+  // ---------- Save handlers ----------
   const handleSaveLab = () => {
     handleSaveInvestigations("lab");
   };
@@ -486,17 +559,18 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                   test.testName === row.testName ||
                   test.investigationName === row.testName ||
                   test.testName === row.searchText ||
-                  test.investigationName === row.searchText,
+                  test.investigationName === row.searchText
               )
             : radiologyTests.find(
                 (test) =>
                   test.investigationName === row.investigationName ||
-                  test.investigationName === row.searchText,
+                  test.investigationName === row.searchText
               );
 
         return {
           id: matchedTest?.id ?? null,
-          appointmentDate: type === "radiology" ? row.date || getTodayDateString() : null,
+          appointmentDate:
+            type === "radiology" ? row.date || getTodayDateString() : null,
           checkStatus: true,
           remarks: row.remarks || "",
           type,
@@ -565,16 +639,24 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     }
   };
 
-  const handleViewReport = (order) => {
-    alert(`Viewing report for order: ${order.orderNo}`);
-  };
-
-  const handleViewDicomEye = (order) => {
-    alert(`Opening DICOM study for order: ${order.orderNo}`);
-  };
-
+  // ----------------------------------------------------------------------------
+  // Render
+  // ----------------------------------------------------------------------------
   return (
     <div>
+      {/* PDF Viewer Modal */}
+      {pdfUrl && selectedRecord && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          onClose={() => {
+            setPdfUrl(null);
+            setSelectedRecord(null);
+          }}
+          name={`Lab Report - ${selectedRecord?.patientName || "Patient"}`}
+        />
+      )}
+
+      {/* Tab buttons */}
       <div className="d-flex gap-2 mb-3">
         <button
           className={`btn btn-sm ${activeTab === "lab" ? "btn-primary" : "btn-outline-primary"}`}
@@ -602,6 +684,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         </button>
       </div>
 
+      {/* ========== LAB TAB ========== */}
       {activeTab === "lab" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
@@ -624,7 +707,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                     <th style={{ width: "20%" }}>Test Name</th>
                     <th style={{ width: "12%" }}>Sample</th>
                     <th style={{ width: "12%" }}>Container</th>
-                    {/* <th style={{ width: "15%" }}>Result Unit</th> */}
                     <th style={{ width: "20%" }}>Remarks</th>
                     <th style={{ width: "10%" }}>Action</th>
                   </tr>
@@ -637,7 +719,9 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                         <td className="text-center">{idx + 1}</td>
                         <td className="position-relative">
                           <input
-                            ref={(el) => { labInputRefs.current[row.id] = el; }}
+                            ref={(el) => {
+                              labInputRefs.current[row.id] = el;
+                            }}
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
@@ -650,14 +734,19 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             placeholder="Type or select test"
                           />
                           <PortalDropdown
-                            anchorRef={{ current: labInputRefs.current[row.id] }}
+                            anchorRef={{
+                              current: labInputRefs.current[row.id],
+                            }}
                             show={row.dropdownOpen && filteredTests.length > 0}
                           >
                             <ul className="list-group mb-0">
                               {filteredTests.map((test) => {
-                                const hasDiscount = test.discount && test.discount > 0;
+                                const hasDiscount =
+                                  test.discount && test.discount > 0;
                                 const displayPrice = test.price || 0;
-                                const discountAmount = hasDiscount ? test.discount : 0;
+                                const discountAmount = hasDiscount
+                                  ? test.discount
+                                  : 0;
                                 const finalPrice = hasDiscount
                                   ? displayPrice - discountAmount
                                   : displayPrice;
@@ -674,14 +763,16 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                     onMouseDown={(e) => e.preventDefault()}
                                   >
                                     <div>
-                                      <strong>{test.investigationName || test.testName}</strong>
+                                      <strong>
+                                        {test.investigationName || test.testName}
+                                      </strong>
                                       <div className="d-flex justify-content-between">
                                         <span>
-                                          {test.price === null || test.price === undefined
+                                          {test.price === null ||
+                                          test.price === undefined
                                             ? "Price not configured"
                                             : `₹${finalPrice.toFixed(2)}`}
                                         </span>
-                                        
                                       </div>
                                       {test.investigationType && (
                                         <small className="text-muted">
@@ -701,9 +792,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             className="form-control form-control-sm"
                             disabled
                             value={row.sample}
-                            onChange={(e) =>
-                              updateLabRow(row.id, "sample", e.target.value)
-                            }
                             placeholder="Sample type"
                           />
                         </td>
@@ -713,9 +801,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             className="form-control form-control-sm"
                             value={row.container}
                             disabled
-                            onChange={(e) =>
-                              updateLabRow(row.id, "container", e.target.value)
-                            }
                             placeholder="Container"
                           />
                         </td>
@@ -760,6 +845,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         </div>
       )}
 
+      {/* ========== RADIOLOGY TAB ========== */}
       {activeTab === "radiology" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2 d-flex justify-content-between align-items-center">
@@ -787,21 +873,23 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 <tbody>
                   {radiologyRows.map((row, idx) => {
                     const filteredTests = getFilteredRadiologyTests(
-                      row.searchText,
+                      row.searchText
                     );
                     return (
                       <tr key={row.id}>
                         <td className="text-center">{idx + 1}</td>
                         <td className="position-relative">
                           <input
-                            ref={(el) => { radiologyInputRefs.current[row.id] = el; }}
+                            ref={(el) => {
+                              radiologyInputRefs.current[row.id] = el;
+                            }}
                             type="text"
                             className="form-control form-control-sm"
                             value={row.searchText}
                             onChange={(e) =>
                               handleRadiologySearchChange(
                                 row.id,
-                                e.target.value,
+                                e.target.value
                               )
                             }
                             onFocus={() => openRadiologyDropdown(row.id)}
@@ -809,8 +897,12 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             placeholder="Type or select investigation"
                           />
                           <PortalDropdown
-                            anchorRef={{ current: radiologyInputRefs.current[row.id] }}
-                            show={row.dropdownOpen && filteredTests.length > 0}
+                            anchorRef={{
+                              current: radiologyInputRefs.current[row.id],
+                            }}
+                            show={
+                              row.dropdownOpen && filteredTests.length > 0
+                            }
                           >
                             <ul className="list-group mb-0">
                               {filteredTests.map((test) => (
@@ -818,7 +910,9 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                   key={test.id}
                                   className="list-group-item list-group-item-action"
                                   style={{ cursor: "pointer" }}
-                                  onClick={() => selectRadiologyTest(row.id, test)}
+                                  onClick={() =>
+                                    selectRadiologyTest(row.id, test)
+                                  }
                                   onMouseDown={(e) => e.preventDefault()}
                                 >
                                   {test.investigationName}
@@ -836,7 +930,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                               updateRadiologyRow(
                                 row.id,
                                 "remarks",
-                                e.target.value,
+                                e.target.value
                               )
                             }
                             placeholder="Remarks"
@@ -872,12 +966,14 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         </div>
       )}
 
+      {/* ========== TRACKING TAB ========== */}
       {activeTab === "tracking" && (
         <div className="card shadow-sm">
           <div className="card-header bg-primary text-white py-2">
             <strong>Order Tracking</strong>
           </div>
           <div className="card-body">
+            {/* Radio buttons to switch between Lab / Radiology */}
             <div className="mb-2 d-flex align-items-center">
               <label className="me-3">
                 <input
@@ -903,144 +999,86 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               </label>
             </div>
 
-            {trackingType === "lab" && (
-              <>
-                <div className="table-responsive">
-                  <table className="table table-bordered table-hover">
-                    <thead
-                      style={{ backgroundColor: "#9db4c0", color: "black" }}
-                    >
-                      <tr>
-                        <th>Order No</th>
-                        <th>Order Date</th>
-                        <th>Patient Name</th>
-                        <th>Mobile No</th>
-                        <th>Age / Gender</th>
-                        <th>Sample ID</th>
-                        <th>Investigation Name</th>
-                        <th>Investigation Status</th>
-                        <th>Report</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedLabOrders.length > 0 ? (
-                        paginatedLabOrders.map((row, index) => (
-                          <tr key={index}>
-                            <td>{row.orderNo}</td>
-                            <td>{row.orderDate}</td>
-                            <td>{row.patientName}</td>
-                            <td>{row.mobileNo}</td>
-                            <td>{row.ageGender}</td>
-                            <td>{row.sampleId}</td>
-                            <td>{row.investigationName}</td>
-                            <td>{row.investigationStatus}</td>
-                            <td>
-                              {row.report === "View / Download" ? (
-                                <button
-                                  type="button"
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => handleViewReport(row)}
-                                >
-                                  View
-                                </button>
+            {/* Table – same structure as OrderTrackingReport */}
+            <div className="table-responsive">
+              <table className="table table-bordered table-hover">
+                <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
+                  <tr>
+                    <th>Order No</th>
+                    <th>Order Date</th>
+                    <th>Patient Name</th>
+                    <th>Mobile No</th>
+                    <th>Age / Gender</th>
+                    <th>Sample ID</th>
+                    <th>Investigation Name</th>
+                    <th>Investigation Status</th>
+                    <th>Report</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {trackingLoading ? (
+                    <tr>
+                      <td colSpan="9" className="text-center py-4">
+                        Loading...
+                      </td>
+                    </tr>
+                  ) : trackingData.length > 0 ? (
+                    trackingData.map((row, index) => (
+                      <tr key={index}>
+                        <td>{row.orderNo}</td>
+                        <td>{row.orderDate}</td>
+                        <td>{row.patientName}</td>
+                        <td>{row.mobileNo}</td>
+                        <td>{row.ageGender}</td>
+                        <td>{row.sampleId}</td>
+                        <td>{row.investigationName}</td>
+                        <td>{row.investigationStatus}</td>
+                        <td>
+                          {row.report === "View / Download" ? (
+                            <button
+                              type="button"
+                              className="btn btn-primary btn-sm"
+                              onClick={() => handleViewReport(row)}
+                              disabled={isGeneratingPdf(row.dgOrderHdId)}
+                            >
+                              {isGeneratingPdf(row.dgOrderHdId) ? (
+                                <>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-1"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                  Generating...
+                                </>
                               ) : (
-                                <span>{row.report}</span>
+                                "View"
                               )}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="9" className="text-center py-4">
-                            No Lab Orders Found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  totalItems={dummyLabOrders.length}
-                  itemsPerPage={itemsPerPage}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-              </>
-            )}
+                            </button>
+                          ) : (
+                            <span>{row.report}</span>
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
+                    <tr>
+                      <td colSpan="9" className="text-center py-4">
+                        No records found
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
 
-            {trackingType === "radiology" && (
-              <>
-                <div className="table-responsive">
-                  <table className="table table-bordered table-hover">
-                    <thead
-                      style={{ backgroundColor: "#9db4c0", color: "black" }}
-                    >
-                      <tr>
-                        <th>Order No</th>
-                        <th>Order Date</th>
-                        <th>Patient Name</th>
-                        <th>Mobile No</th>
-                        <th>Age / Gender</th>
-                        <th>Investigation Name</th>
-                        <th>Investigation Status</th>
-                        <th>Report</th>
-                        <th>DICOM Eye</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {paginatedRadiologyOrders.length > 0 ? (
-                        paginatedRadiologyOrders.map((row, index) => (
-                          <tr key={index}>
-                            <td>{row.orderNo}</td>
-                            <td>{row.orderDate}</td>
-                            <td>{row.patientName}</td>
-                            <td>{row.mobileNo}</td>
-                            <td>{row.ageGender}</td>
-                            <td>{row.investigationName}</td>
-                            <td>{row.investigationStatus}</td>
-                            <td>
-                              {row.report === "View / Download" ? (
-                                <button
-                                  type="button"
-                                  className="btn btn-primary btn-sm"
-                                  onClick={() => handleViewReport(row)}
-                                >
-                                  View
-                                </button>
-                              ) : (
-                                <span>{row.report}</span>
-                              )}
-                            </td>
-                            <td>
-                              {row.dicomEye === "View Study" && (
-                                <button
-                                  className="btn btn-sm btn-success"
-                                  onClick={() => handleViewDicomEye(row)}
-                                  type="button"
-                                >
-                                  <i className="fa fa-eye"></i>
-                                </button>
-                              )}
-                            </td>
-                          </tr>
-                        ))
-                      ) : (
-                        <tr>
-                          <td colSpan="9" className="text-center py-4">
-                            No Radiology Orders Found
-                          </td>
-                        </tr>
-                      )}
-                    </tbody>
-                  </table>
-                </div>
-                <Pagination
-                  totalItems={dummyRadiologyOrders.length}
-                  itemsPerPage={itemsPerPage}
-                  currentPage={currentPage}
-                  onPageChange={setCurrentPage}
-                />
-              </>
+            {/* Pagination */}
+            {totalElements > 0 && (
+              <Pagination
+                totalItems={totalElements}
+                itemsPerPage={itemsPerPage}
+                currentPage={trackingCurrentPage}
+                onPageChange={(page) => setTrackingCurrentPage(page)}
+              />
             )}
           </div>
         </div>
