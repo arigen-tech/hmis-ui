@@ -510,6 +510,7 @@ const PendingForResultEntry = () => {
           sampleCollectionHeaderId: selectedResult.sampleCollectionHeaderId,
           patientId: selectedResult.patientId,
           visitId: selectedResult.visitId,
+          inpatientId:selectedResult.inpatientId,
           investigationList: []
         };
 
