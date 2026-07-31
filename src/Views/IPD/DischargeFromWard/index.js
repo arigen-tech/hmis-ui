@@ -104,6 +104,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
         medicineName: "",
         dosage: "",
         frequency: "",
+        durationDays: "",
         total: "", // auto-calculated, readonly
         route: "",
         instruction: "",
@@ -113,8 +114,8 @@ const DischargeFromWard = ({ selectedPatient }) => {
     deleteMedicationIds: [],
     adviseOnDischarge: "",
     followUp: "",
-    billStatus: "FINAL",
-    paymentStatus: "PAID",
+    billStatus: null,
+    paymentStatus: null,
     dischargeDateTime: "",
     patientCondition: "",
     dischargeReason: "",
@@ -277,6 +278,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
                     medicineName: med.medicineName || "",
                     dosage: med.dosage || "",
                     frequency: med.frequency || "",
+                    durationDays: med.durationDays || med.duration || "",
                     total: med.totalDoses || "",
                     route: med.route || "",
                     instruction: med.instruction || "",
@@ -322,12 +324,15 @@ const DischargeFromWard = ({ selectedPatient }) => {
         if (paymentRes && paymentRes.response) {
           setDischargeData((prev) => ({
             ...prev,
-            billStatus: paymentRes.response.billStatus ? paymentRes.response.billStatus.toUpperCase() : prev.billStatus,
-            paymentStatus: paymentRes.response.paymentStatus ? paymentRes.response.paymentStatus.toUpperCase() : prev.paymentStatus
+            billStatus: paymentRes.response.billStatus ? paymentRes.response.billStatus.toUpperCase() : null,
+            paymentStatus: paymentRes.response.paymentStatus ? paymentRes.response.paymentStatus.toUpperCase() : null
           }));
+        } else {
+          setDischargeData((prev) => ({ ...prev, billStatus: null, paymentStatus: null }));
         }
       } catch (error) {
         console.error("Error fetching payment status:", error);
+        setDischargeData((prev) => ({ ...prev, billStatus: null, paymentStatus: null }));
       }
     };
     fetchDropdowns();
@@ -425,14 +430,16 @@ const DischargeFromWard = ({ selectedPatient }) => {
       med[field] = value;
       updated[index] = med;
       
-      // Auto-calculate total if dosage and frequency are present
-      if (field === "dosage" || field === "frequency") {
+      // Auto-calculate total if dosage, frequency, or durationDays are present
+      if (field === "dosage" || field === "frequency" || field === "durationDays") {
         const dosage = parseFloat(med.dosage) || 0;
+        let duration = parseFloat(med.durationDays);
+        duration = (duration > 0 && !isNaN(duration)) ? duration : 1;
         const freq = frequencyOptions.find(
           (f) => f.value === med.frequency
         );
         const multiplier = freq ? freq.multiplier : 0;
-        const total = dosage * multiplier;
+        const total = dosage * multiplier * duration;
         updated[index].total = total > 0 ? total.toFixed(2) : "";
       }
       return { ...prev, medicationOnDischarge: updated, deleteMedicationIds: newDeleteIds };
@@ -508,6 +515,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
           medicineName: "",
           dosage: "",
           frequency: "",
+          durationDays: "",
           total: "",
           route: "",
           instruction: "",
@@ -645,6 +653,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
           medicineName: med.medicineName || "",
           dosage: med.dosage || "",
           frequency: med.frequency || "",
+          durationDays: parseFloat(med.durationDays) || 0,
           totalDoses: parseFloat(med.total) || 0,
           route: med.route || "",
           instruction: med.instruction || ""
@@ -921,13 +930,14 @@ const DischargeFromWard = ({ selectedPatient }) => {
                   <table className="table table-bordered table-sm align-middle mb-0">
                     <thead className="table-light">
                       <tr>
-                        <th style={{ minWidth: "280px                           " }}>Medicine Name</th>
-                        <th>Dosage</th>
-                        <th>Frequency</th>
-                        <th>Total </th>
-                        <th>Route</th>
-                        <th>Instruction</th>
-                        <th style={{ width: "80px" }}>Action</th>
+                        <th style={{ width: "35%", minWidth: "250px" }}>Medicine Name</th>
+                        <th style={{ width: "8%", minWidth: "80px" }}>Dosage</th>
+                        <th style={{ width: "12%", minWidth: "100px" }}>Frequency</th>
+                        <th style={{ width: "10%", minWidth: "100px" }}>Duration Days</th>
+                        <th style={{ width: "8%", minWidth: "80px" }}>Total</th>
+                        <th style={{ width: "12%", minWidth: "100px" }}>Route</th>
+                        <th style={{ width: "12%", minWidth: "120px" }}>Instruction</th>
+                        <th style={{ width: "3%", minWidth: "50px" }}>Action</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -937,10 +947,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
                         );
                         return (
                           <tr key={index}>
-                            <td
-                              className="position-relative"
-                              style={{ minWidth: "220px" }}
-                            >
+                            <td className="position-relative">
                               <input
                                 ref={(el) => {
                                   medicineInputRefs.current[index] = el;
@@ -1021,6 +1028,22 @@ const DischargeFromWard = ({ selectedPatient }) => {
                                   </option>
                                 ))}
                               </select>
+                            </td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={med.durationDays}
+                                onChange={(e) =>
+                                  handleMedicationRowChange(
+                                    index,
+                                    "durationDays",
+                                    e.target.value
+                                  )
+                                }
+                                placeholder="Days"
+                                min="1"
+                              />
                             </td>
                             <td>
                               <input
@@ -1158,7 +1181,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
               <div className="card-body py-2">
                 <div className="row">
                   <div className="col-md-4">
-                    <strong>Bill Status:</strong> {dischargeData.billStatus}
+                    <strong>Bill Status:</strong> {dischargeData.billStatus || ""}
                   </div>
                   <div className="col-md-4">
                     <strong>Payment Status:</strong>{" "}
@@ -1169,7 +1192,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
                           : "text-danger"
                       }
                     >
-                      {dischargeData.paymentStatus}
+                      {dischargeData.paymentStatus || ""}
                     </span>
                   </div>
                   <div className="col-md-4">

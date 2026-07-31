@@ -66,7 +66,7 @@ const WardManagement = () => {
           currentDay: bed.days || 0,
           status: !bed.ipdInternalStatus || String(bed.ipdInternalStatus).trim().toUpperCase() === "VACANT"
             ? "VACANT"
-            : (String(bed.ipdInternalStatus).trim().toUpperCase() === "RWD" ? "RW" : String(bed.ipdInternalStatus).trim().toUpperCase()),
+            : (String(bed.ipdInternalStatus).trim().toUpperCase() === "RWD" ? "RW" : (String(bed.ipdInternalStatus).trim().toUpperCase() === "RD" ? "RFD" : String(bed.ipdInternalStatus).trim().toUpperCase())),
           ward: selectedWard.wardName,
           diagnosis: bed.diagnosis || "",
           admissionTime: "",
@@ -112,7 +112,8 @@ const WardManagement = () => {
     transferPending: patientData.filter(p => p.status === 'TRP').length,
     inOperationTheater: patientData.filter(p => p.status === 'OT').length,
     inLaborRoom: patientData.filter(p => p.status === 'LR').length,
-    readyForDischarge: patientData.filter(p => p.status === 'RD').length,
+    readyForDischarge: patientData.filter(p => p.status === 'RFD').length,
+    dischargeInProcess: patientData.filter(p => p.status === 'DIP').length,
     notReported: patientData.filter(p => p.status === 'NRW').length,
     totalBeds: patientData.length
   }
@@ -189,7 +190,8 @@ const WardManagement = () => {
       case "TRP": return "#fff3cd"
       case "OT": return "#d1ecf1"
       case "LR": return "#f8d7da"
-      case "RD": return "#fff3cd"
+      case "RFD": return "#fff3cd"
+      case "DIP": return "#e2e3e5"
       default: return "#f8f9fa"
     }
   }
@@ -204,7 +206,8 @@ const WardManagement = () => {
       case "TRP": return "#fd7e14"
       case "OT": return "#17a2b8"
       case "LR": return "#e83e8c"
-      case "RD": return "#ffc107"
+      case "RFD": return "#ffc107"
+      case "DIP": return "#17a2b8"
       default: return "#6c757d"
     }
   }
@@ -217,7 +220,8 @@ const WardManagement = () => {
       case "TRP": return "warning"
       case "OT": return "info"
       case "LR": return "danger"
-      case "RD": return "warning"
+      case "RFD": return "warning"
+      case "DIP": return "info"
       default: return "secondary"
     }
   }
@@ -230,7 +234,8 @@ const WardManagement = () => {
       case "TRP": return "Transferred Patient"
       case "OT": return "In Operation Theater"
       case "LR": return "In Labor Room"
-      case "RD": return "Ready for Discharge"
+      case "RFD": return "Ready for Discharge"
+      case "DIP": return "Discharge In Process"
       default: return status
     }
   }
@@ -318,6 +323,10 @@ const WardManagement = () => {
                         <div className="text-center px-3 py-1">
                           <div className="fw-bold fs-4 text-warning">{stats.readyForDischarge}</div>
                           <div className="small">Ready for Discharge</div>
+                        </div>
+                        <div className="text-center px-3 py-1">
+                          <div className="fw-bold fs-4 text-info">{stats.dischargeInProcess}</div>
+                          <div className="small">Discharge In Process</div>
                         </div>
                         <div className="text-center px-3 py-1">
                           <div className="fw-bold fs-4">{stats.totalBeds}</div>
@@ -667,7 +676,11 @@ const WardManagement = () => {
                             </div>
                             <div className="d-flex align-items-center gap-3 mb-2">
                               <div style={{ width: "20px", height: "20px", backgroundColor: "#fff3cd", border: "2px solid #ffc107", borderRadius: "4px" }}></div>
-                              <span><strong>RD</strong> - Ready for Discharge</span>
+                              <span><strong>RFD</strong> - Ready for Discharge</span>
+                            </div>
+                            <div className="d-flex align-items-center gap-3 mb-2">
+                              <div style={{ width: "20px", height: "20px", backgroundColor: "#e2e3e5", border: "2px solid #17a2b8", borderRadius: "4px" }}></div>
+                              <span><strong>DIP</strong> - Discharge In Process</span>
                             </div>
                           </div>
                         </div>
