@@ -257,7 +257,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   }, [selectedPatient]);
 
   // ---------- Fetch tracking data from API (only for lab) ----------
-  const fetchTrackingData = async (page = 1) => {
+ const fetchTrackingData = async (page = 1) => {
     if (!selectedPatient?.patientId) {
       setTrackingData([]);
       setTotalElements(0);
@@ -314,7 +314,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     if (activeTab === "tracking" && trackingType === "lab") {
       fetchTrackingData(trackingCurrentPage);
     }
-    // If trackingType is "radiology", we don't fetch and keep data empty
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, trackingType, trackingCurrentPage, selectedPatient]);
 
@@ -999,16 +998,13 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               </label>
             </div>
 
-            {/* Table – same structure as OrderTrackingReport */}
+            {/* Table – removed Patient Name, Mobile No, Age/Gender columns */}
             <div className="table-responsive">
               <table className="table table-bordered table-hover">
                 <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                   <tr>
                     <th>Order No</th>
                     <th>Order Date</th>
-                    <th>Patient Name</th>
-                    <th>Mobile No</th>
-                    <th>Age / Gender</th>
                     <th>Sample ID</th>
                     <th>Investigation Name</th>
                     <th>Investigation Status</th>
@@ -1018,7 +1014,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 <tbody>
                   {trackingLoading ? (
                     <tr>
-                      <td colSpan="9" className="text-center py-4">
+                      <td colSpan="6" className="text-center py-4">
                         Loading...
                       </td>
                     </tr>
@@ -1027,9 +1023,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                       <tr key={index}>
                         <td>{row.orderNo}</td>
                         <td>{row.orderDate}</td>
-                        <td>{row.patientName}</td>
-                        <td>{row.mobileNo}</td>
-                        <td>{row.ageGender}</td>
                         <td>{row.sampleId}</td>
                         <td>{row.investigationName}</td>
                         <td>{row.investigationStatus}</td>
@@ -1062,7 +1055,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="9" className="text-center py-4">
+                      <td colSpan="6" className="text-center py-4">
                         No records found
                       </td>
                     </tr>
