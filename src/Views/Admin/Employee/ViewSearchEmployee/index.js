@@ -36,6 +36,7 @@ const ViewSearchEmployee = () => {
   const initialFormData = {
     profilePicName: null,
     profilePicPreview: null,
+    profilePicType: null,
     idDocumentName: null,
 
     firstName: "",
@@ -1338,6 +1339,7 @@ const handleStateChange = (id) => {
           ...prevFormData,
           profilePicName: file,
           profilePicPreview: reader.result,
+          profilePicType: file.type,
         }));
       };
       reader.readAsDataURL(file);
@@ -1839,6 +1841,7 @@ const handleStateChange = (id) => {
       ],
       profilePicName: null,
       profilePicPreview: null,
+      profilePicType: null,
       idDocumentName: null,
     });
 
@@ -3157,6 +3160,7 @@ if (formData.fromDate) {
                                       ...prev,
                                       profilePicName: null,
                                       profilePicPreview: null,
+                                      profilePicType: null,
                                     }));
                                     setExistingFiles((prev) => ({
                                       ...prev,

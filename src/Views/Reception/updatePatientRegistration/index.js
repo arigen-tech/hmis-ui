@@ -55,6 +55,7 @@ import {
   UNABLE_TO_LOAD_PATIENT_DETAILS,
   SELECT_PATIENT_TO_UPDATE_ERROR,
   ADD_AT_LEAST_ONE_APPOINTMENT_ERROR,
+  DUPLICATE_APPOINTMENT_ERROR,
   CHECK_REQUIRED_FIELDS_ERROR,
   FINAL_REQUEST_READY_LOG,
   PATIENT_UPDATE_SUCCESS,
@@ -174,6 +175,7 @@ const UpdatePatientRegistration = () => {
   const [isCameraOn, setIsCameraOn] = useState(false);
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const profilePhotoInputRef = useRef(null);
   const [showDetails, setShowDetails] = useState(false);
   const [preConsultationFlag, setPreConsultationFlag] = useState(false);
   const [totalPages, setTotalPages] = useState(0);
@@ -279,6 +281,44 @@ const UpdatePatientRegistration = () => {
     today.setHours(0, 0, 0, 0);
 
     return selected < today;
+  };
+
+  const getAppointmentDuplicateKey = (appointment) => {
+    if (
+      !appointment?.speciality ||
+      !appointment?.selDoctorId ||
+      !appointment?.selSession ||
+      !appointment?.selDate
+    ) {
+      return null;
+    }
+
+    return [
+      String(appointment.speciality),
+      String(appointment.selDoctorId),
+      String(appointment.selSession),
+      String(appointment.selDate),
+    ].join("|");
+  };
+
+  const findDuplicateAppointment = (list = appointments) => {
+    const seen = new Map();
+
+    for (const appointment of list) {
+      const key = getAppointmentDuplicateKey(appointment);
+      if (!key) continue;
+
+      if (seen.has(key)) {
+        return {
+          current: appointment,
+          previous: seen.get(key),
+        };
+      }
+
+      seen.set(key, appointment);
+    }
+
+    return null;
   };
 
   const addAppointmentRow = () => {
@@ -1143,7 +1183,7 @@ const UpdatePatientRegistration = () => {
     }
   };
 
-  const confirmUpload = (imageData) => {
+  const confirmUpload = (imageData, source = imageData) => {
     Swal.fire({
       title: IMAGE_TITLE,
       text: IMAGE_TEXT,
@@ -1155,16 +1195,20 @@ const UpdatePatientRegistration = () => {
       cancelButtonText: "Cancel",
     }).then((result) => {
       if (result.isConfirmed) {
-        uploadImage(imageData);
+        uploadImage(source);
       }
     });
   };
 
-  const uploadImage = async (base64Image) => {
+  const uploadImage = async (imageSource) => {
     try {
-      const blob = await fetch(base64Image).then((res) => res.blob());
       const formData1 = new FormData();
-      formData1.append("file", blob, "photo.png");
+      if (imageSource instanceof File) {
+        formData1.append("file", imageSource, imageSource.name || "photo.png");
+      } else {
+        const blob = await fetch(imageSource).then((res) => res.blob());
+        formData1.append("file", blob, "photo.png");
+      }
 
       const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
         method: "POST",
@@ -1189,6 +1233,24 @@ const UpdatePatientRegistration = () => {
     }
   };
 
+  const handlePhotoFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      Swal.fire("Error", "Please select a valid image file.", "error");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImage(reader.result);
+      confirmUpload(reader.result, file);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const stopCamera = () => {
     if (videoRef.current && videoRef.current.srcObject) {
       videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
@@ -1198,6 +1260,10 @@ const UpdatePatientRegistration = () => {
 
   const clearPhoto = () => {
     setImage(placeholderImage);
+    setImageURL("");
+    if (profilePhotoInputRef.current) {
+      profilePhotoInputRef.current.value = "";
+    }
   };
 
   useEffect(() => {
@@ -1296,9 +1362,12 @@ const UpdatePatientRegistration = () => {
           emerLn: emergency.lastName || "",
           emerMobile: emergency.mobileNo || "",
           abhaNumber: personal.abhaNumber || "",
+          patientImage: data.photoUrl || "",
         };
 
         setPatientDetailForm(mappedPatientData);
+        setImage(data.photoUrl || placeholderImage);
+        setImageURL(data.photoUrl || "");
 
         if (address.country) {
           await fetchStates(address.country);
@@ -1656,10 +1725,11 @@ const UpdatePatientRegistration = () => {
         Swal.fire("Error", ADD_AT_LEAST_ONE_APPOINTMENT_ERROR, "error");
         return;
       }
-    }
-
-    if (imageURL !== "") {
-      patientDetailForm.imageURL = imageURL;
+      const duplicateAppointment = findDuplicateAppointment(validAppointments);
+      if (duplicateAppointment) {
+        Swal.fire("Error", DUPLICATE_APPOINTMENT_ERROR, "error");
+        return;
+      }
     }
 
     sendPatientData();
@@ -3069,11 +3139,20 @@ const UpdatePatientRegistration = () => {
                               height="150"
                               style={{ display: "none" }}
                             ></canvas>
-                            <div className="mt-2">
-                              <button
-                                type="button"
-                                className="btn btn-primary me-2 mb-2"
-                                onClick={startCamera}
+                          <div className="mt-2">
+                            <button
+                              type="button"
+                              className="btn btn-outline-primary me-2 mb-2"
+                              onClick={() =>
+                                profilePhotoInputRef.current?.click()
+                              }
+                            >
+                              Upload Photo
+                            </button>
+                            <button
+                              type="button"
+                              className="btn btn-primary me-2 mb-2"
+                              onClick={startCamera}
                                 disabled={isCameraOn}
                               >
                                 Start Camera
@@ -3087,17 +3166,24 @@ const UpdatePatientRegistration = () => {
                                   Take Photo
                                 </button>
                               )}
-                              <button
-                                type="button"
-                                className="btn btn-danger mb-2"
-                                onClick={clearPhoto}
-                              >
-                                Clear Photo
-                              </button>
-                            </div>
+                            <button
+                              type="button"
+                              className="btn btn-danger mb-2"
+                              onClick={clearPhoto}
+                            >
+                              Clear Photo
+                            </button>
                           </div>
+                          <input
+                            ref={profilePhotoInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="d-none"
+                            onChange={handlePhotoFileChange}
+                          />
                         </div>
                       </div>
+                    </div>
                     </div>
                   </form>
                 </div>
