@@ -499,15 +499,15 @@ const NonDrugMaster = () => {
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
-                                                                        checked={item.status === "y"}
-                                                                        onChange={() => handleSwitchChange(item.id, item.status === "y" ? "n" : "y", item.itemName)}
+                                                                        checked={item.status?.toLowerCase() === "y"}
+                                                                        onChange={() => handleSwitchChange(item.id, item.status?.toLowerCase() === "y" ? "n" : "y", item.itemName)}
                                                                         id={`switch-${item.id}`}
                                                                     />
                                                                     <label
                                                                         className="form-check-label px-0"
                                                                         htmlFor={`switch-${item.id}`}
                                                                     >
-                                                                        {item.status === "y" ? "Active" : "Deactivat"}
+                                                                        {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                     </label>
                                                                 </div>
                                                             </td>
@@ -515,7 +515,7 @@ const NonDrugMaster = () => {
                                                                 <button
                                                                     className="btn btn-sm btn-success me-2"
                                                                     onClick={() => handleEdit(item)}
-                                                                    disabled={item.status !== "y"}
+                                                                    disabled={item.status?.toLowerCase() !== "y"}
                                                                 >
                                                                     <i className="fa fa-pencil"></i>
                                                                 </button>
