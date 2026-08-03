@@ -1004,6 +1004,7 @@ export const UPLOADED_IMAGE_URL_LOG = "Uploaded Image URL:";
 export const UNABLE_TO_LOAD_PATIENT_DETAILS = "Unable to load patient details";
 export const SELECT_PATIENT_TO_UPDATE_ERROR ="Please select a patient to update";
 export const ADD_AT_LEAST_ONE_APPOINTMENT_ERROR ="Please add at least one valid appointment";
+export const DUPLICATE_APPOINTMENT_ERROR ="The same doctor cannot be booked for the same session on the same day more than once.";
 export const CHECK_REQUIRED_FIELDS_ERROR = "Please check all required fields";
 export const FINAL_REQUEST_READY_LOG = "Final request ready for sending:";
 export const PATIENT_UPDATE_WITH_APPOINTMENT_SUCCESS ="Patient updated and appointments scheduled successfully!";
@@ -1434,3 +1435,8 @@ export const INTAKE_OUTPUT_SAVE_SUCCESS = "Intake/Output details saved successfu
 export const INTAKE_OUTPUT_SAVE_FAILURE = "Failed to save Intake/Output details.";
 export const INTAKE_OUTPUT_SAVE_ERROR = "Error saving Intake/Output details. Please try again.";
 export const CANCEL_PATIENT_CONFIRMATION = "This will permanently close the OPD visit for this patient. Do you want to continue?"
+
+// Item Type Codes
+export const ITEM_TYPE_CODE_NONMED_CON = "NONMED_CON";
+export const ITEM_TYPE_CODE_MED_CON = "MED_CON";
+export const SECTION_CODE_DRUG = "DRUGS";

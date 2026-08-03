@@ -2,11 +2,11 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE, GET_MEDICAL_CONSUMABLE_ITEMS } from "../../../config/apiConfig";
+import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
-import { ITEM_TYPE_CODE_MED_CON, SECTION_CODE_DRUG } from "../../../config/constants";
+import { ITEM_TYPE_CODE_NONMED_CON, SECTION_CODE_DRUG } from "../../../config/constants";
 
-const NonDrugMaster = () => {
+const NonConsumableMaster = () => {
     const [formData, setFormData] = useState({
         itemCode: "",
         itemName: "",
@@ -33,18 +33,10 @@ const NonDrugMaster = () => {
         section: "",
         itemClass: ""
     })
-    const [appliedSearchParams, setAppliedSearchParams] = useState({
-        itemName: "",
-        section: "",
-        itemClass: ""
-    })
     const [searchSections, setSearchSections] = useState([])
     const [searchItemClasses, setSearchItemClasses] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
-    const [totalItems, setTotalItems] = useState(0)
     const [loading, setLoading] = useState(false);
-    const [tableLoading, setTableLoading] = useState(false);
-    const [isInitialLoad, setIsInitialLoad] = useState(true);
 
     const [editingNonDrug, setEditingNonDrug] = useState(null)
     const [showForm, setShowForm] = useState(false)
@@ -62,26 +54,21 @@ const NonDrugMaster = () => {
 
     const handleSearch = (e) => {
         e.preventDefault()
-        setAppliedSearchParams(searchParams)
         setCurrentPage(1)
-        fetchNonDrugMasterData(1, searchParams)
     }
 
     const handleResetSearch = () => {
-        const resetParams = {
+        setSearchParams({
             itemName: "",
             section: "",
             itemClass: ""
-        };
-        setSearchParams(resetParams)
-        setAppliedSearchParams(resetParams)
+        })
         setCurrentPage(1)
-        fetchNonDrugMasterData(1, resetParams)
     }
 
     const fetchSearchSections = async () => {
         try {
-            const data = await getRequest(`${MAS_ITEM_SECTION_BY_TYPE}/${ITEM_TYPE_CODE_MED_CON}`);
+            const data = await getRequest(`${MAS_ITEM_SECTION_BY_TYPE}/${ITEM_TYPE_CODE_NONMED_CON}`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 // Filter out DRUGS section
                 const filteredSections = data.response.filter(
@@ -112,13 +99,10 @@ const NonDrugMaster = () => {
     };
 
     useEffect(() => {
+        fetchNonDrugMasterData();
         fetchMasterData();
         fetchSearchSections();
     }, []);
-
-    useEffect(() => {
-        fetchNonDrugMasterData(currentPage, appliedSearchParams);
-    }, [currentPage, appliedSearchParams]);
 
     useEffect(() => {
         if (searchParams.section) {
@@ -140,7 +124,7 @@ const NonDrugMaster = () => {
 
     useEffect(() => {
         if (masItemTypeData.length > 0 && formData.itemGroup) {
-            const targetType = masItemTypeData.find(t => t.name?.toUpperCase() === "MEDICAL CONSUMABLE");
+            const targetType = masItemTypeData.find(t => t.name?.toUpperCase() === "NON-MEDICAL CONSUMABLE");
             if (targetType) {
                 const targetTypeIdStr = targetType.id.toString();
                 if (formData.itemType !== targetTypeIdStr) {
@@ -202,39 +186,22 @@ const NonDrugMaster = () => {
         raw: item,
     });
 
-    const fetchNonDrugMasterData = async (page = 1, search = searchParams) => {
-        if (isInitialLoad) {
-            setLoading(true);
-        } else {
-            setTableLoading(true);
-        }
+    const fetchNonDrugMasterData = async () => {
+        setLoading(true);
         try {
-            const queryParams = new URLSearchParams({
-                page: (page - 1).toString(),
-                size: "5"
-            });
-            if (search.itemName) queryParams.append("itemName", search.itemName);
-            if (search.section) queryParams.append("sectionId", search.section);
-            if (search.itemClass) queryParams.append("itemClassId", search.itemClass);
-
-            const data = await getRequest(`${GET_MEDICAL_CONSUMABLE_ITEMS}?${queryParams.toString()}`);
-            if (data.status === 200 && data.response) {
-                const itemsList = Array.isArray(data.response.content) ? data.response.content : [];
-                setNonDrugs(itemsList.map(normalizeItem));
-                setTotalItems(data.response.totalElements || 0);
+            const data = await getRequest(MAS_NON_DRUG_ITEM_GET_ALL);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setNonDrugs(data.response.map(normalizeItem));
             } else {
+                console.error("Unexpected non-drug API response format:", data);
                 setNonDrugs([]);
-                setTotalItems(0);
             }
         } catch (error) {
             console.error("Error fetching non-drug data:", error);
             showPopup("Error fetching non-drug data", "error");
             setNonDrugs([]);
-            setTotalItems(0);
         } finally {
             setLoading(false);
-            setTableLoading(false);
-            setIsInitialLoad(false);
         }
     };
 
@@ -342,7 +309,8 @@ const NonDrugMaster = () => {
                         type: "success",
                         onClose: () => {
                             setPopupMessage(null);
-                            fetchNonDrugMasterData(currentPage, appliedSearchParams);
+                            fetchNonDrugMasterData();
+                            setCurrentPage(1);
                         }
                     });
                 } else {
@@ -464,15 +432,8 @@ const NonDrugMaster = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        const resetParams = {
-                            itemName: "",
-                            section: "",
-                            itemClass: ""
-                        };
-                        setSearchParams(resetParams);
-                        setAppliedSearchParams(resetParams);
+                        fetchNonDrugMasterData();
                         setCurrentPage(1);
-                        fetchNonDrugMasterData(1, resetParams);
                     }
                 });
             } else {
@@ -508,15 +469,13 @@ const NonDrugMaster = () => {
     }
 
     const handleRefresh = () => {
-        const resetParams = {
+        setSearchParams({
             itemName: "",
             section: "",
             itemClass: ""
-        };
-        setSearchParams(resetParams);
-        setAppliedSearchParams(resetParams);
+        });
         setCurrentPage(1);
-        fetchNonDrugMasterData(1, resetParams);
+        fetchNonDrugMasterData();
     };
 
     const showPopup = (message, type = "info") => {
@@ -529,7 +488,28 @@ const NonDrugMaster = () => {
         })
     }
 
-    const currentItems = nonDrugs;
+    const filteredNonDrugs = nonDrugs.filter((item) => {
+        const matchItemName = !searchParams.itemName || 
+            (item.itemName || "").toLowerCase().includes(searchParams.itemName.toLowerCase());
+        
+        const selectedSectionObj = searchSections.find(s => s.sectionId.toString() === searchParams.section.toString());
+        const selectedSectionName = selectedSectionObj ? selectedSectionObj.sectionName : "";
+        const matchSection = !searchParams.section || 
+            (item.section || "").toLowerCase() === selectedSectionName.toLowerCase() ||
+            (item.raw?.sectionId?.toString() === searchParams.section.toString());
+
+        const selectedClassObj = searchItemClasses.find(c => c.itemClassId.toString() === searchParams.itemClass.toString());
+        const selectedClassName = selectedClassObj ? selectedClassObj.itemClassName : "";
+        const matchItemClass = !searchParams.itemClass || 
+            (item.itemClass || "").toLowerCase() === selectedClassName.toLowerCase() ||
+            (item.raw?.itemClassId?.toString() === searchParams.itemClass.toString());
+
+        return matchItemName && matchSection && matchItemClass;
+    });
+
+    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
+    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
+    const currentItems = filteredNonDrugs.slice(indexOfFirst, indexOfLast);
 
     return (
         <div className="content-wrapper">
@@ -537,7 +517,7 @@ const NonDrugMaster = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title p-2">Medical Consumbale</h4>
+                            <h4 className="card-title p-2">Non Medical Consumbale</h4>
                             {loading && <LoadingScreen />}
 
                             <div className="d-flex justify-content-between align-items-center">
@@ -634,99 +614,74 @@ const NonDrugMaster = () => {
                                         </form>
                                     </div>
 
-                                    <div style={{ position: "relative", minHeight: "200px" }}>
-                                        {tableLoading && (
-                                            <div
-                                                style={{
-                                                    position: "absolute",
-                                                    top: 0,
-                                                    left: 0,
-                                                    width: "100%",
-                                                    height: "100%",
-                                                    backgroundColor: "rgba(255, 255, 255, 0.7)",
-                                                    display: "flex",
-                                                    justifyContent: "center",
-                                                    alignItems: "center",
-                                                    zIndex: 5,
-                                                }}
-                                            >
-                                                <div className="d-flex flex-column align-items-center">
-                                                    <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
-                                                        <span className="visually-hidden">Loading...</span>
-                                                    </div>
-                                                    <span className="mt-2 fw-bold text-primary">Loading Non-Drug Items...</span>
-                                                </div>
-                                            </div>
-                                        )}
-                                        <div className="table-responsive packagelist">
-                                            <table className="table table-bordered table-hover align-middle">
-                                                <thead className="table-light">
-                                                    <tr>
-                                                        <th>Item Code</th>
-                                                        <th>Item Name</th>
-                                                        <th>Item Group</th>
-                                                        <th>Unit</th>
-                                                        <th>Section</th>
-                                                        <th>Item Class</th>
-                                                        <th>Status</th>
-                                                        <th>Edit</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody>
-                                                    {currentItems.length > 0 ? (
-                                                        currentItems.map((item) => (
-                                                            <tr key={item.id}>
-                                                                <td>{item.itemCode}</td>
-                                                                <td>{item.itemName}</td>
-                                                                <td>{item.itemGroup}</td>
-                                                                <td>{item.unitAU}</td>
-                                                                <td>{item.section}</td>
-                                                                <td>{item.itemClass}</td>
-                                                                <td>
-                                                                    <div className="form-check form-switch">
-                                                                        <input
-                                                                            className="form-check-input"
-                                                                            type="checkbox"
-                                                                            checked={item.status?.toLowerCase() === "y"}
-                                                                            onChange={() => handleSwitchChange(item.id, item.status?.toLowerCase() === "y" ? "n" : "y", item.itemName)}
-                                                                            id={`switch-${item.id}`}
-                                                                        />
-                                                                        <label
-                                                                            className="form-check-label px-0"
-                                                                            htmlFor={`switch-${item.id}`}
-                                                                        >
-                                                                            {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
-                                                                        </label>
-                                                                    </div>
-                                                                </td>
-                                                                <td>
-                                                                    <button
-                                                                        className="btn btn-sm btn-success me-2"
-                                                                        onClick={() => handleEdit(item)}
-                                                                        disabled={item.status?.toLowerCase() !== "y"}
+                                    <div className="table-responsive packagelist">
+                                        <table className="table table-bordered table-hover align-middle">
+                                            <thead className="table-light">
+                                                <tr>
+                                                    <th>Item Code</th>
+                                                    <th>Item Name</th>
+                                                    <th>Item Group</th>
+                                                    <th>Unit</th>
+                                                    <th>Section</th>
+                                                    <th>Item Class</th>
+                                                    <th>Status</th>
+                                                    <th>Edit</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {currentItems.length > 0 ? (
+                                                    currentItems.map((item) => (
+                                                        <tr key={item.id}>
+                                                            <td>{item.itemCode}</td>
+                                                            <td>{item.itemName}</td>
+                                                            <td>{item.itemGroup}</td>
+                                                            <td>{item.unitAU}</td>
+                                                            <td>{item.section}</td>
+                                                            <td>{item.itemClass}</td>
+                                                            <td>
+                                                                <div className="form-check form-switch">
+                                                                    <input
+                                                                        className="form-check-input"
+                                                                        type="checkbox"
+                                                                        checked={item.status?.toLowerCase() === "y"}
+                                                                        onChange={() => handleSwitchChange(item.id, item.status?.toLowerCase() === "y" ? "n" : "y", item.itemName)}
+                                                                        id={`switch-${item.id}`}
+                                                                    />
+                                                                    <label
+                                                                        className="form-check-label px-0"
+                                                                        htmlFor={`switch-${item.id}`}
                                                                     >
-                                                                        <i className="fa fa-pencil"></i>
-                                                                    </button>
-                                                                </td>
-                                                            </tr>
-                                                        ))
-                                                    ) : (
-                                                        <tr>
-                                                            <td colSpan="8" className="text-center">
-                                                                No non-drug items found
+                                                                        {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
+                                                                    </label>
+                                                                </div>
+                                                            </td>
+                                                            <td>
+                                                                <button
+                                                                    className="btn btn-sm btn-success me-2"
+                                                                    onClick={() => handleEdit(item)}
+                                                                    disabled={item.status?.toLowerCase() !== "y"}
+                                                                >
+                                                                    <i className="fa fa-pencil"></i>
+                                                                </button>
                                                             </td>
                                                         </tr>
-                                                    )}
-                                                </tbody>
-                                            </table>
-                                        </div>
+                                                    ))
+                                                ) : (
+                                                    <tr>
+                                                        <td colSpan="8" className="text-center">
+                                                            No non-drug items found
+                                                        </td>
+                                                    </tr>
+                                                )}
+                                            </tbody>
+                                        </table>
                                     </div>
                                     
                                     {/* PAGINATION USING REUSABLE COMPONENT */}
-                                    {totalItems > 0 && (
+                                    {filteredNonDrugs.length > 0 && (
                                         <Pagination
-                                            totalItems={totalItems}
-                                            itemsPerPage={5}
+                                            totalItems={filteredNonDrugs.length}
+                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                                             currentPage={currentPage}
                                             onPageChange={setCurrentPage}
                                         />
@@ -956,4 +911,4 @@ const NonDrugMaster = () => {
     )
 }
 
-export default NonDrugMaster
+export default NonConsumableMaster;

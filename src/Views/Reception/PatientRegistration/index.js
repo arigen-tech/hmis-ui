@@ -227,6 +227,7 @@ const PatientRegistration = () => {
   });
   const videoRef = useRef(null);
   const canvasRef = useRef(null);
+  const profilePhotoInputRef = useRef(null);
   let stream = null;
 
   const [gstConfig, setGstConfig] = useState({
@@ -649,7 +650,6 @@ const PatientRegistration = () => {
   };
 
   const handleAbhaVerificationSuccess = (abhaData) => {
-    debugger;
     console.log("ABHA Verification Data received:", abhaData);
 
     if (abhaData.abhaNumber) {
@@ -937,7 +937,7 @@ const PatientRegistration = () => {
     };
   }, []);
 
-  const confirmUpload = (imageData) => {
+  const confirmUpload = (imageData, source = imageData) => {
     Swal.fire({
       title: IMAGE_TITLE,
       text: IMAGE_TEXT,
@@ -949,16 +949,20 @@ const PatientRegistration = () => {
       cancelButtonText: "Cancel",
     }).then((result) => {
       if (result.isConfirmed) {
-        uploadImage(imageData);
+        uploadImage(source);
       }
     });
   };
 
-  const uploadImage = async (base64Image) => {
+  const uploadImage = async (imageSource) => {
     try {
-      const blob = await fetch(base64Image).then((res) => res.blob());
       const formData1 = new FormData();
-      formData1.append("file", blob, "photo.png");
+      if (imageSource instanceof File) {
+        formData1.append("file", imageSource, imageSource.name || "photo.png");
+      } else {
+        const blob = await fetch(imageSource).then((res) => res.blob());
+        formData1.append("file", blob, "photo.png");
+      }
 
       const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
         method: "POST",
@@ -983,8 +987,30 @@ const PatientRegistration = () => {
     }
   };
 
+  const handlePhotoFileChange = (event) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      Swal.fire("Error", "Please select a valid image file.", "error");
+      event.target.value = "";
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onloadend = () => {
+      setImage(reader.result);
+      confirmUpload(reader.result, file);
+    };
+    reader.readAsDataURL(file);
+  };
+
   const clearPhoto = () => {
     setImage(placeholderImage);
+    setImageURL("");
+    if (profilePhotoInputRef.current) {
+      profilePhotoInputRef.current.value = "";
+    }
   };
 
   function calculateDOBFromAge(age) {
@@ -2921,6 +2947,15 @@ const PatientRegistration = () => {
                           <div className="mt-2">
                             <button
                               type="button"
+                              className="btn btn-outline-primary me-2 mb-2"
+                              onClick={() =>
+                                profilePhotoInputRef.current?.click()
+                              }
+                            >
+                              Upload Photo
+                            </button>
+                            <button
+                              type="button"
                               className="btn btn-primary me-2 mb-2"
                               onClick={startCamera}
                               disabled={isCameraOn}
@@ -2944,6 +2979,13 @@ const PatientRegistration = () => {
                               Clear Photo
                             </button>
                           </div>
+                          <input
+                            ref={profilePhotoInputRef}
+                            type="file"
+                            accept="image/*"
+                            className="d-none"
+                            onChange={handlePhotoFileChange}
+                          />
                         </div>
                       </div>
                     </div>

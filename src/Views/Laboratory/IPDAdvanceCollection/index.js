@@ -4,6 +4,7 @@ import { getRequest } from "../../../service/apiService";
 import { GET_IPD_ADVANCE_COLLECTION } from "../../../config/apiConfig";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card", "Cheque"];
+const COLLECTION_TYPES = ["Advance", "Final"];
 
 const IPDAdvanceCollection = () => {
   // Search parameters
@@ -26,6 +27,7 @@ const IPDAdvanceCollection = () => {
   const [collectionDate, setCollectionDate] = useState(
     new Date().toISOString().split("T")[0],
   );
+  const [collectionType, setCollectionType] = useState("Advance");
   const [paymentRows, setPaymentRows] = useState([
     { id: 1, mode: "Cash", amount: "" },
     { id: 2, mode: "UPI", amount: "" },
@@ -72,7 +74,6 @@ const IPDAdvanceCollection = () => {
     setSearchMobileNo("");
     setSearchAdmissionNo("");
     setPage(0);
-    // State updates are async, so we fetch without filters immediately
     setIsLoading(true);
     getRequest(`${GET_IPD_ADVANCE_COLLECTION}?page=0&size=${size}`)
       .then(res => {
@@ -93,6 +94,7 @@ const IPDAdvanceCollection = () => {
   const handleRowClick = (admission) => {
     setSelectedAdmission(admission);
     setCollectionDate(new Date().toISOString().split("T")[0]);
+    setCollectionType("Advance");
     setPaymentRows([
       { id: 1, mode: "Cash", amount: "" },
       { id: 2, mode: "UPI", amount: "" },
@@ -422,6 +424,31 @@ const IPDAdvanceCollection = () => {
                                 onChange={(e) => setCollectionDate(e.target.value)}
                               />
                             </div>
+                            <div className="form-group col-md-4">
+                              <label>Collection Type</label>
+                              <select
+                                className="form-select"
+                                value={collectionType}
+                                onChange={(e) => setCollectionType(e.target.value)}
+                              >
+                                {COLLECTION_TYPES.map((type) => (
+                                  <option key={type} value={type}>
+                                    {type}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          {/* Add Row button - Positioned above the table */}
+                          <div className="d-flex justify-content-end mb-2">
+                            <button
+                              type="button"
+                              className="btn btn-success"
+                              onClick={addPaymentRow}
+                            >
+                              Add Row +
+                            </button>
                           </div>
 
                           <table className="table table-bordered">
@@ -466,7 +493,7 @@ const IPDAdvanceCollection = () => {
                                   <td className="text-center">
                                     <button
                                       type="button"
-                                      className="btn btn-danger"
+                                      className="btn btn-danger btn-sm"
                                       onClick={() => removePaymentRow(row.id)}
                                       disabled={paymentRows.length === 1}
                                       title="Remove payment row"
@@ -479,35 +506,23 @@ const IPDAdvanceCollection = () => {
                             </tbody>
                           </table>
 
-                          {/* Add Row button placed below the table */}
-                          <button
-                            type="button"
-                            className="btn btn-success mt-2"
-                            onClick={addPaymentRow}
-                          >
-                            Add Row +
-                          </button>
-
-                          <div className="d-flex justify-content-end mt-3">
-                            <h5 className="fw-bold">
+                          {/* Footer: Total Amount + Submit button */}
+                          <div className="d-flex justify-content-between align-items-center mt-3">
+                            <h5 className="fw-bold mb-0">
                               Total Amount: ₹{totalAmount}
                             </h5>
+                            <button
+                              type="button"
+                              className="btn btn-warning"
+                              disabled={Number(totalAmount) <= 0}
+                            >
+                              Submit
+                            </button>
                           </div>
                         </div>
                       </div>
                     </div>
                   </div>
-
-                  {/* Submit and Reset Buttons */}
-                  <div className="d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <button
-                      type="button"
-                      className="btn btn-warning"
-                      disabled={Number(totalAmount) <= 0}
-                    >
-                      Submit
-                    </button>
-                  </div> 
                 </>
               )}
             </div>

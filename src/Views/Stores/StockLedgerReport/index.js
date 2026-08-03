@@ -4,11 +4,12 @@ import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Paginati
 import Popup from "../../../Components/popup";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import { getRequest } from "../../../service/apiService";
-import { INVENTORY, SECTION_ID_FOR_DRUGS, ALL_REPORTS, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID } from "../../../config/apiConfig";
+import { INVENTORY, ALL_REPORTS, REQUEST_PARAM_HOSPITAL_ID, REQUEST_PARAM_DEPARTMENT_ID, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS } from "../../../config/apiConfig";
 
 const StoreStockLedgerReport = () => {
   // State for form inputs
   const [itemName, setItemName] = useState("");
+  const [itemType, setItemType] = useState("");
   const [selectedItem, setSelectedItem] = useState(null);
   const [batchNo, setBatchNo] = useState("");
   const [batchOptions, setBatchOptions] = useState([]);
@@ -142,7 +143,17 @@ const StoreStockLedgerReport = () => {
   // Fetch items from API with debounce
   const fetchItems = async (page, searchText = "") => {
     try {
-      const url = `${INVENTORY}/item/search?sectionId=${SECTION_ID_FOR_DRUGS}&keyword=${encodeURIComponent(searchText)}&page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
+      const params = new URLSearchParams();
+
+      if (itemType === "drug") {
+        params.append([REQUEST_PARAM_SECTION_CODE], SECTION_CODE_FOR_DRUGS);
+      }
+
+      params.append([REQUEST_PARAM_KEYWORD], searchText);
+      params.append([REQUEST_PARAM_PAGE], page);
+      params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
+
+      const url = `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`;
       const data = await getRequest(url);
 
       if (data.status === 200 && data.response?.content) {
@@ -346,6 +357,7 @@ const StoreStockLedgerReport = () => {
   // Reset all form and report data
   const handleReset = () => {
     setItemName("");
+    setItemType("");
     setSelectedItem(null);
     setItemSearch("");
     setItemDropdown([]);
@@ -389,7 +401,30 @@ const StoreStockLedgerReport = () => {
             <div className="card-body">
               {/* Search Form */}
               <div className="row mb-4">
-                <div className="form-group col-md-6 position-relative" ref={dropdownItemRef}>
+                <div className="col-md-4">
+                  <label className="form-label fw-bold">Item Type <span className="text-danger">*</span></label>
+                  <select
+                    className="form-select mt-1"
+                    value={itemType}
+                    onChange={(e) => {
+                      const nextValue = e.target.value;
+                      setItemType(nextValue);
+                      setItemName("");
+                      setSelectedItem(null);
+                      setItemSearch("");
+                      setItemDropdown([]);
+                      setBatchOptions([]);
+                      setBatchNo("");
+                      setShowItemDropdown(false);
+                    }}
+                  >
+                    <option value="">Select Item Type</option>
+                    <option value="drug">Drug</option>
+                    <option value="nondrug">Non Drug</option>
+                  </select>
+                </div>
+
+                <div className="form-group col-md-4 position-relative" ref={dropdownItemRef}>
                   <label className="form-label fw-bold">Item Name <span className="text-danger">*</span></label>
                   <input
                     type="text"
@@ -399,6 +434,7 @@ const StoreStockLedgerReport = () => {
                     onChange={(e) => handleItemSearch(e.target.value)}
                     onClick={loadFirstItemPage}
                     autoComplete="off"
+                    disabled={!itemType}
                   />
                   
                   {/* Item Dropdown */}
@@ -442,7 +478,7 @@ const StoreStockLedgerReport = () => {
                   )}
                 </div>
 
-                <div className="col-md-6 mt-1">
+                <div className="col-md-4 mt-1">
                   <label className="form-label fw-bold">Batch No <span className="text-danger">*</span></label>
                   <div className="position-relative">
                     <select 

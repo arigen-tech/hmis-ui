@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { ALL_REPORTS, SECTION_ID_FOR_DRUGS, GET_DEPARTMENT_BY_ID, GET_CURRENT_USER_PROFILE_BY_NAME, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_HOSPITAL_ID, GET_ITEM_DETAILS_BY_ID, SAVE_OPENING_BALANCE_ENTRY, SUBMIT_OPENING_BALANCE_ENTRY, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID } from "../../../config/apiConfig";
+import { ALL_REPORTS, SECTION_ID_FOR_DRUGS, GET_DEPARTMENT_BY_ID, GET_CURRENT_USER_PROFILE_BY_NAME, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_HOSPITAL_ID, GET_ITEM_DETAILS_BY_ID, SAVE_OPENING_BALANCE_ENTRY, SUBMIT_OPENING_BALANCE_ENTRY, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS } from "../../../config/apiConfig";
 import { getRequest, postRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import {WARNING_DUPLICATE_BATCH_ENTRY,WARNING_CORRECT_ERRORS,CONFIRM_SAVE_OPENING_BALANCE,SUCCESS_OPENING_BALANCE_SAVED_PRINT,
@@ -205,7 +205,7 @@ const OpeningBalanceEntry = () => {
       const params = new URLSearchParams();
 
       if (balanceType === "drug") {
-        params.append([REQUEST_PARAM_SECTION_ID], SECTION_ID_FOR_DRUGS);
+        params.append([REQUEST_PARAM_SECTION_CODE], SECTION_CODE_FOR_DRUGS);
       }
 
       params.append([REQUEST_PARAM_KEYWORD], searchText);
@@ -538,6 +538,7 @@ const OpeningBalanceEntry = () => {
       enteredDt: convertToISODate(formData.balanceEntryDate),
       enteredBy: formData.enteredBy,
       departmentId: formData.department,
+      balanceType: balanceType === "drug" ? SECTION_CODE_FOR_DRUGS : balanceType === "nondrug" ? SECTION_CODE_FOR_NON_DRUGS : "",
       storeBalanceDtList: drugEntries
         .filter(entry => entry.drugCode || entry.drugName)
         .map(entry => ({

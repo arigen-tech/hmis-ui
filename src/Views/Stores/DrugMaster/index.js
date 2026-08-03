@@ -264,7 +264,7 @@ const DrugMaster = () => {
             const data = await getRequest(`${MAS_ITEMFACILTY}/getAll/1`);
             if (data.status === 200 && Array.isArray(data.response)) {
                 // Filter only active facilities
-                const activeFacilities = data.response.filter(facility => facility.status === "y");
+                const activeFacilities = data.response.filter(facility => facility.status?.toLowerCase() === "y");
                 setFacilityOptions(activeFacilities);
             } else {
                 setFacilityOptions([]);
@@ -299,7 +299,7 @@ const DrugMaster = () => {
     }
 
     const handleSwitchChange = (id, currentStatus, name) => {
-        const newStatus = currentStatus === "y" ? "n" : "y";
+        const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
         setConfirmDialog({ isOpen: true, drugId: id, newStatus, name });
     }
 
@@ -651,7 +651,7 @@ const DrugMaster = () => {
                                                                     <input
                                                                         className="form-check-input"
                                                                         type="checkbox"
-                                                                        checked={item.status === "y"}
+                                                                        checked={item.status?.toLowerCase() === "y"}
                                                                         onChange={() => handleSwitchChange(item.itemId, item.status, item.nomenclature)}
                                                                         id={`switch-${item.itemId}`}
                                                                     />
@@ -659,7 +659,7 @@ const DrugMaster = () => {
                                                                         className="form-check-label px-0"
                                                                         htmlFor={`switch-${item.itemId}`}
                                                                     >
-                                                                        {item.status === "y" ? "Active" : "Deactivated"}
+                                                                        {item.status?.toLowerCase() === "y" ? "Active" : "Deactivated"}
                                                                     </label>
                                                                 </div>
                                                             </td>
@@ -667,7 +667,7 @@ const DrugMaster = () => {
                                                                 <button
                                                                     className="btn btn-sm btn-success me-2"
                                                                     onClick={() => handleEdit(item)}
-                                                                    disabled={item.status !== "y"}
+                                                                    disabled={item.status?.toLowerCase() !== "y"}
                                                                 >
                                                                     <i className="fa fa-pencil"></i>
                                                                 </button>

@@ -3,7 +3,7 @@ import { createPortal } from "react-dom"
 import { useNavigate } from 'react-router-dom';
 import Popup from "../../../Components/popup"
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
-import { SECTION_ID_FOR_DRUGS, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, GET_OPENING_BALANCE_ENTRY_HEADERS, GET_OPENING_BALANCE_ENTRY_DETAILS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, GET_DRUG_CODE_FOR_DROPDOWN, GET_CURRENT_USER_PROFILE_BY_NAME, GET_DEPARTMENT_BY_ID, UPDATE_OPENING_BALANCE_ENTRY_BY_ID, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, STATUS_D } from "../../../config/apiConfig";
+import { SECTION_ID_FOR_DRUGS, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_FROM_DATE, REQUEST_PARAM_TO_DATE, GET_OPENING_BALANCE_ENTRY_HEADERS, GET_OPENING_BALANCE_ENTRY_DETAILS, REQUEST_PARAM_SECTION_ID, REQUEST_PARAM_KEYWORD, GET_ALL_ITEMS_BY_NAME, GET_ITEM_DETAILS_BY_ID, REQUEST_PARAM_HOSPITAL_ID, GET_ALL_BRANDS_FOR_DROPDOWN, GET_ALL_MANUFACTURER_FOR_DROPDOWN, GET_DRUG_CODE_FOR_DROPDOWN, GET_CURRENT_USER_PROFILE_BY_NAME, GET_DEPARTMENT_BY_ID, UPDATE_OPENING_BALANCE_ENTRY_BY_ID, OPENING_BALANCE_REPORT_URL, REQUEST_PARAM_BALANCE_M_ID, STATUS_D, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS } from "../../../config/apiConfig";
 import { getRequest, putRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
@@ -696,6 +696,10 @@ const OpeningBalanceApproval = () => {
       enteredBy: formData.enteredBy,
       enteredDt: new Date(formData.balanceEntryDate).toISOString(),
       status: status,
+      balanceType:
+        selectedRecord?.balanceType === "Drug" || selectedRecord?.balanceType === "drug"
+          ? SECTION_CODE_FOR_DRUGS
+          : SECTION_CODE_FOR_NON_DRUGS,
       deletedDt: Array.isArray(dtRecord) && dtRecord.length > 0 ? dtRecord : null,
       storeBalanceDtList,
     };

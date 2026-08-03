@@ -20,6 +20,7 @@ import {
   ADD_AT_LEAST_ONE_INVESTIGATION,
   DUPLICATE_INVESTIGATIONS_FOUND,
   FILL_TEMPLATE_NAME_AND_CODE,
+  INVALID_DATE_TEXT,
   INVESTIGATION_ALREADY_ADDED,
   SELECT_TEMPLATE_TO_UPDATE,
   TEMPLATE_CODE_ALREADY_EXISTS,
@@ -70,7 +71,13 @@ const InvestigationModal = ({
   const [labFlag, setLabFlag] = useState("");
   const [radioFlag, setRadioFlag] = useState("");
 
-  const getToday = () => new Date().toISOString().split("T")[0];
+  const getToday = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
 
   // Reset form when modal opens/closes or templateType changes
   useEffect(() => {
@@ -512,6 +519,11 @@ const InvestigationModal = ({
   };
 
   const handleRowChange = (index, field, value) => {
+    if (field === "date" && value < getToday()) {
+      showPopup(INVALID_DATE_TEXT, "warning");
+      return;
+    }
+
     const newItems = [...investigationItems];
     newItems[index] = { ...newItems[index], [field]: value };
     setInvestigationItems(newItems);
@@ -1124,6 +1136,7 @@ const InvestigationModal = ({
                               type="date"
                               className="form-control form-control-sm"
                               value={item.date}
+                              min={getToday()}
                               onChange={(e) =>
                                 handleRowChange(index, "date", e.target.value)
                               }
