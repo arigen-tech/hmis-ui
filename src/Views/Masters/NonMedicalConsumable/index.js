@@ -5,7 +5,7 @@ import { getRequest, putRequest, postRequest } from "../../../service/apiService
 import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 
-const NonDrugMaster = () => {
+const NonConsumableMaster = () => {
     const [formData, setFormData] = useState({
         itemCode: "",
         itemName: "",
@@ -425,7 +425,7 @@ const NonDrugMaster = () => {
                 <div className="col-12 grid-margin stretch-card">
                     <div className="card form-card">
                         <div className="card-header d-flex justify-content-between align-items-center">
-                            <h4 className="card-title p-2">Medical Consumbale</h4>
+                            <h4 className="card-title p-2">Non Medical Consumbale</h4>
                             {loading && <LoadingScreen />}
 
                             <div className="d-flex justify-content-between align-items-center">
@@ -766,4 +766,4 @@ const NonDrugMaster = () => {
     )
 }
 
-export default NonDrugMaster
+export default NonConsumableMaster;

@@ -260,6 +260,8 @@ import CreateClaimRequest from './Views/IPD/TPA/CreateClaimRequest';
 import PendingIpdBillList from './Views/IPD/TPA/PendingIpdBillList';
 import DieticianDashboard from './Views/IPD/Dietician/DieticianDashboard';
 import IPDAdvanceCollection from './Views/Laboratory/IPDAdvanceCollection';
+// import RoomTariffMaster from './Views/Masters/RoomTariffMaster';
+import NonConsumableMaster from './Views/Masters/NonMedicalConsumable';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -553,6 +555,8 @@ function App() {
                 <Route path="/PendingIpdBillList" element={<PendingIpdBillList/>} />
                 <Route path="/DieticianDashboard" element={<DieticianDashboard/>} />
                 <Route path="/IPDAdvanceCollection" element={<IPDAdvanceCollection/>} />
+                {/* <Route path="/RoomTariff" element={<RoomTariffMaster/>} /> */}
+                <Route path="/NonMedicalConsumable" element={<NonConsumableMaster/>} />
                 
                 </Route>
             </Route>
