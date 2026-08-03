@@ -3,7 +3,7 @@ import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import Popup from "../../../../Components/popup";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
-import { ALL_REPORTS, INVENTORY, SECTION_ID_FOR_DRUGS } from "../../../../config/apiConfig";
+import { ALL_REPORTS, INVENTORY, GET_ALL_ITEMS_BY_NAME, REQUEST_PARAM_KEYWORD, REQUEST_PARAM_PAGE, REQUEST_PARAM_SIZE, REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS, SECTION_CODE_FOR_NON_DRUGS } from "../../../../config/apiConfig";
 import { getRequest } from "../../../../service/apiService";
 
 const ReturnRegister = () => {
@@ -125,18 +125,17 @@ const ReturnRegister = () => {
     const fetchItems = async (page, searchText = "") => {
         try {
             setIsItemLoading(true);
-            // Determine section ID based on item type
             const params = new URLSearchParams();
 
             if (itemType === "Drug") {
-                params.append("sectionId", SECTION_ID_FOR_DRUGS);
-            }
+                params.append([REQUEST_PARAM_SECTION_CODE], SECTION_CODE_FOR_DRUGS);
+            } 
 
-            params.append("keyword", searchText);
-            params.append("page", page);
-            params.append("size", DEFAULT_ITEMS_PER_PAGE);
+            params.append([REQUEST_PARAM_KEYWORD], searchText);
+            params.append([REQUEST_PARAM_PAGE], page);
+            params.append([REQUEST_PARAM_SIZE], DEFAULT_ITEMS_PER_PAGE);
 
-            const url = `${INVENTORY}/item/search?${params.toString()}`;
+            const url = `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`;
             const data = await getRequest(url);
 
             if (data.status === 200 && data.response?.content) {
