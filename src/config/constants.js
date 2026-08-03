@@ -1435,3 +1435,8 @@ export const INTAKE_OUTPUT_SAVE_SUCCESS = "Intake/Output details saved successfu
 export const INTAKE_OUTPUT_SAVE_FAILURE = "Failed to save Intake/Output details.";
 export const INTAKE_OUTPUT_SAVE_ERROR = "Error saving Intake/Output details. Please try again.";
 export const CANCEL_PATIENT_CONFIRMATION = "This will permanently close the OPD visit for this patient. Do you want to continue?"
+
+// Item Type Codes
+export const ITEM_TYPE_CODE_NONMED_CON = "NONMED_CON";
+export const ITEM_TYPE_CODE_MED_CON = "MED_CON";
+export const SECTION_CODE_DRUG = "DRUGS";

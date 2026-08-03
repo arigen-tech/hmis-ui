@@ -2,8 +2,9 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT } from "../../../config/apiConfig";
+import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { ITEM_TYPE_CODE_NONMED_CON, SECTION_CODE_DRUG } from "../../../config/constants";
 
 const NonConsumableMaster = () => {
     const [formData, setFormData] = useState({
@@ -27,7 +28,13 @@ const NonConsumableMaster = () => {
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
-    const [searchQuery, setSearchQuery] = useState("")
+    const [searchParams, setSearchParams] = useState({
+        itemName: "",
+        section: "",
+        itemClass: ""
+    })
+    const [searchSections, setSearchSections] = useState([])
+    const [searchItemClasses, setSearchItemClasses] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
     const [loading, setLoading] = useState(false);
 
@@ -38,13 +45,73 @@ const NonConsumableMaster = () => {
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, nonDrugId: null, newStatus: null, name: "" })
 
     const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value)
+        const { name, value } = e.target
+        setSearchParams(prev => ({
+            ...prev,
+            [name]: value
+        }))
     }
+
+    const handleSearch = (e) => {
+        e.preventDefault()
+        setCurrentPage(1)
+    }
+
+    const handleResetSearch = () => {
+        setSearchParams({
+            itemName: "",
+            section: "",
+            itemClass: ""
+        })
+        setCurrentPage(1)
+    }
+
+    const fetchSearchSections = async () => {
+        try {
+            const data = await getRequest(`${MAS_ITEM_SECTION_BY_TYPE}/${ITEM_TYPE_CODE_NONMED_CON}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                // Filter out DRUGS section
+                const filteredSections = data.response.filter(
+                    sec => sec.sectionCode !== SECTION_CODE_DRUG && sec.sectionName?.toUpperCase() !== "DRUGS"
+                );
+                setSearchSections(filteredSections);
+            } else {
+                setSearchSections([]);
+            }
+        } catch (error) {
+            console.error("Error fetching search sections:", error);
+            setSearchSections([]);
+        }
+    };
+
+    const fetchSearchItemClasses = async (sectionId) => {
+        try {
+            const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${sectionId}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setSearchItemClasses(data.response);
+            } else {
+                setSearchItemClasses([]);
+            }
+        } catch (error) {
+            console.error("Error fetching search item classes:", error);
+            setSearchItemClasses([]);
+        }
+    };
 
     useEffect(() => {
         fetchNonDrugMasterData();
         fetchMasterData();
+        fetchSearchSections();
     }, []);
+
+    useEffect(() => {
+        if (searchParams.section) {
+            fetchSearchItemClasses(searchParams.section);
+        } else {
+            setSearchItemClasses([]);
+            setSearchParams(prev => ({ ...prev, itemClass: "" }));
+        }
+    }, [searchParams.section]);
 
     useEffect(() => {
         if (formData.itemGroup) {
@@ -54,6 +121,18 @@ const NonConsumableMaster = () => {
             setFormData(prev => ({ ...prev, itemType: "", section: "", itemClass: "", itemCategory: "" }));
         }
     }, [formData.itemGroup]);
+
+    useEffect(() => {
+        if (masItemTypeData.length > 0 && formData.itemGroup) {
+            const targetType = masItemTypeData.find(t => t.name?.toUpperCase() === "NON-MEDICAL CONSUMABLE");
+            if (targetType) {
+                const targetTypeIdStr = targetType.id.toString();
+                if (formData.itemType !== targetTypeIdStr) {
+                    setFormData(prev => ({ ...prev, itemType: targetTypeIdStr }));
+                }
+            }
+        }
+    }, [masItemTypeData, formData.itemGroup]);
 
     useEffect(() => {
         if (formData.itemType) {
@@ -260,7 +339,8 @@ const NonConsumableMaster = () => {
             setEditEnabled(true);
             setShowForm(true);
 
-            const groupId = details.groupId || details.itemGroupId || details.itemGroup || "";
+            const consumableGroup = masStoreGroup.find(g => g.groupName?.toUpperCase() === "CONSUMABLE");
+            const defaultGroupId = consumableGroup ? consumableGroup.id.toString() : (details.groupId || details.itemGroupId || details.itemGroup || "2");
             const itemTypeId = details.itemTypeId || details.itemType || "";
             const sectionId = details.sectionId || details.section || "";
             const itemClassId = details.itemClassId || details.itemClass || "";
@@ -270,7 +350,7 @@ const NonConsumableMaster = () => {
             setFormData({
                 itemCode: details.itemCode || details.pvmsNo || "",
                 itemName: details.itemName || details.nomenclature || "",
-                itemGroup: groupId?.toString() || "",
+                itemGroup: defaultGroupId?.toString() || "",
                 itemType: itemTypeId?.toString() || "",
                 section: sectionId?.toString() || "",
                 itemClass: itemClassId?.toString() || "",
@@ -278,8 +358,8 @@ const NonConsumableMaster = () => {
                 unitAU: unitAUValue?.toString() || ""
             });
 
-            if (groupId) {
-                await fetchItemTypesByGroup(groupId);
+            if (defaultGroupId) {
+                await fetchItemTypesByGroup(defaultGroupId);
             }
             if (itemTypeId) {
                 await fetchSectionsByItemType(itemTypeId);
@@ -300,10 +380,12 @@ const NonConsumableMaster = () => {
         setEditingNonDrug(null);
         setEditEnabled(false);
         setShowForm(true);
+        const consumableGroup = masStoreGroup.find(g => g.groupName?.toUpperCase() === "CONSUMABLE");
+        const defaultGroupId = consumableGroup ? consumableGroup.id.toString() : "2"; // fallback to 2
         setFormData({
             itemCode: "",
             itemName: "",
-            itemGroup: "",
+            itemGroup: defaultGroupId,
             itemType: "",
             section: "",
             itemClass: "",
@@ -387,7 +469,11 @@ const NonConsumableMaster = () => {
     }
 
     const handleRefresh = () => {
-        setSearchQuery("");
+        setSearchParams({
+            itemName: "",
+            section: "",
+            itemClass: ""
+        });
         setCurrentPage(1);
         fetchNonDrugMasterData();
     };
@@ -403,16 +489,22 @@ const NonConsumableMaster = () => {
     }
 
     const filteredNonDrugs = nonDrugs.filter((item) => {
-        const q = (searchQuery || "").toLowerCase();
+        const matchItemName = !searchParams.itemName || 
+            (item.itemName || "").toLowerCase().includes(searchParams.itemName.toLowerCase());
+        
+        const selectedSectionObj = searchSections.find(s => s.sectionId.toString() === searchParams.section.toString());
+        const selectedSectionName = selectedSectionObj ? selectedSectionObj.sectionName : "";
+        const matchSection = !searchParams.section || 
+            (item.section || "").toLowerCase() === selectedSectionName.toLowerCase() ||
+            (item.raw?.sectionId?.toString() === searchParams.section.toString());
 
-        return (
-            (item.itemCode || "").toLowerCase().includes(q) ||
-            (item.itemName || "").toLowerCase().includes(q) ||
-            (item.itemGroup || "").toLowerCase().includes(q) ||
-            (item.itemClass || "").toLowerCase().includes(q) ||
-            (item.section || "").toLowerCase().includes(q) ||
-            (item.unitAU ? item.unitAU.toString().toLowerCase() : "").includes(q)
-        );
+        const selectedClassObj = searchItemClasses.find(c => c.itemClassId.toString() === searchParams.itemClass.toString());
+        const selectedClassName = selectedClassObj ? selectedClassObj.itemClassName : "";
+        const matchItemClass = !searchParams.itemClass || 
+            (item.itemClass || "").toLowerCase() === selectedClassName.toLowerCase() ||
+            (item.raw?.itemClassId?.toString() === searchParams.itemClass.toString());
+
+        return matchItemName && matchSection && matchItemClass;
     });
 
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -430,35 +522,18 @@ const NonConsumableMaster = () => {
 
                             <div className="d-flex justify-content-between align-items-center">
                                 {!showForm ? (
-                                    <>
-                                        <form className="d-inline-block searchform me-4" role="search">
-                                            <div className="input-group searchinput">
-                                                <input
-                                                    type="search"
-                                                    className="form-control"
-                                                    placeholder="Search"
-                                                    aria-label="Search"
-                                                    value={searchQuery}
-                                                    onChange={handleSearchChange}
-                                                />
-                                                <span className="input-group-text" id="search-icon">
-                                                    <i className="fa fa-search"></i>
-                                                </span>
-                                            </div>
-                                        </form>
-                                        <div className="d-flex align-items-center ms-auto">
-                                            <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2 flex-shrink-0" 
-                                                onClick={handleRefresh}
-                                            >
-                                                <i className="mdi mdi-refresh"></i> Show All
-                                            </button>
-                                        </div>
-                                    </>
+                                    <div className="d-flex align-items-center ms-auto">
+                                        <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
+                                            <i className="mdi mdi-plus"></i> Add
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-success me-2 flex-shrink-0" 
+                                            onClick={handleRefresh}
+                                        >
+                                            <i className="mdi mdi-refresh"></i> Show All
+                                        </button>
+                                    </div>
                                 ) : (
                                     <button type="button" className="btn btn-secondary" onClick={handleBack}>
                                         <i className="mdi mdi-arrow-left"></i> Back
@@ -470,6 +545,75 @@ const NonConsumableMaster = () => {
                         <div className="card-body">
                             {!showForm ? (
                                 <>
+                                    <div className="mb-4">
+                                        <form onSubmit={handleSearch}>
+                                            <div className="row g-3 align-items-end">
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        name="itemName"
+                                                        placeholder="Enter Item Name"
+                                                        value={searchParams.itemName}
+                                                        onChange={handleSearchChange}
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Section</label>
+                                                    <select
+                                                        className="form-select"
+                                                        name="section"
+                                                        value={searchParams.section}
+                                                        onChange={handleSearchChange}
+                                                    >
+                                                        <option value="">Select Section</option>
+                                                        {searchSections.map(sec => (
+                                                            <option key={sec.sectionId} value={sec.sectionId}>
+                                                                {sec.sectionName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Class</label>
+                                                    <select
+                                                        className="form-select"
+                                                        name="itemClass"
+                                                        value={searchParams.itemClass}
+                                                        onChange={handleSearchChange}
+                                                        disabled={!searchParams.section}
+                                                    >
+                                                        <option value="">Select Item Class</option>
+                                                        {searchItemClasses.map(cls => (
+                                                            <option key={cls.itemClassId} value={cls.itemClassId}>
+                                                                {cls.itemClassName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div className="col-md-3 d-flex align-items-end gap-2">
+                                                    <button
+                                                        type="submit"
+                                                        className="btn btn-primary"
+                                                    >
+                                                        Search
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary"
+                                                        onClick={handleResetSearch}
+                                                    >
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+
                                     <div className="table-responsive packagelist">
                                         <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
@@ -586,6 +730,7 @@ const NonConsumableMaster = () => {
                                                 value={formData.itemGroup}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={true}
                                             >
                                                 <option value="">Select Item Group</option>
                                                 {masStoreGroup.map((item) => (
@@ -606,7 +751,7 @@ const NonConsumableMaster = () => {
                                                 value={formData.itemType}
                                                 onChange={handleInputChange}
                                                 required
-                                                disabled={!formData.itemGroup}
+                                                disabled={true}
                                             >
                                                 <option value="">Select Item Type</option>
                                                 {masItemTypeData.map((item) => (
