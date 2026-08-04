@@ -9,11 +9,20 @@ import {
 } from "../../../../service/apiService";
 import {
   MAS_FREQUENCY,
-  MAS_DRUG_MAS,
   OPD_TEMPLATE,
   ITEM_CLASS,
   DRUG_TYPE,
   OPD_TREATMENT_TEMPLATE_GET_ALL,
+  GET_ALL_ITEMS_BY_NAME,
+  GET_ITEM_DETAILS_BY_ID,
+  REQUEST_PARAM_HOSPITAL_ID,
+  REQUEST_PARAM_KEYWORD,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_REQUESTED_DEPT_ID,
+  REQUEST_PARAM_SIZE,
+  REQUEST_PARAM_SECTION_CODE,
+  SECTION_CODE_FOR_DRUGS,
+  DISPENSARY_DEPARTMENT_ID,
 } from "../../../../config/apiConfig";
 import DuplicatePopup from "../DuplicatePopup";
 import {
@@ -187,7 +196,7 @@ const TreatmentModal = ({
 
           if (templateType === "edit" && selectedTemplate) {
             setSelectedTemplateId(selectedTemplate.templateId);
-            loadTemplateData(selectedTemplate);
+            void loadTemplateData(selectedTemplate);
           }
         } catch (error) {
           console.error("Error fetching data:", error);
@@ -214,7 +223,7 @@ const TreatmentModal = ({
         (t) => t.templateId == selectedTemplateId,
       );
       if (template) {
-        loadTemplateData(template);
+        void loadTemplateData(template);
       }
     }
   }, [
@@ -252,10 +261,14 @@ const TreatmentModal = ({
 
   const fetchDrugOptions = async (searchText = "", page = 0) => {
     try {
+      const params = new URLSearchParams();
+      params.append(REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS);
+      params.append(REQUEST_PARAM_KEYWORD, searchText);
+      params.append(REQUEST_PARAM_PAGE, page);
+      params.append(REQUEST_PARAM_SIZE, 20);
+
       const response = await getRequest(
-        `${MAS_DRUG_MAS}/getAllBySectionOnlyDynamic?flag=1&search=${encodeURIComponent(
-          searchText,
-        )}&page=${page}&size=20`,
+        `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`,
       );
 
       if (response.status === 200 && response.response?.content) {
@@ -273,6 +286,34 @@ const TreatmentModal = ({
     } catch (err) {
       console.error("Error fetching drug options:", err);
       return { list: [], last: true };
+    }
+  };
+
+  const fetchDrugDetailsById = async (itemId) => {
+    const hospitalId =
+      localStorage.getItem("hospitalId") ||
+      sessionStorage.getItem("hospitalId") ||
+      "";
+
+    if (!hospitalId || !itemId) return null;
+
+    try {
+      const params = new URLSearchParams();
+      params.append(REQUEST_PARAM_HOSPITAL_ID, hospitalId);
+      params.append(REQUEST_PARAM_REQUESTED_DEPT_ID, DISPENSARY_DEPARTMENT_ID);
+
+      const response = await getRequest(
+        `${GET_ITEM_DETAILS_BY_ID}/${itemId}?${params.toString()}`,
+      );
+
+      if (response.status === 200 && response.response) {
+        return response.response;
+      }
+
+      return null;
+    } catch (err) {
+      console.error("Error fetching drug details:", err);
+      return null;
     }
   };
 
@@ -352,7 +393,7 @@ const TreatmentModal = ({
     setDrugPage(nextPage);
   };
 
-  const updateDrug = (selectedDrug, index) => {
+  const updateDrug = async (selectedDrug, index) => {
     if (!selectedDrug) return;
 
     const isDuplicate = treatmentItems.some(
@@ -365,20 +406,43 @@ const TreatmentModal = ({
       return;
     }
 
+    const itemDetails = await fetchDrugDetailsById(selectedDrug.itemId);
+    const normalizedDrug = itemDetails || selectedDrug;
+    const stockValue =
+      normalizedDrug.requestedDeptStocks ??
+      normalizedDrug.currentDeptStocks ??
+      normalizedDrug.stock ??
+      selectedDrug.requestedDeptStocks ??
+      selectedDrug.currentDeptStocks ??
+      0;
+
     setTreatmentItems((prev) => {
       const updated = [...prev];
       const oldDrugId = updated[index]?.drugId;
 
       updated[index] = {
         ...updated[index],
-        drugName: selectedDrug.name,
-        dispUnit: selectedDrug.dispUnitName,
-        drugId: selectedDrug.itemId,
-        itemClassId: selectedDrug.itemClassId,
-        adispQty: selectedDrug.aDispQty ?? 1,
+        drugName:
+          normalizedDrug.nomenclature ||
+          normalizedDrug.itemName ||
+          normalizedDrug.name ||
+          selectedDrug.name ||
+          "",
+        dispUnit:
+          normalizedDrug.dispUnitName ||
+          normalizedDrug.unitAuName ||
+          normalizedDrug.dispUnit ||
+          selectedDrug.dispUnitName ||
+          "",
+        drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
+        itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
+        adispQty: normalizedDrug.adispQty ?? normalizedDrug.aDispQty ?? 1,
+        stock: stockValue,
         total: calculateTotal({
           ...updated[index],
-          adispQty: selectedDrug.aDispQty ?? 1,
+          itemClassId:
+            normalizedDrug.itemClassId ?? selectedDrug.itemClassId ?? null,
+          adispQty: normalizedDrug.adispQty ?? normalizedDrug.aDispQty ?? 1,
         }),
       };
 
@@ -434,7 +498,7 @@ const TreatmentModal = ({
     }
   };
 
-  const loadTemplateData = (template) => {
+  const loadTemplateData = async (template) => {
     if (!dataLoaded) {
       console.log("Data not loaded yet, skipping template load");
       return;
@@ -444,34 +508,56 @@ const TreatmentModal = ({
     setTemplateCode(template.opdTemplateCode || "");
 
     if (template.treatments && template.treatments.length > 0) {
-      const items = template.treatments.map((item) => {
-        const frequency = allFrequencies.find(
-          (f) => f.frequencyId === item.frequencyId,
-        );
-        const fallbackDrug = normalizeDrugRecord({
-          itemId: item.itemId,
-          name: item.itemName || item.nomenclature || `Drug (ID: ${item.itemId})`,
-          code: item.itemCode || item.pvmsNo || "",
-          dispUnitName: item.dispU || item.dispUnit || "",
-          itemClassId: item.itemClassId ?? null,
-          aDispQty: item.aDispQty ?? 1,
-        });
+      const items = await Promise.all(
+        template.treatments.map(async (item) => {
+          const frequency = allFrequencies.find(
+            (f) => f.frequencyId === item.frequencyId,
+          );
+          const itemDetails = await fetchDrugDetailsById(item.itemId);
+          const normalizedDrug =
+            itemDetails ||
+            normalizeDrugRecord({
+              itemId: item.itemId,
+              name:
+                item.itemName || item.nomenclature || `Drug (ID: ${item.itemId})`,
+              code: item.itemCode || item.pvmsNo || "",
+              dispUnitName: item.dispU || item.dispUnit || "",
+              itemClassId: item.itemClassId ?? null,
+              aDispQty: item.aDispQty ?? 1,
+            });
 
-        return {
-          drugName: fallbackDrug.name,
-          drugId: item.itemId,
-          dispUnit: fallbackDrug.dispUnitName || item.dispU || "",
-          dosage: item.dosage || "",
-          frequency: frequency ? frequency.frequencyName : "OD",
-          frequencyId: item.frequencyId,
-          days: item.noOfDays || "",
-          total: item.total || "",
-          instruction: item.instruction || "",
-          stock: "",
-          itemClassId: fallbackDrug.itemClassId,
-          adispQty: fallbackDrug.aDispQty,
-        };
-      });
+          const stockValue =
+            normalizedDrug.requestedDeptStocks ??
+            normalizedDrug.currentDeptStocks ??
+            normalizedDrug.stock ??
+            0;
+
+          return {
+            drugName:
+              normalizedDrug.nomenclature ||
+              normalizedDrug.itemName ||
+              normalizedDrug.name ||
+              "",
+            drugId: normalizedDrug.itemId ?? item.itemId,
+            dispUnit:
+              normalizedDrug.dispUnitName ||
+              normalizedDrug.unitAuName ||
+              normalizedDrug.dispUnit ||
+              item.dispU ||
+              item.dispUnit ||
+              "",
+            dosage: item.dosage || "",
+            frequency: frequency ? frequency.frequencyName : "OD",
+            frequencyId: item.frequencyId,
+            days: item.noOfDays || "",
+            total: item.total || "",
+            instruction: item.instruction || "",
+            stock: stockValue,
+            itemClassId: normalizedDrug.itemClassId,
+            adispQty: normalizedDrug.adispQty ?? normalizedDrug.aDispQty,
+          };
+        }),
+      );
 
       setTreatmentItems(items);
       setDrugSearch(items.map((item) => item.drugName || ""));
@@ -1110,8 +1196,12 @@ const TreatmentModal = ({
                     </tr>
                   </thead>
                   <tbody>
-                    {treatmentItems.map((row, index) => (
-                      <tr key={index}>
+                    {treatmentItems.map((row, index) => {
+                      const isOutOfStock =
+                        row.drugId && row.stock !== "" && Number(row.stock) === 0;
+
+                      return (
+                      <tr key={index} className={isOutOfStock ? "table-danger" : ""}>
                         {/* Drug Name with Search Dropdown - Input only, dropdown rendered via portal */}
                         <td style={{ padding: "6px", verticalAlign: "middle" }}>
                           <div className="position-relative" style={{ width: "100%" }}>
@@ -1330,7 +1420,8 @@ const TreatmentModal = ({
                           </button>
                         </td>
                       </tr>
-                    ))}
+                      );
+                    })}
                   </tbody>
                 </table>
               </div>

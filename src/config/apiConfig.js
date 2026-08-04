@@ -46,9 +46,11 @@ export const MAS_ITEM_SECTION = `${MASTERS}/storeSection`;
 export const MAS_ITEM_SECTION_BY_TYPE = `${MASTERS}/getSectionByItemType`;
 export const MAS_ITEM_CATEGORY = `${MASTERS}/masItemCategory`;
 export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
+export const MAS_STORE_ITEM_WITHOUT_STOCK = `${MASTERS}/masStoreItemWithotStock`;
 export const MAS_NON_DRUG_ITEM = `${MASTERS}/nonDrugItem`;
 export const MAS_NON_DRUG_ITEM_GET_ALL = `${MAS_NON_DRUG_ITEM}/getAll`;
 export const GET_MEDICAL_CONSUMABLE_ITEMS = `${MASTERS}/getMedicalConsumableItem`;
+export const GET_NON_MEDICAL_CONSUMABLE_ITEMS = `${MASTERS}/getNonMedicalConsumableItem`;
 export const MAS_NON_DRUG_ITEM_GET_BY_ID = `${MAS_NON_DRUG_ITEM}/getById`;
 export const MAS_NON_DRUG_ITEM_UPDATE = `${MAS_NON_DRUG_ITEM}/update`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
@@ -592,6 +594,7 @@ export const REQUEST_PARAM_BALANCE_M_ID = "balanceMId";
 export const GET_OPENING_BALANCE_ENTRY_HEADERS = `${INVENTORY}/openingBalanceEntry/headers`;
 export const GET_OPENING_BALANCE_ENTRY_DETAILS = `${INVENTORY}/openingBalanceEntry/details`;
 export const UPDATE_OPENING_BALANCE_ENTRY_BY_ID = `${INVENTORY}/openingBalanceEntry/updateById`;
+export const DISPENSARY_DEPARTMENT_ID = 19;
 
 //Opening Balance Approval List
 

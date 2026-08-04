@@ -2,8 +2,8 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_NON_DRUG_ITEM, MAS_NON_DRUG_ITEM_GET_ALL, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE } from "../../../config/apiConfig";
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { MAS_NON_DRUG_ITEM, GET_NON_MEDICAL_CONSUMABLE_ITEMS, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE } from "../../../config/apiConfig";
+import Pagination from "../../../Components/Pagination";
 import { ITEM_TYPE_CODE_NONMED_CON, SECTION_CODE_DRUG } from "../../../config/constants";
 
 const NonConsumableMaster = () => {
@@ -33,10 +33,18 @@ const NonConsumableMaster = () => {
         section: "",
         itemClass: ""
     })
+    const [appliedSearchParams, setAppliedSearchParams] = useState({
+        itemName: "",
+        section: "",
+        itemClass: ""
+    })
     const [searchSections, setSearchSections] = useState([])
     const [searchItemClasses, setSearchItemClasses] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
+    const [totalItems, setTotalItems] = useState(0)
     const [loading, setLoading] = useState(false);
+    const [tableLoading, setTableLoading] = useState(false)
+    const [isInitialLoad, setIsInitialLoad] = useState(true)
 
     const [editingNonDrug, setEditingNonDrug] = useState(null)
     const [showForm, setShowForm] = useState(false)
@@ -54,16 +62,21 @@ const NonConsumableMaster = () => {
 
     const handleSearch = (e) => {
         e.preventDefault()
+        setAppliedSearchParams(searchParams)
         setCurrentPage(1)
+        fetchNonDrugMasterData(1, searchParams)
     }
 
     const handleResetSearch = () => {
-        setSearchParams({
+        const resetParams = {
             itemName: "",
             section: "",
             itemClass: ""
-        })
+        };
+        setSearchParams(resetParams)
+        setAppliedSearchParams(resetParams)
         setCurrentPage(1)
+        fetchNonDrugMasterData(1, resetParams)
     }
 
     const fetchSearchSections = async () => {
@@ -99,10 +112,13 @@ const NonConsumableMaster = () => {
     };
 
     useEffect(() => {
-        fetchNonDrugMasterData();
         fetchMasterData();
         fetchSearchSections();
     }, []);
+
+    useEffect(() => {
+        fetchNonDrugMasterData(currentPage, appliedSearchParams);
+    }, [currentPage, appliedSearchParams]);
 
     useEffect(() => {
         if (searchParams.section) {
@@ -186,22 +202,39 @@ const NonConsumableMaster = () => {
         raw: item,
     });
 
-    const fetchNonDrugMasterData = async () => {
-        setLoading(true);
+    const fetchNonDrugMasterData = async (page = 1, search = searchParams) => {
+        if (isInitialLoad) {
+            setLoading(true);
+        } else {
+            setTableLoading(true);
+        }
         try {
-            const data = await getRequest(MAS_NON_DRUG_ITEM_GET_ALL);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setNonDrugs(data.response.map(normalizeItem));
+            const queryParams = new URLSearchParams({
+                page: (page - 1).toString(),
+                size: "5"
+            });
+            if (search.itemName) queryParams.append("itemName", search.itemName);
+            if (search.section) queryParams.append("sectionId", search.section);
+            if (search.itemClass) queryParams.append("itemClassId", search.itemClass);
+
+            const data = await getRequest(`${GET_NON_MEDICAL_CONSUMABLE_ITEMS}?${queryParams.toString()}`);
+            if (data.status === 200 && data.response) {
+                const itemsList = Array.isArray(data.response.content) ? data.response.content : [];
+                setNonDrugs(itemsList.map(normalizeItem));
+                setTotalItems(data.response.totalElements || 0);
             } else {
-                console.error("Unexpected non-drug API response format:", data);
                 setNonDrugs([]);
+                setTotalItems(0);
             }
         } catch (error) {
             console.error("Error fetching non-drug data:", error);
             showPopup("Error fetching non-drug data", "error");
             setNonDrugs([]);
+            setTotalItems(0);
         } finally {
             setLoading(false);
+            setTableLoading(false);
+            setIsInitialLoad(false);
         }
     };
 
@@ -309,8 +342,7 @@ const NonConsumableMaster = () => {
                         type: "success",
                         onClose: () => {
                             setPopupMessage(null);
-                            fetchNonDrugMasterData();
-                            setCurrentPage(1);
+                            fetchNonDrugMasterData(currentPage, appliedSearchParams);
                         }
                     });
                 } else {
@@ -432,8 +464,15 @@ const NonConsumableMaster = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        fetchNonDrugMasterData();
+                        const resetParams = {
+                            itemName: "",
+                            section: "",
+                            itemClass: ""
+                        };
+                        setSearchParams(resetParams);
+                        setAppliedSearchParams(resetParams);
                         setCurrentPage(1);
+                        fetchNonDrugMasterData(1, resetParams);
                     }
                 });
             } else {
@@ -469,13 +508,15 @@ const NonConsumableMaster = () => {
     }
 
     const handleRefresh = () => {
-        setSearchParams({
+        const resetParams = {
             itemName: "",
             section: "",
             itemClass: ""
-        });
+        };
+        setSearchParams(resetParams);
+        setAppliedSearchParams(resetParams);
         setCurrentPage(1);
-        fetchNonDrugMasterData();
+        fetchNonDrugMasterData(1, resetParams);
     };
 
     const showPopup = (message, type = "info") => {
@@ -488,28 +529,7 @@ const NonConsumableMaster = () => {
         })
     }
 
-    const filteredNonDrugs = nonDrugs.filter((item) => {
-        const matchItemName = !searchParams.itemName || 
-            (item.itemName || "").toLowerCase().includes(searchParams.itemName.toLowerCase());
-        
-        const selectedSectionObj = searchSections.find(s => s.sectionId.toString() === searchParams.section.toString());
-        const selectedSectionName = selectedSectionObj ? selectedSectionObj.sectionName : "";
-        const matchSection = !searchParams.section || 
-            (item.section || "").toLowerCase() === selectedSectionName.toLowerCase() ||
-            (item.raw?.sectionId?.toString() === searchParams.section.toString());
-
-        const selectedClassObj = searchItemClasses.find(c => c.itemClassId.toString() === searchParams.itemClass.toString());
-        const selectedClassName = selectedClassObj ? selectedClassObj.itemClassName : "";
-        const matchItemClass = !searchParams.itemClass || 
-            (item.itemClass || "").toLowerCase() === selectedClassName.toLowerCase() ||
-            (item.raw?.itemClassId?.toString() === searchParams.itemClass.toString());
-
-        return matchItemName && matchSection && matchItemClass;
-    });
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredNonDrugs.slice(indexOfFirst, indexOfLast);
+    const currentItems = nonDrugs;
 
     return (
         <div className="content-wrapper">
@@ -614,8 +634,32 @@ const NonConsumableMaster = () => {
                                         </form>
                                     </div>
 
-                                    <div className="table-responsive packagelist">
-                                        <table className="table table-bordered table-hover align-middle">
+                                    <div style={{ position: "relative", minHeight: "200px" }}>
+                                        {tableLoading && (
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    backgroundColor: "rgba(255, 255, 255, 0.7)",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    zIndex: 5,
+                                                }}
+                                            >
+                                                <div className="d-flex flex-column align-items-center">
+                                                    <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                                                        <span className="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span className="mt-2 fw-bold text-primary">Loading Non-Drug Items...</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="table-responsive packagelist">
+                                            <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
                                                 <tr>
                                                     <th>Item Code</th>
@@ -676,12 +720,13 @@ const NonConsumableMaster = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                    </div>
                                     
                                     {/* PAGINATION USING REUSABLE COMPONENT */}
-                                    {filteredNonDrugs.length > 0 && (
+                                    {totalItems > 0 && (
                                         <Pagination
-                                            totalItems={filteredNonDrugs.length}
-                                            itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                                            totalItems={totalItems}
+                                            itemsPerPage={5}
                                             currentPage={currentPage}
                                             onPageChange={setCurrentPage}
                                         />
