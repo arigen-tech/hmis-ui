@@ -458,6 +458,9 @@ export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`;
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 export const INVENTORY = `/inventory`;
 export const SECTION_ID_FOR_DRUGS = 18;
+export const SECTION_CODE_FOR_DRUGS = "DRUG";
+export const SECTION_CODE_FOR_NON_DRUGS = "NON_DRUG";
+
 
 export const MAS_BLOOD_COLLECTION_TYPE = `${MASTERS}/masBloodCollectionType`;
 export const GENERAL = "/general";
@@ -579,6 +582,7 @@ export const GET_CURRENT_USER_PROFILE_BY_NAME = `/authController/getUsersForProf
 export const GET_ALL_BRANDS_FOR_DROPDOWN = `${MAS_BRAND}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
 export const GET_ALL_MANUFACTURER_FOR_DROPDOWN = `${MAS_MANUFACTURE}/getAll/${ACTIVE_STATUS_FOR_DROPDOWN}`;
 export const REQUEST_PARAM_SECTION_ID = "sectionId";
+export const REQUEST_PARAM_SECTION_CODE = "sectionCode";
 export const REQUEST_PARAM_KEYWORD = "keyword";
 export const GET_ALL_ITEMS_BY_NAME = `${INVENTORY}/item/search`;
 export const GET_ITEM_DETAILS_BY_ID = `${INVENTORY}/item`;
@@ -590,6 +594,7 @@ export const REQUEST_PARAM_BALANCE_M_ID = "balanceMId";
 export const GET_OPENING_BALANCE_ENTRY_HEADERS = `${INVENTORY}/openingBalanceEntry/headers`;
 export const GET_OPENING_BALANCE_ENTRY_DETAILS = `${INVENTORY}/openingBalanceEntry/details`;
 export const UPDATE_OPENING_BALANCE_ENTRY_BY_ID = `${INVENTORY}/openingBalanceEntry/updateById`;
+export const DISPENSARY_DEPARTMENT_ID = 19;
 
 //Opening Balance Approval List
 
