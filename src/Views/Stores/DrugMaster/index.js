@@ -24,6 +24,10 @@ const DrugMaster = () => {
         drugSchedule: "",
         isGeneric: "",
         dangerousDrug: false,
+        availableInOpd: false,
+        availableInIpd: false,
+        availableInEmergency: false,
+        availableInOt: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
     const [drugs, setDrugs] = useState([])
@@ -40,13 +44,16 @@ const DrugMaster = () => {
 
     const [searchParams, setSearchParams] = useState({
         itemName: "",
-        itemClass: ""
+        itemClass: "",
+        itemCategory: ""
     })
     const [appliedSearchParams, setAppliedSearchParams] = useState({
         itemName: "",
-        itemClass: ""
+        itemClass: "",
+        itemCategory: ""
     })
     const [searchItemClasses, setSearchItemClasses] = useState([])
+    const [searchItemCategories, setSearchItemCategories] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
     const [loading, setLoading] = useState(false);
     const [tableLoading, setTableLoading] = useState(false)
@@ -79,7 +86,8 @@ const DrugMaster = () => {
     const handleResetSearch = () => {
         const resetParams = {
             itemName: "",
-            itemClass: ""
+            itemClass: "",
+            itemCategory: ""
         };
         setSearchParams(resetParams)
         setAppliedSearchParams(resetParams)
@@ -95,6 +103,7 @@ const DrugMaster = () => {
         fetchHsnData();
         fetchDrugScheduleData();
         fetchSearchItemClasses();
+        fetchSearchItemCategories();
     }, []);
 
     useEffect(() => {
@@ -125,6 +134,36 @@ const DrugMaster = () => {
             setFormData(prev => ({ ...prev, itemClass: "", itemCategory: "" }));
         }
     }, [formData.section]);
+
+    // Auto-select Item Group = CONSUMABLE
+    useEffect(() => {
+        if (showForm && masStoreGroup.length > 0) {
+            const consumableGroup = masStoreGroup.find(g => g.groupName?.toUpperCase() === "CONSUMABLE");
+            if (consumableGroup && formData.itemGroup !== consumableGroup.id.toString()) {
+                setFormData(prev => ({ ...prev, itemGroup: consumableGroup.id.toString() }));
+            }
+        }
+    }, [masStoreGroup, showForm, formData.itemGroup]);
+
+    // Auto-select Item Type = MEDICAL CONSUMABLE
+    useEffect(() => {
+        if (showForm && masItemTypeData.length > 0) {
+            const medicalConsumableType = masItemTypeData.find(t => t.name?.toUpperCase() === "MEDICAL CONSUMABLE");
+            if (medicalConsumableType && formData.itemType !== medicalConsumableType.id.toString()) {
+                setFormData(prev => ({ ...prev, itemType: medicalConsumableType.id.toString() }));
+            }
+        }
+    }, [masItemTypeData, showForm, formData.itemType]);
+
+    // Auto-select Section = DRUGS
+    useEffect(() => {
+        if (showForm && itemSectionData.length > 0) {
+            const drugsSection = itemSectionData.find(s => s.sectionName?.toUpperCase() === "DRUGS" || s.sectionId === SECTION_ID_DRUGS);
+            if (drugsSection && formData.section !== drugsSection.sectionId.toString()) {
+                setFormData(prev => ({ ...prev, section: drugsSection.sectionId.toString() }));
+            }
+        }
+    }, [itemSectionData, showForm, formData.section]);
 
     // Validate form whenever formData changes
     useEffect(() => {
@@ -297,6 +336,20 @@ const DrugMaster = () => {
         }
     };
 
+    const fetchSearchItemCategories = async () => {
+        try {
+            const data = await getRequest(`${MAS_ITEM_CATEGORY}/findBySectionId/${SECTION_ID_DRUGS}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setSearchItemCategories(data.response);
+            } else {
+                setSearchItemCategories([]);
+            }
+        } catch (error) {
+            console.error("Error fetching search item categories:", error);
+            setSearchItemCategories([]);
+        }
+    };
+
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         
@@ -364,7 +417,11 @@ const DrugMaster = () => {
                 hsnCode: drug.hsnCode || "",
                 drugSchedule: drug.masDrugScheduleRule || drug.drugSchedule || "",
                 isGeneric: drug.isGeneric || "",
-                dangerousDrug: drug.dangerousDrug || false,
+                dangerousDrug: drug.dangerousDrug?.toUpperCase() === "Y" || drug.dangerousDrug === true,
+                availableInOpd: drug.availableInOpd?.toUpperCase() === "Y" || drug.availableInOpd === true,
+                availableInIpd: drug.availableInIpd?.toUpperCase() === "Y" || drug.availableInIpd === true,
+                availableInEmergency: drug.availableInEmergency?.toUpperCase() === "Y" || drug.availableInEmergency === true,
+                availableInOt: drug.availableInOt?.toUpperCase() === "Y" || drug.availableInOt === true,
             });
 
             // Then fetch dependent data
@@ -408,6 +465,10 @@ const DrugMaster = () => {
             drugSchedule: "",
             isGeneric: "",
             dangerousDrug: false,
+            availableInOpd: false,
+            availableInIpd: false,
+            availableInEmergency: false,
+            availableInOt: false,
         });
     };
 
@@ -444,7 +505,11 @@ const DrugMaster = () => {
                 hsnCode: formData.hsnCode || "",
                 drugSchedule: formData.drugSchedule || null,
                 isGeneric: formData.isGeneric || "n",
-                dangerousDrug: formData.dangerousDrug ? "y" : "n",
+                dangerousDrug: formData.dangerousDrug ? "Y" : "N",
+                availableInOpd: formData.availableInOpd ? "Y" : "N",
+                availableInIpd: formData.availableInIpd ? "Y" : "N",
+                availableInEmergency: formData.availableInEmergency ? "Y" : "N",
+                availableInOt: formData.availableInOt ? "Y" : "N",
                 status: "y"
             };
 
@@ -470,7 +535,8 @@ const DrugMaster = () => {
                         resetForm();
                         const resetParams = {
                             itemName: "",
-                            itemClass: ""
+                            itemClass: "",
+                            itemCategory: ""
                         };
                         setSearchParams(resetParams);
                         setAppliedSearchParams(resetParams);
@@ -511,13 +577,18 @@ const DrugMaster = () => {
             drugSchedule: "",
             isGeneric: "",
             dangerousDrug: false,
+            availableInOpd: false,
+            availableInIpd: false,
+            availableInEmergency: false,
+            availableInOt: false,
         });
     };
 
     const handleRefresh = () => {
         const resetParams = {
             itemName: "",
-            itemClass: ""
+            itemClass: "",
+            itemCategory: ""
         };
         setSearchParams(resetParams);
         setAppliedSearchParams(resetParams);
@@ -547,7 +618,11 @@ const DrugMaster = () => {
         const matchItemClass = !appliedSearchParams.itemClass || 
             (item.itemClassId?.toString() === appliedSearchParams.itemClass.toString());
 
-        return matchItemName && matchItemClass;
+        const matchItemCategory = !appliedSearchParams.itemCategory || 
+            (item.masItemCategoryid?.toString() === appliedSearchParams.itemCategory.toString() ||
+             item.masItemCategoryId?.toString() === appliedSearchParams.itemCategory.toString());
+
+        return matchItemName && matchItemClass && matchItemCategory;
     });
 
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -622,6 +697,23 @@ const DrugMaster = () => {
                                                     </select>
                                                 </div>
 
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Category</label>
+                                                    <select
+                                                        className="form-select"
+                                                        name="itemCategory"
+                                                        value={searchParams.itemCategory}
+                                                        onChange={handleSearchChange}
+                                                    >
+                                                        <option value="">Select Category</option>
+                                                        {searchItemCategories.map(cat => (
+                                                            <option key={cat.itemCategoryId} value={cat.itemCategoryId}>
+                                                                {cat.itemCategoryName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
                                                 <div className="col-md-3 d-flex align-items-end gap-2">
                                                     <button
                                                         type="submit"
@@ -671,7 +763,7 @@ const DrugMaster = () => {
                                                 <tr>
                                                     <th>Drug Code</th>
                                                     <th>Drug Name</th>
-                                                    <th>Item Group</th>
+                                                    <th>Item Category</th>
                                                     <th>Unit</th>
                                                     <th>Section</th>
                                                     <th>Item Class</th>
@@ -685,8 +777,8 @@ const DrugMaster = () => {
                                                         <tr key={item.itemId}>
                                                             <td>{item.pvmsNo}</td>
                                                             <td>{item.nomenclature}</td>
-                                                            <td>{item.groupName}</td>
-                                                            <td>{item.unitAU}</td>
+                                                            <td>{item.masItemCategoryName || "-"}</td>
+                                                            <td>{item.dispUnitName || item.unitAuName || item.unitAU}</td>
                                                             <td>{item.sectionName}</td>
                                                             <td>{item.itemClassName}</td>
                                                             <td>
@@ -781,6 +873,7 @@ const DrugMaster = () => {
                                                 value={formData.itemGroup}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={true}
                                             >
                                                 <option value="">Select Store Item</option>
                                                 {masStoreGroup.map((item) => (
@@ -801,7 +894,7 @@ const DrugMaster = () => {
                                                 value={formData.itemType}
                                                 onChange={handleInputChange}
                                                 required
-                                                disabled={!formData.itemGroup}
+                                                disabled={true}
                                             >
                                                 <option value="">Select Item Type</option>
                                                 {masItemTypeData.map((item) => (
@@ -822,7 +915,7 @@ const DrugMaster = () => {
                                                 value={formData.section}
                                                 onChange={handleInputChange}
                                                 required
-                                                disabled={!formData.itemType}
+                                                disabled={true}
                                             >
                                                 <option value="">Select Item Section</option>
                                                 {itemSectionData.map((section) => (
@@ -1016,6 +1109,64 @@ const DrugMaster = () => {
                                                     />
                                                     <label className="form-check-label" htmlFor="dangerousDrug">
                                                         Dangerous Drug
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group col-md-6 mt-3">
+                                            <label>Available in</label>
+                                            <div className="form-control d-flex flex-wrap gap-3">
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInOpd"
+                                                        name="availableInOpd"
+                                                        checked={formData.availableInOpd}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInOpd">
+                                                        OPD
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInIpd"
+                                                        name="availableInIpd"
+                                                        checked={formData.availableInIpd}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInIpd">
+                                                        IPD
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInEmergency"
+                                                        name="availableInEmergency"
+                                                        checked={formData.availableInEmergency}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInEmergency">
+                                                        EMERGENCY
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInOt"
+                                                        name="availableInOt"
+                                                        checked={formData.availableInOt}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInOt">
+                                                        OT
                                                     </label>
                                                 </div>
                                             </div>
