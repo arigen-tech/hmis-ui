@@ -32,6 +32,39 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../../Components/Pagination";
 
+const getEmployeeStatusConfig = (status) => {
+  const normalizedStatus = String(status || "").trim().toUpperCase();
+
+  if (normalizedStatus === "A") {
+    return {
+      label: "Approved",
+      badgeClass: "bg-success text-white",
+    };
+  }
+
+  if (
+    normalizedStatus === "P") {
+    return {
+      label: "Pending",
+      title: "Pending Approval",
+      badgeClass: "bg-warning text-dark",
+    };
+  }
+
+  if (normalizedStatus === "R") {
+    return {
+      label: "Rejected",
+      badgeClass: "bg-danger text-white",
+    };
+  }
+
+  return {
+    label: status ? String(status) : "Unknown",
+    badgeClass: "bg-secondary text-white",
+    icon: "•",
+  };
+};
+
 const ViewSearchEmployee = () => {
   const initialFormData = {
     profilePicName: null,
@@ -2332,11 +2365,31 @@ if (formData.fromDate) {
                               <td>{employee.employeeType}</td>
                               <td>{employee.role}</td>
                               <td>
-                                {employee.status === "A" ? (
-                                  <i className="fa fa-check-circle text-success fa-2x"></i>
-                                ) : (
-                                  <i className="fa fa-times-circle fa-2x text-danger"></i>
-                                )}
+                                {(() => {
+                                  const statusConfig = getEmployeeStatusConfig(
+                                    employee.status
+                                  );
+                                  return (
+                                    <span
+                                      className={`badge rounded-pill px-2 py-1 ${statusConfig.badgeClass}`}
+                                      title={statusConfig.title || statusConfig.label}
+                                      style={{
+                                        minWidth: "auto",
+                                        width: "fit-content",
+                                        display: "inline-flex",
+                                        alignItems: "center",
+                                        gap: "0.25rem",
+                                        fontSize: "0.78rem",
+                                        lineHeight: 1,
+                                      }}
+                                    >
+                                      <span>
+                                        {statusConfig.icon}
+                                      </span>
+                                      {statusConfig.label}
+                                    </span>
+                                  );
+                                })()}
                               </td>
                               <td>
                                 <button
