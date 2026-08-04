@@ -1005,6 +1005,22 @@ const GeneralMedicineWaitingList = () => {
       return updated;
     });
 
+    // Keep the row itself in edit mode sync with the typed text.
+    // This prevents the input from snapping back to the previously selected drug name.
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        drugName: value,
+        drugId: null,
+        dispUnit: "",
+        itemClassId: null,
+        aDispQty: null,
+        total: "",
+      };
+      return updated;
+    });
+
     if (drugDebounceRef.current[index])
       clearTimeout(drugDebounceRef.current[index]);
 
