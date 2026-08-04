@@ -4,6 +4,7 @@ import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
 import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE , MAS_ITEMFACILTY } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { SECTION_ID_DRUGS } from "../../../config/constants";
 
 const DrugMaster = () => {
     const [formData, setFormData] = useState({
@@ -39,9 +40,19 @@ const DrugMaster = () => {
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
-    const [searchQuery, setSearchQuery] = useState("")
+    const [searchParams, setSearchParams] = useState({
+        itemName: "",
+        itemClass: ""
+    })
+    const [appliedSearchParams, setAppliedSearchParams] = useState({
+        itemName: "",
+        itemClass: ""
+    })
+    const [searchItemClasses, setSearchItemClasses] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
     const [loading, setLoading] = useState(false);
+    const [tableLoading, setTableLoading] = useState(false)
+    const [isInitialLoad, setIsInitialLoad] = useState(true)
     const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
     const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
@@ -56,7 +67,27 @@ const DrugMaster = () => {
     const facilityDropdownRef = useRef(null);
 
     const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value)
+        const { name, value } = e.target
+        setSearchParams(prev => ({
+            ...prev,
+            [name]: value
+        }))
+    }
+
+    const handleSearch = (e) => {
+        e.preventDefault()
+        setAppliedSearchParams(searchParams)
+        setCurrentPage(1)
+    }
+
+    const handleResetSearch = () => {
+        const resetParams = {
+            itemName: "",
+            itemClass: ""
+        };
+        setSearchParams(resetParams)
+        setAppliedSearchParams(resetParams)
+        setCurrentPage(1)
     }
 
     // Close dropdown when clicking outside
@@ -77,6 +108,7 @@ const DrugMaster = () => {
         fetchHsnData();
         fetchDrugScheduleData();
         fetchFacilityData();
+        fetchSearchItemClasses();
     }, []);
 
     useEffect(() => {
@@ -131,7 +163,11 @@ const DrugMaster = () => {
     };
 
     const fetchDrugMasterData = async () => {
-        setLoading(true);
+        if (isInitialLoad) {
+            setLoading(true);
+        } else {
+            setTableLoading(true);
+        }
         try {
             const data = await getRequest(`/master/masStoreItemWithotStock/getAll/0`);
             if (data.status === 200 && Array.isArray(data.response)) {
@@ -145,6 +181,8 @@ const DrugMaster = () => {
             showPopup("Error fetching drug data", "error");
         } finally {
             setLoading(false);
+            setTableLoading(false);
+            setIsInitialLoad(false);
         }
     };
 
@@ -273,6 +311,20 @@ const DrugMaster = () => {
         } catch (error) {
             console.error("Error fetching facility data:", error);
             setFacilityOptions([]);
+        }
+    };
+
+    const fetchSearchItemClasses = async () => {
+        try {
+            const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${SECTION_ID_DRUGS}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setSearchItemClasses(data.response);
+            } else {
+                setSearchItemClasses([]);
+            }
+        } catch (error) {
+            console.error("Error fetching search item classes:", error);
+            setSearchItemClasses([]);
         }
     };
 
@@ -474,6 +526,12 @@ const DrugMaster = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
+                        const resetParams = {
+                            itemName: "",
+                            itemClass: ""
+                        };
+                        setSearchParams(resetParams);
+                        setAppliedSearchParams(resetParams);
                         fetchDrugMasterData(); // Data refresh happens here
                         setCurrentPage(1);
                     }
@@ -520,7 +578,12 @@ const DrugMaster = () => {
     }
 
     const handleRefresh = () => {
-        setSearchQuery("");
+        const resetParams = {
+            itemName: "",
+            itemClass: ""
+        };
+        setSearchParams(resetParams);
+        setAppliedSearchParams(resetParams);
         setCurrentPage(1);
         fetchDrugMasterData();
     };
@@ -541,16 +604,13 @@ const DrugMaster = () => {
     }
 
     const filteredDrugs = drugs.filter((item) => {
-        const q = (searchQuery || "").toLowerCase();
+        const matchItemName = !appliedSearchParams.itemName || 
+            (item.nomenclature || "").toLowerCase().includes(appliedSearchParams.itemName.toLowerCase());
+        
+        const matchItemClass = !appliedSearchParams.itemClass || 
+            (item.itemClassId?.toString() === appliedSearchParams.itemClass.toString());
 
-        return (
-            (item.pvmsNo || "").toLowerCase().includes(q) ||
-            (item.nomenclature || "").toLowerCase().includes(q) ||
-            (item.groupName || "").toLowerCase().includes(q) ||
-            (item.itemClassName || "").toLowerCase().includes(q) ||
-            (item.sectionName || "").toLowerCase().includes(q) ||
-            (item.unitAU ? item.unitAU.toString().toLowerCase() : "").includes(q)
-        );
+        return matchItemName && matchItemClass;
     });
 
     const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
@@ -582,35 +642,18 @@ const DrugMaster = () => {
 
                             <div className="d-flex justify-content-between align-items-center">
                                 {!showForm ? (
-                                    <>
-                                        <form className="d-inline-block searchform me-4" role="search">
-                                            <div className="input-group searchinput">
-                                                <input
-                                                    type="search"
-                                                    className="form-control"
-                                                    placeholder="Search"
-                                                    aria-label="Search"
-                                                    value={searchQuery}
-                                                    onChange={handleSearchChange}
-                                                />
-                                                <span className="input-group-text" id="search-icon">
-                                                    <i className="fa fa-search"></i>
-                                                </span>
-                                            </div>
-                                        </form>
-                                        <div className="d-flex align-items-center ms-auto">
-                                            <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2 flex-shrink-0" 
-                                                onClick={handleRefresh}
-                                            >
-                                                <i className="mdi mdi-refresh"></i> Show All
-                                            </button>
-                                        </div>
-                                    </>
+                                    <div className="d-flex align-items-center ms-auto">
+                                        <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
+                                            <i className="mdi mdi-plus"></i> Add
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-success me-2 flex-shrink-0" 
+                                            onClick={handleRefresh}
+                                        >
+                                            <i className="mdi mdi-refresh"></i> Show All
+                                        </button>
+                                    </div>
                                 ) : (
                                     <button type="button" className="btn btn-secondary" onClick={handleBack}>
                                         <i className="mdi mdi-arrow-left"></i> Back
@@ -622,8 +665,83 @@ const DrugMaster = () => {
                         <div className="card-body">
                             {!showForm ? (
                                 <>
-                                    <div className="table-responsive packagelist">
-                                        <table className="table table-bordered table-hover align-middle">
+                                    <div className="mb-4">
+                                        <form onSubmit={handleSearch}>
+                                            <div className="row g-3 align-items-end">
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        name="itemName"
+                                                        placeholder="Enter Item Name"
+                                                        value={searchParams.itemName}
+                                                        onChange={handleSearchChange}
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Class</label>
+                                                    <select
+                                                        className="form-select"
+                                                        name="itemClass"
+                                                        value={searchParams.itemClass}
+                                                        onChange={handleSearchChange}
+                                                    >
+                                                        <option value="">Select Item Class</option>
+                                                        {searchItemClasses.map(cls => (
+                                                            <option key={cls.itemClassId} value={cls.itemClassId}>
+                                                                {cls.itemClassName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div className="col-md-3 d-flex align-items-end gap-2">
+                                                    <button
+                                                        type="submit"
+                                                        className="btn btn-primary"
+                                                    >
+                                                        Search
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary"
+                                                        onClick={handleResetSearch}
+                                                    >
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <div style={{ position: "relative", minHeight: "200px" }}>
+                                        {tableLoading && (
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    backgroundColor: "rgba(255, 255, 255, 0.7)",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    zIndex: 5,
+                                                }}
+                                            >
+                                                <div className="d-flex flex-column align-items-center">
+                                                    <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                                                        <span className="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span className="mt-2 fw-bold text-primary">Loading Drugs...</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="table-responsive packagelist">
+                                            <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
                                                 <tr>
                                                     <th>Drug Code</th>
@@ -683,6 +801,7 @@ const DrugMaster = () => {
                                                 )}
                                             </tbody>
                                         </table>
+                                    </div>
                                     </div>
                                     
                                     {filteredDrugs.length > 0 && (

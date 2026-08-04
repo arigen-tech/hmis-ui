@@ -42,7 +42,7 @@ const NonConsumableMaster = () => {
     const [searchItemClasses, setSearchItemClasses] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
     const [totalItems, setTotalItems] = useState(0)
-    const [loading, setLoading] = useState(false)
+    const [loading, setLoading] = useState(false);
     const [tableLoading, setTableLoading] = useState(false)
     const [isInitialLoad, setIsInitialLoad] = useState(true)
 
