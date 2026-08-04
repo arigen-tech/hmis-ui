@@ -1,8 +1,8 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE , MAS_ITEMFACILTY } from "../../../config/apiConfig";
+import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { SECTION_ID_DRUGS } from "../../../config/constants";
 
@@ -23,7 +23,6 @@ const DrugMaster = () => {
         hsnCode: "",
         drugSchedule: "",
         isGeneric: "",
-        facilityCode: [],
         dangerousDrug: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
@@ -36,7 +35,6 @@ const DrugMaster = () => {
     const [storeUnitData, setStoreUnitData] = useState([]);
     const [hsnList, setHsnList] = useState([]);
     const [drugScheduleData, setDrugScheduleData] = useState([]);
-    const [facilityOptions, setFacilityOptions] = useState([]);
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
@@ -62,9 +60,7 @@ const DrugMaster = () => {
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null, name: "" })
 
-    // State for custom multi-select dropdown
-    const [isFacilityDropdownOpen, setIsFacilityDropdownOpen] = useState(false);
-    const facilityDropdownRef = useRef(null);
+    // No facility dropdown states
 
     const handleSearchChange = (e) => {
         const { name, value } = e.target
@@ -90,16 +86,7 @@ const DrugMaster = () => {
         setCurrentPage(1)
     }
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (facilityDropdownRef.current && !facilityDropdownRef.current.contains(event.target)) {
-                setIsFacilityDropdownOpen(false);
-            }
-        };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+    // No click outside handler
 
     useEffect(() => {
         fetchDrugMasterData();
@@ -107,7 +94,6 @@ const DrugMaster = () => {
         fetchStoreUnit();
         fetchHsnData();
         fetchDrugScheduleData();
-        fetchFacilityData();
         fetchSearchItemClasses();
     }, []);
 
@@ -156,8 +142,7 @@ const DrugMaster = () => {
             formData.dispensingUnit !== "" &&
             formData.unitAU !== "" &&
             formData.itemCategory !== "" &&
-            formData.reorderLevel !== "" &&
-            formData.facilityCode.length > 0;
+            formData.reorderLevel !== "";
         
         setIsFormValid(isValid);
     };
@@ -296,23 +281,7 @@ const DrugMaster = () => {
         }
     };
 
-    // Fetch facility data
-    const fetchFacilityData = async () => {
-        try {
-            const data = await getRequest(`${MAS_ITEMFACILTY}/getAll/1`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                // Filter only active facilities
-                const activeFacilities = data.response.filter(facility => facility.status?.toLowerCase() === "y");
-                setFacilityOptions(activeFacilities);
-            } else {
-                setFacilityOptions([]);
-                console.error("Unexpected API response format for facilities:", data);
-            }
-        } catch (error) {
-            console.error("Error fetching facility data:", error);
-            setFacilityOptions([]);
-        }
-    };
+    // No fetchFacilityData needed
 
     const fetchSearchItemClasses = async () => {
         try {
@@ -331,24 +300,12 @@ const DrugMaster = () => {
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         
-        // Special handling for facilityCode checkboxes (multi-select inside dropdown)
-        if (name === "facilityCode") {
-            const facilityId = Number(value);
-            let updatedArray = [...formData.facilityCode];
-            if (checked) {
-                updatedArray.push(facilityId);
-            } else {
-                updatedArray = updatedArray.filter(item => item !== facilityId);
-            }
-            setFormData(prev => ({ ...prev, [name]: updatedArray }));
-        } else {
-            const updatedFormData = {
-                ...formData,
-                [name]: type === "checkbox" ? checked : value,
-            }
-            setFormData(updatedFormData)
+        const updatedFormData = {
+            ...formData,
+            [name]: type === "checkbox" ? checked : value,
         }
-    }
+        setFormData(updatedFormData)
+    };
 
     const handleSwitchChange = (id, currentStatus, name) => {
         const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
@@ -390,21 +347,6 @@ const DrugMaster = () => {
             setEditEnabled(true);
             setShowForm(true);
 
-            // Convert facility data to array of Long IDs
-            let facilityCodeArray = [];
-            if (drug.facilityCode) {
-                if (typeof drug.facilityCode === 'string') {
-                    facilityCodeArray = drug.facilityCode.split(',').map(s => Number(s.trim())).filter(id => !isNaN(id));
-                } else if (Array.isArray(drug.facilityCode)) {
-                    facilityCodeArray = drug.facilityCode.map(item => {
-                        if (typeof item === "object" && item.facilityId) {
-                            return Number(item.facilityId);
-                        }
-                        return Number(item);
-                    }).filter(id => !isNaN(id));
-                }
-            }
-
             // First set the form data with the drug's values
             setFormData({
                 drugCode: drug.pvmsNo || "",
@@ -422,7 +364,6 @@ const DrugMaster = () => {
                 hsnCode: drug.hsnCode || "",
                 drugSchedule: drug.masDrugScheduleRule || drug.drugSchedule || "",
                 isGeneric: drug.isGeneric || "",
-                facilityCode: facilityCodeArray,
                 dangerousDrug: drug.dangerousDrug || false,
             });
 
@@ -448,9 +389,8 @@ const DrugMaster = () => {
     };
 
     const handleAdd = () => {
-        setEditingDrug(null);
-        setEditEnabled(false);
         setShowForm(true);
+        setEditEnabled(false);
         setFormData({
             drugCode: "",
             drugName: "",
@@ -467,9 +407,12 @@ const DrugMaster = () => {
             hsnCode: "",
             drugSchedule: "",
             isGeneric: "",
-            facilityCode: [],
             dangerousDrug: false,
         });
+    };
+
+    const handleBack = () => {
+        resetForm();
     }
 
     // UPDATED: handleSave with proper popup pattern
@@ -477,7 +420,7 @@ const DrugMaster = () => {
         e.preventDefault();
         
         if (!isFormValid) {
-            showPopup("Please fill all required fields marked with * (select at least one Facility Code)", "error");
+            showPopup("Please fill all required fields marked with *", "error");
             return;
         }
 
@@ -502,7 +445,6 @@ const DrugMaster = () => {
                 drugSchedule: formData.drugSchedule || null,
                 isGeneric: formData.isGeneric || "n",
                 dangerousDrug: formData.dangerousDrug ? "y" : "n",
-                facility: formData.facilityCode,
                 status: "y"
             };
 
@@ -542,7 +484,7 @@ const DrugMaster = () => {
 
         } catch (error) {
             console.error("Error saving drug:", error);
-            showPopup(error.message || "Failed to save drug. Please try again.", "error");
+            showPopup(error.message || "Error saving drug.", "error");
         } finally {
             setProcess(false);
         }
@@ -568,14 +510,9 @@ const DrugMaster = () => {
             hsnCode: "",
             drugSchedule: "",
             isGeneric: "",
-            facilityCode: [],
             dangerousDrug: false,
         });
     };
-
-    const handleBack = () => {
-        resetForm();
-    }
 
     const handleRefresh = () => {
         const resetParams = {
@@ -617,19 +554,7 @@ const DrugMaster = () => {
     const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
     const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
 
-    const getSelectedFacilityText = () => {
-        if (formData.facilityCode.length === 0) return "Select Facility Code(s)";
-        if (formData.facilityCode.length <= 2) {
-            return formData.facilityCode.map(id => {
-                const facility = facilityOptions.find(f => f.facilityId === id);
-                return facility ? facility.facilityName : `ID: ${id}`;
-            }).join(", ");
-        }
-        return `${formData.facilityCode.slice(0, 2).map(id => {
-            const facility = facilityOptions.find(f => f.facilityId === id);
-            return facility ? facility.facilityName : `ID: ${id}`;
-        }).join(", ")} +${formData.facilityCode.length - 2} more`;
-    };
+    // No getSelectedFacilityText helper
 
     return (
         <div className="content-wrapper">
@@ -1075,44 +1000,7 @@ const DrugMaster = () => {
                                             </select>
                                         </div>
 
-                                        <div className="form-group col-md-4 mt-3" ref={facilityDropdownRef}>
-                                            <label>
-                                                Facility Code <span className="text-danger">*</span>
-                                            </label>
-                                            <div className="dropdown" style={{ width: "100%" }}>
-                                                <button
-                                                    type="button"
-                                                    className="form-select text-start"
-                                                    onClick={() => setIsFacilityDropdownOpen(!isFacilityDropdownOpen)}
-                                                    style={{ background: "white", cursor: "pointer" }}
-                                                >
-                                                    {getSelectedFacilityText()}
-                                                </button>
-                                                {isFacilityDropdownOpen && (
-                                                    <div className="dropdown-menu show p-2" style={{ width: "100%", maxHeight: "200px", overflowY: "auto" }}>
-                                                        {facilityOptions.map(facility => (
-                                                            <div className="form-check" key={facility.facilityId}>
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    name="facilityCode"
-                                                                    value={facility.facilityId}
-                                                                    id={`facility_dropdown_${facility.facilityId}`}
-                                                                    checked={formData.facilityCode.includes(facility.facilityId)}
-                                                                    onChange={handleInputChange}
-                                                                />
-                                                                <label className="form-check-label" htmlFor={`facility_dropdown_${facility.facilityId}`}>
-                                                                    {facility.facilityName} ({facility.facilityCode})
-                                                                </label>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {formData.facilityCode.length === 0 && (
-                                                <small className="text-danger">Please select at least one option</small>
-                                            )}
-                                        </div>
+                                        {/* Facility Code Removed */}
 
                                         <div className="form-group col-md-6 mt-3">
                                             <label>Options</label>
