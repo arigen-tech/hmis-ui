@@ -1,9 +1,10 @@
-import { useState, useEffect, useRef } from "react"
+import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE , MAS_ITEMFACILTY } from "../../../config/apiConfig";
+import { MAS_DRUG_MAS, MAS_STORE_ITEM_WITHOUT_STOCK, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
+import { SECTION_ID_DRUGS } from "../../../config/constants";
 
 const DrugMaster = () => {
     const [formData, setFormData] = useState({
@@ -22,8 +23,12 @@ const DrugMaster = () => {
         hsnCode: "",
         drugSchedule: "",
         isGeneric: "",
-        facilityCode: [],
         dangerousDrug: false,
+        highValueDrug: false,
+        availableInOpd: false,
+        availableInIpd: false,
+        availableInEmergency: false,
+        availableInOt: false,
     })
     const [popupMessage, setPopupMessage] = useState(null)
     const [drugs, setDrugs] = useState([])
@@ -35,13 +40,27 @@ const DrugMaster = () => {
     const [storeUnitData, setStoreUnitData] = useState([]);
     const [hsnList, setHsnList] = useState([]);
     const [drugScheduleData, setDrugScheduleData] = useState([]);
-    const [facilityOptions, setFacilityOptions] = useState([]);
     const [process, setProcess] = useState(false)
     const [editEnabled, setEditEnabled] = useState(false)
 
-    const [searchQuery, setSearchQuery] = useState("")
+    const [searchParams, setSearchParams] = useState({
+        itemName: "",
+        itemClass: "",
+        itemCategory: ""
+    })
+    const [appliedSearchParams, setAppliedSearchParams] = useState({
+        itemName: "",
+        itemClass: "",
+        itemCategory: ""
+    })
+    const [searchItemClasses, setSearchItemClasses] = useState([])
+    const [searchItemCategories, setSearchItemCategories] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
+    const [totalItems, setTotalItems] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
     const [loading, setLoading] = useState(false);
+    const [tableLoading, setTableLoading] = useState(false)
+    const [isInitialLoad, setIsInitialLoad] = useState(true)
     const departmentId = localStorage.getItem("departmentId") || sessionStorage.getItem("departmentId");
     const hospitalId = localStorage.getItem("hospitalId") || sessionStorage.getItem("hospitalId");
 
@@ -51,32 +70,50 @@ const DrugMaster = () => {
 
     const [confirmDialog, setConfirmDialog] = useState({ isOpen: false, drugId: null, newStatus: null, name: "" })
 
-    // State for custom multi-select dropdown
-    const [isFacilityDropdownOpen, setIsFacilityDropdownOpen] = useState(false);
-    const facilityDropdownRef = useRef(null);
+    // No facility dropdown states
 
     const handleSearchChange = (e) => {
-        setSearchQuery(e.target.value)
+        const { name, value } = e.target
+        setSearchParams(prev => ({
+            ...prev,
+            [name]: value
+        }))
     }
 
-    // Close dropdown when clicking outside
-    useEffect(() => {
-        const handleClickOutside = (event) => {
-            if (facilityDropdownRef.current && !facilityDropdownRef.current.contains(event.target)) {
-                setIsFacilityDropdownOpen(false);
-            }
+    const handleSearch = (e) => {
+        e.preventDefault()
+        setAppliedSearchParams(searchParams)
+        setCurrentPage(1)
+        fetchDrugMasterData(0, searchParams)
+    }
+
+    const handleResetSearch = () => {
+        const resetParams = {
+            itemName: "",
+            itemClass: "",
+            itemCategory: ""
         };
-        document.addEventListener("mousedown", handleClickOutside);
-        return () => document.removeEventListener("mousedown", handleClickOutside);
-    }, []);
+        setSearchParams(resetParams)
+        setAppliedSearchParams(resetParams)
+        setCurrentPage(1)
+        fetchDrugMasterData(0, resetParams)
+    }
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page)
+        fetchDrugMasterData(page - 1)
+    }
+
+    // No click outside handler
 
     useEffect(() => {
-        fetchDrugMasterData();
+        fetchDrugMasterData(0);
         fetchMasStoreGroup();
         fetchStoreUnit();
         fetchHsnData();
         fetchDrugScheduleData();
-        fetchFacilityData();
+        fetchSearchItemClasses();
+        fetchSearchItemCategories();
     }, []);
 
     useEffect(() => {
@@ -108,6 +145,36 @@ const DrugMaster = () => {
         }
     }, [formData.section]);
 
+    // Auto-select Item Group = CONSUMABLE
+    useEffect(() => {
+        if (showForm && masStoreGroup.length > 0) {
+            const consumableGroup = masStoreGroup.find(g => g.groupName?.toUpperCase() === "CONSUMABLE");
+            if (consumableGroup && formData.itemGroup !== consumableGroup.id.toString()) {
+                setFormData(prev => ({ ...prev, itemGroup: consumableGroup.id.toString() }));
+            }
+        }
+    }, [masStoreGroup, showForm, formData.itemGroup]);
+
+    // Auto-select Item Type = MEDICAL CONSUMABLE
+    useEffect(() => {
+        if (showForm && masItemTypeData.length > 0) {
+            const medicalConsumableType = masItemTypeData.find(t => t.name?.toUpperCase() === "MEDICAL CONSUMABLE");
+            if (medicalConsumableType && formData.itemType !== medicalConsumableType.id.toString()) {
+                setFormData(prev => ({ ...prev, itemType: medicalConsumableType.id.toString() }));
+            }
+        }
+    }, [masItemTypeData, showForm, formData.itemType]);
+
+    // Auto-select Section = DRUGS
+    useEffect(() => {
+        if (showForm && itemSectionData.length > 0) {
+            const drugsSection = itemSectionData.find(s => s.sectionName?.toUpperCase() === "DRUGS" || s.sectionId === SECTION_ID_DRUGS);
+            if (drugsSection && formData.section !== drugsSection.sectionId.toString()) {
+                setFormData(prev => ({ ...prev, section: drugsSection.sectionId.toString() }));
+            }
+        }
+    }, [itemSectionData, showForm, formData.section]);
+
     // Validate form whenever formData changes
     useEffect(() => {
         validateForm();
@@ -124,27 +191,42 @@ const DrugMaster = () => {
             formData.dispensingUnit !== "" &&
             formData.unitAU !== "" &&
             formData.itemCategory !== "" &&
-            formData.reorderLevel !== "" &&
-            formData.facilityCode.length > 0;
+            formData.reorderLevel !== "";
         
         setIsFormValid(isValid);
     };
 
-    const fetchDrugMasterData = async () => {
-        setLoading(true);
+    const fetchDrugMasterData = async (page = 0, customParams = null) => {
+        if (isInitialLoad) {
+            setLoading(true);
+        } else {
+            setTableLoading(true);
+        }
         try {
-            const data = await getRequest(`/master/masStoreItemWithotStock/getAll/0`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setDrugs(data.response);
+            const params = customParams || appliedSearchParams;
+            const nomenclature = params.itemName || "";
+            const itemClassId = params.itemClass || "";
+            const masItemCategoryid = params.itemCategory || "";
+
+            const url = `${MAS_STORE_ITEM_WITHOUT_STOCK}/getAllPaginated/0?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&nomenclature=${encodeURIComponent(nomenclature)}&itemClassId=${itemClassId}&masItemCategoryid=${masItemCategoryid}`;
+            const data = await getRequest(url);
+            if (data.status === 200 && data.response) {
+                setDrugs(data.response.content || []);
+                setTotalPages(data.response.totalPages || 0);
+                setTotalItems(data.response.totalElements || 0);
             } else {
                 console.error("Unexpected API response format:", data);
                 setDrugs([]);
+                setTotalPages(0);
+                setTotalItems(0);
             }
         } catch (error) {
-            console.error("Error fetching Service Category data:", error);
+            console.error("Error fetching drug data:", error);
             showPopup("Error fetching drug data", "error");
         } finally {
             setLoading(false);
+            setTableLoading(false);
+            setIsInitialLoad(false);
         }
     };
 
@@ -258,45 +340,45 @@ const DrugMaster = () => {
         }
     };
 
-    // Fetch facility data
-    const fetchFacilityData = async () => {
+    // No fetchFacilityData needed
+
+    const fetchSearchItemClasses = async () => {
         try {
-            const data = await getRequest(`${MAS_ITEMFACILTY}/getAll/1`);
+            const data = await getRequest(`${MAS_ITEM_CLASS}/getAllBySectionId/${SECTION_ID_DRUGS}`);
             if (data.status === 200 && Array.isArray(data.response)) {
-                // Filter only active facilities
-                const activeFacilities = data.response.filter(facility => facility.status?.toLowerCase() === "y");
-                setFacilityOptions(activeFacilities);
+                setSearchItemClasses(data.response);
             } else {
-                setFacilityOptions([]);
-                console.error("Unexpected API response format for facilities:", data);
+                setSearchItemClasses([]);
             }
         } catch (error) {
-            console.error("Error fetching facility data:", error);
-            setFacilityOptions([]);
+            console.error("Error fetching search item classes:", error);
+            setSearchItemClasses([]);
+        }
+    };
+
+    const fetchSearchItemCategories = async () => {
+        try {
+            const data = await getRequest(`${MAS_ITEM_CATEGORY}/findBySectionId/${SECTION_ID_DRUGS}`);
+            if (data.status === 200 && Array.isArray(data.response)) {
+                setSearchItemCategories(data.response);
+            } else {
+                setSearchItemCategories([]);
+            }
+        } catch (error) {
+            console.error("Error fetching search item categories:", error);
+            setSearchItemCategories([]);
         }
     };
 
     const handleInputChange = (e) => {
         const { name, value, type, checked } = e.target
         
-        // Special handling for facilityCode checkboxes (multi-select inside dropdown)
-        if (name === "facilityCode") {
-            const facilityId = Number(value);
-            let updatedArray = [...formData.facilityCode];
-            if (checked) {
-                updatedArray.push(facilityId);
-            } else {
-                updatedArray = updatedArray.filter(item => item !== facilityId);
-            }
-            setFormData(prev => ({ ...prev, [name]: updatedArray }));
-        } else {
-            const updatedFormData = {
-                ...formData,
-                [name]: type === "checkbox" ? checked : value,
-            }
-            setFormData(updatedFormData)
+        const updatedFormData = {
+            ...formData,
+            [name]: type === "checkbox" ? checked : value,
         }
-    }
+        setFormData(updatedFormData)
+    };
 
     const handleSwitchChange = (id, currentStatus, name) => {
         const newStatus = currentStatus?.toLowerCase() === "y" ? "n" : "y";
@@ -317,8 +399,7 @@ const DrugMaster = () => {
                         type: "success",
                         onClose: () => {
                             setPopupMessage(null);
-                            fetchDrugMasterData(); // Refresh data after popup closes
-                            setCurrentPage(1);
+                            fetchDrugMasterData(currentPage - 1); // Refresh data on current page after status change
                         }
                     });
                 } else {
@@ -338,21 +419,6 @@ const DrugMaster = () => {
             setEditEnabled(true);
             setShowForm(true);
 
-            // Convert facility data to array of Long IDs
-            let facilityCodeArray = [];
-            if (drug.facilityCode) {
-                if (typeof drug.facilityCode === 'string') {
-                    facilityCodeArray = drug.facilityCode.split(',').map(s => Number(s.trim())).filter(id => !isNaN(id));
-                } else if (Array.isArray(drug.facilityCode)) {
-                    facilityCodeArray = drug.facilityCode.map(item => {
-                        if (typeof item === "object" && item.facilityId) {
-                            return Number(item.facilityId);
-                        }
-                        return Number(item);
-                    }).filter(id => !isNaN(id));
-                }
-            }
-
             // First set the form data with the drug's values
             setFormData({
                 drugCode: drug.pvmsNo || "",
@@ -370,8 +436,12 @@ const DrugMaster = () => {
                 hsnCode: drug.hsnCode || "",
                 drugSchedule: drug.masDrugScheduleRule || drug.drugSchedule || "",
                 isGeneric: drug.isGeneric || "",
-                facilityCode: facilityCodeArray,
-                dangerousDrug: drug.dangerousDrug || false,
+                dangerousDrug: drug.dangerousDrug?.toUpperCase() === "Y" || drug.dangerousDrug === true,
+                highValueDrug: drug.highValueDrug?.toUpperCase() === "Y" || drug.highValueDrug === true,
+                availableInOpd: drug.availableInOpd?.toUpperCase() === "Y" || drug.availableInOpd === true,
+                availableInIpd: drug.availableInIpd?.toUpperCase() === "Y" || drug.availableInIpd === true,
+                availableInEmergency: drug.availableInEmergency?.toUpperCase() === "Y" || drug.availableInEmergency === true,
+                availableInOt: drug.availableInOt?.toUpperCase() === "Y" || drug.availableInOt === true,
             });
 
             // Then fetch dependent data
@@ -396,9 +466,8 @@ const DrugMaster = () => {
     };
 
     const handleAdd = () => {
-        setEditingDrug(null);
-        setEditEnabled(false);
         setShowForm(true);
+        setEditEnabled(false);
         setFormData({
             drugCode: "",
             drugName: "",
@@ -415,9 +484,17 @@ const DrugMaster = () => {
             hsnCode: "",
             drugSchedule: "",
             isGeneric: "",
-            facilityCode: [],
             dangerousDrug: false,
+            highValueDrug: false,
+            availableInOpd: false,
+            availableInIpd: false,
+            availableInEmergency: false,
+            availableInOt: false,
         });
+    };
+
+    const handleBack = () => {
+        resetForm();
     }
 
     // UPDATED: handleSave with proper popup pattern
@@ -425,7 +502,7 @@ const DrugMaster = () => {
         e.preventDefault();
         
         if (!isFormValid) {
-            showPopup("Please fill all required fields marked with * (select at least one Facility Code)", "error");
+            showPopup("Please fill all required fields marked with *", "error");
             return;
         }
 
@@ -449,8 +526,12 @@ const DrugMaster = () => {
                 hsnCode: formData.hsnCode || "",
                 drugSchedule: formData.drugSchedule || null,
                 isGeneric: formData.isGeneric || "n",
-                dangerousDrug: formData.dangerousDrug ? "y" : "n",
-                facility: formData.facilityCode,
+                dangerousDrug: formData.dangerousDrug ? "Y" : "N",
+                highValueDrug: formData.highValueDrug ? "Y" : "N",
+                availableInOpd: formData.availableInOpd ? "Y" : "N",
+                availableInIpd: formData.availableInIpd ? "Y" : "N",
+                availableInEmergency: formData.availableInEmergency ? "Y" : "N",
+                availableInOt: formData.availableInOt ? "Y" : "N",
                 status: "y"
             };
 
@@ -474,7 +555,14 @@ const DrugMaster = () => {
                     onClose: () => {
                         setPopupMessage(null);
                         resetForm();
-                        fetchDrugMasterData(); // Data refresh happens here
+                        const resetParams = {
+                            itemName: "",
+                            itemClass: "",
+                            itemCategory: ""
+                        };
+                        setSearchParams(resetParams);
+                        setAppliedSearchParams(resetParams);
+                        fetchDrugMasterData(0, resetParams); // Data refresh happens here on first page
                         setCurrentPage(1);
                     }
                 });
@@ -484,7 +572,7 @@ const DrugMaster = () => {
 
         } catch (error) {
             console.error("Error saving drug:", error);
-            showPopup(error.message || "Failed to save drug. Please try again.", "error");
+            showPopup(error.message || "Error saving drug.", "error");
         } finally {
             setProcess(false);
         }
@@ -510,19 +598,25 @@ const DrugMaster = () => {
             hsnCode: "",
             drugSchedule: "",
             isGeneric: "",
-            facilityCode: [],
             dangerousDrug: false,
+            highValueDrug: false,
+            availableInOpd: false,
+            availableInIpd: false,
+            availableInEmergency: false,
+            availableInOt: false,
         });
     };
 
-    const handleBack = () => {
-        resetForm();
-    }
-
     const handleRefresh = () => {
-        setSearchQuery("");
+        const resetParams = {
+            itemName: "",
+            itemClass: "",
+            itemCategory: ""
+        };
+        setSearchParams(resetParams);
+        setAppliedSearchParams(resetParams);
         setCurrentPage(1);
-        fetchDrugMasterData();
+        fetchDrugMasterData(0, resetParams);
     };
 
     // UPDATED: showPopup function with proper onClose pattern
@@ -534,42 +628,15 @@ const DrugMaster = () => {
                 setPopupMessage(null);
                 // For error popups, we might want to refresh data
                 if (type === "error") {
-                    fetchDrugMasterData();
+                    fetchDrugMasterData(currentPage - 1);
                 }
             },
         });
     }
 
-    const filteredDrugs = drugs.filter((item) => {
-        const q = (searchQuery || "").toLowerCase();
+    const currentItems = drugs;
 
-        return (
-            (item.pvmsNo || "").toLowerCase().includes(q) ||
-            (item.nomenclature || "").toLowerCase().includes(q) ||
-            (item.groupName || "").toLowerCase().includes(q) ||
-            (item.itemClassName || "").toLowerCase().includes(q) ||
-            (item.sectionName || "").toLowerCase().includes(q) ||
-            (item.unitAU ? item.unitAU.toString().toLowerCase() : "").includes(q)
-        );
-    });
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
-
-    const getSelectedFacilityText = () => {
-        if (formData.facilityCode.length === 0) return "Select Facility Code(s)";
-        if (formData.facilityCode.length <= 2) {
-            return formData.facilityCode.map(id => {
-                const facility = facilityOptions.find(f => f.facilityId === id);
-                return facility ? facility.facilityName : `ID: ${id}`;
-            }).join(", ");
-        }
-        return `${formData.facilityCode.slice(0, 2).map(id => {
-            const facility = facilityOptions.find(f => f.facilityId === id);
-            return facility ? facility.facilityName : `ID: ${id}`;
-        }).join(", ")} +${formData.facilityCode.length - 2} more`;
-    };
+    // No getSelectedFacilityText helper
 
     return (
         <div className="content-wrapper">
@@ -582,35 +649,18 @@ const DrugMaster = () => {
 
                             <div className="d-flex justify-content-between align-items-center">
                                 {!showForm ? (
-                                    <>
-                                        <form className="d-inline-block searchform me-4" role="search">
-                                            <div className="input-group searchinput">
-                                                <input
-                                                    type="search"
-                                                    className="form-control"
-                                                    placeholder="Search"
-                                                    aria-label="Search"
-                                                    value={searchQuery}
-                                                    onChange={handleSearchChange}
-                                                />
-                                                <span className="input-group-text" id="search-icon">
-                                                    <i className="fa fa-search"></i>
-                                                </span>
-                                            </div>
-                                        </form>
-                                        <div className="d-flex align-items-center ms-auto">
-                                            <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
-                                                <i className="mdi mdi-plus"></i> Add
-                                            </button>
-                                            <button 
-                                                type="button" 
-                                                className="btn btn-success me-2 flex-shrink-0" 
-                                                onClick={handleRefresh}
-                                            >
-                                                <i className="mdi mdi-refresh"></i> Show All
-                                            </button>
-                                        </div>
-                                    </>
+                                    <div className="d-flex align-items-center ms-auto">
+                                        <button type="button" className="btn btn-success me-2" onClick={handleAdd}>
+                                            <i className="mdi mdi-plus"></i> Add
+                                        </button>
+                                        <button 
+                                            type="button" 
+                                            className="btn btn-success me-2 flex-shrink-0" 
+                                            onClick={handleRefresh}
+                                        >
+                                            <i className="mdi mdi-refresh"></i> Show All
+                                        </button>
+                                    </div>
                                 ) : (
                                     <button type="button" className="btn btn-secondary" onClick={handleBack}>
                                         <i className="mdi mdi-arrow-left"></i> Back
@@ -622,13 +672,105 @@ const DrugMaster = () => {
                         <div className="card-body">
                             {!showForm ? (
                                 <>
-                                    <div className="table-responsive packagelist">
-                                        <table className="table table-bordered table-hover align-middle">
+                                    <div className="mb-4">
+                                        <form onSubmit={handleSearch}>
+                                            <div className="row g-3 align-items-end">
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Name</label>
+                                                    <input
+                                                        type="text"
+                                                        className="form-control"
+                                                        name="itemName"
+                                                        placeholder="Enter Item Name"
+                                                        value={searchParams.itemName}
+                                                        onChange={handleSearchChange}
+                                                    />
+                                                </div>
+
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Class</label>
+                                                    <select
+                                                        className="form-select"
+                                                        name="itemClass"
+                                                        value={searchParams.itemClass}
+                                                        onChange={handleSearchChange}
+                                                    >
+                                                        <option value="">Select Item Class</option>
+                                                        {searchItemClasses.map(cls => (
+                                                            <option key={cls.itemClassId} value={cls.itemClassId}>
+                                                                {cls.itemClassName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div className="col-md-3">
+                                                    <label className="form-label fw-bold">Item Category</label>
+                                                    <select
+                                                        className="form-select"
+                                                        name="itemCategory"
+                                                        value={searchParams.itemCategory}
+                                                        onChange={handleSearchChange}
+                                                    >
+                                                        <option value="">Select Category</option>
+                                                        {searchItemCategories.map(cat => (
+                                                            <option key={cat.itemCategoryId} value={cat.itemCategoryId}>
+                                                                {cat.itemCategoryName}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+
+                                                <div className="col-md-3 d-flex align-items-end gap-2">
+                                                    <button
+                                                        type="submit"
+                                                        className="btn btn-primary"
+                                                    >
+                                                        Search
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        className="btn btn-secondary"
+                                                        onClick={handleResetSearch}
+                                                    >
+                                                        Reset
+                                                    </button>
+                                                </div>
+                                            </div>
+                                        </form>
+                                    </div>
+
+                                    <div style={{ position: "relative", minHeight: "200px" }}>
+                                        {tableLoading && (
+                                            <div
+                                                style={{
+                                                    position: "absolute",
+                                                    top: 0,
+                                                    left: 0,
+                                                    width: "100%",
+                                                    height: "100%",
+                                                    backgroundColor: "rgba(255, 255, 255, 0.7)",
+                                                    display: "flex",
+                                                    justifyContent: "center",
+                                                    alignItems: "center",
+                                                    zIndex: 5,
+                                                }}
+                                            >
+                                                <div className="d-flex flex-column align-items-center">
+                                                    <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                                                        <span className="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <span className="mt-2 fw-bold text-primary">Loading Drugs...</span>
+                                                </div>
+                                            </div>
+                                        )}
+                                        <div className="table-responsive packagelist">
+                                            <table className="table table-bordered table-hover align-middle">
                                             <thead className="table-light">
                                                 <tr>
                                                     <th>Drug Code</th>
                                                     <th>Drug Name</th>
-                                                    <th>Item Group</th>
+                                                    <th>Item Category</th>
                                                     <th>Unit</th>
                                                     <th>Section</th>
                                                     <th>Item Class</th>
@@ -642,8 +784,8 @@ const DrugMaster = () => {
                                                         <tr key={item.itemId}>
                                                             <td>{item.pvmsNo}</td>
                                                             <td>{item.nomenclature}</td>
-                                                            <td>{item.groupName}</td>
-                                                            <td>{item.unitAU}</td>
+                                                            <td>{item.masItemCategoryName || "-"}</td>
+                                                            <td>{item.dispUnitName || item.unitAuName || item.unitAU}</td>
                                                             <td>{item.sectionName}</td>
                                                             <td>{item.itemClassName}</td>
                                                             <td>
@@ -684,13 +826,14 @@ const DrugMaster = () => {
                                             </tbody>
                                         </table>
                                     </div>
+                                    </div>
                                     
-                                    {filteredDrugs.length > 0 && (
+                                    {totalItems > 0 && (
                                         <Pagination
-                                            totalItems={filteredDrugs.length}
+                                            totalItems={totalItems}
                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                                             currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
+                                            onPageChange={handlePageChange}
                                         />
                                     )}
                                 </>
@@ -737,6 +880,7 @@ const DrugMaster = () => {
                                                 value={formData.itemGroup}
                                                 onChange={handleInputChange}
                                                 required
+                                                disabled={true}
                                             >
                                                 <option value="">Select Store Item</option>
                                                 {masStoreGroup.map((item) => (
@@ -757,7 +901,7 @@ const DrugMaster = () => {
                                                 value={formData.itemType}
                                                 onChange={handleInputChange}
                                                 required
-                                                disabled={!formData.itemGroup}
+                                                disabled={true}
                                             >
                                                 <option value="">Select Item Type</option>
                                                 {masItemTypeData.map((item) => (
@@ -778,7 +922,7 @@ const DrugMaster = () => {
                                                 value={formData.section}
                                                 onChange={handleInputChange}
                                                 required
-                                                disabled={!formData.itemType}
+                                                disabled={true}
                                             >
                                                 <option value="">Select Item Section</option>
                                                 {itemSectionData.map((section) => (
@@ -956,49 +1100,12 @@ const DrugMaster = () => {
                                             </select>
                                         </div>
 
-                                        <div className="form-group col-md-4 mt-3" ref={facilityDropdownRef}>
-                                            <label>
-                                                Facility Code <span className="text-danger">*</span>
-                                            </label>
-                                            <div className="dropdown" style={{ width: "100%" }}>
-                                                <button
-                                                    type="button"
-                                                    className="form-select text-start"
-                                                    onClick={() => setIsFacilityDropdownOpen(!isFacilityDropdownOpen)}
-                                                    style={{ background: "white", cursor: "pointer" }}
-                                                >
-                                                    {getSelectedFacilityText()}
-                                                </button>
-                                                {isFacilityDropdownOpen && (
-                                                    <div className="dropdown-menu show p-2" style={{ width: "100%", maxHeight: "200px", overflowY: "auto" }}>
-                                                        {facilityOptions.map(facility => (
-                                                            <div className="form-check" key={facility.facilityId}>
-                                                                <input
-                                                                    className="form-check-input"
-                                                                    type="checkbox"
-                                                                    name="facilityCode"
-                                                                    value={facility.facilityId}
-                                                                    id={`facility_dropdown_${facility.facilityId}`}
-                                                                    checked={formData.facilityCode.includes(facility.facilityId)}
-                                                                    onChange={handleInputChange}
-                                                                />
-                                                                <label className="form-check-label" htmlFor={`facility_dropdown_${facility.facilityId}`}>
-                                                                    {facility.facilityName} ({facility.facilityCode})
-                                                                </label>
-                                                            </div>
-                                                        ))}
-                                                    </div>
-                                                )}
-                                            </div>
-                                            {formData.facilityCode.length === 0 && (
-                                                <small className="text-danger">Please select at least one option</small>
-                                            )}
-                                        </div>
+                                        {/* Facility Code Removed */}
 
                                         <div className="form-group col-md-6 mt-3">
                                             <label>Options</label>
-                                            <div className="form-control">
-                                                <div className="form-check">
+                                            <div className="form-control d-flex flex-wrap gap-3">
+                                                <div className="form-check form-check-inline">
                                                     <input
                                                         className="form-check-input"
                                                         type="checkbox"
@@ -1009,6 +1116,77 @@ const DrugMaster = () => {
                                                     />
                                                     <label className="form-check-label" htmlFor="dangerousDrug">
                                                         Dangerous Drug
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="highValueDrug"
+                                                        name="highValueDrug"
+                                                        checked={formData.highValueDrug}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="highValueDrug">
+                                                        High Value Drug
+                                                    </label>
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <div className="form-group col-md-6 mt-3">
+                                            <label>Available in</label>
+                                            <div className="form-control d-flex flex-wrap gap-3">
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInOpd"
+                                                        name="availableInOpd"
+                                                        checked={formData.availableInOpd}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInOpd">
+                                                        OPD
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInIpd"
+                                                        name="availableInIpd"
+                                                        checked={formData.availableInIpd}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInIpd">
+                                                        IPD
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInEmergency"
+                                                        name="availableInEmergency"
+                                                        checked={formData.availableInEmergency}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInEmergency">
+                                                        EMERGENCY
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="availableInOt"
+                                                        name="availableInOt"
+                                                        checked={formData.availableInOt}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="availableInOt">
+                                                        OT
                                                     </label>
                                                 </div>
                                             </div>
