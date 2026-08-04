@@ -44,7 +44,16 @@ import {
   ALL_REPORTS,
   GET_PREVIOUS_OPD_VITALS_DETAILS_HISTORY,
   GET_PREVIOUS_OPD_PSYCHIATRIST_DETAILS_HISTORY,
-  GET_ALL_DRUGS_BY_SECTION,
+  GET_ALL_ITEMS_BY_NAME,
+  GET_ITEM_DETAILS_BY_ID,
+  REQUEST_PARAM_HOSPITAL_ID,
+  REQUEST_PARAM_KEYWORD,
+  REQUEST_PARAM_PAGE,
+  REQUEST_PARAM_SECTION_CODE,
+  REQUEST_PARAM_REQUESTED_DEPT_ID,
+  REQUEST_PARAM_SIZE,
+  DISPENSARY_DEPARTMENT_ID,
+  SECTION_CODE_FOR_DRUGS,
   // OBG_DEPARTMENT_ID,
   // ENT_DEPARTMENT_ID,
   // DENTAL_DEPARTMENT_ID,
@@ -980,8 +989,14 @@ const GeneralMedicineWaitingList = () => {
 
   const fetchDrugOptions = async (searchText = "", page = 0) => {
     try {
+      const params = new URLSearchParams();
+      params.append(REQUEST_PARAM_SECTION_CODE, SECTION_CODE_FOR_DRUGS);
+      params.append(REQUEST_PARAM_KEYWORD, searchText);
+      params.append(REQUEST_PARAM_PAGE, page);
+      params.append(REQUEST_PARAM_SIZE, 20);
+
       const response = await getRequest(
-        `${GET_ALL_DRUGS_BY_SECTION}?flag=1&search=${encodeURIComponent(searchText)}&page=${page}&size=20`,
+        `${GET_ALL_ITEMS_BY_NAME}?${params.toString()}`,
       );
 
       if (response.status === 200 && response.response?.content) {
@@ -995,6 +1010,34 @@ const GeneralMedicineWaitingList = () => {
     } catch (err) {
       console.error("Error fetching drug options:", err);
       return { list: [], last: true };
+    }
+  };
+
+  const fetchDrugDetailsById = async (itemId) => {
+    const hospitalId =
+      selectedPatient?.hospitalId ||
+      sessionStorage.getItem("hospitalId") ||
+      localStorage.getItem("hospitalId");
+
+    if (!hospitalId || !itemId) return null;
+
+    try {
+      const params = new URLSearchParams();
+      params.append(REQUEST_PARAM_HOSPITAL_ID, hospitalId);
+      params.append(REQUEST_PARAM_REQUESTED_DEPT_ID, DISPENSARY_DEPARTMENT_ID);
+
+      const response = await getRequest(
+        `${GET_ITEM_DETAILS_BY_ID}/${itemId}?${params.toString()}`,
+      );
+
+      if (response.status === 200 && response.response) {
+        return response.response;
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error fetching item details:", error);
+      return null;
     }
   };
 
@@ -1062,7 +1105,7 @@ const GeneralMedicineWaitingList = () => {
     setDrugPage(nextPage);
   };
 
-  const updateDrug = (selectedDrug, index) => {
+  const updateDrug = async (selectedDrug, index) => {
     if (!selectedDrug) return;
 
     const isDuplicate = treatmentItems.some(
@@ -1075,18 +1118,40 @@ const GeneralMedicineWaitingList = () => {
       return;
     }
 
+    const itemDetails = await fetchDrugDetailsById(selectedDrug.itemId);
+    const normalizedDrug = itemDetails || selectedDrug;
+    const stockValue =
+      normalizedDrug.requestedDeptStocks ??
+      normalizedDrug.currentDeptStocks ??
+      selectedDrug.requestedDeptStocks ??
+      selectedDrug.currentDeptStocks ??
+      "0";
+
     setTreatmentItems((prev) => {
       const updated = [...prev];
       updated[index] = {
         ...updated[index],
-        drugName: selectedDrug.nomenclature,
-        dispUnit: selectedDrug.dispUnitName,
-        drugId: selectedDrug.itemId,
-        itemClassId: selectedDrug.itemClassId,
-        aDispQty: selectedDrug.aDispQty ?? 1,
+        drugName:
+          normalizedDrug.nomenclature ||
+          normalizedDrug.itemName ||
+          selectedDrug.nomenclature ||
+          selectedDrug.itemName ||
+          "",
+        dispUnit:
+          normalizedDrug.dispUnitName ||
+          normalizedDrug.unitAuName ||
+          normalizedDrug.dispUnit ||
+          selectedDrug.dispUnitName ||
+          "",
+        drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
+        itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
+        aDispQty: normalizedDrug.adispQty ?? selectedDrug.aDispQty ?? 1,
+        stock: stockValue,
         total: calculateTotal({
           ...updated[index],
-          aDispQty: selectedDrug.aDispQty ?? 1,
+          itemClassId:
+            normalizedDrug.itemClassId ?? selectedDrug.itemClassId ?? null,
+          aDispQty: normalizedDrug.adispQty ?? selectedDrug.aDispQty ?? 1,
         }),
       };
       return updated;
@@ -5861,7 +5926,7 @@ const GeneralMedicineWaitingList = () => {
                                 style={{ width: "90px" }}
                                 className="text-center"
                               >
-                                Disp. Unit
+                                Dosage Unit
                               </th>
                               <th
                                 style={{ width: "70px" }}

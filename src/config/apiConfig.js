@@ -592,6 +592,7 @@ export const REQUEST_PARAM_BALANCE_M_ID = "balanceMId";
 export const GET_OPENING_BALANCE_ENTRY_HEADERS = `${INVENTORY}/openingBalanceEntry/headers`;
 export const GET_OPENING_BALANCE_ENTRY_DETAILS = `${INVENTORY}/openingBalanceEntry/details`;
 export const UPDATE_OPENING_BALANCE_ENTRY_BY_ID = `${INVENTORY}/openingBalanceEntry/updateById`;
+export const DISPENSARY_DEPARTMENT_ID = 19;
 
 //Opening Balance Approval List
 

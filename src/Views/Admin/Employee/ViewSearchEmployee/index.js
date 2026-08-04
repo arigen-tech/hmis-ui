@@ -2363,7 +2363,7 @@ if (formData.fromDate) {
                               <td>{employee.dob}</td>
                               <td>{employee.mobileNo}</td>
                               <td>{employee.employeeType}</td>
-                              <td>{employee.role}</td>
+                              <td>{employee.roleName}</td>
                               <td>
                                 {(() => {
                                   const statusConfig = getEmployeeStatusConfig(
