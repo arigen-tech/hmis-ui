@@ -24,6 +24,7 @@ const DrugMaster = () => {
         drugSchedule: "",
         isGeneric: "",
         dangerousDrug: false,
+        highValueDrug: false,
         availableInOpd: false,
         availableInIpd: false,
         availableInEmergency: false,
@@ -55,6 +56,8 @@ const DrugMaster = () => {
     const [searchItemClasses, setSearchItemClasses] = useState([])
     const [searchItemCategories, setSearchItemCategories] = useState([])
     const [currentPage, setCurrentPage] = useState(1)
+    const [totalItems, setTotalItems] = useState(0)
+    const [totalPages, setTotalPages] = useState(0)
     const [loading, setLoading] = useState(false);
     const [tableLoading, setTableLoading] = useState(false)
     const [isInitialLoad, setIsInitialLoad] = useState(true)
@@ -81,6 +84,7 @@ const DrugMaster = () => {
         e.preventDefault()
         setAppliedSearchParams(searchParams)
         setCurrentPage(1)
+        fetchDrugMasterData(0, searchParams)
     }
 
     const handleResetSearch = () => {
@@ -92,12 +96,18 @@ const DrugMaster = () => {
         setSearchParams(resetParams)
         setAppliedSearchParams(resetParams)
         setCurrentPage(1)
+        fetchDrugMasterData(0, resetParams)
+    }
+
+    const handlePageChange = (page) => {
+        setCurrentPage(page)
+        fetchDrugMasterData(page - 1)
     }
 
     // No click outside handler
 
     useEffect(() => {
-        fetchDrugMasterData();
+        fetchDrugMasterData(0);
         fetchMasStoreGroup();
         fetchStoreUnit();
         fetchHsnData();
@@ -186,22 +196,32 @@ const DrugMaster = () => {
         setIsFormValid(isValid);
     };
 
-    const fetchDrugMasterData = async () => {
+    const fetchDrugMasterData = async (page = 0, customParams = null) => {
         if (isInitialLoad) {
             setLoading(true);
         } else {
             setTableLoading(true);
         }
         try {
-            const data = await getRequest(`/master/masStoreItemWithotStock/getAll/0`);
-            if (data.status === 200 && Array.isArray(data.response)) {
-                setDrugs(data.response);
+            const params = customParams || appliedSearchParams;
+            const nomenclature = params.itemName || "";
+            const itemClassId = params.itemClass || "";
+            const masItemCategoryid = params.itemCategory || "";
+
+            const url = `/master/masStoreItemWithotStock/getAllPaginated/0?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&nomenclature=${encodeURIComponent(nomenclature)}&itemClassId=${itemClassId}&masItemCategoryid=${masItemCategoryid}`;
+            const data = await getRequest(url);
+            if (data.status === 200 && data.response) {
+                setDrugs(data.response.content || []);
+                setTotalPages(data.response.totalPages || 0);
+                setTotalItems(data.response.totalElements || 0);
             } else {
                 console.error("Unexpected API response format:", data);
                 setDrugs([]);
+                setTotalPages(0);
+                setTotalItems(0);
             }
         } catch (error) {
-            console.error("Error fetching Service Category data:", error);
+            console.error("Error fetching drug data:", error);
             showPopup("Error fetching drug data", "error");
         } finally {
             setLoading(false);
@@ -379,8 +399,7 @@ const DrugMaster = () => {
                         type: "success",
                         onClose: () => {
                             setPopupMessage(null);
-                            fetchDrugMasterData(); // Refresh data after popup closes
-                            setCurrentPage(1);
+                            fetchDrugMasterData(currentPage - 1); // Refresh data on current page after status change
                         }
                     });
                 } else {
@@ -418,6 +437,7 @@ const DrugMaster = () => {
                 drugSchedule: drug.masDrugScheduleRule || drug.drugSchedule || "",
                 isGeneric: drug.isGeneric || "",
                 dangerousDrug: drug.dangerousDrug?.toUpperCase() === "Y" || drug.dangerousDrug === true,
+                highValueDrug: drug.highValueDrug?.toUpperCase() === "Y" || drug.highValueDrug === true,
                 availableInOpd: drug.availableInOpd?.toUpperCase() === "Y" || drug.availableInOpd === true,
                 availableInIpd: drug.availableInIpd?.toUpperCase() === "Y" || drug.availableInIpd === true,
                 availableInEmergency: drug.availableInEmergency?.toUpperCase() === "Y" || drug.availableInEmergency === true,
@@ -465,6 +485,7 @@ const DrugMaster = () => {
             drugSchedule: "",
             isGeneric: "",
             dangerousDrug: false,
+            highValueDrug: false,
             availableInOpd: false,
             availableInIpd: false,
             availableInEmergency: false,
@@ -506,6 +527,7 @@ const DrugMaster = () => {
                 drugSchedule: formData.drugSchedule || null,
                 isGeneric: formData.isGeneric || "n",
                 dangerousDrug: formData.dangerousDrug ? "Y" : "N",
+                highValueDrug: formData.highValueDrug ? "Y" : "N",
                 availableInOpd: formData.availableInOpd ? "Y" : "N",
                 availableInIpd: formData.availableInIpd ? "Y" : "N",
                 availableInEmergency: formData.availableInEmergency ? "Y" : "N",
@@ -540,7 +562,7 @@ const DrugMaster = () => {
                         };
                         setSearchParams(resetParams);
                         setAppliedSearchParams(resetParams);
-                        fetchDrugMasterData(); // Data refresh happens here
+                        fetchDrugMasterData(0, resetParams); // Data refresh happens here on first page
                         setCurrentPage(1);
                     }
                 });
@@ -577,6 +599,7 @@ const DrugMaster = () => {
             drugSchedule: "",
             isGeneric: "",
             dangerousDrug: false,
+            highValueDrug: false,
             availableInOpd: false,
             availableInIpd: false,
             availableInEmergency: false,
@@ -593,7 +616,7 @@ const DrugMaster = () => {
         setSearchParams(resetParams);
         setAppliedSearchParams(resetParams);
         setCurrentPage(1);
-        fetchDrugMasterData();
+        fetchDrugMasterData(0, resetParams);
     };
 
     // UPDATED: showPopup function with proper onClose pattern
@@ -605,29 +628,13 @@ const DrugMaster = () => {
                 setPopupMessage(null);
                 // For error popups, we might want to refresh data
                 if (type === "error") {
-                    fetchDrugMasterData();
+                    fetchDrugMasterData(currentPage - 1);
                 }
             },
         });
     }
 
-    const filteredDrugs = drugs.filter((item) => {
-        const matchItemName = !appliedSearchParams.itemName || 
-            (item.nomenclature || "").toLowerCase().includes(appliedSearchParams.itemName.toLowerCase());
-        
-        const matchItemClass = !appliedSearchParams.itemClass || 
-            (item.itemClassId?.toString() === appliedSearchParams.itemClass.toString());
-
-        const matchItemCategory = !appliedSearchParams.itemCategory || 
-            (item.masItemCategoryid?.toString() === appliedSearchParams.itemCategory.toString() ||
-             item.masItemCategoryId?.toString() === appliedSearchParams.itemCategory.toString());
-
-        return matchItemName && matchItemClass && matchItemCategory;
-    });
-
-    const indexOfLast = currentPage * DEFAULT_ITEMS_PER_PAGE;
-    const indexOfFirst = indexOfLast - DEFAULT_ITEMS_PER_PAGE;
-    const currentItems = filteredDrugs.slice(indexOfFirst, indexOfLast);
+    const currentItems = drugs;
 
     // No getSelectedFacilityText helper
 
@@ -821,12 +828,12 @@ const DrugMaster = () => {
                                     </div>
                                     </div>
                                     
-                                    {filteredDrugs.length > 0 && (
+                                    {totalItems > 0 && (
                                         <Pagination
-                                            totalItems={filteredDrugs.length}
+                                            totalItems={totalItems}
                                             itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
                                             currentPage={currentPage}
-                                            onPageChange={setCurrentPage}
+                                            onPageChange={handlePageChange}
                                         />
                                     )}
                                 </>
@@ -1097,8 +1104,8 @@ const DrugMaster = () => {
 
                                         <div className="form-group col-md-6 mt-3">
                                             <label>Options</label>
-                                            <div className="form-control">
-                                                <div className="form-check">
+                                            <div className="form-control d-flex flex-wrap gap-3">
+                                                <div className="form-check form-check-inline">
                                                     <input
                                                         className="form-check-input"
                                                         type="checkbox"
@@ -1109,6 +1116,19 @@ const DrugMaster = () => {
                                                     />
                                                     <label className="form-check-label" htmlFor="dangerousDrug">
                                                         Dangerous Drug
+                                                    </label>
+                                                </div>
+                                                <div className="form-check form-check-inline">
+                                                    <input
+                                                        className="form-check-input"
+                                                        type="checkbox"
+                                                        id="highValueDrug"
+                                                        name="highValueDrug"
+                                                        checked={formData.highValueDrug}
+                                                        onChange={handleInputChange}
+                                                    />
+                                                    <label className="form-check-label" htmlFor="highValueDrug">
+                                                        High Value Drug
                                                     </label>
                                                 </div>
                                             </div>
