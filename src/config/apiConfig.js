@@ -49,6 +49,7 @@ export const MAS_DRUG_MAS = `${MASTERS}/masStoreItem`;
 export const MAS_NON_DRUG_ITEM = `${MASTERS}/nonDrugItem`;
 export const MAS_NON_DRUG_ITEM_GET_ALL = `${MAS_NON_DRUG_ITEM}/getAll`;
 export const GET_MEDICAL_CONSUMABLE_ITEMS = `${MASTERS}/getMedicalConsumableItem`;
+export const GET_NON_MEDICAL_CONSUMABLE_ITEMS = `${MASTERS}/getNonMedicalConsumableItem`;
 export const MAS_NON_DRUG_ITEM_GET_BY_ID = `${MAS_NON_DRUG_ITEM}/getById`;
 export const MAS_NON_DRUG_ITEM_UPDATE = `${MAS_NON_DRUG_ITEM}/update`;
 export const MAS_HSN = `${MASTERS}/masHSN`;
