@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE } from "../../../config/apiConfig";
+import { MAS_DRUG_MAS, MAS_STORE_ITEM_WITHOUT_STOCK, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_HSN , MAS_DRUGSCHEDULE } from "../../../config/apiConfig";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { SECTION_ID_DRUGS } from "../../../config/constants";
 
@@ -208,7 +208,7 @@ const DrugMaster = () => {
             const itemClassId = params.itemClass || "";
             const masItemCategoryid = params.itemCategory || "";
 
-            const url = `/master/masStoreItemWithotStock/getAllPaginated/0?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&nomenclature=${encodeURIComponent(nomenclature)}&itemClassId=${itemClassId}&masItemCategoryid=${masItemCategoryid}`;
+            const url = `${MAS_STORE_ITEM_WITHOUT_STOCK}/getAllPaginated/0?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}&nomenclature=${encodeURIComponent(nomenclature)}&itemClassId=${itemClassId}&masItemCategoryid=${masItemCategoryid}`;
             const data = await getRequest(url);
             if (data.status === 200 && data.response) {
                 setDrugs(data.response.content || []);
