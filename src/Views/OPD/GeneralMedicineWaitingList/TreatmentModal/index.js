@@ -1185,7 +1185,7 @@ const TreatmentModal = ({
                   <thead className="table-light">
                     <tr>
                       <th style={{ minWidth: 300, padding: "8px", fontSize: "0.75rem" }}>DRUGS NAME/CODE</th>
-                      <th style={{ minWidth: "80px", padding: "8px", fontSize: "0.75rem" }}>DISP. UNIT</th>
+                      <th style={{ minWidth: "80px", padding: "8px", fontSize: "0.75rem" }}>DOSAGE UNIT</th>
                       <th style={{ minWidth: "80px", padding: "8px", fontSize: "0.75rem" }}>DOSAGE</th>
                       <th style={{ minWidth: "100px", padding: "8px", fontSize: "0.75rem" }}>FREQUENCY</th>
                       <th style={{ minWidth: "60px", padding: "8px", fontSize: "0.75rem" }}>DAYS</th>

@@ -1146,6 +1146,7 @@ const GeneralMedicineWaitingList = () => {
         drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
         itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
         aDispQty: normalizedDrug.adispQty ?? selectedDrug.aDispQty ?? 1,
+        requestedDeptStocks: stockValue,
         stock: stockValue,
         total: calculateTotal({
           ...updated[index],
@@ -4048,15 +4049,51 @@ const GeneralMedicineWaitingList = () => {
     data?.opdTreatmentList ??
     [];
 
-  const addCurrentMedicationToTreatment = (medication) => {
-    if (!medication?.drugName) return;
+  const addCurrentMedicationToTreatment = async (medication) => {
+    const sourceDrugId = medication?.drugId ?? medication?.itemId ?? "";
+    if (!medication?.drugName && !sourceDrugId) return;
+
+    const itemDetails = sourceDrugId
+      ? await fetchDrugDetailsById(sourceDrugId)
+      : null;
+    const normalizedDrug = itemDetails || medication;
+
+    const resolvedDrugName =
+      normalizedDrug.nomenclature ||
+      normalizedDrug.itemName ||
+      normalizedDrug.name ||
+      medication.drugName ||
+      "";
+
+    const resolvedDispUnit =
+      normalizedDrug.dispUnitName ||
+      normalizedDrug.unitAuName ||
+      normalizedDrug.dispUnit ||
+      normalizedDrug.dispU ||
+      medication.dispUnit ||
+      "";
+
+    const resolvedStock =
+      normalizedDrug.requestedDeptStocks ??
+      normalizedDrug.currentDeptStocks ??
+      normalizedDrug.stock ??
+      medication.requestedDeptStocks ??
+      medication.currentDeptStocks ??
+      medication.stock ??
+      "0";
+
+    const resolvedItemClassId =
+      normalizedDrug.itemClassId ?? medication.itemClassId ?? null;
+
+    const resolvedADispQty =
+      normalizedDrug.adispQty ?? normalizedDrug.aDispQty ?? medication.aDispQty ?? 1;
 
     setTreatmentItems((prev) => {
       const alreadyAdded = prev.some((item) => {
-        if (medication.drugId && item.drugId === medication.drugId) return true;
+        if (sourceDrugId && item.drugId === sourceDrugId) return true;
         return (
           item.drugName?.trim().toLowerCase() ===
-          medication.drugName.trim().toLowerCase()
+          resolvedDrugName.trim().toLowerCase()
         );
       });
 
@@ -4070,18 +4107,19 @@ const GeneralMedicineWaitingList = () => {
 
       const repeatedItem = {
         treatmentId: null,
-        drugId: medication.drugId,
-        drugName: medication.drugName,
-        dispUnit: medication.dispUnit,
-        dosage: medication.dosage,
-        frequency: medication.frequency,
-        days: medication.days,
-        total: medication.total,
-        instruction: medication.instruction,
-        stock: medication.stock || "0",
+        drugId: sourceDrugId || normalizedDrug.itemId || "",
+        drugName: resolvedDrugName,
+        dispUnit: resolvedDispUnit,
+        dosage: medication.dosage ?? "",
+        frequency: medication.frequency ?? "",
+        days: medication.days ?? "",
+        total: medication.total ?? "",
+        instruction: medication.instruction ?? "",
+        stock: resolvedStock,
+        requestedDeptStocks: resolvedStock,
         templateId: "",
-        itemClassId: medication.itemClassId,
-        aDispQty: medication.aDispQty,
+        itemClassId: resolvedItemClassId,
+        aDispQty: resolvedADispQty,
       };
 
       if (isOnlyDefaultTreatmentRow(prev)) {
@@ -5980,8 +6018,18 @@ const GeneralMedicineWaitingList = () => {
                           </thead>
 
                           <tbody>
-                            {treatmentItems.map((row, index) => (
-                              <tr key={index}>
+                            {treatmentItems.map((row, index) => {
+                              const stockQuantity = Number(
+                                row.requestedDeptStocks ?? row.stock ?? 0,
+                              );
+                              const isOutOfStock =
+                                row.drugId && stockQuantity === 0;
+
+                              return (
+                                <tr
+                                  key={index}
+                                  className={isOutOfStock ? "table-danger" : ""}
+                                >
                                 <td>
                                   <div
                                     className="position-relative"
@@ -6215,7 +6263,8 @@ const GeneralMedicineWaitingList = () => {
                                   </button>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
