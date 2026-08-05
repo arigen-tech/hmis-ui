@@ -131,10 +131,14 @@ const normalizeLabInvestigation = (item, index) => ({
 const normalizeRadiologyInvestigation = (item, index) => ({
   id: item?.investigationId ?? item?.id ?? index,
   investigationName: item?.investigationName ?? item?.name ?? "",
+  testName: item?.testName ?? item?.investigationName ?? item?.name ?? "",
   name: item?.name ?? item?.investigationName ?? "",
   price: Number(item?.price ?? item?.amount ?? item?.rate ?? 0),
   discount: Number(item?.disc ?? item?.discount ?? 0),
 });
+
+const getRadiologyInvestigationLabel = (test) =>
+  test?.investigationName || test?.testName || test?.name || "";
 
 const getGenderApplicable = (selectedPatient) => {
   const rawGender =
@@ -161,6 +165,16 @@ const getGenderApplicable = (selectedPatient) => {
 
 const getTodayDateString = () => new Date().toISOString().split("T")[0];
 
+let investigationRowSeq = 0;
+const getUniqueInvestigationRowId = () =>
+  `${Date.now()}-${investigationRowSeq++}`;
+
+const normalizeInvestigationText = (value) =>
+  String(value || "").trim().toLowerCase();
+
+const getLabInvestigationLabel = (test) =>
+  test?.investigationName || test?.testName || "";
+
 // ----------------------------------------------------------------------------
 // Main Component
 // ----------------------------------------------------------------------------
@@ -171,7 +185,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
 
   // ---------- Lab order entry state ----------
   const createLabRow = () => ({
-    id: Date.now(),
+    id: getUniqueInvestigationRowId(),
     testName: "",
     sample: "",
     container: "",
@@ -184,7 +198,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
 
   // ---------- Radiology order entry state ----------
   const createRadiologyRow = () => ({
-    id: Date.now(),
+    id: getUniqueInvestigationRowId(),
     investigationName: "",
     date: getTodayDateString(),
     remarks: "",
@@ -452,14 +466,35 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     setTimeout(() => toggleLabDropdown(id, false), 150);
   };
 
-  const getFilteredLabTests = (searchText) => {
-    const query = (searchText || "").trim().toLowerCase();
-    if (!query) return labTests;
-    return labTests.filter((test) =>
-      (test.investigationName || test.testName || "")
-        .toLowerCase()
-        .includes(query)
+  const getLabTestKey = (test) =>
+    test?.id != null
+      ? `id:${test.id}`
+      : `name:${normalizeInvestigationText(getLabInvestigationLabel(test))}`;
+
+  const findSelectedLabTestFromRow = (row) =>
+    labTests.find(
+      (test) =>
+        test.id === row.selectedId ||
+        test.testName === row.testName ||
+        test.investigationName === row.testName ||
+        test.testName === row.searchText ||
+        test.investigationName === row.searchText
     );
+
+  const getFilteredLabTests = (searchText, currentRowId) => {
+    const query = (searchText || "").trim().toLowerCase();
+    const selectedKeys = new Set(
+      labRows
+        .filter((row) => row.id !== currentRowId)
+        .map(findSelectedLabTestFromRow)
+        .filter(Boolean)
+        .map(getLabTestKey)
+    );
+    return labTests.filter((test) => {
+      const label = getLabInvestigationLabel(test);
+      const matchesQuery = !query || normalizeInvestigationText(label).includes(query);
+      return matchesQuery && !selectedKeys.has(getLabTestKey(test));
+    });
   };
 
   // ---------- Radiology order handlers ----------
@@ -476,13 +511,14 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const selectRadiologyTest = (id, test) => {
+    const investigationName = getRadiologyInvestigationLabel(test);
     setRadiologyRows(
       radiologyRows.map((row) =>
         row.id === id
           ? {
               ...row,
-              investigationName: test.investigationName,
-              searchText: test.investigationName,
+              investigationName,
+              searchText: investigationName,
               dropdownOpen: false,
             }
           : row
@@ -530,12 +566,38 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     setTimeout(() => toggleRadiologyDropdown(id, false), 150);
   };
 
-  const getFilteredRadiologyTests = (searchText) => {
-    const query = (searchText || "").trim().toLowerCase();
-    if (!query) return radiologyTests;
-    return radiologyTests.filter((test) =>
-      (test.investigationName || "").toLowerCase().includes(query)
+  const getRadiologyTestKey = (test) =>
+    test?.id != null
+      ? `id:${test.id}`
+      : `name:${normalizeInvestigationText(getRadiologyInvestigationLabel(test))}`;
+
+  const findSelectedRadiologyTestFromRow = (row) =>
+    radiologyTests.find(
+      (test) =>
+        test.id === row.selectedId ||
+        test.investigationName === row.investigationName ||
+        test.testName === row.investigationName ||
+        test.name === row.investigationName ||
+        test.investigationName === row.searchText ||
+        test.testName === row.searchText ||
+        test.name === row.searchText
     );
+
+  const getFilteredRadiologyTests = (searchText, currentRowId) => {
+    const query = (searchText || "").trim().toLowerCase();
+    const selectedKeys = new Set(
+      radiologyRows
+        .filter((row) => row.id !== currentRowId)
+        .map(findSelectedRadiologyTestFromRow)
+        .filter(Boolean)
+        .map(getRadiologyTestKey)
+    );
+    return radiologyTests.filter((test) => {
+      const label = getRadiologyInvestigationLabel(test);
+      const matchesQuery =
+        !query || normalizeInvestigationText(label).includes(query);
+      return matchesQuery && !selectedKeys.has(getRadiologyTestKey(test));
+    });
   };
 
   // ---------- Save handlers ----------
@@ -563,7 +625,11 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
             : radiologyTests.find(
                 (test) =>
                   test.investigationName === row.investigationName ||
-                  test.investigationName === row.searchText
+                  test.testName === row.investigationName ||
+                  test.name === row.investigationName ||
+                  test.investigationName === row.searchText ||
+                  test.testName === row.searchText ||
+                  test.name === row.searchText
               );
 
         return {
@@ -576,9 +642,80 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           sample: row.sample || "",
           container: row.container || "",
           resultUnit: row.resultUnit || "",
+          investigationName:
+            type === "radiology"
+              ? getRadiologyInvestigationLabel(matchedTest)
+              : row.testName || row.searchText || "",
         };
       })
       .filter((row) => row.id != null);
+
+  const validateUniqueInvestigations = (rows, type) => {
+    const seen = new Map();
+    const rowLabel = type === "lab" ? "Lab" : "Radiology";
+
+    for (let i = 0; i < rows.length; i += 1) {
+      const row = rows[i];
+      if (!row.searchText?.trim()) continue;
+
+      const matchedTest =
+        type === "lab"
+          ? labTests.find(
+              (test) =>
+                test.testName === row.testName ||
+                test.investigationName === row.testName ||
+                test.testName === row.searchText ||
+                test.investigationName === row.searchText
+            )
+          : radiologyTests.find(
+              (test) =>
+                test.investigationName === row.investigationName ||
+                test.testName === row.investigationName ||
+                test.name === row.investigationName ||
+                test.investigationName === row.searchText ||
+                test.testName === row.searchText ||
+                test.name === row.searchText
+            );
+
+      if (!matchedTest) continue;
+
+      const key =
+        type === "lab" ? getLabTestKey(matchedTest) : getRadiologyTestKey(matchedTest);
+      const previousIndex = seen.get(key);
+      if (previousIndex !== undefined) {
+        Swal.fire({
+          icon: "warning",
+          title: "Duplicate investigation",
+          text: `${rowLabel} investigation "${getRadiologyInvestigationLabel(matchedTest)}" is already selected in row ${previousIndex + 1}. Please choose a different investigation.`,
+        });
+        return false;
+      }
+
+      seen.set(key, i);
+    }
+
+    return true;
+  };
+
+  const validateInvestigationRemarks = (rows, type) => {
+    const missingRemarksRowIndex = rows.findIndex(
+      (row) => row.searchText?.trim() && !row.remarks?.trim()
+    );
+
+    if (missingRemarksRowIndex !== -1) {
+      const rowLabel = missingRemarksRowIndex + 1;
+      const tabLabel = type === "lab" ? "Lab" : "Radiology";
+
+      Swal.fire({
+        icon: "warning",
+        title: "Remarks required",
+        text: `${tabLabel} investigation remarks are mandatory. Please enter remarks for row ${rowLabel} before saving.`,
+      });
+      return false;
+    }
+
+    return true;
+  };
 
   const handleSaveInvestigations = async (type) => {
     if (!selectedPatient?.patientId || !selectedPatient?.inpatientId) {
@@ -591,6 +728,15 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     }
 
     const rows = type === "lab" ? labRows : radiologyRows;
+
+    if (!validateInvestigationRemarks(rows, type)) {
+      return;
+    }
+
+    if (!validateUniqueInvestigations(rows, type)) {
+      return;
+    }
+
     const investigationReq = buildPayloadRows(rows, type);
 
     if (investigationReq.length === 0) {
@@ -712,7 +858,10 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 </thead>
                 <tbody>
                   {labRows.map((row, idx) => {
-                    const filteredTests = getFilteredLabTests(row.searchText);
+                    const filteredTests = getFilteredLabTests(
+                      row.searchText,
+                      row.id
+                    );
                     return (
                       <tr key={row.id}>
                         <td className="text-center">{idx + 1}</td>
@@ -811,7 +960,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             onChange={(e) =>
                               updateLabRow(row.id, "remarks", e.target.value)
                             }
-                            placeholder="Remarks"
+                            placeholder="Remarks *"
+                            aria-required="true"
                           />
                         </td>
                         <td className="text-center">
@@ -872,7 +1022,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                 <tbody>
                   {radiologyRows.map((row, idx) => {
                     const filteredTests = getFilteredRadiologyTests(
-                      row.searchText
+                      row.searchText,
+                      row.id
                     );
                     return (
                       <tr key={row.id}>
@@ -904,19 +1055,51 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             }
                           >
                             <ul className="list-group mb-0">
-                              {filteredTests.map((test) => (
-                                <li
-                                  key={test.id}
-                                  className="list-group-item list-group-item-action"
-                                  style={{ cursor: "pointer" }}
-                                  onClick={() =>
-                                    selectRadiologyTest(row.id, test)
-                                  }
-                                  onMouseDown={(e) => e.preventDefault()}
-                                >
-                                  {test.investigationName}
-                                </li>
-                              ))}
+                              {filteredTests.map((test) => {
+                                const displayName =
+                                  getRadiologyInvestigationLabel(test);
+                                const hasDiscount =
+                                  test.discount && test.discount > 0;
+                                const displayPrice = test.price || 0;
+                                const discountAmount = hasDiscount
+                                  ? test.discount
+                                  : 0;
+                                const finalPrice = hasDiscount
+                                  ? displayPrice - discountAmount
+                                  : displayPrice;
+
+                                return (
+                                  <li
+                                    key={test.id}
+                                    className="list-group-item list-group-item-action"
+                                    style={{
+                                      cursor: "pointer",
+                                      backgroundColor: "#e3e8e6",
+                                    }}
+                                    onClick={() =>
+                                      selectRadiologyTest(row.id, test)
+                                    }
+                                    onMouseDown={(e) => e.preventDefault()}
+                                  >
+                                    <div>
+                                      <strong>{displayName}</strong>
+                                      <div className="d-flex justify-content-between">
+                                        <span>
+                                          {test.price === null ||
+                                          test.price === undefined
+                                            ? "Price not configured"
+                                            : `Rs. ${finalPrice.toFixed(2)}`}
+                                        </span>
+                                      </div>
+                                      {test.investigationType && (
+                                        <small className="text-muted">
+                                          Type: {test.investigationType}
+                                        </small>
+                                      )}
+                                    </div>
+                                  </li>
+                                );
+                              })}
                             </ul>
                           </PortalDropdown>
                         </td>
@@ -932,7 +1115,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                                 e.target.value
                               )
                             }
-                            placeholder="Remarks"
+                            placeholder="Remarks *"
+                            aria-required="true"
                           />
                         </td>
                         <td className="text-center">
