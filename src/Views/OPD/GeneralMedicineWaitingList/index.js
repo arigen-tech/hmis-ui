@@ -1146,6 +1146,7 @@ const GeneralMedicineWaitingList = () => {
         drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
         itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
         aDispQty: normalizedDrug.adispQty ?? selectedDrug.aDispQty ?? 1,
+        requestedDeptStocks: stockValue,
         stock: stockValue,
         total: calculateTotal({
           ...updated[index],
@@ -5980,8 +5981,18 @@ const GeneralMedicineWaitingList = () => {
                           </thead>
 
                           <tbody>
-                            {treatmentItems.map((row, index) => (
-                              <tr key={index}>
+                            {treatmentItems.map((row, index) => {
+                              const stockQuantity = Number(
+                                row.requestedDeptStocks ?? row.stock ?? 0,
+                              );
+                              const isOutOfStock =
+                                row.drugId && stockQuantity === 0;
+
+                              return (
+                                <tr
+                                  key={index}
+                                  className={isOutOfStock ? "table-danger" : ""}
+                                >
                                 <td>
                                   <div
                                     className="position-relative"
@@ -6215,7 +6226,8 @@ const GeneralMedicineWaitingList = () => {
                                   </button>
                                 </td>
                               </tr>
-                            ))}
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
