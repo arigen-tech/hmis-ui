@@ -1,7 +1,7 @@
 import { useState, useMemo, useEffect } from "react";
 import Pagination from "../../../Components/Pagination";
 import { getRequest } from "../../../service/apiService";
-import { GET_IPD_ADVANCE_COLLECTION } from "../../../config/apiConfig";
+import { GET_IPD_ADVANCE_COLLECTION, GET_PREVIOUS_PAYMENT_HISTORY } from "../../../config/apiConfig";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card", "Cheque"];
 const COLLECTION_TYPES = ["Advance", "Final"];
@@ -39,19 +39,30 @@ const IPDAdvanceCollection = () => {
 
   // --- NEW: Fetch payment history when an admission is selected ---
   useEffect(() => {
-    if (selectedAdmission) {
-      // TODO: Replace with actual API call to fetch payment history for this admission
-      // For demonstration, we set mock data
+    if (selectedAdmission && selectedAdmission.billingHeaderId) {
       setHistoryLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setPaymentHistory([
-          { id: 1, date: '2026-08-01', paymentType: 'Advance', paymentMode: 'Cash', amount: 5000 },
-          { id: 2, date: '2026-08-02', paymentType: 'Final', paymentMode: 'UPI', amount: 2500 },
-          { id: 3, date: '2026-08-03', paymentType: 'Advance', paymentMode: 'Card', amount: 1000 },
-        ]);
-        setHistoryLoading(false);
-      }, 300);
+      getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${selectedAdmission.billingHeaderId}`)
+        .then(res => {
+          if (res && res.response) {
+            const mappedHistory = res.response.map((item, idx) => ({
+              id: item.receiptId || idx,
+              date: item.dateTime,
+              paymentType: item.paymentType,
+              paymentMode: item.paymentMode,
+              amount: item.amount
+            }));
+            setPaymentHistory(mappedHistory);
+          } else {
+            setPaymentHistory([]);
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching payment history:", error);
+          setPaymentHistory([]);
+        })
+        .finally(() => {
+          setHistoryLoading(false);
+        });
     } else {
       setPaymentHistory([]);
     }

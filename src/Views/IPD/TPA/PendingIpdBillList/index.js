@@ -1,9 +1,18 @@
 import { useState, useMemo, useEffect } from "react";
 import LoadingScreen from "../../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
+import { getRequest } from "../../../../service/apiService";
+import { MAS_WARD_GET_ALL_ACTIVE, MAS_IPD_BILLING_TYPE, GET_PENDING_TRACKING_IPD_BILL_LIST, GET_PREVIOUS_PAYMENT_HISTORY } from "../../../../config/apiConfig";
 
 const PAYMENT_MODES = ["Cash", "UPI", "Card", "Cheque"];
 const COLLECTION_TYPES = ["Advance", "Final"];
+const amountOptions = [
+  { value: "", label: "All Amounts" },
+  { value: "0", label: "₹0" },
+  { value: "5000", label: "₹5,000" },
+  { value: "10000", label: "₹10,000" },
+  { value: "other", label: "Other..." }
+];
 
 const PendingIpdBillList = () => {
   const [loading, setLoading] = useState(false);
@@ -11,7 +20,7 @@ const PendingIpdBillList = () => {
   // Filter states
   const [wardFilter, setWardFilter] = useState("");
   const [billTypeFilter, setBillTypeFilter] = useState("");
-  const [amountFilter, setAmountFilter] = useState(""); // '', 'gt50000', 'gt10000', 'other'
+  const [amountFilter, setAmountFilter] = useState("");
   const [customAmount, setCustomAmount] = useState("");
 
   // Button spinners
@@ -24,119 +33,69 @@ const PendingIpdBillList = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
 
-  // Full static data (unchanged)
-  const fullBillData = useMemo(
-    () => [
-      {
-        admissionId: "ADM001",
-        patientName: "Ravi Kumar",
-        mobile: "9876543210",
-        admissionDateTime: "05-Apr-2026 10:30 AM",
-        wardRoom: "Ward A / 101",
-        billType: "Insurance",
-        totalAmount: "1,00,000",
-        insurancePayable: "70,000",
-        patientPaid: "20,000",
-        outstandingAmount: "10,000",
-        billStatus: "FINAL",
-        uhid: "UH12345",
-        age: "45",
-        gender: "Male",
-        attendingDoctor: "Dr. Sharma",
-        ward: "Ward A",
-        room: "101",
-        bed: "1",
-        admissionNo: "ADM001",
-      },
-      {
-        admissionId: "ADM002",
-        patientName: "Amit Sharma",
-        mobile: "9123456780",
-        admissionDateTime: "04-Apr-2026 02:15 PM",
-        wardRoom: "Ward B / 205",
-        billType: "Corporate",
-        totalAmount: "80,000",
-        insurancePayable: "50,000",
-        patientPaid: "20,000",
-        outstandingAmount: "10,000",
-        billStatus: "OPEN",
-        uhid: "UH12346",
-        age: "38",
-        gender: "Male",
-        attendingDoctor: "Dr. Verma",
-        ward: "Ward B",
-        room: "205",
-        bed: "2",
-        admissionNo: "ADM002",
-      },
-      {
-        admissionId: "ADM003",
-        patientName: "Sneha Verma",
-        mobile: "9988776655",
-        admissionDateTime: "03-Apr-2026 09:00 AM",
-        wardRoom: "ICU / 12",
-        billType: "Cash",
-        totalAmount: "60,000",
-        insurancePayable: "0",
-        patientPaid: "60,000",
-        outstandingAmount: "0",
-        billStatus: "FINAL",
-        uhid: "UH12347",
-        age: "29",
-        gender: "Female",
-        attendingDoctor: "Dr. Gupta",
-        ward: "ICU",
-        room: "12",
-        bed: "3",
-        admissionNo: "ADM003",
-      },
-      {
-        admissionId: "ADM004",
-        patientName: "Rajesh Singh",
-        mobile: "9811122233",
-        admissionDateTime: "02-Apr-2026 11:45 AM",
-        wardRoom: "Ward C / 310",
-        billType: "Insurance",
-        totalAmount: "1,50,000",
-        insurancePayable: "1,00,000",
-        patientPaid: "30,000",
-        outstandingAmount: "20,000",
-        billStatus: "INTERIM",
-        uhid: "UH12348",
-        age: "52",
-        gender: "Male",
-        attendingDoctor: "Dr. Patel",
-        ward: "Ward C",
-        room: "310",
-        bed: "4",
-        admissionNo: "ADM004",
-      },
-      {
-        admissionId: "ADM005",
-        patientName: "Pooja Gupta",
-        mobile: "9090909090",
-        admissionDateTime: "01-Apr-2026 04:20 PM",
-        wardRoom: "Ward A / 115",
-        billType: "Insurance",
-        totalAmount: "90,000",
-        insurancePayable: "60,000",
-        patientPaid: "25,000",
-        outstandingAmount: "5,000",
-        billStatus: "FINAL",
-        uhid: "UH12349",
-        age: "34",
-        gender: "Female",
-        attendingDoctor: "Dr. Mehta",
-        ward: "Ward A",
-        room: "115",
-        bed: "5",
-        admissionNo: "ADM005",
-      },
-    ],
-    []
-  );
+  // Dynamic Options
+  const [wardOptions, setWardOptions] = useState([]);
+  const [billTypeOptions, setBillTypeOptions] = useState([]);
 
-  // Details view states (copied from IPDAdvanceCollection)
+  // Data State
+  const [displayData, setDisplayData] = useState([]);
+
+  useEffect(() => {
+    getRequest(MAS_WARD_GET_ALL_ACTIVE).then(res => {
+      if (res?.response) {
+        setWardOptions(res.response.map(w => ({ id: w.wardId, name: w.wardName })));
+      } else {
+        setWardOptions([]);
+      }
+    });
+    getRequest(`${MAS_IPD_BILLING_TYPE}/getAll/1`).then(res => {
+      if (res?.response) {
+        setBillTypeOptions(res.response.map(b => ({ value: b.billingTypeId, label: b.billingTypeName })));
+      } else {
+        setBillTypeOptions([]);
+      }
+    });
+  }, []);
+
+  const fetchBills = async (page = 0) => {
+    setLoading(true);
+    let url = `${GET_PENDING_TRACKING_IPD_BILL_LIST}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
+    if (wardFilter) url += `&wardId=${wardFilter}`;
+    if (billTypeFilter) url += `&billType=${billTypeFilter}`;
+    if (amountFilter === "other" && customAmount) {
+      url += `&outStandingAmount=${customAmount}`;
+    } else if (amountFilter && amountFilter !== "other") {
+      url += `&outStandingAmount=${amountFilter}`;
+    }
+
+    try {
+      const res = await getRequest(url);
+      if (res && res.response) {
+        setDisplayData(res.response.content || []);
+        setTotalPages(res.response.totalPages || 0);
+        setTotalElements(res.response.totalElements || 0);
+        setCurrentPage((res.response.number || 0) + 1);
+      } else {
+        setDisplayData([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      }
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      setDisplayData([]);
+    } finally {
+      setLoading(false);
+      setIsSearching(false);
+      setIsShowingAll(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBills(currentPage - 1);
+  }, [currentPage]);
+
+  // Details view states
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
 
@@ -153,65 +112,36 @@ const PendingIpdBillList = () => {
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
 
-  // Fetch payment history when admission is selected (mock)
+  // Fetch payment history when admission is selected
   useEffect(() => {
-    if (selectedAdmission) {
+    if (selectedAdmission && selectedAdmission.billingHeaderId) {
       setHistoryLoading(true);
-      // Simulate API call
-      setTimeout(() => {
-        setPaymentHistory([
-          { id: 1, date: "2026-08-01", paymentType: "Advance", paymentMode: "Cash", amount: 5000 },
-          { id: 2, date: "2026-08-02", paymentType: "Final", paymentMode: "UPI", amount: 2500 },
-          { id: 3, date: "2026-08-03", paymentType: "Advance", paymentMode: "Card", amount: 1000 },
-        ]);
-        setHistoryLoading(false);
-      }, 300);
+      getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${selectedAdmission.billingHeaderId}`)
+        .then(res => {
+          if (res && res.response) {
+            const mappedHistory = res.response.map((item, idx) => ({
+              id: item.receiptId || idx,
+              date: item.dateTime,
+              paymentType: item.paymentType,
+              paymentMode: item.paymentMode,
+              amount: item.amount
+            }));
+            setPaymentHistory(mappedHistory);
+          } else {
+            setPaymentHistory([]);
+          }
+        })
+        .catch(error => {
+          console.error("Error fetching payment history:", error);
+          setPaymentHistory([]);
+        })
+        .finally(() => {
+          setHistoryLoading(false);
+        });
     } else {
       setPaymentHistory([]);
     }
   }, [selectedAdmission]);
-
-  // Filtered and paginated data
-  const [filteredData, setFilteredData] = useState(fullBillData);
-  const [displayData, setDisplayData] = useState(
-    fullBillData.slice(0, DEFAULT_ITEMS_PER_PAGE)
-  );
-
-  // Ward dropdown options
-  const wardOptions = [
-    { id: 1, name: "Ward A" },
-    { id: 2, name: "Ward B" },
-    { id: 3, name: "Ward C" },
-    { id: 4, name: "ICU" },
-  ];
-
-  // Bill Type dropdown options
-  const billTypeOptions = [
-    { value: "Insurance", label: "Insurance" },
-    { value: "Corporate", label: "Corporate" },
-    { value: "Cash", label: "Cash" },
-  ];
-
-  // Amount filter options
-  const amountOptions = [
-    { value: "", label: "Select Amount Filter" },
-    { value: "gt50000", label: "> 50,000" },
-    { value: "gt10000", label: "> 10,000" },
-    { value: "other", label: "Other" },
-  ];
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "OPEN":
-        return { backgroundColor: "#ffc107", color: "#000" };
-      case "INTERIM":
-        return { backgroundColor: "#fd7e14", color: "#fff" };
-      case "FINAL":
-        return { backgroundColor: "#28a745", color: "#fff" };
-      default:
-        return { backgroundColor: "#6c757d", color: "#fff" };
-    }
-  };
 
   const getOutstandingDotColor = (outstandingAmount) => {
     const value = parseFloat(String(outstandingAmount).replace(/,/g, "")) || 0;
@@ -220,88 +150,45 @@ const PendingIpdBillList = () => {
     return "#dc3545";
   };
 
-  // Apply filters and pagination
-  const applyFiltersAndPaginate = (data, page) => {
-    let filtered = data;
-
-    if (wardFilter) {
-      const ward = wardOptions.find((w) => w.id === parseInt(wardFilter));
-      if (ward) {
-        filtered = filtered.filter((item) => item.wardRoom.includes(ward.name));
-      }
-    }
-
-    if (billTypeFilter) {
-      filtered = filtered.filter((item) => item.billType === billTypeFilter);
-    }
-
-    if (amountFilter) {
-      let threshold = 0;
-      if (amountFilter === "gt50000") threshold = 50000;
-      else if (amountFilter === "gt10000") threshold = 10000;
-      else if (amountFilter === "other" && customAmount) {
-        threshold = parseFloat(customAmount.replace(/,/g, "")) || 0;
-      }
-      if (threshold > 0) {
-        filtered = filtered.filter((item) => {
-          const outstanding = parseFloat(String(item.outstandingAmount).replace(/,/g, "")) || 0;
-          return outstanding > threshold;
-        });
-      }
-    }
-
-    const total = filtered.length;
-    const perPage = DEFAULT_ITEMS_PER_PAGE;
-    const totalPages = Math.ceil(total / perPage) || 1;
-    const safePage = Math.min(page, totalPages);
-    const start = (safePage - 1) * perPage;
-    const end = start + perPage;
-    const pageItems = filtered.slice(start, end);
-
-    setFilteredData(filtered);
-    setDisplayData(pageItems);
-    setTotalElements(total);
-    setTotalPages(totalPages);
-    setCurrentPage(safePage);
-  };
-
   // Handle page change
   const handlePageChange = (page) => {
-    applyFiltersAndPaginate(filteredData.length > 0 ? filteredData : fullBillData, page);
+    setCurrentPage(page);
   };
 
   // Handle search with filters
-  const handleSearch = async () => {
+  const handleSearch = () => {
     setIsSearching(true);
     setCurrentPage(1);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    applyFiltersAndPaginate(fullBillData, 1);
-    setIsSearching(false);
+    fetchBills(0);
   };
 
-  const handleShowAll = async () => {
+  const handleShowAll = () => {
     setIsShowingAll(true);
     setWardFilter("");
     setBillTypeFilter("");
     setAmountFilter("");
     setCustomAmount("");
     setCurrentPage(1);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    setFilteredData(fullBillData);
-    setDisplayData(fullBillData.slice(0, DEFAULT_ITEMS_PER_PAGE));
-    setTotalElements(fullBillData.length);
-    setTotalPages(Math.ceil(fullBillData.length / DEFAULT_ITEMS_PER_PAGE) || 1);
-    setIsShowingAll(false);
+    
+    setLoading(true);
+    getRequest(`${GET_PENDING_TRACKING_IPD_BILL_LIST}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`)
+      .then(res => {
+        if (res?.response) {
+          setDisplayData(res.response.content || []);
+          setTotalPages(res.response.totalPages || 0);
+          setTotalElements(res.response.totalElements || 0);
+          setCurrentPage(1);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        setIsShowingAll(false);
+      });
   };
 
-  const handleRefresh = async () => {
+  const handleRefresh = () => {
     setIsRefreshing(true);
-    await new Promise((resolve) => setTimeout(resolve, 300));
-    applyFiltersAndPaginate(
-      filteredData.length > 0 ? filteredData : fullBillData,
-      currentPage
-    );
-    setIsRefreshing(false);
+    fetchBills(currentPage - 1);
   };
 
   // Row click handler – opens details view
@@ -525,7 +412,6 @@ const PendingIpdBillList = () => {
                           <th>Ward / Room</th>
                           <th>Bill Type</th>
                           <th>Total Amount</th>
-                          <th>Insurance Payable</th>
                           <th>Patient Paid</th>
                           <th>Outstanding Amount</th>
                           <th>Bill Status</th>
@@ -535,20 +421,20 @@ const PendingIpdBillList = () => {
                       <tbody>
                         {loading ? (
                           <tr>
-                            <td colSpan={12} className="text-center py-4">
+                            <td colSpan={11} className="text-center py-4">
                               <LoadingScreen />
                             </td>
                           </tr>
                         ) : displayData.length === 0 ? (
                           <tr>
-                            <td colSpan={12} className="text-center py-4 text-muted">
+                            <td colSpan={11} className="text-center py-4 text-muted">
                               No pending IPD bills found.
                             </td>
                           </tr>
                         ) : (
                           displayData.map((item) => (
                             <tr
-                              key={item.admissionId}
+                              key={item.inpatientId}
                               onClick={() => handleRowClick(item)}
                               role="button"
                               onKeyDown={(e) => {
@@ -557,41 +443,41 @@ const PendingIpdBillList = () => {
                               style={{ cursor: "pointer" }}
                             >
                               <td>{item.patientName}</td>
-                              <td>{item.mobile}</td>
-                              <td>{item.admissionId}</td>
-                              <td>{item.admissionDateTime}</td>
-                              <td>{item.wardRoom}</td>
-                              <td>{item.billType}</td>
+                              <td>{item.mobileNo}</td>
+                              <td>{item.admissionNo}</td>
+                              <td>{formatDate(item.admissionDateTime)}</td>
+                              <td>{`${item.ward} / ${item.room || 'N/A'}`}</td>
+                              <td>{item.billingType}</td>
                               <td>₹{item.totalAmount}</td>
-                              <td>₹{item.insurancePayable}</td>
                               <td>
                                 <span
                                   className="d-inline-block rounded-circle me-2"
                                   style={{
                                     width: "10px",
                                     height: "10px",
-                                    backgroundColor: getOutstandingDotColor(
-                                      item.outstandingAmount
-                                    ),
+                                    backgroundColor: getOutstandingDotColor(item.outStandingAmount),
                                   }}
                                 ></span>
                                 ₹{item.patientPaid}
                               </td>
-                              <td>₹{item.outstandingAmount}</td>
+                              <td>₹{item.outStandingAmount}</td>
                               <td>
-                                <span className="badge" style={getStatusColor(item.billStatus)}>
-                                  {item.billStatus}
+                                <span
+                                  className="badge"
+                                  style={{
+                                    backgroundColor: item.billStatus === "FINAL" ? "#28a745" : item.billStatus === "OPEN" ? "#ffc107" : "#6c757d",
+                                    color: item.billStatus === "OPEN" ? "#000" : "#fff"
+                                  }}
+                                >
+                                  {item.billStatus || "N/A"}
                                 </span>
                               </td>
-                              <td className="text-center">
+                              <td className="text-center" onClick={(e) => e.stopPropagation()}>
                                 <button
                                   type="button"
                                   className="btn btn-sm btn-danger"
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    alert("View Bill PDF for " + item.admissionId);
-                                  }}
                                   title="View Bill PDF"
+                                  onClick={() => alert(`View PDF for ${item.admissionNo}`)}
                                 >
                                   View
                                   <i className="fa fa-file-pdf-o ms-1"></i>
@@ -631,7 +517,7 @@ const PendingIpdBillList = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.admissionNo || selectedAdmission.admissionId || ""}
+                                value={selectedAdmission.admissionNo || ""}
                                 readOnly
                               />
                             </div>
@@ -667,7 +553,7 @@ const PendingIpdBillList = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.mobile || ""}
+                                value={selectedAdmission.mobileNo || ""}
                                 readOnly
                               />
                             </div>
@@ -676,7 +562,7 @@ const PendingIpdBillList = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.admissionDateTime || ""}
+                                value={formatDate(selectedAdmission.admissionDateTime) || ""}
                                 readOnly
                               />
                             </div>
@@ -703,7 +589,7 @@ const PendingIpdBillList = () => {
                               <input
                                 type="text"
                                 className="form-control"
-                                value={selectedAdmission.billType || ""}
+                                value={selectedAdmission.billingType || ""}
                                 readOnly
                               />
                             </div>
