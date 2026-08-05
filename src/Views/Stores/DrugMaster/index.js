@@ -16,6 +16,7 @@ const DrugMaster = () => {
         unitAU: "",
         itemClass: "",
         dispensingUnit: "",
+        dosageUnit: "",
         itemCategory: "",
         dispensingQty: "",
         reorderLevel: "",
@@ -429,6 +430,7 @@ const DrugMaster = () => {
                 unitAU: drug.unitAU?.toString() || "",
                 itemClass: drug.itemClassId?.toString() || "",
                 dispensingUnit: drug.dispUnit?.toString() || "",
+                dosageUnit: drug.dosageUnit || "",
                 itemCategory: drug.masItemCategoryid?.toString() || "",
                 dispensingQty: drug.adispQty?.toString() || "",
                 reorderLevel: drug.reOrderLevelDispensary?.toString() || "",
@@ -477,6 +479,7 @@ const DrugMaster = () => {
             unitAU: "",
             itemClass: "",
             dispensingUnit: "",
+            dosageUnit: "",
             itemCategory: "",
             dispensingQty: "",
             reorderLevel: "",
@@ -515,6 +518,7 @@ const DrugMaster = () => {
                 groupId: Number(formData.itemGroup),
                 itemTypeId: Number(formData.itemType),
                 dispUnit: Number(formData.dispensingUnit),
+                dosageUnit: formData.dosageUnit,
                 unitAU: Number(formData.unitAU) || 0,
                 sectionId: Number(formData.section),
                 itemClassId: Number(formData.itemClass),
@@ -1007,6 +1011,23 @@ const DrugMaster = () => {
                                                 <option value="">Select Dispensing Unit</option>
                                                 {storeUnitData.map(unit => (
                                                     <option key={unit.unitId} value={unit.unitId}>{unit.unitName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-group col-md-4 mt-3">
+                                            <label>
+                                                Dosage Unit
+                                            </label>
+                                            <select
+                                                className="form-select"
+                                                name="dosageUnit"
+                                                value={formData.dosageUnit}
+                                                onChange={handleInputChange}
+                                            >
+                                                <option value="">Select Dosage Unit</option>
+                                                {storeUnitData.map(unit => (
+                                                    <option key={unit.unitId} value={unit.unitName}>{unit.unitName}</option>
                                                 ))}
                                             </select>
                                         </div>
