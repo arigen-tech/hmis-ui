@@ -33,6 +33,30 @@ const IPDAdvanceCollection = () => {
     { id: 2, mode: "UPI", amount: "" },
   ]);
 
+  // --- NEW: Payment History state ---
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // --- NEW: Fetch payment history when an admission is selected ---
+  useEffect(() => {
+    if (selectedAdmission) {
+      // TODO: Replace with actual API call to fetch payment history for this admission
+      // For demonstration, we set mock data
+      setHistoryLoading(true);
+      // Simulate API call
+      setTimeout(() => {
+        setPaymentHistory([
+          { id: 1, date: '2026-08-01', paymentType: 'Advance', paymentMode: 'Cash', amount: 5000 },
+          { id: 2, date: '2026-08-02', paymentType: 'Final', paymentMode: 'UPI', amount: 2500 },
+          { id: 3, date: '2026-08-03', paymentType: 'Advance', paymentMode: 'Card', amount: 1000 },
+        ]);
+        setHistoryLoading(false);
+      }, 300);
+    } else {
+      setPaymentHistory([]);
+    }
+  }, [selectedAdmission]);
+
   const fetchAdmissions = async (currentPage = page) => {
     setIsLoading(true);
     try {
@@ -141,6 +165,11 @@ const IPDAdvanceCollection = () => {
       hour: "2-digit",
       minute: "2-digit"
     });
+  };
+
+  // --- NEW: Handler for Report button (placeholder) ---
+  const handleReport = (historyItem) => {
+    alert(`Report for payment ID: ${historyItem.id}\nYou can implement print or download logic here.`);
   };
 
   return (
@@ -405,6 +434,66 @@ const IPDAdvanceCollection = () => {
                       </div>
                     </div>
                   </div>
+
+                  {/* --- NEW: Payment History Section --- */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
+                          <h6 className="mb-0 fw-bold">Payment History</h6>
+                         
+                        </div>
+                        <div className="card-body">
+                          {historyLoading ? (
+                            <div className="text-center py-3">
+                              <div className="spinner-border spinner-border-sm text-primary" role="status">
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              <span className="ms-2">Loading payment history...</span>
+                            </div>
+                          ) : paymentHistory.length === 0 ? (
+                            <div className="text-muted text-center py-3">No payment history found for this admission.</div>
+                          ) : (
+                            <div className="table-responsive">
+                              <table className="table table-bordered table-hover align-middle">
+                                <thead className="table-light">
+                                  <tr>
+                                    <th>Date</th>
+                                    <th>Payment Type</th>
+                                    <th>Payment Mode</th>
+                                    <th className="text-end">Amount</th>
+                                    <th style={{ width: "100px" }}>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {paymentHistory.map((item) => (
+                                    <tr key={item.id}>
+                                      <td>{formatDate(item.date)}</td>
+                                      <td>
+                                          {item.paymentType}
+                                      </td>
+                                      <td>{item.paymentMode}</td>
+                                      <td className="text-end">₹{Number(item.amount).toFixed(2)}</td>
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-outline-info"
+                                          onClick={() => handleReport(item)}
+                                          title="View Report"
+                                        >
+                                          <i className="mdi mdi-file-document"></i> Report
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  {/* --- END Payment History Section --- */}
 
                   {/* Collection Details */}
                   <div className="row mb-3">

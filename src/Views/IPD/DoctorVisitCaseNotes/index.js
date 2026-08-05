@@ -646,15 +646,31 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                   onChange={handleDoctorVisitFormChange}
                 />
               </div>
-              <div className="col-12">
-                <button
+              <div className="col-12 gap-3 d-flex">
+              <div>
+                  <button
                   className="btn btn-primary btn-sm"
                   onClick={handleSaveDoctorVisit}
                   disabled={isSaving}
                 >
                   <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save Visit"}
                 </button>
+                </div>
+
+               <div>
+                  <button
+                  className="btn btn-sm btn-primary"
+                  onClick={handleSaveDoctorVisit}
+                  disabled={isSaving}
+                >
+                   Print
+                </button>
+                </div>
+
               </div>
+
+               
+
             </div>
 
             <hr />
