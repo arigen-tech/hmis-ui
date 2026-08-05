@@ -109,11 +109,12 @@ const InpatientAdmission = () => {
         paymentType: "",
         advanceCollected: "No",
         advanceAmount: "",
-        estimationCost: "",
         paymentMode: "",
        
       }
     ],
+    estimationCost: "",
+    
     
     // NEW: Document Upload
     documents: [
@@ -758,7 +759,6 @@ const InpatientAdmission = () => {
           paymentType: "",
           advanceCollected: "No",
           advanceAmount: "",
-          estimationCost: "",
           paymentMode: "",
         }
       ]
@@ -1091,7 +1091,6 @@ const InpatientAdmission = () => {
             formDataToSend.append(`paymentRequests[${index}].paymentType`, paymentTypeMap[financial.paymentType] || "");
             formDataToSend.append(`paymentRequests[${index}].advanceCollected`, financial.advanceCollected === "Yes" ? "y" : "n");
             formDataToSend.append(`paymentRequests[${index}].advanceAmount`, financial.advanceAmount || "");
-            formDataToSend.append(`paymentRequests[${index}].estimationCost`, financial.estimationCost || "");
             
             if (financial.paymentMode) {
               formDataToSend.append(`paymentRequests[${index}].paymentMode`, paymentModeMap[financial.paymentMode] || "");
@@ -1099,6 +1098,8 @@ const InpatientAdmission = () => {
           }
         });
       }
+
+      formDataToSend.append(`estimationCost`, formData.estimationCost || "");
 
       formDataToSend.append("patientName", formData.patientName || "");
       formDataToSend.append("uhid", formData.uhid || "");
@@ -2009,7 +2010,6 @@ const InpatientAdmission = () => {
                             <th width="150">Payment Type</th>
                             <th width="150">Advance Collected</th>
                             <th width="150">Advance Amount</th>
-                            <th width="150">Estimate Cost</th>
                             <th width="150">Payment Mode</th>
                             <th width="80">Action</th>
                           </tr>
@@ -2057,20 +2057,6 @@ const InpatientAdmission = () => {
                                 )}
                               </td>
                               <td>
-                                <input
-                                  type="number"
-                                  className={`form-control form-control-sm ${errors[`financial_${index}_estimationCost`] ? "is-invalid" : ""}`}
-                                  value={financial.estimationCost || ""}
-                                  onChange={(e) => handleFinancialChange(index, 'estimationCost', e.target.value)}
-                                  placeholder="e.g., 50000"
-                                  min="0"
-                                  step="100"
-                                />
-                                {errors[`financial_${index}_estimationCost`] && (
-                                  <div className="invalid-feedback d-block">{errors[`financial_${index}_estimationCost`]}</div>
-                                )}
-                              </td>
-                              <td>
                                 <select
                                   className={`form-select form-select-sm ${errors[`financial_${index}_paymentMode`] ? "is-invalid" : ""}`}
                                   value={financial.paymentMode}
@@ -2105,6 +2091,21 @@ const InpatientAdmission = () => {
                       </table>
                     </div>
                     
+                    <div className="row mt-3">
+                      <div className="col-md-4">
+                        <label className="form-label fw-bold">Estimate Cost</label>
+                        <input
+                          type="number"
+                          className="form-control"
+                          name="estimationCost"
+                          value={formData.estimationCost || ""}
+                          onChange={handleChange}
+                          placeholder="e.g., 50000"
+                          min="0"
+                          step="100"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
                 
