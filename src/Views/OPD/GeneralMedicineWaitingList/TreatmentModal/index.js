@@ -58,10 +58,28 @@ const normalizeDrugRecord = (drug = {}) => ({
   name:
     drug.name ?? drug.nomenclature ?? drug.itemName ?? drug.drugName ?? "",
   code: drug.code ?? drug.pvmsNo ?? drug.itemCode ?? "",
+  dosageUnit:
+    drug.dosageUnit ??
+    drug.dispUnitName ??
+    drug.unitAuName ??
+    drug.dispUnit ??
+    drug.dispU ??
+    "",
   dispUnitName: drug.dispUnitName ?? drug.dispUnit ?? drug.depUnit ?? "",
   itemClassId: drug.itemClassId ?? null,
   aDispQty: drug.aDispQty ?? drug.adispQty ?? 1,
 });
+
+const resolveDosageUnit = (drug = {}, fallback = "") =>
+  drug.dosageUnit ?? fallback ?? "";
+
+const resolveDispUnit = (drug = {}, fallback = "") =>
+  drug.dispUnitName ??
+  drug.unitAuName ??
+  drug.dispUnit ??
+  drug.dispU ??
+  fallback ??
+  "";
 
 const drugMatchesQuery = (drug, searchQuery) => {
   const query = String(searchQuery || "").trim().toLowerCase();
@@ -100,6 +118,7 @@ const TreatmentModal = ({
     {
       drugName: "",
       drugId: null,
+      dosageUnit: "",
       dispUnit: "",
       dosage: "",
       frequency: "OD",
@@ -113,7 +132,6 @@ const TreatmentModal = ({
     },
   ]);
   const [templates, setTemplates] = useState([]);
-  const [allDrugs, setAllDrugs] = useState([]);
   const [allFrequencies, setAllFrequencies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -273,9 +291,6 @@ const TreatmentModal = ({
 
       if (response.status === 200 && response.response?.content) {
         const normalized = response.response.content.map(normalizeDrugRecord);
-        if (page === 0 && !String(searchText || "").trim()) {
-          setAllDrugs(normalized);
-        }
         return {
           list: normalized,
           last: response.response.last,
@@ -428,12 +443,8 @@ const TreatmentModal = ({
           normalizedDrug.name ||
           selectedDrug.name ||
           "",
-        dispUnit:
-          normalizedDrug.dispUnitName ||
-          normalizedDrug.unitAuName ||
-          normalizedDrug.dispUnit ||
-          selectedDrug.dispUnitName ||
-          "",
+        dosageUnit: resolveDosageUnit(normalizedDrug, selectedDrug.dosageUnit),
+        dispUnit: resolveDispUnit(normalizedDrug, selectedDrug.dispUnitName),
         drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
         itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
         adispQty: normalizedDrug.adispQty ?? normalizedDrug.aDispQty ?? 1,
@@ -539,13 +550,14 @@ const TreatmentModal = ({
               normalizedDrug.name ||
               "",
             drugId: normalizedDrug.itemId ?? item.itemId,
-            dispUnit:
-              normalizedDrug.dispUnitName ||
-              normalizedDrug.unitAuName ||
-              normalizedDrug.dispUnit ||
-              item.dispU ||
-              item.dispUnit ||
-              "",
+            dosageUnit: resolveDosageUnit(
+              normalizedDrug,
+              item.dosageUnit,
+            ),
+            dispUnit: resolveDispUnit(
+              normalizedDrug,
+              item.dispUnitName || item.dispU || item.dispUnit,
+            ),
             dosage: item.dosage || "",
             frequency: frequency ? frequency.frequencyName : "OD",
             frequencyId: item.frequencyId,
@@ -577,6 +589,7 @@ const TreatmentModal = ({
         {
           drugName: "",
           drugId: null,
+          dosageUnit: "",
           dispUnit: "",
           dosage: "",
           frequency: "OD",
@@ -601,6 +614,7 @@ const TreatmentModal = ({
       {
         drugName: "",
         drugId: null,
+        dosageUnit: "",
         dispUnit: "",
         dosage: "",
         frequency: "OD",
@@ -629,6 +643,7 @@ const TreatmentModal = ({
       {
         drugName: "",
         drugId: null,
+        dosageUnit: "",
         dispUnit: "",
         dosage: "",
         frequency: "OD",
@@ -676,6 +691,7 @@ const TreatmentModal = ({
         {
           drugName: "",
           drugId: null,
+          dosageUnit: "",
           dispUnit: "",
           dosage: "",
           frequency: "OD",
@@ -756,7 +772,7 @@ const TreatmentModal = ({
     return filtered;
   };
 
-  const handleDrugSelect = (index, drug) => {
+  const handleDrugSelect = async (index, drug) => {
     const drugAlreadyInOtherRow = selectedDrugs.some(
       (id) => id === drug.id && treatmentItems[index]?.drugId !== drug.id,
     );
@@ -766,15 +782,19 @@ const TreatmentModal = ({
       return;
     }
 
+    const itemDetails = drug?.id ? await fetchDrugDetailsById(drug.id) : null;
+    const resolvedDrug = itemDetails || drug;
+
     const newItems = [...treatmentItems];
-    newItems[index] = {
-      ...newItems[index],
-      drugName: drug.name,
-      drugId: drug.id,
-      dispUnit: drug.dispUnitName,
-      itemClassId: drug.itemClassId,
-      adispQty: drug.adispQty,
-    };
+      newItems[index] = {
+        ...newItems[index],
+        drugName: resolvedDrug.name || resolvedDrug.nomenclature || drug.name,
+        drugId: resolvedDrug.itemId ?? drug.id,
+        dosageUnit: resolveDosageUnit(resolvedDrug, drug.dosageUnit),
+        dispUnit: resolveDispUnit(resolvedDrug, drug.dispUnitName),
+        itemClassId: resolvedDrug.itemClassId ?? drug.itemClassId,
+        adispQty: resolvedDrug.adispQty ?? resolvedDrug.aDispQty ?? drug.adispQty,
+      };
 
     const calculatedTotal = calculateTotal(newItems[index]);
     newItems[index].total = calculatedTotal;
@@ -891,6 +911,8 @@ const TreatmentModal = ({
           instruction: item.instruction,
           frequencyId: item.frequencyId,
           itemId: item.drugId,
+          dosageUnit: item.dosageUnit || "",
+          dispUnit: item.dispUnit || "",
         })),
       };
 
@@ -1239,7 +1261,7 @@ const TreatmentModal = ({
                           <input
                             type="text"
                             className="form-control form-control-sm"
-                            value={row.dispUnit}
+                            value={row.dosageUnit || row.dispUnit}
                             readOnly
                             style={{
                               borderRadius: "4px",
