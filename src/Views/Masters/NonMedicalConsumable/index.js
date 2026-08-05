@@ -388,7 +388,7 @@ const NonConsumableMaster = () => {
             const itemClassId = details.itemClassId || details.itemClass || "";
             const categoryId = details.masItemCategoryId || details.itemCategoryId || details.itemCategory || "";
             const unitAUValue = details.unitAU || details.unitAu || "";
-            const hsnCodeValue = details.hsnCode || "";
+            const hsnCodeValue = details.hsn || details.hsnCode || "";
 
             setFormData({
                 itemCode: details.itemCode || details.pvmsNo || "",
@@ -451,8 +451,8 @@ const NonConsumableMaster = () => {
 
         try {
             const payload = {
-                itemCode: formData.itemCode.trim(),
-                itemName: formData.itemName.trim(),
+                pvmsNo: formData.itemCode.trim(),
+                nomenclature: formData.itemName.trim(),
                 groupId: Number(formData.itemGroup),
                 itemTypeId: Number(formData.itemType),
                 sectionId: Number(formData.section),
