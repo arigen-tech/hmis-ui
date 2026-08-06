@@ -99,6 +99,8 @@ const GeneralMedicineWaitingList = () => {
   const [opdTemplateData, setOpdTemplateData] = useState([]);
   const [selectedTreatmentTemplateId, setSelectedTreatmentTemplateId] =
     useState("Select..");
+  const [treatmentTemplateLoading, setTreatmentTemplateLoading] =
+    useState(false);
   const tableContainerRef = useRef(null);
   const [activeDrugNameDropdown, setActiveDrugNameDropdown] = useState(null);
   const drugNameDropdownClickedRef = useRef(false);
@@ -1137,11 +1139,16 @@ const GeneralMedicineWaitingList = () => {
           selectedDrug.nomenclature ||
           selectedDrug.itemName ||
           "",
+        dosageUnit:
+          normalizedDrug.dosageUnit ||
+          selectedDrug.dosageUnit ||
+          "",
         dispUnit:
           normalizedDrug.dispUnitName ||
           normalizedDrug.unitAuName ||
           normalizedDrug.dispUnit ||
           selectedDrug.dispUnitName ||
+          selectedDrug.dispUnit ||
           "",
         drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
         itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
@@ -1624,7 +1631,18 @@ const GeneralMedicineWaitingList = () => {
 
   const [selectedTemplate, setSelectedTemplate] = useState("Select..");
   const [templateName, setTemplateName] = useState("");
-  const getToday = () => new Date().toISOString().split("T")[0];
+  const getToday = () => {
+    const today = new Date();
+    const localToday = new Date(
+      today.getTime() - today.getTimezoneOffset() * 60000,
+    );
+    return localToday.toISOString().split("T")[0];
+  };
+
+  const isPastDate = (dateValue) => {
+    if (!dateValue) return false;
+    return dateValue < getToday();
+  };
   const formatDateForDisplay = (value) => {
     if (!hasValue(value)) return "";
 
@@ -1952,7 +1970,8 @@ const GeneralMedicineWaitingList = () => {
           prescribedBy: item.doctorName,
           department: item.departmentName,
           prescribedDate: item.prescribedDate,
-          dispUnit: item.dispUnit,
+          dosageUnit: item.dosageUnit ?? "",
+          dispUnit: item.dispUnit ?? "",
           stock: item.stock || "0",
           itemClassId: item.itemClassId,
           aDispQty: item.aDispQty || 1,
@@ -2499,7 +2518,8 @@ const GeneralMedicineWaitingList = () => {
 
   const handleRemoveTreatmentTemplateItems = (templateId) => {
     setTreatmentItems((prev) =>
-      prev
+      {
+        const updated = prev
         .map((item) => {
           if (!item.templateId) return item;
 
@@ -2523,7 +2543,29 @@ const GeneralMedicineWaitingList = () => {
 
           return null;
         })
-        .filter((item) => item !== null),
+        .filter((item) => item !== null);
+
+        if (updated.length === 0) {
+          return [
+            {
+              treatmentId: null,
+              drugId: "",
+              drugName: "",
+              dispUnit: "",
+              dosageUnit: "",
+              dosage: "",
+              frequency: "",
+              days: "",
+              total: "",
+              instruction: "",
+              stock: "",
+              templateId: "",
+            },
+          ];
+        }
+
+        return updated;
+      },
     );
 
     setSelectedTreatmentTemplateIds((prev) => {
@@ -3159,6 +3201,17 @@ const GeneralMedicineWaitingList = () => {
       addError(
         "investigation",
         "Please select a valid investigation from the dropdown.",
+      );
+    }
+
+    const invalidInvestigationDateIndex = investigationItems.findIndex((item) =>
+      isPastDate(item.date),
+    );
+
+    if (invalidInvestigationDateIndex !== -1) {
+      addError(
+        "investigationDate",
+        `Investigation date cannot be in the past for row ${invalidInvestigationDateIndex + 1}.`,
       );
     }
 
@@ -4020,6 +4073,7 @@ const GeneralMedicineWaitingList = () => {
       item.nomenclature ??
       item.displayValue ??
       "",
+    dosageUnit: item.dosageUnit ?? "",
     dispUnit: item.dispUnit ?? item.dispUnitName ?? item.dispU ?? "",
     dosage: item.dosage ?? "",
     days: item.days ?? item.noOfDays ?? "",
@@ -4066,10 +4120,12 @@ const GeneralMedicineWaitingList = () => {
       "";
 
     const resolvedDispUnit =
+      normalizedDrug.dosageUnit ||
       normalizedDrug.dispUnitName ||
       normalizedDrug.unitAuName ||
       normalizedDrug.dispUnit ||
       normalizedDrug.dispU ||
+      medication.dosageUnit ||
       medication.dispUnit ||
       "";
 
@@ -4287,6 +4343,7 @@ const GeneralMedicineWaitingList = () => {
             drugId: "",
             drugName: "",
             dispUnit: "",
+            dosageUnit: "",
             dosage: "",
             frequency: "",
             days: "",
@@ -4368,7 +4425,7 @@ const GeneralMedicineWaitingList = () => {
     return allFrequencies.find((d) => d.frequencyId === feqId);
   };
 
-  const handleTreatmentTemplateSelect = (templateId) => {
+  const handleTreatmentTemplateSelect = async (templateId) => {
     if (!templateId || templateId === "Select..") return;
 
     if (selectedTreatmentTemplateIds.has(templateId)) return;
@@ -4376,71 +4433,112 @@ const GeneralMedicineWaitingList = () => {
     const template = opdTemplateData.find((t) => t.templateId == templateId);
     if (!template || !template.treatments) return;
 
-    setTreatmentItems((prevList) => {
-      const updatedList = [...prevList];
-      const existingDrugIds = updatedList.map((i) => i.drugId);
+    setTreatmentTemplateLoading(true);
+    try {
+      const hydratedTreatments = await Promise.all(
+        template.treatments.map(async (t) => {
+          const itemDetails = t.itemId ? await fetchDrugDetailsById(t.itemId) : null;
+          const resolvedDrug = itemDetails || t;
+          const resolvedDosageUnit = resolvedDrug.dosageUnit || t.dosageUnit || "";
+          const resolvedDispUnit =
+            resolvedDrug.dispUnitName ||
+            resolvedDrug.unitAuName ||
+            resolvedDrug.dispUnit ||
+            resolvedDrug.dispU ||
+            t.dispUnit ||
+            "";
+          const resolvedStock =
+            resolvedDrug.requestedDeptStocks ??
+            resolvedDrug.currentDeptStocks ??
+            resolvedDrug.stock ??
+            t.requestedDeptStocks ??
+            t.currentDeptStocks ??
+            t.stocks ??
+            t.stock ??
+            "0";
 
-      const duplicateItems = [];
-      const newItemsToAdd = [];
+          return {
+            ...t,
+            dosageUnit: resolvedDosageUnit,
+            dispUnit: resolvedDispUnit,
+            stocks: resolvedStock,
+            stock: resolvedStock,
+            itemName:
+              resolvedDrug.nomenclature ||
+              resolvedDrug.itemName ||
+              t.itemName ||
+              "",
+          };
+        }),
+      );
 
-      template.treatments.forEach((t) => {
-        if (existingDrugIds.includes(t.itemId)) {
-          duplicateItems.push(t);
+      setTreatmentItems((prevList) => {
+        const updatedList = [...prevList];
+        const existingDrugIds = updatedList.map((i) => i.drugId);
 
-          updatedList.forEach((row) => {
-            if (row.drugId === t.itemId) {
-              const oldIds = row.templateId ? row.templateId.split(",") : [];
+        const duplicateItems = [];
+        const newItemsToAdd = [];
 
-              if (!oldIds.includes(String(templateId))) {
-                row.templateId = [...oldIds, String(templateId)].join(",");
+        hydratedTreatments.forEach((t) => {
+          if (existingDrugIds.includes(t.itemId)) {
+            duplicateItems.push(t);
+
+            updatedList.forEach((row) => {
+              if (row.drugId === t.itemId) {
+                const oldIds = row.templateId ? row.templateId.split(",") : [];
+
+                if (!oldIds.includes(String(templateId))) {
+                  row.templateId = [...oldIds, String(templateId)].join(",");
+                }
               }
-            }
-          });
-        } else {
-          newItemsToAdd.push(t);
+            });
+          } else {
+            newItemsToAdd.push(t);
+          }
+        });
+
+        if (duplicateItems.length > 0) {
+          setDuplicateItems(duplicateItems);
+          setShowDuplicatePopup(true);
         }
-      });
 
-      if (duplicateItems.length > 0) {
-        setDuplicateItems(duplicateItems);
-        setShowDuplicatePopup(true);
-      }
+        const formattedNew = newItemsToAdd.map((t) => {
+          const freName = getFreqDetails(t.frequencyId);
+          const drugStock = t.stock ?? t.stocks ?? "0";
 
-      const formattedNew = newItemsToAdd.map((t) => {
-        const freName = getFreqDetails(t.frequencyId);
-
-        const newItem = {
+          const newItem = {
           treatmentId: null,
           drugId: t.itemId,
           drugName: t.itemName,
+          dosageUnit: t?.dosageUnit ?? "",
           dispUnit: t?.dispUnit ?? "",
-          dosage: t.dosage ?? "",
-          frequency: freName?.frequencyName ?? "",
-          days: t.noOfDays ?? "",
-          instruction: t.instruction ?? "",
-          stock: t.stocks ?? "",
-          templateId: String(templateId),
+            dosage: t.dosage ?? "",
+            frequency: freName?.frequencyName ?? "",
+            days: t.noOfDays ?? "",
+            instruction: t.instruction ?? "",
+            stock: drugStock,
+            requestedDeptStocks: drugStock,
+            templateId: String(templateId),
+            itemClassId: t?.itemClassId ?? null,
+            aDispQty: t?.aDispQty ?? 1,
+          };
 
-          // 🟢 MOST IMPORTANT FIELDS (MISSING EARLIER)
-          itemClassId: t?.itemClassId ?? null,
-          aDispQty: t?.aDispQty ?? 1,
-        };
+          newItem.total = calculateTotal(newItem);
+          return newItem;
+        });
 
-        // 🟢 AUTO CALCULATE TOTAL
-        newItem.total = calculateTotal(newItem);
+        if (isOnlyDefaultTreatmentRow(updatedList)) {
+          return formattedNew;
+        }
 
-        return newItem;
+        return [...updatedList, ...formattedNew];
       });
 
-      if (isOnlyDefaultTreatmentRow(updatedList)) {
-        return formattedNew;
-      }
-
-      return [...updatedList, ...formattedNew];
-    });
-
-    setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
-    setSelectedTreatmentTemplateId("Select..");
+      setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
+      setSelectedTreatmentTemplateId("Select..");
+    } finally {
+      setTreatmentTemplateLoading(false);
+    }
   };
 
   const handleAdmissionAdvisedChange = (e) => {
@@ -5779,6 +5877,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="date"
                                     className="form-control"
+                                    min={getToday()}
                                     value={item.date}
                                     onChange={(e) =>
                                       handleInvestigationItemChange(
@@ -5903,6 +6002,7 @@ const GeneralMedicineWaitingList = () => {
                           <select
                             className="form-select"
                             value={selectedTreatmentTemplateId}
+                            disabled={treatmentTemplateLoading}
                             onChange={(e) =>
                               handleTreatmentTemplateSelect(e.target.value)
                             }
@@ -5949,6 +6049,17 @@ const GeneralMedicineWaitingList = () => {
                           </button>
                         </div>
                       </div>
+
+                      {treatmentTemplateLoading && (
+                        <div className="d-flex align-items-center gap-2 mb-3 text-primary">
+                          <div
+                            className="spinner-border spinner-border-sm"
+                            role="status"
+                            aria-hidden="true"
+                          />
+                          <span>Loading template details...</span>
+                        </div>
+                      )}
 
                       {/* Treatment Table */}
                       <div
@@ -6115,7 +6226,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="text"
                                     className="form-control"
-                                    value={row.dispUnit}
+                                    value={row.dosageUnit || row.dispUnit}
                                     onChange={(e) =>
                                       handleTreatmentChange(
                                         index,

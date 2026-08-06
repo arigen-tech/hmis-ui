@@ -10,6 +10,7 @@ const DatePicker = ({
   required = false,
   readOnly = false,
   disabled = false,
+  min = "",
   placeholder = "DD/MM/YYYY",
   id = `datepicker-${Math.random().toString(36).substr(2, 9)}`,
   compact = true
@@ -19,6 +20,35 @@ const DatePicker = ({
   const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   const calendarRef = useRef(null);
+
+  const getLocalDateString = (date = new Date()) => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const normalizeDate = (dateString) => {
+    if (!dateString) return null;
+    const parts = dateString.split("-").map(Number);
+    if (parts.length !== 3 || parts.some(Number.isNaN)) return null;
+    const [year, month, day] = parts;
+    return new Date(year, month - 1, day);
+  };
+
+  const isBeforeMinDate = (dateString) => {
+    if (!min) return false;
+
+    const selectedDate = normalizeDate(dateString);
+    const minDate = normalizeDate(min);
+
+    if (!selectedDate || !minDate) return false;
+
+    selectedDate.setHours(0, 0, 0, 0);
+    minDate.setHours(0, 0, 0, 0);
+
+    return selectedDate < minDate;
+  };
 
   // Format YYYY-MM-DD to MM/DD/YYYY for display
   const formatDateForDisplay = (dateString) => {
@@ -93,6 +123,10 @@ const DatePicker = ({
     
     if (formatted.length === 10) {
       const storageValue = formatDateForStorage(formatted);
+      if (isBeforeMinDate(storageValue)) {
+        setDisplayValue(formatDateForDisplay(value));
+        return;
+      }
       if (onChange) {
         onChange(storageValue);
       }
@@ -104,6 +138,10 @@ const DatePicker = ({
     const monthStr = String(month + 1).padStart(2, '0');
     const dayStr = String(day).padStart(2, '0');
     const dateString = `${year}-${monthStr}-${dayStr}`;
+
+    if (isBeforeMinDate(dateString)) {
+      return;
+    }
     
     setDisplayValue(formatDateForDisplay(dateString));
     if (onChange) {
@@ -175,8 +213,10 @@ const DatePicker = ({
 
   // Select today
   const selectToday = () => {
-    const today = new Date();
-    const todayStr = today.toISOString().split('T')[0];
+    const todayStr = getLocalDateString();
+    if (isBeforeMinDate(todayStr)) {
+      return;
+    }
     setDisplayValue(formatDateForDisplay(todayStr));
     if (onChange) {
       onChange(todayStr);
@@ -217,6 +257,7 @@ const DatePicker = ({
   const calendarDays = generateCalendar();
   const monthNames = ["January", "February", "March", "April", "May", "June",
                       "July", "August", "September", "October", "November", "December"];
+  const todayStr = getLocalDateString();
 
   // Main color #6aab9c
   const mainGreenColor = '#6aab9c';
@@ -382,13 +423,15 @@ const DatePicker = ({
               {calendarDays.map((dateObj, index) => {
                 const today = isToday(dateObj.day, dateObj.month, dateObj.year);
                 const selected = isSelected(dateObj.day, dateObj.month, dateObj.year);
+                const dateString = `${dateObj.year}-${String(dateObj.month + 1).padStart(2, '0')}-${String(dateObj.day).padStart(2, '0')}`;
+                const disabledDate = !dateObj.isCurrentMonth || isBeforeMinDate(dateString);
                 
                 return (
                   <button
                     key={index}
                     type="button"
-                    onClick={() => dateObj.isCurrentMonth && handleDateSelect(dateObj.day, dateObj.month, dateObj.year)}
-                    disabled={!dateObj.isCurrentMonth}
+                    onClick={() => !disabledDate && handleDateSelect(dateObj.day, dateObj.month, dateObj.year)}
+                    disabled={disabledDate}
                     style={{
                       width: compact ? '26px' : '28px',
                       height: compact ? '26px' : '28px',
@@ -397,25 +440,25 @@ const DatePicker = ({
                       justifyContent: 'center',
                       border: 'none',
                       borderRadius: '2px',
-                      cursor: dateObj.isCurrentMonth ? 'pointer' : 'default',
+                      cursor: disabledDate ? 'not-allowed' : 'pointer',
                       fontSize: compact ? '0.7rem' : '0.75rem',
                       backgroundColor: selected ? mainGreenColor : // #6aab9c for selected
                                      today ? lightGreenColor : // Light #6aab9c for today
                                      'transparent',
                       color: selected ? 'white' : 
-                            !dateObj.isCurrentMonth ? '#ccc' : 
+                            disabledDate ? '#ccc' : 
                             today ? darkGreenColor : '#333', // Dark green text for today
                       border: today && !selected ? `1px solid ${mainGreenColor}` : 'none',
                       fontWeight: selected || today ? 'bold' : 'normal',
                       transition: 'all 0.2s ease'
                     }}
                     onMouseEnter={(e) => {
-                      if (dateObj.isCurrentMonth && !selected && !today) {
+                      if (!disabledDate && !selected && !today) {
                         e.target.style.backgroundColor = '#f0f7f5';
                       }
                     }}
                     onMouseLeave={(e) => {
-                      if (dateObj.isCurrentMonth && !selected && !today) {
+                      if (!disabledDate && !selected && !today) {
                         e.target.style.backgroundColor = 'transparent';
                       }
                     }}
@@ -453,6 +496,7 @@ const DatePicker = ({
               <button
                 type="button"
                 onClick={selectToday}
+                disabled={isBeforeMinDate(todayStr)}
                 style={{
                   padding: compact ? '2px 6px' : '3px 8px',
                   fontSize: compact ? '0.7rem' : '0.75rem',
@@ -460,9 +504,10 @@ const DatePicker = ({
                   backgroundColor: mainGreenColor, // #6aab9c for Today button
                   border: `1px solid ${mainGreenColor}`,
                   color: 'white',
-                  cursor: 'pointer',
+                  cursor: isBeforeMinDate(todayStr) ? 'not-allowed' : 'pointer',
                   minWidth: '60px',
-                  fontWeight: 'bold'
+                  fontWeight: 'bold',
+                  opacity: isBeforeMinDate(todayStr) ? 0.6 : 1
                 }}
               >
                 Today

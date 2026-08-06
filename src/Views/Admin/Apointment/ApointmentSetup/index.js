@@ -20,8 +20,7 @@ import LoadingScreen from "../../../../Components/Loading";
 import { APPOINTMENT_REQUIRED_FIELDS } from "../../../../config/constants";
 
 const AppointmentSetup = () => {
-  const [popup, setPopup] = useState("");
-  const [popupMessage, setPopupMessage] = useState("");
+  const [popupMessage, setPopupMessage] = useState(null);
   const [department, setDepartment] = useState("");
   const [doctor, setDoctor] = useState("");
   const [session, setSession] = useState("");
@@ -51,6 +50,18 @@ const AppointmentSetup = () => {
         },
       });
     });
+  };
+
+  const handleDepartmentChange = (value) => {
+    setDepartment(value);
+    setDoctor("");
+    setSession("");
+    setTimeTaken("");
+    setAppointmentData(null);
+    setDaysConfig(initialDaysState);
+    setOriginalDaysConfig(initialDaysState);
+    setModifiedFields({});
+    setDataFromDB(false);
   };
 
   const REQUIRED_FIELDS = [
@@ -106,6 +117,17 @@ const AppointmentSetup = () => {
     return daysConfig[day].startTime && daysConfig[day].endTime;
   };
 
+  const isInvalidTimeRange = (day) => {
+    const startTimeValue = daysConfig[day]?.startTime;
+    const endTimeValue = daysConfig[day]?.endTime;
+
+    if (!startTimeValue && !endTimeValue) return false;
+
+    if (!startTimeValue || !endTimeValue) return true;
+
+    return !isValidTimeRange(startTimeValue, endTimeValue);
+  };
+
   const isRowInvalid = (day) => {
     if (!isTimeFilled(day)) return false;
 
@@ -115,14 +137,51 @@ const AppointmentSetup = () => {
     });
   };
 
+  const getInvalidTimeMessage = (day) => {
+    const startTimeValue = daysConfig[day]?.startTime;
+    const endTimeValue = daysConfig[day]?.endTime;
+
+    if (!startTimeValue && !endTimeValue) return null;
+
+    if (!startTimeValue || !endTimeValue) {
+      return `Please enter both start time and end time for ${day}.`;
+    }
+
+    if (!isValidTimeRange(startTimeValue, endTimeValue)) {
+      return `End time must be greater than start time for ${day}.`;
+    }
+
+    return null;
+  };
+
   const isFieldInvalid = (day, field) => {
     if (!isTimeFilled(day)) return false;
     const value = daysConfig[day][field];
     return value === "" || value === null;
   };
 
+  const isValidTimeRange = (startTime, endTime) => {
+    if (!startTime || !endTime) return true;
+
+    const start = new Date(`1970-01-01T${startTime}`);
+    const end = new Date(`1970-01-01T${endTime}`);
+
+    return end > start;
+  };
+
   const hasInvalidRow = () => {
     return daysOfWeek.some((day) => isRowInvalid(day));
+  };
+
+  const getFirstInvalidTimeMessage = () => {
+    for (const day of daysOfWeek) {
+      const message = getInvalidTimeMessage(day);
+      if (message) {
+        return message;
+      }
+    }
+
+    return null;
   };
 
   const fetchDepartmentData = async () => {
@@ -265,6 +324,21 @@ const AppointmentSetup = () => {
     }
   };
 
+  const getTotalMinutes = (startTime, endTime) => {
+    const start = new Date(`1970-01-01T${startTime}`);
+    const end = new Date(`1970-01-01T${endTime}`);
+
+    return (end - start) / (1000 * 60);
+  };
+
+  const calculateTotalTokens = (startTime, endTime, timeTaken) => {
+    if (!startTime || !endTime || !timeTaken) return 0;
+
+    const totalMinutes = getTotalMinutes(startTime, endTime);
+
+    return Math.floor(totalMinutes / Number(timeTaken));
+  };
+
   const calculateOnlineToken = (totalToken, totalInterval) => {
     if (!totalToken || !totalInterval || parseInt(totalInterval) === 0) {
       return "0";
@@ -274,7 +348,16 @@ const AppointmentSetup = () => {
     return String(Math.ceil(calculatedValue));
   };
 
+  const getAllowedTokensForDay = (day) => {
+    const startTimeValue = daysConfig[day]?.startTime;
+    const endTimeValue = daysConfig[day]?.endTime;
+
+    return calculateTotalTokens(startTimeValue, endTimeValue, timeTaken);
+  };
+
   const handleDayConfigChange = (day, field, value) => {
+    const updatedDayConfig = { ...daysConfig[day] };
+
     if (field === "opdLocation") {
       const updatedDayConfig = { ...daysConfig[day] };
 
@@ -304,12 +387,13 @@ const AppointmentSetup = () => {
     }
 
     // Existing logic for other fields (number fields)
-    const stringValue = value === 0 || value ? String(value) : "";
-    const isWeekend = day === "Sunday" || day === "Saturday";
+    let stringValue = value === 0 || value ? String(value) : "";
 
-    const updatedDayConfig = { ...daysConfig[day] };
-
-    updatedDayConfig[field] = stringValue;
+    // Prevent negative values
+    if (stringValue !== "" && !isNaN(stringValue) && Number(stringValue) < 0) {
+      stringValue = "0"; // or simply return; to ignore the input
+    }
+    updatedDayConfig[field] = field === "opdLocation" ? value : stringValue;
 
     if (field === "totalToken" && (stringValue === "0" || stringValue === "")) {
       updatedDayConfig.startToken = "0";
@@ -382,9 +466,32 @@ const AppointmentSetup = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
 
+    const invalidTimeMessage = getFirstInvalidTimeMessage();
+    if (invalidTimeMessage) {
+      showPopup(invalidTimeMessage, "error");
+      return;
+    }
+
     if (hasInvalidRow()) {
       showPopup(APPOINTMENT_REQUIRED_FIELDS, "error");
       return;
+    }
+
+    for (const day of daysOfWeek) {
+      if (!isTimeFilled(day)) {
+        continue;
+      }
+
+      const allowedTokens = getAllowedTokensForDay(day);
+      const totalTokens = parseInt(daysConfig[day].totalToken || "0", 10);
+
+      if (totalTokens > allowedTokens) {
+        showPopup(
+          `Maximum ${allowedTokens} tokens are allowed for ${day}`,
+          "error",
+        );
+        return;
+      }
     }
 
     const requestData = {
@@ -514,7 +621,9 @@ const AppointmentSetup = () => {
                           className="form-select"
                           value={department}
                           onChange={(e) =>
-                            setDepartment(parseInt(e.target.value))
+                            handleDepartmentChange(
+                              e.target.value ? parseInt(e.target.value, 10) : "",
+                            )
                           }
                           required
                         >
@@ -596,6 +705,12 @@ const AppointmentSetup = () => {
                           type="number"
                           className="form-control"
                           value={timeTaken}
+                          min={0}
+                          onKeyDown={(e) => {
+                            if (e.key === "-" || e.key === "e") {
+                              e.preventDefault();
+                            }
+                          }}
                           onChange={(e) =>
                             setTimeTaken(
                               e.target.value ? parseInt(e.target.value) : "",
@@ -623,10 +738,11 @@ const AppointmentSetup = () => {
                           </thead>
                           <tbody>
                             {daysOfWeek.map((day) => (
-                              <tr
+                            <tr
                                 key={day}
                                 style={{
-                                  border: isRowInvalid(day)
+                                  border:
+                                    isRowInvalid(day) || isInvalidTimeRange(day)
                                     ? "2px solid red"
                                     : "",
                                 }}
@@ -639,9 +755,11 @@ const AppointmentSetup = () => {
                                     style={{
                                       backgroundColor: isFieldModified(
                                         day,
-                                        "start time",
+                                        "startTime",
                                       )
                                         ? "#ffd24d"
+                                        : isInvalidTimeRange(day)
+                                          ? "#ffcccc"
                                         : "",
                                     }}
                                     value={daysConfig[day].startTime}
@@ -661,9 +779,11 @@ const AppointmentSetup = () => {
                                     style={{
                                       backgroundColor: isFieldModified(
                                         day,
-                                        "end time",
+                                        "endTime",
                                       )
                                         ? "#ffd24d"
+                                        : isInvalidTimeRange(day)
+                                          ? "#ffcccc"
                                         : "",
                                     }}
                                     value={daysConfig[day].endTime}
@@ -680,6 +800,12 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    min={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "-" || e.key === "e") {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     disabled={!isTimeFilled(day)}
                                     style={{
                                       backgroundColor: isFieldInvalid(
@@ -705,6 +831,12 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    min={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "-" || e.key === "e") {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     disabled={!isTimeFilled(day)}
                                     style={{
                                       backgroundColor: isFieldInvalid(
@@ -730,6 +862,12 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    min={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "-" || e.key === "e") {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     disabled={!isTimeFilled(day)}
                                     style={{
                                       backgroundColor: isFieldInvalid(
@@ -755,6 +893,12 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    min={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "-" || e.key === "e") {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     disabled={!isTimeFilled(day)}
                                     style={{
                                       backgroundColor: isFieldInvalid(
@@ -783,6 +927,12 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    min={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "-" || e.key === "e") {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     disabled={!isTimeFilled(day)}
                                     style={{
                                       backgroundColor: isFieldInvalid(
@@ -808,6 +958,12 @@ const AppointmentSetup = () => {
                                   <input
                                     type="number"
                                     className="form-control"
+                                    min={0}
+                                    onKeyDown={(e) => {
+                                      if (e.key === "-" || e.key === "e") {
+                                        e.preventDefault();
+                                      }
+                                    }}
                                     disabled={!isTimeFilled(day)}
                                     style={{
                                       backgroundColor: isFieldInvalid(

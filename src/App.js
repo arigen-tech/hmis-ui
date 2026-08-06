@@ -262,6 +262,7 @@ import DieticianDashboard from './Views/IPD/Dietician/DieticianDashboard';
 import IPDAdvanceCollection from './Views/Laboratory/IPDAdvanceCollection';
 // import RoomTariffMaster from './Views/Masters/RoomTariffMaster';
 import NonConsumableMaster from './Views/Masters/NonMedicalConsumable';
+import IPDDischargeRecords from './Views/IPD/Reports/IPDDischargeDocuments';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -557,6 +558,7 @@ function App() {
                 <Route path="/IPDAdvanceCollection" element={<IPDAdvanceCollection/>} />
                 {/* <Route path="/RoomTariff" element={<RoomTariffMaster/>} /> */}
                 <Route path="/NonMedicalConsumable" element={<NonConsumableMaster/>} />
+                <Route path="/IPDDischargeRecords" element={<IPDDischargeRecords/>} />
                 
                 </Route>
             </Route>

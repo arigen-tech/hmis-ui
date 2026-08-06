@@ -1,7 +1,7 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 import Popup from "../../../Components/popup";
-import { ALL_REPORTS, INVENTORY, MAS_DEPARTMENT } from "../../../config/apiConfig";
+import { ALL_REPORTS, INVENTORY, MAS_DEPARTMENT, GET_STORE_ISSUE_LIST } from "../../../config/apiConfig";
 import { getRequest } from "../../../service/apiService";
 
 const IssueReferenceReport = () => {
@@ -17,6 +17,8 @@ const IssueReferenceReport = () => {
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedIssue, setSelectedIssue] = useState(null);
   const [popupMessage, setPopupMessage] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
 
   // Show popup function
   const showPopup = (message, type = "info") => {
@@ -89,7 +91,7 @@ const IssueReferenceReport = () => {
       setIsLoading(true);
       try {
         const response = await getRequest(
-          `${INVENTORY}/storeIssueM/list?toDeptId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}`
+          `${GET_STORE_ISSUE_LIST}?toDeptId=${departmentId}&fromDate=${fromDate}&toDate=${toDate}`
         );
         
         console.log("Issues API response:", response);
@@ -130,27 +132,37 @@ const IssueReferenceReport = () => {
 
     fetchIssues();
   }, [fromDate, toDate, departmentId]);
+
   const formatDateForDisplay = (dateTimeStr) => {
-  if (!dateTimeStr) return ;
-  
-  // Handle different possible formats
-  try {
-    // If it's already a Date object or can be parsed
-    const date = new Date(dateTimeStr);
+    if (!dateTimeStr) return "-";
     
-    // Check if date is valid
-    if (isNaN(date.getTime())) return "-";
-    
-    const day = String(date.getDate()).padStart(2, "0");
-    const month = String(date.getMonth() + 1).padStart(2, "0");
-    const year = date.getFullYear();
-    
-    return `${day}/${month}/${year}`;
-  } catch (error) {
-    console.error("Error formatting date:", error);
-    return;
-  }
-};
+    // Handle different possible formats
+    try {
+      // If it's already a Date object or can be parsed
+      const date = new Date(dateTimeStr);
+      
+      // Check if date is valid
+      if (isNaN(date.getTime())) return "-";
+      
+      const day = String(date.getDate()).padStart(2, "0");
+      const month = String(date.getMonth() + 1).padStart(2, "0");
+      const year = date.getFullYear();
+      
+      return `${day}/${month}/${year}`;
+    } catch (error) {
+      console.error("Error formatting date:", error);
+      return "-";
+    }
+  };
+
+  const getIndentTypeLabel = (indentType) => {
+    const normalizedType = (indentType || "").toString().trim().toUpperCase();
+
+    if (normalizedType === "D") return "Drug";
+    if (normalizedType === "N") return "Non Drug";
+
+    return "-";
+  };
 
   const handlePrint = async (flag = "P") => {
     if (!fromDate || !toDate) {
@@ -323,20 +335,24 @@ const IssueReferenceReport = () => {
     }
   };
 
-  const handleIssueChange = (e) => {
-    const value = e.target.value;
-    setIssueNo(value);
-    
-    if (value) {
-      const selected = issuesList.find(issue => 
-        issue.issueNo === value
-      );
-      setSelectedIssue(selected);
-      console.log("Selected issue:", selected);
-    } else {
-      setSelectedIssue(null);
-    }
+  const handleIssueSelect = (issue) => {
+    setIssueNo(issue.issueNo);
+    setSelectedIssue(issue);
+    setDropdownOpen(false);
   };
+
+  // Close dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
 
   return (
     <div className="content-wrapper">
@@ -360,9 +376,6 @@ const IssueReferenceReport = () => {
                     style={{ backgroundColor: "#f5f5f5" }}
                     placeholder={!departmentName ? "Loading..." : ""}
                   />
-                  {/* {departmentId && (
-                    <small className="text-muted">Auto-filled from your login (ID: {departmentId})</small>
-                  )} */}
                 </div>
 
                 <div className="col-md-4">
@@ -389,66 +402,114 @@ const IssueReferenceReport = () => {
                   />
                 </div>
 
-                <div className="col-md-4 mt-3">
+                {/* Custom Dropdown for Issue Reference No */}
+                <div className="col-md-4 mt-3" ref={dropdownRef}>
                   <label className="form-label fw-bold">Issue Reference No</label>
-                  <select 
-                    className="form-select" 
-                    value={issueNo} 
-                    onChange={handleIssueChange}
-                    disabled={!fromDate || !toDate || isLoading || issuesList.length === 0}
-                  >
-                    <option value="">Select Issue</option>
-                    {isLoading ? (
-                      <option value="" disabled>Loading issues...</option>
-                    ) : issuesList.length > 0 ? (
-                      issuesList.map((issue, index) => (
-                        <option 
-                          key={issue.issueNo || `issue-${index}`} 
-                          value={issue.issueNo}
-                        >
-                          {issue.issueNo}  ({issue.indentNo}) - 
-                          {formatDateForDisplay(issue.issueDate)}
-                        </option>
-                      ))
-                    ) : (
-                      <option value="" disabled>
-                        {fromDate && toDate ? "No issues found for selected dates" : "Select dates first"}
-                      </option>
+                  <div className="dropdown-wrapper" style={{ position: "relative" }}>
+                    <div
+                      className="d-flex align-items-center justify-content-between"
+                      style={{
+                        cursor: !fromDate || !toDate || isLoading || issuesList.length === 0 ? "not-allowed" : "pointer",
+                        padding: "0.375rem 0.75rem",
+                        paddingRight: "2rem",
+                        backgroundColor: "#fff",
+                        border: "1px solid #ced4da",
+                        borderRadius: "0.25rem",
+                        minHeight: "calc(1.5em + 0.75rem + 2px)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        opacity: !fromDate || !toDate || isLoading ? 0.65 : 1,
+                        userSelect: "none",
+                      }}
+                      onClick={() => {
+                        if (!fromDate || !toDate || isLoading || issuesList.length === 0) return;
+                        setDropdownOpen(!dropdownOpen);
+                      }}
+                    >
+                      <span className="text-truncate" style={{ flex: 1 }}>
+                        {selectedIssue ? (
+                          <>
+                            <div style={{ fontWeight: "500" }}>
+                              {selectedIssue.issueNo || "-"} / {selectedIssue.indentNo || "-"}
+                            </div>
+                            <div style={{ fontSize: "0.8em", color: "#6c757d" }}>
+                              {selectedIssue.requestedDeptName || selectedIssue.requestedDepartmentName || "-"} | {formatDateForDisplay(selectedIssue.issueDate)} | {getIndentTypeLabel(selectedIssue.indentType)}
+                            </div>
+                          </>
+                        ) : (
+                          <span className="text-muted">
+                            {isLoading ? "Loading issues..." :
+                             issuesList.length === 0 ? (fromDate && toDate ? "No issues found" : "Select dates first") :
+                             "Select Issue"}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)" }}>
+                        <i className="fa fa-chevron-down" />
+                      </span>
+                    </div>
+                    {dropdownOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: 0,
+                          right: 0,
+                          zIndex: 1000,
+                          backgroundColor: "#fff",
+                          border: "1px solid #ced4da",
+                          borderRadius: "0.25rem",
+                          maxHeight: "250px",
+                          overflowY: "auto",
+                          marginTop: "2px",
+                          boxShadow: "0 0.5rem 1rem rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        {issuesList.map((issue, index) => {
+                          const requestedDeptName = issue.requestedDeptName || issue.requestedDepartmentName || issue.requestedDept || "-";
+                          const issueDate = formatDateForDisplay(issue.issueDate) || "-";
+                          const optionLabel = `${issue.issueNo || "-"} / ${issue.indentNo || "-"}`;
+                          const optionSubLabel = `${requestedDeptName} | ${issueDate} | ${getIndentTypeLabel(issue.indentType)}`;
+
+                          return (
+                            <div
+                              key={issue.issueNo || `issue-${index}`}
+                              className="dropdown-item"
+                              style={{
+                                padding: "0.375rem 0.75rem",
+                                cursor: "pointer",
+                                borderBottom: index < issuesList.length - 1 ? "1px solid #f0f0f0" : "none",
+                                backgroundColor: issue.issueNo === issueNo ? "#e9ecef" : "transparent",
+                              }}
+                              onClick={() => handleIssueSelect(issue)}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8f9fa"}
+                              onMouseLeave={(e) => {
+                                if (issue.issueNo !== issueNo) {
+                                  e.currentTarget.style.backgroundColor = "transparent";
+                                }
+                              }}
+                            >
+                              <div style={{ fontWeight: "500" }}>{optionLabel}</div>
+                              <div style={{ fontSize: "0.8em", color: "#6c757d" }}>{optionSubLabel}</div>
+                            </div>
+                          );
+                        })}
+                      </div>
                     )}
-                  </select>
+                  </div>
                   {fromDate && toDate && !isLoading && issuesList.length === 0 && (
                     <small className="text-warning">
                       No issues found for the selected date range
                     </small>
                   )}
-                  {/* {fromDate && toDate && departmentId && issuesList.length > 0 && (
-                    // <small className="text-success">
-                    //   Found {issuesList.length} issue(s)
-                    // </small>
-                  )} */}
                 </div>
               </div>
 
               {selectedIssue && (
                 <div className="row mb-4">
                   <div className="col-12">
-                    {/* <div className="alert alert-info">
-                      <h6 className="alert-heading">Selected Issue Details:</h6>
-                      <div className="row">
-                        <div className="col-md-3">
-                          <strong>Issue No:</strong> {selectedIssue.issueNo || 'N/A'}
-                        </div>
-                        <div className="col-md-3">
-                          <strong>Date:</strong> {selectedIssue.issueDate ? new Date(selectedIssue.issueDate).toLocaleDateString() : 'N/A'}
-                        </div>
-                        <div className="col-md-3">
-                          <strong>Indent ID:</strong> {selectedIssue.indentMId || 'N/A'}
-                        </div>
-                        <div className="col-md-3">
-                          <strong>Store Issue ID:</strong> {selectedIssue.storeIssueMId || 'N/A'}
-                        </div>
-                      </div> */}
-                    {/* </div> */}
+                    {/* Optional: show selected issue details */}
                   </div>
                 </div>
               )}
