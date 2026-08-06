@@ -16,6 +16,8 @@ const amountOptions = [
 
 const PendingIpdBillList = () => {
   const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Filter states
   const [wardFilter, setWardFilter] = useState("");
@@ -58,7 +60,11 @@ const PendingIpdBillList = () => {
   }, []);
 
   const fetchBills = async (page = 0) => {
-    setLoading(true);
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setTableLoading(true);
+    }
     let url = `${GET_PENDING_TRACKING_IPD_BILL_LIST}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
     if (wardFilter) url += `&wardId=${wardFilter}`;
     if (billTypeFilter) url += `&billType=${billTypeFilter}`;
@@ -85,6 +91,8 @@ const PendingIpdBillList = () => {
       setDisplayData([]);
     } finally {
       setLoading(false);
+      setTableLoading(false);
+      setIsInitialLoad(false);
       setIsSearching(false);
       setIsShowingAll(false);
       setIsRefreshing(false);
@@ -170,7 +178,11 @@ const PendingIpdBillList = () => {
     setCustomAmount("");
     setCurrentPage(1);
     
-    setLoading(true);
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setTableLoading(true);
+    }
     getRequest(`${GET_PENDING_TRACKING_IPD_BILL_LIST}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`)
       .then(res => {
         if (res?.response) {
@@ -182,6 +194,8 @@ const PendingIpdBillList = () => {
       })
       .finally(() => {
         setLoading(false);
+        setTableLoading(false);
+        setIsInitialLoad(false);
         setIsShowingAll(false);
       });
   };
@@ -401,93 +415,112 @@ const PendingIpdBillList = () => {
                   </div>
 
                   {/* Table */}
-                  <div className="table-responsive">
-                    <table className="table table-bordered table-hover align-middle">
-                      <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
-                        <tr>
-                          <th>Patient Name</th>
-                          <th>Mobile</th>
-                          <th>Admission ID</th>
-                          <th>Admission DateTime</th>
-                          <th>Ward / Room</th>
-                          <th>Bill Type</th>
-                          <th>Total Amount</th>
-                          <th>Patient Paid</th>
-                          <th>Outstanding Amount</th>
-                          <th>Bill Status</th>
-                          <th className="text-center">View Bill (PDF)</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {loading ? (
+                  <div style={{ position: "relative", minHeight: "200px" }}>
+                    {tableLoading && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          backgroundColor: "rgba(255, 255, 255, 0.7)",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          zIndex: 5,
+                        }}
+                      >
+                        <div className="d-flex flex-column align-items-center">
+                          <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <span className="mt-2 fw-bold text-primary">Loading Pending Bills...</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
                           <tr>
-                            <td colSpan={11} className="text-center py-4">
-                              <LoadingScreen />
-                            </td>
+                            <th>Patient Name</th>
+                            <th>Mobile</th>
+                            <th>Admission ID</th>
+                            <th>Admission DateTime</th>
+                            <th>Ward / Room</th>
+                            <th>Bill Type</th>
+                            <th>Total Amount</th>
+                            <th>Patient Paid</th>
+                            <th>Outstanding Amount</th>
+                            <th>Bill Status</th>
+                            <th className="text-center">View Bill (PDF)</th>
                           </tr>
-                        ) : displayData.length === 0 ? (
-                          <tr>
-                            <td colSpan={11} className="text-center py-4 text-muted">
-                              No pending IPD bills found.
-                            </td>
-                          </tr>
-                        ) : (
-                          displayData.map((item) => (
-                            <tr
-                              key={item.inpatientId}
-                              onClick={() => handleRowClick(item)}
-                              role="button"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") handleRowClick(item);
-                              }}
-                              style={{ cursor: "pointer" }}
-                            >
-                              <td>{item.patientName}</td>
-                              <td>{item.mobileNo}</td>
-                              <td>{item.admissionNo}</td>
-                              <td>{formatDate(item.admissionDateTime)}</td>
-                              <td>{`${item.ward} / ${item.room || 'N/A'}`}</td>
-                              <td>{item.billingType}</td>
-                              <td>₹{item.totalAmount}</td>
-                              <td>
-                                <span
-                                  className="d-inline-block rounded-circle me-2"
-                                  style={{
-                                    width: "10px",
-                                    height: "10px",
-                                    backgroundColor: getOutstandingDotColor(item.outStandingAmount),
-                                  }}
-                                ></span>
-                                ₹{item.patientPaid}
-                              </td>
-                              <td>₹{item.outStandingAmount}</td>
-                              <td>
-                                <span
-                                  className="badge"
-                                  style={{
-                                    backgroundColor: item.billStatus === "FINAL" ? "#28a745" : item.billStatus === "OPEN" ? "#ffc107" : "#6c757d",
-                                    color: item.billStatus === "OPEN" ? "#000" : "#fff"
-                                  }}
-                                >
-                                  {item.billStatus || "N/A"}
-                                </span>
-                              </td>
-                              <td className="text-center" onClick={(e) => e.stopPropagation()}>
-                                <button
-                                  type="button"
-                                  className="btn btn-sm btn-danger"
-                                  title="View Bill PDF"
-                                  onClick={() => alert(`View PDF for ${item.admissionNo}`)}
-                                >
-                                  View
-                                  <i className="fa fa-file-pdf-o ms-1"></i>
-                                </button>
+                        </thead>
+                        <tbody>
+                          {displayData.length === 0 ? (
+                            <tr>
+                              <td colSpan={11} className="text-center py-4 text-muted">
+                                No pending IPD bills found.
                               </td>
                             </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </table>
+                          ) : (
+                            displayData.map((item) => (
+                              <tr
+                                key={item.inpatientId}
+                                onClick={() => handleRowClick(item)}
+                                role="button"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") handleRowClick(item);
+                                }}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <td>{item.patientName}</td>
+                                <td>{item.mobileNo}</td>
+                                <td>{item.admissionNo}</td>
+                                <td>{formatDate(item.admissionDateTime)}</td>
+                                <td>{`${item.ward} / ${item.room || 'N/A'}`}</td>
+                                <td>{item.billingType}</td>
+                                <td>₹{item.totalAmount}</td>
+                                <td>
+                                  <span
+                                    className="d-inline-block rounded-circle me-2"
+                                    style={{
+                                      width: "10px",
+                                      height: "10px",
+                                      backgroundColor: getOutstandingDotColor(item.outStandingAmount),
+                                    }}
+                                  ></span>
+                                  ₹{item.patientPaid}
+                                </td>
+                                <td>₹{item.outStandingAmount}</td>
+                                <td>
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      backgroundColor: item.billStatus === "FINAL" ? "#28a745" : item.billStatus === "OPEN" ? "#ffc107" : "#6c757d",
+                                      color: item.billStatus === "OPEN" ? "#000" : "#fff"
+                                    }}
+                                  >
+                                    {item.billStatus || "N/A"}
+                                  </span>
+                                </td>
+                                <td className="text-center" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger"
+                                    title="View Bill PDF"
+                                    onClick={() => alert(`View PDF for ${item.admissionNo}`)}
+                                  >
+                                    View
+                                    <i className="fa fa-file-pdf-o ms-1"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   <Pagination

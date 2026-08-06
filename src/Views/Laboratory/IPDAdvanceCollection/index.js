@@ -1,5 +1,6 @@
 import { useState, useMemo, useEffect } from "react";
 import Pagination from "../../../Components/Pagination";
+import LoadingScreen from "../../../Components/Loading";
 import { getRequest } from "../../../service/apiService";
 import { GET_IPD_ADVANCE_COLLECTION, GET_PREVIOUS_PAYMENT_HISTORY } from "../../../config/apiConfig";
 
@@ -19,6 +20,8 @@ const IPDAdvanceCollection = () => {
   const [totalPages, setTotalPages] = useState(0);
   const [totalElements, setTotalElements] = useState(0);
   const [isLoading, setIsLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // UI state
   const [showDetails, setShowDetails] = useState(false);
@@ -69,7 +72,11 @@ const IPDAdvanceCollection = () => {
   }, [selectedAdmission]);
 
   const fetchAdmissions = async (currentPage = page) => {
-    setIsLoading(true);
+    if (isInitialLoad) {
+      setIsLoading(true);
+    } else {
+      setTableLoading(true);
+    }
     try {
       let url = `${GET_IPD_ADVANCE_COLLECTION}?page=${currentPage}&size=${size}`;
       if (searchPatientName.trim()) url += `&patientName=${searchPatientName.trim()}`;
@@ -92,6 +99,8 @@ const IPDAdvanceCollection = () => {
       setAdmissionList([]);
     } finally {
       setIsLoading(false);
+      setTableLoading(false);
+      setIsInitialLoad(false);
     }
   };
 
@@ -109,7 +118,11 @@ const IPDAdvanceCollection = () => {
     setSearchMobileNo("");
     setSearchAdmissionNo("");
     setPage(0);
-    setIsLoading(true);
+    if (isInitialLoad) {
+      setIsLoading(true);
+    } else {
+      setTableLoading(true);
+    }
     getRequest(`${GET_IPD_ADVANCE_COLLECTION}?page=0&size=${size}`)
       .then(res => {
         if (res && res.response) {
@@ -123,7 +136,11 @@ const IPDAdvanceCollection = () => {
         }
       })
       .catch(console.error)
-      .finally(() => setIsLoading(false));
+      .finally(() => {
+        setIsLoading(false);
+        setTableLoading(false);
+        setIsInitialLoad(false);
+      });
   };
 
   const handleRowClick = (admission) => {
@@ -185,6 +202,7 @@ const IPDAdvanceCollection = () => {
 
   return (
     <div className="content-wrapper">
+      {isLoading && <LoadingScreen />}
       <div className="row">
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
@@ -264,67 +282,84 @@ const IPDAdvanceCollection = () => {
                   </div>
 
                   {/* Active Admission Search Result */}
-                  <div className="table-responsive packagelist">
-                    <table className="table table-bordered table-hover align-middle">
-                      <thead className="table-light">
-                        <tr>
-                          <th>Admission No</th>
-                          <th>UHID</th>
-                          <th>Patient Name</th>
-                          <th>Age/Gender</th>
-                          <th>Mobile</th>
-                          <th>Ward/Room/Bed</th>
-                          <th>Admission Date</th>
-                          <th>Billing Type</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {isLoading ? (
+                  <div style={{ position: "relative", minHeight: "200px" }}>
+                    {tableLoading && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          backgroundColor: "rgba(255, 255, 255, 0.7)",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          zIndex: 5,
+                        }}
+                      >
+                        <div className="d-flex flex-column align-items-center">
+                          <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <span className="mt-2 fw-bold text-primary">Loading Admissions...</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="table-responsive packagelist">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead className="table-light">
                           <tr>
-                            <td colSpan="8" className="text-center py-4">
-                              <div className="spinner-border text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                              </div>
-                            </td>
+                            <th>Admission No</th>
+                            <th>UHID</th>
+                            <th>Patient Name</th>
+                            <th>Age/Gender</th>
+                            <th>Mobile</th>
+                            <th>Ward/Room/Bed</th>
+                            <th>Admission Date</th>
+                            <th>Billing Type</th>
                           </tr>
-                        ) : admissionList.length > 0 ? (
-                          admissionList.map((item) => (
-                            <tr
-                              key={item.admissionNo}
-                              onClick={() => handleRowClick(item)}
-                              role="button"
-                              onKeyDown={(e) => {
-                                if (e.key === "Enter" || e.key === " ") handleRowClick(item);
-                              }}
-                              style={{ cursor: "pointer" }}
-                            >
-                              <td>{item.admissionNo}</td>
-                              <td>{item.uhid}</td>
-                              <td>{item.patientName}</td>
-                              <td>
-                                {item.age} / {item.gender}
-                              </td>
-                              <td>{item.mobileNo}</td>
-                              <td>
-                                {item.ward || "N/A"}/{item.room || "N/A"}/{item.bed || "N/A"}
-                              </td>
-                              <td>{formatDate(item.admissionDateTime)}</td>
-                              <td>
-                                <span className="badge bg-info">
-                                  {item.billingType || "N/A"}
-                                </span>
+                        </thead>
+                        <tbody>
+                          {admissionList.length > 0 ? (
+                            admissionList.map((item) => (
+                              <tr
+                                key={item.admissionNo}
+                                onClick={() => handleRowClick(item)}
+                                role="button"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") handleRowClick(item);
+                                }}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <td>{item.admissionNo}</td>
+                                <td>{item.uhid}</td>
+                                <td>{item.patientName}</td>
+                                <td>
+                                  {item.age} / {item.gender}
+                                </td>
+                                <td>{item.mobileNo}</td>
+                                <td>
+                                  {item.ward || "N/A"}/{item.room || "N/A"}/{item.bed || "N/A"}
+                                </td>
+                                <td>{formatDate(item.admissionDateTime)}</td>
+                                <td>
+                                  <span className="badge bg-info">
+                                    {item.billingType || "N/A"}
+                                  </span>
+                                </td>
+                              </tr>
+                            ))
+                          ) : (
+                            <tr>
+                              <td colSpan="8" className="text-center py-3 text-muted">
+                                No active admissions found.
                               </td>
                             </tr>
-                          ))
-                        ) : (
-                          <tr>
-                            <td colSpan="8" className="text-center py-3 text-muted">
-                              No active admissions found.
-                            </td>
-                          </tr>
-                        )}
-                      </tbody>
-                    </table>
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
                   </div>
 
                   {/* Pagination Controls */}
