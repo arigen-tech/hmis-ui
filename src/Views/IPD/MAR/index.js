@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
-import { getRequest } from '../../../service/apiService';
-import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION } from '../../../config/apiConfig';
+import { getRequest, postRequest } from '../../../service/apiService';
+import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT } from '../../../config/apiConfig';
+import ConfirmationPopup from '../../../Components/ConfirmationPopup';
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -42,53 +43,51 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
   return createPortal(<div style={style}>{children}</div>, document.body);
 };
 
-const MedicationModule = () => {
+const MedicationModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
   const [activeView, setActiveView] = useState("medications"); // "medications" | "adverse"
 
   // ---------- State ----------
   // Active medications (only those with stopDate === null)
-  const [activeMeds, setActiveMeds] = useState([
-    {
-      id: 1,
-      medicineName: 'Paracetamol',
-      route: 'Oral',
-      dose: '500 mg',
-      frequency: 'TDS',
-      startDate: '2025-04-05T08:00',
-      prescribedBy: 'Dr. Smith',
-      administeredBy: 'Nurse A',
-      stopDate: null,
-      stopReason: null,
-      totalDays: 5, // not displayed in table
-    },
-    {
-      id: 2,
-      medicineName: 'Ceftriaxone',
-      route: 'IV',
-      dose: '1 gm',
-      frequency: 'BD',
-      startDate: '2025-04-05T09:00',
-      prescribedBy: 'Dr. Jones',
-      administeredBy: 'Nurse B',
-      stopDate: null,
-      stopReason: null,
-      totalDays: 7,
-    },
-    {
-      id: 3,
-      medicineName: 'DNS',
-      route: 'IV',
-      dose: '500 ml',
-      frequency: 'Continuous',
-      startDate: '2025-04-05T10:00',
-      prescribedBy: 'Dr. Smith',
-      administeredBy: 'Nurse A',
-      stopDate: null,
-      stopReason: null,
-      totalDays: 3,
-    },
-  ]);
+  const [activeMeds, setActiveMeds] = useState([]);
+  const [medLoading, setMedLoading] = useState(false);
+  const [medSaving, setMedSaving] = useState(false);
+  const [medStopping, setMedStopping] = useState(false);
+
+  const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id;
+
+  const fetchActiveMeds = async () => {
+    if (!inpatientId) return;
+    setMedLoading(true);
+    try {
+      const res = await getRequest(`${GET_MEDICATION_TREATMENT_BY_INPATIENT_ID}/${inpatientId}`);
+      if (res && Array.isArray(res.response)) {
+        const mapped = res.response.map((item) => ({
+          id: item.prescriptionId,
+          medicineName: item.itemName,
+          route: item.routeName,
+          dose: item.dose,
+          frequency: item.frequencyName,
+          startDate: item.startDate,
+          administeredBy: item.administratedBy,
+          stopDate: item.stopDate,
+          stopReason: item.stopReason || null,
+        }));
+        setActiveMeds(mapped);
+      } else {
+        setActiveMeds([]);
+      }
+    } catch (error) {
+      console.error("Error fetching medication list:", error);
+      setActiveMeds([]);
+    } finally {
+      setMedLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchActiveMeds();
+  }, [inpatientId]);
 
   // MAR administration logs (history)
   const [marLogs, setMarLogs] = useState([
@@ -172,15 +171,38 @@ const MedicationModule = () => {
   // New medication form (no class, added totalDays)
   const [newMed, setNewMed] = useState({
     medicineName: '',
+    itemId: '',
     route: '',
+    routeId: '',
     dose: '',
     frequency: '',
+    frequencyId: '',
     totalDays: '',
     startDate: '',
     prescribedBy: '',
     administeredBy: '',
     remarks: '',
   });
+
+  // Confirmation popup state
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
+
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "OK", cancelText = "") => {
+    setConfirmationPopup({
+      message,
+      type,
+      confirmText,
+      cancelText,
+      onConfirm: () => {
+        setConfirmationPopup(null);
+        if (onConfirm) onConfirm();
+      },
+      onCancel: onCancel ? () => {
+        setConfirmationPopup(null);
+        onCancel();
+      } : null
+    });
+  };
 
   // Medication search & master options
   const [dynamicMedicineList, setDynamicMedicineList] = useState([]);
@@ -195,9 +217,19 @@ const MedicationModule = () => {
     getRequest(MAS_FREQUENCY_GET_ALL)
       .then((res) => {
         if (res && res.response) {
-          setFrequencyOptions(res.response.map((f) => f.frequencyName));
+          setFrequencyOptions(
+            res.response.map((f) => ({
+              frequencyId: f.frequencyId,
+              frequencyName: f.frequencyName,
+            }))
+          );
         } else if (Array.isArray(res)) {
-          setFrequencyOptions(res.map((f) => f.frequencyName));
+          setFrequencyOptions(
+            res.map((f) => ({
+              frequencyId: f.frequencyId,
+              frequencyName: f.frequencyName,
+            }))
+          );
         }
       })
       .catch(console.error);
@@ -206,9 +238,19 @@ const MedicationModule = () => {
     getRequest(MAS_ROUTE_GET_ALL)
       .then((res) => {
         if (res && res.response) {
-          setRouteOptions(res.response.map((r) => r.routeName));
+          setRouteOptions(
+            res.response.map((r) => ({
+              routeId: r.routeId,
+              routeName: r.routeName,
+            }))
+          );
         } else if (Array.isArray(res)) {
-          setRouteOptions(res.map((r) => r.routeName));
+          setRouteOptions(
+            res.map((r) => ({
+              routeId: r.routeId,
+              routeName: r.routeName,
+            }))
+          );
         }
       })
       .catch(console.error);
@@ -222,11 +264,26 @@ const MedicationModule = () => {
     try {
       const response = await getRequest(`${GET_ALL_DRUGS_BY_SECTION}?flag=1&search=${searchText}&page=0&size=20`);
       if (response && response.response && response.response.content) {
-        setDynamicMedicineList(response.response.content.map(item => item.nomenclature));
+        setDynamicMedicineList(
+          response.response.content.map((item) => ({
+            itemId: item.itemId,
+            nomenclature: item.nomenclature,
+          }))
+        );
       } else if (response && response.response && Array.isArray(response.response)) {
-        setDynamicMedicineList(response.response.map(item => item.nomenclature));
+        setDynamicMedicineList(
+          response.response.map((item) => ({
+            itemId: item.itemId,
+            nomenclature: item.nomenclature,
+          }))
+        );
       } else if (Array.isArray(response)) {
-        setDynamicMedicineList(response.map(item => item.nomenclature));
+        setDynamicMedicineList(
+          response.map((item) => ({
+            itemId: item.itemId,
+            nomenclature: item.nomenclature,
+          }))
+        );
       }
     } catch (e) {
       console.error(e);
@@ -234,15 +291,19 @@ const MedicationModule = () => {
   };
 
   const handleMedicineNameChange = (value) => {
-    setNewMed((prev) => ({ ...prev, medicineName: value }));
+    setNewMed((prev) => ({ ...prev, medicineName: value, itemId: '' }));
     setDropdownOpen(true);
 
     if (searchTimeoutId) clearTimeout(searchTimeoutId);
     setSearchTimeoutId(setTimeout(() => fetchMedicines(value), 300));
   };
 
-  const selectMedicine = (name) => {
-    setNewMed((prev) => ({ ...prev, medicineName: name }));
+  const selectMedicine = (item) => {
+    setNewMed((prev) => ({
+      ...prev,
+      medicineName: item.nomenclature,
+      itemId: item.itemId,
+    }));
     setDropdownOpen(false);
   };
 
@@ -263,33 +324,67 @@ const MedicationModule = () => {
     return local.toISOString().slice(0, 16);
   };
 
+  const openAddMedModal = () => {
+    setNewMed((prev) => ({
+      ...prev,
+      startDate: nowDateTimeLocal(),
+    }));
+    setShowAddMedModal(true);
+  };
+
   // ---------- Handlers: Add Medication ----------
-  const handleAddMed = () => {
-    if (!newMed.medicineName || !newMed.route || !newMed.dose || !newMed.frequency || !newMed.startDate || !newMed.totalDays) {
+  const handleAddMed = async () => {
+    if (!newMed.medicineName || !newMed.routeId || !newMed.dose || !newMed.frequencyId || !newMed.startDate || !newMed.totalDays) {
       alert('Please fill all required fields (Medicine Name, Route, Dose, Frequency, Start Date, Total Days)');
       return;
     }
-    const newId = Date.now();
-    const medToAdd = {
-      id: newId,
-      ...newMed,
-      totalDays: parseInt(newMed.totalDays, 10),
-      stopDate: null,
-      stopReason: null,
+    
+    setMedSaving(true);
+    const payload = {
+      inpatientId: Number(inpatientId) || 0,
+      itemId: Number(newMed.itemId) || 0,
+      routeId: Number(newMed.routeId) || 0,
+      dose: String(newMed.dose),
+      frequencyId: Number(newMed.frequencyId) || 0,
+      startDate: newMed.startDate ? new Date(newMed.startDate).toISOString() : new Date().toISOString(),
+      administratedBy: String(newMed.administeredBy || ""),
+      day: Number(newMed.totalDays) || 0
     };
-    setActiveMeds([...activeMeds, medToAdd]);
-    setShowAddMedModal(false);
-    setNewMed({
-      medicineName: '',
-      route: '',
-      dose: '',
-      frequency: '',
-      totalDays: '',
-      startDate: '',
-      prescribedBy: '',
-      administeredBy: '',
-      remarks: '',
-    });
+
+    try {
+      const response = await postRequest(SAVE_IPD_MEDICATION_TREATMENT, payload);
+      showConfirmationPopup(
+        response?.message || "Medication saved successfully!",
+        "success",
+        () => {
+          setShowAddMedModal(false);
+          fetchActiveMeds();
+          setNewMed({
+            medicineName: '',
+            itemId: '',
+            route: '',
+            routeId: '',
+            dose: '',
+            frequency: '',
+            frequencyId: '',
+            totalDays: '',
+            startDate: nowDateTimeLocal(),
+            prescribedBy: '',
+            administeredBy: '',
+            remarks: '',
+          });
+        }
+      );
+    } catch (error) {
+      console.error("Error saving medication:", error);
+      showConfirmationPopup(
+        error?.message || "Failed to save medication.",
+        "danger",
+        () => {}
+      );
+    } finally {
+      setMedSaving(false);
+    }
   };
 
   // ---------- Handlers: Stop Medication ----------
@@ -299,15 +394,40 @@ const MedicationModule = () => {
     setShowStopModal(true);
   };
 
-  const confirmStop = () => {
+  const confirmStop = async () => {
     if (!stopReason.trim()) {
       alert('Please enter a reason for stopping the medication.');
       return;
     }
-    setActiveMeds(activeMeds.filter(med => med.id !== selectedMedForAction.id));
-    setShowStopModal(false);
-    setSelectedMedForAction(null);
-    setStopReason('');
+
+    setMedStopping(true);
+    const payload = {
+      prescriptionId: Number(selectedMedForAction.id),
+      stopReason: String(stopReason).trim()
+    };
+
+    try {
+      const response = await postRequest(STOP_IPD_MEDICATION_TREATMENT, payload);
+      showConfirmationPopup(
+        response?.message || "Medication stopped successfully!",
+        "success",
+        () => {
+          fetchActiveMeds();
+        }
+      );
+      setShowStopModal(false);
+      setSelectedMedForAction(null);
+      setStopReason('');
+    } catch (error) {
+      console.error("Error stopping medication:", error);
+      showConfirmationPopup(
+        error?.message || "Failed to stop medication.",
+        "danger",
+        () => {}
+      );
+    } finally {
+      setMedStopping(false);
+    }
   };
 
   // ---------- Handlers: View Logs ----------
@@ -433,7 +553,7 @@ const MedicationModule = () => {
           <div className="card shadow-sm mb-4">
             <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
               <strong>Current Medications (Active Orders)</strong>
-              <button className="btn btn-sm btn-light" onClick={() => setShowAddMedModal(true)}>
+              <button className="btn btn-sm btn-light" onClick={openAddMedModal}>
                 + Add Medication
               </button>
             </div>
@@ -454,29 +574,46 @@ const MedicationModule = () => {
                     </tr>
                   </thead>
                   <tbody>
-                    {activeMeds.map(med => (
-                      <tr key={med.id}>
-                        <td className="text-center">
-                          <input
-                            type="checkbox"
-                            checked={selectedMedIds.includes(med.id)}
-                            onChange={() => toggleSelectMed(med.id)}
-                          />
-                        </td>
-                        <td>{med.medicineName}</td>
-                        <td>{med.route}</td>
-                        <td>{med.dose}</td>
-                        <td>{med.frequency}</td>
-                        <td>{med.startDate ? new Date(med.startDate).toLocaleString() : ''}</td>
-                        <td>{med.administeredBy || '—'}</td>
-                        <td>{med.stopDate ? new Date(med.stopDate).toLocaleString() : '—'}</td>
-                        <td>
-                          <button className="btn btn-sm btn-outline-danger me-1" onClick={() => openStopModal(med)}>Stop</button>
-                          <button className="btn btn-sm btn-outline-info" onClick={() => openLogsModal(med)}>Logs</button>
+                    {medLoading ? (
+                      <tr>
+                        <td colSpan="9" className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <span className="ms-2">Loading medications...</span>
                         </td>
                       </tr>
-                    ))}
-                    {activeMeds.length === 0 && (
+                    ) : activeMeds.length > 0 ? (
+                      activeMeds.map(med => (
+                        <tr key={med.id}>
+                          <td className="text-center">
+                            <input
+                              type="checkbox"
+                              checked={selectedMedIds.includes(med.id)}
+                              onChange={() => toggleSelectMed(med.id)}
+                              disabled={!!med.stopDate}
+                            />
+                          </td>
+                          <td>{med.medicineName}</td>
+                          <td>{med.route}</td>
+                          <td>{med.dose}</td>
+                          <td>{med.frequency}</td>
+                          <td>{med.startDate ? new Date(med.startDate).toLocaleString() : ''}</td>
+                          <td>{med.administeredBy || '—'}</td>
+                          <td>{med.stopDate ? new Date(med.stopDate).toLocaleString() : '—'}</td>
+                          <td>
+                            <button
+                              className="btn btn-sm btn-outline-danger me-1"
+                              onClick={() => openStopModal(med)}
+                              disabled={!!med.stopDate}
+                            >
+                              Stop
+                            </button>
+                            <button className="btn btn-sm btn-outline-info" onClick={() => openLogsModal(med)}>Logs</button>
+                          </td>
+                        </tr>
+                      ))
+                    ) : (
                       <tr><td colSpan="9" className="text-center">No active medications.</td></tr>
                     )}
                   </tbody>
@@ -623,15 +760,15 @@ const MedicationModule = () => {
                       show={dropdownOpen && dynamicMedicineList.length > 0}
                     >
                       <ul className="list-group mb-0">
-                        {dynamicMedicineList.map((name) => (
+                        {dynamicMedicineList.map((item) => (
                           <li
-                            key={name}
+                            key={item.itemId}
                             className="list-group-item list-group-item-action"
                             style={{ cursor: "pointer" }}
                             onMouseDown={(e) => e.preventDefault()}
-                            onClick={() => selectMedicine(name)}
+                            onClick={() => selectMedicine(item)}
                           >
-                            {name}
+                            {item.nomenclature}
                           </li>
                         ))}
                       </ul>
@@ -642,12 +779,20 @@ const MedicationModule = () => {
                     <label className="form-label small">Route *</label>
                     <select
                       className="form-select form-select-sm"
-                      value={newMed.route}
-                      onChange={e => setNewMed({...newMed, route: e.target.value})}
+                      value={newMed.routeId || ""}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const opt = routeOptions.find(o => String(o.routeId) === String(val));
+                        setNewMed({
+                          ...newMed,
+                          routeId: val ? Number(val) : "",
+                          route: opt ? opt.routeName : ""
+                        });
+                      }}
                     >
                       <option value="">Select</option>
                       {routeOptions.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt.routeId} value={opt.routeId}>{opt.routeName}</option>
                       ))}
                     </select>
                   </div>
@@ -665,12 +810,20 @@ const MedicationModule = () => {
                     <label className="form-label small">Frequency *</label>
                     <select
                       className="form-select form-select-sm"
-                      value={newMed.frequency}
-                      onChange={e => setNewMed({...newMed, frequency: e.target.value})}
+                      value={newMed.frequencyId || ""}
+                      onChange={e => {
+                        const val = e.target.value;
+                        const opt = frequencyOptions.find(o => String(o.frequencyId) === String(val));
+                        setNewMed({
+                          ...newMed,
+                          frequencyId: val ? Number(val) : "",
+                          frequency: opt ? opt.frequencyName : ""
+                        });
+                      }}
                     >
                       <option value="">Select</option>
                       {frequencyOptions.map((opt) => (
-                        <option key={opt} value={opt}>{opt}</option>
+                        <option key={opt.frequencyId} value={opt.frequencyId}>{opt.frequencyName}</option>
                       ))}
                     </select>
                   </div>
@@ -702,14 +855,16 @@ const MedicationModule = () => {
                       className="form-control form-control-sm"
                       value={newMed.administeredBy}
                       onChange={e => setNewMed({...newMed, administeredBy: e.target.value})}
-                      placeholder="Nurse name"
+                      placeholder="Doctor name"
                     />
                   </div>
                 </div>
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary btn-sm" onClick={() => setShowAddMedModal(false)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={handleAddMed}>Save</button>
+                <button className="btn btn-primary btn-sm" onClick={handleAddMed} disabled={medSaving}>
+                  {medSaving ? "Saving..." : "Save"}
+                </button>
               </div>
             </div>
           </div>
@@ -732,7 +887,9 @@ const MedicationModule = () => {
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary btn-sm" onClick={() => setShowStopModal(false)}>Cancel</button>
-                <button className="btn btn-danger btn-sm" onClick={confirmStop}>Confirm Stop</button>
+                <button className="btn btn-danger btn-sm" onClick={confirmStop} disabled={medStopping}>
+                  {medStopping ? "Stopping..." : "Confirm Stop"}
+                </button>
               </div>
             </div>
           </div>
@@ -898,6 +1055,17 @@ const MedicationModule = () => {
             </div>
           </div>
         </div>
+      )}
+      {confirmationPopup && (
+        <ConfirmationPopup
+          show={!!confirmationPopup}
+          message={confirmationPopup.message}
+          type={confirmationPopup.type}
+          confirmText={confirmationPopup.confirmText}
+          cancelText={confirmationPopup.cancelText}
+          onConfirm={confirmationPopup.onConfirm}
+          onCancel={confirmationPopup.onCancel}
+        />
       )}
     </div>
   );
