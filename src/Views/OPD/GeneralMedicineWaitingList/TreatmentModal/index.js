@@ -58,10 +58,53 @@ const normalizeDrugRecord = (drug = {}) => ({
   name:
     drug.name ?? drug.nomenclature ?? drug.itemName ?? drug.drugName ?? "",
   code: drug.code ?? drug.pvmsNo ?? drug.itemCode ?? "",
+  dosageUnit:
+    drug.dosageUnit ??
+    drug.dispUnitName ??
+    drug.unitAuName ??
+    drug.dispUnit ??
+    drug.dispU ??
+    "",
   dispUnitName: drug.dispUnitName ?? drug.dispUnit ?? drug.depUnit ?? "",
   itemClassId: drug.itemClassId ?? null,
   aDispQty: drug.aDispQty ?? drug.adispQty ?? 1,
 });
+
+const resolveDosageUnit = (drug = {}, fallback = "") =>
+  drug.dosageUnit ?? fallback ?? "";
+
+const resolveDispUnit = (drug = {}, fallback = "") =>
+  drug.dispUnitName ??
+  drug.unitAuName ??
+  drug.dispUnit ??
+  drug.dispU ??
+  fallback ??
+  "";
+
+const normalizeNonNegativeNumberInput = (value) => {
+  if (value === null || value === undefined) return "";
+
+  const stringValue = String(value).replace(/-/g, "");
+  const [wholePart, ...decimalParts] = stringValue.split(".");
+  const sanitizedWhole = wholePart.replace(/[^\d]/g, "");
+  const sanitizedDecimal = decimalParts.join("").replace(/[^\d]/g, "");
+
+  if (!sanitizedWhole && !sanitizedDecimal) {
+    return "";
+  }
+
+  if (!sanitizedDecimal) {
+    return sanitizedWhole;
+  }
+
+  return `${sanitizedWhole || "0"}.${sanitizedDecimal}`;
+};
+
+const isNonNegativeNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return false;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue >= 0;
+};
 
 const drugMatchesQuery = (drug, searchQuery) => {
   const query = String(searchQuery || "").trim().toLowerCase();
@@ -100,6 +143,7 @@ const TreatmentModal = ({
     {
       drugName: "",
       drugId: null,
+      dosageUnit: "",
       dispUnit: "",
       dosage: "",
       frequency: "OD",
@@ -113,7 +157,6 @@ const TreatmentModal = ({
     },
   ]);
   const [templates, setTemplates] = useState([]);
-  const [allDrugs, setAllDrugs] = useState([]);
   const [allFrequencies, setAllFrequencies] = useState([]);
   const [loading, setLoading] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
@@ -273,9 +316,6 @@ const TreatmentModal = ({
 
       if (response.status === 200 && response.response?.content) {
         const normalized = response.response.content.map(normalizeDrugRecord);
-        if (page === 0 && !String(searchText || "").trim()) {
-          setAllDrugs(normalized);
-        }
         return {
           list: normalized,
           last: response.response.last,
@@ -428,12 +468,8 @@ const TreatmentModal = ({
           normalizedDrug.name ||
           selectedDrug.name ||
           "",
-        dispUnit:
-          normalizedDrug.dispUnitName ||
-          normalizedDrug.unitAuName ||
-          normalizedDrug.dispUnit ||
-          selectedDrug.dispUnitName ||
-          "",
+        dosageUnit: resolveDosageUnit(normalizedDrug, selectedDrug.dosageUnit),
+        dispUnit: resolveDispUnit(normalizedDrug, selectedDrug.dispUnitName),
         drugId: normalizedDrug.itemId ?? selectedDrug.itemId,
         itemClassId: normalizedDrug.itemClassId ?? selectedDrug.itemClassId,
         adispQty: normalizedDrug.adispQty ?? normalizedDrug.aDispQty ?? 1,
@@ -539,13 +575,14 @@ const TreatmentModal = ({
               normalizedDrug.name ||
               "",
             drugId: normalizedDrug.itemId ?? item.itemId,
-            dispUnit:
-              normalizedDrug.dispUnitName ||
-              normalizedDrug.unitAuName ||
-              normalizedDrug.dispUnit ||
-              item.dispU ||
-              item.dispUnit ||
-              "",
+            dosageUnit: resolveDosageUnit(
+              normalizedDrug,
+              item.dosageUnit,
+            ),
+            dispUnit: resolveDispUnit(
+              normalizedDrug,
+              item.dispUnitName || item.dispU || item.dispUnit,
+            ),
             dosage: item.dosage || "",
             frequency: frequency ? frequency.frequencyName : "OD",
             frequencyId: item.frequencyId,
@@ -577,6 +614,7 @@ const TreatmentModal = ({
         {
           drugName: "",
           drugId: null,
+          dosageUnit: "",
           dispUnit: "",
           dosage: "",
           frequency: "OD",
@@ -601,6 +639,7 @@ const TreatmentModal = ({
       {
         drugName: "",
         drugId: null,
+        dosageUnit: "",
         dispUnit: "",
         dosage: "",
         frequency: "OD",
@@ -629,6 +668,7 @@ const TreatmentModal = ({
       {
         drugName: "",
         drugId: null,
+        dosageUnit: "",
         dispUnit: "",
         dosage: "",
         frequency: "OD",
@@ -676,6 +716,7 @@ const TreatmentModal = ({
         {
           drugName: "",
           drugId: null,
+          dosageUnit: "",
           dispUnit: "",
           dosage: "",
           frequency: "OD",
@@ -734,7 +775,12 @@ const TreatmentModal = ({
 
   const handleTreatmentChange = (index, field, value) => {
     const newItems = [...treatmentItems];
-    newItems[index] = { ...newItems[index], [field]: value };
+    const normalizedValue =
+      field === "dosage" || field === "days"
+        ? normalizeNonNegativeNumberInput(value)
+        : value;
+
+    newItems[index] = { ...newItems[index], [field]: normalizedValue };
 
     if (field === "dosage" || field === "days" || field === "frequencyId") {
       const calculatedTotal = calculateTotal(newItems[index]);
@@ -756,7 +802,7 @@ const TreatmentModal = ({
     return filtered;
   };
 
-  const handleDrugSelect = (index, drug) => {
+  const handleDrugSelect = async (index, drug) => {
     const drugAlreadyInOtherRow = selectedDrugs.some(
       (id) => id === drug.id && treatmentItems[index]?.drugId !== drug.id,
     );
@@ -766,15 +812,19 @@ const TreatmentModal = ({
       return;
     }
 
+    const itemDetails = drug?.id ? await fetchDrugDetailsById(drug.id) : null;
+    const resolvedDrug = itemDetails || drug;
+
     const newItems = [...treatmentItems];
-    newItems[index] = {
-      ...newItems[index],
-      drugName: drug.name,
-      drugId: drug.id,
-      dispUnit: drug.dispUnitName,
-      itemClassId: drug.itemClassId,
-      adispQty: drug.adispQty,
-    };
+      newItems[index] = {
+        ...newItems[index],
+        drugName: resolvedDrug.name || resolvedDrug.nomenclature || drug.name,
+        drugId: resolvedDrug.itemId ?? drug.id,
+        dosageUnit: resolveDosageUnit(resolvedDrug, drug.dosageUnit),
+        dispUnit: resolveDispUnit(resolvedDrug, drug.dispUnitName),
+        itemClassId: resolvedDrug.itemClassId ?? drug.itemClassId,
+        adispQty: resolvedDrug.adispQty ?? resolvedDrug.aDispQty ?? drug.adispQty,
+      };
 
     const calculatedTotal = calculateTotal(newItems[index]);
     newItems[index].total = calculatedTotal;
@@ -854,7 +904,12 @@ const TreatmentModal = ({
 
     for (let i = 0; i < treatmentItems.length; i++) {
       const item = treatmentItems[i];
-      if (!item.drugId || !item.dosage || !item.days || !item.frequencyId) {
+      if (
+        !item.drugId ||
+        !isNonNegativeNumber(item.dosage) ||
+        !isNonNegativeNumber(item.days) ||
+        !item.frequencyId
+      ) {
         showPopup(`Please fill all required fields in row ${i + 1}`, "error");
         return;
       }
@@ -891,6 +946,8 @@ const TreatmentModal = ({
           instruction: item.instruction,
           frequencyId: item.frequencyId,
           itemId: item.drugId,
+          dosageUnit: item.dosageUnit || "",
+          dispUnit: item.dispUnit || "",
         })),
       };
 
@@ -1185,7 +1242,7 @@ const TreatmentModal = ({
                   <thead className="table-light">
                     <tr>
                       <th style={{ minWidth: 300, padding: "8px", fontSize: "0.75rem" }}>DRUGS NAME/CODE</th>
-                      <th style={{ minWidth: "80px", padding: "8px", fontSize: "0.75rem" }}>DISP. UNIT</th>
+                      <th style={{ minWidth: "80px", padding: "8px", fontSize: "0.75rem" }}>DOSAGE UNIT</th>
                       <th style={{ minWidth: "80px", padding: "8px", fontSize: "0.75rem" }}>DOSAGE</th>
                       <th style={{ minWidth: "100px", padding: "8px", fontSize: "0.75rem" }}>FREQUENCY</th>
                       <th style={{ minWidth: "60px", padding: "8px", fontSize: "0.75rem" }}>DAYS</th>
@@ -1239,7 +1296,7 @@ const TreatmentModal = ({
                           <input
                             type="text"
                             className="form-control form-control-sm"
-                            value={row.dispUnit}
+                            value={row.dosageUnit || row.dispUnit}
                             readOnly
                             style={{
                               borderRadius: "4px",
@@ -1255,6 +1312,12 @@ const TreatmentModal = ({
                             type="number"
                             className="form-control form-control-sm"
                             value={row.dosage}
+                            min={0}
+                            onKeyDown={(e) => {
+                              if (["-", "+", "e", "E"].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
                             onChange={(e) =>
                               handleTreatmentChange(
                                 index,
@@ -1300,6 +1363,12 @@ const TreatmentModal = ({
                             type="number"
                             className="form-control form-control-sm"
                             value={row.days}
+                            min={0}
+                            onKeyDown={(e) => {
+                              if (["-", "+", "e", "E"].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
                             onChange={(e) =>
                               handleTreatmentChange(index, "days", e.target.value)
                             }

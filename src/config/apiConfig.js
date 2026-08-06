@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
@@ -457,6 +457,8 @@ export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`;
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 export const INVENTORY = `/inventory`;
+export const GET_STORE_ISSUE_LIST = `${INVENTORY}/storeIssueM/list`;
+
 export const SECTION_ID_FOR_DRUGS = 18;
 export const SECTION_CODE_FOR_DRUGS = "DRUG";
 export const SECTION_CODE_FOR_NON_DRUGS = "NON_DRUG";
@@ -687,6 +689,7 @@ export const MAS_CORPORATE = `${MASTERS}/masCorporate`;
 export const IPD_PACKAGE = `${MASTERS}/ipdPackage`;
 export const MAS_INSURANCE = `${MASTERS}/masInsurance`;
 export const MAS_IPD_BILLING_TYPE = `${MASTERS}/masIpdBillingType`;
+export const MAS_PAYMENT_MODE = `${MASTERS}/paymentMode`;
 
 export const INSURANCE_TPA_MAPPING = `${MASTERS}/insuranceTpaMapping`;
 
@@ -780,3 +783,10 @@ export const GET_DISCHARGE_SUMMARY = '/ipd/getDischargeSummary';
 
 export const GET_PAYMENT_STATUS = '/ipd/getPaymentStatus';
 export const GET_IPD_ADVANCE_COLLECTION = '/ipd/getIpdAdvanceCollection';
+export const GET_PREVIOUS_PAYMENT_HISTORY = '/ipd/previousPaymentHistory';
+export const GET_PENDING_TRACKING_IPD_BILL_LIST = '/ipd/getPendingTrackingIPDBillList';
+export const SAVE_IPD_ADVANCE_COLLECTION = '/ipd/saveAdvanceCollection';
+export const GET_MEDICATION_TREATMENT_BY_INPATIENT_ID = '/ipd/getMedicationTreatmentByInpatientId';
+export const SAVE_IPD_MEDICATION_TREATMENT = '/ipd/saveMedicationTreatment';
+export const STOP_IPD_MEDICATION_TREATMENT = '/ipd/stopMedicationTreatment';
+

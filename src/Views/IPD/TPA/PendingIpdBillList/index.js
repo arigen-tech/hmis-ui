@@ -1,241 +1,368 @@
-import { useState, useMemo } from "react"
-import LoadingScreen from "../../../../Components/Loading"
-import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination"
+import { useState, useMemo, useEffect } from "react";
+import LoadingScreen from "../../../../Components/Loading";
+import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
+import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
+import { getRequest, postRequest } from "../../../../service/apiService";
+import { MAS_WARD_GET_ALL_ACTIVE, MAS_IPD_BILLING_TYPE, GET_PENDING_TRACKING_IPD_BILL_LIST, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION } from "../../../../config/apiConfig";
+
+const COLLECTION_TYPES = ["Advance", "Final"];
+const amountOptions = [
+  { value: "", label: "All Amounts" },
+  { value: "0", label: "₹0" },
+  { value: "5000", label: "₹5,000" },
+  { value: "10000", label: "₹10,000" },
+  { value: "other", label: "Other..." }
+];
 
 const PendingIpdBillList = () => {
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false);
+  const [tableLoading, setTableLoading] = useState(false);
+  const [isInitialLoad, setIsInitialLoad] = useState(true);
 
   // Filter states
-  const [wardFilter, setWardFilter] = useState("")
-  const [billTypeFilter, setBillTypeFilter] = useState("")
-  // New amount filter states
-  const [amountFilter, setAmountFilter] = useState("") // '', 'gt50000', 'gt10000', 'other'
-  const [customAmount, setCustomAmount] = useState("")
+  const [wardFilter, setWardFilter] = useState("");
+  const [billTypeFilter, setBillTypeFilter] = useState("");
+  const [amountFilter, setAmountFilter] = useState("");
+  const [customAmount, setCustomAmount] = useState("");
 
   // Button spinners
-  const [isSearching, setIsSearching] = useState(false)
-  const [isShowingAll, setIsShowingAll] = useState(false)
-  const [isRefreshing, setIsRefreshing] = useState(false)
+  const [isSearching, setIsSearching] = useState(false);
+  const [isShowingAll, setIsShowingAll] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Pagination states
-  const [currentPage, setCurrentPage] = useState(1)
-  const [totalPages, setTotalPages] = useState(0)
-  const [totalElements, setTotalElements] = useState(0)
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(0);
+  const [totalElements, setTotalElements] = useState(0);
 
-  // Full static data (unchanged)
-  const fullBillData = useMemo(() => [
-    {
-      admissionId: "ADM001",
-      patientName: "Ravi Kumar",
-      mobile: "9876543210",
-      admissionDateTime: "05-Apr-2026 10:30 AM",
-      wardRoom: "Ward A / 101",
-      billType: "Insurance",
-      totalAmount: "1,00,000",
-      insurancePayable: "70,000",
-      patientPaid: "20,000",
-      outstandingAmount: "10,000",
-      billStatus: "FINAL",
-    },
-    {
-      admissionId: "ADM002",
-      patientName: "Amit Sharma",
-      mobile: "9123456780",
-      admissionDateTime: "04-Apr-2026 02:15 PM",
-      wardRoom: "Ward B / 205",
-      billType: "Corporate",
-      totalAmount: "80,000",
-      insurancePayable: "50,000",
-      patientPaid: "20,000",
-      outstandingAmount: "10,000",
-      billStatus: "OPEN",
-    },
-    {
-      admissionId: "ADM003",
-      patientName: "Sneha Verma",
-      mobile: "9988776655",
-      admissionDateTime: "03-Apr-2026 09:00 AM",
-      wardRoom: "ICU / 12",
-      billType: "Cash",
-      totalAmount: "60,000",
-      insurancePayable: "0",
-      patientPaid: "60,000",
-      outstandingAmount: "0",
-      billStatus: "FINAL",
-    },
-    {
-      admissionId: "ADM004",
-      patientName: "Rajesh Singh",
-      mobile: "9811122233",
-      admissionDateTime: "02-Apr-2026 11:45 AM",
-      wardRoom: "Ward C / 310",
-      billType: "Insurance",
-      totalAmount: "1,50,000",
-      insurancePayable: "1,00,000",
-      patientPaid: "30,000",
-      outstandingAmount: "20,000",
-      billStatus: "INTERIM",
-    },
-    {
-      admissionId: "ADM005",
-      patientName: "Pooja Gupta",
-      mobile: "9090909090",
-      admissionDateTime: "01-Apr-2026 04:20 PM",
-      wardRoom: "Ward A / 115",
-      billType: "Insurance",
-      totalAmount: "90,000",
-      insurancePayable: "60,000",
-      patientPaid: "25,000",
-      outstandingAmount: "5,000",
-      billStatus: "FINAL",
-    },
-  ], [])
+  // Dynamic Options
+  const [wardOptions, setWardOptions] = useState([]);
+  const [billTypeOptions, setBillTypeOptions] = useState([]);
+  const [paymentModeOptions, setPaymentModeOptions] = useState([]);
 
-  // Filtered and paginated data
-  const [filteredData, setFilteredData] = useState(fullBillData)
-  const [displayData, setDisplayData] = useState(fullBillData.slice(0, DEFAULT_ITEMS_PER_PAGE))
+  // Data State
+  const [displayData, setDisplayData] = useState([]);
 
-  // Ward dropdown options
-  const wardOptions = [
-    { id: 1, name: "Ward A" },
-    { id: 2, name: "Ward B" },
-    { id: 3, name: "Ward C" },
-    { id: 4, name: "ICU" },
-  ]
+  useEffect(() => {
+    getRequest(MAS_WARD_GET_ALL_ACTIVE).then(res => {
+      if (res?.response) {
+        setWardOptions(res.response.map(w => ({ id: w.wardId, name: w.wardName })));
+      } else {
+        setWardOptions([]);
+      }
+    });
+    getRequest(`${MAS_IPD_BILLING_TYPE}/getAll/1`).then(res => {
+      if (res?.response) {
+        setBillTypeOptions(res.response.map(b => ({ value: b.billingTypeId, label: b.billingTypeName })));
+      } else {
+        setBillTypeOptions([]);
+      }
+    });
+    getRequest(`${MAS_PAYMENT_MODE}/getAll/1`).then(res => {
+      if (res?.response) {
+        setPaymentModeOptions(res.response);
+      } else {
+        setPaymentModeOptions([]);
+      }
+    }).catch(console.error);
+  }, []);
 
-  // Bill Type dropdown options
-  const billTypeOptions = [
-    { value: "Insurance", label: "Insurance" },
-    { value: "Corporate", label: "Corporate" },
-    { value: "Cash", label: "Cash" },
-  ]
-
-  // Amount filter options
-  const amountOptions = [
-    { value: "", label: "Select Amount Filter" },
-    { value: "gt50000", label: "> 50,000" },
-    { value: "gt10000", label: "> 10,000" },
-    { value: "other", label: "Other" },
-  ]
-
-  const getStatusColor = (status) => {
-    switch (status) {
-      case "OPEN":
-        return { backgroundColor: "#ffc107", color: "#000" }
-      case "INTERIM":
-        return { backgroundColor: "#fd7e14", color: "#fff" }
-      case "FINAL":
-        return { backgroundColor: "#28a745", color: "#fff" }
-      default:
-        return { backgroundColor: "#6c757d", color: "#fff" }
+  const fetchBills = async (page = 0) => {
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setTableLoading(true);
     }
-  }
+    let url = `${GET_PENDING_TRACKING_IPD_BILL_LIST}?page=${page}&size=${DEFAULT_ITEMS_PER_PAGE}`;
+    if (wardFilter) url += `&wardId=${wardFilter}`;
+    if (billTypeFilter) url += `&billType=${billTypeFilter}`;
+    if (amountFilter === "other" && customAmount) {
+      url += `&outStandingAmount=${customAmount}`;
+    } else if (amountFilter && amountFilter !== "other") {
+      url += `&outStandingAmount=${amountFilter}`;
+    }
+
+    try {
+      const res = await getRequest(url);
+      if (res && res.response) {
+        setDisplayData(res.response.content || []);
+        setTotalPages(res.response.totalPages || 0);
+        setTotalElements(res.response.totalElements || 0);
+        setCurrentPage((res.response.number || 0) + 1);
+      } else {
+        setDisplayData([]);
+        setTotalPages(0);
+        setTotalElements(0);
+      }
+    } catch (error) {
+      console.error("Error fetching bills:", error);
+      setDisplayData([]);
+    } finally {
+      setLoading(false);
+      setTableLoading(false);
+      setIsInitialLoad(false);
+      setIsSearching(false);
+      setIsShowingAll(false);
+      setIsRefreshing(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchBills(currentPage - 1);
+  }, [currentPage]);
+
+  // Details view states
+  const [showDetails, setShowDetails] = useState(false);
+  const [selectedAdmission, setSelectedAdmission] = useState(null);
+
+  const [collectionDate, setCollectionDate] = useState(
+    new Date().toISOString().split("T")[0]
+  );
+  const [collectionType, setCollectionType] = useState("Advance");
+  const [paymentRows, setPaymentRows] = useState([
+    { id: 1, mode: "", amount: "" },
+    { id: 2, mode: "", amount: "" },
+  ]);
+
+  // Payment History state
+  const [paymentHistory, setPaymentHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
+
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "OK", cancelText = "") => {
+    setConfirmationPopup({
+      show: true,
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : null,
+      confirmText,
+      cancelText
+    });
+  };
+
+  const fetchPaymentHistory = (billingHeaderId) => {
+    if (!billingHeaderId) {
+      setPaymentHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${billingHeaderId}`)
+      .then(res => {
+        if (res && res.response) {
+          const mappedHistory = res.response.map((item, idx) => ({
+            id: item.receiptId || idx,
+            date: item.dateTime,
+            paymentType: item.paymentType,
+            paymentMode: item.paymentMode,
+            amount: item.amount
+          }));
+          setPaymentHistory(mappedHistory);
+        } else {
+          setPaymentHistory([]);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching payment history:", error);
+        setPaymentHistory([]);
+      })
+      .finally(() => {
+        setHistoryLoading(false);
+      });
+  };
+
+  // Fetch payment history when admission is selected
+  useEffect(() => {
+    if (selectedAdmission && selectedAdmission.billingHeaderId) {
+      fetchPaymentHistory(selectedAdmission.billingHeaderId);
+    } else {
+      setPaymentHistory([]);
+    }
+  }, [selectedAdmission]);
 
   const getOutstandingDotColor = (outstandingAmount) => {
     const value = parseFloat(String(outstandingAmount).replace(/,/g, "")) || 0;
     if (value === 0) return "#28a745";
     if (value <= 10000) return "#ffc107";
     return "#dc3545";
-  }
-
-  // Apply filters and pagination
-  const applyFiltersAndPaginate = (data, page) => {
-    // Filter
-    let filtered = data;
-
-    // Ward filter
-    if (wardFilter) {
-      const ward = wardOptions.find(w => w.id === parseInt(wardFilter))
-      if (ward) {
-        filtered = filtered.filter(item => item.wardRoom.includes(ward.name))
-      }
-    }
-
-    // Bill type filter
-    if (billTypeFilter) {
-      filtered = filtered.filter(item => item.billType === billTypeFilter)
-    }
-
-    // Amount filter
-    if (amountFilter) {
-      let threshold = 0
-      if (amountFilter === "gt50000") threshold = 50000
-      else if (amountFilter === "gt10000") threshold = 10000
-      else if (amountFilter === "other" && customAmount) {
-        threshold = parseFloat(customAmount.replace(/,/g, "")) || 0
-      }
-      if (threshold > 0) {
-        filtered = filtered.filter(item => {
-          const outstanding = parseFloat(String(item.outstandingAmount).replace(/,/g, "")) || 0
-          return outstanding > threshold
-        })
-      }
-    }
-
-    // Pagination
-    const total = filtered.length
-    const perPage = DEFAULT_ITEMS_PER_PAGE
-    const totalPages = Math.ceil(total / perPage) || 1
-    const safePage = Math.min(page, totalPages)
-    const start = (safePage - 1) * perPage
-    const end = start + perPage
-    const pageItems = filtered.slice(start, end)
-
-    setFilteredData(filtered)
-    setDisplayData(pageItems)
-    setTotalElements(total)
-    setTotalPages(totalPages)
-    setCurrentPage(safePage)
-  }
+  };
 
   // Handle page change
   const handlePageChange = (page) => {
-    applyFiltersAndPaginate(filteredData.length > 0 ? filteredData : fullBillData, page)
-  }
+    setCurrentPage(page);
+  };
 
   // Handle search with filters
-  const handleSearch = async () => {
-    setIsSearching(true)
-    setCurrentPage(1)
-    // Simulate async delay
-    await new Promise(resolve => setTimeout(resolve, 300))
-    applyFiltersAndPaginate(fullBillData, 1)
-    setIsSearching(false)
-  }
+  const handleSearch = () => {
+    setIsSearching(true);
+    setCurrentPage(1);
+    fetchBills(0);
+  };
 
-  const handleShowAll = async () => {
-    setIsShowingAll(true)
+  const handleShowAll = () => {
+    setIsShowingAll(true);
+    setWardFilter("");
+    setBillTypeFilter("");
+    setAmountFilter("");
+    setCustomAmount("");
+    setCurrentPage(1);
+    
+    if (isInitialLoad) {
+      setLoading(true);
+    } else {
+      setTableLoading(true);
+    }
+    getRequest(`${GET_PENDING_TRACKING_IPD_BILL_LIST}?page=0&size=${DEFAULT_ITEMS_PER_PAGE}`)
+      .then(res => {
+        if (res?.response) {
+          setDisplayData(res.response.content || []);
+          setTotalPages(res.response.totalPages || 0);
+          setTotalElements(res.response.totalElements || 0);
+          setCurrentPage(1);
+        }
+      })
+      .finally(() => {
+        setLoading(false);
+        setTableLoading(false);
+        setIsInitialLoad(false);
+        setIsShowingAll(false);
+      });
+  };
 
-    setWardFilter("")
-    setBillTypeFilter("")
-    setAmountFilter("")
-    setCustomAmount("")
-    setCurrentPage(1)
+  const handleRefresh = () => {
+    setIsRefreshing(true);
+    fetchBills(currentPage - 1);
+  };
 
-    await new Promise(resolve => setTimeout(resolve, 300))
-    setFilteredData(fullBillData)
-    setDisplayData(fullBillData.slice(0, DEFAULT_ITEMS_PER_PAGE))
-    setTotalElements(fullBillData.length)
-    setTotalPages(Math.ceil(fullBillData.length / DEFAULT_ITEMS_PER_PAGE) || 1)
-    setIsShowingAll(false)
-  }
+  // Row click handler – opens details view
+  const handleRowClick = (item) => {
+    setSelectedAdmission(item);
+    setCollectionDate(new Date().toISOString().split("T")[0]);
+    setCollectionType("Advance");
+    setPaymentRows([
+      { id: 1, mode: "", amount: "" },
+      { id: 2, mode: "", amount: "" },
+    ]);
+    setShowDetails(true);
+  };
 
-  const handleRefresh = async () => {
-    setIsRefreshing(true)
-    await new Promise(resolve => setTimeout(resolve, 300))
-    applyFiltersAndPaginate(filteredData.length > 0 ? filteredData : fullBillData, currentPage)
-    setIsRefreshing(false)
-  }
+  // Back to list
+  const handleBackToList = () => {
+    setShowDetails(false);
+    setSelectedAdmission(null);
+  };
 
-  const handleViewPaidAmount = (item, e) => {
-    e.stopPropagation()
-    console.log("View patient paid amount details:", item)
-  }
+  // Payment row handlers (copied from IPDAdvanceCollection)
+  const handlePaymentRowChange = (id, field, value) => {
+    setPaymentRows((prev) =>
+      prev.map((row) => (row.id === id ? { ...row, [field]: value } : row))
+    );
+  };
 
-  const handleViewBillPdf = (item, e) => {
-    e.stopPropagation()
-    console.log("View bill PDF:", item)
-  }
+  const addPaymentRow = () => {
+    setPaymentRows((prev) => [
+      ...prev,
+      { id: Date.now(), mode: "", amount: "" },
+    ]);
+  };
+
+  const removePaymentRow = (id) => {
+    setPaymentRows((prev) =>
+      prev.length > 1 ? prev.filter((row) => row.id !== id) : prev
+    );
+  };
+
+  const totalAmount = useMemo(() => {
+    return paymentRows
+      .reduce((sum, row) => sum + (Number(row.amount) || 0), 0)
+      .toFixed(2);
+  }, [paymentRows]);
+
+  // Report handler (placeholder)
+  const handleReport = (historyItem) => {
+    alert(`Report for payment ID: ${historyItem.id}\nYou can implement print or download logic here.`);
+  };
+
+  // Submit collection
+  const handleSubmitCollection = async () => {
+    if (Number(totalAmount) <= 0) return;
+    if (!selectedAdmission) return;
+
+    // Filter valid payment rows
+    const requests = paymentRows
+      .filter((row) => row.mode && Number(row.amount) > 0)
+      .map((row) => ({
+        modeType: Number(row.mode),
+        amount: Number(row.amount),
+      }));
+
+    if (requests.length === 0) {
+      showConfirmationPopup("Please select a payment mode and enter a valid amount.", "warning", () => { }, null, "OK", "");
+      return;
+    }
+
+    const payload = {
+      inpatientId: selectedAdmission.inpatientId || 0,
+      collectionDateTime: new Date(`${collectionDate}T${new Date().toTimeString().split(" ")[0]}`).toISOString(),
+      collectionTypeId: collectionType === "Advance" ? 1 : 2,
+      requests: requests,
+    };
+
+    setIsSubmitting(true);
+    try {
+      const response = await postRequest(SAVE_IPD_ADVANCE_COLLECTION, payload);
+      setIsSubmitting(false);
+      showConfirmationPopup(
+        response?.message || "Advance collection saved successfully!",
+        "success",
+        () => {
+          // Refresh history and bills list strictly after clicking OK
+          if (selectedAdmission.billingHeaderId) {
+            fetchPaymentHistory(selectedAdmission.billingHeaderId);
+          }
+          fetchBills(currentPage - 1);
+          // Reset payment rows
+          setPaymentRows([
+            { id: 1, mode: "", amount: "" },
+            { id: 2, mode: "", amount: "" },
+          ]);
+        },
+        null,
+        "OK",
+        ""
+      );
+    } catch (error) {
+      console.error("Error saving advance collection:", error);
+      setIsSubmitting(false);
+      showConfirmationPopup(
+        error?.message || "Failed to save advance collection.",
+        "error",
+        () => { },
+        null,
+        "OK",
+        ""
+      );
+    }
+  };
+
+  // Format date
+  const formatDate = (dateString) => {
+    if (!dateString) return "";
+    return new Date(dateString).toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  };
 
   return (
     <div className="content-wrapper">
@@ -246,203 +373,574 @@ const PendingIpdBillList = () => {
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2 mb-0">
-                Pending Tracking - IPD Bill List
+                {showDetails ? "Pending IPD Bill Details" : "Pending Tracking - IPD Bill List"}
               </h4>
-              {/* Refresh button (optional) */}
-           
+              {showDetails && (
+                <button
+                  type="button"
+                  className="btn btn-secondary"
+                  onClick={handleBackToList}
+                >
+                  Back to list
+                </button>
+              )}
             </div>
 
             <div className="card-body">
-              {/* ============ FILTERS ============ */}
-              <div className="row mb-3">
-                <div className="col-md-4">
-                  <label className="form-label fw-bold">Ward</label>
-                  <select
-                    className="form-select"
-                    value={wardFilter}
-                    onChange={(e) => setWardFilter(e.target.value)}
-                  >
-                    <option value="">All Wards</option>
-                    {wardOptions.map((option) => (
-                      <option key={option.id} value={option.id}>
-                        {option.name}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+              {/* ====== TABLE VIEW ====== */}
+              {!showDetails && (
+                <>
+                  {/* Filters */}
+                  <div className="row mb-3">
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Ward</label>
+                      <select
+                        className="form-select"
+                        value={wardFilter}
+                        onChange={(e) => setWardFilter(e.target.value)}
+                      >
+                        <option value="">All Wards</option>
+                        {wardOptions.map((option) => (
+                          <option key={option.id} value={option.id}>
+                            {option.name}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="col-md-4">
-                  <label className="form-label fw-bold">Bill Type</label>
-                  <select
-                    className="form-select"
-                    value={billTypeFilter}
-                    onChange={(e) => setBillTypeFilter(e.target.value)}
-                  >
-                    <option value="">All Bill Types</option>
-                    {billTypeOptions.map((option) => (
-                      <option key={option.value} value={option.value}>
-                        {option.label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Bill Type</label>
+                      <select
+                        className="form-select"
+                        value={billTypeFilter}
+                        onChange={(e) => setBillTypeFilter(e.target.value)}
+                      >
+                        <option value="">All Bill Types</option>
+                        {billTypeOptions.map((option) => (
+                          <option key={option.value} value={option.value}>
+                            {option.label}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
 
-                <div className="col-md-4">
-                  <label className="form-label fw-bold">Outstanding Amount</label>
-                  <div className="d-flex">
-                    <select
-                      className={`form-select ${amountFilter === "other" ? "flex-grow-1 me-1" : "w-100"}`}
-                      value={amountFilter}
-                      onChange={(e) => {
-                        setAmountFilter(e.target.value)
-                        if (e.target.value !== "other") {
-                          setCustomAmount("")
-                        }
-                      }}
-                    >
-                      {amountOptions.map((option) => (
-                        <option key={option.value} value={option.value}>
-                          {option.label}
-                        </option>
-                      ))}
-                    </select>
-                    {amountFilter === "other" && (
-                      <input
-                        type="text"
-                        className="form-control"
-                        style={{ width: "80px", flexShrink: 0 }}
-                        placeholder="e.g. 25000"
-                        value={customAmount}
-                        onChange={(e) => setCustomAmount(e.target.value)}
-                      />
-                    )}
+                    <div className="col-md-4">
+                      <label className="form-label fw-bold">Outstanding Amount</label>
+                      <div className="d-flex">
+                        <select
+                          className={`form-select ${amountFilter === "other" ? "flex-grow-1 me-1" : "w-100"
+                            }`}
+                          value={amountFilter}
+                          onChange={(e) => {
+                            setAmountFilter(e.target.value);
+                            if (e.target.value !== "other") {
+                              setCustomAmount("");
+                            }
+                          }}
+                        >
+                          {amountOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                        {amountFilter === "other" && (
+                          <input
+                            type="text"
+                            className="form-control"
+                            style={{ width: "80px", flexShrink: 0 }}
+                            placeholder="e.g. 25000"
+                            value={customAmount}
+                            onChange={(e) => setCustomAmount(e.target.value)}
+                          />
+                        )}
+                      </div>
+                    </div>
                   </div>
-                </div>
-              </div>
 
-              <div className="row mb-4">
-                <div className="col-md-12 d-flex align-items-end">
-                  <button
-                    type="button"
-                    className="btn btn-primary me-2"
-                    onClick={handleSearch}
-                    disabled={loading || isSearching || isShowingAll}
-                  >
-                    {isSearching ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Searching...
-                      </>
-                    ) : (
-                      "Search"
-                    )}
-                  </button>
-
-                  <button
-                    type="button"
-                    className="btn btn-secondary"
-                    onClick={handleShowAll}
-                    disabled={loading || isSearching || isShowingAll}
-                  >
-                    {isShowingAll ? (
-                      <>
-                        <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                        Showing All...
-                      </>
-                    ) : (
-                      "Show All"
-                    )}
-                  </button>
-                </div>
-              </div>
-
-              {/* ============ IPD BILL TABLE ============ */}
-              <div className="table-responsive">
-                <table className="table table-bordered table-hover align-middle">
-                  <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
-                    <tr>
-                      <th>Patient Name</th>
-                      <th>Mobile</th>
-                      <th>Admission ID</th>
-                      <th>Admission DateTime</th>
-                      <th>Ward / Room</th>
-                      <th>Bill Type</th>
-                      <th>Total Amount</th>
-                      <th>Insurance Payable</th>
-                      <th>Patient Paid</th>
-                      <th>Outstanding Amount</th>
-                      <th>Bill Status</th>
-                      <th className="text-center">View Bill (PDF)</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {loading ? (
-                      <tr>
-                        <td colSpan={12} className="text-center py-4">
-                          <LoadingScreen />
-                        </td>
-                      </tr>
-                    ) : displayData.length === 0 ? (
-                      <tr>
-                        <td colSpan={12} className="text-center py-4 text-muted">
-                          No pending IPD bills found.
-                        </td>
-                      </tr>
-                    ) : (
-                      displayData.map((item) => (
-                        <tr key={item.admissionId}>
-                          <td>{item.patientName}</td>
-                          <td>{item.mobile}</td>
-                          <td>{item.admissionId}</td>
-                          <td>{item.admissionDateTime}</td>
-                          <td>{item.wardRoom}</td>
-                          <td>{item.billType}</td>
-                          <td>₹{item.totalAmount}</td>
-                          <td>₹{item.insurancePayable}</td>
-                          <td>
+                  <div className="row mb-4">
+                    <div className="col-md-12 d-flex align-items-end">
+                      <button
+                        type="button"
+                        className="btn btn-primary me-2"
+                        onClick={handleSearch}
+                        disabled={loading || isSearching || isShowingAll}
+                      >
+                        {isSearching ? (
+                          <>
                             <span
-                              className="d-inline-block rounded-circle me-2"
-                              style={{ width: "10px", height: "10px", backgroundColor: getOutstandingDotColor(item.outstandingAmount) }}
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
                             ></span>
-                            ₹{item.patientPaid}
-                          </td>
-                          <td>₹{item.outstandingAmount}</td>
-                          <td>
-                            <span className="badge" style={getStatusColor(item.billStatus)}>
-                              {item.billStatus}
-                            </span>
-                          </td>
-                          <td className="text-center">
+                            Searching...
+                          </>
+                        ) : (
+                          "Search"
+                        )}
+                      </button>
+
+                      <button
+                        type="button"
+                        className="btn btn-secondary"
+                        onClick={handleShowAll}
+                        disabled={loading || isSearching || isShowingAll}
+                      >
+                        {isShowingAll ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm me-2"
+                              role="status"
+                              aria-hidden="true"
+                            ></span>
+                            Showing All...
+                          </>
+                        ) : (
+                          "Show All"
+                        )}
+                      </button>
+
+
+                    </div>
+                  </div>
+
+                  {/* Table */}
+                  <div style={{ position: "relative", minHeight: "200px" }}>
+                    {tableLoading && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: 0,
+                          left: 0,
+                          width: "100%",
+                          height: "100%",
+                          backgroundColor: "rgba(255, 255, 255, 0.7)",
+                          display: "flex",
+                          justifyContent: "center",
+                          alignItems: "center",
+                          zIndex: 5,
+                        }}
+                      >
+                        <div className="d-flex flex-column align-items-center">
+                          <div className="spinner-border text-primary" role="status" style={{ width: "3rem", height: "3rem" }}>
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <span className="mt-2 fw-bold text-primary">Loading Pending Bills...</span>
+                        </div>
+                      </div>
+                    )}
+                    <div className="table-responsive">
+                      <table className="table table-bordered table-hover align-middle">
+                        <thead style={{ backgroundColor: "#95a5a6", color: "white" }}>
+                          <tr>
+                            <th>Patient Name</th>
+                            <th>Mobile</th>
+                            <th>Admission ID</th>
+                            <th>Admission DateTime</th>
+                            <th>Ward / Room</th>
+                            <th>Bill Type</th>
+                            <th>Total Amount</th>
+                            <th>Patient Paid</th>
+                            <th>Outstanding Amount</th>
+                            <th>Bill Status</th>
+                            <th>Payment Status</th>
+                            <th className="text-center">View Bill (PDF)</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {displayData.length === 0 ? (
+                            <tr>
+                              <td colSpan={12} className="text-center py-4 text-muted">
+                                No pending IPD bills found.
+                              </td>
+                            </tr>
+                          ) : (
+                            displayData.map((item) => (
+                              <tr
+                                key={item.inpatientId}
+                                onClick={() => handleRowClick(item)}
+                                role="button"
+                                onKeyDown={(e) => {
+                                  if (e.key === "Enter" || e.key === " ") handleRowClick(item);
+                                }}
+                                style={{ cursor: "pointer" }}
+                              >
+                                <td>{item.patientName}</td>
+                                <td>{item.mobileNo}</td>
+                                <td>{item.admissionNo}</td>
+                                <td>{formatDate(item.admissionDateTime)}</td>
+                                <td>{`${item.ward} / ${item.room || 'N/A'}`}</td>
+                                <td>{item.billingType}</td>
+                                <td>₹{item.totalAmount}</td>
+                                <td>
+                                  <span
+                                    className="d-inline-block rounded-circle me-2"
+                                    style={{
+                                      width: "10px",
+                                      height: "10px",
+                                      backgroundColor: getOutstandingDotColor(item.outStandingAmount),
+                                    }}
+                                  ></span>
+                                  ₹{item.patientPaid}
+                                </td>
+                                <td>₹{item.outStandingAmount}</td>
+                                <td>
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      backgroundColor: item.billStatus === "FINAL" ? "#28a745" : item.billStatus === "OPEN" ? "#ffc107" : "#6c757d",
+                                      color: item.billStatus === "OPEN" ? "#000" : "#fff"
+                                    }}
+                                  >
+                                    {item.billStatus || "N/A"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      backgroundColor: item.paymentStatus === "PAID" ? "#28a745" : item.paymentStatus === "PENDING" ? "#ffc107" : "#6c757d",
+                                      color: item.paymentStatus === "PENDING" ? "#000" : "#fff"
+                                    }}
+                                  >
+                                    {item.paymentStatus || "N/A"}
+                                  </span>
+                                </td>
+                                <td className="text-center" onClick={(e) => e.stopPropagation()}>
+                                  <button
+                                    type="button"
+                                    className="btn btn-sm btn-danger"
+                                    title="View Bill PDF"
+                                    onClick={() => alert(`View PDF for ${item.admissionNo}`)}
+                                  >
+                                    View
+                                    <i className="fa fa-file-pdf-o ms-1"></i>
+                                  </button>
+                                </td>
+                              </tr>
+                            ))
+                          )}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+
+                  <Pagination
+                    totalItems={totalElements}
+                    itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
+                    currentPage={currentPage}
+                    onPageChange={handlePageChange}
+                    totalPages={totalPages}
+                  />
+                </>
+              )}
+
+              {/* ====== DETAILS VIEW ====== */}
+              {showDetails && selectedAdmission && (
+                <>
+                  {/* Admission / Patient Details */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header py-3 border-bottom-1">
+                          <h6 className="mb-0 fw-bold">Admission Details</h6>
+                        </div>
+                        <div className="card-body">
+                          <div className="row g-3">
+                            <div className="form-group col-md-4">
+                              <label>Admission No</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.admissionNo || ""}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Patient Name</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.patientName || ""}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>UHID</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.uhid || ""}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Age / Gender</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={`${selectedAdmission.age || ""} / ${selectedAdmission.gender || ""}`}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Mobile No</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.mobileNo || ""}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Admission Date</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={formatDate(selectedAdmission.admissionDateTime) || ""}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Ward / Room / Bed</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={`${selectedAdmission.ward || "N/A"} / ${selectedAdmission.room || "N/A"} / ${selectedAdmission.bed || "N/A"}`}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Attending Doctor</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.attendingDoctor || "N/A"}
+                                readOnly
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Billing Type</label>
+                              <input
+                                type="text"
+                                className="form-control"
+                                value={selectedAdmission.billingType || ""}
+                                readOnly
+                              />
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Payment History Section */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center">
+                          <h6 className="mb-0 fw-bold">Payment History</h6>
+                          {paymentHistory.length > 0 && (
+                            <span className="badge bg-primary">{paymentHistory.length} entries</span>
+                          )}
+                        </div>
+                        <div className="card-body">
+                          {historyLoading ? (
+                            <div className="text-center py-3">
+                              <div
+                                className="spinner-border spinner-border-sm text-primary"
+                                role="status"
+                              >
+                                <span className="visually-hidden">Loading...</span>
+                              </div>
+                              <span className="ms-2">Loading payment history...</span>
+                            </div>
+                          ) : paymentHistory.length === 0 ? (
+                            <div className="text-muted text-center py-3">
+                              No payment history found for this admission.
+                            </div>
+                          ) : (
+                            <div className="table-responsive">
+                              <table className="table table-bordered table-hover align-middle">
+                                <thead className="table-light">
+                                  <tr>
+                                    <th>Date</th>
+                                    <th>Payment Type</th>
+                                    <th>Payment Mode</th>
+                                    <th className="text-end">Amount</th>
+                                    <th style={{ width: "100px" }}>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {paymentHistory.map((item) => (
+                                    <tr key={item.id}>
+                                      <td>{formatDate(item.date)}</td>
+                                      <td>{item.paymentType}</td>
+                                      <td>{item.paymentMode}</td>
+                                      <td className="text-end">₹{Number(item.amount).toFixed(2)}</td>
+                                      <td className="text-center">
+                                        <button
+                                          className="btn btn-sm btn-outline-info"
+                                          onClick={() => handleReport(item)}
+                                          title="View Report"
+                                        >
+                                          <i className="mdi mdi-file-document"></i> Report
+                                        </button>
+                                      </td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Collection Details Section */}
+                  <div className="row mb-3">
+                    <div className="col-sm-12">
+                      <div className="card shadow mb-3">
+                        <div className="card-header border-bottom-1 py-3">
+                          <h6 className="fw-bold mb-0">Collection Details</h6>
+                        </div>
+                        <div className="card-body">
+                          <div className="row g-3 mb-3">
+                            <div className="form-group col-md-4">
+                              <label>Collection Date</label>
+                              <input
+                                type="date"
+                                className="form-control"
+                                value={collectionDate}
+                                onChange={(e) => setCollectionDate(e.target.value)}
+                              />
+                            </div>
+                            <div className="form-group col-md-4">
+                              <label>Collection Type</label>
+                              <select
+                                className="form-select"
+                                value={collectionType}
+                                onChange={(e) => setCollectionType(e.target.value)}
+                              >
+                                {COLLECTION_TYPES.map((type) => (
+                                  <option key={type} value={type}>
+                                    {type}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+
+                          <div className="d-flex justify-content-end mb-2">
                             <button
                               type="button"
-                              className="btn btn-sm btn-danger"
-                              onClick={(e) => handleViewBillPdf(item, e)}
-                              title="View Bill PDF"
+                              className="btn btn-success"
+                              onClick={addPaymentRow}
                             >
-                              View
-                              <i className="fa fa-file-pdf-o ms-1"></i>
+                              Add Row +
                             </button>
-                          </td>
-                        </tr>
-                      ))
-                    )}
-                  </tbody>
-                </table>
-              </div>
+                          </div>
 
-              <Pagination
-                totalItems={totalElements}
-                itemsPerPage={DEFAULT_ITEMS_PER_PAGE}
-                currentPage={currentPage}
-                onPageChange={handlePageChange}
-                totalPages={totalPages}
-              />
+                          <table className="table table-bordered">
+                            <thead>
+                              <tr>
+                                <th>Payment Mode</th>
+                                <th>Amount</th>
+                                <th style={{ width: "80px" }}>Action</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {paymentRows.map((row) => (
+                                <tr key={row.id}>
+                                  <td>
+                                    <select
+                                      className="form-select"
+                                      value={row.mode}
+                                      onChange={(e) =>
+                                        handlePaymentRowChange(row.id, "mode", e.target.value)
+                                      }
+                                    >
+                                      <option value="">Select Payment Mode</option>
+                                      {paymentModeOptions.map((option) => (
+                                        <option key={option.paymentModeId} value={option.paymentModeId}>
+                                          {option.modeName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      placeholder="Enter amount"
+                                      value={row.amount}
+                                      min="0"
+                                      step="0.01"
+                                      onChange={(e) =>
+                                        handlePaymentRowChange(row.id, "amount", e.target.value)
+                                      }
+                                    />
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      type="button"
+                                      className="btn btn-danger btn-sm"
+                                      onClick={() => removePaymentRow(row.id)}
+                                      disabled={paymentRows.length === 1}
+                                      title="Remove payment row"
+                                    >
+                                      <i className="icofont-close"></i>
+                                    </button>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+
+                          <div className="d-flex justify-content-between align-items-center mt-3">
+                            <h5 className="fw-bold mb-0">
+                              Total Amount: ₹{totalAmount}
+                            </h5>
+                            <button
+                              type="button"
+                              className="btn btn-warning"
+                              disabled={Number(totalAmount) <= 0 || isSubmitting}
+                              onClick={handleSubmitCollection}
+                            >
+                              {isSubmitting ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Submitting...
+                                </>
+                              ) : (
+                                "Submit"
+                              )}
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
       </div>
+      {confirmationPopup && (
+        <ConfirmationPopup
+          show={confirmationPopup.show}
+          message={confirmationPopup.message}
+          type={confirmationPopup.type}
+          onConfirm={confirmationPopup.onConfirm}
+          onCancel={confirmationPopup.onCancel}
+          confirmText={confirmationPopup.confirmText}
+          cancelText={confirmationPopup.cancelText}
+        />
+      )}
     </div>
-  )
-}
+  );
+};
 
-export default PendingIpdBillList
+export default PendingIpdBillList;

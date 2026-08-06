@@ -264,6 +264,7 @@ const validRoutes = [
   "/IPDAdvanceCollection",
   // "/RoomTariff",
   "/NonMedicalConsumable",
+  "/IPDDischargeRecords",
 ];
 
 // Routes that should bypass authorization

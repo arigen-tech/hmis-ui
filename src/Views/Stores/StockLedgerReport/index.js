@@ -37,12 +37,16 @@ const StoreStockLedgerReport = () => {
   const [isBatchLoading, setIsBatchLoading] = useState(false);
   const [showItemDropdown, setShowItemDropdown] = useState(false);
   
+  // State for batch custom dropdown
+  const [batchDropdownOpen, setBatchDropdownOpen] = useState(false);
+  
   // State for popup messages
   const [popupMessage, setPopupMessage] = useState(null);
   
   // Refs for debounce and dropdown
   const debounceItemRef = useRef(null);
   const dropdownItemRef = useRef(null);
+  const batchDropdownRef = useRef(null);
 
   const hospitalId = sessionStorage.getItem("hospitalId");
   const departmentId = sessionStorage.getItem("departmentId");
@@ -256,11 +260,20 @@ const StoreStockLedgerReport = () => {
     }
   };
 
-  // Handle click outside dropdown
+  // Handle batch selection from custom dropdown
+  const handleBatchSelect = (batch) => {
+    setBatchNo(batch.batchName);
+    setBatchDropdownOpen(false);
+  };
+
+  // Handle click outside dropdowns
   useEffect(() => {
     const handleClickOutside = (e) => {
       if (dropdownItemRef.current && !dropdownItemRef.current.contains(e.target)) {
         setShowItemDropdown(false);
+      }
+      if (batchDropdownRef.current && !batchDropdownRef.current.contains(e.target)) {
+        setBatchDropdownOpen(false);
       }
     };
     document.addEventListener("mousedown", handleClickOutside);
@@ -480,27 +493,113 @@ const StoreStockLedgerReport = () => {
 
                 <div className="col-md-4 mt-1">
                   <label className="form-label fw-bold">Batch No <span className="text-danger">*</span></label>
-                  <div className="position-relative">
-                    <select 
-                      className="form-select" 
-                      value={batchNo} 
-                      onChange={(e) => setBatchNo(e.target.value)}
-                      disabled={!selectedItem || isBatchLoading}
+                  <div className="position-relative" ref={batchDropdownRef}>
+                    {/* Custom Batch Dropdown */}
+                    <div
+                      className="d-flex align-items-center justify-content-between"
+                      style={{
+                        cursor: (!selectedItem || isBatchLoading) ? "not-allowed" : "pointer",
+                        padding: "0.375rem 0.75rem",
+                        paddingRight: "2rem",
+                        backgroundColor: "#fff",
+                        border: "1px solid #ced4da",
+                        borderRadius: "0.25rem",
+                        minHeight: "calc(1.5em + 0.75rem + 2px)",
+                        whiteSpace: "nowrap",
+                        overflow: "hidden",
+                        textOverflow: "ellipsis",
+                        opacity: (!selectedItem || isBatchLoading) ? 0.65 : 1,
+                        userSelect: "none",
+                      }}
+                      onClick={() => {
+                        if (!selectedItem || isBatchLoading || batchOptions.length === 0) return;
+                        setBatchDropdownOpen(!batchDropdownOpen);
+                      }}
                     >
-                      <option value="">--Select Batch--</option>
-                      {batchOptions.length > 0 ? (
-                        batchOptions.map((batch, index) => (
-                          <option key={index} value={batch.batchName}>
-                            {batch.batchName} (MFG: {formatDate(batch.dom)} | EXP: {formatDate(batch.doe)})
-                          </option>
-                        ))
-                      ) : (
-                        <option value="">No batches available</option>
-                      )}
-                    </select>
-                    
+                      <span className="text-truncate" style={{ flex: 1 }}>
+                        {batchNo ? (
+                          <>
+                            <div style={{ fontWeight: "500" }}>
+                              {batchNo}
+                            </div>
+                            {(() => {
+                              const selectedBatch = batchOptions.find(b => b.batchName === batchNo);
+                              if (selectedBatch) {
+                                return (
+                                  <div style={{ fontSize: "0.8em", color: "#6c757d" }}>
+                                    MFG: {formatDate(selectedBatch.dom)} | EXP: {formatDate(selectedBatch.doe)}
+                                  </div>
+                                );
+                              }
+                              return null;
+                            })()}
+                          </>
+                        ) : (
+                          <span className="text-muted">
+                            {isBatchLoading ? "Loading batches..." :
+                             !selectedItem ? "Select item first" :
+                             batchOptions.length === 0 ? "No batches available" :
+                             "--Select Batch--"}
+                          </span>
+                        )}
+                      </span>
+                      <span style={{ position: "absolute", right: "0.75rem", top: "50%", transform: "translateY(-50%)" }}>
+                        <i className="fa fa-chevron-down" />
+                      </span>
+                    </div>
+
+                    {/* Batch Dropdown Options */}
+                    {batchDropdownOpen && (
+                      <div
+                        style={{
+                          position: "absolute",
+                          top: "100%",
+                          left: 0,
+                          right: 0,
+                          zIndex: 1000,
+                          backgroundColor: "#fff",
+                          border: "1px solid #ced4da",
+                          borderRadius: "0.25rem",
+                          maxHeight: "220px",
+                          overflowY: "auto",
+                          marginTop: "2px",
+                          boxShadow: "0 0.5rem 1rem rgba(0,0,0,0.15)",
+                        }}
+                      >
+                        {batchOptions.length > 0 ? (
+                          batchOptions.map((batch, index) => (
+                            <div
+                              key={index}
+                              className="dropdown-item"
+                              style={{
+                                padding: "0.375rem 0.75rem",
+                                cursor: "pointer",
+                                borderBottom: index < batchOptions.length - 1 ? "1px solid #f0f0f0" : "none",
+                                backgroundColor: batch.batchName === batchNo ? "#e9ecef" : "transparent",
+                              }}
+                              onClick={() => handleBatchSelect(batch)}
+                              onMouseEnter={(e) => e.currentTarget.style.backgroundColor = "#f8f9fa"}
+                              onMouseLeave={(e) => {
+                                if (batch.batchName !== batchNo) {
+                                  e.currentTarget.style.backgroundColor = "transparent";
+                                }
+                              }}
+                            >
+                              <div style={{ fontWeight: "500" }}>{batch.batchName}</div>
+                              <div style={{ fontSize: "0.8em", color: "#6c757d" }}>
+                                MFG: {formatDate(batch.dom)} | EXP: {formatDate(batch.doe)}
+                              </div>
+                            </div>
+                          ))
+                        ) : (
+                          <div className="p-2 text-muted text-center">No batches available</div>
+                        )}
+                      </div>
+                    )}
+
+                    {/* Loading spinner inside the field */}
                     {isBatchLoading && (
-                      <div className="position-absolute end-0 top-50 translate-middle-y me-3">
+                      <div className="position-absolute end-0 top-50 translate-middle-y me-3" style={{ zIndex: 5 }}>
                         <div className="spinner-border spinner-border-sm text-primary" role="status">
                           <span className="visually-hidden">Loading...</span>
                         </div>

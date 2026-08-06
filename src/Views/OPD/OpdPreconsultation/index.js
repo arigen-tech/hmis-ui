@@ -261,7 +261,7 @@ const OpdPreconsultation = () => {
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header d-flex justify-content-between align-items-center">
-              <h4 className="card-title p-2">OPD Pre-consultation</h4>
+              <h4 className="card-title p-2">OPD Pre-Consultation</h4>
               <div className="d-flex justify-content-end align-items-center">
                 {/* <button type="button" className="btn btn-success me-2">
                   <i className="mdi mdi-plus"></i> Generate Report
