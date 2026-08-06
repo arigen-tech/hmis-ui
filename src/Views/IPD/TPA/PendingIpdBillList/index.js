@@ -304,7 +304,7 @@ const PendingIpdBillList = () => {
       }));
 
     if (requests.length === 0) {
-      showConfirmationPopup("Please select a payment mode and enter a valid amount.", "warning", () => {}, null, "OK", "");
+      showConfirmationPopup("Please select a payment mode and enter a valid amount.", "warning", () => { }, null, "OK", "");
       return;
     }
 
@@ -344,7 +344,7 @@ const PendingIpdBillList = () => {
       showConfirmationPopup(
         error?.message || "Failed to save advance collection.",
         "error",
-        () => {},
+        () => { },
         null,
         "OK",
         ""
@@ -428,8 +428,7 @@ const PendingIpdBillList = () => {
                       <label className="form-label fw-bold">Outstanding Amount</label>
                       <div className="d-flex">
                         <select
-                          className={`form-select ${
-                            amountFilter === "other" ? "flex-grow-1 me-1" : "w-100"
+                          className={`form-select ${amountFilter === "other" ? "flex-grow-1 me-1" : "w-100"
                           }`}
                           value={amountFilter}
                           onChange={(e) => {

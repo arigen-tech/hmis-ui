@@ -786,4 +786,7 @@ export const GET_IPD_ADVANCE_COLLECTION = '/ipd/getIpdAdvanceCollection';
 export const GET_PREVIOUS_PAYMENT_HISTORY = '/ipd/previousPaymentHistory';
 export const GET_PENDING_TRACKING_IPD_BILL_LIST = '/ipd/getPendingTrackingIPDBillList';
 export const SAVE_IPD_ADVANCE_COLLECTION = '/ipd/saveAdvanceCollection';
+export const GET_MEDICATION_TREATMENT_BY_INPATIENT_ID = '/ipd/getMedicationTreatmentByInpatientId';
+export const SAVE_IPD_MEDICATION_TREATMENT = '/ipd/saveMedicationTreatment';
+export const STOP_IPD_MEDICATION_TREATMENT = '/ipd/stopMedicationTreatment';
 
