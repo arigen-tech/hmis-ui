@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import LoadingScreen from "../../../../Components/Loading";
+import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
-import { getRequest } from "../../../../service/apiService";
-import { MAS_WARD_GET_ALL_ACTIVE, MAS_IPD_BILLING_TYPE, GET_PENDING_TRACKING_IPD_BILL_LIST, GET_PREVIOUS_PAYMENT_HISTORY } from "../../../../config/apiConfig";
+import { getRequest, postRequest } from "../../../../service/apiService";
+import { MAS_WARD_GET_ALL_ACTIVE, MAS_IPD_BILLING_TYPE, GET_PENDING_TRACKING_IPD_BILL_LIST, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION } from "../../../../config/apiConfig";
 
-const PAYMENT_MODES = ["Cash", "UPI", "Card", "Cheque"];
 const COLLECTION_TYPES = ["Advance", "Final"];
 const amountOptions = [
   { value: "", label: "All Amounts" },
@@ -38,6 +38,7 @@ const PendingIpdBillList = () => {
   // Dynamic Options
   const [wardOptions, setWardOptions] = useState([]);
   const [billTypeOptions, setBillTypeOptions] = useState([]);
+  const [paymentModeOptions, setPaymentModeOptions] = useState([]);
 
   // Data State
   const [displayData, setDisplayData] = useState([]);
@@ -57,6 +58,13 @@ const PendingIpdBillList = () => {
         setBillTypeOptions([]);
       }
     });
+    getRequest(`${MAS_PAYMENT_MODE}/getAll/1`).then(res => {
+      if (res?.response) {
+        setPaymentModeOptions(res.response);
+      } else {
+        setPaymentModeOptions([]);
+      }
+    }).catch(console.error);
   }, []);
 
   const fetchBills = async (page = 0) => {
@@ -112,40 +120,68 @@ const PendingIpdBillList = () => {
   );
   const [collectionType, setCollectionType] = useState("Advance");
   const [paymentRows, setPaymentRows] = useState([
-    { id: 1, mode: "Cash", amount: "" },
-    { id: 2, mode: "UPI", amount: "" },
+    { id: 1, mode: "", amount: "" },
+    { id: 2, mode: "", amount: "" },
   ]);
 
   // Payment History state
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
+
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "OK", cancelText = "") => {
+    setConfirmationPopup({
+      show: true,
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : null,
+      confirmText,
+      cancelText
+    });
+  };
+
+  const fetchPaymentHistory = (billingHeaderId) => {
+    if (!billingHeaderId) {
+      setPaymentHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${billingHeaderId}`)
+      .then(res => {
+        if (res && res.response) {
+          const mappedHistory = res.response.map((item, idx) => ({
+            id: item.receiptId || idx,
+            date: item.dateTime,
+            paymentType: item.paymentType,
+            paymentMode: item.paymentMode,
+            amount: item.amount
+          }));
+          setPaymentHistory(mappedHistory);
+        } else {
+          setPaymentHistory([]);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching payment history:", error);
+        setPaymentHistory([]);
+      })
+      .finally(() => {
+        setHistoryLoading(false);
+      });
+  };
 
   // Fetch payment history when admission is selected
   useEffect(() => {
     if (selectedAdmission && selectedAdmission.billingHeaderId) {
-      setHistoryLoading(true);
-      getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${selectedAdmission.billingHeaderId}`)
-        .then(res => {
-          if (res && res.response) {
-            const mappedHistory = res.response.map((item, idx) => ({
-              id: item.receiptId || idx,
-              date: item.dateTime,
-              paymentType: item.paymentType,
-              paymentMode: item.paymentMode,
-              amount: item.amount
-            }));
-            setPaymentHistory(mappedHistory);
-          } else {
-            setPaymentHistory([]);
-          }
-        })
-        .catch(error => {
-          console.error("Error fetching payment history:", error);
-          setPaymentHistory([]);
-        })
-        .finally(() => {
-          setHistoryLoading(false);
-        });
+      fetchPaymentHistory(selectedAdmission.billingHeaderId);
     } else {
       setPaymentHistory([]);
     }
@@ -211,8 +247,8 @@ const PendingIpdBillList = () => {
     setCollectionDate(new Date().toISOString().split("T")[0]);
     setCollectionType("Advance");
     setPaymentRows([
-      { id: 1, mode: "Cash", amount: "" },
-      { id: 2, mode: "UPI", amount: "" },
+      { id: 1, mode: "", amount: "" },
+      { id: 2, mode: "", amount: "" },
     ]);
     setShowDetails(true);
   };
@@ -233,7 +269,7 @@ const PendingIpdBillList = () => {
   const addPaymentRow = () => {
     setPaymentRows((prev) => [
       ...prev,
-      { id: Date.now(), mode: "Cash", amount: "" },
+      { id: Date.now(), mode: "", amount: "" },
     ]);
   };
 
@@ -254,11 +290,66 @@ const PendingIpdBillList = () => {
     alert(`Report for payment ID: ${historyItem.id}\nYou can implement print or download logic here.`);
   };
 
-  // Submit collection (placeholder)
-  const handleSubmitCollection = () => {
+  // Submit collection
+  const handleSubmitCollection = async () => {
     if (Number(totalAmount) <= 0) return;
-    alert(`Collection submitted: Total ₹${totalAmount}`);
-    // Reset form or call API
+    if (!selectedAdmission) return;
+
+    // Filter valid payment rows
+    const requests = paymentRows
+      .filter((row) => row.mode && Number(row.amount) > 0)
+      .map((row) => ({
+        modeType: Number(row.mode),
+        amount: Number(row.amount),
+      }));
+
+    if (requests.length === 0) {
+      showConfirmationPopup("Please select a payment mode and enter a valid amount.", "warning", () => {}, null, "OK", "");
+      return;
+    }
+
+    const payload = {
+      inpatientId: selectedAdmission.inpatientId || 0,
+      collectionDateTime: new Date(`${collectionDate}T${new Date().toTimeString().split(" ")[0]}`).toISOString(),
+      collectionTypeId: collectionType === "Advance" ? 1 : 2,
+      requests: requests,
+    };
+
+    setIsSubmitting(true);
+    try {
+      const response = await postRequest(SAVE_IPD_ADVANCE_COLLECTION, payload);
+      setIsSubmitting(false);
+      showConfirmationPopup(
+        response?.message || "Advance collection saved successfully!",
+        "success",
+        () => {
+          // Refresh history and bills list strictly after clicking OK
+          if (selectedAdmission.billingHeaderId) {
+            fetchPaymentHistory(selectedAdmission.billingHeaderId);
+          }
+          fetchBills(currentPage - 1);
+          // Reset payment rows
+          setPaymentRows([
+            { id: 1, mode: "", amount: "" },
+            { id: 2, mode: "", amount: "" },
+          ]);
+        },
+        null,
+        "OK",
+        ""
+      );
+    } catch (error) {
+      console.error("Error saving advance collection:", error);
+      setIsSubmitting(false);
+      showConfirmationPopup(
+        error?.message || "Failed to save advance collection.",
+        "error",
+        () => {},
+        null,
+        "OK",
+        ""
+      );
+    }
   };
 
   // Format date
@@ -759,9 +850,10 @@ const PendingIpdBillList = () => {
                                         handlePaymentRowChange(row.id, "mode", e.target.value)
                                       }
                                     >
-                                      {PAYMENT_MODES.map((mode) => (
-                                        <option key={mode} value={mode}>
-                                          {mode}
+                                      <option value="">Select Payment Mode</option>
+                                      {paymentModeOptions.map((option) => (
+                                        <option key={option.paymentModeId} value={option.paymentModeId}>
+                                          {option.modeName}
                                         </option>
                                       ))}
                                     </select>
@@ -800,13 +892,20 @@ const PendingIpdBillList = () => {
                               Total Amount: ₹{totalAmount}
                             </h5>
                             <button
-                              type="button"
-                              className="btn btn-warning"
-                              disabled={Number(totalAmount) <= 0}
-                              onClick={handleSubmitCollection}
-                            >
-                              Submit
-                            </button>
+                               type="button"
+                               className="btn btn-warning"
+                               disabled={Number(totalAmount) <= 0 || isSubmitting}
+                               onClick={handleSubmitCollection}
+                             >
+                               {isSubmitting ? (
+                                 <>
+                                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                   Submitting...
+                                 </>
+                               ) : (
+                                 "Submit"
+                               )}
+                             </button>
                           </div>
                         </div>
                       </div>
@@ -818,6 +917,17 @@ const PendingIpdBillList = () => {
           </div>
         </div>
       </div>
+      {confirmationPopup && (
+        <ConfirmationPopup
+          show={confirmationPopup.show}
+          message={confirmationPopup.message}
+          type={confirmationPopup.type}
+          onConfirm={confirmationPopup.onConfirm}
+          onCancel={confirmationPopup.onCancel}
+          confirmText={confirmationPopup.confirmText}
+          cancelText={confirmationPopup.cancelText}
+        />
+      )}
     </div>
   );
 };

@@ -1,10 +1,10 @@
 import { useState, useMemo, useEffect } from "react";
 import Pagination from "../../../Components/Pagination";
 import LoadingScreen from "../../../Components/Loading";
-import { getRequest } from "../../../service/apiService";
-import { GET_IPD_ADVANCE_COLLECTION, GET_PREVIOUS_PAYMENT_HISTORY } from "../../../config/apiConfig";
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import { getRequest, postRequest } from "../../../service/apiService";
+import { GET_IPD_ADVANCE_COLLECTION, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION } from "../../../config/apiConfig";
 
-const PAYMENT_MODES = ["Cash", "UPI", "Card", "Cheque"];
 const COLLECTION_TYPES = ["Advance", "Final"];
 
 const IPDAdvanceCollection = () => {
@@ -31,45 +31,135 @@ const IPDAdvanceCollection = () => {
     new Date().toISOString().split("T")[0],
   );
   const [collectionType, setCollectionType] = useState("Advance");
+  const [paymentModeOptions, setPaymentModeOptions] = useState([]);
   const [paymentRows, setPaymentRows] = useState([
-    { id: 1, mode: "Cash", amount: "" },
-    { id: 2, mode: "UPI", amount: "" },
+    { id: 1, mode: "", amount: "" },
+    { id: 2, mode: "", amount: "" },
   ]);
 
   // --- NEW: Payment History state ---
   const [paymentHistory, setPaymentHistory] = useState([]);
   const [historyLoading, setHistoryLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
+
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "OK", cancelText = "") => {
+    setConfirmationPopup({
+      show: true,
+      message,
+      type,
+      onConfirm: () => {
+        onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: onCancel ? () => {
+        onCancel();
+        setConfirmationPopup(null);
+      } : null,
+      confirmText,
+      cancelText
+    });
+  };
+
+  const fetchPaymentHistory = (billingHeaderId) => {
+    if (!billingHeaderId) {
+      setPaymentHistory([]);
+      return;
+    }
+    setHistoryLoading(true);
+    getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${billingHeaderId}`)
+      .then(res => {
+        if (res && res.response) {
+          const mappedHistory = res.response.map((item, idx) => ({
+            id: item.receiptId || idx,
+            date: item.dateTime,
+            paymentType: item.paymentType,
+            paymentMode: item.paymentMode,
+            amount: item.amount
+          }));
+          setPaymentHistory(mappedHistory);
+        } else {
+          setPaymentHistory([]);
+        }
+      })
+      .catch(error => {
+        console.error("Error fetching payment history:", error);
+        setPaymentHistory([]);
+      })
+      .finally(() => {
+        setHistoryLoading(false);
+      });
+  };
 
   // --- NEW: Fetch payment history when an admission is selected ---
   useEffect(() => {
     if (selectedAdmission && selectedAdmission.billingHeaderId) {
-      setHistoryLoading(true);
-      getRequest(`${GET_PREVIOUS_PAYMENT_HISTORY}/${selectedAdmission.billingHeaderId}`)
-        .then(res => {
-          if (res && res.response) {
-            const mappedHistory = res.response.map((item, idx) => ({
-              id: item.receiptId || idx,
-              date: item.dateTime,
-              paymentType: item.paymentType,
-              paymentMode: item.paymentMode,
-              amount: item.amount
-            }));
-            setPaymentHistory(mappedHistory);
-          } else {
-            setPaymentHistory([]);
-          }
-        })
-        .catch(error => {
-          console.error("Error fetching payment history:", error);
-          setPaymentHistory([]);
-        })
-        .finally(() => {
-          setHistoryLoading(false);
-        });
+      fetchPaymentHistory(selectedAdmission.billingHeaderId);
     } else {
       setPaymentHistory([]);
     }
   }, [selectedAdmission]);
+
+  const handleSubmitCollection = async () => {
+    if (Number(totalAmount) <= 0) return;
+    if (!selectedAdmission) return;
+
+    // Filter valid payment rows
+    const requests = paymentRows
+      .filter((row) => row.mode && Number(row.amount) > 0)
+      .map((row) => ({
+        modeType: Number(row.mode),
+        amount: Number(row.amount),
+      }));
+
+    if (requests.length === 0) {
+      showConfirmationPopup("Please select a payment mode and enter a valid amount.", "warning", () => {}, null, "OK", "");
+      return;
+    }
+
+    const payload = {
+      inpatientId: selectedAdmission.inpatientId || 0,
+      collectionDateTime: new Date(`${collectionDate}T${new Date().toTimeString().split(" ")[0]}`).toISOString(),
+      collectionTypeId: collectionType === "Advance" ? 1 : 2,
+      requests: requests,
+    };
+
+    setIsSubmitting(true);
+    try {
+      const response = await postRequest(SAVE_IPD_ADVANCE_COLLECTION, payload);
+      setIsSubmitting(false);
+      showConfirmationPopup(
+        response?.message || "Advance collection saved successfully!",
+        "success",
+        () => {
+          // Refresh history and admissions list strictly after clicking OK
+          if (selectedAdmission.billingHeaderId) {
+            fetchPaymentHistory(selectedAdmission.billingHeaderId);
+          }
+          fetchAdmissions(page);
+          // Reset payment rows
+          setPaymentRows([
+            { id: 1, mode: "", amount: "" },
+            { id: 2, mode: "", amount: "" },
+          ]);
+        },
+        null,
+        "OK",
+        ""
+      );
+    } catch (error) {
+      console.error("Error saving advance collection:", error);
+      setIsSubmitting(false);
+      showConfirmationPopup(
+        error?.message || "Failed to save advance collection.",
+        "error",
+        () => {},
+        null,
+        "OK",
+        ""
+      );
+    }
+  };
 
   const fetchAdmissions = async (currentPage = page) => {
     if (isInitialLoad) {
@@ -107,6 +197,14 @@ const IPDAdvanceCollection = () => {
   useEffect(() => {
     fetchAdmissions();
   }, [page]);
+
+  useEffect(() => {
+    getRequest(`${MAS_PAYMENT_MODE}/getAll/1`).then(res => {
+      if (res?.response) {
+        setPaymentModeOptions(res.response);
+      }
+    }).catch(console.error);
+  }, []);
 
   const handleSearch = () => {
     setPage(0);
@@ -148,8 +246,8 @@ const IPDAdvanceCollection = () => {
     setCollectionDate(new Date().toISOString().split("T")[0]);
     setCollectionType("Advance");
     setPaymentRows([
-      { id: 1, mode: "Cash", amount: "" },
-      { id: 2, mode: "UPI", amount: "" },
+      { id: 1, mode: "", amount: "" },
+      { id: 2, mode: "", amount: "" },
     ]);
     setShowDetails(true);
   };
@@ -168,7 +266,7 @@ const IPDAdvanceCollection = () => {
   const addPaymentRow = () => {
     setPaymentRows((prev) => [
       ...prev,
-      { id: Date.now(), mode: "Cash", amount: "" },
+      { id: Date.now(), mode: "", amount: "" },
     ]);
   };
 
@@ -605,9 +703,10 @@ const IPDAdvanceCollection = () => {
                                         handlePaymentRowChange(row.id, "mode", e.target.value)
                                       }
                                     >
-                                      {PAYMENT_MODES.map((mode) => (
-                                        <option key={mode} value={mode}>
-                                          {mode}
+                                      <option value="">Select Payment Mode</option>
+                                      {paymentModeOptions.map((option) => (
+                                        <option key={option.paymentModeId} value={option.paymentModeId}>
+                                          {option.modeName}
                                         </option>
                                       ))}
                                     </select>
@@ -646,13 +745,21 @@ const IPDAdvanceCollection = () => {
                             <h5 className="fw-bold mb-0">
                               Total Amount: ₹{totalAmount}
                             </h5>
-                            <button
-                              type="button"
-                              className="btn btn-warning"
-                              disabled={Number(totalAmount) <= 0}
-                            >
-                              Submit
-                            </button>
+                             <button
+                               type="button"
+                               className="btn btn-warning"
+                               disabled={Number(totalAmount) <= 0 || isSubmitting}
+                               onClick={handleSubmitCollection}
+                             >
+                               {isSubmitting ? (
+                                 <>
+                                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                   Submitting...
+                                 </>
+                               ) : (
+                                 "Submit"
+                               )}
+                             </button>
                           </div>
                         </div>
                       </div>
@@ -664,6 +771,17 @@ const IPDAdvanceCollection = () => {
           </div>
         </div>
       </div>
+      {confirmationPopup && (
+        <ConfirmationPopup
+          show={confirmationPopup.show}
+          message={confirmationPopup.message}
+          type={confirmationPopup.type}
+          onConfirm={confirmationPopup.onConfirm}
+          onCancel={confirmationPopup.onCancel}
+          confirmText={confirmationPopup.confirmText}
+          cancelText={confirmationPopup.cancelText}
+        />
+      )}
     </div>
   );
 };

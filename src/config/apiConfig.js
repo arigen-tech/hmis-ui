@@ -783,3 +783,5 @@ export const GET_PAYMENT_STATUS = '/ipd/getPaymentStatus';
 export const GET_IPD_ADVANCE_COLLECTION = '/ipd/getIpdAdvanceCollection';
 export const GET_PREVIOUS_PAYMENT_HISTORY = '/ipd/previousPaymentHistory';
 export const GET_PENDING_TRACKING_IPD_BILL_LIST = '/ipd/getPendingTrackingIPDBillList';
+export const SAVE_IPD_ADVANCE_COLLECTION = '/ipd/saveAdvanceCollection';
+
