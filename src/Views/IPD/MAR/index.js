@@ -1,4 +1,46 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
+import { getRequest } from '../../../service/apiService';
+import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION } from '../../../config/apiConfig';
+
+// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
+const PortalDropdown = ({ anchorRef, show, children }) => {
+  const [style, setStyle] = useState({});
+
+  useEffect(() => {
+    if (!show || !anchorRef?.current) return;
+
+    const updatePosition = () => {
+      const rect = anchorRef.current.getBoundingClientRect();
+      setStyle({
+        position: "fixed",
+        top: rect.bottom + 4, // 4 px gap below the input
+        left: rect.left,
+        width: rect.width,
+        zIndex: 99999,
+        maxHeight: "200px",
+        overflowY: "auto",
+        backgroundColor: "#fff",
+        border: "1px solid #ccc",
+        borderRadius: "4px",
+        boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+      });
+    };
+
+    updatePosition();
+
+    // Re-position on scroll or resize
+    window.addEventListener("scroll", updatePosition, true);
+    window.addEventListener("resize", updatePosition);
+    return () => {
+      window.removeEventListener("scroll", updatePosition, true);
+      window.removeEventListener("resize", updatePosition);
+    };
+  }, [show, anchorRef]);
+
+  if (!show) return null;
+  return createPortal(<div style={style}>{children}</div>, document.body);
+};
 
 const MedicationModule = () => {
   // ---------- Tab State ----------
@@ -139,6 +181,70 @@ const MedicationModule = () => {
     administeredBy: '',
     remarks: '',
   });
+
+  // Medication search & master options
+  const [dynamicMedicineList, setDynamicMedicineList] = useState([]);
+  const [searchTimeoutId, setSearchTimeoutId] = useState(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [frequencyOptions, setFrequencyOptions] = useState([]);
+  const [routeOptions, setRouteOptions] = useState([]);
+  const medicineInputRef = useRef(null);
+
+  useEffect(() => {
+    // Fetch frequencies
+    getRequest(MAS_FREQUENCY_GET_ALL)
+      .then((res) => {
+        if (res && res.response) {
+          setFrequencyOptions(res.response.map((f) => f.frequencyName));
+        } else if (Array.isArray(res)) {
+          setFrequencyOptions(res.map((f) => f.frequencyName));
+        }
+      })
+      .catch(console.error);
+
+    // Fetch routes
+    getRequest(MAS_ROUTE_GET_ALL)
+      .then((res) => {
+        if (res && res.response) {
+          setRouteOptions(res.response.map((r) => r.routeName));
+        } else if (Array.isArray(res)) {
+          setRouteOptions(res.map((r) => r.routeName));
+        }
+      })
+      .catch(console.error);
+  }, []);
+
+  const fetchMedicines = async (searchText) => {
+    if (!searchText || searchText.length < 2) {
+      setDynamicMedicineList([]);
+      return;
+    }
+    try {
+      const response = await getRequest(`${GET_ALL_DRUGS_BY_SECTION}?flag=1&search=${searchText}&page=0&size=20`);
+      if (response && response.response && response.response.content) {
+        setDynamicMedicineList(response.response.content.map(item => item.nomenclature));
+      } else if (response && response.response && Array.isArray(response.response)) {
+        setDynamicMedicineList(response.response.map(item => item.nomenclature));
+      } else if (Array.isArray(response)) {
+        setDynamicMedicineList(response.map(item => item.nomenclature));
+      }
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const handleMedicineNameChange = (value) => {
+    setNewMed((prev) => ({ ...prev, medicineName: value }));
+    setDropdownOpen(true);
+
+    if (searchTimeoutId) clearTimeout(searchTimeoutId);
+    setSearchTimeoutId(setTimeout(() => fetchMedicines(value), 300));
+  };
+
+  const selectMedicine = (name) => {
+    setNewMed((prev) => ({ ...prev, medicineName: name }));
+    setDropdownOpen(false);
+  };
 
   // New adverse event form
   const [newAdverse, setNewAdverse] = useState({
@@ -499,15 +605,37 @@ const MedicationModule = () => {
               <div className="modal-body">
                 <div className="row g-2">
                   {/* Medicine Name - full row */}
-                  <div className="col-12">
+                  <div className="col-12 position-relative">
                     <label className="form-label small">Medicine Name *</label>
                     <input
+                      ref={medicineInputRef}
                       type="text"
                       className="form-control form-control-sm"
+                      autoComplete="off"
                       value={newMed.medicineName}
-                      onChange={e => setNewMed({...newMed, medicineName: e.target.value})}
-                      placeholder="Enter medicine name"
+                      onChange={e => handleMedicineNameChange(e.target.value)}
+                      onFocus={() => setDropdownOpen(true)}
+                      onBlur={() => setTimeout(() => setDropdownOpen(false), 200)}
+                      placeholder="Type medicine name to search..."
                     />
+                    <PortalDropdown
+                      anchorRef={medicineInputRef}
+                      show={dropdownOpen && dynamicMedicineList.length > 0}
+                    >
+                      <ul className="list-group mb-0">
+                        {dynamicMedicineList.map((name) => (
+                          <li
+                            key={name}
+                            className="list-group-item list-group-item-action"
+                            style={{ cursor: "pointer" }}
+                            onMouseDown={(e) => e.preventDefault()}
+                            onClick={() => selectMedicine(name)}
+                          >
+                            {name}
+                          </li>
+                        ))}
+                      </ul>
+                    </PortalDropdown>
                   </div>
                   {/* Route, Dose, Frequency */}
                   <div className="col-md-4">
@@ -518,7 +646,9 @@ const MedicationModule = () => {
                       onChange={e => setNewMed({...newMed, route: e.target.value})}
                     >
                       <option value="">Select</option>
-                      <option>Oral</option><option>IV</option><option>IM</option><option>SC</option>
+                      {routeOptions.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
                   <div className="col-md-4">
@@ -539,10 +669,12 @@ const MedicationModule = () => {
                       onChange={e => setNewMed({...newMed, frequency: e.target.value})}
                     >
                       <option value="">Select</option>
-                      <option>OD</option><option>BD</option><option>TDS</option><option>QID</option><option>Continuous</option>
+                      {frequencyOptions.map((opt) => (
+                        <option key={opt} value={opt}>{opt}</option>
+                      ))}
                     </select>
                   </div>
-                  {/* Start Date, Total Days, Prescribed By */}
+                  {/* Start Date, Total Days, Administered By */}
                   <div className="col-md-4">
                     <label className="form-label small">Start Date & Time *</label>
                     <input
@@ -564,17 +696,6 @@ const MedicationModule = () => {
                     />
                   </div>
                   <div className="col-md-4">
-                    <label className="form-label small">Prescribed By</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      value={newMed.prescribedBy}
-                      onChange={e => setNewMed({...newMed, prescribedBy: e.target.value})}
-                      placeholder="Doctor name"
-                    />
-                  </div>
-                  {/* Administered By, Remarks */}
-                  <div className="col-md-6">
                     <label className="form-label small">Administered By</label>
                     <input
                       type="text"
@@ -582,16 +703,6 @@ const MedicationModule = () => {
                       value={newMed.administeredBy}
                       onChange={e => setNewMed({...newMed, administeredBy: e.target.value})}
                       placeholder="Nurse name"
-                    />
-                  </div>
-                  <div className="col-md-6">
-                    <label className="form-label small">Remarks</label>
-                    <input
-                      type="text"
-                      className="form-control form-control-sm"
-                      value={newMed.remarks}
-                      onChange={e => setNewMed({...newMed, remarks: e.target.value})}
-                      placeholder="Optional"
                     />
                   </div>
                 </div>
