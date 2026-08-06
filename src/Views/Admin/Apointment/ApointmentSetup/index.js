@@ -117,6 +117,17 @@ const AppointmentSetup = () => {
     return daysConfig[day].startTime && daysConfig[day].endTime;
   };
 
+  const isInvalidTimeRange = (day) => {
+    const startTimeValue = daysConfig[day]?.startTime;
+    const endTimeValue = daysConfig[day]?.endTime;
+
+    if (!startTimeValue && !endTimeValue) return false;
+
+    if (!startTimeValue || !endTimeValue) return true;
+
+    return !isValidTimeRange(startTimeValue, endTimeValue);
+  };
+
   const isRowInvalid = (day) => {
     if (!isTimeFilled(day)) return false;
 
@@ -124,6 +135,23 @@ const AppointmentSetup = () => {
       const value = daysConfig[day][field];
       return value === "" || value === null;
     });
+  };
+
+  const getInvalidTimeMessage = (day) => {
+    const startTimeValue = daysConfig[day]?.startTime;
+    const endTimeValue = daysConfig[day]?.endTime;
+
+    if (!startTimeValue && !endTimeValue) return null;
+
+    if (!startTimeValue || !endTimeValue) {
+      return `Please enter both start time and end time for ${day}.`;
+    }
+
+    if (!isValidTimeRange(startTimeValue, endTimeValue)) {
+      return `End time must be greater than start time for ${day}.`;
+    }
+
+    return null;
   };
 
   const isFieldInvalid = (day, field) => {
@@ -143,6 +171,17 @@ const AppointmentSetup = () => {
 
   const hasInvalidRow = () => {
     return daysOfWeek.some((day) => isRowInvalid(day));
+  };
+
+  const getFirstInvalidTimeMessage = () => {
+    for (const day of daysOfWeek) {
+      const message = getInvalidTimeMessage(day);
+      if (message) {
+        return message;
+      }
+    }
+
+    return null;
   };
 
   const fetchDepartmentData = async () => {
@@ -356,19 +395,6 @@ const AppointmentSetup = () => {
     }
     updatedDayConfig[field] = field === "opdLocation" ? value : stringValue;
 
-    if (
-      (field === "startTime" || field === "endTime") &&
-      updatedDayConfig.startTime &&
-      updatedDayConfig.endTime
-    ) {
-      if (
-        !isValidTimeRange(updatedDayConfig.startTime, updatedDayConfig.endTime)
-      ) {
-        showPopup("End time must be greater than start time", "error");
-        return;
-      }
-    }
-
     if (field === "totalToken" && (stringValue === "0" || stringValue === "")) {
       updatedDayConfig.startToken = "0";
       updatedDayConfig.totalInterval = "0";
@@ -439,6 +465,12 @@ const AppointmentSetup = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    const invalidTimeMessage = getFirstInvalidTimeMessage();
+    if (invalidTimeMessage) {
+      showPopup(invalidTimeMessage, "error");
+      return;
+    }
 
     if (hasInvalidRow()) {
       showPopup(APPOINTMENT_REQUIRED_FIELDS, "error");
@@ -706,10 +738,11 @@ const AppointmentSetup = () => {
                           </thead>
                           <tbody>
                             {daysOfWeek.map((day) => (
-                              <tr
+                            <tr
                                 key={day}
                                 style={{
-                                  border: isRowInvalid(day)
+                                  border:
+                                    isRowInvalid(day) || isInvalidTimeRange(day)
                                     ? "2px solid red"
                                     : "",
                                 }}
@@ -725,6 +758,8 @@ const AppointmentSetup = () => {
                                         "startTime",
                                       )
                                         ? "#ffd24d"
+                                        : isInvalidTimeRange(day)
+                                          ? "#ffcccc"
                                         : "",
                                     }}
                                     value={daysConfig[day].startTime}
@@ -747,6 +782,8 @@ const AppointmentSetup = () => {
                                         "endTime",
                                       )
                                         ? "#ffd24d"
+                                        : isInvalidTimeRange(day)
+                                          ? "#ffcccc"
                                         : "",
                                     }}
                                     value={daysConfig[day].endTime}
