@@ -572,7 +572,7 @@ export const TAT_DETAIL_END_URL = `${LAB}/lab-tat/details`;
 export const TAT_DETAIL_REPORT_URL = `${ALL_REPORTS}/detailTat`;
 export const TAT_SUMMARY_REPORT_URL = `${ALL_REPORTS}/summaryTat`;
 export const TAT_SUMMARY_END_URL = `${LAB}/lab-tat/summary`;
-export const LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL= `${LAB}/orderTrackingByPatientId`;
+export const LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL = `${LAB}/orderTrackingByPatientId`;
 
 //opening balance entry
 
