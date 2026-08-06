@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_NON_DRUG_ITEM, GET_NON_MEDICAL_CONSUMABLE_ITEMS, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE } from "../../../config/apiConfig";
+import { MAS_NON_DRUG_ITEM, GET_NON_MEDICAL_CONSUMABLE_ITEMS, MAS_NON_DRUG_ITEM_GET_BY_ID, MAS_NON_DRUG_ITEM_UPDATE, MAS_DRUG_MAS, MAS_STORE_GROUP, MAS_ITEM_TYPE, MAS_ITEM_SECTION, MAS_ITEM_CLASS, MAS_ITEM_CATEGORY, MAS_STORE_UNIT, MAS_ITEM_SECTION_BY_TYPE, MAS_HSN } from "../../../config/apiConfig";
 import Pagination from "../../../Components/Pagination";
 import { ITEM_TYPE_CODE_NONMED_CON, SECTION_CODE_DRUG } from "../../../config/constants";
 
@@ -15,11 +15,13 @@ const NonConsumableMaster = () => {
         section: "",
         itemClass: "",
         itemCategory: "",
-        unitAU: ""
+        unitAU: "",
+        hsnCode: ""
     })
     const [popupMessage, setPopupMessage] = useState(null)
     const [nonDrugs, setNonDrugs] = useState([])
     const [masStoreGroup, setMasStoreGroup] = useState([])
+    const [hsnList, setHsnList] = useState([])
     const [masItemTypeData, setMasItemTypeData] = useState([]);
     const [itemSectionData, setItemSectionData] = useState([]);
     const [itemClassData, setItemClassData] = useState([]);
@@ -253,10 +255,18 @@ const NonConsumableMaster = () => {
             } else {
                 setStoreUnitData([]);
             }
+
+            const hsnData = await getRequest(`${MAS_HSN}/getAll/1`);
+            if (hsnData.status === 200 && Array.isArray(hsnData.response)) {
+                setHsnList(hsnData.response);
+            } else {
+                setHsnList([]);
+            }
         } catch (error) {
             console.error("Error fetching master data:", error);
             setMasStoreGroup([]);
             setStoreUnitData([]);
+            setHsnList([]);
         }
     };
 
@@ -378,6 +388,7 @@ const NonConsumableMaster = () => {
             const itemClassId = details.itemClassId || details.itemClass || "";
             const categoryId = details.masItemCategoryId || details.itemCategoryId || details.itemCategory || "";
             const unitAUValue = details.unitAU || details.unitAu || "";
+            const hsnCodeValue = details.hsn || details.hsnCode || "";
 
             setFormData({
                 itemCode: details.itemCode || details.pvmsNo || "",
@@ -387,7 +398,8 @@ const NonConsumableMaster = () => {
                 section: sectionId?.toString() || "",
                 itemClass: itemClassId?.toString() || "",
                 itemCategory: categoryId?.toString() || "",
-                unitAU: unitAUValue?.toString() || ""
+                unitAU: unitAUValue?.toString() || "",
+                hsnCode: hsnCodeValue?.toString() || ""
             });
 
             if (defaultGroupId) {
@@ -422,7 +434,8 @@ const NonConsumableMaster = () => {
             section: "",
             itemClass: "",
             itemCategory: "",
-            unitAU: ""
+            unitAU: "",
+            hsnCode: ""
         });
     }
 
@@ -438,14 +451,15 @@ const NonConsumableMaster = () => {
 
         try {
             const payload = {
-                itemCode: formData.itemCode.trim(),
-                itemName: formData.itemName.trim(),
+                pvmsNo: formData.itemCode.trim(),
+                nomenclature: formData.itemName.trim(),
                 groupId: Number(formData.itemGroup),
                 itemTypeId: Number(formData.itemType),
                 sectionId: Number(formData.section),
                 itemClassId: Number(formData.itemClass),
                 masItemCategoryId: Number(formData.itemCategory),
                 unitAU: Number(formData.unitAU),
+                hsn: formData.hsnCode,
                 status: "y"
             };
 
@@ -457,7 +471,10 @@ const NonConsumableMaster = () => {
                 response = await postRequest(`${MAS_NON_DRUG_ITEM}/create`, payload);
             }
 
-            if (response.status === 200 || response.status === 201) {
+            const actualStatus = response?.data?.status !== undefined ? response.data.status : response?.status;
+            const actualMessage = response?.data?.message || response?.message || response?.response?.message || "Failed to save non-drug item";
+
+            if (actualStatus === 200 || actualStatus === 201) {
                 setPopupMessage({
                     message: editEnabled ? "Non-drug item updated successfully!" : "Non-drug item added successfully!",
                     type: "success",
@@ -476,7 +493,7 @@ const NonConsumableMaster = () => {
                     }
                 });
             } else {
-                throw new Error(response.message || response.response?.message || "Failed to save non-drug item");
+                throw new Error(actualMessage);
             }
 
         } catch (error) {
@@ -499,7 +516,8 @@ const NonConsumableMaster = () => {
             section: "",
             itemClass: "",
             itemCategory: "",
-            unitAU: ""
+            unitAU: "",
+            hsnCode: ""
         });
     };
 
@@ -884,6 +902,25 @@ const NonConsumableMaster = () => {
                                                 <option value="">Select Unit A/U</option>
                                                 {storeUnitData.map(unit => (
                                                     <option key={unit.unitId} value={unit.unitId}>{unit.unitName}</option>
+                                                ))}
+                                            </select>
+                                        </div>
+
+                                        <div className="form-group col-md-4 mt-3">
+                                            <label>
+                                                HSN Code
+                                            </label>
+                                            <select
+                                                className="form-select"
+                                                name="hsnCode"
+                                                value={formData.hsnCode}
+                                                onChange={handleInputChange}
+                                            >
+                                                <option value="">Select HSN Code</option>
+                                                {hsnList.map((hsn) => (
+                                                    <option key={hsn.hsnCode} value={hsn.hsnCode}>
+                                                        {hsn.hsnCode}
+                                                    </option>
                                                 ))}
                                             </select>
                                         </div>
