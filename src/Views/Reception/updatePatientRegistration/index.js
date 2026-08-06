@@ -160,6 +160,13 @@ const UpdatePatientRegistration = () => {
   const [imageURL, setImageURL] = useState("");
   const [genderData, setGenderData] = useState([]);
   const [loading, setLoading] = useState(false);
+  const todayDateString = (() => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  })();
   const [relationData, setRelationData] = useState([]);
   const [countryData, setCountryData] = useState([]);
   const [stateData, setStateData] = useState([]);
@@ -4010,6 +4017,7 @@ const UpdatePatientRegistration = () => {
                                   onChange={(date) => onDateChange(index, date)}
                                   placeholder="Select Date"
                                   className="form-control"
+                                  min={todayDateString}
                                 />
                               </div>
                             </div>

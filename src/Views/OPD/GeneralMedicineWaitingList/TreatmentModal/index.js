@@ -81,6 +81,31 @@ const resolveDispUnit = (drug = {}, fallback = "") =>
   fallback ??
   "";
 
+const normalizeNonNegativeNumberInput = (value) => {
+  if (value === null || value === undefined) return "";
+
+  const stringValue = String(value).replace(/-/g, "");
+  const [wholePart, ...decimalParts] = stringValue.split(".");
+  const sanitizedWhole = wholePart.replace(/[^\d]/g, "");
+  const sanitizedDecimal = decimalParts.join("").replace(/[^\d]/g, "");
+
+  if (!sanitizedWhole && !sanitizedDecimal) {
+    return "";
+  }
+
+  if (!sanitizedDecimal) {
+    return sanitizedWhole;
+  }
+
+  return `${sanitizedWhole || "0"}.${sanitizedDecimal}`;
+};
+
+const isNonNegativeNumber = (value) => {
+  if (value === "" || value === null || value === undefined) return false;
+  const numericValue = Number(value);
+  return Number.isFinite(numericValue) && numericValue >= 0;
+};
+
 const drugMatchesQuery = (drug, searchQuery) => {
   const query = String(searchQuery || "").trim().toLowerCase();
   if (!query) return true;
@@ -750,7 +775,12 @@ const TreatmentModal = ({
 
   const handleTreatmentChange = (index, field, value) => {
     const newItems = [...treatmentItems];
-    newItems[index] = { ...newItems[index], [field]: value };
+    const normalizedValue =
+      field === "dosage" || field === "days"
+        ? normalizeNonNegativeNumberInput(value)
+        : value;
+
+    newItems[index] = { ...newItems[index], [field]: normalizedValue };
 
     if (field === "dosage" || field === "days" || field === "frequencyId") {
       const calculatedTotal = calculateTotal(newItems[index]);
@@ -874,7 +904,12 @@ const TreatmentModal = ({
 
     for (let i = 0; i < treatmentItems.length; i++) {
       const item = treatmentItems[i];
-      if (!item.drugId || !item.dosage || !item.days || !item.frequencyId) {
+      if (
+        !item.drugId ||
+        !isNonNegativeNumber(item.dosage) ||
+        !isNonNegativeNumber(item.days) ||
+        !item.frequencyId
+      ) {
         showPopup(`Please fill all required fields in row ${i + 1}`, "error");
         return;
       }
@@ -1277,6 +1312,12 @@ const TreatmentModal = ({
                             type="number"
                             className="form-control form-control-sm"
                             value={row.dosage}
+                            min={0}
+                            onKeyDown={(e) => {
+                              if (["-", "+", "e", "E"].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
                             onChange={(e) =>
                               handleTreatmentChange(
                                 index,
@@ -1322,6 +1363,12 @@ const TreatmentModal = ({
                             type="number"
                             className="form-control form-control-sm"
                             value={row.days}
+                            min={0}
+                            onKeyDown={(e) => {
+                              if (["-", "+", "e", "E"].includes(e.key)) {
+                                e.preventDefault();
+                              }
+                            }}
                             onChange={(e) =>
                               handleTreatmentChange(index, "days", e.target.value)
                             }

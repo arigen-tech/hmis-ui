@@ -1,6 +1,8 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
-
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = "http://localhost:8080";
+// export const ABDM_API = "http://localhost:8089";
+//  export const API_HOST = 'http://192.168.31.118:8080';
+//export const API_HOST = 'http://192.168.1.29:8080';
 
 export const DEFAULT_RSA_PUBLIC_KEY =
   "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEA8enYucaEeOKwsm2kUHfXeuS1uKgyLLTYeJRjYUXxxkYvBV3E7N/AhSUOOox5qLzH8iL+n/kBFVim3sNyIp0F6/UPj6Q9WkkqIJbxHSPbwwdDEV5rW6J4aEApGA0yQQ1W/J8nCg267Afk6MyfSt/XWAy67U/DGQ9aQEWB66B6KapbtqrTzsiXX4ogutU/+jcX3Eh+ivNAbE/p4Q+sGhJ2TiHm1uhDPd0Ui1EtoQMcqTG8Iu/Riogam/foXhqRIwNHZJ4XrWbLfISU2km/mvhOTCVxJYEoA7m2G9lIuUWmdlCjDykiR9ZrBTSJ2yep8Zv5N9Br+bc77HwzCb3VcxMYjwIDAQAB";
