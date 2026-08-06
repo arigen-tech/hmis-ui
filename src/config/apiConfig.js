@@ -1,5 +1,5 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
@@ -457,6 +457,8 @@ export const PENDING_BILLING_PATIENTS = `/billing/pendingBillingPatients`;
 
 export const RADIOLOGY_TEMPLATE = "/master/radiologyTemplate";
 export const INVENTORY = `/inventory`;
+export const GET_STORE_ISSUE_LIST = `${INVENTORY}/storeIssueM/list`;
+
 export const SECTION_ID_FOR_DRUGS = 18;
 export const SECTION_CODE_FOR_DRUGS = "DRUG";
 export const SECTION_CODE_FOR_NON_DRUGS = "NON_DRUG";

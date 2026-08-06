@@ -347,53 +347,45 @@ const PatientRegistration = () => {
     setShowConsentModal(false);
   };
 
-  const isFormValid = () => {
-    // Required fields
-    const requiredFields = [
-      "firstName",
-      "gender",
-      "relation",
-      "dob",
-      "mobileNo",
-    ];
+  const requiredRegistrationFields = [
+    { field: "firstName", label: "First Name" },
+    { field: "mobileNo", label: "Mobile No." },
+    { field: "gender", label: "Gender" },
+    { field: "relation", label: "Relation" },
+    { field: "dob", label: "DOB" },
+    { field: "height", label: "Height" },
+    { field: "weight", label: "Weight" },
+    { field: "temperature", label: "Temperature" },
+    { field: "systolicBP", label: "BP Systolic" },
+    { field: "diastolicBP", label: "BP Diastolic" },
+    { field: "pulse", label: "Pulse" },
+    { field: "rr", label: "RR" },
+    { field: "spo2", label: "SpO2" },
+  ];
 
-    for (let field of requiredFields) {
-      const value = formData[field];
-      if (!value || (typeof value === "string" && value.trim() === "")) {
-        return false;
+  const isFieldEmpty = (value) =>
+    value === undefined || value === null || value.toString().trim() === "";
+
+  const validateRequiredRegistrationFields = () => {
+    const newErrors = {};
+    const missingField = requiredRegistrationFields.find(({ field }) =>
+      isFieldEmpty(formData[field]),
+    );
+
+    requiredRegistrationFields.forEach(({ field, label }) => {
+      if (isFieldEmpty(formData[field])) {
+        newErrors[field] = `${label} is required.`;
       }
-      if (typeof value !== "string" && !value) {
-        return false;
-      }
+    });
+
+    if (Object.keys(newErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...newErrors }));
     }
 
-    // Only validate appointments if in "withAppointment" mode
-    if (registrationMode === "withAppointment") {
-      const hasValidAppointment = appointments.some(
-        (a) => a.speciality && a.selDoctorId && a.selSession,
-      );
-
-      if (!hasValidAppointment) {
-        return false;
-      }
-
-      const appointmentsWithDetails = appointments.filter(
-        (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
-      );
-
-      if (appointmentsWithDetails.length > 0) {
-        const allHaveTimeSlots = appointmentsWithDetails.every(
-          (appt) =>
-            appt.selectedTimeSlot && appt.selectedTimeSlot.trim() !== "",
-        );
-
-        if (!allHaveTimeSlots) {
-          return false;
-        }
-      }
-    }
-
-    return true;
+    return {
+      valid: Object.keys(newErrors).length === 0,
+      message: missingField ? `${missingField.label} is required.` : "",
+    };
   };
 
   const formatAbhaNumber = (value = "") => {
@@ -1603,75 +1595,70 @@ const PatientRegistration = () => {
   }
 
   function sendRegistrationRequest() {
-    if (!isFormValid()) {
-      // Check specifically for time slots only in "withAppointment" mode
-      if (registrationMode === "withAppointment") {
-        const appointmentsWithDetails = appointments.filter(
-          (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
-        );
+    const validationResult = validateRequiredRegistrationFields();
 
-        const missingTimeSlots = appointmentsWithDetails.filter(
-          (appt) =>
-            !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === "",
-        );
-
-        if (missingTimeSlots.length > 0) {
-          Swal.fire({
-            icon: "warning",
-            title: MISSING_TIME_SLOTS_TITLE,
-            text: SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,
-            timer: 3000,
-          });
-          return;
-        }
-      }
-
+    if (!validationResult.valid) {
       Swal.fire({
         icon: "warning",
         title: INCOMPLETE_FORM_TITLE,
-        text: INCOMPLETE_FORM_MSG,
-        timer: 3000,
+        text: validationResult.message,
       });
       return;
     }
 
-    console.log(formData);
+    if (registrationMode === "withAppointment") {
+      const appointmentsWithDetails = appointments.filter(
+        (appt) => appt.speciality && appt.selDoctorId && appt.selSession,
+      );
+
+      const missingTimeSlots = appointmentsWithDetails.filter(
+        (appt) => !appt.selectedTimeSlot || appt.selectedTimeSlot.trim() === "",
+      );
+
+      if (missingTimeSlots.length > 0) {
+        Swal.fire({
+          icon: "warning",
+          title: MISSING_TIME_SLOTS_TITLE,
+          text: SELECT_TIME_SLOTS_BEFORE_REGISTRATION_MSG,
+          timer: 3000,
+        });
+        return;
+      }
+    }
+
     sendPatientData();
   }
   const validateVitalDetails = () => {
     if (preConsultationFlag) return true;
 
     const vitalFields = [
-      "height",
-      "weight",
-      "temperature",
-      "systolicBP",
-      "diastolicBP",
-      "pulse",
+      { field: "height", label: "Height" },
+      { field: "weight", label: "Weight" },
+      { field: "temperature", label: "Temperature" },
+      { field: "systolicBP", label: "BP Systolic" },
+      { field: "diastolicBP", label: "BP Diastolic" },
+      { field: "pulse", label: "Pulse" },
+      { field: "rr", label: "RR" },
+      { field: "spo2", label: "SpO2" },
     ];
 
-    let valid = true;
     const newErrors = {};
 
-    vitalFields.forEach((field) => {
-      if (!formData[field] || formData[field].toString().trim() === "") {
-        newErrors[field] = `${field} is required.`;
-        valid = false;
+    vitalFields.forEach(({ field, label }) => {
+      if (isFieldEmpty(formData[field])) {
+        newErrors[field] = `${label} is required.`;
       }
     });
 
-    setErrors((prev) => ({ ...prev, ...newErrors }));
-    return valid;
+    if (Object.keys(newErrors).length > 0) {
+      setErrors((prev) => ({ ...prev, ...newErrors }));
+      return false;
+    }
+
+    return true;
   };
 
   const validateForm = () => {
-    const requiredFields = [
-      "firstName",
-      "gender",
-      "relation",
-      "dob",
-      "mobileNo",
-    ];
     const numericFields = [
       "height",
       "weight",
@@ -1687,15 +1674,6 @@ const PatientRegistration = () => {
 
     let valid = true;
     const newErrors = {};
-
-    requiredFields.forEach((field) => {
-      if (!formData[field] || formData[field].toString().trim() === "") {
-        newErrors[field] = `${
-          field.charAt(0).toUpperCase() + field.slice(1)
-        } is required.`;
-        valid = false;
-      }
-    });
 
     if (formData.email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
       newErrors.email = INVALID_EMAIL_FORMAT_MSG;
@@ -1733,10 +1711,7 @@ const PatientRegistration = () => {
           }
         }
       }
-      if (
-        (field === "age" || requiredFields.includes(field)) &&
-        Number(value) <= 0
-      ) {
+      if (field === "age" && Number(value) <= 0) {
         newErrors[field] = `${
           field.charAt(0).toUpperCase() + field.slice(1)
         } must be greater than 0.`;
@@ -3721,9 +3696,9 @@ const PatientRegistration = () => {
                 <div className="row g-3">
                   <div className="mt-4">
                     <button
-                      type="submit"
+                      type="button"
                       className="btn btn-primary me-2"
-                      disabled={!isFormValid() || isDuplicatePatient}
+                      disabled={isDuplicatePatient}
                       onClick={sendRegistrationRequest}
                     >
                       Registration
