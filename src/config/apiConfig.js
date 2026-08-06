@@ -687,6 +687,7 @@ export const MAS_CORPORATE = `${MASTERS}/masCorporate`;
 export const IPD_PACKAGE = `${MASTERS}/ipdPackage`;
 export const MAS_INSURANCE = `${MASTERS}/masInsurance`;
 export const MAS_IPD_BILLING_TYPE = `${MASTERS}/masIpdBillingType`;
+export const MAS_PAYMENT_MODE = `${MASTERS}/paymentMode`;
 
 export const INSURANCE_TPA_MAPPING = `${MASTERS}/insuranceTpaMapping`;
 

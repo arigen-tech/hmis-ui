@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useParams, useNavigate, useLocation } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import { getRequest, postRequest, postRequestWithFormData } from "../../../service/apiService";
-import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, FILTER_OPD_DEPT } from "../../../config/apiConfig";
+import { PATIENT_FOLLOW_UP_DETAILS, MAS_COUNTRY, MAS_STATE, MAS_DISTRICT, ALL_RELATION, MAS_BLOODGROUP, MAS_WARD_CATEGORY_GET_ALL, MAS_WARDS_GET_BY_ID, MAS_BED_COUNT, MAS_ADMISSION_CATEGORY_GET_ALL, MAS_ADMISSION_TYPE_GET_ALL, MAS_ADMISSION_SOURCE_GET_ALL, MAS_PATIENT_CONDITION_GET_ALL, GET_WARD_BY_CATEGORY, GET_ROOM_BY_WARD, GET_BED_BY_ROOM, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, SAVE_IPD_PATIENT_DETAILS, DOCTOR_BY_SPECIALITY, MAS_DIET_PREFERENCE_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, FILTER_OPD_DEPT, MAS_IPD_BILLING_TYPE, MAS_PAYMENT_MODE } from "../../../config/apiConfig";
 import { IPD_ADMISSION_LOAD_PATIENT_ERR, IPD_ADMISSION_CORRECT_ERRORS, IPD_ADMISSION_SAVE_SUCCESS, IPD_ADMISSION_SAVE_FAILURE } from "../../../config/constants";
 import LoadingScreen from "../../../Components/Loading";
 
@@ -184,8 +184,8 @@ const InpatientAdmission = () => {
   
   // NEW: Dropdown options for new sections
   const yesNoOptions = ["Yes", "No"];
-  const paymentTypeOptions = ["Self", "Insurance", "Corporate", "Government", "Other"];
-  const paymentModeOptions = ["Cash", "UPI", "Card", "Cheque", "Net Banking", "Wallet"];
+  const [paymentTypeOptions, setPaymentTypeOptions] = useState([]);
+  const [paymentModeOptions, setPaymentModeOptions] = useState([]);
 
   const usernameFromSession = localStorage.getItem("username") || sessionStorage.getItem("username") || "Logged In User";
   const [currentUser, setCurrentUser] = useState(usernameFromSession);
@@ -422,6 +422,16 @@ const InpatientAdmission = () => {
         { id: 3, careLevelName: "HDU", status: "Active" },
         { id: 4, careLevelName: "Isolation", status: "Active" },
       ]);
+      
+      const paymentTypeRes = await getRequest(`${MAS_IPD_BILLING_TYPE}/getAll/1`);
+      if (paymentTypeRes && paymentTypeRes.response) {
+        setPaymentTypeOptions(paymentTypeRes.response);
+      }
+      
+      const paymentModeRes = await getRequest(`${MAS_PAYMENT_MODE}/getAll/1`);
+      if (paymentModeRes && paymentModeRes.response) {
+        setPaymentModeOptions(paymentModeRes.response);
+      }
       
     } catch (error) {
       console.error("Error fetching master data:", error);
@@ -1068,32 +1078,15 @@ const InpatientAdmission = () => {
       formDataToSend.append("roomId", formData.roomId || "");
       formDataToSend.append("bedId", formData.bedId || "");
 
-      const paymentTypeMap = {
-        "Self": "1",
-        "Insurance": "2",
-        "Corporate": "3",
-        "Government": "4",
-        "Other": "5"
-      };
-
-      const paymentModeMap = {
-        "Cash": "1",
-        "UPI": "2",
-        "Card": "3",
-        "Cheque": "4",
-        "Net Banking": "5",
-        "Wallet": "6"
-      };
-
       if (formData.financialDetails && formData.financialDetails.length > 0) {
         formData.financialDetails.forEach((financial, index) => {
           if (financial.paymentType) {
-            formDataToSend.append(`paymentRequests[${index}].paymentType`, paymentTypeMap[financial.paymentType] || "");
+            formDataToSend.append(`paymentRequests[${index}].paymentType`, financial.paymentType);
             formDataToSend.append(`paymentRequests[${index}].advanceCollected`, financial.advanceCollected === "Yes" ? "y" : "n");
             formDataToSend.append(`paymentRequests[${index}].advanceAmount`, financial.advanceAmount || "");
             
             if (financial.paymentMode) {
-              formDataToSend.append(`paymentRequests[${index}].paymentMode`, paymentModeMap[financial.paymentMode] || "");
+              formDataToSend.append(`paymentRequests[${index}].paymentMode`, financial.paymentMode);
             }
           }
         });
@@ -2026,7 +2019,7 @@ const InpatientAdmission = () => {
                                 >
                                   <option value="">Select Payment Type</option>
                                   {paymentTypeOptions.map(option => (
-                                    <option key={option} value={option}>{option}</option>
+                                    <option key={option.billingTypeId} value={option.billingTypeId}>{option.billingTypeName}</option>
                                   ))}
                                 </select>
                               </td>
@@ -2064,7 +2057,7 @@ const InpatientAdmission = () => {
                                 >
                                   <option value="">Select Payment Mode</option>
                                   {paymentModeOptions.map(option => (
-                                    <option key={option} value={option}>{option}</option>
+                                    <option key={option.paymentModeId} value={option.paymentModeId}>{option.modeName}</option>
                                   ))}
                                 </select>
                                 {errors[`financial_${index}_paymentMode`] && (
