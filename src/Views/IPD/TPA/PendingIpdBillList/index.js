@@ -429,7 +429,7 @@ const PendingIpdBillList = () => {
                       <div className="d-flex">
                         <select
                           className={`form-select ${amountFilter === "other" ? "flex-grow-1 me-1" : "w-100"
-                          }`}
+                            }`}
                           value={amountFilter}
                           onChange={(e) => {
                             setAmountFilter(e.target.value);
@@ -500,7 +500,7 @@ const PendingIpdBillList = () => {
                         )}
                       </button>
 
-                     
+
                     </div>
                   </div>
 
@@ -543,13 +543,14 @@ const PendingIpdBillList = () => {
                             <th>Patient Paid</th>
                             <th>Outstanding Amount</th>
                             <th>Bill Status</th>
+                            <th>Payment Status</th>
                             <th className="text-center">View Bill (PDF)</th>
                           </tr>
                         </thead>
                         <tbody>
                           {displayData.length === 0 ? (
                             <tr>
-                              <td colSpan={11} className="text-center py-4 text-muted">
+                              <td colSpan={12} className="text-center py-4 text-muted">
                                 No pending IPD bills found.
                               </td>
                             </tr>
@@ -592,6 +593,17 @@ const PendingIpdBillList = () => {
                                     }}
                                   >
                                     {item.billStatus || "N/A"}
+                                  </span>
+                                </td>
+                                <td>
+                                  <span
+                                    className="badge"
+                                    style={{
+                                      backgroundColor: item.paymentStatus === "PAID" ? "#28a745" : item.paymentStatus === "PENDING" ? "#ffc107" : "#6c757d",
+                                      color: item.paymentStatus === "PENDING" ? "#000" : "#fff"
+                                    }}
+                                  >
+                                    {item.paymentStatus || "N/A"}
                                   </span>
                                 </td>
                                 <td className="text-center" onClick={(e) => e.stopPropagation()}>
@@ -891,20 +903,20 @@ const PendingIpdBillList = () => {
                               Total Amount: ₹{totalAmount}
                             </h5>
                             <button
-                               type="button"
-                               className="btn btn-warning"
-                               disabled={Number(totalAmount) <= 0 || isSubmitting}
-                               onClick={handleSubmitCollection}
-                             >
-                               {isSubmitting ? (
-                                 <>
-                                   <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
-                                   Submitting...
-                                 </>
-                               ) : (
-                                 "Submit"
-                               )}
-                             </button>
+                              type="button"
+                              className="btn btn-warning"
+                              disabled={Number(totalAmount) <= 0 || isSubmitting}
+                              onClick={handleSubmitCollection}
+                            >
+                              {isSubmitting ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Submitting...
+                                </>
+                              ) : (
+                                "Submit"
+                              )}
+                            </button>
                           </div>
                         </div>
                       </div>
