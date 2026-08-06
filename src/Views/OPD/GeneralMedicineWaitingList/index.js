@@ -1631,7 +1631,18 @@ const GeneralMedicineWaitingList = () => {
 
   const [selectedTemplate, setSelectedTemplate] = useState("Select..");
   const [templateName, setTemplateName] = useState("");
-  const getToday = () => new Date().toISOString().split("T")[0];
+  const getToday = () => {
+    const today = new Date();
+    const localToday = new Date(
+      today.getTime() - today.getTimezoneOffset() * 60000,
+    );
+    return localToday.toISOString().split("T")[0];
+  };
+
+  const isPastDate = (dateValue) => {
+    if (!dateValue) return false;
+    return dateValue < getToday();
+  };
   const formatDateForDisplay = (value) => {
     if (!hasValue(value)) return "";
 
@@ -3190,6 +3201,17 @@ const GeneralMedicineWaitingList = () => {
       addError(
         "investigation",
         "Please select a valid investigation from the dropdown.",
+      );
+    }
+
+    const invalidInvestigationDateIndex = investigationItems.findIndex((item) =>
+      isPastDate(item.date),
+    );
+
+    if (invalidInvestigationDateIndex !== -1) {
+      addError(
+        "investigationDate",
+        `Investigation date cannot be in the past for row ${invalidInvestigationDateIndex + 1}.`,
       );
     }
 
@@ -5855,6 +5877,7 @@ const GeneralMedicineWaitingList = () => {
                                   <input
                                     type="date"
                                     className="form-control"
+                                    min={getToday()}
                                     value={item.date}
                                     onChange={(e) =>
                                       handleInvestigationItemChange(
