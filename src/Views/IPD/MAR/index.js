@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getRequest, postRequest } from '../../../service/apiService';
-import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT } from '../../../config/apiConfig';
+import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME, GET_MAR_MEDICINE_LIST, GET_MAR_ADMINISTRATION_LOG, SAVE_MAR_DETAILS } from '../../../config/apiConfig';
 import ConfirmationPopup from '../../../Components/ConfirmationPopup';
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
@@ -43,16 +43,32 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
   return createPortal(<div style={style}>{children}</div>, document.body);
 };
 
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function (c) {
+      return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 const MedicationModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
   const [activeView, setActiveView] = useState("medications"); // "medications" | "adverse"
 
   // ---------- State ----------
+  const [currentUserName, setCurrentUserName] = useState('');
+
   // Active medications (only those with stopDate === null)
   const [activeMeds, setActiveMeds] = useState([]);
   const [medLoading, setMedLoading] = useState(false);
   const [medSaving, setMedSaving] = useState(false);
   const [medStopping, setMedStopping] = useState(false);
+  const [marEntrySaving, setMarEntrySaving] = useState(false);
 
   const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id;
 
@@ -64,6 +80,7 @@ const MedicationModule = ({ selectedPatient }) => {
       if (res && Array.isArray(res.response)) {
         const mapped = res.response.map((item) => ({
           id: item.prescriptionId,
+          itemId: item.itemId,
           medicineName: item.itemName,
           route: item.routeName,
           dose: item.dose,
@@ -86,8 +103,90 @@ const MedicationModule = ({ selectedPatient }) => {
   };
 
   useEffect(() => {
+    const fetchUserData = async () => {
+      const username = localStorage.getItem("username") || sessionStorage.getItem("username");
+      if (!username) return;
+      try {
+        const res = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${username}`);
+        if (res && res.status === 200 && res.response) {
+          const docName = res.response.firstName
+            ? [res.response.firstName, res.response.middleName, res.response.lastName].filter(Boolean).join(" ")
+            : (res.response.name || res.response.userName || username);
+          setCurrentUserName(docName);
+        } else {
+          setCurrentUserName(username);
+        }
+      } catch (error) {
+        console.error("Error fetching logged-in user profile:", error);
+        setCurrentUserName(username);
+      }
+    };
+    fetchUserData();
+  }, []);
+
+  useEffect(() => {
     fetchActiveMeds();
   }, [inpatientId]);
+
+  // Dynamic MAR states
+  const [dynamicMarLogs, setDynamicMarLogs] = useState([]);
+  const [dynamicMarLogsLoading, setDynamicMarLogsLoading] = useState(false);
+  const [marMedicineList, setMarMedicineList] = useState([]);
+
+  const [logFilterItemId, setLogFilterItemId] = useState('');
+  const [marLogPage, setMarLogPage] = useState(0);
+  const [marLogSize, setMarLogSize] = useState(10);
+  const [marLogTotalElements, setMarLogTotalElements] = useState(0);
+  const [marLogTotalPages, setMarLogTotalPages] = useState(0);
+
+  const fetchMarMedicineList = async () => {
+    if (!inpatientId) return;
+    try {
+      const res = await getRequest(`${GET_MAR_MEDICINE_LIST}?inpatientId=${inpatientId}`);
+      if (res && res.status === 200 && Array.isArray(res.response)) {
+        setMarMedicineList(res.response);
+      } else {
+        setMarMedicineList([]);
+      }
+    } catch (error) {
+      console.error("Error fetching MAR medicine list:", error);
+      setMarMedicineList([]);
+    }
+  };
+
+  const fetchMarLogs = async () => {
+    if (!inpatientId) return;
+    setDynamicMarLogsLoading(true);
+    let url = `${GET_MAR_ADMINISTRATION_LOG}?inpatientId=${inpatientId}&page=${marLogPage}&size=${marLogSize}`;
+    if (logFilterItemId) {
+      url += `&itemId=${logFilterItemId}`;
+    }
+    try {
+      const res = await getRequest(url);
+      if (res && res.status === 200 && res.response && res.response.content) {
+        setDynamicMarLogs(res.response.content);
+        setMarLogTotalElements(res.response.totalElements || 0);
+        setMarLogTotalPages(res.response.totalPages || 0);
+      } else {
+        setDynamicMarLogs([]);
+        setMarLogTotalElements(0);
+        setMarLogTotalPages(0);
+      }
+    } catch (error) {
+      console.error("Error fetching MAR administration logs:", error);
+      setDynamicMarLogs([]);
+    } finally {
+      setDynamicMarLogsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchMarMedicineList();
+  }, [inpatientId]);
+
+  useEffect(() => {
+    fetchMarLogs();
+  }, [inpatientId, marLogPage, marLogSize, logFilterItemId]);
 
   // MAR administration logs (history)
   const [marLogs, setMarLogs] = useState([
@@ -423,7 +522,7 @@ const MedicationModule = ({ selectedPatient }) => {
       showConfirmationPopup(
         error?.message || "Failed to stop medication.",
         "danger",
-        () => {}
+        () => { }
       );
     } finally {
       setMedStopping(false);
@@ -431,14 +530,29 @@ const MedicationModule = ({ selectedPatient }) => {
   };
 
   // ---------- Handlers: View Logs ----------
-  const openLogsModal = (med) => {
+  const [specificMedLogs, setSpecificMedLogs] = useState([]);
+  const [specificMedLogsLoading, setSpecificMedLogsLoading] = useState(false);
+
+  const openLogsModal = async (med) => {
     setSelectedMedForAction(med);
     setShowLogsModal(true);
+    setSpecificMedLogs([]);
+    setSpecificMedLogsLoading(true);
+    try {
+      const url = `${GET_MAR_ADMINISTRATION_LOG}?inpatientId=${inpatientId}&itemId=${med.itemId}&page=0&size=100`;
+      const res = await getRequest(url);
+      if (res && res.status === 200 && res.response && res.response.content) {
+        setSpecificMedLogs(res.response.content);
+      } else {
+        setSpecificMedLogs([]);
+      }
+    } catch (error) {
+      console.error("Error fetching specific med logs:", error);
+      setSpecificMedLogs([]);
+    } finally {
+      setSpecificMedLogsLoading(false);
+    }
   };
-
-  const medLogs = selectedMedForAction
-    ? marLogs.filter(log => log.medicineName === selectedMedForAction.medicineName).sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime))
-    : [];
 
   // ---------- Handlers: MAR Entry ----------
   const toggleSelectMed = (medId) => {
@@ -452,21 +566,73 @@ const MedicationModule = ({ selectedPatient }) => {
       alert('Please select at least one medication.');
       return;
     }
+
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const tokenData = token ? parseJwt(token) : null;
+    const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || (tokenData ? tokenData.hospitalId : "");
+    const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId") || (tokenData ? tokenData.departmentId : "");
+
     const selectedMeds = activeMeds.filter(med => selectedMedIds.includes(med.id));
     const initialItems = selectedMeds.map(med => ({
       medId: med.id,
+      itemId: med.itemId,
       medicineName: med.medicineName,
       route: med.route,
       dose: med.dose,
       qty: 1,
       batch: '',
       expiry: '',
-      givenBy: '',
+      givenBy: currentUserName,
       remarks: '',
       dateTime: nowDateTimeLocal(),
+      batches: [],
+      loadingBatches: med.itemId ? true : false,
     }));
+
     setMarEntryItems(initialItems);
     setShowMarEntryModal(true);
+
+    selectedMeds.forEach((med) => {
+      if (!med.itemId) return;
+
+      getRequest(`${GET_STOCK_BATCHES_ITEM_WISE}/${med.itemId}?hospitalId=${hospitalId}&departmentId=${departmentId}`)
+        .then(res => {
+          let fetchedBatches = [];
+          let defaultBatch = '';
+          let defaultExpiry = '';
+
+          if (res && Array.isArray(res.response)) {
+            fetchedBatches = res.response;
+            if (fetchedBatches.length > 0) {
+              defaultBatch = fetchedBatches[0].batchName || '';
+              defaultExpiry = fetchedBatches[0].doe || '';
+            }
+          }
+
+          setMarEntryItems(prevItems => {
+            const updated = [...prevItems];
+            const itemIndex = updated.findIndex(item => item.medId === med.id);
+            if (itemIndex !== -1) {
+              updated[itemIndex].batches = fetchedBatches;
+              updated[itemIndex].batch = defaultBatch;
+              updated[itemIndex].expiry = defaultExpiry;
+              updated[itemIndex].loadingBatches = false;
+            }
+            return updated;
+          });
+        })
+        .catch(err => {
+          console.error("Error fetching batches for item ID " + med.itemId, err);
+          setMarEntryItems(prevItems => {
+            const updated = [...prevItems];
+            const itemIndex = updated.findIndex(item => item.medId === med.id);
+            if (itemIndex !== -1) {
+              updated[itemIndex].loadingBatches = false;
+            }
+            return updated;
+          });
+        });
+    });
   };
 
   const handleMarEntryChange = (index, field, value) => {
@@ -475,30 +641,49 @@ const MedicationModule = ({ selectedPatient }) => {
     setMarEntryItems(updated);
   };
 
-  const saveMarEntries = () => {
+  const saveMarEntries = async () => {
     for (let item of marEntryItems) {
       if (!item.batch || !item.expiry || !item.givenBy) {
         alert('Please fill Batch, Expiry, and Given By for all selected medications.');
         return;
       }
     }
-    const newLogs = marEntryItems.map(item => ({
-      id: Date.now() + Math.random(),
-      dateTime: item.dateTime,
-      medicineName: item.medicineName,
-      route: item.route,
-      dose: item.dose,
-      qty: item.qty,
-      batch: item.batch,
-      expiry: item.expiry,
-      givenBy: item.givenBy,
-      total: 0,
-      remarks: item.remarks,
+
+    setMarEntrySaving(true);
+    const payload = marEntryItems.map(item => ({
+      prescriptionId: Number(item.medId) || 0,
+      itemId: Number(item.itemId) || 0,
+      dateTime: item.dateTime ? new Date(item.dateTime).toISOString() : new Date().toISOString(),
+      requestQty: Number(item.qty) || 0,
+      batchNo: String(item.batch || ""),
+      expiryDate: item.expiry ? new Date(item.expiry).toISOString().split('T')[0] : "",
+      givenBy: String(item.givenBy || ""),
+      remark: String(item.remarks || ""),
+      inpatientId: Number(inpatientId) || 0
     }));
-    setMarLogs([...newLogs, ...marLogs]);
-    setShowMarEntryModal(false);
-    setSelectedMedIds([]);
-    setMarEntryItems([]);
+
+    try {
+      const res = await postRequest(SAVE_MAR_DETAILS, payload);
+      showConfirmationPopup(
+        res?.message || "MAR entries saved successfully!",
+        "success",
+        () => {
+          fetchMarLogs();
+        }
+      );
+      setShowMarEntryModal(false);
+      setSelectedMedIds([]);
+      setMarEntryItems([]);
+    } catch (error) {
+      console.error("Error saving MAR entries:", error);
+      showConfirmationPopup(
+        error?.message || "Failed to save MAR entries.",
+        "danger",
+        () => { }
+      );
+    } finally {
+      setMarEntrySaving(false);
+    }
   };
 
   // ---------- Handlers: Adverse Events ----------
@@ -518,13 +703,9 @@ const MedicationModule = ({ selectedPatient }) => {
     });
   };
 
-  // Filtered MAR logs
-  const filteredLogs = marLogs
-    .filter(log => logFilterMedicine === '' || log.medicineName === logFilterMedicine)
-    .sort((a, b) => new Date(b.dateTime) - new Date(a.dateTime));
-
   // Active medicine names for dropdowns
   const activeMedicineNames = [...new Set(activeMeds.map(m => m.medicineName))];
+
 
   return (
     <div>
@@ -634,12 +815,15 @@ const MedicationModule = ({ selectedPatient }) => {
               <div style={{ width: '250px' }}>
                 <select
                   className="form-select form-select-sm"
-                  value={logFilterMedicine}
-                  onChange={(e) => setLogFilterMedicine(e.target.value)}
+                  value={logFilterItemId}
+                  onChange={(e) => {
+                    setLogFilterItemId(e.target.value);
+                    setMarLogPage(0);
+                  }}
                 >
                   <option value="">All (active medications only)</option>
-                  {activeMedicineNames.map(name => (
-                    <option key={name} value={name}>{name}</option>
+                  {marMedicineList.map(med => (
+                    <option key={med.itemId} value={med.itemId}>{med.nomenclature}</option>
                   ))}
                 </select>
               </div>
@@ -662,25 +846,75 @@ const MedicationModule = ({ selectedPatient }) => {
                     </tr>
                   </thead>
                   <tbody>
-                    {filteredLogs.map(log => (
-                      <tr key={log.id}>
-                        <td>{new Date(log.dateTime).toLocaleString()}</td>
-                        <td>{log.medicineName}</td>
-                        <td>{log.route}</td>
-                        <td>{log.dose}</td>
-                        <td>{log.qty}</td>
-                        <td>{log.batch}</td>
-                        <td>{log.expiry}</td>
-                        <td>{log.givenBy}</td>
-                        <td>{log.total}</td>
-                        <td>{log.remarks || '—'}</td>
+                    {dynamicMarLogsLoading ? (
+                      <tr>
+                        <td colSpan="10" className="text-center py-3">
+                          <div className="spinner-border spinner-border-sm text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <span className="ms-2">Loading logs...</span>
+                        </td>
                       </tr>
-                    ))}
-                    {filteredLogs.length === 0 && (
+                    ) : dynamicMarLogs.length > 0 ? (
+                      dynamicMarLogs.map((log, index) => (
+                        <tr key={index}>
+                          <td>{log.administrationTime ? new Date(log.administrationTime).toLocaleString() : ''}</td>
+                          <td>{log.nomenclature}</td>
+                          <td>{log.routeName}</td>
+                          <td>{log.dose}</td>
+                          <td>{log.administeredQty}</td>
+                          <td>{log.batchNo}</td>
+                          <td>{log.expiryDate}</td>
+                          <td>{log.administeredBy}</td>
+                          <td>{/* API doesn't provide total */}—</td>
+                          <td>{log.remarks || '—'}</td>
+                        </tr>
+                      ))
+                    ) : (
                       <tr><td colSpan="10" className="text-center">No administration records found.</td></tr>
                     )}
                   </tbody>
                 </table>
+              </div>
+              
+              {/* Pagination Controls */}
+              <div className="d-flex justify-content-between align-items-center mt-3 p-2 border-top">
+                <div className="d-flex align-items-center">
+                  <span className="me-2" style={{ fontSize: '0.85rem' }}>Show:</span>
+                  <select
+                    className="form-select form-select-sm"
+                    style={{ width: 'auto' }}
+                    value={marLogSize}
+                    onChange={(e) => {
+                      setMarLogSize(Number(e.target.value));
+                      setMarLogPage(0);
+                    }}
+                  >
+                    <option value="5">5</option>
+                    <option value="10">10</option>
+                    <option value="15">15</option>
+                    <option value="20">20</option>
+                  </select>
+                </div>
+                <div className="d-flex align-items-center">
+                  <button
+                    className="btn btn-sm btn-outline-secondary me-2"
+                    disabled={marLogPage === 0}
+                    onClick={() => setMarLogPage(p => p - 1)}
+                  >
+                    Previous
+                  </button>
+                  <span className="me-2" style={{ fontSize: '0.85rem' }}>
+                    Page {marLogPage + 1} of {marLogTotalPages || 1}
+                  </span>
+                  <button
+                    className="btn btn-sm btn-outline-secondary"
+                    disabled={marLogPage >= marLogTotalPages - 1 || marLogTotalPages === 0}
+                    onClick={() => setMarLogPage(p => p + 1)}
+                  >
+                    Next
+                  </button>
+                </div>
               </div>
             </div>
           </div>
@@ -802,7 +1036,7 @@ const MedicationModule = ({ selectedPatient }) => {
                       type="text"
                       className="form-control form-control-sm"
                       value={newMed.dose}
-                      onChange={e => setNewMed({...newMed, dose: e.target.value})}
+                      onChange={e => setNewMed({ ...newMed, dose: e.target.value })}
                       placeholder="e.g., 500 mg"
                     />
                   </div>
@@ -834,7 +1068,7 @@ const MedicationModule = ({ selectedPatient }) => {
                       type="datetime-local"
                       className="form-control form-control-sm"
                       value={newMed.startDate}
-                      onChange={e => setNewMed({...newMed, startDate: e.target.value})}
+                      onChange={e => setNewMed({ ...newMed, startDate: e.target.value })}
                     />
                   </div>
                   <div className="col-md-4">
@@ -843,7 +1077,7 @@ const MedicationModule = ({ selectedPatient }) => {
                       type="number"
                       className="form-control form-control-sm"
                       value={newMed.totalDays}
-                      onChange={e => setNewMed({...newMed, totalDays: e.target.value})}
+                      onChange={e => setNewMed({ ...newMed, totalDays: e.target.value })}
                       placeholder="e.g., 7"
                       min="1"
                     />
@@ -854,7 +1088,7 @@ const MedicationModule = ({ selectedPatient }) => {
                       type="text"
                       className="form-control form-control-sm"
                       value={newMed.administeredBy}
-                      onChange={e => setNewMed({...newMed, administeredBy: e.target.value})}
+                      onChange={e => setNewMed({ ...newMed, administeredBy: e.target.value })}
                       placeholder="Doctor name"
                     />
                   </div>
@@ -912,17 +1146,29 @@ const MedicationModule = ({ selectedPatient }) => {
                       <tr><th>Date & Time</th><th>Dose</th><th>Qty</th><th>Batch</th><th>Given By</th><th>Remarks</th></tr>
                     </thead>
                     <tbody>
-                      {medLogs.map(log => (
-                        <tr key={log.id}>
-                          <td>{new Date(log.dateTime).toLocaleString()}</td>
+                      {specificMedLogsLoading ? (
+                        <tr>
+                          <td colSpan="6" className="text-center py-3">
+                            <div className="spinner-border spinner-border-sm text-info" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <span className="ms-2">Loading records...</span>
+                          </td>
+                        </tr>
+                      ) : specificMedLogs.length > 0 ? (
+                        specificMedLogs.map((log, index) => (
+                          <tr key={index}>
+                            <td>{log.administrationTime ? new Date(log.administrationTime).toLocaleString() : ''}</td>
                           <td>{log.dose}</td>
-                          <td>{log.qty}</td>
-                          <td>{log.batch}</td>
-                          <td>{log.givenBy}</td>
+                            <td>{log.administeredQty}</td>
+                            <td>{log.batchNo}</td>
+                            <td>{log.administeredBy}</td>
                           <td>{log.remarks || '—'}</td>
                         </tr>
-                      ))}
-                      {medLogs.length === 0 && <tr><td colSpan="6" className="text-center">No administration records.</td></tr>}
+                        ))
+                      ) : (
+                        <tr><td colSpan="6" className="text-center">No administration records.</td></tr>
+                      )}
                     </tbody>
                   </table>
                 </div>
@@ -992,7 +1238,38 @@ const MedicationModule = ({ selectedPatient }) => {
                             <td>{item.medicineName}</td><td>{item.route}</td><td>{item.dose}</td>
                             <td><input type="datetime-local" className="form-control form-control-sm" value={item.dateTime} onChange={e => handleMarEntryChange(idx, 'dateTime', e.target.value)} /></td>
                             <td><input type="number" className="form-control form-control-sm" value={item.qty} onChange={e => handleMarEntryChange(idx, 'qty', parseInt(e.target.value) || 0)} min="1" /></td>
-                            <td><input type="text" className="form-control form-control-sm" value={item.batch} onChange={e => handleMarEntryChange(idx, 'batch', e.target.value)} placeholder="Batch" /></td>
+                            <td>
+                              {item.loadingBatches ? (
+                                <div className="d-flex align-items-center">
+                                  <span className="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+                                  <span className="small text-muted">Loading...</span>
+                                </div>
+                              ) : item.batches && item.batches.length > 0 ? (
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={item.batch}
+                                  onChange={e => {
+                                    const selectedBatch = e.target.value;
+                                    const batchObj = item.batches.find(b => b.batchName === selectedBatch);
+                                    const expiryDate = batchObj ? batchObj.doe : '';
+                                    handleMarEntryChange(idx, 'batch', selectedBatch);
+                                    handleMarEntryChange(idx, 'expiry', expiryDate);
+                                  }}
+                                >
+                                  {item.batches.map((b, bIdx) => (
+                                    <option key={bIdx} value={b.batchName}>{b.batchName}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={item.batch}
+                                  onChange={e => handleMarEntryChange(idx, 'batch', e.target.value)}
+                                  placeholder="Batch"
+                                />
+                              )}
+                            </td>
                             <td><input type="date" className="form-control form-control-sm" value={item.expiry} onChange={e => handleMarEntryChange(idx, 'expiry', e.target.value)} /></td>
                             <td><input type="text" className="form-control form-control-sm" value={item.givenBy} onChange={e => handleMarEntryChange(idx, 'givenBy', e.target.value)} placeholder="Nurse name" /></td>
                             <td><input type="text" className="form-control form-control-sm" value={item.remarks} onChange={e => handleMarEntryChange(idx, 'remarks', e.target.value)} /></td>
@@ -1004,7 +1281,20 @@ const MedicationModule = ({ selectedPatient }) => {
                 </div>
                 <div className="modal-footer">
                   <button className="btn btn-secondary btn-sm" onClick={() => setShowMarEntryModal(false)}>Cancel</button>
-                  <button className="btn btn-success btn-sm" onClick={saveMarEntries}>Save All Entries</button>
+                  <button
+                    className="btn btn-success btn-sm"
+                    onClick={saveMarEntries}
+                    disabled={marEntrySaving || marEntryItems.some(item => item.loadingBatches)}
+                  >
+                    {marEntrySaving ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Saving...
+                      </>
+                    ) : (
+                      "Save All Entries"
+                    )}
+                  </button>
                 </div>
               </div>
             </div>
@@ -1024,28 +1314,28 @@ const MedicationModule = ({ selectedPatient }) => {
               <div className="modal-body">
                 <div className="mb-2">
                   <label className="form-label small">Medicine Name *</label>
-                  <select className="form-select form-select-sm" value={newAdverse.medicineName} onChange={e => setNewAdverse({...newAdverse, medicineName: e.target.value})}>
+                  <select className="form-select form-select-sm" value={newAdverse.medicineName} onChange={e => setNewAdverse({ ...newAdverse, medicineName: e.target.value })}>
                     <option value="">Select</option>
                     {activeMedicineNames.map(name => <option key={name} value={name}>{name}</option>)}
                   </select>
                 </div>
                 <div className="mb-2">
                   <label className="form-label small">Reaction *</label>
-                  <input type="text" className="form-control form-control-sm" value={newAdverse.reaction} onChange={e => setNewAdverse({...newAdverse, reaction: e.target.value})} />
+                  <input type="text" className="form-control form-control-sm" value={newAdverse.reaction} onChange={e => setNewAdverse({ ...newAdverse, reaction: e.target.value })} />
                 </div>
                 <div className="mb-2">
                   <label className="form-label small">Severity *</label>
-                  <select className="form-select form-select-sm" value={newAdverse.severity} onChange={e => setNewAdverse({...newAdverse, severity: e.target.value})}>
+                  <select className="form-select form-select-sm" value={newAdverse.severity} onChange={e => setNewAdverse({ ...newAdverse, severity: e.target.value })}>
                     <option value="">Select</option><option>Mild</option><option>Moderate</option><option>Severe</option>
                   </select>
                 </div>
                 <div className="mb-2">
                   <label className="form-label small">Action Taken *</label>
-                  <input type="text" className="form-control form-control-sm" value={newAdverse.actionTaken} onChange={e => setNewAdverse({...newAdverse, actionTaken: e.target.value})} />
+                  <input type="text" className="form-control form-control-sm" value={newAdverse.actionTaken} onChange={e => setNewAdverse({ ...newAdverse, actionTaken: e.target.value })} />
                 </div>
                 <div className="mb-2">
                   <label className="form-label small">Reported By *</label>
-                  <input type="text" className="form-control form-control-sm" value={newAdverse.reportedBy} onChange={e => setNewAdverse({...newAdverse, reportedBy: e.target.value})} />
+                  <input type="text" className="form-control form-control-sm" value={newAdverse.reportedBy} onChange={e => setNewAdverse({ ...newAdverse, reportedBy: e.target.value })} />
                 </div>
               </div>
               <div className="modal-footer">
