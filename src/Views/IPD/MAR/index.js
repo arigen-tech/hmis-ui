@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getRequest, postRequest } from '../../../service/apiService';
-import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT } from '../../../config/apiConfig';
+import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME } from '../../../config/apiConfig';
 import ConfirmationPopup from '../../../Components/ConfirmationPopup';
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
@@ -43,11 +43,26 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
   return createPortal(<div style={style}>{children}</div>, document.body);
 };
 
+const parseJwt = (token) => {
+  try {
+    const base64Url = token.split('.')[1];
+    const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+    const jsonPayload = decodeURIComponent(atob(base64).split('').map(function(c) {
+        return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+    }).join(''));
+    return JSON.parse(jsonPayload);
+  } catch (e) {
+    return null;
+  }
+};
+
 const MedicationModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
   const [activeView, setActiveView] = useState("medications"); // "medications" | "adverse"
 
   // ---------- State ----------
+  const [currentUserName, setCurrentUserName] = useState('');
+
   // Active medications (only those with stopDate === null)
   const [activeMeds, setActiveMeds] = useState([]);
   const [medLoading, setMedLoading] = useState(false);
@@ -64,6 +79,7 @@ const MedicationModule = ({ selectedPatient }) => {
       if (res && Array.isArray(res.response)) {
         const mapped = res.response.map((item) => ({
           id: item.prescriptionId,
+          itemId: item.itemId,
           medicineName: item.itemName,
           route: item.routeName,
           dose: item.dose,
@@ -84,6 +100,28 @@ const MedicationModule = ({ selectedPatient }) => {
       setMedLoading(false);
     }
   };
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const username = localStorage.getItem("username") || sessionStorage.getItem("username");
+      if (!username) return;
+      try {
+        const res = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${username}`);
+        if (res && res.status === 200 && res.response) {
+          const docName = res.response.firstName
+            ? [res.response.firstName, res.response.middleName, res.response.lastName].filter(Boolean).join(" ")
+            : (res.response.name || res.response.userName || username);
+          setCurrentUserName(docName);
+        } else {
+          setCurrentUserName(username);
+        }
+      } catch (error) {
+        console.error("Error fetching logged-in user profile:", error);
+        setCurrentUserName(username);
+      }
+    };
+    fetchUserData();
+  }, []);
 
   useEffect(() => {
     fetchActiveMeds();
@@ -452,21 +490,73 @@ const MedicationModule = ({ selectedPatient }) => {
       alert('Please select at least one medication.');
       return;
     }
+
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const tokenData = token ? parseJwt(token) : null;
+    const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId") || (tokenData ? tokenData.hospitalId : "");
+    const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId") || (tokenData ? tokenData.departmentId : "");
+
     const selectedMeds = activeMeds.filter(med => selectedMedIds.includes(med.id));
     const initialItems = selectedMeds.map(med => ({
       medId: med.id,
+      itemId: med.itemId,
       medicineName: med.medicineName,
       route: med.route,
       dose: med.dose,
       qty: 1,
       batch: '',
       expiry: '',
-      givenBy: '',
+      givenBy: currentUserName,
       remarks: '',
       dateTime: nowDateTimeLocal(),
+      batches: [],
+      loadingBatches: med.itemId ? true : false,
     }));
+
     setMarEntryItems(initialItems);
     setShowMarEntryModal(true);
+
+    selectedMeds.forEach((med) => {
+      if (!med.itemId) return;
+
+      getRequest(`${GET_STOCK_BATCHES_ITEM_WISE}/${med.itemId}?hospitalId=${hospitalId}&departmentId=${departmentId}`)
+        .then(res => {
+          let fetchedBatches = [];
+          let defaultBatch = '';
+          let defaultExpiry = '';
+
+          if (res && Array.isArray(res.response)) {
+            fetchedBatches = res.response;
+            if (fetchedBatches.length > 0) {
+              defaultBatch = fetchedBatches[0].batchName || '';
+              defaultExpiry = fetchedBatches[0].doe || '';
+            }
+          }
+
+          setMarEntryItems(prevItems => {
+            const updated = [...prevItems];
+            const itemIndex = updated.findIndex(item => item.medId === med.id);
+            if (itemIndex !== -1) {
+              updated[itemIndex].batches = fetchedBatches;
+              updated[itemIndex].batch = defaultBatch;
+              updated[itemIndex].expiry = defaultExpiry;
+              updated[itemIndex].loadingBatches = false;
+            }
+            return updated;
+          });
+        })
+        .catch(err => {
+          console.error("Error fetching batches for item ID " + med.itemId, err);
+          setMarEntryItems(prevItems => {
+            const updated = [...prevItems];
+            const itemIndex = updated.findIndex(item => item.medId === med.id);
+            if (itemIndex !== -1) {
+              updated[itemIndex].loadingBatches = false;
+            }
+            return updated;
+          });
+        });
+    });
   };
 
   const handleMarEntryChange = (index, field, value) => {
@@ -992,7 +1082,38 @@ const MedicationModule = ({ selectedPatient }) => {
                             <td>{item.medicineName}</td><td>{item.route}</td><td>{item.dose}</td>
                             <td><input type="datetime-local" className="form-control form-control-sm" value={item.dateTime} onChange={e => handleMarEntryChange(idx, 'dateTime', e.target.value)} /></td>
                             <td><input type="number" className="form-control form-control-sm" value={item.qty} onChange={e => handleMarEntryChange(idx, 'qty', parseInt(e.target.value) || 0)} min="1" /></td>
-                            <td><input type="text" className="form-control form-control-sm" value={item.batch} onChange={e => handleMarEntryChange(idx, 'batch', e.target.value)} placeholder="Batch" /></td>
+                            <td>
+                              {item.loadingBatches ? (
+                                <div className="d-flex align-items-center">
+                                  <span className="spinner-border spinner-border-sm text-primary me-2" role="status" aria-hidden="true"></span>
+                                  <span className="small text-muted">Loading...</span>
+                                </div>
+                              ) : item.batches && item.batches.length > 0 ? (
+                                <select
+                                  className="form-select form-select-sm"
+                                  value={item.batch}
+                                  onChange={e => {
+                                    const selectedBatch = e.target.value;
+                                    const batchObj = item.batches.find(b => b.batchName === selectedBatch);
+                                    const expiryDate = batchObj ? batchObj.doe : '';
+                                    handleMarEntryChange(idx, 'batch', selectedBatch);
+                                    handleMarEntryChange(idx, 'expiry', expiryDate);
+                                  }}
+                                >
+                                  {item.batches.map((b, bIdx) => (
+                                    <option key={bIdx} value={b.batchName}>{b.batchName}</option>
+                                  ))}
+                                </select>
+                              ) : (
+                                <input
+                                  type="text"
+                                  className="form-control form-control-sm"
+                                  value={item.batch}
+                                  onChange={e => handleMarEntryChange(idx, 'batch', e.target.value)}
+                                  placeholder="Batch"
+                                />
+                              )}
+                            </td>
                             <td><input type="date" className="form-control form-control-sm" value={item.expiry} onChange={e => handleMarEntryChange(idx, 'expiry', e.target.value)} /></td>
                             <td><input type="text" className="form-control form-control-sm" value={item.givenBy} onChange={e => handleMarEntryChange(idx, 'givenBy', e.target.value)} placeholder="Nurse name" /></td>
                             <td><input type="text" className="form-control form-control-sm" value={item.remarks} onChange={e => handleMarEntryChange(idx, 'remarks', e.target.value)} /></td>
@@ -1004,7 +1125,7 @@ const MedicationModule = ({ selectedPatient }) => {
                 </div>
                 <div className="modal-footer">
                   <button className="btn btn-secondary btn-sm" onClick={() => setShowMarEntryModal(false)}>Cancel</button>
-                  <button className="btn btn-success btn-sm" onClick={saveMarEntries}>Save All Entries</button>
+                  <button className="btn btn-success btn-sm" onClick={saveMarEntries} disabled={marEntryItems.some(item => item.loadingBatches)}>Save All Entries</button>
                 </div>
               </div>
             </div>
