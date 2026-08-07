@@ -386,7 +386,10 @@ const PrescriptionList = () => {
 
   // Open the OPD / Dispensary Issue view for the selected prescription (in-page, no redirect)
   const handleIssueClick = (record, e) => {
-    e.stopPropagation();
+    // If event exists and it's triggered by the close button, we ignore it
+    if (e && e.target && e.target.closest && e.target.closest('.btn-close-prescription')) {
+      return;
+    }
     setSelectedPrescription(record);
     setPatientInfo({
       uhid: record.uhid || "",
@@ -408,7 +411,7 @@ const PrescriptionList = () => {
   };
 
   const handleCloseClick = (record, e) => {
-    e.stopPropagation();
+    e.stopPropagation(); // Prevent row click
     showConfirmationPopup(
       `Are you sure you want to close prescription ${record.prescriptionNo}?`,
       "info",
@@ -977,14 +980,17 @@ const PrescriptionList = () => {
                       <th>Age/Gender</th>
                       <th>Department</th>
                       <th>Doctor Name</th>
-                      <th className="text-center">Action</th>
                       <th className="text-center">Close</th>
                     </tr>
                   </thead>
                   <tbody>
                     {currentItems.length > 0 ? (
                       currentItems.map((item) => (
-                        <tr key={item.prescriptionId}>
+                        <tr 
+                          key={item.prescriptionId} 
+                          onClick={(e) => handleIssueClick(item, e)}
+                          style={{ cursor: "pointer" }}
+                        >
                           <td>{item.prescriptionNo || '-'}</td>
                           <td>
                             {item.prescriptionDate
@@ -999,17 +1005,7 @@ const PrescriptionList = () => {
                           <td className="text-center">
                             <button
                               type="button"
-                              className="btn btn-sm btn-primary"
-                              onClick={(e) => handleIssueClick(item, e)}
-                              title="Issue Prescription"
-                            >
-                              <i className="fa fa-pencil"></i>
-                            </button>
-                          </td>
-                          <td className="text-center">
-                            <button
-                              type="button"
-                              className="btn btn-sm btn-danger"
+                              className="btn btn-sm btn-danger btn-close-prescription"
                               onClick={(e) => handleCloseClick(item, e)}
                               disabled={isClosing}
                               title="Close Prescription"
@@ -1021,7 +1017,7 @@ const PrescriptionList = () => {
                       ))
                     ) : (
                       <tr>
-                        <td colSpan="9" className="text-center">No records found</td>
+                        <td colSpan="8" className="text-center">No records found</td>
                       </tr>
                     )}
                   </tbody>
