@@ -789,4 +789,6 @@ export const SAVE_IPD_ADVANCE_COLLECTION = '/ipd/saveAdvanceCollection';
 export const GET_MEDICATION_TREATMENT_BY_INPATIENT_ID = '/ipd/getMedicationTreatmentByInpatientId';
 export const SAVE_IPD_MEDICATION_TREATMENT = '/ipd/saveMedicationTreatment';
 export const STOP_IPD_MEDICATION_TREATMENT = '/ipd/stopMedicationTreatment';
-
+export const GET_MAR_MEDICINE_LIST = '/ipd/getMarMedicineList';
+export const GET_MAR_ADMINISTRATION_LOG = '/ipd/getMarAdministrationLog';
+export const SAVE_MAR_DETAILS = '/ipd/saveMarDetails';
