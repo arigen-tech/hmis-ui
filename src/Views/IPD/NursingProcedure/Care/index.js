@@ -224,17 +224,21 @@ const NursingCareModule = () => {
     remarkText: '',
   });
 
-  // New Consumable form
-  const [newConsumable, setNewConsumable] = useState({
+  // Empty shape for the single-row builder used in the "no template" flow.
+  const emptyConsumableForm = {
     item: '',
     uom: '',
     batch: '',
     expiry: '',
-    qty: 1,
+    qty: '',
     usedBy: '',
     dateTime: '',
-    procedureRef: '', // can be empty
-  });
+    procedureRef: '',
+  };
+
+  // New Consumable form (used both for the single-row builder and as the
+  // staging area before a row gets pushed into `manualItems`)
+  const [newConsumable, setNewConsumable] = useState({ ...emptyConsumableForm });
 
   // Template form for creating/editing
   const [templateForm, setTemplateForm] = useState({
@@ -251,6 +255,15 @@ const NursingCareModule = () => {
   // We'll implement: In new consumable modal, there is a dropdown to select a template. When selected, it will generate a list of consumable entries (one for each item in template). We'll then allow user to edit quantities and other fields for each item.
   // So we need a dynamic list of consumable entries inside the modal.
   const [templateItems, setTemplateItems] = useState([]); // array of {item, qty, batch, expiry, usedBy, dateTime, procedureRef, remarks} for each line
+
+  // When NO template is selected, the user can still add several consumable
+  // rows before finally saving. Each "+ Add Row" click pushes the current
+  // `newConsumable` form into this list, which is rendered as a table below
+  // the form (mirroring the template table) so the user can review/remove
+  // rows before committing everything with "Save All". Clicking a row in
+  // that table pulls it back out of the list and into the form so the user
+  // can edit it, then "+ Add Row" puts it back in.
+  const [manualItems, setManualItems] = useState([]);
 
   // Helper: get current datetime-local string
   const nowDateTimeLocal = () => {
@@ -314,43 +327,80 @@ const NursingCareModule = () => {
     });
   };
 
-  // Add single consumable
-  const addSingleConsumable = () => {
-    const { item, uom, batch, expiry, qty, usedBy, dateTime, procedureRef } = newConsumable;
-    if (!item || !qty || !usedBy || !dateTime) {
-      alert('Please fill all required fields (Item, Quantity, Used By, Date/Time).');
-      return;
-    }
-    if (!batch) {
-      alert('Please select a batch.');
-      return;
-    }
-    const newEntry = {
-      id: Date.now(),
+  // Reset the whole "Add Consumable" modal back to its default state
+  const resetConsumableModal = () => {
+    setNewConsumable({ ...emptyConsumableForm });
+    setTemplateItems([]);
+    setManualItems([]);
+    setSelectedTemplateId('');
+  };
+
+  // Push the current single-entry form into the `manualItems` staging list
+  // so the user can build up multiple rows without a template. No validation
+  // here — whatever is currently in the form (even if partially empty) gets
+  // added as a row, and the form is fully cleared afterwards.
+  const addManualRow = () => {
+    const { item, qty, batch, expiry, uom, usedBy, dateTime, procedureRef } = newConsumable;
+    const row = {
+      rowId: Date.now() + Math.random(),
       item,
       qty,
-      procedureRef: procedureRef || null,
-      dateTime,
-      usedBy,
       batch,
       expiry,
-      remarks: '—',
+      uom,
+      usedBy,
+      dateTime,
+      procedureRef: procedureRef || '',
+      remarks: '',
     };
-    setConsumables([...consumables, newEntry]);
-    // Reset form or keep it for next entry? We'll close modal.
-    setShowAddConsumableModal(false);
+    setManualItems([...manualItems, row]);
+
+    // Fully clear the form so the next row starts blank.
+    setNewConsumable({ ...emptyConsumableForm });
+  };
+
+  // Remove a row from the manual staging list before saving
+  const removeManualRow = (rowId) => {
+    setManualItems(manualItems.filter(r => r.rowId !== rowId));
+  };
+
+  // Clicking a staged row pulls it back into the form for editing — remove
+  // it from the table and populate the inputs with its values. The user can
+  // then tweak it and click "+ Add Row" again to put it back in the list.
+  const editManualRow = (row) => {
     setNewConsumable({
-      item: '',
-      uom: '',
-      batch: '',
-      expiry: '',
-      qty: 1,
-      usedBy: defaultUsedBy,
-      dateTime: nowDateTimeLocal(),
-      procedureRef: '',
+      item: row.item,
+      uom: row.uom || uomMap[row.item] || '',
+      batch: row.batch,
+      expiry: row.expiry,
+      qty: row.qty,
+      usedBy: row.usedBy,
+      dateTime: row.dateTime,
+      procedureRef: row.procedureRef || '',
     });
-    setTemplateItems([]);
-    setSelectedTemplateId('');
+    removeManualRow(row.rowId);
+  };
+
+  // Commit every row in `manualItems` to the real consumables list
+  const saveManualItems = () => {
+    if (manualItems.length === 0) {
+      alert('Add at least one row before saving.');
+      return;
+    }
+    const newEntries = manualItems.map(row => ({
+      id: Date.now() + Math.random(),
+      item: row.item,
+      qty: row.qty,
+      procedureRef: row.procedureRef || null,
+      dateTime: row.dateTime,
+      usedBy: row.usedBy,
+      batch: row.batch,
+      expiry: row.expiry,
+      remarks: row.remarks || '—',
+    }));
+    setConsumables([...consumables, ...newEntries]);
+    setShowAddConsumableModal(false);
+    resetConsumableModal();
   };
 
   // Add multiple items from template
@@ -379,18 +429,7 @@ const NursingCareModule = () => {
     }));
     setConsumables([...consumables, ...newEntries]);
     setShowAddConsumableModal(false);
-    setNewConsumable({
-      item: '',
-      uom: '',
-      batch: '',
-      expiry: '',
-      qty: 1,
-      usedBy: defaultUsedBy,
-      dateTime: nowDateTimeLocal(),
-      procedureRef: '',
-    });
-    setTemplateItems([]);
-    setSelectedTemplateId('');
+    resetConsumableModal();
   };
 
   // Apply template: fill templateItems array
@@ -408,6 +447,8 @@ const NursingCareModule = () => {
       remarks: '',
     }));
     setTemplateItems(items);
+    // Selecting a template supersedes any manual rows already staged
+    setManualItems([]);
   };
 
   // Update a template item row
@@ -496,6 +537,31 @@ const NursingCareModule = () => {
   // ---------- Render Helper for Procedure Remarks Tooltip ----------
   // We'll use title attribute for tooltip
 
+  // Shared style for the two "side" modals (Add Consumable / Manage Templates).
+  // `overflowY: 'auto'` + a bounded `maxHeight` on the dialog is what stops
+  // the bottom rows of a long table from being clipped/hidden behind the
+  // page's sidebar — the modal now scrolls internally instead of overflowing
+  // past the viewport.
+  const sideModalOverlayStyle = {
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    zIndex: 1040,
+    overflowY: 'auto',
+    display: 'flex',
+    justifyContent: 'flex-end',
+    alignItems: 'center',
+    paddingLeft: '9rem', // extra gap from the right edge
+  };
+
+  const sideModalContentStyle = {
+    maxHeight: '90vh',
+    display: 'flex',
+    flexDirection: 'column',
+  };
+
+  const sideModalBodyStyle = {
+    overflowY: 'auto',
+  };
+
   // ---------- Component Return ----------
   return (
     <div>
@@ -575,12 +641,9 @@ const NursingCareModule = () => {
           <div className="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
             <strong>Consumable List</strong>
             <button className="btn btn-sm btn-light" onClick={() => {
-              setNewConsumable({
-                ...newConsumable,
-                dateTime: nowDateTimeLocal(),
-                usedBy: defaultUsedBy,
-              });
+              setNewConsumable({ ...emptyConsumableForm, dateTime: nowDateTimeLocal(), usedBy: defaultUsedBy });
               setTemplateItems([]);
+              setManualItems([]);
               setSelectedTemplateId('');
               setShowAddConsumableModal(true);
             }}>
@@ -694,28 +757,19 @@ const NursingCareModule = () => {
       )}
 
       {/* ─── ADD CONSUMABLE MODAL ─── */}
-    {/* ─── ADD CONSUMABLE MODAL ─── */}
-{showAddConsumableModal && (
-  <div
-    className="modal show d-block"
-    tabIndex="-1"
-    style={{
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      zIndex: 1040,
-      overflowY: 'auto',
-      display: 'flex',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-      paddingLeft: '5rem' // extra gap from the right edge
-    }}
-  >
-    <div className="modal-dialog modal-lg modal-dialog-centered" style={{ maxWidth: '800px' }}>
-            <div className="modal-content">
+      {showAddConsumableModal && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={sideModalOverlayStyle}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered" style={{ maxWidth: '900px' }}>
+            <div className="modal-content" style={sideModalContentStyle}>
               <div className="modal-header bg-secondary text-white">
                 <h5 className="modal-title">New Consumable Entry</h5>
-                <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddConsumableModal(false)}></button>
+                <button type="button" className="btn-close btn-close-white" onClick={() => { setShowAddConsumableModal(false); resetConsumableModal(); }}></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body" style={sideModalBodyStyle}>
                 {/* Template selection */}
                 <div className="row g-2 mb-3">
                   <div className="col-md-6">
@@ -733,7 +787,7 @@ const NursingCareModule = () => {
                         }
                       }}
                     >
-                      <option value="">-- None --</option>
+                      <option value="">-- None (build my own rows) --</option>
                       {templates.map(t => (
                         <option key={t.id} value={t.id}>{t.name}</option>
                       ))}
@@ -853,101 +907,159 @@ const NursingCareModule = () => {
                     </div>
                   </div>
                 ) : (
-                  // Single entry form (when no template applied)
-                  <div className="row g-2">
-                    <div className="col-md-4">
-                      <label className="form-label small">Item Name *</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        list="itemOptions"
-                        value={newConsumable.item}
-                        onChange={(e) => handleConsumableItemChange(e.target.value)}
-                        placeholder="Type or select"
-                      />
-                      <datalist id="itemOptions">
-                        {itemOptions.map(opt => <option key={opt} value={opt} />)}
-                      </datalist>
+                  // No template applied — user builds their own rows one at a time.
+                  <>
+                    <div className="row g-2">
+                      <div className="col-md-4">
+                        <label className="form-label small">Item Name *</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          list="itemOptions"
+                          value={newConsumable.item}
+                          onChange={(e) => handleConsumableItemChange(e.target.value)}
+                          placeholder="Type or select"
+                        />
+                        <datalist id="itemOptions">
+                          {itemOptions.map(opt => <option key={opt} value={opt} />)}
+                        </datalist>
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label small">UOM</label>
+                        <input type="text" className="form-control form-control-sm" value={newConsumable.uom} readOnly />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label small">Batch *</label>
+                        <select
+                          className="form-select form-select-sm"
+                          value={newConsumable.batch}
+                          onChange={(e) => handleBatchChange(e.target.value)}
+                        >
+                          <option value="">Select</option>
+                          {(batchData[newConsumable.item] || []).map(b => (
+                            <option key={b.batch} value={b.batch}>{b.batch}</option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label small">Expiry</label>
+                        <input type="text" className="form-control form-control-sm" value={newConsumable.expiry} readOnly />
+                      </div>
+                      <div className="col-md-2">
+                        <label className="form-label small">Quantity *</label>
+                        <input
+                          type="number"
+                          className="form-control form-control-sm"
+                          value={newConsumable.qty}
+                          onChange={(e) => setNewConsumable({ ...newConsumable, qty: e.target.value === '' ? '' : parseInt(e.target.value) || 0 })}
+                          min="1"
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label small">Used By *</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          value={newConsumable.usedBy}
+                          onChange={(e) => setNewConsumable({ ...newConsumable, usedBy: e.target.value })}
+                          placeholder="Nurse"
+                        />
+                      </div>
+                      <div className="col-md-3">
+                        <label className="form-label small">Date & Time *</label>
+                        <input
+                          type="datetime-local"
+                          className="form-control form-control-sm"
+                          value={newConsumable.dateTime}
+                          onChange={(e) => setNewConsumable({ ...newConsumable, dateTime: e.target.value })}
+                        />
+                      </div>
+                      <div className="col-md-4">
+                        <label className="form-label small">Procedure Reference (optional)</label>
+                        <select
+                          className="form-select form-select-sm"
+                          value={newConsumable.procedureRef}
+                          onChange={(e) => setNewConsumable({ ...newConsumable, procedureRef: e.target.value })}
+                        >
+                          <option value="">— None —</option>
+                          {procedures.map(p => (
+                            <option key={p.id} value={p.id}>
+                              {p.procedure} ({new Date(p.dateTime).toLocaleDateString()})
+                            </option>
+                          ))}
+                        </select>
+                      </div>
                     </div>
-                    <div className="col-md-2">
-                      <label className="form-label small">UOM</label>
-                      <input type="text" className="form-control form-control-sm" value={newConsumable.uom} readOnly />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label small">Batch *</label>
-                      <select
-                        className="form-select form-select-sm"
-                        value={newConsumable.batch}
-                        onChange={(e) => handleBatchChange(e.target.value)}
-                      >
-                        <option value="">Select</option>
-                        {(batchData[newConsumable.item] || []).map(b => (
-                          <option key={b.batch} value={b.batch}>{b.batch}</option>
-                        ))}
-                      </select>
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label small">Expiry</label>
-                      <input type="text" className="form-control form-control-sm" value={newConsumable.expiry} readOnly />
-                    </div>
-                    <div className="col-md-2">
-                      <label className="form-label small">Quantity *</label>
-                      <input
-                        type="number"
-                        className="form-control form-control-sm"
-                        value={newConsumable.qty}
-                        onChange={(e) => setNewConsumable({ ...newConsumable, qty: parseInt(e.target.value) || 0 })}
-                        min="1"
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label small">Used By *</label>
-                      <input
-                        type="text"
-                        className="form-control form-control-sm"
-                        value={newConsumable.usedBy}
-                        onChange={(e) => setNewConsumable({ ...newConsumable, usedBy: e.target.value })}
-                        placeholder="Nurse"
-                      />
-                    </div>
-                    <div className="col-md-3">
-                      <label className="form-label small">Date & Time *</label>
-                      <input
-                        type="datetime-local"
-                        className="form-control form-control-sm"
-                        value={newConsumable.dateTime}
-                        onChange={(e) => setNewConsumable({ ...newConsumable, dateTime: e.target.value })}
-                      />
-                    </div>
-                    <div className="col-md-4">
-                      <label className="form-label small">Procedure Reference (optional)</label>
-                      <select
-                        className="form-select form-select-sm"
-                        value={newConsumable.procedureRef}
-                        onChange={(e) => setNewConsumable({ ...newConsumable, procedureRef: e.target.value })}
-                      >
-                        <option value="">— None —</option>
-                        {procedures.map(p => (
-                          <option key={p.id} value={p.id}>
-                            {p.procedure} ({new Date(p.dateTime).toLocaleDateString()})
-                          </option>
-                        ))}
-                      </select>
-                    </div>
-                  </div>
-                )}
 
-                {/* If no template, show save button */}
-                {templateItems.length === 0 && (
-                  <div className="d-flex justify-content-end mt-3">
-                    <button className="btn btn-success btn-sm" onClick={addSingleConsumable}>
-                      Save Consumable
-                    </button>
-                  </div>
+                    <div className="d-flex justify-content-end mt-3">
+                      <button className="btn btn-outline-primary btn-sm" onClick={addManualRow}>
+                        + Add Row
+                      </button>
+                    </div>
+
+                    {/* Rows added so far — same column layout as the template table.
+                        Click a row to pull it back into the form above for editing. */}
+                    {manualItems.length > 0 && (
+                      <div className="table-responsive mt-3">
+                        <table className="table table-sm table-bordered align-middle">
+                          <thead className="table-light">
+                            <tr>
+                              <th>Item</th>
+                              <th>Qty</th>
+                              <th>Batch</th>
+                              <th>Expiry</th>
+                              <th>Used By</th>
+                              <th>Date/Time</th>
+                              <th>Procedure Ref</th>
+                              <th>Remarks</th>
+                              <th style={{ width: '40px' }}></th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {manualItems.map((row) => {
+                              const proc = procedures.find(p => p.id === row.procedureRef);
+                              const refText = proc ? `${proc.procedure} (${new Date(proc.dateTime).toLocaleDateString()})` : '—';
+                              return (
+                                <tr
+                                  key={row.rowId}
+                                  onClick={() => editManualRow(row)}
+                                  style={{ cursor: 'pointer' }}
+                                  title="Click to edit this row"
+                                >
+                                  <td>{row.item || '—'}</td>
+                                  <td>{row.qty || '—'}</td>
+                                  <td>{row.batch || '—'}</td>
+                                  <td>{row.expiry || '—'}</td>
+                                  <td>{row.usedBy || '—'}</td>
+                                  <td>{row.dateTime ? new Date(row.dateTime).toLocaleString() : '—'}</td>
+                                  <td>{refText}</td>
+                                  <td>{row.remarks || '—'}</td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-outline-danger"
+                                      onClick={(e) => { e.stopPropagation(); removeManualRow(row.rowId); }}
+                                      title="Remove row"
+                                    >
+                                      ✕
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
+                          </tbody>
+                        </table>
+                        <div className="d-flex justify-content-end">
+                          <button className="btn btn-success btn-sm" onClick={saveManualItems}>
+                            Save All ({manualItems.length} items)
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </>
                 )}
               </div>
               <div className="modal-footer">
-                <button className="btn btn-secondary btn-sm" onClick={() => setShowAddConsumableModal(false)}>Cancel</button>
+                <button className="btn btn-secondary btn-sm" onClick={() => { setShowAddConsumableModal(false); resetConsumableModal(); }}>Cancel</button>
               </div>
             </div>
           </div>
@@ -955,26 +1067,19 @@ const NursingCareModule = () => {
       )}
 
       {/* ─── TEMPLATE MANAGER MODAL ─── */}
-     {showTemplateModal && (
-  <div
-    className="modal show d-block"
-    tabIndex="-1"
-    style={{
-      backgroundColor: 'rgba(0,0,0,0.5)',
-      zIndex: 1050,
-      display: 'flex',
-      justifyContent: 'flex-end',
-      alignItems: 'center',
-      paddingLeft: '5rem'
-    }}
-  >
-    <div className="modal-dialog modal-lg modal-dialog-centered">
-            <div className="modal-content">
+      {showTemplateModal && (
+        <div
+          className="modal show d-block"
+          tabIndex="-1"
+          style={{ ...sideModalOverlayStyle, zIndex: 1050 }}
+        >
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content" style={sideModalContentStyle}>
               <div className="modal-header bg-info text-white">
                 <h5 className="modal-title">{templateForm.id ? 'Edit Template' : 'New Template'}</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowTemplateModal(false)}></button>
               </div>
-              <div className="modal-body">
+              <div className="modal-body" style={sideModalBodyStyle}>
                 <div className="row g-2 mb-3">
                   <div className="col-md-6">
                     <label className="form-label small">Template Name *</label>
