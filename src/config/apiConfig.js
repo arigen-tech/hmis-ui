@@ -414,6 +414,8 @@ export const SET_VITALS = `/patient/saveVitalDetails`;
 export const GET_PRECONSULTATION_LIST = `/opd/getPendingPreConsultations`;
 export const GET_WAITING_LIST = `/opd/getOpdWaitingList`;
 export const OPD_CREATE_PATIENT_DETAILS = `/opd/createOpdPatientDetails`;
+export const OPD_CASE_SHEET_REPORT = `${ALL_REPORTS}/opdCaseSheetReport`
+export const GET_OPD_REPORTS_LIST = "/opd/getOpdReportsList"
 
 //billing
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";

@@ -63,6 +63,7 @@ import {
   OBG_DEPARTMENT_CODE,
   ENT_DEPARTMENT_CODE,
   DENTAL_DEPARTMENT_CODE,
+  OPD_CASE_SHEET_REPORT,
 } from "../../../config/apiConfig";
 import {
   getRequest,
@@ -3652,7 +3653,7 @@ const GeneralMedicineWaitingList = () => {
           () => {
             navigate("/ViewDownLoadReport", {
               state: {
-                reportUrl: `${ALL_REPORTS}/opdCaseSheetReport?visitId=${visitId}`,
+                reportUrl: `${OPD_CASE_SHEET_REPORT}?visitId=${visitId}`,
                 title: INDENT_SAVE_TITLE,
                 fileName: INDENT_SAVE_FILE_NAME,
                 returnPath: window.location.pathname,

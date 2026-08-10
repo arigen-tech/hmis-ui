@@ -3,7 +3,7 @@ import { getRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import Pagination from "../../../Components/Pagination"
-import { ALL_REPORTS } from "../../../config/apiConfig"
+import { ALL_REPORTS, GET_OPD_REPORTS_LIST, OPD_CASE_SHEET_REPORT } from "../../../config/apiConfig"
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 
 const OPDReports = () => {
@@ -44,7 +44,7 @@ const OPDReports = () => {
 
       const backendPage = page - 1
 
-      let url = `/opd/getOpdReportsList?page=${backendPage}&size=${itemsPerPage}`
+      let url = `${GET_OPD_REPORTS_LIST}?page=${backendPage}&size=${itemsPerPage}`
       
       // Use provided searchParams or fallback to state
       const mobileNo = searchParams?.mobileNo ?? searchData.mobileNo
@@ -97,7 +97,6 @@ const OPDReports = () => {
   // ============= HANDLE PAGE CHANGE =============
   const handlePageChange = (page) => {
     setCurrentPage(page)
-    // Fetch with table loader for page changes
     fetchOPDPatients(page, true)
   }
 
@@ -108,7 +107,6 @@ const OPDReports = () => {
   }
 
   const handleSearch = () => {
-    // Check if any search field has value
     if (!searchData.mobileNo && !searchData.patientName) {
       showPopup("Please enter at least one search criteria", "info")
       return
@@ -117,7 +115,6 @@ const OPDReports = () => {
     setIsSearching(true)
     setIsSearchMode(true)
     setCurrentPage(1)
-    // Pass search parameters directly
     fetchOPDPatients(1, true, {
       mobileNo: searchData.mobileNo,
       patientName: searchData.patientName,
@@ -128,7 +125,6 @@ const OPDReports = () => {
   const handleReset = () => {
     setIsResetting(true)
     
-    // Clear search data
     const emptySearchData = {
       mobileNo: "",
       patientName: ""
@@ -137,7 +133,6 @@ const OPDReports = () => {
     setIsSearchMode(false)
     setCurrentPage(1)
     
-    // Pass empty search parameters directly
     fetchOPDPatients(1, true, {
       mobileNo: "",
       patientName: "",
@@ -181,7 +176,7 @@ const OPDReports = () => {
     try {
       setDownloadingOPDVisitId(visitId)
       
-      const reportUrl = `${ALL_REPORTS}/opdCaseSheetReport?visitId=${visitId}`
+      const reportUrl = `${OPD_CASE_SHEET_REPORT}?visitId=${visitId}`
       const blob = await fetchPdf(reportUrl, "d")
       
       if (!blob.type || !blob.type.includes('pdf')) {
@@ -501,14 +496,6 @@ const OPDReports = () => {
                         currentPage={currentPage}
                         onPageChange={handlePageChange}
                       />
-                    </div>
-                  )}
-
-                  {/* Show total items count */}
-                  {!tableLoading && !loading && opdPatients.length > 0 && (
-                    <div className="mt-3 text-muted small">
-                      Showing {opdPatients.length} of {totalItems} records
-                      {isSearchMode && " (filtered results)"}
                     </div>
                   )}
                 </>

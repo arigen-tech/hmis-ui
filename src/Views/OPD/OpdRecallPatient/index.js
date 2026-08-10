@@ -1673,6 +1673,15 @@ const OpdRRecallPatient = () => {
       errors.diagnosis = "Working diagnosis or ICD diagnosis is required";
     }
 
+    const invalidTreatments = treatmentItems.filter(
+      (item) => item.drugId && (!item.dosage || !item.days || !item.frequency),
+    );
+
+    if (invalidTreatments.length > 0) {
+      errors.treatment =
+        "Please fill all required fields (dosage, days, frequency) for each treatment item";
+    }
+
     // Follow Up validation (if followUpFlag is true)
     if (followUps.followUpFlag) {
       if (!followUps.noOfFollowDays || followUps.noOfFollowDays <= 0) {
@@ -1764,9 +1773,10 @@ const OpdRRecallPatient = () => {
           investigationDate: item.date,
         }));
 
-      // ===== 3. Treatments - All new =====
       const treatmentList = treatmentItems
-        .filter((item) => item.drugId)
+        .filter(
+          (item) => item.drugId && item.dosage && item.days && item.frequency,
+        )
         .map((item) => {
           const freq = allFrequencies.find(
             (f) =>
@@ -2401,9 +2411,8 @@ const OpdRRecallPatient = () => {
     }
   };
 
-    const hasValue = (value) =>
+  const hasValue = (value) =>
     value !== null && value !== undefined && String(value).trim() !== "";
-
 
   const filterInvestigationsBySearch = (searchQuery) => {
     if (!searchQuery.trim()) {
@@ -2829,15 +2838,12 @@ const OpdRRecallPatient = () => {
         setTreatmentItems(
           patientData.patientPrescriptionDts?.length
             ? patientData.patientPrescriptionDts.map((item) => {
-                // ✅ Get frequencyId from API (it could be in frequency or frequencyId field)
                 const frequencyId = item.frequencyId || item.frequency || "";
 
-                // ✅ Find the frequency name from allFrequencies using the ID
                 const matchedFrequency = allFrequencies.find(
                   (f) => String(f.frequencyId) === String(frequencyId),
                 );
 
-                // ✅ Use the frequency name if found, otherwise use the ID as fallback
                 const frequencyName =
                   matchedFrequency?.frequencyName || frequencyId;
 
@@ -2943,7 +2949,7 @@ const OpdRRecallPatient = () => {
               ? patientData.admissionAdvisedDate.split("T")[0]
               : "",
           );
-          setAdditionalAdvice(patientData.admissionRemarks || "");
+          setAdmissionRemarks(patientData.admissionRemarks || "");
           setAdmissionPriority(patientData.admissionPriority || "Normal");
 
           const wardCategoryId = patientData.admissionWardCategory || "";
@@ -4961,9 +4967,9 @@ const OpdRRecallPatient = () => {
                                             style={{ fontSize: "0.7rem" }}
                                             onClick={(e) => {
                                               e.stopPropagation();
-                                              handleRemoveTreatmentTemplateItems(
+                                              handleRemoveTemplateItems(
                                                 templateId,
-                                              ); // ✅ This is already defined
+                                              );
                                             }}
                                             aria-label="Remove template"
                                           ></button>
@@ -5253,7 +5259,7 @@ const OpdRRecallPatient = () => {
                         <div className="row mb-3">
                           <div className="col-12">
                             <div className="card">
-                              <div className="card-header py-2  ">
+                              <div className="card-header py-2">
                                 <div className="d-flex justify-content-between align-items-center">
                                   <h6 className="mb-0 fw-bold">
                                     Selected Templates
@@ -5285,6 +5291,9 @@ const OpdRRecallPatient = () => {
                                             style={{ fontSize: "0.7rem" }}
                                             onClick={(e) => {
                                               e.stopPropagation();
+                                              handleRemoveTreatmentTemplateItems(
+                                                templateId,
+                                              );
                                             }}
                                             aria-label="Remove template"
                                           ></button>
@@ -6383,9 +6392,9 @@ const OpdRRecallPatient = () => {
                                   <textarea
                                     className="form-control"
                                     rows={3}
-                                    value={additionalAdvice}
+                                    value={admissionRemarks}
                                     onChange={(e) =>
-                                      setAdditionalAdvice(e.target.value)
+                                      setAdmissionRemarks(e.target.value)
                                     }
                                     placeholder="Enter admission advice"
                                   ></textarea>
