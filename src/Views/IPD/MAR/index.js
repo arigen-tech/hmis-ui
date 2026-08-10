@@ -587,6 +587,8 @@ const MedicationModule = ({ selectedPatient }) => {
       dateTime: nowDateTimeLocal(),
       batches: [],
       loadingBatches: med.itemId ? true : false,
+      availableStock: null,
+      selected: false,
     }));
 
     setMarEntryItems(initialItems);
@@ -616,7 +618,9 @@ const MedicationModule = ({ selectedPatient }) => {
               updated[itemIndex].batches = fetchedBatches;
               updated[itemIndex].batch = defaultBatch;
               updated[itemIndex].expiry = defaultExpiry;
+              updated[itemIndex].availableStock = fetchedBatches.length > 0 ? (fetchedBatches[0].availableStock ?? null) : null;
               updated[itemIndex].loadingBatches = false;
+              updated[itemIndex].selected = !!(defaultBatch || updated[itemIndex].availableStock != null);
             }
             return updated;
           });
@@ -635,22 +639,38 @@ const MedicationModule = ({ selectedPatient }) => {
     });
   };
 
-  const handleMarEntryChange = (index, field, value) => {
-    const updated = [...marEntryItems];
-    updated[index][field] = value;
-    setMarEntryItems(updated);
+  const handleMarEntryChange = (index, fieldOrObj, value) => {
+    setMarEntryItems(prevItems => {
+      const updated = [...prevItems];
+      if (typeof fieldOrObj === 'object') {
+        updated[index] = { ...updated[index], ...fieldOrObj };
+      } else {
+        updated[index] = { ...updated[index], [fieldOrObj]: value };
+      }
+      return updated;
+    });
   };
 
   const saveMarEntries = async () => {
-    for (let item of marEntryItems) {
+    const itemsToSave = marEntryItems.filter(item => item.selected);
+    if (itemsToSave.length === 0) {
+      alert('Please select at least one medication to save.');
+      return;
+    }
+
+    for (let item of itemsToSave) {
       if (!item.batch || !item.expiry || !item.givenBy) {
         alert('Please fill Batch, Expiry, and Given By for all selected medications.');
         return;
       }
     }
 
+    const token = sessionStorage.getItem("token") || localStorage.getItem("token");
+    const tokenData = token ? parseJwt(token) : null;
+    const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId") || (tokenData ? tokenData.departmentId : "");
+
     setMarEntrySaving(true);
-    const payload = marEntryItems.map(item => ({
+    const payload = itemsToSave.map(item => ({
       prescriptionId: Number(item.medId) || 0,
       itemId: Number(item.itemId) || 0,
       dateTime: item.dateTime ? new Date(item.dateTime).toISOString() : new Date().toISOString(),
@@ -659,6 +679,7 @@ const MedicationModule = ({ selectedPatient }) => {
       expiryDate: item.expiry ? new Date(item.expiry).toISOString().split('T')[0] : "",
       givenBy: String(item.givenBy || ""),
       remark: String(item.remarks || ""),
+      departmentId: Number(departmentId) || 0,
       inpatientId: Number(inpatientId) || 0
     }));
 
@@ -1227,14 +1248,33 @@ const MedicationModule = ({ selectedPatient }) => {
                     <table className="table table-bordered align-middle">
                       <thead className="table-light">
                         <tr>
+                          <th>
+                            <input 
+                              type="checkbox" 
+                              onChange={e => {
+                                const checked = e.target.checked;
+                                setMarEntryItems(prev => prev.map(item => ({
+                                  ...item,
+                                  selected: (item.batch || item.availableStock != null) ? checked : false
+                                })));
+                              }}
+                              checked={marEntryItems.length > 0 && marEntryItems.every(item => item.selected || (!item.batch && item.availableStock == null))}
+                            />
+                          </th>
                           <th>Medicine</th><th>Route</th><th>Dose</th>
                           <th>Date & Time</th><th>Qty</th><th>Batch *</th><th>Expiry *</th>
+                          <th>Available Stock</th>
                           <th>Given By *</th><th>Remarks</th>
                         </tr>
                       </thead>
                       <tbody>
                         {marEntryItems.map((item, idx) => (
                           <tr key={idx}>
+                            <td>
+                              {(item.batch || item.availableStock != null) ? (
+                                <input type="checkbox" checked={item.selected} onChange={e => handleMarEntryChange(idx, 'selected', e.target.checked)} />
+                              ) : null}
+                            </td>
                             <td>{item.medicineName}</td><td>{item.route}</td><td>{item.dose}</td>
                             <td><input type="datetime-local" className="form-control form-control-sm" value={item.dateTime} onChange={e => handleMarEntryChange(idx, 'dateTime', e.target.value)} /></td>
                             <td><input type="number" className="form-control form-control-sm" value={item.qty} onChange={e => handleMarEntryChange(idx, 'qty', parseInt(e.target.value) || 0)} min="1" /></td>
@@ -1252,8 +1292,13 @@ const MedicationModule = ({ selectedPatient }) => {
                                     const selectedBatch = e.target.value;
                                     const batchObj = item.batches.find(b => b.batchName === selectedBatch);
                                     const expiryDate = batchObj ? batchObj.doe : '';
-                                    handleMarEntryChange(idx, 'batch', selectedBatch);
-                                    handleMarEntryChange(idx, 'expiry', expiryDate);
+                                    const availStock = batchObj ? batchObj.availableStock : null;
+                                    handleMarEntryChange(idx, {
+                                      batch: selectedBatch,
+                                      expiry: expiryDate,
+                                      availableStock: availStock,
+                                      selected: !!(selectedBatch || availStock != null)
+                                    });
                                   }}
                                 >
                                   {item.batches.map((b, bIdx) => (
@@ -1261,16 +1306,13 @@ const MedicationModule = ({ selectedPatient }) => {
                                   ))}
                                 </select>
                               ) : (
-                                <input
-                                  type="text"
-                                  className="form-control form-control-sm"
-                                  value={item.batch}
-                                  onChange={e => handleMarEntryChange(idx, 'batch', e.target.value)}
-                                  placeholder="Batch"
-                                />
+                                <select className="form-select form-select-sm" disabled>
+                                  <option value="">No Batch Available</option>
+                                </select>
                               )}
                             </td>
                             <td><input type="date" className="form-control form-control-sm" value={item.expiry} onChange={e => handleMarEntryChange(idx, 'expiry', e.target.value)} /></td>
+                            <td>{item.availableStock ?? '—'}</td>
                             <td><input type="text" className="form-control form-control-sm" value={item.givenBy} onChange={e => handleMarEntryChange(idx, 'givenBy', e.target.value)} placeholder="Nurse name" /></td>
                             <td><input type="text" className="form-control form-control-sm" value={item.remarks} onChange={e => handleMarEntryChange(idx, 'remarks', e.target.value)} /></td>
                           </tr>
