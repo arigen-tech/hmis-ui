@@ -350,7 +350,7 @@ const BookingAppointmentHistory = () => {
   };
 
   // Search appointments
-  const handleSearch = async () => {
+  const handleSearch = async (flag) => {
     if (!mobileNumber.trim()) {
       showPopup(`${MISSING_MOBILE_NUMBER}`);
       return;
@@ -377,7 +377,7 @@ const BookingAppointmentHistory = () => {
           res.response ||
           [];
 
-        if (!appointments || appointments.length === 0) {
+        if (!appointments || appointments.length === 0  && flag !== 1) {
           setReportData([]);
           setShowReport(true);
           showPopup(`${NO_APPOINTMENTS_FOUND}`, "info");
@@ -843,8 +843,6 @@ const BookingAppointmentHistory = () => {
             icon: "success",
             title: "Reschedule Successful",
             html: successMessage,
-            // confirmButtonText: "OK",
-            // confirmButtonColor: "#28a745",
           });
 
           await handleSearch();
@@ -922,7 +920,7 @@ const BookingAppointmentHistory = () => {
             timer: 2000,
           });
 
-          await handleSearch();
+          await handleSearch(1);
         } else {
           throw new Error(res.message || "Server error");
         }

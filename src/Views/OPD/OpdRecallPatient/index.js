@@ -1,4 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import {
+  useState,
+  useEffect,
+  useRef,
+  forwardRef,
+  useImperativeHandle,
+} from "react";
 import placeholderImage from "../../../assets/images/placeholder.jpg";
 import OTDashboard from "../GeneralMedicineWaitingList/OTDashboard";
 import InvestigationModal from "../GeneralMedicineWaitingList/InvestigationModal";
@@ -208,18 +214,44 @@ const OpdRRecallPatient = () => {
   const [vitalsPageSize, setVitalsPageSize] = useState(5);
   const [vitalsLoading, setVitalsLoading] = useState(false);
 
-  // const fetchWardCategoryData = async () => {
-  //   try {
-  //     const data = await getRequest(`${MASTERS}/masWardCategory/getAll/1`);
-  //     if (data.status === 200 && Array.isArray(data.response)) {
-  //       setWardCategories(data.response);
-  //     } else {
-  //       setWardCategories([]);
-  //     }
-  //   } catch (error) {
-  //     console.error("Error fetching WardCategory data:", error);
-  //   }
-  // };
+  const [investigationDropdown, setInvestigationDropdown] = useState([]);
+  const [investigationSearch, setInvestigationSearch] = useState([]);
+  const [investigationPage, setInvestigationPage] = useState(0);
+  const [investigationLastPage, setInvestigationLastPage] = useState(true);
+  const [openInvestigationDropdown, setOpenInvestigationDropdown] =
+    useState(null);
+
+  const debounceInvestigationRef = useRef([]);
+  const dropdownInvestigationRef = useRef(null);
+
+  const [procedureDropdown, setProcedureDropdown] = useState([]);
+  const [procedurePage, setProcedurePage] = useState(0);
+  const [procedureLastPage, setProcedureLastPage] = useState(true);
+  const [procedureSearch, setProcedureSearch] = useState([]);
+  const [openProcedureDropdown, setOpenProcedureDropdown] = useState(null);
+  const procedureDropdownRef = useRef([]);
+
+  const [investigationItems, setInvestigationItems] = useState([
+    {
+      id: null,
+      investigationId: "",
+      templateIds: [],
+      name: "",
+      date: getToday(),
+    },
+  ]);
+
+  const [procedureCareItems, setProcedureCareItems] = useState([
+    {
+      id: null,
+      procedureId: null,
+      procedureName: "",
+      frequencyId: null,
+      noOfDays: "",
+      remarks: "",
+    },
+  ]);
+
   const fetchWardCategoryData = async () => {
     try {
       const data = await getRequest(MAS_WARD_CATEGORY_GET_ALL);
@@ -271,6 +303,36 @@ const OpdRRecallPatient = () => {
       !items[0].days
     );
   };
+    const formatDateForDisplay = (value) => {
+    if (!hasValue(value)) return "";
+
+    const normalized = String(value).trim();
+    const datePart = normalized.includes("T")
+      ? normalized.split("T")[0]
+      : normalized;
+
+    if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) return datePart;
+
+    const isoMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (isoMatch) {
+      const [, year, month, day] = isoMatch;
+      return `${day}/${month}/${year}`;
+    }
+
+    const hyphenDisplayMatch = datePart.match(/^(\d{2})-(\d{2})-(\d{4})$/);
+    if (hyphenDisplayMatch) {
+      const [, day, month, year] = hyphenDisplayMatch;
+      return `${day}/${month}/${year}`;
+    }
+
+    const parsedDate = new Date(normalized);
+    if (Number.isNaN(parsedDate.getTime())) return normalized;
+
+    const day = String(parsedDate.getDate()).padStart(2, "0");
+    const month = String(parsedDate.getMonth() + 1).padStart(2, "0");
+    const year = parsedDate.getFullYear();
+    return `${day}/${month}/${year}`;
+  };
 
   const handleWardCategoryChange = (categoryId) => {
     setWardCategory(categoryId);
@@ -284,13 +346,8 @@ const OpdRRecallPatient = () => {
     );
 
     if (selectedCategory) {
-      // store care id
       setAdmissionCareLevel(selectedCategory.careId);
-
-      // show care level name
       setAdmissionCareLevelName(selectedCategory.careLevelName);
-
-      // fetch ward list
       fetchWardData(categoryId);
     }
   };
@@ -388,7 +445,6 @@ const OpdRRecallPatient = () => {
         let vitalsData = response.response;
         let paginationInfo = response.response;
 
-        // Handle paginated response
         if (vitalsData.content) {
           vitalsData = vitalsData.content;
           paginationInfo = response.response;
@@ -850,7 +906,6 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  // Handle visits page change
   const handleVisitsPageChange = (newPage) => {
     if (selectedPatient) {
       const hospitalId =
@@ -866,7 +921,6 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  // Handle vitals page change
   const handleVitalsPageChange = (newPage) => {
     if (selectedPatient) {
       const hospitalId =
@@ -897,7 +951,6 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  // Handle visits page size change
   const handleVisitsPageSizeChange = (newSize) => {
     setVisitsPageSize(newSize);
     if (selectedPatient) {
@@ -909,7 +962,6 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  // Handle vitals page size change
   const handleVitalsPageSizeChange = (newSize) => {
     setVitalsPageSize(newSize);
     if (selectedPatient) {
@@ -982,7 +1034,6 @@ const OpdRRecallPatient = () => {
       return updated;
     });
 
-    // Keep the row itself in edit mode sync with the typed text
     setTreatmentItems((prev) => {
       const updated = [...prev];
       updated[index] = {
@@ -1024,7 +1075,6 @@ const OpdRRecallPatient = () => {
     setActiveDrugDropdown(index);
   };
 
-  // Enhanced loadMoreDrugs
   const loadMoreDrugs = async () => {
     if (drugLastPage || activeDrugDropdown === null) return;
 
@@ -1157,7 +1207,6 @@ const OpdRRecallPatient = () => {
   const updateProcedure = (selected, index) => {
     if (!selected) return;
 
-    // prevent duplicate procedureId
     const exists = procedureCareItems.some(
       (item, idx) =>
         String(item.procedureId) === String(selected.procedureId) &&
@@ -1180,7 +1229,6 @@ const OpdRRecallPatient = () => {
       return updated;
     });
 
-    // clear search text
     setProcedureSearch((prev) => {
       const updated = [...prev];
       updated[index] = "";
@@ -1235,14 +1283,6 @@ const OpdRRecallPatient = () => {
   };
 
   const handleIcdSearch = (value, index) => {
-    // Update text
-    setSearch((prev) => {
-      const updated = [...prev];
-      updated[index] = value;
-      return updated;
-    });
-
-    // Clear previous debounce for this row
     if (debounceRef.current[index]) {
       clearTimeout(debounceRef.current[index]);
     }
@@ -1293,7 +1333,7 @@ const OpdRRecallPatient = () => {
       updated[index] = {
         ...updated[index],
         icdDiagId: selectedICD.icdId,
-        icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}`, // ✅ code + name
+        icdDiagnosis: `${selectedICD.icdCode} - ${selectedICD.icdName}`,
       };
       return updated;
     });
@@ -1315,15 +1355,6 @@ const OpdRRecallPatient = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const [investigationDropdown, setInvestigationDropdown] = useState([]);
-  const [investigationSearch, setInvestigationSearch] = useState([]);
-  const [investigationPage, setInvestigationPage] = useState(0);
-  const [investigationLastPage, setInvestigationLastPage] = useState(true);
-  const [openInvestigationDropdown, setOpenInvestigationDropdown] =
-    useState(null);
-
-  const debounceInvestigationRef = useRef([]);
-  const dropdownInvestigationRef = useRef(null);
   const currentDoctorId =
     sessionStorage.getItem("userId") || localStorage.getItem("userId") || "";
 
@@ -1350,7 +1381,6 @@ const OpdRRecallPatient = () => {
 
   const handleTreatmentTemplateSaved = async (template) => {
     await fetchOpdTemplateData();
-    // showPopup("Treatment template updated successfully!", "success");
   };
 
   const openPopup = (type) => {
@@ -1647,7 +1677,6 @@ const OpdRRecallPatient = () => {
       errors.patientSymptoms = "Patient signs & symptoms is required";
     }
 
-    // Validate vitals
     const requiredVitals = [
       "height",
       "weight",
@@ -1665,7 +1694,6 @@ const OpdRRecallPatient = () => {
       }
     });
 
-    // Validate diagnosis
     const hasWorkingDiagnosis = workingDiagnosis?.trim();
     const hasIcdDiagnosis = diagnosisItems.some((item) => item.icdDiagId);
 
@@ -1682,7 +1710,6 @@ const OpdRRecallPatient = () => {
         "Please fill all required fields (dosage, days, frequency) for each treatment item";
     }
 
-    // Follow Up validation (if followUpFlag is true)
     if (followUps.followUpFlag) {
       if (!followUps.noOfFollowDays || followUps.noOfFollowDays <= 0) {
         errors.followUpDays = "Number of follow-up days is required";
@@ -1731,6 +1758,25 @@ const OpdRRecallPatient = () => {
       setIsSubmitting(true);
       const pregnancyDetails = pregnancyRef.current?.getData?.();
 
+      // Get OBG details from the ref
+      let obgDetailsData = null;
+      if (isObgynDepartment && obgDetailsRef.current) {
+        const obgData = obgDetailsRef.current.getData?.();
+        if (obgData) {
+          obgDetailsData = obgData;
+          console.log("OBG Details Data:", obgDetailsData);
+        }
+      }
+
+      let entExaminationDetails = null;
+      if (isEntDepartment && earExaminationRef.current) {
+        const entData = earExaminationRef.current.getData?.();
+        if (entData) {
+          entExaminationDetails = entData;
+          console.log("ENT Details Data:", entExaminationDetails);
+        }
+      }
+
       if (!selectedPatient.visitId) {
         showPopup("Visit ID missing!", "error");
         setIsSubmitting(false);
@@ -1754,7 +1800,6 @@ const OpdRRecallPatient = () => {
       );
       const visionExaminationData = visionRef.current?.getData?.();
 
-      // ===== 1. ICD Diagnoses - All new =====
       const icdDiagList = diagnosisItems
         .filter((item) => item.icdDiagId)
         .map((item) => ({
@@ -1764,7 +1809,6 @@ const OpdRRecallPatient = () => {
           infectiousDisease: item.infectiousDisease || false,
         }));
 
-      // ===== 2. Investigations - All new =====
       const investigationList = investigationItems
         .filter((item) => item.investigationId)
         .map((item) => ({
@@ -1797,7 +1841,6 @@ const OpdRRecallPatient = () => {
           };
         });
 
-      // ===== 4. Procedure Care - All new =====
       const procedureCareList = procedureCareItems
         .filter((item) => item.procedureId)
         .map((item) => ({
@@ -1808,7 +1851,6 @@ const OpdRRecallPatient = () => {
           remarks: item.remarks,
         }));
 
-      // ===== 5. Prepare Final Payload =====
       const payload = {
         patientId: selectedPatient.patientId,
         visitId: selectedPatient.visitId,
@@ -1817,13 +1859,11 @@ const OpdRRecallPatient = () => {
         doctorId: mappedDoctorId,
         opdPatientDetailId: selectedPatient.opdPatientId,
 
-        // Clinical History
         patientSignsSymptoms: formData.patientSymptoms || null,
         clinicalExamination: formData.clinicalExamination || null,
         pastMedicalHistory: formData.pastHistory || null,
         familyHistory: formData.familyHistory || null,
 
-        // Vital Details
         height: formData.height || null,
         weight: formData.weight || null,
         pulse: formData.pulse || null,
@@ -1835,23 +1875,18 @@ const OpdRRecallPatient = () => {
         bpDiastolic: formData.diastolicBP || null,
         mlcFlag: formData.mlcCase ? "y" : "n",
 
-        // Diagnosis (All new - backend will delete old ones)
         workingDiagnosis: workingDiagnosis || null,
         icdDiagnosisList: icdDiagList,
 
-        // Investigation (All new)
         labFlag: labFlag || "n",
         radioFlag: radioFlag || "n",
         investigations: investigationList,
 
-        // Treatment (All new)
         treatments: treatmentList,
         treatmentAdvice: generalTreatmentAdvice || null,
 
-        // Procedure Care (All new)
         procedureCare: procedureCareList,
 
-        // Doctor's Remarks
         doctorRemarks: doctorRemarksText || null,
 
         ...(psychiatristAssessment?.topicId && {
@@ -1869,7 +1904,17 @@ const OpdRRecallPatient = () => {
             },
           }),
 
-        // Follow Up
+        // Include OBG details in the main payload
+        ...(isObgynDepartment &&
+          obgDetailsData && {
+            opdObgDetailsRequest: obgDetailsData,
+          }),
+
+        ...(isEntDepartment &&
+          entExaminationDetails && {
+            entExaminationDetails: entExaminationDetails,
+          }),          
+
         followUpFlag: followUps.followUpFlag ? "y" : "n",
         followUpDate:
           followUps.followUpFlag && followUps.followUpDate
@@ -1879,7 +1924,6 @@ const OpdRRecallPatient = () => {
           ? Number(followUps.noOfFollowDays) || 0
           : 0,
 
-        // Admission
         admissionFlag: admissionAdvised ? "y" : "n",
         admissionAdvisedDate:
           admissionAdvised && admissionDate
@@ -1893,7 +1937,6 @@ const OpdRRecallPatient = () => {
         admissionWard: admissionAdvised ? Number(wardName) : null,
         admissionPriority: admissionAdvised ? admissionPriority : null,
 
-        // Referral
         referralFlag: referralData.isReferred === "Yes" ? "y" : "n",
         referralRemarks: referralNotes || null,
         referralDate:
@@ -1916,7 +1959,8 @@ const OpdRRecallPatient = () => {
         pregnancyDetails,
       };
 
-      // Make the API call
+      console.log("Final Payload with OBG Details:", JSON.stringify(payload, null, 2));
+
       const response = await putRequest(UPDATE_RECALL_PATIENT, payload);
 
       if (response?.status === 200 || response?.success === true) {
@@ -1934,7 +1978,6 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  // Helper function to get frequency ID by name
   const getFrequencyIdByName = (frequencyName) => {
     if (!frequencyName) return null;
     const freq = allFrequencies.find(
@@ -1948,7 +1991,6 @@ const OpdRRecallPatient = () => {
     handleSearch();
   };
 
-  // Modal states
   const [showInvestigationModal, setShowInvestigationModal] = useState(false);
   const [showTreatmentModal, setShowTreatmentModal] = useState(false);
   const [investigationModalType, setInvestigationModalType] =
@@ -2018,15 +2060,6 @@ const OpdRRecallPatient = () => {
   const [treatmentAdviceModalType, setTreatmentAdviceModalType] = useState("");
   const [selectedTemplate, setSelectedTemplate] = useState("Select..");
   const [templateName, setTemplateName] = useState("");
-  const [investigationItems, setInvestigationItems] = useState([
-    {
-      id: null,
-      investigationId: "",
-      templateIds: [],
-      name: "",
-      date: getToday(),
-    },
-  ]);
   const [updateTemplateSelection, setUpdateTemplateSelection] =
     useState("Select..");
   const [templateType, setTemplateType] = useState("");
@@ -2080,26 +2113,6 @@ const OpdRRecallPatient = () => {
     },
   ]);
 
-  const formatDateForDisplay = (value) => {
-    if (!value) return "";
-    const normalized = String(value).trim();
-    const datePart = normalized.includes("T")
-      ? normalized.split("T")[0]
-      : normalized;
-
-    if (/^\d{2}\/\d{2}\/\d{4}$/.test(datePart)) return datePart;
-
-    const isoMatch = datePart.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (isoMatch) {
-      const [, year, month, day] = isoMatch;
-      return `${day}/${month}/${year}`;
-    }
-
-    return normalized;
-  };
-
-  console.log("treat", treatmentItems);
-
   const [treatmentAdviceSelection, setTreatmentAdviceSelection] = useState("");
   const [generalTreatmentAdvice, setGeneralTreatmentAdvice] = useState("");
   const [procedureTreatmentAdvice, setProcedureTreatmentAdvice] = useState("");
@@ -2107,23 +2120,6 @@ const OpdRRecallPatient = () => {
     useState("");
   const [selectedTreatmentAdviceItems, setSelectedTreatmentAdviceItems] =
     useState([]);
-
-  const [procedureDropdown, setProcedureDropdown] = useState([]);
-  const [procedurePage, setProcedurePage] = useState(0);
-  const [procedureLastPage, setProcedureLastPage] = useState(true);
-  const [procedureSearch, setProcedureSearch] = useState([]);
-  const [openProcedureDropdown, setOpenProcedureDropdown] = useState(null);
-  const procedureDropdownRef = useRef([]);
-  const [procedureCareItems, setProcedureCareItems] = useState([
-    {
-      id: null,
-      procedureId: null,
-      procedureName: "",
-      frequencyId: null,
-      noOfDays: "",
-      remarks: "",
-    },
-  ]);
 
   const [physiotherapyItems, setPhysiotherapyItems] = useState([
     {
@@ -2141,7 +2137,6 @@ const OpdRRecallPatient = () => {
   const [selectedSurgeryIndex, setSelectedSurgeryIndex] = useState(null);
   const [additionalAdvice, setAdditionalAdvice] = useState("");
 
-  // Referral state
   const [referralData, setReferralData] = useState({
     isReferred: "No",
     referTo: "",
@@ -2186,10 +2181,8 @@ const OpdRRecallPatient = () => {
 
   const itemsPerPage = 5;
 
-  // Track selected templates to prevent duplicates
   const [selectedTemplateIds, setSelectedTemplateIds] = useState(new Set());
 
-  // Modal handlers
   const handleOpenInvestigationModal = (type = "create") => {
     setInvestigationModalType(type);
     setShowInvestigationModal(true);
@@ -2200,10 +2193,6 @@ const OpdRRecallPatient = () => {
     setInvestigationModalType("create");
   };
 
-  // const handleOpenTreatmentModal = (type = "create") => {
-  //   setTreatmentModalType(type);
-  //   setShowTreatmentModal(true);
-  // };
   const handleOpenTreatmentModal = (type = "create", template = null) => {
     setTreatmentModalType(type);
     setSelectedTemplateForEdit(template);
@@ -2239,6 +2228,7 @@ const OpdRRecallPatient = () => {
       setInvestigationTypes(res.response);
     }
   };
+
   useEffect(() => {
     fetchInvestigationTypes();
   }, []);
@@ -2389,8 +2379,6 @@ const OpdRRecallPatient = () => {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
-
-  console.log("allInvestigations", allInvestigations);
 
   const filterInvestigationsByMainChargeCode = () => {
     if (!investigationType || allInvestigations.length === 0) {
@@ -2592,7 +2580,6 @@ const OpdRRecallPatient = () => {
     setActiveInvestigationRowIndex(null);
   };
 
-  // Referral handlers
   const handleReferralChange = (field, value) => {
     if (field === "isReferred" && value === "No") {
       setReferralData((prev) => ({
@@ -2696,7 +2683,7 @@ const OpdRRecallPatient = () => {
           aDispQty: item.aDispQty || 1,
         }));
 
-        console.log("Fetched medications:", medications); // Debug log
+        console.log("Fetched medications:", medications);
         return medications;
       }
       return [];
@@ -2731,7 +2718,6 @@ const OpdRRecallPatient = () => {
 
         const sectionsToExpand = {};
 
-        /* -------------------- VITALS / BASIC DATA -------------------- */
         const hasVitalsData =
           patientData.height ||
           patientData.weight ||
@@ -2829,7 +2815,6 @@ const OpdRRecallPatient = () => {
         setLabFlag(patientData.labFlag || "n");
         setRadioFlag(patientData.radioFlag || "n");
 
-        /* -------------------- TREATMENT -------------------- */
         const hasTreatmentData = patientData.patientPrescriptionDts?.length > 0;
         if (hasTreatmentData) sectionsToExpand.treatment = true;
         if (patientData.treatmentAdvice)
@@ -2847,17 +2832,13 @@ const OpdRRecallPatient = () => {
                 const frequencyName =
                   matchedFrequency?.frequencyName || frequencyId;
 
-                console.log(
-                  `Mapping frequency ID ${frequencyId} to name: ${frequencyName}`,
-                );
-
                 const obj = {
                   treatmentId: item.prescriptionDtId,
                   drugId: item.itemId,
                   drugName: item.itemName,
                   dispUnit: item.dispUnit || item.depUnit || "",
                   dosage: Number(item.dosage) || "",
-                  frequency: frequencyName, // Now this will be "10 TIMES" or "2 TIMES HR " etc.
+                  frequency: frequencyName,
                   days: Number(item.days) || "",
                   instruction: item.instraction || item.instruction || "",
                   stock: item.stocks ?? "0",
@@ -2885,13 +2866,11 @@ const OpdRRecallPatient = () => {
               ],
         );
 
-        /*-------------------- final remark --------------- */
         const hasDoctorRemarks = patientData.doctorRemarks;
         if (hasDoctorRemarks) sectionsToExpand.remarks = true;
 
         setDoctorRemarksText(patientData.doctorRemarks || "");
 
-        /* -------------------- PSYCHIATRIST -------------------- */
         const psychiatricAssessment =
           patientData.psychiatristAssessment ||
           (patientData.topicId
@@ -2908,7 +2887,6 @@ const OpdRRecallPatient = () => {
 
         setPsychiatristAssessment(psychiatricAssessment);
 
-        /* -------------------- FOLLOW UP -------------------- */
         const hasFollowUpData = patientData.followUpFlag === "y";
         if (hasFollowUpData) sectionsToExpand.followUp = true;
 
@@ -2922,7 +2900,6 @@ const OpdRRecallPatient = () => {
             : "",
         });
 
-        /* -------------------- REFERRAL -------------------- */
         const hasReferralData = patientData.referralFlag === "y";
         if (hasReferralData) sectionsToExpand.referral = true;
 
@@ -2937,7 +2914,6 @@ const OpdRRecallPatient = () => {
         }));
         setReferralNotes(patientData.referralRemarks || "");
 
-        /* -------------------- ADMISSION ADVICE -------------------- */
         const admissionAdvised = patientData.admissionFlag === "y";
         if (admissionAdvised) sectionsToExpand.admissionAdvice = true;
 
@@ -2989,7 +2965,6 @@ const OpdRRecallPatient = () => {
                   setOccupiedBeds(String(occupied));
                   setVacantBeds(String(vacant));
                 } else {
-                  // Fallback to ward data if bed count API fails
                   const selectedWard = wardDepartments.find(
                     (dept) => dept.id === savedWardId,
                   );
@@ -3017,7 +2992,6 @@ const OpdRRecallPatient = () => {
           }
         }
 
-        /* -------------------- UPDATE EXPANDED SECTIONS -------------------- */
         setExpandedSections((prev) => ({
           ...prev,
           ...sectionsToExpand,
@@ -3025,7 +2999,6 @@ const OpdRRecallPatient = () => {
           clinicalHistory: hasClinicalData || prev.clinicalHistory,
         }));
 
-        /* -------------------- SHOW DETAIL VIEW -------------------- */
         setShowDetailView(true);
       } else {
         showPopup(
@@ -3163,8 +3136,6 @@ const OpdRRecallPatient = () => {
       referredFor: "",
       hospital: "",
     });
-    // setDeletedProcedureCareIds([]);
-
     setSelectedHistoryType("");
     setSelectedTemplateIds(new Set());
     setSelectedTreatmentTemplateIds(new Set());
@@ -3331,7 +3302,6 @@ const OpdRRecallPatient = () => {
     if (!medication?.drugName) return;
 
     setTreatmentItems((prev) => {
-      // Check if already added
       const alreadyAdded = prev.some((item) => {
         if (medication.drugId && item.drugId === medication.drugId) return true;
         return (
@@ -3361,10 +3331,8 @@ const OpdRRecallPatient = () => {
         aDispQty: medication.aDispQty || 1,
       };
 
-      // Calculate total
       newItem.total = calculateTotal(newItem);
 
-      // Check if it's the default empty row
       if (isOnlyDefaultTreatmentRow(prev)) {
         return [newItem];
       }
@@ -3438,7 +3406,6 @@ const OpdRRecallPatient = () => {
   };
 
   const handleResetForm = () => {
-    // Reset main form data
     setFormData({
       height: "",
       weight: "",
@@ -3458,7 +3425,6 @@ const OpdRRecallPatient = () => {
       pastHistory: "",
     });
 
-    // Reset diagnosis
     setDiagnosisItems([
       {
         icdDiagId: "",
@@ -3468,7 +3434,6 @@ const OpdRRecallPatient = () => {
       },
     ]);
 
-    // Reset followUps to default
     setGeneralTreatmentAdvice("");
     setReferralNotes("");
     setReferralData({
@@ -3481,15 +3446,12 @@ const OpdRRecallPatient = () => {
       followUpDate: getToday(),
     });
 
-    // Important resets for templates
     setSelectedTreatmentTemplateIds(new Set());
     setSelectedTemplateIds(new Set());
 
-    // Reset doctor remarks
     setDoctorRemarksText("");
     setPsychiatristAssessment(null);
 
-    // Reset Admission fields
     setAdmissionAdvised(false);
     setAdmissionDate("");
     setAdmissionRemarks("");
@@ -3500,10 +3462,8 @@ const OpdRRecallPatient = () => {
     setOccupiedBeds(0);
     setVacantBeds(0);
 
-    // Reset working diagnosis
     setWorkingDiagnosis("");
 
-    // Reset investigations with one default row
     setInvestigationItems([
       {
         investigationId: "",
@@ -3513,7 +3473,6 @@ const OpdRRecallPatient = () => {
       },
     ]);
 
-    // Reset treatments with one default row
     setTreatmentItems([
       {
         treatmentId: null,
@@ -3530,7 +3489,6 @@ const OpdRRecallPatient = () => {
       },
     ]);
 
-    // Reset form errors
     setErrors({});
     setExpandedSections({
       personalDetails: false,
@@ -4253,12 +4211,6 @@ const OpdRRecallPatient = () => {
                               <label className="form-label fw-bold m-0">
                                 Patient signs & symptoms
                               </label>
-                              {/* <button
-                                className="btn btn-sm btn-outline-success p-1 px-2"
-                                onClick={() => openPopup("symptoms")}
-                              >
-                                +
-                              </button> */}
                             </div>
                             <input
                               type="text"
@@ -4462,6 +4414,10 @@ const OpdRRecallPatient = () => {
                           visitId={selectedPatient?.visitId}
                           hideHeader={true}
                           hideButtons={true}
+                          isRecallMode={true}
+                          onSaveComplete={() => {
+                            console.log("OBG data saved locally");
+                          }}
                         />
                       </div>
                     )}
@@ -5110,7 +5066,6 @@ const OpdRRecallPatient = () => {
                                     className="position-relative w-100"
                                     ref={dropdownInvestigationRef}
                                   >
-                                    {/* INPUT */}
                                     <input
                                       type="text"
                                       className="form-control"
@@ -5139,7 +5094,6 @@ const OpdRRecallPatient = () => {
                                       }}
                                     />
 
-                                    {/* DROPDOWN */}
                                     {openInvestigationDropdown === index && (
                                       <div
                                         className="border rounded mt-1 bg-white position-absolute w-100"
@@ -5164,7 +5118,7 @@ const OpdRRecallPatient = () => {
                                               key={inv.investigationId}
                                               className="p-2 cursor-pointer hover:bg-light"
                                               onMouseDown={(e) => {
-                                                e.preventDefault(); // prevent blur
+                                                e.preventDefault();
                                                 updateInvestigation(inv, index);
                                               }}
                                             >
@@ -5507,7 +5461,7 @@ const OpdRRecallPatient = () => {
                                                 className="p-2 cursor-pointer"
                                                 onMouseDown={(e) =>
                                                   e.preventDefault()
-                                                } // prevent blur
+                                                }
                                                 onClick={() => {
                                                   updateDrug(drug, index);
                                                   setActiveDrugDropdown(null);
@@ -6208,8 +6162,7 @@ const OpdRRecallPatient = () => {
                               onChange={() => setSurgeryType("minor")}
                             />
                             <label className="form-check-label" htmlFor="minor">
-                              Minor
-                            </label>
+                              Minor                            </label>
                           </div>
                           <div style={{ cursor: "default" }}>
                             <div className="d-flex align-items-center">
@@ -6485,7 +6438,6 @@ const OpdRRecallPatient = () => {
                                 </div>
                               </div>
 
-                              {/* Bed Information */}
                               <div className="row g-3 mt-3">
                                 <div className="col-md-3">
                                   <label className="form-label fw-bold">
@@ -6638,7 +6590,6 @@ const OpdRRecallPatient = () => {
 
                       {referralData.isReferred === "Yes" && (
                         <>
-                          {/* INTERNAL REFERRAL */}
                           {referralData.referTo === "Internal" && (
                             <>
                               <div className="row mb-3">
@@ -6771,7 +6722,6 @@ const OpdRRecallPatient = () => {
                             </>
                           )}
 
-                          {/* EXTERNAL REFERRAL */}
                           {referralData.referTo === "External" && (
                             <>
                               <div className="row mb-3">
@@ -6801,7 +6751,6 @@ const OpdRRecallPatient = () => {
                             </>
                           )}
 
-                          {/* REFERRAL NOTES */}
                           <div className="row">
                             <div className="col-12">
                               <h6 className="fw-bold mb-3">Referral Notes</h6>
@@ -6849,7 +6798,6 @@ const OpdRRecallPatient = () => {
                   {expandedSections.followUp && (
                     <div className="card-body">
                       <div className="d-flex align-items-center justify-content-between">
-                        {/* Checkbox */}
                         <div className="d-flex align-items-center gap-2">
                           <input
                             type="checkbox"
@@ -6862,7 +6810,6 @@ const OpdRRecallPatient = () => {
                         </div>
 
                         <div className="d-flex align-items-center gap-4">
-                          {/* Number of Days */}
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">
                               Number of days
@@ -6885,7 +6832,6 @@ const OpdRRecallPatient = () => {
                             />
                           </div>
 
-                          {/* Follow Up Date (Read Only) */}
                           <div className="d-flex align-items-center gap-2">
                             <label className="form-label mb-0">
                               Follow Up date
@@ -6993,12 +6939,6 @@ const OpdRRecallPatient = () => {
           }}
         />
 
-        {/* <TreatmentModal
-          show={showTreatmentModal}
-          onClose={handleCloseTreatmentModal}
-          templateType={treatmentModalType}
-          onTemplateSaved={(template) => {}}
-        /> */}
         <TreatmentModal
           show={showTreatmentModal}
           onClose={() => {
@@ -7426,7 +7366,6 @@ const OpdRRecallPatient = () => {
             </div>
             {loading && <LoadingScreen />}
             <div className="card-body">
-              {/* Search Filters Section */}
               <div className="card mb-3">
                 <div className="card-body">
                   <div className="row g-3 align-items-end">
@@ -7493,14 +7432,12 @@ const OpdRRecallPatient = () => {
                 </div>
               </div>
 
-              {/* Results Count */}
               <div className="mb-3">
                 <h6 className="text-muted">
                   {recallPatientOpd.length} matches
                 </h6>
               </div>
 
-              {/* Patients Table */}
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
                   <thead className="table-light">
@@ -7541,8 +7478,6 @@ const OpdRRecallPatient = () => {
                   </tbody>
                 </table>
               </div>
-
-              {/* Pagination */}
 
               <Pagination
                 totalItems={recallPatientOpd.length}
