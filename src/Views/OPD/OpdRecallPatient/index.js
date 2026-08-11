@@ -72,6 +72,7 @@ const OpdRRecallPatient = () => {
   const [showDetailView, setShowDetailView] = useState(false);
   const [selectedPatient, setSelectedPatient] = useState(null);
   const [showOtCalendarModal, setShowOtCalendarModal] = useState(false);
+  const [removedTreatmentIds, setRemovedTreatmentIds] = useState([]);
   const [showCurrentMedicationModal, setShowCurrentMedicationModal] =
     useState(false);
   const [selectedTreatmentTemplateIds, setSelectedTreatmentTemplateIds] =
@@ -174,6 +175,7 @@ const OpdRRecallPatient = () => {
   const [drugPage, setDrugPage] = useState(0);
   const [drugLastPage, setDrugLastPage] = useState(true);
   const [activeDrugDropdown, setActiveDrugDropdown] = useState(null);
+  const [existingOpthalId, setExistingOpthalId] = useState(null);
   const drugDebounceRef = useRef([]);
   const drugDropdownRef = useRef(null);
   const visionRef = useRef(null);
@@ -351,6 +353,44 @@ const OpdRRecallPatient = () => {
       fetchWardData(categoryId);
     }
   };
+
+  const handleRemoveTreatmentItem = (index) => {
+    const itemToRemove = treatmentItems[index];
+
+    // existing ID from DB
+    if (itemToRemove?.treatmentId) {
+        setRemovedTreatmentIds((prev) => [
+            ...prev,
+            itemToRemove.treatmentId,
+        ]);
+    }
+
+    const onlyOneRow = treatmentItems.length === 1;
+    const isEmptyRow =
+        !itemToRemove.drugName && !itemToRemove.dispUnit;
+
+    if (onlyOneRow && isEmptyRow) return;
+
+    let newItems = treatmentItems.filter((_, i) => i !== index);
+
+    if (onlyOneRow) {
+        newItems = [{
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            templateId: "",
+        }];
+    }
+
+    setTreatmentItems(newItems);
+};
 
   const handleWardNameChange = async (deptId) => {
     setWardName(deptId);
@@ -1583,34 +1623,62 @@ const OpdRRecallPatient = () => {
     });
   };
 
-  const handleRemoveTreatmentItem = (index) => {
-    const itemToRemove = treatmentItems[index];
-    const onlyOneRow = treatmentItems.length === 1;
-    const isEmptyRow = !itemToRemove.drugName && !itemToRemove.dispUnit;
 
-    if (onlyOneRow && isEmptyRow) return;
+  const handleRemoveTreatmentTemplateItems = (templateId) => {
+    setTreatmentItems((prev) => {
+      const updated = prev
+        .map((item) => {
+          if (!item.templateId) return item;
 
-    let newItems = treatmentItems.filter((_, i) => i !== index);
+          const ids = item.templateId
+            .split(",")
+            .filter((id) => id !== String(templateId));
 
-    if (onlyOneRow) {
-      newItems = [
-        {
-          treatmentId: null,
-          drugId: "",
-          drugName: "",
-          dispUnit: "",
-          dosage: "",
-          frequency: "",
-          days: "",
-          total: "",
-          instruction: "",
-          stock: "",
-          templateId: "",
-        },
-      ];
-    }
+          if (item.treatmentId != null) {
+            return {
+              ...item,
+              templateId: ids.join(","),
+            };
+          }
 
-    setTreatmentItems(newItems);
+          if (ids.length > 0) {
+            return {
+              ...item,
+              templateId: ids.join(","),
+            };
+          }
+
+          return null;
+        })
+        .filter((item) => item !== null);
+
+      if (updated.length === 0) {
+        return [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosageUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            templateId: "",
+          },
+        ];
+      }
+
+      return updated;
+    });
+
+    setSelectedTreatmentTemplateIds((prev) => {
+      const updated = new Set(prev);
+      updated.delete(templateId);
+      return updated;
+    });
   };
 
   const handleRemoveTreatmentTemplateItems = (templateId) => {
@@ -1833,11 +1901,13 @@ const OpdRRecallPatient = () => {
             dosage: Number(item.dosage) || 0,
             days: Number(item.days) || 0,
             frequencyId: freq?.frequencyId || null,
+            frequencyName:freq?.frequencyName||null,
             instruction: item.instruction,
             dispUnit: item.dispUnit,
             itemClassId: item.itemClassId,
             adispQty: item.aDispQty || 1,
             total: calculateTotal(item),
+            prescriptionDtId: item.treatmentId || null,
           };
         });
 
@@ -1850,6 +1920,21 @@ const OpdRRecallPatient = () => {
           noOfDays: Number(item.noOfDays) || 0,
           remarks: item.remarks,
         }));
+
+    let ophthalmologyPayload = null;
+    if (shouldShowVisionExamination && visionExaminationData) {
+      ophthalmologyPayload = {
+        patientId: selectedPatient.patientId,
+        visitId: selectedPatient.visitId,
+        opdDate: getToday(),
+        ...visionExaminationData,
+      };
+      
+      // Add the ID if it exists (for update)
+      if (existingOpthalId) {
+        ophthalmologyPayload.id = existingOpthalId;
+      }
+    }
 
       const payload = {
         patientId: selectedPatient.patientId,
@@ -1883,6 +1968,7 @@ const OpdRRecallPatient = () => {
         investigations: investigationList,
 
         treatments: treatmentList,
+        removedTreatmentIds: removedTreatmentIds,
         treatmentAdvice: generalTreatmentAdvice || null,
 
         procedureCare: procedureCareList,
@@ -1903,6 +1989,10 @@ const OpdRRecallPatient = () => {
               ...visionExaminationData,
             },
           }),
+
+        ...(ophthalmologyPayload && {
+        ophthalmologyExaminationDetails: ophthalmologyPayload,
+      }),
 
         // Include OBG details in the main payload
         ...(isObgynDepartment &&
@@ -2716,6 +2806,11 @@ const OpdRRecallPatient = () => {
         });
         setRecallPregnancyData(patientData.pregnancyDetails || null);
 
+        const opthalId = patientData.ophthalmologyExaminationDetails?.id || 
+                       patientData.opthalId || 
+                       patientData.ophthalmologyId || 
+                       null;
+
         const sectionsToExpand = {};
 
         const hasVitalsData =
@@ -3045,6 +3140,7 @@ const OpdRRecallPatient = () => {
     setShowDetailView(false);
     setSelectedPatient(null);
     setRecallPregnancyData(null);
+    setExistingOpthalId(null);
     detailTemplateFetchRef.current = null;
     setPsychiatristAssessment(null);
     if (pregnancyRef.current?.resetForm) {
