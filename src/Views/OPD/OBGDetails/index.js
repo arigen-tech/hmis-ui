@@ -96,14 +96,11 @@ const defaultOBGForm = {
   bimanualExamination: "",
 };
 
-// API endpoint for OBG examination - replace with your actual endpoint
-
 const mapApiResponseToForm = (data) => {
   if (!data) return defaultOBGForm;
 
   const mapped = { ...defaultOBGForm };
 
-  // Map obstetric score from direct fields
   mapped.obstetricScore = {
     g: data.gravida || "",
     p: data.para || "",
@@ -111,7 +108,6 @@ const mapApiResponseToForm = (data) => {
     l: data.livingChildren || "",
   };
 
-  // Map main fields (using actual API response field names)
   mapped.obstetricHistory = data.obstetricHistoryNotes || "";
   mapped.conception = data.conceptionType || "";
   mapped.marriedLife = data.marriedLifeYears || "";
@@ -120,7 +116,7 @@ const mapApiResponseToForm = (data) => {
   mapped.immunised = data.immunisedStatus || "";
   mapped.trimesters = data.trimester || "";
   mapped.gc = data.gc || "";
-  mapped.paA = data.pallor || ""; // Note: pallor field maps to paA
+  mapped.paA = data.pallor || "";
   mapped.peA = data.peA || "";
   mapped.tt = data.ttStatus || "";
   mapped.fhr = data.fhr || "";
@@ -129,12 +125,10 @@ const mapApiResponseToForm = (data) => {
   mapped.pv = data.pvDone || "";
   mapped.remarks = data.antenatalRemarks || "";
 
-  // Map inspection height
   mapped.inspectionHeight.select = data.uterusHeight || "";
   mapped.inspectionHeight.specify = data.uterusHeightSpecify || "";
   mapped.inspectionHeight.remarks = data.antenatalRemarks || "";
 
-  // Map menstrual history
   mapped.menstrual = {
     ageOfMenarche: data.menarcheAge || "",
     cycles: data.cycles || "",
@@ -144,20 +138,17 @@ const mapApiResponseToForm = (data) => {
     menstrualPause: data.menstrualPause || "",
   };
 
-  // Map respiratory
   mapped.respiratory = {
     system: data.respiratorySystem || "",
     breathSounds: data.breathSounds || "",
   };
 
-  // Map cardiovascular
   mapped.cardiovascular = {
     s1: data.cardiovascularS1 || "",
     s2: data.cardiovascularS2 || "",
     murmurs: data.cardiovascularMurmurs || "",
   };
 
-  // Map PV examination
   mapped.pvExam = {
     osDilatation: data.pvOsDilatation || "",
     effacement: data.pvEffacement || "",
@@ -169,11 +160,9 @@ const mapApiResponseToForm = (data) => {
     station: data.stationPresenting || "",
   };
 
-  // Map head and pelvis
   mapped.head = data.fetalHead || "";
   mapped.pelvis = data.pelvis || "";
 
-  // Map gynaecology fields
   mapped.gynObstetricHistory = data.gynObstetricHistory || "";
   mapped.lastMenstrualPeriod = data.gynLastMenstrualPeriod || "";
   mapped.menstrualPattern = data.gynMenstrualPattern || "";
@@ -186,7 +175,6 @@ const mapApiResponseToForm = (data) => {
   mapped.perSpeculum = data.perSpeculum || "";
   mapped.bimanualExamination = data.bimanualExamination || "";
 
-  // Also map gyn flow and menarche age separately if they exist
   if (data.gynFlow) {
     mapped.menstrual.flow = data.gynFlow;
   }
@@ -201,6 +189,8 @@ const OBGDetails = forwardRef(
   ({ patientId, visitId, hideHeader = false, hideButtons = false }, ref) => {
     const [waitingList, setWaitingList] = useState([]);
     const [loading, setLoading] = useState(false);
+    const [isSearching, setIsSearching] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
     const [searchData, setSearchData] = useState({
       mobileNumber: "",
       patientName: "",
@@ -215,7 +205,6 @@ const OBGDetails = forwardRef(
 
     const [form, setForm] = useState(defaultOBGForm);
 
-    // Master data options
     const [conceptionOptions, setConceptionOptions] = useState([]);
     const [consanguinityOptions, setConsanguinityOptions] = useState([]);
     const [bookedStatusOptions, setBookedStatusOptions] = useState([]);
@@ -241,10 +230,14 @@ const OBGDetails = forwardRef(
 
     const initialLoadRef = useRef(false);
 
-    // Fetch waiting list
-    const fetchWaitingList = async () => {
+    const fetchWaitingList = async (setLoadingState = null) => {
       try {
-        setLoading(true);
+        if (setLoadingState) {
+          setLoadingState(true);
+        } else {
+          setLoading(true);
+        }
+
         const params = new URLSearchParams();
         params.append("page", 0);
         params.append("size", 100);
@@ -252,8 +245,9 @@ const OBGDetails = forwardRef(
           params.append("mobileNumber", searchData.mobileNumber);
         if (searchData.patientName)
           params.append("patientName", searchData.patientName);
+
         const res = await getRequest(
-          `${GET_WAITING_LIST}?${params.toString()}`,
+          `${GET_WAITING_LIST}?${params.toString()}`
         );
         if (res?.status === 200 && res?.response?.content) {
           setWaitingList(res.response.content);
@@ -264,11 +258,16 @@ const OBGDetails = forwardRef(
         console.error("Error fetching waiting list:", error);
         setWaitingList([]);
       } finally {
-        setLoading(false);
+        setTimeout(() => {
+          if (setLoadingState) {
+            setLoadingState(false);
+          } else {
+            setLoading(false);
+          }
+        }, 300);
       }
     };
 
-    // Fetch master data
     const fetchConceptionOptions = async () => {
       try {
         const res = await getRequest(`${MAS_OB_CONCEPTION}/getAll/1`);
@@ -428,7 +427,6 @@ const OBGDetails = forwardRef(
       }
     };
 
-    // Load all master data
     useEffect(() => {
       fetchWaitingList();
       fetchConceptionOptions();
@@ -449,7 +447,6 @@ const OBGDetails = forwardRef(
       fetchPapSmearOptions();
     }, []);
 
-    // Auto-load examination data if patientId and visitId are provided
     useEffect(() => {
       const fetchExaminationData = async () => {
         if (patientId && visitId) {
@@ -463,7 +460,7 @@ const OBGDetails = forwardRef(
 
           try {
             const res = await getRequest(
-              `${GET_OBG_EXAMINATION_DETAIL}?visitId=${visitId}`,
+              `${GET_OBG_EXAMINATION_DETAIL}?visitId=${visitId}`
             );
             if (res?.status === 200 && res?.response) {
               const mappedData = mapApiResponseToForm(res.response);
@@ -484,7 +481,6 @@ const OBGDetails = forwardRef(
       fetchExaminationData();
     }, [patientId, visitId]);
 
-    // Expose methods via ref
     useImperativeHandle(ref, () => ({
       getData: () => {
         return {
@@ -586,7 +582,6 @@ const OBGDetails = forwardRef(
       },
     }));
 
-    // Helper functions for form updates
     const updateObstetricScore = (field, value) => {
       setForm((prev) => ({
         ...prev,
@@ -629,22 +624,33 @@ const OBGDetails = forwardRef(
       }));
     };
 
-    // Search handlers
+    const handleSearch = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      setCurrentPage(1);
+      fetchWaitingList(setIsSearching);
+    };
+
+    const handleReset = (e) => {
+      if (e) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+      setSearchData({ mobileNumber: "", patientName: "" });
+      setCurrentPage(1);
+      const mobileInput = document.getElementById("mobileNumber");
+      const nameInput = document.getElementById("patientName");
+      if (mobileInput) mobileInput.value = "";
+      if (nameInput) nameInput.value = "";
+      fetchWaitingList(setIsResetting);
+    };
+
     const handleSearchChange = (e) => {
       const { id, value } = e.target;
       setSearchData((prev) => ({ ...prev, [id]: value }));
       setCurrentPage(1);
-    };
-
-    const handleSearch = () => {
-      setCurrentPage(1);
-      fetchWaitingList();
-    };
-
-    const handleReset = () => {
-      setSearchData({ mobileNumber: "", patientName: "" });
-      setCurrentPage(1);
-      fetchWaitingList();
     };
 
     const closeForm = () => {
@@ -666,7 +672,7 @@ const OBGDetails = forwardRef(
 
       try {
         const res = await getRequest(
-          `${GET_OBG_EXAMINATION_DETAIL}?visitId=${patient.visitId}`,
+          `${GET_OBG_EXAMINATION_DETAIL}?visitId=${patient.visitId}`
         );
         if (res?.status === 200 && res?.response) {
           const mappedData = mapApiResponseToForm(res.response);
@@ -698,12 +704,11 @@ const OBGDetails = forwardRef(
         return;
       }
 
-      // Validation checks
       const obsScore = form.obstetricScore;
       if (!obsScore.g || !obsScore.p || !obsScore.a || !obsScore.l) {
         showPopup(
           "Please fill all Obstetric Score fields (G, P, A, L)",
-          "error",
+          "error"
         );
         return;
       }
@@ -777,7 +782,7 @@ const OBGDetails = forwardRef(
       if (!form.lastMenstrualPeriod || !form.menstrualPattern || !form.cycle) {
         showPopup(
           "Please fill all Gynecology Menstrual History fields",
-          "error",
+          "error"
         );
         return;
       }
@@ -803,7 +808,6 @@ const OBGDetails = forwardRef(
         setIsSubmitting(true);
         const today = new Date().toISOString().split("T")[0];
 
-        // Build the nested payload structure expected by backend
         const payload = {
           patientId: selectedPatient.patientId,
           visitId: selectedPatient.visitId,
@@ -886,19 +890,23 @@ const OBGDetails = forwardRef(
           },
         };
 
-        console.log(
-          "Saving OBG Examination Payload:",
-          JSON.stringify(payload, null, 2),
-        );
-
         const response = await postRequest(
           `${SAVE_OBG_DETAILS}/${selectedPatient.visitId}`,
-          payload,
+          payload
         );
         if (response?.status === 200) {
-          showPopup("OBG examination saved successfully!", "success");
-          closeForm();
-          fetchWaitingList();
+          setPopupMessage({
+            message: "OBG examination saved successfully!",
+            type: "success",
+            onClose: () => {
+              setPopupMessage(null);
+              setShowForm(false);
+              setSelectedPatient(null);
+              setForm(defaultOBGForm);
+              fetchWaitingList();
+              setCurrentPage(1);
+            },
+          });
         } else {
           showPopup("Failed to save. Please try again.", "error");
         }
@@ -961,7 +969,6 @@ const OBGDetails = forwardRef(
                   />
                 )}
 
-                {/* WAITING LIST */}
                 {!patientId && !visitId && !showForm && (
                   <>
                     <div className="mb-4">
@@ -998,15 +1005,39 @@ const OBGDetails = forwardRef(
                               type="button"
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
+                              disabled={isSearching || isResetting}
                             >
-                              Search
+                              {isSearching ? (
+                                <>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                  Searching...
+                                </>
+                              ) : (
+                                "Search"
+                              )}
                             </button>
                             <button
                               type="button"
                               className="btn btn-secondary flex-fill"
                               onClick={handleReset}
+                              disabled={isSearching || isResetting}
                             >
-                              Reset
+                              {isResetting ? (
+                                <>
+                                  <span
+                                    className="spinner-border spinner-border-sm me-2"
+                                    role="status"
+                                    aria-hidden="true"
+                                  ></span>
+                                  Resetting...
+                                </>
+                              ) : (
+                                "Reset"
+                              )}
                             </button>
                           </div>
                         </div>
@@ -1052,10 +1083,7 @@ const OBGDetails = forwardRef(
                             ))
                           ) : (
                             <tr>
-                              <td
-                                colSpan="8"
-                                className="text-center text-muted"
-                              >
+                              <td colSpan="8" className="text-center text-muted">
                                 No records found
                               </td>
                             </tr>
@@ -1068,7 +1096,9 @@ const OBGDetails = forwardRef(
                       <nav>
                         <ul className="pagination justify-content-center">
                           <li
-                            className={`page-item ${currentPage === 1 ? "disabled" : ""}`}
+                            className={`page-item ${
+                              currentPage === 1 ? "disabled" : ""
+                            }`}
                           >
                             <button
                               className="page-link"
@@ -1080,7 +1110,9 @@ const OBGDetails = forwardRef(
                           {[...Array(totalPages)].map((_, i) => (
                             <li
                               key={i}
-                              className={`page-item ${currentPage === i + 1 ? "active" : ""}`}
+                              className={`page-item ${
+                                currentPage === i + 1 ? "active" : ""
+                              }`}
                             >
                               <button
                                 className="page-link"
@@ -1091,7 +1123,9 @@ const OBGDetails = forwardRef(
                             </li>
                           ))}
                           <li
-                            className={`page-item ${currentPage === totalPages ? "disabled" : ""}`}
+                            className={`page-item ${
+                              currentPage === totalPages ? "disabled" : ""
+                            }`}
                           >
                             <button
                               className="page-link"
@@ -1106,7 +1140,6 @@ const OBGDetails = forwardRef(
                   </>
                 )}
 
-                {/* EXAMINATION FORM */}
                 {showForm && selectedPatient && (
                   <div className="row mb-3 mt-3">
                     <div className="col-sm-12">
@@ -1127,7 +1160,6 @@ const OBGDetails = forwardRef(
                           </div>
                         ) : (
                           <form onSubmit={handleSave}>
-                            {/* Patient Info Banner */}
                             {!patientId && !visitId && (
                               <div className="alert alert-info mb-4">
                                 <strong>Patient:</strong>{" "}
@@ -1141,7 +1173,6 @@ const OBGDetails = forwardRef(
                               </div>
                             )}
 
-                            {/* DETAILS Section */}
                             <h6 className="fw-bold text-primary border-bottom pb-1">
                               DETAILS
                             </h6>
@@ -1195,7 +1226,7 @@ const OBGDetails = forwardRef(
                                         onChange={(e) =>
                                           updateObstetricScore(
                                             "g",
-                                            e.target.value,
+                                            e.target.value
                                           )
                                         }
                                       >
@@ -1203,7 +1234,7 @@ const OBGDetails = forwardRef(
                                         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
                                           (n) => (
                                             <option key={n}>{n}</option>
-                                          ),
+                                          )
                                         )}
                                       </select>
                                     </div>
@@ -1222,7 +1253,7 @@ const OBGDetails = forwardRef(
                                         onChange={(e) =>
                                           updateObstetricScore(
                                             "p",
-                                            e.target.value,
+                                            e.target.value
                                           )
                                         }
                                       >
@@ -1230,7 +1261,7 @@ const OBGDetails = forwardRef(
                                         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
                                           (n) => (
                                             <option key={n}>{n}</option>
-                                          ),
+                                          )
                                         )}
                                       </select>
                                     </div>
@@ -1249,7 +1280,7 @@ const OBGDetails = forwardRef(
                                         onChange={(e) =>
                                           updateObstetricScore(
                                             "a",
-                                            e.target.value,
+                                            e.target.value
                                           )
                                         }
                                       >
@@ -1257,7 +1288,7 @@ const OBGDetails = forwardRef(
                                         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
                                           (n) => (
                                             <option key={n}>{n}</option>
-                                          ),
+                                          )
                                         )}
                                       </select>
                                     </div>
@@ -1276,7 +1307,7 @@ const OBGDetails = forwardRef(
                                         onChange={(e) =>
                                           updateObstetricScore(
                                             "l",
-                                            e.target.value,
+                                            e.target.value
                                           )
                                         }
                                       >
@@ -1284,7 +1315,7 @@ const OBGDetails = forwardRef(
                                         {[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10].map(
                                           (n) => (
                                             <option key={n}>{n}</option>
-                                          ),
+                                          )
                                         )}
                                       </select>
                                     </div>
@@ -1654,7 +1685,6 @@ const OBGDetails = forwardRef(
                               </div>
                             </div>
 
-                            {/* MENSTRUAL HISTORY */}
                             <h6 className="fw-bold text-primary border-bottom pb-1">
                               MENSTRUAL HISTORY
                             </h6>
@@ -1669,14 +1699,14 @@ const OBGDetails = forwardRef(
                                   onChange={(e) =>
                                     updateMenstrual(
                                       "ageOfMenarche",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                 >
                                   <option value="">Select</option>
                                   {Array.from(
                                     { length: 20 },
-                                    (_, i) => i + 8,
+                                    (_, i) => i + 8
                                   ).map((age) => (
                                     <option key={age}>{age}</option>
                                   ))}
@@ -1708,7 +1738,7 @@ const OBGDetails = forwardRef(
                                   onChange={(e) =>
                                     updateMenstrual(
                                       "rangeNoOfDays",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                 >
@@ -1766,14 +1796,13 @@ const OBGDetails = forwardRef(
                                   onChange={(e) =>
                                     updateMenstrual(
                                       "menstrualPause",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                 />
                               </div>
                             </div>
 
-                            {/* SYSTEMIC EXAMINATION */}
                             <h6 className="fw-bold text-primary border-bottom pb-1">
                               SYSTEMIC EXAMINATION
                             </h6>
@@ -1804,7 +1833,7 @@ const OBGDetails = forwardRef(
                                   onChange={(e) =>
                                     updateRespiratory(
                                       "breathSounds",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                 >
@@ -1816,7 +1845,6 @@ const OBGDetails = forwardRef(
                               </div>
                             </div>
 
-                            {/* CARDIOVASCULAR SYSTEM */}
                             <h6 className="fw-bold text-primary border-bottom pb-1">
                               CARDIOVASCULAR SYSTEM
                             </h6>
@@ -1859,14 +1887,13 @@ const OBGDetails = forwardRef(
                                   onChange={(e) =>
                                     updateCardiovascular(
                                       "murmurs",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                 />
                               </div>
                             </div>
 
-                            {/* PER VAGINAL EXAMINATION */}
                             <h6 className="fw-bold text-primary border-bottom pb-1">
                               PER VAGINAL EXAMINATION
                             </h6>
@@ -2040,7 +2067,6 @@ const OBGDetails = forwardRef(
                               </div>
                             </div>
 
-                            {/* Head and Pelvis */}
                             <div className="row mb-3">
                               <div className="col-md-3">
                                 <label className="form-label fw-bold">
@@ -2085,7 +2111,6 @@ const OBGDetails = forwardRef(
                               </div>
                             </div>
 
-                            {/* GYNAECOLOGY SECTION */}
                             <h6 className="fw-bold text-primary border-bottom pb-1 mt-3">
                               GYNAECOLOGY
                             </h6>
@@ -2118,14 +2143,14 @@ const OBGDetails = forwardRef(
                                   onChange={(e) =>
                                     updateMenstrual(
                                       "ageOfMenarche",
-                                      e.target.value,
+                                      e.target.value
                                     )
                                   }
                                 >
                                   <option value="">Select</option>
                                   {Array.from(
                                     { length: 13 },
-                                    (_, i) => i + 8,
+                                    (_, i) => i + 8
                                   ).map((age) => (
                                     <option key={age}>{age}</option>
                                   ))}
@@ -2337,7 +2362,6 @@ const OBGDetails = forwardRef(
                               </div>
                             </div>
 
-                            {/* SUBMIT BUTTON */}
                             {!hideButtons && (
                               <div className="col-12 mt-3 d-flex justify-content-end">
                                 <button
@@ -2370,7 +2394,7 @@ const OBGDetails = forwardRef(
         </div>
       </div>
     );
-  },
+  }
 );
 
 export default OBGDetails;
