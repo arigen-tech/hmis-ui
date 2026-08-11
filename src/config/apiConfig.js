@@ -768,6 +768,9 @@ export const UPDATE_TRANSFER_REQUEST_STATUS = '/ipd/wardPendingToTransferRequest
 export const WARD_TRANSFER_LIST = '/ipd/wardTransferList';
 export const SAVE_IP_DIAGNOSIS_ENTRY = '/ipd/saveIpDiagnosisEntry';
 export const GET_IP_DIAGNOSIS_ENTRY = '/ipd/getIpDiagnosisEntry';
+export const GET_PROCEDURE_BY_INPATIENT_ID = '/ipd/getProcedureByInpatientId';
+export const SAVE_INPATIENT_PROCEDURE = '/ipd/saveInpatientProcedure';
+export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
@@ -794,3 +797,7 @@ export const STOP_IPD_MEDICATION_TREATMENT = '/ipd/stopMedicationTreatment';
 export const GET_MAR_MEDICINE_LIST = '/ipd/getMarMedicineList';
 export const GET_MAR_ADMINISTRATION_LOG = '/ipd/getMarAdministrationLog';
 export const SAVE_MAR_DETAILS = '/ipd/saveMarDetails';
+export const SAVE_PROCEDURE_CONSUMABLE_TEMPLATE = '/ipd/saveProcedureConsumableTemplate';
+export const GET_PROCEDURE_CONSUMABLE_TEMPLATE = '/ipd/getProcedureConsumableTemplate';
+export const GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS = '/ipd/getProcedureConsumableTemplateDetails';
+export const GET_ITEM_BATCHES = '/inventory/item/batches';
