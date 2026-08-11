@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getRequest, postRequest } from '../../../../service/apiService';
-import { GET_PROCEDURE_BY_INPATIENT_ID, MAS_PROCEDURES_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, SAVE_INPATIENT_PROCEDURE } from '../../../../config/apiConfig';
+import { GET_PROCEDURE_BY_INPATIENT_ID, MAS_PROCEDURES_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, SAVE_INPATIENT_PROCEDURE, GET_MEDICAL_CONSUMABLE_ITEMS, SAVE_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS, GET_ITEM_BATCHES } from '../../../../config/apiConfig';
 
 const NursingCareModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
@@ -29,21 +29,119 @@ const NursingCareModule = ({ selectedPatient }) => {
     fetchProcedureOptions('');
   }, []);
 
-  // Available consumable items for auto‑complete
-  const itemOptions = [
-    'IV Cannula',
-    'Needle',
-    'Fixator',
-    'Gauze',
-    'Gloves',
-    'Catheter',
-    'Lubricant',
-    'Syringe',
-    'IV Set',
-    'Bandage',
-    'Oxygen Mask',
-    'Nebulizer',
-  ];
+  // ---------- API Data States ----------
+  const [itemOptions, setItemOptions] = useState([]);
+  const [itemSearchText, setItemSearchText] = useState('');
+  const [itemPage, setItemPage] = useState(0);
+  const [itemHasMore, setItemHasMore] = useState(true);
+  const [loadingItems, setLoadingItems] = useState(false);
+  const [activeItemDropdown, setActiveItemDropdown] = useState(null);
+
+  const fetchConsumableItems = async (searchText = '', page = 0, isLoadMore = false) => {
+    if (loadingItems || (!itemHasMore && isLoadMore)) return;
+    setLoadingItems(true);
+    try {
+      const res = await getRequest(`${GET_MEDICAL_CONSUMABLE_ITEMS}?page=${page}&size=10&flag=1&itemName=${searchText}`);
+      if (res?.status === 200 && res?.response?.content) {
+        const newItems = res.response.content;
+        setItemOptions(prev => isLoadMore ? [...prev, ...newItems] : newItems);
+        setItemPage(page);
+        setItemHasMore(page < (res.response.totalPages - 1) && !res.response.last);
+      } else {
+        if (!isLoadMore) setItemOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching items:", error);
+    } finally {
+      setLoadingItems(false);
+    }
+  };
+
+  const handleItemScroll = (e) => {
+    const bottom = e.target.scrollHeight - e.target.scrollTop <= e.target.clientHeight + 20;
+    if (bottom && itemHasMore && !loadingItems) {
+      fetchConsumableItems(itemSearchText, itemPage + 1, true);
+    }
+  };
+
+  const handleItemSearchChange = (val, dropdownId) => {
+    setItemSearchText(val);
+    if (val && val.trim().length > 0) {
+      setActiveItemDropdown(dropdownId);
+      fetchConsumableItems(val, 0, false);
+    } else {
+      setActiveItemDropdown(null);
+      setItemOptions([]);
+    }
+  };
+
+  // ---------- Apply Template Search API States ----------
+  const [applyTemplateOptions, setApplyTemplateOptions] = useState([]);
+  const [applyTemplateSearchText, setApplyTemplateSearchText] = useState('');
+  const [applyTemplatePage, setApplyTemplatePage] = useState(0);
+  const [applyTemplateHasMore, setApplyTemplateHasMore] = useState(true);
+  const [loadingApplyTemplates, setLoadingApplyTemplates] = useState(false);
+  const [showApplyTemplateDropdown, setShowApplyTemplateDropdown] = useState(false);
+
+  const fetchApplyTemplateOptions = async (searchText = '', page = 0, isLoadMore = false) => {
+    if (loadingApplyTemplates || (!applyTemplateHasMore && isLoadMore)) return;
+    setLoadingApplyTemplates(true);
+    try {
+      const res = await getRequest(`${GET_PROCEDURE_CONSUMABLE_TEMPLATE}?search=${searchText}&page=${page}&size=10`);
+      if (res?.status === 200 && res?.response?.content) {
+        const newItems = res.response.content;
+        setApplyTemplateOptions(prev => isLoadMore ? [...prev, ...newItems] : newItems);
+        setApplyTemplatePage(page);
+        setApplyTemplateHasMore(page < (res.response.totalPages - 1) && !res.response.last);
+      } else {
+        if (!isLoadMore) setApplyTemplateOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching templates:", error);
+    } finally {
+      setLoadingApplyTemplates(false);
+    }
+  };
+
+  const handleApplyTemplateScroll = (e) => {
+    const bottom = e.target.scrollHeight - e.target.scrollTop <= e.target.clientHeight + 20;
+    if (bottom && applyTemplateHasMore && !loadingApplyTemplates) {
+      fetchApplyTemplateOptions(applyTemplateSearchText, applyTemplatePage + 1, true);
+    }
+  };
+
+  const handleApplyTemplateSearchChange = (val) => {
+    setApplyTemplateSearchText(val);
+    setShowApplyTemplateDropdown(true);
+    fetchApplyTemplateOptions(val, 0, false);
+  };
+
+  const renderItemDropdown = (dropdownId, onSelect) => (
+    activeItemDropdown === dropdownId && (
+      <ul 
+        className="list-group position-absolute w-100 shadow" 
+        style={{ zIndex: 1050, maxHeight: "200px", overflowY: "auto", top: "100%" }}
+        onScroll={handleItemScroll}
+      >
+        {itemOptions.map((opt, idx) => (
+          <li
+            key={idx}
+            className="list-group-item list-group-item-action py-1"
+            style={{ cursor: "pointer", fontSize: "0.8rem" }}
+            onMouseDown={(e) => {
+              e.preventDefault();
+              onSelect(opt);
+              setActiveItemDropdown(null);
+            }}
+          >
+            {opt.nomenclature}
+          </li>
+        ))}
+        {loadingItems && <li className="list-group-item py-1 text-center" style={{ fontSize: "0.8rem" }}>Loading...</li>}
+        {!loadingItems && itemOptions.length === 0 && <li className="list-group-item py-1 text-center text-muted" style={{ fontSize: "0.8rem" }}>No items found</li>}
+      </ul>
+    )
+  );
 
   // Batch data (simulating FIFO)
   const batchData = {
@@ -69,22 +167,6 @@ const NursingCareModule = ({ selectedPatient }) => {
     // add more as needed
   };
 
-  // UOM mapping
-  const uomMap = {
-    'IV Cannula': 'Piece',
-    'Needle': 'Piece',
-    'Fixator': 'Piece',
-    'Gauze': 'Piece',
-    'Gloves': 'Pair',
-    'Catheter': 'Piece',
-    'Lubricant': 'ml',
-    'Syringe': 'Piece',
-    'IV Set': 'Set',
-    'Bandage': 'Roll',
-    'Oxygen Mask': 'Piece',
-    'Nebulizer': 'Piece',
-  };
-
   // ---------- Procedures State ----------
   const [procedures, setProcedures] = useState([]);
   const [loadingProcedures, setLoadingProcedures] = useState(false);
@@ -100,11 +182,12 @@ const NursingCareModule = ({ selectedPatient }) => {
     try {
       const res = await getRequest(`${GET_PROCEDURE_BY_INPATIENT_ID}/${inpatientId}`);
       if (res?.status === 200 && res?.response) {
-        const mappedProcedures = res.response.map(p => ({
-          id: p.procedureTxnId,
-          procedure: p.procedureName,
-          dateTime: p.procedureDatetime,
-          performedBy: p.performedBy,
+        const proceduresData = Array.isArray(res.response) ? res.response : (res.response.content || []);
+        const mappedProcedures = proceduresData.map(p => ({
+          id: p.inpatientProcedureId || p.procedureTxnId || p.id || p.procedureId,
+          procedure: p.procedureName || p.procedure?.procedureName || p.procedure,
+          dateTime: p.procedureDatetime || p.createdDate || p.date,
+          performedBy: p.performedBy || p.createdBy,
           remarks: p.remarks ? p.remarks : '—',
           remarkText: p.remarks || '',
         }));
@@ -263,6 +346,7 @@ const NursingCareModule = ({ selectedPatient }) => {
   // Empty shape for the single-row builder used in the "no template" flow.
   const emptyConsumableForm = {
     item: '',
+    itemId: null,
     uom: '',
     batch: '',
     expiry: '',
@@ -270,6 +354,51 @@ const NursingCareModule = ({ selectedPatient }) => {
     usedBy: '',
     dateTime: '',
     procedureRef: '',
+  };
+
+  const [fetchedBatches, setFetchedBatches] = useState({});
+  const [loadingBatches, setLoadingBatches] = useState({});
+  const [isSavingConsumables, setIsSavingConsumables] = useState(false);
+
+  const fetchItemBatches = async (itemId, isTemplateRow = false, templateRowIndex = -1) => {
+    if (!itemId || fetchedBatches[itemId] || loadingBatches[itemId]) return;
+    setLoadingBatches(prev => ({ ...prev, [itemId]: true }));
+    const hospitalId = sessionStorage.getItem('hospitalId') || localStorage.getItem('hospitalId') || 12;
+    const departmentId = sessionStorage.getItem('departmentId') || localStorage.getItem('departmentId') || 49;
+    try {
+      const response = await getRequest(`${GET_ITEM_BATCHES}/${itemId}?hospitalId=${hospitalId}&departmentId=${departmentId}`);
+      if (response && response.status === 200 && response.response) {
+        const batches = response.response;
+        setFetchedBatches(prev => ({ ...prev, [itemId]: batches }));
+        if (batches.length > 0) {
+          const first = batches[0];
+          if (isTemplateRow && templateRowIndex >= 0) {
+            setTemplateItems(prev => {
+              const updated = [...prev];
+              if (updated[templateRowIndex] && updated[templateRowIndex].itemId === itemId && !updated[templateRowIndex].batch) {
+                updated[templateRowIndex].batch = first.batchName;
+                updated[templateRowIndex].expiry = first.doe;
+              }
+              return updated;
+            });
+          } else if (!isTemplateRow) {
+            setNewConsumable(prev => {
+              if (prev.itemId === itemId && !prev.batch) {
+                return { ...prev, batch: first.batchName, expiry: first.doe };
+              }
+              return prev;
+            });
+          }
+        }
+      } else {
+        setFetchedBatches(prev => ({ ...prev, [itemId]: [] }));
+      }
+    } catch (error) {
+      console.error("Error fetching batches:", error);
+      setFetchedBatches(prev => ({ ...prev, [itemId]: [] }));
+    } finally {
+      setLoadingBatches(prev => ({ ...prev, [itemId]: false }));
+    }
   };
 
   // New Consumable form (used both for the single-row builder and as the
@@ -280,6 +409,7 @@ const NursingCareModule = ({ selectedPatient }) => {
   const [templateForm, setTemplateForm] = useState({
     id: null,
     name: '',
+    templateCode: '',
     procedureName: '',
     procedureId: null,
     items: [], // array of {item, qty}
@@ -311,7 +441,7 @@ const NursingCareModule = ({ selectedPatient }) => {
   };
 
   // Helper: get default usedBy (simulate login user)
-  const defaultUsedBy = 'Nurse A';
+  const defaultUsedBy = currentUserName || 'Nurse A';
 
   // ---------- Handlers: Procedures ----------
   const handleAddProcedure = async () => {
@@ -357,26 +487,16 @@ const NursingCareModule = ({ selectedPatient }) => {
   };
 
   // ---------- Handlers: Consumables ----------
-  // When item changes, auto-set UOM and fetch batch options (FIFO)
-  const handleConsumableItemChange = (item) => {
-    const uom = uomMap[item] || '';
-    setNewConsumable({
-      ...newConsumable,
-      item,
-      uom,
-      batch: '', // reset batch
-      expiry: '',
-    });
-  };
+
 
   // When batch is selected, auto-fill expiry
-  const handleBatchChange = (batch) => {
-    const batches = batchData[newConsumable.item] || [];
-    const found = batches.find(b => b.batch === batch);
+  const handleBatchChange = (batch, itemId) => {
+    const batches = fetchedBatches[itemId] || [];
+    const found = batches.find(b => b.batchName === batch);
     setNewConsumable({
       ...newConsumable,
       batch,
-      expiry: found ? found.expiry : '',
+      expiry: found ? found.doe : '',
     });
   };
 
@@ -386,6 +506,7 @@ const NursingCareModule = ({ selectedPatient }) => {
     setTemplateItems([]);
     setManualItems([]);
     setSelectedTemplateId('');
+    setApplyTemplateSearchText('');
   };
 
   // Push the current single-entry form into the `manualItems` staging list
@@ -393,10 +514,11 @@ const NursingCareModule = ({ selectedPatient }) => {
   // here — whatever is currently in the form (even if partially empty) gets
   // added as a row, and the form is fully cleared afterwards.
   const addManualRow = () => {
-    const { item, qty, batch, expiry, uom, usedBy, dateTime, procedureRef } = newConsumable;
+    const { item, itemId, qty, batch, expiry, uom, usedBy, dateTime, procedureRef } = newConsumable;
     const row = {
       rowId: Date.now() + Math.random(),
       item,
+      itemId,
       qty,
       batch,
       expiry,
@@ -423,7 +545,8 @@ const NursingCareModule = ({ selectedPatient }) => {
   const editManualRow = (row) => {
     setNewConsumable({
       item: row.item,
-      uom: row.uom || uomMap[row.item] || '',
+      itemId: row.itemId || null,
+      uom: row.uom || '',
       batch: row.batch,
       expiry: row.expiry,
       qty: row.qty,
@@ -435,29 +558,35 @@ const NursingCareModule = ({ selectedPatient }) => {
   };
 
   // Commit every row in `manualItems` to the real consumables list
-  const saveManualItems = () => {
+  const saveManualItems = async () => {
     if (manualItems.length === 0) {
       alert('Add at least one row before saving.');
       return;
     }
-    const newEntries = manualItems.map(row => ({
-      id: Date.now() + Math.random(),
-      item: row.item,
-      qty: row.qty,
-      procedureRef: row.procedureRef || null,
-      dateTime: row.dateTime,
-      usedBy: row.usedBy,
-      batch: row.batch,
-      expiry: row.expiry,
-      remarks: row.remarks || '—',
-    }));
-    setConsumables([...consumables, ...newEntries]);
-    setShowAddConsumableModal(false);
-    resetConsumableModal();
+    setIsSavingConsumables(true);
+    try {
+      // Simulate API call for now (can be replaced with actual API call)
+      const newEntries = manualItems.map(row => ({
+        id: Date.now() + Math.random(),
+        item: row.item,
+        qty: row.qty,
+        procedureRef: row.procedureRef || null,
+        dateTime: row.dateTime,
+        usedBy: row.usedBy,
+        batch: row.batch,
+        expiry: row.expiry,
+        remarks: row.remarks || '—',
+      }));
+      setConsumables([...consumables, ...newEntries]);
+      setShowAddConsumableModal(false);
+      resetConsumableModal();
+    } finally {
+      setIsSavingConsumables(false);
+    }
   };
 
   // Add multiple items from template
-  const addTemplateItems = () => {
+  const addTemplateItems = async () => {
     // templateItems contains all the rows with filled fields
     if (templateItems.length === 0) {
       alert('No items in template.');
@@ -469,39 +598,60 @@ const NursingCareModule = ({ selectedPatient }) => {
         return;
       }
     }
-    const newEntries = templateItems.map(item => ({
-      id: Date.now() + Math.random(),
-      item: item.item,
-      qty: item.qty,
-      procedureRef: item.procedureRef || null,
-      dateTime: item.dateTime,
-      usedBy: item.usedBy,
-      batch: item.batch,
-      expiry: item.expiry,
-      remarks: item.remarks || '—',
-    }));
-    setConsumables([...consumables, ...newEntries]);
-    setShowAddConsumableModal(false);
-    resetConsumableModal();
+    setIsSavingConsumables(true);
+    try {
+      // Simulate API call for now (can be replaced with actual API call)
+      const newEntries = templateItems.map(item => ({
+        id: Date.now() + Math.random(),
+        item: item.item,
+        qty: item.qty,
+        procedureRef: item.procedureRef || null,
+        dateTime: item.dateTime,
+        usedBy: item.usedBy,
+        batch: item.batch,
+        expiry: item.expiry,
+        remarks: item.remarks || '—',
+      }));
+      setConsumables([...consumables, ...newEntries]);
+      setShowAddConsumableModal(false);
+      resetConsumableModal();
+    } finally {
+      setIsSavingConsumables(false);
+    }
   };
 
   // Apply template: fill templateItems array
-  const applyTemplate = (templateId) => {
-    const template = templates.find(t => t.id === parseInt(templateId));
-    if (!template) return;
-    const items = template.items.map(item => ({
-      item: item.item,
-      qty: item.qty,
-      batch: '', // will be selected later
-      expiry: '',
-      usedBy: defaultUsedBy,
-      dateTime: nowDateTimeLocal(),
-      procedureRef: '', // user can choose
-      remarks: '',
-    }));
-    setTemplateItems(items);
-    // Selecting a template supersedes any manual rows already staged
-    setManualItems([]);
+  const applyTemplate = async (template) => {
+    if (!template || !template.templateId) return;
+    try {
+      const response = await getRequest(`${GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS}/${template.templateId}`);
+      if (response && response.status === 200 && response.response) {
+        const itemsData = response.response;
+        const items = itemsData.map((item, idx) => {
+          if (item.itemId) fetchItemBatches(item.itemId, true, idx);
+          return {
+            item: item.itemName || '',
+            itemId: item.itemId,
+            qty: item.qty || 1,
+            batch: '', // will be auto-selected if available
+            expiry: '',
+            usedBy: defaultUsedBy,
+            dateTime: nowDateTimeLocal(),
+            procedureRef: '', // user can choose
+            remarks: '',
+          };
+        });
+        setTemplateItems(items);
+        // Selecting a template supersedes any manual rows already staged
+        setManualItems([]);
+      } else {
+        console.error("Failed to fetch template details:", response);
+        alert(response?.message || 'Failed to fetch template details.');
+      }
+    } catch (error) {
+      console.error("Error fetching template details:", error);
+      alert('Error fetching template details.');
+    }
   };
 
   // Update a template item row
@@ -511,10 +661,11 @@ const NursingCareModule = ({ selectedPatient }) => {
     // if item changes, update UOM? Not necessary for template.
     // if batch changes, update expiry
     if (field === 'batch') {
-      const batches = batchData[updated[index].item] || [];
-      const found = batches.find(b => b.batch === value);
+      const itemId = updated[index].itemId;
+      const batches = fetchedBatches[itemId] || [];
+      const found = batches.find(b => b.batchName === value);
       if (found) {
-        updated[index].expiry = found.expiry;
+        updated[index].expiry = found.doe;
       }
     }
     setTemplateItems(updated);
@@ -526,15 +677,19 @@ const NursingCareModule = ({ selectedPatient }) => {
       setTemplateForm({
         id: template.id,
         name: template.name,
+        templateCode: template.templateCode || '',
         procedureName: template.procedureName,
+        procedureId: template.procedureId || null,
         items: template.items.map(it => ({ ...it })),
       });
     } else {
       setTemplateForm({
         id: null,
         name: '',
+        templateCode: '',
         procedureName: '',
-        items: [{ item: '', qty: 1 }],
+        procedureId: null,
+        items: [{ item: '', itemId: 0, qty: 1 }],
       });
     }
     setShowTemplateModal(true);
@@ -543,7 +698,7 @@ const NursingCareModule = ({ selectedPatient }) => {
   const addTemplateItemRow = () => {
     setTemplateForm({
       ...templateForm,
-      items: [...templateForm.items, { item: '', qty: 1 }],
+      items: [...templateForm.items, { item: '', itemId: 0, qty: 1 }],
     });
   };
 
@@ -562,29 +717,51 @@ const NursingCareModule = ({ selectedPatient }) => {
     setTemplateForm({ ...templateForm, items: updatedItems });
   };
 
-  const saveTemplate = () => {
-    const { name, procedureName, items } = templateForm;
-    if (!name || !procedureName || items.length === 0) {
-      alert('Please fill Template Name, Procedure Name, and at least one item.');
+  const saveTemplate = async () => {
+    const { name, procedureName, items, templateCode, procedureId } = templateForm;
+    if (!name || !templateCode || !procedureName || items.length === 0) {
+      alert('Please fill Template Name, Template Code, Procedure Name, and at least one item.');
       return;
     }
     if (items.some(it => !it.item || !it.qty)) {
       alert('Please fill item name and quantity for all rows.');
       return;
     }
-    const newTemplate = {
-      id: templateForm.id || Date.now(),
-      name,
-      procedureName,
-      items: items.map(it => ({ item: it.item, qty: parseInt(it.qty) })),
+    const payload = {
+      procedureId: procedureId || 0,
+      templateCode: templateCode,
+      templateName: name,
+      details: items.map(it => ({
+        itemId: it.itemId || 0,
+        defaultQty: parseFloat(it.qty) || 0
+      }))
     };
-    if (templateForm.id) {
-      // edit
-      setTemplates(templates.map(t => t.id === templateForm.id ? newTemplate : t));
-    } else {
-      setTemplates([...templates, newTemplate]);
+
+    try {
+      const response = await postRequest(SAVE_PROCEDURE_CONSUMABLE_TEMPLATE, payload);
+      if (response && response.status === 200) {
+        const newTemplate = {
+          id: templateForm.id || Date.now(),
+          name,
+          templateCode,
+          procedureName,
+          procedureId,
+          items: items.map(it => ({ item: it.item, itemId: it.itemId, qty: parseInt(it.qty) })),
+        };
+        if (templateForm.id) {
+          // edit
+          setTemplates(templates.map(t => t.id === templateForm.id ? newTemplate : t));
+        } else {
+          setTemplates([...templates, newTemplate]);
+        }
+        setShowTemplateModal(false);
+      } else {
+        alert(response?.message || 'Failed to save template.');
+      }
+    } catch (error) {
+      console.error("Error saving template:", error);
+      alert('Error saving template.');
     }
-    setShowTemplateModal(false);
   };
 
   // ---------- Render Helper for Procedure Remarks Tooltip ----------
@@ -730,7 +907,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                 </thead>
                 <tbody>
                   {consumables.map(cons => {
-                    const proc = procedures.find(p => p.id === cons.procedureRef);
+                    const proc = procedures.find(p => p.id == cons.procedureRef);
                     const refText = proc ? `${proc.procedure} (${new Date(proc.dateTime).toLocaleDateString()})` : '—';
                     return (
                       <tr key={cons.id}>
@@ -858,26 +1035,53 @@ const NursingCareModule = ({ selectedPatient }) => {
               <div className="modal-body" style={sideModalBodyStyle}>
                 {/* Template selection */}
                 <div className="row g-2 mb-3">
-                  <div className="col-md-6">
+                  <div className="col-md-6 position-relative">
                     <label className="form-label small">Apply Template (optional)</label>
-                    <select
-                      className="form-select form-select-sm"
-                      value={selectedTemplateId}
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      value={applyTemplateSearchText}
                       onChange={(e) => {
                         const val = e.target.value;
-                        setSelectedTemplateId(val);
-                        if (val) {
-                          applyTemplate(val);
-                        } else {
+                        handleApplyTemplateSearchChange(val);
+                        if (!val || val.trim().length === 0) {
+                          setSelectedTemplateId('');
                           setTemplateItems([]);
                         }
                       }}
-                    >
-                      <option value="">-- None (build my own rows) --</option>
-                      {templates.map(t => (
-                        <option key={t.id} value={t.id}>{t.name}</option>
-                      ))}
-                    </select>
+                      onFocus={() => {
+                        setShowApplyTemplateDropdown(true);
+                        fetchApplyTemplateOptions(applyTemplateSearchText, 0, false);
+                      }}
+                      onBlur={() => setShowApplyTemplateDropdown(false)}
+                      placeholder="Type to search template"
+                    />
+                    {showApplyTemplateDropdown && (
+                      <ul 
+                        className="list-group position-absolute w-100 shadow" 
+                        style={{ zIndex: 1050, maxHeight: "200px", overflowY: "auto", top: "100%" }}
+                        onScroll={handleApplyTemplateScroll}
+                      >
+                        {applyTemplateOptions.map((opt, idx) => (
+                          <li
+                            key={idx}
+                            className="list-group-item list-group-item-action py-1"
+                            style={{ cursor: "pointer", fontSize: "0.8rem" }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setSelectedTemplateId(opt.templateId);
+                              setApplyTemplateSearchText(opt.templateName);
+                              setShowApplyTemplateDropdown(false);
+                              applyTemplate(opt);
+                            }}
+                          >
+                            {opt.templateName}
+                          </li>
+                        ))}
+                        {loadingApplyTemplates && <li className="list-group-item py-1 text-center" style={{ fontSize: "0.8rem" }}>Loading...</li>}
+                        {!loadingApplyTemplates && applyTemplateOptions.length === 0 && <li className="list-group-item py-1 text-center text-muted" style={{ fontSize: "0.8rem" }}>No templates found</li>}
+                      </ul>
+                    )}
                   </div>
                   <div className="col-md-6 d-flex align-items-end">
                     <button className="btn btn-outline-primary btn-sm" onClick={() => openTemplateModal(null)}>
@@ -904,20 +1108,28 @@ const NursingCareModule = ({ selectedPatient }) => {
                       </thead>
                       <tbody>
                         {templateItems.map((item, idx) => {
-                          const availableBatches = batchData[item.item] || [];
                           return (
                             <tr key={idx}>
-                              <td>
+                              <td className="position-relative">
                                 <input
                                   type="text"
                                   className="form-control form-control-sm"
-                                  list="itemOptions"
                                   value={item.item}
-                                  onChange={(e) => updateTemplateItem(idx, 'item', e.target.value)}
+                                  onChange={(e) => {
+                                    updateTemplateItem(idx, 'item', e.target.value);
+                                    handleItemSearchChange(e.target.value, `templateItem-${idx}`);
+                                  }}
+                                  onFocus={() => {
+                                    handleItemSearchChange(item.item, `templateItem-${idx}`);
+                                  }}
+                                  onBlur={() => setActiveItemDropdown(null)}
+                                  placeholder="Type to search"
                                 />
-                                <datalist id="itemOptions">
-                                  {itemOptions.map(opt => <option key={opt} value={opt} />)}
-                                </datalist>
+                                {renderItemDropdown(`templateItem-${idx}`, (opt) => {
+                                  updateTemplateItem(idx, 'item', opt.nomenclature);
+                                  updateTemplateItem(idx, 'itemId', opt.itemId);
+                                  fetchItemBatches(opt.itemId, true, idx);
+                                })}
                               </td>
                               <td>
                                 <input
@@ -934,10 +1146,17 @@ const NursingCareModule = ({ selectedPatient }) => {
                                   value={item.batch}
                                   onChange={(e) => updateTemplateItem(idx, 'batch', e.target.value)}
                                 >
-                                  <option value="">Select</option>
-                                  {availableBatches.map(b => (
-                                    <option key={b.batch} value={b.batch}>{b.batch}</option>
-                                  ))}
+                                  {loadingBatches[item.itemId] ? (
+                                    <option value="">Loading...</option>
+                                  ) : (fetchedBatches[item.itemId] || []).length === 0 && item.itemId ? (
+                                    <option value="" disabled>NIL</option>
+                                  ) : (
+                                    (fetchedBatches[item.itemId] || []).map(b => (
+                                      <option key={b.batchName} value={b.batchName}>
+                                        {b.batchName} (Stock: {b.availableStock})
+                                      </option>
+                                    ))
+                                  )}
                                 </select>
                               </td>
                               <td>{item.expiry || '—'}</td>
@@ -987,8 +1206,8 @@ const NursingCareModule = ({ selectedPatient }) => {
                       </tbody>
                     </table>
                     <div className="d-flex justify-content-end">
-                      <button className="btn btn-success btn-sm" onClick={addTemplateItems}>
-                        Save All ({templateItems.length} items)
+                      <button className="btn btn-success btn-sm" onClick={addTemplateItems} disabled={isSavingConsumables}>
+                        {isSavingConsumables ? 'Saving...' : `Save All (${templateItems.length} items)`}
                       </button>
                     </div>
                   </div>
@@ -996,19 +1215,33 @@ const NursingCareModule = ({ selectedPatient }) => {
                   // No template applied — user builds their own rows one at a time.
                   <>
                     <div className="row g-2">
-                      <div className="col-md-4">
+                      <div className="col-md-4 position-relative">
                         <label className="form-label small">Item Name *</label>
                         <input
                           type="text"
                           className="form-control form-control-sm"
-                          list="itemOptions"
                           value={newConsumable.item}
-                          onChange={(e) => handleConsumableItemChange(e.target.value)}
-                          placeholder="Type or select"
+                          onChange={(e) => {
+                            setNewConsumable({ ...newConsumable, item: e.target.value, uom: '' });
+                            handleItemSearchChange(e.target.value, 'manual');
+                          }}
+                          onFocus={() => {
+                            handleItemSearchChange(newConsumable.item, 'manual');
+                          }}
+                          onBlur={() => setActiveItemDropdown(null)}
+                          placeholder="Type to search"
                         />
-                        <datalist id="itemOptions">
-                          {itemOptions.map(opt => <option key={opt} value={opt} />)}
-                        </datalist>
+                        {renderItemDropdown('manual', (opt) => {
+                          setNewConsumable({
+                            ...newConsumable,
+                            item: opt.nomenclature,
+                            itemId: opt.itemId,
+                            uom: opt.unitAuName || '',
+                            batch: '',
+                            expiry: ''
+                          });
+                          fetchItemBatches(opt.itemId);
+                        })}
                       </div>
                       <div className="col-md-2">
                         <label className="form-label small">UOM</label>
@@ -1019,12 +1252,19 @@ const NursingCareModule = ({ selectedPatient }) => {
                         <select
                           className="form-select form-select-sm"
                           value={newConsumable.batch}
-                          onChange={(e) => handleBatchChange(e.target.value)}
+                          onChange={(e) => handleBatchChange(e.target.value, newConsumable.itemId)}
                         >
-                          <option value="">Select</option>
-                          {(batchData[newConsumable.item] || []).map(b => (
-                            <option key={b.batch} value={b.batch}>{b.batch}</option>
-                          ))}
+                          {loadingBatches[newConsumable.itemId] ? (
+                            <option value="">Loading...</option>
+                          ) : (fetchedBatches[newConsumable.itemId] || []).length === 0 && newConsumable.itemId ? (
+                            <option value="" disabled>NIL</option>
+                          ) : (
+                            (fetchedBatches[newConsumable.itemId] || []).map(b => (
+                              <option key={b.batchName} value={b.batchName}>
+                                {b.batchName} (Stock: {b.availableStock})
+                              </option>
+                            ))
+                          )}
                         </select>
                       </div>
                       <div className="col-md-3">
@@ -1103,7 +1343,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                           </thead>
                           <tbody>
                             {manualItems.map((row) => {
-                              const proc = procedures.find(p => p.id === row.procedureRef);
+                              const proc = procedures.find(p => p.id == row.procedureRef);
                               const refText = proc ? `${proc.procedure} (${new Date(proc.dateTime).toLocaleDateString()})` : '—';
                               return (
                                 <tr
@@ -1134,11 +1374,11 @@ const NursingCareModule = ({ selectedPatient }) => {
                             })}
                           </tbody>
                         </table>
-                        <div className="d-flex justify-content-end">
-                          <button className="btn btn-success btn-sm" onClick={saveManualItems}>
-                            Save All ({manualItems.length} items)
-                          </button>
-                        </div>
+                        <div className="d-flex justify-content-end mt-3">
+                        <button className="btn btn-success btn-sm" onClick={saveManualItems} disabled={isSavingConsumables}>
+                          {isSavingConsumables ? 'Saving...' : `Save ${manualItems.length} Entries`}
+                        </button>
+                      </div>
                       </div>
                     )}
                   </>
@@ -1167,7 +1407,16 @@ const NursingCareModule = ({ selectedPatient }) => {
               </div>
               <div className="modal-body" style={sideModalBodyStyle}>
                 <div className="row g-2 mb-3">
-                  <div className="col-md-6">
+                  <div className="col-md-4">
+                    <label className="form-label small">Template Code *</label>
+                    <input
+                      type="text"
+                      className="form-control form-control-sm"
+                      value={templateForm.templateCode}
+                      onChange={(e) => setTemplateForm({ ...templateForm, templateCode: e.target.value })}
+                    />
+                  </div>
+                  <div className="col-md-4">
                     <label className="form-label small">Template Name *</label>
                     <input
                       type="text"
@@ -1176,7 +1425,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                       onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                     />
                   </div>
-                  <div className="col-md-6 position-relative">
+                  <div className="col-md-4 position-relative">
                     <label className="form-label small">Procedure Name *</label>
                     <input
                       type="text"
@@ -1223,17 +1472,25 @@ const NursingCareModule = ({ selectedPatient }) => {
                     <tbody>
                       {templateForm.items.map((item, idx) => (
                         <tr key={idx}>
-                          <td>
+                          <td className="position-relative">
                             <input
                               type="text"
                               className="form-control form-control-sm"
-                              list="itemOptions"
                               value={item.item}
-                              onChange={(e) => updateTemplateItemForm(idx, 'item', e.target.value)}
+                              onChange={(e) => {
+                                updateTemplateItemForm(idx, 'item', e.target.value);
+                                handleItemSearchChange(e.target.value, `templateForm-${idx}`);
+                              }}
+                              onFocus={() => {
+                                handleItemSearchChange(item.item, `templateForm-${idx}`);
+                              }}
+                              onBlur={() => setActiveItemDropdown(null)}
+                              placeholder="Type to search"
                             />
-                            <datalist id="itemOptions">
-                              {itemOptions.map(opt => <option key={opt} value={opt} />)}
-                            </datalist>
+                            {renderItemDropdown(`templateForm-${idx}`, (opt) => {
+                              updateTemplateItemForm(idx, 'item', opt.nomenclature);
+                              updateTemplateItemForm(idx, 'itemId', opt.itemId);
+                            })}
                           </td>
                           <td>
                             <input

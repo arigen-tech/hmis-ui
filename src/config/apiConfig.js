@@ -797,3 +797,7 @@ export const STOP_IPD_MEDICATION_TREATMENT = '/ipd/stopMedicationTreatment';
 export const GET_MAR_MEDICINE_LIST = '/ipd/getMarMedicineList';
 export const GET_MAR_ADMINISTRATION_LOG = '/ipd/getMarAdministrationLog';
 export const SAVE_MAR_DETAILS = '/ipd/saveMarDetails';
+export const SAVE_PROCEDURE_CONSUMABLE_TEMPLATE = '/ipd/saveProcedureConsumableTemplate';
+export const GET_PROCEDURE_CONSUMABLE_TEMPLATE = '/ipd/getProcedureConsumableTemplate';
+export const GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS = '/ipd/getProcedureConsumableTemplateDetails';
+export const GET_ITEM_BATCHES = '/inventory/item/batches';
