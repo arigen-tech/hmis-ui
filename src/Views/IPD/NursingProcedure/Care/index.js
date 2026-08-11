@@ -1,23 +1,33 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
+import { getRequest, postRequest } from '../../../../service/apiService';
+import { GET_PROCEDURE_BY_INPATIENT_ID, MAS_PROCEDURES_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, SAVE_INPATIENT_PROCEDURE } from '../../../../config/apiConfig';
 
-const NursingCareModule = () => {
+const NursingCareModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
   const [activeTab, setActiveTab] = useState('procedures'); // "procedures" | "consumables"
 
   // ---------- Sample Data ----------
   // Available procedure names for auto‑complete
-  const procedureOptions = [
-    'IV Cannulation',
-    'Dressing',
-    'Foley Catheter Insertion',
-    'Ryle’s Tube Insertion',
-    'Nebulization',
-    'Oxygen Therapy',
-    'Suctioning',
-    'Bladder Wash',
-    'Enema',
-    'Suture Removal',
-  ];
+  const [procedureOptions, setProcedureOptions] = useState([]);
+  const [showNewProcDropdown, setShowNewProcDropdown] = useState(false);
+  const [showTemplateProcDropdown, setShowTemplateProcDropdown] = useState(false);
+
+  const fetchProcedureOptions = async (searchText = '') => {
+    try {
+      const res = await getRequest(`${MAS_PROCEDURES_GET_ALL}?flag=1&page=0&size=10&nursingStatus=y&search=${searchText}`);
+      if (res?.status === 200 && res?.response?.content) {
+        setProcedureOptions(res.response.content);
+      } else {
+        setProcedureOptions([]);
+      }
+    } catch (error) {
+      console.error("Error fetching procedure options:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchProcedureOptions('');
+  }, []);
 
   // Available consumable items for auto‑complete
   const itemOptions = [
@@ -76,42 +86,39 @@ const NursingCareModule = () => {
   };
 
   // ---------- Procedures State ----------
-  const [procedures, setProcedures] = useState([
-    {
-      id: 'P101',
-      procedure: 'IV Cannulation',
-      dateTime: '2025-04-05T10:30',
-      performedBy: 'Nurse A',
-      remarks: 'NA', // icon for remark
-      remarkText: 'Patient had difficulty; used ultrasound',
-    },
-    {
-      id: 'P102',
-      procedure: 'Dressing',
-      dateTime: '2025-04-05T14:00',
-      performedBy: 'Nurse B',
-      remarks: 'NA', // icon for remark
+  const [procedures, setProcedures] = useState([]);
+  const [loadingProcedures, setLoadingProcedures] = useState(false);
 
-      remarkText: 'Wound clean, no signs of infection',
-    },
-    {
-      id: 'P103',
-      procedure: 'Foley Catheter Insertion',
-      dateTime: '2025-04-06T09:15',
-      performedBy: 'Nurse A',
-      remarks: 'NA', // icon for remark
+  useEffect(() => {
+    if (selectedPatient?.inpatientId) {
+      fetchProcedures(selectedPatient.inpatientId);
+    }
+  }, [selectedPatient]);
 
-      remarkText: 'Catheter size 16Fr, urine output clear',
-    },
-    {
-      id: 'P104',
-      procedure: 'Nebulization',
-      dateTime: '2025-04-06T11:00',
-      performedBy: 'Nurse C',
-      remarks: 'NA', // icon for remark
-      remarkText: '',
-    },
-  ]);
+  const fetchProcedures = async (inpatientId) => {
+    setLoadingProcedures(true);
+    try {
+      const res = await getRequest(`${GET_PROCEDURE_BY_INPATIENT_ID}/${inpatientId}`);
+      if (res?.status === 200 && res?.response) {
+        const mappedProcedures = res.response.map(p => ({
+          id: p.procedureTxnId,
+          procedure: p.procedureName,
+          dateTime: p.procedureDatetime,
+          performedBy: p.performedBy,
+          remarks: p.remarks ? p.remarks : '—',
+          remarkText: p.remarks || '',
+        }));
+        setProcedures(mappedProcedures);
+      } else {
+        setProcedures([]);
+      }
+    } catch (error) {
+      console.error("Error fetching procedures:", error);
+      setProcedures([]);
+    } finally {
+      setLoadingProcedures(false);
+    }
+  };
 
   // ---------- Consumables State ----------
   const [consumables, setConsumables] = useState([
@@ -211,13 +218,42 @@ const NursingCareModule = () => {
 
   // ---------- UI State for Modals ----------
   const [showAddProcedureModal, setShowAddProcedureModal] = useState(false);
+  const [isSavingProcedure, setIsSavingProcedure] = useState(false);
   const [showAddConsumableModal, setShowAddConsumableModal] = useState(false);
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showRemarkTooltip, setShowRemarkTooltip] = useState(false); // not used, we'll use title attr
 
   // New Procedure form
+  const [currentUserName, setCurrentUserName] = useState('');
+
+  useEffect(() => {
+    const fetchUserData = async () => {
+      const username = localStorage.getItem("username") || sessionStorage.getItem("username");
+      if (!username) return;
+      try {
+        const res = await getRequest(`${GET_CURRENT_USER_PROFILE_BY_NAME}/${username}`);
+        if (res && res.status === 200 && res.response) {
+          const docName = res.response.firstName
+            ? [res.response.firstName, res.response.middleName, res.response.lastName].filter(Boolean).join(" ")
+            : (res.response.name || res.response.userName || username);
+          setCurrentUserName(docName);
+          setNewProcedure(prev => ({ ...prev, performedBy: docName }));
+        } else {
+          setCurrentUserName(username);
+          setNewProcedure(prev => ({ ...prev, performedBy: username }));
+        }
+      } catch (error) {
+        console.error("Error fetching logged-in user profile:", error);
+        setCurrentUserName(username);
+        setNewProcedure(prev => ({ ...prev, performedBy: username }));
+      }
+    };
+    fetchUserData();
+  }, []);
+
   const [newProcedure, setNewProcedure] = useState({
     procedure: '',
+    procedureId: null,
     dateTime: '',
     performedBy: '',
     remarks: '',
@@ -245,6 +281,7 @@ const NursingCareModule = () => {
     id: null,
     name: '',
     procedureName: '',
+    procedureId: null,
     items: [], // array of {item, qty}
   });
 
@@ -277,30 +314,46 @@ const NursingCareModule = () => {
   const defaultUsedBy = 'Nurse A';
 
   // ---------- Handlers: Procedures ----------
-  const handleAddProcedure = () => {
-    const { procedure, dateTime, performedBy, remarks, remarkText } = newProcedure;
-    if (!procedure || !dateTime || !performedBy) {
-      alert('Please fill all required fields (Procedure, Date/Time, Performed By).');
+  const handleAddProcedure = async () => {
+    const { procedure, procedureId, dateTime, performedBy, remarkText, remarks } = newProcedure;
+    if (!procedure || !procedureId || !dateTime || !performedBy) {
+      alert('Please fill all required fields and select a valid procedure from the list.');
       return;
     }
-    const newId = `P${String(procedures.length + 101).padStart(3, '0')}`;
-    const procToAdd = {
-      id: newId,
-      procedure,
-      dateTime,
-      performedBy,
-      remarks: remarks ? '🔑' : '—',
-      remarkText: remarks || '',
+
+    const payload = {
+      inpatientId: selectedPatient?.inpatientId || 0,
+      procedureId: Number(procedureId) || 0,
+      procedureDatetime: dateTime ? new Date(dateTime).toISOString() : new Date().toISOString(),
+      performedBy: performedBy,
+      remarks: remarks || remarkText || ''
     };
-    setProcedures([...procedures, procToAdd]);
-    setShowAddProcedureModal(false);
-    setNewProcedure({
-      procedure: '',
-      dateTime: nowDateTimeLocal(),
-      performedBy: '',
-      remarks: '',
-      remarkText: '',
-    });
+
+    setIsSavingProcedure(true);
+    try {
+      const response = await postRequest(SAVE_INPATIENT_PROCEDURE, payload);
+      if (response && response.status === 200) {
+        setShowAddProcedureModal(false);
+        setNewProcedure({
+          procedure: '',
+          procedureId: null,
+          dateTime: nowDateTimeLocal(),
+          performedBy: currentUserName,
+          remarks: '',
+          remarkText: '',
+        });
+        if (selectedPatient?.inpatientId) {
+          fetchProcedures(selectedPatient.inpatientId);
+        }
+      } else {
+        alert(response?.message || 'Failed to save procedure.');
+      }
+    } catch (error) {
+      console.error("Error saving procedure:", error);
+      alert('Error saving procedure.');
+    } finally {
+      setIsSavingProcedure(false);
+    }
   };
 
   // ---------- Handlers: Consumables ----------
@@ -608,24 +661,34 @@ const NursingCareModule = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {procedures.map(proc => (
-                    <tr key={proc.id}>
-                      <td>{proc.id}</td>
-                      <td>{proc.procedure}</td>
-                      <td>{new Date(proc.dateTime).toLocaleString()}</td>
-                      <td>{proc.performedBy}</td>
-                      <td>
-                        {proc.remarks !== '—' ? (
-                          <span title={proc.remarkText || 'No remark'} style={{ cursor: 'help' }}>
-                            {proc.remarks}
-                          </span>
-                        ) : (
-                          '—'
-                        )}
+                  {loadingProcedures ? (
+                    <tr>
+                      <td colSpan="5" className="text-center py-3">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <span className="ms-2">Loading procedures...</span>
                       </td>
                     </tr>
-                  ))}
-                  {procedures.length === 0 && (
+                  ) : procedures.length > 0 ? (
+                    procedures.map(proc => (
+                      <tr key={proc.id}>
+                        <td>{proc.id}</td>
+                        <td>{proc.procedure}</td>
+                        <td>{new Date(proc.dateTime).toLocaleString()}</td>
+                        <td>{proc.performedBy}</td>
+                        <td>
+                          {proc.remarks !== '—' ? (
+                            <span title={proc.remarkText || 'No remark'} style={{ cursor: 'help' }}>
+                              {proc.remarks}
+                            </span>
+                          ) : (
+                            '—'
+                          )}
+                        </td>
+                      </tr>
+                    ))
+                  ) : (
                     <tr><td colSpan="5" className="text-center">No procedures recorded.</td></tr>
                   )}
                 </tbody>
@@ -702,19 +765,40 @@ const NursingCareModule = () => {
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowAddProcedureModal(false)}></button>
               </div>
               <div className="modal-body">
-                <div className="mb-2">
+                <div className="mb-2 position-relative">
                   <label className="form-label small">Procedure Name *</label>
                   <input
                     type="text"
                     className="form-control form-control-sm"
-                    list="procedureOptions"
                     value={newProcedure.procedure}
-                    onChange={e => setNewProcedure({ ...newProcedure, procedure: e.target.value })}
-                    placeholder="Type or select"
+                    onChange={e => {
+                      const val = e.target.value;
+                      setNewProcedure({ ...newProcedure, procedure: val });
+                      fetchProcedureOptions(val);
+                      setShowNewProcDropdown(true);
+                    }}
+                    onFocus={() => setShowNewProcDropdown(true)}
+                    onBlur={() => setShowNewProcDropdown(false)}
+                    placeholder="Type to search"
                   />
-                  <datalist id="procedureOptions">
-                    {procedureOptions.map(opt => <option key={opt} value={opt} />)}
-                  </datalist>
+                  {showNewProcDropdown && procedureOptions.length > 0 && (
+                    <ul className="list-group position-absolute w-100 shadow" style={{ zIndex: 1050, maxHeight: "200px", overflowY: "auto", top: "100%" }}>
+                      {procedureOptions.map((opt, idx) => (
+                        <li
+                          key={idx}
+                          className="list-group-item list-group-item-action py-1"
+                          style={{ cursor: "pointer", fontSize: "0.8rem" }}
+                          onMouseDown={(e) => {
+                            e.preventDefault();
+                            setNewProcedure({ ...newProcedure, procedure: opt.procedureName, procedureId: opt.procedureId });
+                            setShowNewProcDropdown(false);
+                          }}
+                        >
+                          {opt.procedureName}
+                        </li>
+                      ))}
+                    </ul>
+                  )}
                 </div>
                 <div className="mb-2">
                   <label className="form-label small">Date & Time *</label>
@@ -749,7 +833,9 @@ const NursingCareModule = () => {
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary btn-sm" onClick={() => setShowAddProcedureModal(false)}>Cancel</button>
-                <button className="btn btn-primary btn-sm" onClick={handleAddProcedure}>Save</button>
+                <button className="btn btn-primary btn-sm" onClick={handleAddProcedure} disabled={isSavingProcedure}>
+                  {isSavingProcedure ? 'Saving...' : 'Save'}
+                </button>
               </div>
             </div>
           </div>
@@ -1090,18 +1176,39 @@ const NursingCareModule = () => {
                       onChange={(e) => setTemplateForm({ ...templateForm, name: e.target.value })}
                     />
                   </div>
-                  <div className="col-md-6">
+                  <div className="col-md-6 position-relative">
                     <label className="form-label small">Procedure Name *</label>
                     <input
                       type="text"
                       className="form-control form-control-sm"
-                      list="procedureOptions"
                       value={templateForm.procedureName}
-                      onChange={(e) => setTemplateForm({ ...templateForm, procedureName: e.target.value })}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        setTemplateForm({ ...templateForm, procedureName: val });
+                        fetchProcedureOptions(val);
+                        setShowTemplateProcDropdown(true);
+                      }}
+                      onFocus={() => setShowTemplateProcDropdown(true)}
+                      onBlur={() => setShowTemplateProcDropdown(false)}
                     />
-                    <datalist id="procedureOptions">
-                      {procedureOptions.map(opt => <option key={opt} value={opt} />)}
-                    </datalist>
+                    {showTemplateProcDropdown && procedureOptions.length > 0 && (
+                      <ul className="list-group position-absolute w-100 shadow" style={{ zIndex: 1050, maxHeight: "200px", overflowY: "auto", top: "100%" }}>
+                        {procedureOptions.map((opt, idx) => (
+                          <li
+                            key={idx}
+                            className="list-group-item list-group-item-action py-1"
+                            style={{ cursor: "pointer", fontSize: "0.8rem" }}
+                            onMouseDown={(e) => {
+                              e.preventDefault();
+                              setTemplateForm({ ...templateForm, procedureName: opt.procedureName, procedureId: opt.procedureId });
+                              setShowTemplateProcDropdown(false);
+                            }}
+                          >
+                            {opt.procedureName}
+                          </li>
+                        ))}
+                      </ul>
+                    )}
                   </div>
                 </div>
                 <div className="table-responsive">

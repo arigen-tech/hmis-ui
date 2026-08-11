@@ -768,6 +768,9 @@ export const UPDATE_TRANSFER_REQUEST_STATUS = '/ipd/wardPendingToTransferRequest
 export const WARD_TRANSFER_LIST = '/ipd/wardTransferList';
 export const SAVE_IP_DIAGNOSIS_ENTRY = '/ipd/saveIpDiagnosisEntry';
 export const GET_IP_DIAGNOSIS_ENTRY = '/ipd/getIpDiagnosisEntry';
+export const GET_PROCEDURE_BY_INPATIENT_ID = '/ipd/getProcedureByInpatientId';
+export const SAVE_INPATIENT_PROCEDURE = '/ipd/saveInpatientProcedure';
+export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
