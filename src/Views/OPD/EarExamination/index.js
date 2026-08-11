@@ -87,6 +87,10 @@ const EarExamination = forwardRef(
     const [formLoading, setFormLoading] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [popupMessage, setPopupMessage] = useState(null);
+    const [isSearching, setIsSearching] = useState(false);
+    const [isResetting, setIsResetting] = useState(false);
+    const [isInitialLoad, setIsInitialLoad] = useState(true);
+    const [pendingClose, setPendingClose] = useState(false);
 
     const [form, setForm] = useState(defaultEntForm);
 
@@ -110,14 +114,20 @@ const EarExamination = forwardRef(
     const initialLoadRef = useRef(false);
 
     // Fetch waiting list
-    const fetchWaitingList = async () => {
+    const fetchWaitingList = async (searchParams = null) => {
       try {
         setLoading(true);
         const params = new URLSearchParams();
         params.append("page", 0);
         params.append("size", 100);
-        if (searchData.mobileNumber) params.append("mobileNumber", searchData.mobileNumber);
-        if (searchData.patientName) params.append("patientName", searchData.patientName);
+        
+        // Use provided searchParams or current state
+        const mobileNumber = searchParams?.mobileNumber ?? searchData.mobileNumber;
+        const patientName = searchParams?.patientName ?? searchData.patientName;
+        
+        if (mobileNumber) params.append("mobileNumber", mobileNumber);
+        if (patientName) params.append("patientName", patientName);
+        
         const res = await getRequest(`${GET_WAITING_LIST}?${params.toString()}`);
         if (res?.status === 200 && res?.response?.content) {
           setWaitingList(res.response.content);
@@ -129,6 +139,7 @@ const EarExamination = forwardRef(
         setWaitingList([]);
       } finally {
         setLoading(false);
+        setIsInitialLoad(false);
       }
     };
 
@@ -328,21 +339,30 @@ const EarExamination = forwardRef(
       setCurrentPage(1);
     };
 
-    const handleSearch = () => {
+    const handleSearch = async () => {
+      setIsSearching(true);
       setCurrentPage(1);
-      fetchWaitingList();
+      // Pass current search data to fetch function
+      await fetchWaitingList(searchData);
+      setIsSearching(false);
     };
 
-    const handleReset = () => {
-      setSearchData({ mobileNumber: "", patientName: "" });
+    const handleReset = async () => {
+      setIsResetting(true);
+      const resetData = { mobileNumber: "", patientName: "" };
+      setSearchData(resetData);
       setCurrentPage(1);
-      fetchWaitingList();
+      // Pass reset data to fetch function
+      await fetchWaitingList(resetData);
+      setIsResetting(false);
     };
 
-    const closeForm = () => {
+    const closeForm = async () => {
       setShowForm(false);
       setSelectedPatient(null);
       setForm(defaultEntForm);
+      // Refresh the waiting list when closing form
+      await fetchWaitingList();
     };
 
     const handleRowClick = async (patient) => {
@@ -372,11 +392,16 @@ const EarExamination = forwardRef(
       }
     };
 
-    const showPopup = (message, type = "info") => {
+    const showPopup = (message, type = "info", onCloseCallback = null) => {
       setPopupMessage({
         message,
         type,
-        onClose: () => setPopupMessage(null),
+        onClose: () => {
+          setPopupMessage(null);
+          if (onCloseCallback) {
+            onCloseCallback();
+          }
+        },
       });
     };
 
@@ -452,11 +477,12 @@ const EarExamination = forwardRef(
         const response = await postRequest(`${SAVE_ENT_DETAILS}/${selectedPatient?.visitId}`, payload);
 
         if (response?.status === 200 || response?.success) {
-          showPopup("ENT examination saved successfully!", "success");
-          if (!patientId && !visitId) {
-            closeForm();
-            fetchWaitingList();
-          }
+          // Show success popup with callback to close form and refresh list
+          showPopup("ENT examination saved successfully!", "success", async () => {
+            if (!patientId && !visitId) {
+              await closeForm();
+            }
+          });
         } else {
           showPopup(response?.message || "Failed to save ENT examination", "error");
         }
@@ -479,6 +505,11 @@ const EarExamination = forwardRef(
     const currentItems = filteredPatients.slice(indexOfFirst, indexOfLast);
     const totalPages = Math.ceil(filteredPatients.length / itemsPerPage);
 
+    // Loading spinner component for buttons
+    const LoadingSpinner = ({ size = "sm" }) => (
+      <span className={`spinner-border spinner-border-${size}`} role="status" aria-hidden="true"></span>
+    );
+
     return (
       <div className="content-wrapper">
         <div className="row">
@@ -497,7 +528,6 @@ const EarExamination = forwardRef(
                 </div>
               )}
               <div className="card-body p-2 pb-0">
-                {loading && <LoadingScreen />}
                 {popupMessage && (
                   <Popup
                     message={popupMessage.message}
@@ -520,6 +550,7 @@ const EarExamination = forwardRef(
                             placeholder="Enter mobile number"
                             value={searchData.mobileNumber}
                             onChange={handleSearchChange}
+                            disabled={isSearching || isResetting}
                           />
                         </div>
                         <div className="col-md-3">
@@ -531,15 +562,40 @@ const EarExamination = forwardRef(
                             placeholder="Enter patient name"
                             value={searchData.patientName}
                             onChange={handleSearchChange}
+                            disabled={isSearching || isResetting}
                           />
                         </div>
                         <div className="col-md-2">
                           <div className="d-flex gap-2">
-                            <button type="button" className="btn btn-primary flex-fill" onClick={handleSearch}>
-                              Search
+                            <button 
+                              type="button" 
+                              className="btn btn-primary flex-fill" 
+                              onClick={handleSearch}
+                              disabled={isSearching || isResetting}
+                            >
+                              {isSearching ? (
+                                <>
+                                  <LoadingSpinner />
+                                  <span className="ms-1">Searching...</span>
+                                </>
+                              ) : (
+                                "Search"
+                              )}
                             </button>
-                            <button type="button" className="btn btn-secondary flex-fill" onClick={handleReset}>
-                              Reset
+                            <button 
+                              type="button" 
+                              className="btn btn-secondary flex-fill" 
+                              onClick={handleReset}
+                              disabled={isSearching || isResetting}
+                            >
+                              {isResetting ? (
+                                <>
+                                  <LoadingSpinner />
+                                  <span className="ms-1">Resetting...</span>
+                                </>
+                              ) : (
+                                "Reset"
+                              )}
                             </button>
                           </div>
                         </div>
@@ -547,48 +603,57 @@ const EarExamination = forwardRef(
                     </div>
 
                     <div className="table-responsive packagelist mb-3">
-                      <table className="table table-bordered table-hover align-middle">
-                        <thead className="table-light">
-                          <tr>
-                            <th>Patient Name</th>
-                            <th>Mobile No</th>
-                            <th>Age</th>
-                            <th>Gender</th>
-                            <th>Relation</th>
-                            <th>Department</th>
-                            <th>Visit Type</th>
-                            <th>Token No</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {currentItems.length > 0 ? (
-                            currentItems.map((item) => (
-                              <tr
-                                key={item.visitId}
-                                onClick={() => handleRowClick(item)}
-                                className={selectedPatient?.visitId === item.visitId ? "table-primary" : ""}
-                                style={{ cursor: "pointer" }}
-                              >
-                                <td>{item.patientName}</td>
-                                <td>{item.mobileNo}</td>
-                                <td>{item.age}</td>
-                                <td>{item.gender}</td>
-                                <td>{item.relation}</td>
-                                <td>{item.departmentName}</td>
-                                <td>{item.visitType}</td>
-                                <td>{item.tokenNo}</td>
-                              </tr>
-                            ))
-                          ) : (
+                      {loading && isInitialLoad ? (
+                        <div className="text-center py-4">
+                          <div className="spinner-border text-primary" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          <p className="mt-2 text-muted">Loading patient list...</p>
+                        </div>
+                      ) : (
+                        <table className="table table-bordered table-hover align-middle">
+                          <thead className="table-light">
                             <tr>
-                              <td colSpan="8" className="text-center text-muted">No records found</td>
+                              <th>Patient Name</th>
+                              <th>Mobile No</th>
+                              <th>Age</th>
+                              <th>Gender</th>
+                              <th>Relation</th>
+                              <th>Department</th>
+                              <th>Visit Type</th>
+                              <th>Token No</th>
                             </tr>
-                          )}
-                        </tbody>
-                      </table>
+                          </thead>
+                          <tbody>
+                            {currentItems.length > 0 ? (
+                              currentItems.map((item) => (
+                                <tr
+                                  key={item.visitId}
+                                  onClick={() => handleRowClick(item)}
+                                  className={selectedPatient?.visitId === item.visitId ? "table-primary" : ""}
+                                  style={{ cursor: "pointer" }}
+                                >
+                                  <td>{item.patientName}</td>
+                                  <td>{item.mobileNo}</td>
+                                  <td>{item.age}</td>
+                                  <td>{item.gender}</td>
+                                  <td>{item.relation}</td>
+                                  <td>{item.departmentName}</td>
+                                  <td>{item.visitType}</td>
+                                  <td>{item.tokenNo}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan="8" className="text-center text-muted">No records found</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      )}
                     </div>
 
-                    {totalPages > 1 && (
+                    {totalPages > 1 && !loading && (
                       <nav>
                         <ul className="pagination justify-content-center">
                           <li className={`page-item ${currentPage === 1 ? "disabled" : ""}`}>
@@ -939,7 +1004,14 @@ const EarExamination = forwardRef(
                                   Cancel
                                 </button>
                                 <button type="submit" className="btn btn-primary" disabled={isSubmitting}>
-                                  {isSubmitting ? "Saving..." : "Save ENT Examination"}
+                                  {isSubmitting ? (
+                                    <>
+                                      <LoadingSpinner />
+                                      <span className="ms-1">Saving...</span>
+                                    </>
+                                  ) : (
+                                    "Save ENT Examination"
+                                  )}
                                 </button>
                               </div>
                             )}

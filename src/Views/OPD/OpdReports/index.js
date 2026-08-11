@@ -1,13 +1,21 @@
-import { useState, useEffect } from "react"
+import { useState, useEffect, useCallback, useRef } from "react"
 import { getRequest } from "../../../service/apiService"
 import LoadingScreen from "../../../Components/Loading"
 import Popup from "../../../Components/popup"
 import Pagination from "../../../Components/Pagination"
+import { ALL_REPORTS, GET_OPD_REPORTS_LIST, OPD_CASE_SHEET_REPORT } from "../../../config/apiConfig"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 
 const OPDReports = () => {
   const [opdPatients, setOpdPatients] = useState([])
   const [loading, setLoading] = useState(true)
+  const [tableLoading, setTableLoading] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [downloadingOPDVisitId, setDownloadingOPDVisitId] = useState(null)
+  const [downloadingPrescriptionVisitId, setDownloadingPrescriptionVisitId] = useState(null)
+  const [pdfUrl, setPdfUrl] = useState(null)
+  const [pdfTitle, setPdfTitle] = useState("")
+  const [pdfFileName, setPdfFileName] = useState("")
   
   // Search state
   const [searchData, setSearchData] = useState({
@@ -17,90 +25,119 @@ const OPDReports = () => {
   
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1)
-  const itemsPerPage = 10
+  const [totalItems, setTotalItems] = useState(0)
+  const [totalPages, setTotalPages] = useState(0)
+  const [isSearchMode, setIsSearchMode] = useState(false)
+  
+  // Button loading states
+  const [isSearching, setIsSearching] = useState(false)
+  const [isResetting, setIsResetting] = useState(false)
+  
+  const itemsPerPage = 5
 
   // ============= API FETCH FUNCTIONS =============
-  const fetchOPDPatients = async () => {
+  const fetchOPDPatients = useCallback(async (page = currentPage, showTableLoader = true, searchParams = null) => {
     try {
-      setLoading(true)
-      // Mock data based on the image provided
-      const mockData = [
-        {
-          id: 1,
-          uhid: "UHID10234",
-          patientName: "Rahul Yadav",
-          mobileNo: "8349407641",
-          relation: "Self",
-          gender: "Male",
-          age: "34 Y 2 M 15 D",
-          specialty: "Neurology",
-          doctorName: "Dr Amit Sharma",
-          visitDateTime: "23-Feb-2026 10:34 AM",
-          opdSlip: "View",
-          prescriptionSlip: ""
-        },
-        {
-          id: 2,
-          uhid: "UHID10235",
-          patientName: "Santoshi Yadav",
-          mobileNo: "8349407641",
-          relation: "Wife",
-          gender: "Female",
-          age: "45 Y 1 M 5 D",
-          specialty: "Neurology",
-          doctorName: "Dr Amit Sharma",
-          visitDateTime: "23-Feb-2026 11:10 AM",
-          opdSlip: "View",
-          prescriptionSlip: "Not Issued"
-        },
-        {
-          id: 3,
-          uhid: "UHID10236",
-          patientName: "Baby Aarav",
-          mobileNo: "9009955562",
-          relation: "Son",
-          gender: "Male",
-          age: "2 Y 3 M 5 D",
-          specialty: "Pediatrics",
-          doctorName: "Dr Neha Singh",
-          visitDateTime: "23-Feb-2026 12:05 PM",
-          opdSlip: "View",
-          prescriptionSlip: ""
-        }
-      ]
+      if (showTableLoader) {
+        setTableLoading(true)
+      }
+
+      const backendPage = page - 1
+
+      let url = `${GET_OPD_REPORTS_LIST}?page=${backendPage}&size=${itemsPerPage}`
       
-      setOpdPatients(mockData)
+      // Use provided searchParams or fallback to state
+      const mobileNo = searchParams?.mobileNo ?? searchData.mobileNo
+      const patientName = searchParams?.patientName ?? searchData.patientName
+      const shouldSearch = searchParams?.isSearchMode ?? isSearchMode
+      
+      // Add search params if in search mode
+      if (shouldSearch && (mobileNo || patientName)) {
+        if (mobileNo) {
+          url += `&mobileNo=${encodeURIComponent(mobileNo)}`
+        }
+        if (patientName) {
+          url += `&patientName=${encodeURIComponent(patientName)}`
+        }
+      }
+
+      const response = await getRequest(url)
+
+      if (response?.status === 200) {
+        const pageData = response.response
+
+        setOpdPatients(pageData?.content || [])
+        setTotalItems(pageData?.totalElements || 0)
+        setTotalPages(pageData?.totalPages || 0)
+      } else {
+        setOpdPatients([])
+        setTotalItems(0)
+        setTotalPages(0)
+        showPopup("Failed to fetch OPD patients", "error")
+      }
     } catch (error) {
       console.error("Error fetching OPD patients:", error)
+      setOpdPatients([])
+      setTotalItems(0)
+      setTotalPages(0)
       showPopup("Failed to fetch OPD patients", "error")
     } finally {
+      setTableLoading(false)
       setLoading(false)
+      setIsSearching(false)
+      setIsResetting(false)
     }
-  }
+  }, [currentPage, isSearchMode, searchData.mobileNo, searchData.patientName])
 
+  // ============= INITIAL LOAD =============
   useEffect(() => {
-    fetchOPDPatients()
-  }, [])
+    fetchOPDPatients(currentPage, true)
+  }, []) // Only run once on mount
+
+  // ============= HANDLE PAGE CHANGE =============
+  const handlePageChange = (page) => {
+    setCurrentPage(page)
+    fetchOPDPatients(page, true)
+  }
 
   // ============= HANDLER FUNCTIONS =============
   const handleSearchChange = (e) => {
     const { id, value } = e.target
     setSearchData(prev => ({ ...prev, [id]: value }))
-    setCurrentPage(1)
   }
 
   const handleSearch = () => {
+    if (!searchData.mobileNo && !searchData.patientName) {
+      showPopup("Please enter at least one search criteria", "info")
+      return
+    }
+    
+    setIsSearching(true)
+    setIsSearchMode(true)
     setCurrentPage(1)
-    console.log("Searching with:", searchData)
+    fetchOPDPatients(1, true, {
+      mobileNo: searchData.mobileNo,
+      patientName: searchData.patientName,
+      isSearchMode: true
+    })
   }
 
   const handleReset = () => {
-    setSearchData({
+    setIsResetting(true)
+    
+    const emptySearchData = {
       mobileNo: "",
       patientName: ""
-    })
+    }
+    setSearchData(emptySearchData)
+    setIsSearchMode(false)
     setCurrentPage(1)
-    fetchOPDPatients()
+    
+    fetchOPDPatients(1, true, {
+      mobileNo: "",
+      patientName: "",
+      isSearchMode: false
+    })
   }
 
   const showPopup = (message, type = "info") => {
@@ -113,22 +150,105 @@ const OPDReports = () => {
     })
   }
 
-  // ============= FILTERED & PAGINATED DATA =============
-  const filteredPatients = opdPatients.filter((patient) => {
-    const patientNameMatch = searchData.patientName === "" || 
-      patient.patientName?.toLowerCase().includes(searchData.patientName.toLowerCase())
-    
-    const mobileNoMatch = searchData.mobileNo === "" || 
-      patient.mobileNo?.includes(searchData.mobileNo)
-    
-    return patientNameMatch && mobileNoMatch
-  })
+  // ============= DOWNLOAD HELPER FUNCTIONS =============
+  const fetchPdf = async (reportUrl, flag = "d") => {
+    const response = await fetch(`${reportUrl}&flag=${flag}`, {
+      method: "GET",
+      headers: {
+        "Accept": "application/pdf",
+      },
+    })
 
-  const indexOfLastItem = currentPage * itemsPerPage
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage
-  const currentItems = filteredPatients.slice(indexOfFirstItem, indexOfLastItem)
+    if (!response.ok) {
+      throw new Error("Failed to fetch report")
+    }
 
-  // ============= OPD REPORTS LIST VIEW =============
+    return await response.blob()
+  }
+
+  // ============= VIEW OPD CASE SHEET =============
+  const handleViewCaseSheet = async (visitId, patientName) => {
+    if (!visitId) {
+      showPopup("Visit ID is required to view case sheet", "error")
+      return
+    }
+
+    try {
+      setDownloadingOPDVisitId(visitId)
+      
+      const reportUrl = `${OPD_CASE_SHEET_REPORT}?visitId=${visitId}`
+      const blob = await fetchPdf(reportUrl, "d")
+      
+      if (!blob.type || !blob.type.includes('pdf')) {
+        throw new Error('Response is not a PDF file')
+      }
+
+      const fileURL = window.URL.createObjectURL(blob)
+      setPdfUrl(fileURL)
+      setPdfTitle(`OPD Case Sheet - ${patientName || 'Patient'}`)
+      setPdfFileName(`OPD_CaseSheet_${patientName || 'patient'}_${visitId}`)
+      
+    } catch (error) {
+      console.error("Error viewing case sheet:", error)
+      showPopup(`Failed to view case sheet: ${error.message}`, "error")
+    } finally {
+      setDownloadingOPDVisitId(null)
+    }
+  }
+
+  // ============= VIEW PRESCRIPTION SLIP =============
+  const handleViewPrescription = async (prescriptionUrl, patientName, visitId) => {
+    if (!prescriptionUrl) {
+      showPopup("No prescription slip available", "info")
+      return
+    }
+
+    try {
+      setDownloadingPrescriptionVisitId(visitId)
+      
+      const blob = await fetchPdf(prescriptionUrl, "d")
+      
+      if (!blob.type || !blob.type.includes('pdf')) {
+        throw new Error('Response is not a PDF file')
+      }
+
+      const fileURL = window.URL.createObjectURL(blob)
+      setPdfUrl(fileURL)
+      setPdfTitle(`Prescription Slip - ${patientName || 'Patient'}`)
+      setPdfFileName(`Prescription_${patientName || 'patient'}_${visitId}`)
+      
+    } catch (error) {
+      console.error("Error viewing prescription:", error)
+      showPopup(`Failed to view prescription: ${error.message}`, "error")
+    } finally {
+      setDownloadingPrescriptionVisitId(null)
+    }
+  }
+
+  // ============= CLOSE PDF VIEWER =============
+  const handleClosePdfViewer = () => {
+    setPdfUrl(null)
+    setPdfTitle("")
+    setPdfFileName("")
+  }
+
+  // ============= RENDER LOADING SKELETON ROWS =============
+  const renderSkeletonRows = () => {
+    return Array.from({ length: itemsPerPage }).map((_, index) => (
+      <tr key={`skeleton-${index}`} className="skeleton-row">
+        <td colSpan="11">
+          <div className="d-flex justify-content-center align-items-center py-4">
+            <div className="spinner-border text-primary me-2" role="status">
+              <span className="visually-hidden">Loading...</span>
+            </div>
+            <span className="text-muted">Loading OPD records...</span>
+          </div>
+        </td>
+      </tr>
+    ))
+  }
+
+  // ============= RENDER =============
   return (
     <div className="content-wrapper">
       {popupMessage && (
@@ -136,6 +256,14 @@ const OPDReports = () => {
           message={popupMessage.message}
           type={popupMessage.type}
           onClose={popupMessage.onClose}
+        />
+      )}
+
+      {pdfUrl && (
+        <PdfViewer
+          pdfUrl={pdfUrl}
+          name={pdfFileName}
+          onClose={handleClosePdfViewer}
         />
       )}
       
@@ -166,6 +294,12 @@ const OPDReports = () => {
                             placeholder="Enter mobile number"
                             value={searchData.mobileNo}
                             onChange={handleSearchChange}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearch()
+                              }
+                            }}
+                            disabled={isSearching || isResetting}
                           />
                         </div>
                         <div className="col-md-5">
@@ -177,6 +311,12 @@ const OPDReports = () => {
                             placeholder="Enter patient name"
                             value={searchData.patientName}
                             onChange={handleSearchChange}
+                            onKeyPress={(e) => {
+                              if (e.key === 'Enter') {
+                                handleSearch()
+                              }
+                            }}
+                            disabled={isSearching || isResetting}
                           />
                         </div>
                         <div className="col-md-2">
@@ -185,15 +325,33 @@ const OPDReports = () => {
                               type="button" 
                               className="btn btn-primary flex-fill"
                               onClick={handleSearch}
+                              disabled={isSearching || isResetting}
                             >
-                              Search
+                              {isSearching ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Searching...
+                                </>
+                              ) : (
+                                <>
+                                  <i className="mdi mdi-magnify"></i> Search
+                                </>
+                              )}
                             </button>
                             <button
                               type="button"
                               className="btn btn-secondary flex-fill"
                               onClick={handleReset}
+                              disabled={isSearching || isResetting}
                             >
-                              Reset
+                              {isResetting ? (
+                                <>
+                                  <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>
+                                  Resetting...
+                                </>
+                              ) : (
+                                'Reset'
+                              )}
                             </button>
                           </div>
                         </div>
@@ -204,7 +362,7 @@ const OPDReports = () => {
                   {/* Patients Table */}
                   <div className="table-responsive">
                     <table className="table table-bordered align-middle">
-                      <thead className="table">
+                      <thead className="table-light">
                         <tr>
                           <th>Patient Name</th>
                           <th>Mobile No</th>
@@ -220,42 +378,107 @@ const OPDReports = () => {
                         </tr>
                       </thead>
                       <tbody>
-                        {currentItems.length > 0 ? (
-                          currentItems.map((patient) => (
-                            <tr key={patient.id}>
-                              <td className="fw-bold">{patient.patientName}</td>
-                              <td>{patient.mobileNo}</td>
-                              <td>{patient.uhid}</td>
-                              <td>{patient.relation}</td>
-                              <td>{patient.gender}</td>
-                              <td>{patient.age}</td>
-                              <td>{patient.specialty}</td>
-                              <td>{patient.doctorName}</td>
-                              <td>{patient.visitDateTime}</td>
-                              <td className="text-center">
-                                <button className="btn btn-sm btn-success">
-                                  {patient.opdSlip}
-                                </button>
-                              </td>
-                              <td className="text-center">
-                                {patient.prescriptionSlip === "Not Issued" ? (
-                                  <button className="btn btn-sm btn-success" disabled>
-                                    Not Issued
-                                  </button>
-                                ) : (
-                                  <button className="btn btn-sm btn-success">
-                                    View
-                                  </button>
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        ) : (
+                        {tableLoading ? (
+                          // Show loading spinner in table body
                           <tr>
-                            <td colSpan="11" className="text-center py-5">
-                              <div className="text-muted">
-                                <h5 className="mt-3">No OPD Records Found</h5>
-                                <p className="mb-0">Try adjusting your search criteria</p>
+                            <td colSpan="11">
+                              <div className="text-center py-5">
+                                <div className="d-flex justify-content-center">
+                                  <div className="spinner-border text-primary" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                  </div>
+                                </div>
+                                <p className="mt-2 text-muted">Loading OPD records...</p>
+                              </div>
+                            </td>
+                          </tr>
+                        ) : opdPatients.length > 0 ? (
+                          // Show actual data
+                          opdPatients.map((patient) => {
+                            const isOPDDownloading = downloadingOPDVisitId === patient.visitId
+                            const isPrescriptionDownloading = downloadingPrescriptionVisitId === patient.visitId
+                            return (
+                              <tr key={patient.id}>
+                                <td className="fw-bold">{patient.patientName}</td>
+                                <td>{patient.mobileNumber}</td>
+                                <td>{patient.uhid}</td>
+                                <td>{patient.relation}</td>
+                                <td>{patient.gender}</td>
+                                <td>{patient.age}</td>
+                                <td>{patient.specialty}</td>
+                                <td>{patient.doctorName}</td>
+                                <td>{patient.visitDateTime}</td>
+                                <td className="text-center">
+                                  <button 
+                                    className="btn btn-primary btn-sm"
+                                    onClick={() => {
+                                      if (patient.visitId) {
+                                        handleViewCaseSheet(patient.visitId, patient.patientName)
+                                      } else {
+                                        showPopup("No visit ID available for this patient", "info")
+                                      }
+                                    }}
+                                    disabled={isOPDDownloading || tableLoading}
+                                  >
+                                    {isOPDDownloading ? (
+                                      <>
+                                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                        Loading...
+                                      </>
+                                    ) : (
+                                      <>
+                                        <i className="mdi mdi-eye me-1"></i>
+                                        View
+                                      </>
+                                    )}
+                                  </button>
+                                </td>
+                                <td className="text-center">
+                                  {patient.prescriptionSlip === "Not Issued" ? (
+                                    <button className="btn btn-sm btn-primary" disabled>
+                                      Not Issued
+                                    </button>
+                                  ) : (
+                                    <button 
+                                      className="btn btn-primary btn-sm"
+                                      onClick={() => {
+                                        handleViewPrescription(
+                                          patient.prescriptionSlip, 
+                                          patient.patientName, 
+                                          patient.visitId
+                                        )
+                                      }}
+                                      disabled={isPrescriptionDownloading || tableLoading}
+                                    >
+                                      {isPrescriptionDownloading ? (
+                                        <>
+                                          <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                                          Loading...
+                                        </>
+                                      ) : (
+                                        <>
+                                          <i className="mdi mdi-eye me-1"></i>
+                                          View
+                                        </>
+                                      )}
+                                    </button>
+                                  )}
+                                </td>
+                              </tr>
+                            )
+                          })
+                        ) : (
+                          // Show empty state
+                          <tr>
+                            <td colSpan="11">
+                              <div className="text-center py-5">
+                                <div className="text-muted">
+                                  <i className="mdi mdi-file-document-outline" style={{ fontSize: '48px' }}></i>
+                                  <h5 className="mt-3">No OPD Records Found</h5>
+                                  <p className="mb-0">
+                                    {isSearchMode ? "Try adjusting your search criteria" : "No OPD records available"}
+                                  </p>
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -265,13 +488,13 @@ const OPDReports = () => {
                   </div>
 
                   {/* Pagination */}
-                  {filteredPatients.length > 0 && (
+                  {!tableLoading && opdPatients.length > 0 && totalItems > itemsPerPage && (
                     <div className="mt-4">
                       <Pagination
-                        totalItems={filteredPatients.length}
+                        totalItems={totalItems}
                         itemsPerPage={itemsPerPage}
                         currentPage={currentPage}
-                        onPageChange={setCurrentPage}
+                        onPageChange={handlePageChange}
                       />
                     </div>
                   )}

@@ -265,6 +265,8 @@ const validRoutes = [
   // "/RoomTariff",
   "/NonMedicalConsumable",
   "/IPDDischargeRecords",
+  "/SurgeryTypeMaster",
+  "/AddPrescription",
 ];
 
 // Routes that should bypass authorization
