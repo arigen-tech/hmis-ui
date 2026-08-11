@@ -1681,6 +1681,63 @@ const OpdRRecallPatient = () => {
     });
   };
 
+  const handleRemoveTreatmentTemplateItems = (templateId) => {
+    setTreatmentItems((prev) => {
+      const updated = prev
+        .map((item) => {
+          if (!item.templateId) return item;
+
+          const ids = item.templateId
+            .split(",")
+            .filter((id) => id !== String(templateId));
+
+          if (item.treatmentId != null) {
+            return {
+              ...item,
+              templateId: ids.join(","),
+            };
+          }
+
+          if (ids.length > 0) {
+            return {
+              ...item,
+              templateId: ids.join(","),
+            };
+          }
+
+          return null;
+        })
+        .filter((item) => item !== null);
+
+      if (updated.length === 0) {
+        return [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosageUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            templateId: "",
+          },
+        ];
+      }
+
+      return updated;
+    });
+
+    setSelectedTreatmentTemplateIds((prev) => {
+      const updated = new Set(prev);
+      updated.delete(templateId);
+      return updated;
+    });
+  };
+
   const validateSubmitForm = () => {
     const errors = {};
 
