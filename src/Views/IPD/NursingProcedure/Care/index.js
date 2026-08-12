@@ -557,7 +557,7 @@ const NursingCareModule = ({ selectedPatient }) => {
         expiryDate: row.expiry ? new Date(row.expiry).toISOString().split('T')[0] : '',
         givenBy: row.usedBy || '',
         remark: row.remarks || '',
-        procedureId: Number(row.procedureRef) || 0,
+        procedureId: row.procedureRef ? Number(row.procedureRef) : null,
         inpatientId: selectedPatient?.inpatientId || 0
       }));
 
@@ -611,7 +611,7 @@ const NursingCareModule = ({ selectedPatient }) => {
         expiryDate: item.expiry ? new Date(item.expiry).toISOString().split('T')[0] : '',
         givenBy: item.usedBy || '',
         remark: item.remarks || '',
-        procedureId: Number(item.procedureRef) || 0,
+        procedureId: item.procedureRef ? Number(item.procedureRef) : null,
         inpatientId: selectedPatient?.inpatientId || 0
       }));
 
