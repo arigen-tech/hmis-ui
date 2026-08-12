@@ -1,6 +1,8 @@
-export const API_HOST = 'http://103.133.215.182:8081/hims';
-// export const API_HOST = "http://localhost:8080";
+// export const API_HOST = 'http://103.133.215.182:8081/hims';
+export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
+//  export const API_HOST = 'http://192.168.31.118:8080';
+//export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';
 
@@ -210,6 +212,8 @@ export const DRUG_TYPE = {
 export const WARD_ID = 10;
 export const MAS_ROOM_CATEGORY = `${MASTERS}/mas-room-category`;
 export const MAS_BED_STATUS = `${MASTERS}/mas-bed-status`;
+export const MAS_WARD_ROOM_TARIFF = `${MASTERS}/masWardRoomTariff`;
+
 
 export const MAS_WARD_CATEGORY = `${MASTERS}/masWardCategory`;
 export const MAS_ADMISSION_CATEGORY = `${MASTERS}/masAdmissionCategory`;
@@ -697,6 +701,7 @@ export const MAS_PAYMENT_MODE = `${MASTERS}/paymentMode`;
 export const INSURANCE_TPA_MAPPING = `${MASTERS}/insuranceTpaMapping`;
 
 export const MAS_SURGERY = `${MASTERS}/masSurgery`;
+export const MAS_SURGERY_TYPE = "/master/masSurgeryType";
 export const MAS_OPD_HOLIDAY = `${MASTERS}/opdHoliday`;
 
 export const MAS_SURGERY_PRICING = `${MASTERS}/masSurgeryPricing`;
