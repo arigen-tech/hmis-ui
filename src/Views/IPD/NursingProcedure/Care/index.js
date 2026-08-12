@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { getRequest, postRequest } from '../../../../service/apiService';
-import { GET_PROCEDURE_BY_INPATIENT_ID, MAS_PROCEDURES_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, SAVE_INPATIENT_PROCEDURE, GET_MEDICAL_CONSUMABLE_ITEMS, SAVE_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS, GET_ITEM_BATCHES } from '../../../../config/apiConfig';
+import { GET_PROCEDURE_BY_INPATIENT_ID, MAS_PROCEDURES_GET_ALL, GET_CURRENT_USER_PROFILE_BY_NAME, SAVE_INPATIENT_PROCEDURE, GET_MEDICAL_CONSUMABLE_ITEMS, SAVE_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE, GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS, GET_ITEM_BATCHES, SAVE_NURSING_CARE_PROCEDURE, GET_NURSING_CARE_PROCEDURE } from '../../../../config/apiConfig';
 
 const NursingCareModule = ({ selectedPatient }) => {
   // ---------- Tab State ----------
@@ -118,8 +118,8 @@ const NursingCareModule = ({ selectedPatient }) => {
 
   const renderItemDropdown = (dropdownId, onSelect) => (
     activeItemDropdown === dropdownId && (
-      <ul 
-        className="list-group position-absolute w-100 shadow" 
+      <ul
+        className="list-group position-absolute w-100 shadow"
         style={{ zIndex: 1050, maxHeight: "200px", overflowY: "auto", top: "100%" }}
         onScroll={handleItemScroll}
       >
@@ -204,63 +204,45 @@ const NursingCareModule = ({ selectedPatient }) => {
   };
 
   // ---------- Consumables State ----------
-  const [consumables, setConsumables] = useState([
-    {
-      id: 1,
-      item: 'IV Cannula',
-      qty: 1,
-      procedureRef: 'P101',
-      dateTime: '2025-04-05T10:35',
-      usedBy: 'Nurse A',
-      batch: '3053632',
-      expiry: '2026-02-28',
-      remarks: 'C',
-    },
-    {
-      id: 2,
-      item: 'Needle',
-      qty: 1,
-      procedureRef: 'P101',
-      dateTime: '2025-04-05T10:35',
-      usedBy: 'Nurse A',
-      batch: '23023626',
-      expiry: '2028-03-22',
-      remarks: '—',
-    },
-    {
-      id: 3,
-      item: 'Fixator',
-      qty: 1,
-      procedureRef: 'P101',
-      dateTime: '2025-04-05T10:35',
-      usedBy: 'Nurse A',
-      batch: '239005',
-      expiry: '2026-04-30',
-      remarks: 'C',
-    },
-    {
-      id: 4,
-      item: 'Gauze',
-      qty: 2,
-      procedureRef: 'P102',
-      dateTime: '2025-04-05T14:05',
-      usedBy: 'Nurse B',
-      batch: '621023',
-      expiry: '2027-01-15',
-      remarks: 'C',
-    },
-    {
-      id: 5,
-      item: 'Gloves',
-      qty: 2,
-      procedureRef: null, // not linked
-      dateTime: '2025-04-05T15:10',
-      usedBy: 'Nurse B',
-      batch: 'GL5566',
-      expiry: '2026-12-10',
-      remarks: '—',
-    },
-  ]);
+  const [consumables, setConsumables] = useState([]);
+  const [loadingConsumables, setLoadingConsumables] = useState(false);
+
+  const fetchConsumables = async (inpatientId) => {
+    setLoadingConsumables(true);
+    try {
+      const res = await getRequest(`${GET_NURSING_CARE_PROCEDURE}/${inpatientId}`);
+      if (res?.status === 200 && res?.response) {
+        const consumablesData = Array.isArray(res.response) ? res.response : [];
+        const mappedConsumables = consumablesData.map(c => ({
+          id: c.procedureTxnId || Date.now() + Math.random(),
+          item: c.itemName,
+          itemId: c.itemId,
+          qty: c.qty || c.requestQty,
+          procedureRef: c.procedureTxnId,
+          procedureName: c.procedureName,
+          dateTime: c.dateTime,
+          usedBy: c.usedBy || c.givenBy,
+          batch: c.batchNo,
+          expiry: c.expiryDate,
+          remarks: c.remark || '—',
+        }));
+        setConsumables(mappedConsumables);
+      } else {
+        setConsumables([]);
+      }
+    } catch (error) {
+      console.error("Error fetching consumables:", error);
+      setConsumables([]);
+    } finally {
+      setLoadingConsumables(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedPatient?.inpatientId) {
+      fetchConsumables(selectedPatient.inpatientId);
+    }
+  }, [selectedPatient]);
 
   // ---------- Templates State ----------
   const [templates, setTemplates] = useState([
@@ -354,6 +336,7 @@ const NursingCareModule = ({ selectedPatient }) => {
     usedBy: '',
     dateTime: '',
     procedureRef: '',
+    remarks: '',
   };
 
   const [fetchedBatches, setFetchedBatches] = useState({});
@@ -514,7 +497,7 @@ const NursingCareModule = ({ selectedPatient }) => {
   // here — whatever is currently in the form (even if partially empty) gets
   // added as a row, and the form is fully cleared afterwards.
   const addManualRow = () => {
-    const { item, itemId, qty, batch, expiry, uom, usedBy, dateTime, procedureRef } = newConsumable;
+    const { item, itemId, qty, batch, expiry, uom, usedBy, dateTime, procedureRef, remarks } = newConsumable;
     const row = {
       rowId: Date.now() + Math.random(),
       item,
@@ -526,7 +509,7 @@ const NursingCareModule = ({ selectedPatient }) => {
       usedBy,
       dateTime,
       procedureRef: procedureRef || '',
-      remarks: '',
+      remarks: remarks || '',
     };
     setManualItems([...manualItems, row]);
 
@@ -553,6 +536,7 @@ const NursingCareModule = ({ selectedPatient }) => {
       usedBy: row.usedBy,
       dateTime: row.dateTime,
       procedureRef: row.procedureRef || '',
+      remarks: row.remarks || '',
     });
     removeManualRow(row.rowId);
   };
@@ -565,21 +549,40 @@ const NursingCareModule = ({ selectedPatient }) => {
     }
     setIsSavingConsumables(true);
     try {
-      // Simulate API call for now (can be replaced with actual API call)
-      const newEntries = manualItems.map(row => ({
-        id: Date.now() + Math.random(),
-        item: row.item,
-        qty: row.qty,
-        procedureRef: row.procedureRef || null,
-        dateTime: row.dateTime,
-        usedBy: row.usedBy,
-        batch: row.batch,
-        expiry: row.expiry,
-        remarks: row.remarks || '—',
+      const payload = manualItems.map(row => ({
+        itemId: row.itemId || 0,
+        dateTime: row.dateTime ? new Date(row.dateTime).toISOString() : new Date().toISOString(),
+        requestQty: Number(row.qty) || 0,
+        batchNo: row.batch || '',
+        expiryDate: row.expiry ? new Date(row.expiry).toISOString().split('T')[0] : '',
+        givenBy: row.usedBy || '',
+        remark: row.remarks || '',
+        procedureId: Number(row.procedureRef) || 0,
+        inpatientId: selectedPatient?.inpatientId || 0
       }));
-      setConsumables([...consumables, ...newEntries]);
-      setShowAddConsumableModal(false);
-      resetConsumableModal();
+
+      const response = await postRequest(SAVE_NURSING_CARE_PROCEDURE, payload);
+      if (response && response.status === 200) {
+        const newEntries = manualItems.map(row => ({
+          id: Date.now() + Math.random(),
+          item: row.item,
+          qty: row.qty,
+          procedureRef: row.procedureRef || null,
+          dateTime: row.dateTime,
+          usedBy: row.usedBy,
+          batch: row.batch,
+          expiry: row.expiry,
+          remarks: row.remarks || '—',
+        }));
+        setConsumables([...consumables, ...newEntries]);
+        setShowAddConsumableModal(false);
+        resetConsumableModal();
+      } else {
+        alert(response?.message || 'Failed to save consumables.');
+      }
+    } catch (error) {
+      console.error("Error saving consumables:", error);
+      alert('Error saving consumables.');
     } finally {
       setIsSavingConsumables(false);
     }
@@ -600,21 +603,40 @@ const NursingCareModule = ({ selectedPatient }) => {
     }
     setIsSavingConsumables(true);
     try {
-      // Simulate API call for now (can be replaced with actual API call)
-      const newEntries = templateItems.map(item => ({
-        id: Date.now() + Math.random(),
-        item: item.item,
-        qty: item.qty,
-        procedureRef: item.procedureRef || null,
-        dateTime: item.dateTime,
-        usedBy: item.usedBy,
-        batch: item.batch,
-        expiry: item.expiry,
-        remarks: item.remarks || '—',
+      const payload = templateItems.map(item => ({
+        itemId: item.itemId || 0,
+        dateTime: item.dateTime ? new Date(item.dateTime).toISOString() : new Date().toISOString(),
+        requestQty: Number(item.qty) || 0,
+        batchNo: item.batch || '',
+        expiryDate: item.expiry ? new Date(item.expiry).toISOString().split('T')[0] : '',
+        givenBy: item.usedBy || '',
+        remark: item.remarks || '',
+        procedureId: Number(item.procedureRef) || 0,
+        inpatientId: selectedPatient?.inpatientId || 0
       }));
-      setConsumables([...consumables, ...newEntries]);
-      setShowAddConsumableModal(false);
-      resetConsumableModal();
+
+      const response = await postRequest(SAVE_NURSING_CARE_PROCEDURE, payload);
+      if (response && response.status === 200) {
+        const newEntries = templateItems.map(item => ({
+          id: Date.now() + Math.random(),
+          item: item.item,
+          qty: item.qty,
+          procedureRef: item.procedureRef || null,
+          dateTime: item.dateTime,
+          usedBy: item.usedBy,
+          batch: item.batch,
+          expiry: item.expiry,
+          remarks: item.remarks || '—',
+        }));
+        setConsumables([...consumables, ...newEntries]);
+        setShowAddConsumableModal(false);
+        resetConsumableModal();
+      } else {
+        alert(response?.message || 'Failed to save consumables.');
+      }
+    } catch (error) {
+      console.error("Error saving consumables:", error);
+      alert('Error saving consumables.');
     } finally {
       setIsSavingConsumables(false);
     }
@@ -906,23 +928,33 @@ const NursingCareModule = ({ selectedPatient }) => {
                   </tr>
                 </thead>
                 <tbody>
-                  {consumables.map(cons => {
-                    const proc = procedures.find(p => p.id == cons.procedureRef);
-                    const refText = proc ? `${proc.procedure} (${new Date(proc.dateTime).toLocaleDateString()})` : '—';
-                    return (
-                      <tr key={cons.id}>
-                        <td>{cons.item}</td>
-                        <td>{cons.qty}</td>
-                        <td>{refText}</td>
-                        <td>{new Date(cons.dateTime).toLocaleString()}</td>
-                        <td>{cons.usedBy}</td>
-                        <td>{cons.batch}</td>
-                        <td>{cons.expiry}</td>
-                        <td>{cons.remarks || '—'}</td>
-                      </tr>
-                    );
-                  })}
-                  {consumables.length === 0 && (
+                  {loadingConsumables ? (
+                    <tr>
+                      <td colSpan="8" className="text-center py-3">
+                        <div className="spinner-border spinner-border-sm text-primary" role="status">
+                          <span className="visually-hidden">Loading...</span>
+                        </div>
+                        <span className="ms-2">Loading consumables...</span>
+                      </td>
+                    </tr>
+                  ) : consumables.length > 0 ? (
+                    consumables.map(cons => {
+                      const proc = procedures.find(p => p.id == cons.procedureRef);
+                      const refText = proc ? `${proc.procedure} (${new Date(proc.dateTime).toLocaleDateString()})` : (cons.procedureName || '—');
+                      return (
+                        <tr key={cons.id}>
+                          <td>{cons.item}</td>
+                          <td>{cons.qty}</td>
+                          <td>{refText}</td>
+                          <td>{new Date(cons.dateTime).toLocaleString()}</td>
+                          <td>{cons.usedBy}</td>
+                          <td>{cons.batch}</td>
+                          <td>{cons.expiry}</td>
+                          <td>{cons.remarks || '—'}</td>
+                        </tr>
+                      );
+                    })
+                  ) : (
                     <tr><td colSpan="8" className="text-center">No consumables recorded.</td></tr>
                   )}
                 </tbody>
@@ -1153,7 +1185,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                                   ) : (
                                     (fetchedBatches[item.itemId] || []).map(b => (
                                       <option key={b.batchName} value={b.batchName}>
-                                        {b.batchName} (Stock: {b.availableStock})
+                                        {b.batchName} (Stock: {b.batchStock})
                                       </option>
                                     ))
                                   )}
@@ -1261,7 +1293,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                           ) : (
                             (fetchedBatches[newConsumable.itemId] || []).map(b => (
                               <option key={b.batchName} value={b.batchName}>
-                                {b.batchName} (Stock: {b.availableStock})
+                                {b.batchName} (Stock: {b.batchStock})
                               </option>
                             ))
                           )}
@@ -1314,6 +1346,16 @@ const NursingCareModule = ({ selectedPatient }) => {
                             </option>
                           ))}
                         </select>
+                      </div>
+                      <div className="col-md-12 mt-2">
+                        <label className="form-label small">Remarks (optional)</label>
+                        <input
+                          type="text"
+                          className="form-control form-control-sm"
+                          value={newConsumable.remarks}
+                          onChange={(e) => setNewConsumable({ ...newConsumable, remarks: e.target.value })}
+                          placeholder="Optional remarks"
+                        />
                       </div>
                     </div>
 
@@ -1375,10 +1417,10 @@ const NursingCareModule = ({ selectedPatient }) => {
                           </tbody>
                         </table>
                         <div className="d-flex justify-content-end mt-3">
-                        <button className="btn btn-success btn-sm" onClick={saveManualItems} disabled={isSavingConsumables}>
-                          {isSavingConsumables ? 'Saving...' : `Save ${manualItems.length} Entries`}
-                        </button>
-                      </div>
+                          <button className="btn btn-success btn-sm" onClick={saveManualItems} disabled={isSavingConsumables}>
+                            {isSavingConsumables ? 'Saving...' : `Save ${manualItems.length} Entries`}
+                          </button>
+                        </div>
                       </div>
                     )}
                   </>

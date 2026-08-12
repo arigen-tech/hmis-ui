@@ -807,3 +807,5 @@ export const SAVE_PROCEDURE_CONSUMABLE_TEMPLATE = '/ipd/saveProcedureConsumableT
 export const GET_PROCEDURE_CONSUMABLE_TEMPLATE = '/ipd/getProcedureConsumableTemplate';
 export const GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS = '/ipd/getProcedureConsumableTemplateDetails';
 export const GET_ITEM_BATCHES = '/inventory/item/batches';
+export const SAVE_NURSING_CARE_PROCEDURE = '/ipd/saveNursingCareProcedure';
+export const GET_NURSING_CARE_PROCEDURE = '/ipd/getNursingCareProcedure';
