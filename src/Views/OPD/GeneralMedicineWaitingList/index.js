@@ -78,7 +78,11 @@ import Pagination, {
   DEFAULT_ITEMS_PER_PAGE,
 } from "../../../Components/Pagination";
 import OpdVision from "../OpdVision";
-import { CANCEL_PATIENT_CONFIRM, CANCEL_PATIENT_CONFIRMATION, FLAG } from "../../../config/constants";
+import {
+  CANCEL_PATIENT_CONFIRM,
+  CANCEL_PATIENT_CONFIRMATION,
+  FLAG,
+} from "../../../config/constants";
 import { data } from "react-router-dom";
 import PregnancySection from "../Pregnancy";
 
@@ -411,7 +415,8 @@ const GeneralMedicineWaitingList = () => {
       source.assessment ||
       source;
 
-    const selectedBlock = source.assessmentBlock || source.selectedAssessment || null;
+    const selectedBlock =
+      source.assessmentBlock || source.selectedAssessment || null;
     const assessmentBlocks = Array.isArray(source.assessmentBlocks)
       ? source.assessmentBlocks
       : Array.isArray(assessment?.assessments)
@@ -523,7 +528,9 @@ const GeneralMedicineWaitingList = () => {
     const details =
       directDetails.length > 0
         ? directDetails
-        : rows.flatMap((row) => (Array.isArray(row.questions) ? row.questions : []));
+        : rows.flatMap((row) =>
+            Array.isArray(row.questions) ? row.questions : [],
+          );
 
     const score =
       assessment?.totalScore ??
@@ -569,10 +576,13 @@ const GeneralMedicineWaitingList = () => {
           topicName: block.topicName || block.headingName || topicName,
           questionsResponses: Array.isArray(block.questions)
             ? block.questions.map((question) => ({
-                questionName: question.questionText || question.questionName||"",
-                questionsAns: question.questionsAns ?? question.answerValue ?? "",
+                questionName:
+                  question.questionText || question.questionName || "",
+                questionsAns:
+                  question.questionsAns ?? question.answerValue ?? "",
                 questionText: question.questionText || "",
-                answerValue: question.answerValue ?? question.questionsAns ?? "",
+                answerValue:
+                  question.answerValue ?? question.questionsAns ?? "",
                 answerOptionId: question.answerOptionId ?? null,
                 answerCode: question.answerCode ?? null,
                 answerScore: question.answerScore ?? null,
@@ -687,7 +697,12 @@ const GeneralMedicineWaitingList = () => {
       });
 
     const flattenedCount = formattedData.length;
-    const backendTotalElements = Number(payload.totalElements || payload.total_elements || payload.totalCount || 0);
+    const backendTotalElements = Number(
+      payload.totalElements ||
+        payload.total_elements ||
+        payload.totalCount ||
+        0,
+    );
 
     return {
       data: formattedData,
@@ -768,9 +783,7 @@ const GeneralMedicineWaitingList = () => {
 
   const fetchWardData = async (categoryId) => {
     try {
-      const data = await getRequest(
-        `${MAS_WARDS_GET_BY_ID}/${categoryId}`,
-      );
+      const data = await getRequest(`${MAS_WARDS_GET_BY_ID}/${categoryId}`);
       if (data.status === 200 && Array.isArray(data.response)) {
         setWardDepartments(data.response);
       } else {
@@ -1140,10 +1153,7 @@ const GeneralMedicineWaitingList = () => {
           selectedDrug.nomenclature ||
           selectedDrug.itemName ||
           "",
-        dosageUnit:
-          normalizedDrug.dosageUnit ||
-          selectedDrug.dosageUnit ||
-          "",
+        dosageUnit: normalizedDrug.dosageUnit || selectedDrug.dosageUnit || "",
         dispUnit:
           normalizedDrug.dispUnitName ||
           normalizedDrug.unitAuName ||
@@ -2518,9 +2528,8 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const handleRemoveTreatmentTemplateItems = (templateId) => {
-    setTreatmentItems((prev) =>
-      {
-        const updated = prev
+    setTreatmentItems((prev) => {
+      const updated = prev
         .map((item) => {
           if (!item.templateId) return item;
 
@@ -2546,28 +2555,27 @@ const GeneralMedicineWaitingList = () => {
         })
         .filter((item) => item !== null);
 
-        if (updated.length === 0) {
-          return [
-            {
-              treatmentId: null,
-              drugId: "",
-              drugName: "",
-              dispUnit: "",
-              dosageUnit: "",
-              dosage: "",
-              frequency: "",
-              days: "",
-              total: "",
-              instruction: "",
-              stock: "",
-              templateId: "",
-            },
-          ];
-        }
+      if (updated.length === 0) {
+        return [
+          {
+            treatmentId: null,
+            drugId: "",
+            drugName: "",
+            dispUnit: "",
+            dosageUnit: "",
+            dosage: "",
+            frequency: "",
+            days: "",
+            total: "",
+            instruction: "",
+            stock: "",
+            templateId: "",
+          },
+        ];
+      }
 
-        return updated;
-      },
-    );
+      return updated;
+    });
 
     setSelectedTreatmentTemplateIds((prev) => {
       const updated = new Set(prev);
@@ -2775,10 +2783,10 @@ const GeneralMedicineWaitingList = () => {
         vitalsPageSize,
       );
       await checkVitalPresent(patient.visitId);
-      
+
       if (patient.pregnancyDetails && pregnancyRef.current) {
-      pregnancyRef.current.setData(patient.pregnancyDetails);
-    }
+        pregnancyRef.current.setData(patient.pregnancyDetails);
+      }
     }
   };
 
@@ -3077,10 +3085,7 @@ const GeneralMedicineWaitingList = () => {
   const hasOphthalmologyExaminationData = (visionData) => {
     if (!visionData || typeof visionData !== "object") return false;
 
-    return Object.values(visionData).some((value) => {
-      if (!hasValue(value)) return false;
-      return String(value).trim() !== "N";
-    });
+    return Object.keys(visionData).length > 0;
   };
 
   const buildOphthalmologyExaminationPayload = (visionData) => {
@@ -3100,7 +3105,9 @@ const GeneralMedicineWaitingList = () => {
       selectedPatient?.departmentName ||
       selectedPatient?.deptName ||
       "",
-  ).trim().toUpperCase();
+  )
+    .trim()
+    .toUpperCase();
   const shouldShowVisionExamination =
     isOphthalmologyDepartment ||
     selectedPatientDepartmentCode === OPHTHALMOLOGY_DEPARTMENT_CODE ||
@@ -3409,7 +3416,7 @@ const GeneralMedicineWaitingList = () => {
         visionExaminationData = visionRef.current.getData();
       }
       const ophthalmologyExaminationDetails = shouldShowVisionExamination
-        ? buildOphthalmologyExaminationPayload(visionExaminationData)
+        ? buildOphthalmologyExaminationPayload(visionExaminationData || {})
         : null;
 
       let entExaminationDetails = null;
@@ -4143,7 +4150,10 @@ const GeneralMedicineWaitingList = () => {
       normalizedDrug.itemClassId ?? medication.itemClassId ?? null;
 
     const resolvedADispQty =
-      normalizedDrug.adispQty ?? normalizedDrug.aDispQty ?? medication.aDispQty ?? 1;
+      normalizedDrug.adispQty ??
+      normalizedDrug.aDispQty ??
+      medication.aDispQty ??
+      1;
 
     setTreatmentItems((prev) => {
       const alreadyAdded = prev.some((item) => {
@@ -4438,9 +4448,12 @@ const GeneralMedicineWaitingList = () => {
     try {
       const hydratedTreatments = await Promise.all(
         template.treatments.map(async (t) => {
-          const itemDetails = t.itemId ? await fetchDrugDetailsById(t.itemId) : null;
+          const itemDetails = t.itemId
+            ? await fetchDrugDetailsById(t.itemId)
+            : null;
           const resolvedDrug = itemDetails || t;
-          const resolvedDosageUnit = resolvedDrug.dosageUnit || t.dosageUnit || "";
+          const resolvedDosageUnit =
+            resolvedDrug.dosageUnit || t.dosageUnit || "";
           const resolvedDispUnit =
             resolvedDrug.dispUnitName ||
             resolvedDrug.unitAuName ||
@@ -4508,11 +4521,11 @@ const GeneralMedicineWaitingList = () => {
           const drugStock = t.stock ?? t.stocks ?? "0";
 
           const newItem = {
-          treatmentId: null,
-          drugId: t.itemId,
-          drugName: t.itemName,
-          dosageUnit: t?.dosageUnit ?? "",
-          dispUnit: t?.dispUnit ?? "",
+            treatmentId: null,
+            drugId: t.itemId,
+            drugName: t.itemName,
+            dosageUnit: t?.dosageUnit ?? "",
+            dispUnit: t?.dispUnit ?? "",
             dosage: t.dosage ?? "",
             frequency: freName?.frequencyName ?? "",
             days: t.noOfDays ?? "",
@@ -4861,7 +4874,10 @@ const GeneralMedicineWaitingList = () => {
                                 label: "Psychiatrist Assessment History",
                               },
                               { id: "audit-history", label: "Audit History" },
-                              { id: "psychiatrist", label: "Psychiatrist Assessment" },
+                              {
+                                id: "psychiatrist",
+                                label: "Psychiatrist Assessment",
+                              },
                             ].map((btn) => (
                               <button
                                 key={btn.id}
@@ -4880,7 +4896,9 @@ const GeneralMedicineWaitingList = () => {
                                     );
                                     setClinicalPopupType("vitals");
                                     setShowPopup(true);
-                                  } else if (btn.id === "previous-psychiatrist") {
+                                  } else if (
+                                    btn.id === "previous-psychiatrist"
+                                  ) {
                                     handleOpenPsychiatristHistory();
                                   } else if (btn.id === "psychiatrist") {
                                     setClinicalPopupType("psychiatrist");
@@ -5014,20 +5032,34 @@ const GeneralMedicineWaitingList = () => {
                               </div>
 
                               <div className="small text-muted mb-2">
-                                Saved assessment data will be submitted with the patient record.
+                                Saved assessment data will be submitted with the
+                                patient record.
                               </div>
 
                               {psychiatristAssessment.rows.map((row) => (
-                                <div key={`${row.headingId}-${row.headingCode}`} className="mb-3">
+                                <div
+                                  key={`${row.headingId}-${row.headingCode}`}
+                                  className="mb-3"
+                                >
                                   <div className="fw-bold">
-                                    {row.headingName || `Category ${row.headingId}`}
-                                    {row.headingCode ? ` (${row.headingCode})` : ""}
+                                    {row.headingName ||
+                                      `Category ${row.headingId}`}
+                                    {row.headingCode
+                                      ? ` (${row.headingCode})`
+                                      : ""}
                                   </div>
                                   <ul className="mb-0 ps-3">
                                     {row.questions.map((qa) => (
-                                      <li key={`${row.headingId}-${qa.questionId}`}>
-                                        <strong>{qa.questionText || `Question ${qa.questionId}`}</strong>
-                                        : {qa.answerValue || `Option ${qa.answerOptionId}`}
+                                      <li
+                                        key={`${row.headingId}-${qa.questionId}`}
+                                      >
+                                        <strong>
+                                          {qa.questionText ||
+                                            `Question ${qa.questionId}`}
+                                        </strong>
+                                        :{" "}
+                                        {qa.answerValue ||
+                                          `Option ${qa.answerOptionId}`}
                                       </li>
                                     ))}
                                   </ul>
@@ -6142,239 +6174,244 @@ const GeneralMedicineWaitingList = () => {
                                   key={index}
                                   className={isOutOfStock ? "table-danger" : ""}
                                 >
-                                <td>
-                                  <div
-                                    className="position-relative"
-                                    style={{ width: "100%", zIndex: 20 }}
-                                    ref={drugDropdownRef}
-                                  >
+                                  <td>
+                                    <div
+                                      className="position-relative"
+                                      style={{ width: "100%", zIndex: 20 }}
+                                      ref={drugDropdownRef}
+                                    >
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Search Drug..."
+                                        value={
+                                          treatmentItems[index].drugName ||
+                                          drugSearch[index] ||
+                                          ""
+                                        }
+                                        onChange={(e) =>
+                                          handleDrugSearch(
+                                            e.target.value,
+                                            index,
+                                          )
+                                        }
+                                        onClick={() => {
+                                          loadFirstDrugPage(index);
+                                          setActiveDrugDropdown(index);
+                                        }}
+                                        onBlur={() => {
+                                          setTimeout(() => {
+                                            setActiveDrugDropdown(null);
+                                          }, 200);
+                                        }}
+                                        autoComplete="off"
+                                      />
+
+                                      {activeDrugDropdown === index && (
+                                        <div
+                                          className="border rounded mt-1 bg-white position-absolute w-100"
+                                          style={{
+                                            maxHeight: "220px",
+                                            zIndex: 9999,
+                                            overflowY: "auto",
+                                          }}
+                                          onScroll={(e) => {
+                                            if (
+                                              e.target.scrollHeight -
+                                                e.target.scrollTop ===
+                                              e.target.clientHeight
+                                            ) {
+                                              loadMoreDrugs();
+                                            }
+                                          }}
+                                        >
+                                          {drugDropdown.length > 0 ? (
+                                            drugDropdown.map((drug) => (
+                                              <div
+                                                key={drug.itemId}
+                                                className="p-2 cursor-pointer"
+                                                onMouseDown={(e) =>
+                                                  e.preventDefault()
+                                                } // prevent blur
+                                                onClick={() => {
+                                                  updateDrug(drug, index);
+                                                  setActiveDrugDropdown(null);
+                                                }}
+                                              >
+                                                <strong>
+                                                  {drug.nomenclature}
+                                                </strong>{" "}
+                                                — {drug.pvmsNo}
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="p-2 text-muted">
+                                              No results found
+                                            </div>
+                                          )}
+                                          {!drugLastPage && (
+                                            <div className="text-center p-2 small text-primary">
+                                              Loading...
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td style={{ width: "90px" }}>
                                     <input
                                       type="text"
                                       className="form-control"
-                                      placeholder="Search Drug..."
-                                      value={
-                                        treatmentItems[index].drugName ||
-                                        drugSearch[index] ||
-                                        ""
-                                      }
+                                      value={row.dosageUnit || row.dispUnit}
                                       onChange={(e) =>
-                                        handleDrugSearch(e.target.value, index)
+                                        handleTreatmentChange(
+                                          index,
+                                          "dispUnit",
+                                          e.target.value,
+                                        )
                                       }
-                                      onClick={() => {
-                                        loadFirstDrugPage(index);
-                                        setActiveDrugDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(() => {
-                                          setActiveDrugDropdown(null);
-                                        }, 200);
-                                      }}
-                                      autoComplete="off"
+                                      readOnly
                                     />
+                                  </td>
 
-                                    {activeDrugDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMoreDrugs();
-                                          }
-                                        }}
-                                      >
-                                        {drugDropdown.length > 0 ? (
-                                          drugDropdown.map((drug) => (
-                                            <div
-                                              key={drug.itemId}
-                                              className="p-2 cursor-pointer"
-                                              onMouseDown={(e) =>
-                                                e.preventDefault()
-                                              } // prevent blur
-                                              onClick={() => {
-                                                updateDrug(drug, index);
-                                                setActiveDrugDropdown(null);
-                                              }}
-                                            >
-                                              <strong>
-                                                {drug.nomenclature}
-                                              </strong>{" "}
-                                              — {drug.pvmsNo}
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-                                        {!drugLastPage && (
-                                          <div className="text-center p-2 small text-primary">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td style={{ width: "90px" }}>
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={row.dosageUnit || row.dispUnit}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(
-                                        index,
-                                        "dispUnit",
-                                        e.target.value,
-                                      )
-                                    }
-                                    readOnly
-                                  />
-                                </td>
+                                  <td style={{ width: "70px" }}>
+                                    <input
+                                      type="number"
+                                      className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.dosage) ? "is-invalid" : ""}`}
+                                      value={row.dosage}
+                                      onChange={(e) =>
+                                        handleTreatmentChange(
+                                          index,
+                                          "dosage",
+                                          e.target.value,
+                                        )
+                                      }
+                                      min={0}
+                                    />
+                                  </td>
 
-                                <td style={{ width: "70px" }}>
-                                  <input
-                                    type="number"
-                                    className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.dosage) ? "is-invalid" : ""}`}
-                                    value={row.dosage}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(
-                                        index,
-                                        "dosage",
-                                        e.target.value,
-                                      )
-                                    }
-                                    min={0}
-                                  />
-                                </td>
+                                  <td style={{ width: "120px" }}>
+                                    <select
+                                      className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.frequency) ? "is-invalid" : ""}`}
+                                      value={row.frequency || ""}
+                                      onChange={(e) =>
+                                        handleTreatmentChange(
+                                          index,
+                                          "frequency",
+                                          e.target.value,
+                                        )
+                                      }
+                                    >
+                                      <option value="">Select..</option>
+                                      {allFrequencies.map((f) => (
+                                        <option
+                                          key={f.frequencyId}
+                                          value={f.frequencyName}
+                                        >
+                                          {f.frequencyName}
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </td>
 
-                                <td style={{ width: "120px" }}>
-                                  <select
-                                    className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.frequency) ? "is-invalid" : ""}`}
-                                    value={row.frequency || ""}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(
-                                        index,
-                                        "frequency",
-                                        e.target.value,
-                                      )
-                                    }
-                                  >
-                                    <option value="">Select..</option>
-                                    {allFrequencies.map((f) => (
-                                      <option
-                                        key={f.frequencyId}
-                                        value={f.frequencyName}
-                                      >
-                                        {f.frequencyName}
+                                  <td style={{ width: "70px" }}>
+                                    <input
+                                      type="number"
+                                      className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.days) ? "is-invalid" : ""}`}
+                                      value={row.days}
+                                      onChange={(e) =>
+                                        handleTreatmentChange(
+                                          index,
+                                          "days",
+                                          e.target.value,
+                                        )
+                                      }
+                                      min={0}
+                                    />
+                                  </td>
+
+                                  <td style={{ width: "70px" }}>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.total}
+                                      readOnly
+                                    />
+                                  </td>
+
+                                  <td style={{ width: "140px" }}>
+                                    <select
+                                      className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.instruction) ? "is-invalid" : ""}`}
+                                      value={row.instruction}
+                                      onChange={(e) =>
+                                        handleTreatmentChange(
+                                          index,
+                                          "instruction",
+                                          e.target.value,
+                                        )
+                                      }
+                                    >
+                                      <option value="">Select...</option>
+                                      <option value="After Meal">
+                                        After Meal
                                       </option>
-                                    ))}
-                                  </select>
-                                </td>
+                                      <option value="Before Meal">
+                                        Before Meal
+                                      </option>
+                                      <option value="With Food">
+                                        With Food
+                                      </option>
+                                      <option value="both">both</option>
+                                    </select>
+                                  </td>
 
-                                <td style={{ width: "70px" }}>
-                                  <input
-                                    type="number"
-                                    className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.days) ? "is-invalid" : ""}`}
-                                    value={row.days}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(
-                                        index,
-                                        "days",
-                                        e.target.value,
-                                      )
-                                    }
-                                    min={0}
-                                  />
-                                </td>
+                                  <td style={{ width: "100px" }}>
+                                    <input
+                                      type="number"
+                                      className="form-control"
+                                      value={row.stock || 0}
+                                      readOnly
+                                    />
+                                  </td>
 
-                                <td style={{ width: "70px" }}>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={row.total}
-                                    readOnly
-                                  />
-                                </td>
-
-                                <td style={{ width: "140px" }}>
-                                  <select
-                                    className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.instruction) ? "is-invalid" : ""}`}
-                                    value={row.instruction}
-                                    onChange={(e) =>
-                                      handleTreatmentChange(
-                                        index,
-                                        "instruction",
-                                        e.target.value,
-                                      )
-                                    }
+                                  <td
+                                    style={{ width: "60px" }}
+                                    className="text-center"
                                   >
-                                    <option value="">Select...</option>
-                                    <option value="After Meal">
-                                      After Meal
-                                    </option>
-                                    <option value="Before Meal">
-                                      Before Meal
-                                    </option>
-                                    <option value="With Food">With Food</option>
-                                    <option value="both">both</option>
-                                  </select>
-                                </td>
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddTreatmentItem}
+                                    >
+                                      +
+                                    </button>
+                                  </td>
 
-                                <td style={{ width: "100px" }}>
-                                  <input
-                                    type="number"
-                                    className="form-control"
-                                    value={row.stock || 0}
-                                    readOnly
-                                  />
-                                </td>
-
-                                <td
-                                  style={{ width: "60px" }}
-                                  className="text-center"
-                                >
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddTreatmentItem}
+                                  <td
+                                    style={{ width: "60px" }}
+                                    className="text-center"
                                   >
-                                    +
-                                  </button>
-                                </td>
-
-                                <td
-                                  style={{ width: "60px" }}
-                                  className="text-center"
-                                >
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveTreatmentItem(index)
-                                    }
-                                    disabled={
-                                      treatmentItems.length === 1 &&
-                                      !treatmentItems[0].drugName &&
-                                      !treatmentItems[0].dispUnit &&
-                                      !treatmentItems[0].dosage &&
-                                      !treatmentItems[0].frequency &&
-                                      !treatmentItems[0].days &&
-                                      !treatmentItems[0].total &&
-                                      !treatmentItems[0].instruction &&
-                                      treatmentItems[0].stock === "0" &&
-                                      !treatmentItems[0].treatmentId
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() =>
+                                        handleRemoveTreatmentItem(index)
+                                      }
+                                      disabled={
+                                        treatmentItems.length === 1 &&
+                                        !treatmentItems[0].drugName &&
+                                        !treatmentItems[0].dispUnit &&
+                                        !treatmentItems[0].dosage &&
+                                        !treatmentItems[0].frequency &&
+                                        !treatmentItems[0].days &&
+                                        !treatmentItems[0].total &&
+                                        !treatmentItems[0].instruction &&
+                                        treatmentItems[0].stock === "0" &&
+                                        !treatmentItems[0].treatmentId
+                                      }
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
                               );
                             })}
                           </tbody>
@@ -7178,7 +7215,10 @@ const GeneralMedicineWaitingList = () => {
                                   >
                                     <option value="">Select Ward/Dept</option>
                                     {wardDepartments.map((dept) => (
-                                      <option key={dept.wardId} value={dept.wardId}>
+                                      <option
+                                        key={dept.wardId}
+                                        value={dept.wardId}
+                                      >
                                         {dept.wardName}
                                       </option>
                                     ))}
@@ -8100,21 +8140,21 @@ const GeneralMedicineWaitingList = () => {
                 ? visitsCurrentPage
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristCurrentPage
-                : vitalsCurrentPage
+                  : vitalsCurrentPage
             }
             totalPages={
               clinicalPopupType === "visits"
                 ? visitsTotalPages
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristTotalPages
-                : vitalsTotalPages
+                  : vitalsTotalPages
             }
             totalElements={
               clinicalPopupType === "visits"
                 ? visitsTotalElements
                 : clinicalPopupType === "psychiatrist-history"
                   ? psychiatristTotalElements
-                : vitalsTotalElements
+                  : vitalsTotalElements
             }
             pageSize={
               clinicalPopupType === "visits"
@@ -8128,7 +8168,7 @@ const GeneralMedicineWaitingList = () => {
                 ? handleVisitsPageChange
                 : clinicalPopupType === "psychiatrist-history"
                   ? handlePsychiatristPageChange
-                : handleVitalsPageChange
+                  : handleVitalsPageChange
             }
             isLoading={
               clinicalPopupType === "visits"
