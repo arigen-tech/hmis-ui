@@ -974,7 +974,10 @@ export const DUPLICATE_CORPORATE = "Corporate with same Name already exists!";
 export const STATUS_CORPORATE_SUCCESS = "Status updated successfully";
 export const STATUS_CORPORATE_FAIL = "Failed to update status";
 
-
+//room tariff
+export const ADD_TARIFF_SUCC_MSG = "Room Tariff added successfully!";
+export const UPDATE_TARIFF_SUCC_MSG = "Room Tariff updated successfully!";
+export const FETCH_TARIFF_DATA_ERR_MSG = "Failed to fetch room tariff data.";
 
 
 
@@ -1263,6 +1266,15 @@ export const SELECT_BOTH_INDENT_TYPE_AND_REQ_DEPT_WARN_MSG = "Please select both
 //Surgery Master
 export const ADD_SURGERY_SUCC_MSG = "Surgery added successfully!";
 export const UPDATE_SURGERY_SUCC_MSG = "Surgery updated successfully!";
+
+
+//surgery pricing 
+export const ADD_SURGERY_PRICING_SUCC_MSG = "Surgery pricing added successfully!";
+export const UPDATE_SURGERY_PRICING_SUCC_MSG = "Surgery pricing updated successfully!";
+
+//surgery type master
+export const ADD_SURGERY_TYPE_SUCC_MSG = "Surgery type added successfully!";
+export const UPDATE_SURGERY_TYPE_SUCC_MSG = "Surgery type updated successfully!";
 
 
 //treatment modal 
