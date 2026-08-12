@@ -3,17 +3,20 @@ import { useParams, useNavigate } from "react-router-dom";
 import { createPortal } from "react-dom";
 import { CKEditor } from "@ckeditor/ckeditor5-react";
 import DecoupledEditor from "@ckeditor/ckeditor5-build-decoupled-document";
-import { getRequest, postRequest } from "../../../service/apiService";
-import { 
-  MAS_DISCHARGE_REASON_GET_ALL, 
-  MAS_PATIENT_CONDITION_GET_ALL, 
-  MAS_FREQUENCY_GET_ALL, 
+import ConfirmationPopup from "../../../Components/ConfirmationPopup";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
+import {
+  MAS_DISCHARGE_REASON_GET_ALL,
+  MAS_PATIENT_CONDITION_GET_ALL,
+  MAS_FREQUENCY_GET_ALL,
   MAS_ROUTE_GET_ALL,
   GET_ALL_DRUGS_BY_SECTION,
   GET_IP_DIAGNOSIS_ENTRY,
   SAVE_DISCHARGE_SUMMARY,
   GET_PAYMENT_STATUS,
-  GET_DISCHARGE_SUMMARY
+  GET_DISCHARGE_SUMMARY,
+  GET_DISCHARGE_SUMMARY_REPORT_URL
 } from "../../../config/apiConfig";
 
 // PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
@@ -64,6 +67,29 @@ const DischargeFromWard = ({ selectedPatient }) => {
 
   const [activeTab, setActiveTab] = useState("summary");
   const [isSaving, setIsSaving] = useState(false);
+  const [confirmationPopup, setConfirmationPopup] = useState(null);
+
+  // States for PDF report viewer
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
+
+  // Confirmation Popup Helper Function
+  const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "Yes", cancelText = "No") => {
+    setConfirmationPopup({
+      message,
+      type,
+      onConfirm: () => {
+        if (onConfirm) onConfirm();
+        setConfirmationPopup(null);
+      },
+      onCancel: () => {
+        if (onCancel) onCancel();
+        setConfirmationPopup(null);
+      },
+      confirmText,
+      cancelText
+    });
+  };
 
   // ---------- Patient Data (from Dashboard) ----------
   const patientDetails = selectedPatient ? {
@@ -274,16 +300,16 @@ const DischargeFromWard = ({ selectedPatient }) => {
               followUp: data.followUpAdvice || prev.followUp,
               medicationOnDischarge: (data.medications && data.medications.length > 0)
                 ? data.medications.map(med => ({
-                    id: med.medicationId,
-                    medicineName: med.medicineName || "",
-                    dosage: med.dosage || "",
-                    frequency: med.frequency || "",
-                    durationDays: med.durationDays || med.duration || "",
-                    total: med.totalDoses || "",
-                    route: med.route || "",
-                    instruction: med.instruction || "",
-                    dropdownOpen: false,
-                  }))
+                  id: med.medicationId,
+                  medicineName: med.medicineName || "",
+                  dosage: med.dosage || "",
+                  frequency: med.frequency || "",
+                  durationDays: med.durationDays || med.duration || "",
+                  total: med.totalDoses || "",
+                  route: med.route || "",
+                  instruction: med.instruction || "",
+                  dropdownOpen: false,
+                }))
                 : prev.medicationOnDischarge
             }));
           }
@@ -579,7 +605,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
   // ---------- Save / Submit Handlers ----------
   const submitData = async (status) => {
     if (status === "S" && dischargeData.paymentStatus !== "PAID") {
-      alert("Payment is not completed against the FINAL bill. Please clear payment before discharge.");
+      showConfirmationPopup("Payment is not completed against the FINAL bill. Please clear payment before discharge.", "warning", () => { }, null, "OK", "");
       return;
     }
 
@@ -605,7 +631,7 @@ const DischargeFromWard = ({ selectedPatient }) => {
       );
   
       if (missing.length > 0) {
-        alert(`Please fill all required fields for submission: ${missing.join(", ")}`);
+        showConfirmationPopup(`Please fill all required fields for submission: ${missing.join(", ")}`, "warning", () => { }, null, "OK", "");
         return;
       }
   
@@ -619,12 +645,12 @@ const DischargeFromWard = ({ selectedPatient }) => {
       );
   
       if (invalidMedRows) {
-        alert("Please ensure each medication row has a valid Medicine Name, Dosage (>0), Frequency, and Route.");
+        showConfirmationPopup("Please ensure each medication row has a valid Medicine Name, Dosage (>0), Frequency, and Route.", "warning", () => { }, null, "OK", "");
         return;
       }
   
       if (dischargeData.dischargeTo === "otherHospital" && !dischargeData.otherHospitalName.trim()) {
-        alert("Please enter the name of the hospital for transfer.");
+        showConfirmationPopup("Please enter the name of the hospital for transfer.", "warning", () => { }, null, "OK", "");
         return;
       }
     }
@@ -661,22 +687,72 @@ const DischargeFromWard = ({ selectedPatient }) => {
       deleteMedicationIds: dischargeData.deleteMedicationIds || []
     };
 
-    setIsSaving(true);
-    try {
-      const response = await postRequest(SAVE_DISCHARGE_SUMMARY, payload);
-      if (response && response.status === 200) {
-        alert(status === "D" ? "Draft saved successfully!" : "Discharge completed! Bed will be released, patient status updated to DISCHARGED.");
-        // Clear delete tracking since it's saved now
-        setDischargeData(prev => ({...prev, deleteMedicationIds: []}));
-      } else {
-        alert("Failed to save discharge summary. " + (response?.message || ""));
-      }
-    } catch (error) {
-      console.error("Error saving discharge summary:", error);
-      alert("Error saving discharge summary. Please try again.");
-    } finally {
-      setIsSaving(false);
-    }
+    const actionText = status === "D" ? "Save (Draft)" : "Submit for Discharge";
+
+    showConfirmationPopup(
+      `Are you sure you want to ${actionText}?`,
+      "info",
+      async () => {
+        setIsSaving(true);
+        try {
+          const response = await postRequest(SAVE_DISCHARGE_SUMMARY, payload);
+          if (response && response.status === 200) {
+            const successMsg = status === "D" ? "Draft saved successfully!" : "Discharge completed! Bed will be released, patient status updated to DISCHARGED.";
+
+            // Clear delete tracking since it's saved now
+            setDischargeData(prev => ({ ...prev, deleteMedicationIds: [] }));
+
+            showConfirmationPopup(
+              `${successMsg} Do you want to view the report?`,
+              "success",
+              async () => {
+                try {
+                  setIsGeneratingReport(true);
+                  const reportUrl = `${GET_DISCHARGE_SUMMARY_REPORT_URL}?inPatientId=${inpatientId}`;
+                  const blob = await fetchPdfReportForViewAndPrint(reportUrl, "D");
+                  const fileURL = window.URL.createObjectURL(blob);
+                  setReportPdfUrl(fileURL);
+                } catch (error) {
+                  console.error("Error generating report:", error);
+                  showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+                } finally {
+                  setIsGeneratingReport(false);
+                }
+              },
+              () => { },
+              "Yes",
+              "No"
+            );
+          } else {
+            showConfirmationPopup(
+              "Failed to save discharge summary. " + (response?.message || ""),
+              "error",
+              () => { },
+              null,
+              "OK",
+              ""
+            );
+          }
+        } catch (error) {
+          console.error("Error saving discharge summary:", error);
+          showConfirmationPopup(
+            "Error saving discharge summary. Please try again.",
+            "error",
+            () => { },
+            null,
+            "OK",
+            ""
+          );
+        } finally {
+          setIsSaving(false);
+        }
+      },
+      () => {
+        console.log(`${actionText} cancelled by user`);
+      },
+      "Yes",
+      "Cancel"
+    );
   };
 
   const handleSaveDraft = () => {
@@ -1517,6 +1593,26 @@ const DischargeFromWard = ({ selectedPatient }) => {
             </div>
           </div>
         </div>
+      )}
+      {confirmationPopup && (
+        <ConfirmationPopup
+          message={confirmationPopup.message}
+          type={confirmationPopup.type}
+          onConfirm={confirmationPopup.onConfirm}
+          onCancel={confirmationPopup.onCancel}
+          confirmText={confirmationPopup.confirmText}
+          cancelText={confirmationPopup.cancelText}
+          show={true}
+        />
+      )}
+
+      {/* PDF Viewer */}
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          onClose={() => setReportPdfUrl(null)}
+          heading="Discharge Summary Report"
+        />
       )}
     </div>
   );
