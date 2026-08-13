@@ -780,6 +780,7 @@ export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
 export const GET_DISCHARGE_SUMMARY_REPORT_URL = `${ALL_REPORTS}/dischageSummary`;
 export const IP_VITALS_REPORT_URL = `${ALL_REPORTS}/ipVitalsReport`;
 export const IP_INVESTIGATION_REPORT_URL = `${ALL_REPORTS}/ipInvestigationReport`;
+export const IP_DAILY_CASE_SHEET_REPORT_URL = `${ALL_REPORTS}/ipDailyCaseSheet`;
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
