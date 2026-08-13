@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react"
-import { getRequest, postRequest } from "../../../service/apiService"
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService"
 import {
   SAVE_VITALS_DETAILS,
   SAVE_INTAKE_OUTPUT_DETAILS,
@@ -7,9 +7,12 @@ import {
   GET_INTAKE_OUTPUT_DETAILS,
   GET_ALL_ACT_MAS_INTAKE_TYPE,
   GET_ALL_ACT_MAS_INTAKE_ITEM,
-  GET_ALL_ACT_MAS_OUTPUT_TYPE
+  GET_ALL_ACT_MAS_OUTPUT_TYPE,
+  IP_VITALS_REPORT_URL,
+  STATUS_D
 } from "../../../config/apiConfig"
 import Popup from "../../../Components/popup"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 import {
   VITALS_FILL_ONE_WARN,
   VITALS_SAVE_SUCCESS,
@@ -18,7 +21,8 @@ import {
   VITALS_FILL_INTAKE_OUTPUT_WARN,
   INTAKE_OUTPUT_SAVE_SUCCESS,
   INTAKE_OUTPUT_SAVE_FAILURE,
-  INTAKE_OUTPUT_SAVE_ERROR
+  INTAKE_OUTPUT_SAVE_ERROR,
+  REPORT_GEN_FAILED_ERR_MSG
 } from "../../../config/constants"
 
 const VitalsandMonitoring = ({ selectedPatient }) => {
@@ -70,6 +74,8 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
   const [saving, setSaving] = useState(false)
   const [savingIntakeOutput, setSavingIntakeOutput] = useState(false)
   const [popupMessage, setPopupMessage] = useState(null)
+  const [reportPdfUrl, setReportPdfUrl] = useState(null)
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
 
   const [intakeTypes, setIntakeTypes] = useState([])
   const [allItems, setAllItems] = useState([])
@@ -362,6 +368,26 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
     }
   }
 
+  const handlePrintClick = async () => {
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26)
+    if (inpatientId) {
+      try {
+        setIsGeneratingReport(true)
+        const reportUrl = `${IP_VITALS_REPORT_URL}?inPatientId=${inpatientId}`
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D)
+        const fileURL = window.URL.createObjectURL(blob)
+        setReportPdfUrl(fileURL)
+      } catch (error) {
+        console.error("Error generating report:", error)
+        showPopup(REPORT_GEN_FAILED_ERR_MSG, "error")
+      } finally {
+        setIsGeneratingReport(false)
+      }
+    } else {
+      showPopup("Patient ID not found", "error")
+    }
+  }
+
   const handleDeleteVitals = (id) => {
     const isLast = vitalsHistory[vitalsHistory.length - 1].id === id
     if (isLast) return
@@ -492,6 +518,13 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
           message={popupMessage.message}
           type={popupMessage.type}
           onClose={popupMessage.onClose}
+        />
+      )}
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          name="Vitals Report"
+          onClose={() => setReportPdfUrl(null)}
         />
       )}
       {/* ─── TAB TOGGLE ─── */}
@@ -730,8 +763,15 @@ const VitalsandMonitoring = ({ selectedPatient }) => {
                 "Save"
               )}
             </button>
-            <button className="btn btn-success btn-sm" onClick={handleVitalsSubmit} disabled={saving}>
-              Print
+            <button className="btn btn-success btn-sm" onClick={handlePrintClick} disabled={isGeneratingReport}>
+              {isGeneratingReport ? (
+                <>
+                  <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                  Printing...
+                </>
+              ) : (
+                "Print"
+              )}
             </button>
           </div>
         </div>
