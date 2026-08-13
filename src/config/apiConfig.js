@@ -779,6 +779,7 @@ export const SAVE_INPATIENT_PROCEDURE = '/ipd/saveInpatientProcedure';
 export const MAS_PROCEDURES_GET_ALL = '/master/masProcedures/getAll';
 export const GET_DISCHARGE_SUMMARY_REPORT_URL = `${ALL_REPORTS}/dischageSummary`;
 export const IP_VITALS_REPORT_URL = `${ALL_REPORTS}/ipVitalsReport`;
+export const IP_INVESTIGATION_REPORT_URL = `${ALL_REPORTS}/ipInvestigationReport`;
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;
