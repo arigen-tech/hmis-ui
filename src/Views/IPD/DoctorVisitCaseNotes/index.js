@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react"
-import { getRequest, postRequest } from "../../../service/apiService"
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService"
 import Popup from "../../../Components/popup"
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer"
 import {
   DOCTOR_VISIT_SELECT_DOCTOR_WARN,
   DOCTOR_VISIT_SAVE_SUCC,
@@ -24,10 +25,11 @@ import {
   SAVE_IP_DIAGNOSIS_SUCC,
   SAVE_IP_DIAGNOSIS_ERR,
   SAVE_IP_DIAGNOSIS_API_ERR,
-  DEBOUNCE_SEARCH_IN_MILLIS
+  DEBOUNCE_SEARCH_IN_MILLIS,
+  REPORT_GEN_FAILED_ERR_MSG
 } from "../../../config/constants"
 
-import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY, SAVE_IP_DIAGNOSIS_ENTRY, MAS_ICD_GET_ALL_END_URL, GET_IP_DIAGNOSIS_ENTRY } from "../../../config/apiConfig"
+import { GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, DOCTOR_BY_SPECIALITY, MAS_VISIT_TYPE_GET_ALL, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, FILTER_OPD_DEPT, SAVE_DAILY_CASE_SHEET_ENTRY, GET_DAILY_CASE_SHEET_ENTRY, SAVE_IP_DIAGNOSIS_ENTRY, MAS_ICD_GET_ALL_END_URL, GET_IP_DIAGNOSIS_ENTRY, IP_DAILY_CASE_SHEET_REPORT_URL, STATUS_D } from "../../../config/apiConfig"
 
 const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [activeView, setActiveView] = useState("doctorVisit") // "doctorVisit" | "diagnosis"
@@ -35,6 +37,8 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
   const [isSaving, setIsSaving] = useState(false)
   const [isSavingDiagnosis, setIsSavingDiagnosis] = useState(false)
   const [modalError, setModalError] = useState("")
+  const [reportPdfUrl, setReportPdfUrl] = useState(null)
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false)
 
   const showPopup = (message, type = "info", onCloseCallback = null) => {
     setPopupMessage({
@@ -353,6 +357,26 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
     })
   }
 
+  const handlePrintClick = async () => {
+    const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id || selectedPatient?.inPatientId || 27;
+    if (inpatientId) {
+      try {
+        setIsGeneratingReport(true)
+        const reportUrl = `${IP_DAILY_CASE_SHEET_REPORT_URL}?inPatientId=${inpatientId}`
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D)
+        const fileURL = window.URL.createObjectURL(blob)
+        setReportPdfUrl(fileURL)
+      } catch (error) {
+        console.error("Error generating report:", error)
+        showPopup(REPORT_GEN_FAILED_ERR_MSG, "error")
+      } finally {
+        setIsGeneratingReport(false)
+      }
+    } else {
+      showPopup("Patient ID not found", "error")
+    }
+  }
+
   // Diagnosis handlers
   useEffect(() => {
     const isSelected = addDiagnosisForm.icdCode && addDiagnosisForm.icdSearch === `${addDiagnosisForm.icdCode} - ${addDiagnosisForm.icdName}`;
@@ -495,6 +519,13 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
           message={popupMessage.message}
           type={popupMessage.type}
           onClose={popupMessage.onClose}
+        />
+      )}
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          name="Doctor Visit Report"
+          onClose={() => setReportPdfUrl(null)}
         />
       )}
       {/* ─── TAB TOGGLE ─── */}
@@ -657,14 +688,21 @@ const DoctorVisitCaseNotes = ({ selectedPatient }) => {
                 </button>
                 </div>
 
-               <div>
+                <div>
                   <button
-                  className="btn btn-sm btn-primary"
-                  onClick={handleSaveDoctorVisit}
-                  disabled={isSaving}
-                >
-                   Print
-                </button>
+                    className="btn btn-sm btn-primary"
+                    onClick={handlePrintClick}
+                    disabled={isGeneratingReport}
+                  >
+                    {isGeneratingReport ? (
+                      <>
+                        <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                        Printing...
+                      </>
+                    ) : (
+                      "Print"
+                    )}
+                  </button>
                 </div>
 
               </div>

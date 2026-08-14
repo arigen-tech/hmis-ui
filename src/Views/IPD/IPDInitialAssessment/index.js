@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
-import { getRequest, postRequest } from "../../../service/apiService";
-import { MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL, SAVE_NURSING_MEDICAL_ASSESSMENT } from "../../../config/apiConfig";
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
+import { MAS_IP_NURSING_ASSESSMENT_VALUE_GET_ALL, SAVE_NURSING_MEDICAL_ASSESSMENT, GET_NURSING_MEDICAL_ASSESSMENT, IP_INITIAL_ASSESSMENT_REPORT_URL, STATUS_D } from "../../../config/apiConfig";
+import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 // ------------------------- DROPDOWN / OPTION DATA -------------------------
 const consciousnessOptions = ["Alert", "Drowsy", "Confused", "Disoriented", "Stuporous", "Unconscious"];
@@ -109,6 +110,10 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
   const [nursing, setNursing] = useState(initialNursing);
   const [medical, setMedical] = useState(initialMedical);
   const [assessmentOptions, setAssessmentOptions] = useState({});
+  const [submitting, setSubmitting] = useState(false);
+  const [assessmentId, setAssessmentId] = useState(null);
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
 
   useEffect(() => {
     const fetchAssessmentMasterData = async () => {
@@ -134,6 +139,72 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
     };
     fetchAssessmentMasterData();
   }, []);
+
+  useEffect(() => {
+    if (selectedPatient?.inpatientId) {
+      const fetchAssessmentDetails = async () => {
+        try {
+          const res = await getRequest(`${GET_NURSING_MEDICAL_ASSESSMENT}/${selectedPatient.inpatientId}`);
+          if (res?.status === 200 && res?.response) {
+            const data = res.response;
+            setAssessmentId(data.assessmentId || null);
+            setNursing({
+              consciousness: data.consciousness || "",
+              gcsScore: data.gcsScore || "",
+              painScore: data.painScore || "",
+              mobility: data.mobilityStatus || "",
+              fallRiskScore: data.fallRisk || "",
+              pressureSoreRisk: data.pressureSoreRisk || "",
+              skinCondition: data.skinCondition || "",
+              skinRemarks: data.skinRemarks || "",
+              ivLine: data.ivLinePresent === "Y" ? "Yes" : "No",
+              ivSite: data.ivSite || "",
+              catheter: data.catheterPresent === "Y" ? "Yes" : "No",
+              catheterType: data.catheterType || "",
+              drain: data.drainPresent === "Y" ? "Yes" : "No",
+              drainType: data.drainType || "",
+              nutritionRisk: data.nutritionRisk || "",
+              nutritionRemarks: data.nutritionRemarks || "",
+              infectionRisk: data.infectionRisk || "",
+              infectionRemarks: data.infectionRemarks || "",
+              patientOrientation: data.patientOrientationDone === "Y" ? "Yes" : "No",
+              relativeOrientation: data.relativeOrientationDone === "Y" ? "Yes" : "No",
+              nursingCarePlan: data.nursingCarePlan || "",
+            });
+            setMedical({
+              chiefComplaint: data.chiefComplaint || "",
+              historyOfPresentIllness: data.historyPresentIllness || "",
+              familyHistory: data.familyHistory || "",
+              medicationHistory: data.medicationHistory || "",
+              allergies: data.allergies || "",
+              pulse: data.pulse || "",
+              bp: (data.systolicBp && data.diastolicBp) ? `${data.systolicBp}/${data.diastolicBp}` : "",
+              temperature: data.temperature || "",
+              rr: data.respiratoryRate || "",
+              spo2: data.spo2 || "",
+              generalExamNotes: data.generalExaminationNotes || "",
+              rs: data.rsExamination || "",
+              cvs: data.cvsExamination || "",
+              pa: data.paExamination || "",
+              cns: data.cnsExamination || "",
+              provisionalDiagnosis: data.provisionalDiagnosis || "",
+            });
+          } else {
+            setAssessmentId(null);
+            setNursing(initialNursing);
+            setMedical(initialMedical);
+          }
+        } catch (error) {
+          console.error("Error fetching assessment details:", error);
+        }
+      };
+      fetchAssessmentDetails();
+    } else {
+      setAssessmentId(null);
+      setNursing(initialNursing);
+      setMedical(initialMedical);
+    }
+  }, [selectedPatient?.inpatientId]);
 
   const updateNursing = (field, value) => {
     setNursing((prev) => ({ ...prev, [field]: value }));
@@ -240,6 +311,7 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
       provisionalDiagnosis: medical.provisionalDiagnosis || ""
     };
 
+    setSubmitting(true);
     try {
       const response = await postRequest(SAVE_NURSING_MEDICAL_ASSESSMENT, payload);
       if (response && (response.status === 200 || response.status === 201)) {
@@ -250,11 +322,33 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
     } catch (error) {
       console.error("Error submitting assessment:", error);
       alert("An error occurred while submitting the assessment. Please try again.");
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  const handlePrintClick = async () => {
+    if (assessmentId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${IP_INITIAL_ASSESSMENT_REPORT_URL}?assessmentId=${assessmentId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        alert("Failed to generate report.");
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      alert("No assessment found to print. Please submit first.");
     }
   };
 
   const handleCancel = () => {
     if (window.confirm("Discard this assessment and go back?")) {
+      setAssessmentId(null);
       setNursing(initialNursing);
       setMedical(initialMedical);
     }
@@ -262,6 +356,13 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
 
   return (
     <div>
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          onClose={() => setReportPdfUrl(null)}
+          heading="Initial Assessment Report"
+        />
+      )}
       {/* ======================= MAIN FORM ======================= */}
       <div className="row g-3">
         {/* ---------------------------------------------------------------- */}
@@ -826,8 +927,39 @@ const IPDInitialAssessment = ({ selectedPatient }) => {
       {/* ======================= BOTTOM ACTION BAR ======================= */}
       <div className=" m-3">
         <div className="card-body d-flex justify-content-end gap-2">
-          <button type="button" className="btn btn-sm btn-success" onClick={handleSubmit}>
-            <i className="mdi mdi-check me-1"></i>Submit
+          <button
+            type="button"
+            className="btn btn-sm btn-info text-white"
+            onClick={handlePrintClick}
+            disabled={isGeneratingReport || !assessmentId}
+          >
+            {isGeneratingReport ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Printing...
+              </>
+            ) : (
+              <>
+                <i className="mdi mdi-printer me-1"></i>Print
+              </>
+            )}
+          </button>
+          <button
+            type="button"
+            className="btn btn-sm btn-success"
+            onClick={handleSubmit}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <>
+                <span className="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>
+                Submitting...
+              </>
+            ) : (
+              <>
+                <i className="mdi mdi-check me-1"></i>Submit
+              </>
+            )}
           </button>
           <button type="button" className="btn btn-sm btn-outline-danger" onClick={handleCancel}>
             <i className="mdi mdi-close me-1"></i>Cancel

@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import Swal from "sweetalert2";
-import { getRequest, postRequest } from "../../../service/apiService";
+import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../service/apiService";
 import {
   MAS_INVESTIGATION,
   SAVE_IPD_INVESTIGATION_ORDER,
@@ -14,8 +14,10 @@ import {
   REQUEST_PARAM_PAGE,
   REQUEST_PARAM_SIZE,
   LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL,
+  IP_INVESTIGATION_REPORT_URL,
 } from "../../../config/apiConfig";
 import { formatDateForDisplay } from "../../../utils/dateUtils";
+import { REPORT_GEN_FAILED_ERR_MSG } from "../../../config/constants";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 // ----------------------------------------------------------------------------
@@ -218,6 +220,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   // PDF viewing states
   const [pdfUrl, setPdfUrl] = useState(null);
   const [selectedRecord, setSelectedRecord] = useState(null);
+  const [reportPdfUrl, setReportPdfUrl] = useState(null);
+  const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
 
   // Refs for portal dropdowns
@@ -392,6 +396,34 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   };
 
   const handleViewReport = (record) => generateLabReport(record);
+
+  const handlePrintClick = async () => {
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26);
+    if (inpatientId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${IP_INVESTIGATION_REPORT_URL}?inPatientId=${inpatientId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        Swal.fire({
+          icon: "error",
+          title: "Error",
+          text: REPORT_GEN_FAILED_ERR_MSG,
+        });
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      Swal.fire({
+        icon: "warning",
+        title: "Patient not selected",
+        text: "Please select an admitted IPD patient before generating the report.",
+      });
+    }
+  };
 
   // ---------- Lab order handlers ----------
   const addLabRow = () => {
@@ -789,7 +821,6 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   // ----------------------------------------------------------------------------
   return (
     <div>
-      {/* PDF Viewer Modal */}
       {pdfUrl && selectedRecord && (
         <PdfViewer
           pdfUrl={pdfUrl}
@@ -798,6 +829,13 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
             setSelectedRecord(null);
           }}
           name={`Lab Report - ${selectedRecord?.patientName || "Patient"}`}
+        />
+      )}
+      {reportPdfUrl && (
+        <PdfViewer
+          pdfUrl={reportPdfUrl}
+          onClose={() => setReportPdfUrl(null)}
+          name="Investigation Report"
         />
       )}
 
@@ -1157,29 +1195,50 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           </div>
           <div className="card-body">
             {/* Radio buttons to switch between Lab / Radiology */}
-            <div className="mb-2 d-flex align-items-center">
-              <label className="me-3">
-                <input
-                  type="radio"
-                  name="trackingType"
-                  value="lab"
-                  checked={trackingType === "lab"}
-                  onChange={() => handleTrackingTypeChange("lab")}
-                  className="me-1"
-                />
-                Lab Orders
-              </label>
-              <label>
-                <input
-                  type="radio"
-                  name="trackingType"
-                  value="radiology"
-                  checked={trackingType === "radiology"}
-                  onChange={() => handleTrackingTypeChange("radiology")}
-                  className="me-1"
-                />
-                Radiology Orders
-              </label>
+            <div className="mb-2 d-flex align-items-center justify-content-between">
+              <div className="d-flex align-items-center">
+                <label className="me-3 mb-0">
+                  <input
+                    type="radio"
+                    name="trackingType"
+                    value="lab"
+                    checked={trackingType === "lab"}
+                    onChange={() => handleTrackingTypeChange("lab")}
+                    className="me-1"
+                  />
+                  Lab Orders
+                </label>
+                <label className="mb-0">
+                  <input
+                    type="radio"
+                    name="trackingType"
+                    value="radiology"
+                    checked={trackingType === "radiology"}
+                    onChange={() => handleTrackingTypeChange("radiology")}
+                    className="me-1"
+                  />
+                  Radiology Orders
+                </label>
+              </div>
+              <button
+                className="btn btn-success btn-sm"
+                onClick={handlePrintClick}
+                disabled={isGeneratingReport}
+                type="button"
+              >
+                {isGeneratingReport ? (
+                  <>
+                    <span
+                      className="spinner-border spinner-border-sm me-1"
+                      role="status"
+                      aria-hidden="true"
+                    ></span>
+                    Printing...
+                  </>
+                ) : (
+                  "Print"
+                )}
+              </button>
             </div>
 
             {/* Table – removed Patient Name, Mobile No, Age/Gender columns */}
