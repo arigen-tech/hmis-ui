@@ -103,7 +103,13 @@ const OpdRRecallPatient = () => {
   const dropdownRef = useRef(null);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
-  const getToday = () => new Date().toISOString().split("T")[0];
+  const getToday = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [treatmentTemplateLoading, setTreatmentTemplateLoading] =
     useState(false);
@@ -164,6 +170,7 @@ const OpdRRecallPatient = () => {
   const [admissionAdvised, setAdmissionAdvised] = useState(false);
   const [wardDepartment, setWardDepartment] = useState([]);
   const [careLevels, setCareLevels] = useState([]);
+  const [removedInvestigations, setRemovedInvestigations] = useState([]);
   const [admissionPriorities, setAdmissionPriorities] = useState([
     "Normal",
     "Urgent",
@@ -240,6 +247,7 @@ const OpdRRecallPatient = () => {
       templateIds: [],
       name: "",
       date: getToday(),
+      flag: 0,
     },
   ]);
 
@@ -305,7 +313,7 @@ const OpdRRecallPatient = () => {
       !items[0].days
     );
   };
-    const formatDateForDisplay = (value) => {
+  const formatDateForDisplay = (value) => {
     if (!hasValue(value)) return "";
 
     const normalized = String(value).trim();
@@ -354,42 +362,48 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const handleRemoveTreatmentItem = (index) => {
-    const itemToRemove = treatmentItems[index];
+const handleRemoveTreatmentItem = (index) => {
+  const itemToRemove = treatmentItems[index];
 
-    // existing ID from DB
-    if (itemToRemove?.treatmentId) {
-        setRemovedTreatmentIds((prev) => [
-            ...prev,
-            itemToRemove.treatmentId,
-        ]);
-    }
+  if (itemToRemove?.treatmentId) {
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        flag: -1,
+      };
+      return updated;
+    });
+    return;
+  }
 
-    const onlyOneRow = treatmentItems.length === 1;
-    const isEmptyRow =
-        !itemToRemove.drugName && !itemToRemove.dispUnit;
+  const onlyOneRow = treatmentItems.length === 1;
+  const isEmptyRow = !itemToRemove.drugName && !itemToRemove.dispUnit;
 
-    if (onlyOneRow && isEmptyRow) return;
+  if (onlyOneRow && isEmptyRow) return;
 
-    let newItems = treatmentItems.filter((_, i) => i !== index);
+  let newItems = treatmentItems.filter((_, i) => i !== index);
 
-    if (onlyOneRow) {
-        newItems = [{
-            treatmentId: null,
-            drugId: "",
-            drugName: "",
-            dispUnit: "",
-            dosage: "",
-            frequency: "",
-            days: "",
-            total: "",
-            instruction: "",
-            stock: "",
-            templateId: "",
-        }];
-    }
+  if (onlyOneRow) {
+    newItems = [
+      {
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+        templateId: "",
+        flag: 0,
+      },
+    ];
+  }
 
-    setTreatmentItems(newItems);
+  setTreatmentItems(newItems);
 };
 
   const handleWardNameChange = async (deptId) => {
@@ -1555,7 +1569,9 @@ const OpdRRecallPatient = () => {
       if (searchFilters.patientName)
         params.append("name", searchFilters.patientName);
 
-      if (searchFilters.date) params.append("visitDate", searchFilters.date);
+      if (searchFilters.date) {
+        params.append("visitDate", searchFilters.date);
+      }
 
       const data = await getRequest(
         `${GET_RECALL_OPD_PATIENTS_LIST}?${params.toString()}`,
@@ -1623,7 +1639,6 @@ const OpdRRecallPatient = () => {
     });
   };
 
-
   const handleRemoveTreatmentTemplateItems = (templateId) => {
     setTreatmentItems((prev) => {
       const updated = prev
@@ -1680,7 +1695,6 @@ const OpdRRecallPatient = () => {
       return updated;
     });
   };
-
 
   const validateSubmitForm = () => {
     const errors = {};
@@ -1827,33 +1841,62 @@ const OpdRRecallPatient = () => {
           investigationId: item.investigationId,
           investigationName: item.name,
           investigationDate: item.date,
+          flag: item.flag !== undefined ? item.flag : item.id ? 0 : 1,
         }));
 
-      const treatmentList = treatmentItems
-        .filter(
-          (item) => item.drugId && item.dosage && item.days && item.frequency,
-        )
-        .map((item) => {
-          const freq = allFrequencies.find(
-            (f) =>
-              f.frequencyName?.toLowerCase() === item.frequency?.toLowerCase(),
-          );
+      const removedInvestigationsList = removedInvestigations.map((item) => ({
+        investigationId: item.investigationId,
+        flag: -1,
+        investigationDate: item.investigationDate || null,
+      }));
 
-          return {
-            itemId: item.drugId,
-            itemName: item.drugName,
-            dosage: Number(item.dosage) || 0,
-            days: Number(item.days) || 0,
-            frequencyId: freq?.frequencyId || null,
-            frequencyName:freq?.frequencyName||null,
-            instruction: item.instruction,
-            dispUnit: item.dispUnit,
-            itemClassId: item.itemClassId,
-            adispQty: item.aDispQty || 1,
-            total: calculateTotal(item),
-            prescriptionDtId: item.treatmentId || null,
-          };
-        });
+      const allInvestigationsWithFlags = [
+        ...investigationList,
+        ...removedInvestigationsList,
+      ];
+
+const treatmentList = treatmentItems
+  .filter((item) => {
+    // Include items with drugId OR items marked for deletion (flag: -1)
+    if (item.flag === -1) {
+      return item.treatmentId !== null && item.treatmentId !== undefined;
+    }
+    return item.drugId && item.dosage && item.days && item.frequency;
+  })
+  .map((item) => {
+    const freq = allFrequencies.find(
+      (f) => f.frequencyName?.toLowerCase() === item.frequency?.toLowerCase(),
+    );
+
+    // Determine flag based on item state
+    let flag = 0; // Default to update
+    
+    if (item.flag === -1) {
+      flag = -1;
+    } else if (!item.treatmentId) {
+      flag = 1;
+    } else if (item.flag === 0) {
+      flag = 0; 
+    } else if (item.flag === 1) {
+      flag = 1; 
+    }
+
+    return {
+      itemId: item.drugId,
+      itemName: item.drugName,
+      dosage: Number(item.dosage) || 0,
+      days: Number(item.days) || 0,
+      frequencyId: freq?.frequencyId || null,
+      frequencyName: freq?.frequencyName || null,
+      instruction: item.instruction,
+      dispUnit: item.dispUnit,
+      itemClassId: item.itemClassId,
+      adispQty: item.aDispQty || 1,
+      total: calculateTotal(item),
+      prescriptionDtId: item.treatmentId || null,
+      flag: flag,
+    };
+  });
 
       const procedureCareList = procedureCareItems
         .filter((item) => item.procedureId)
@@ -1865,20 +1908,20 @@ const OpdRRecallPatient = () => {
           remarks: item.remarks,
         }));
 
-    let ophthalmologyPayload = null;
-    if (shouldShowVisionExamination && visionExaminationData) {
-      ophthalmologyPayload = {
-        patientId: selectedPatient.patientId,
-        visitId: selectedPatient.visitId,
-        opdDate: getToday(),
-        ...visionExaminationData,
-      };
-      
-      // Add the ID if it exists (for update)
-      if (existingOpthalId) {
-        ophthalmologyPayload.id = existingOpthalId;
+      let ophthalmologyPayload = null;
+      if (shouldShowVisionExamination && visionExaminationData) {
+        ophthalmologyPayload = {
+          patientId: selectedPatient.patientId,
+          visitId: selectedPatient.visitId,
+          opdDate: getToday(),
+          ...visionExaminationData,
+        };
+
+        // Add the ID if it exists (for update)
+        if (existingOpthalId) {
+          ophthalmologyPayload.id = existingOpthalId;
+        }
       }
-    }
 
       const payload = {
         patientId: selectedPatient.patientId,
@@ -1909,7 +1952,7 @@ const OpdRRecallPatient = () => {
 
         labFlag: labFlag || "n",
         radioFlag: radioFlag || "n",
-        investigations: investigationList,
+        investigations: allInvestigationsWithFlags,
 
         treatments: treatmentList,
         removedTreatmentIds: removedTreatmentIds,
@@ -1935,8 +1978,8 @@ const OpdRRecallPatient = () => {
           }),
 
         ...(ophthalmologyPayload && {
-        ophthalmologyExaminationDetails: ophthalmologyPayload,
-      }),
+          ophthalmologyExaminationDetails: ophthalmologyPayload,
+        }),
 
         // Include OBG details in the main payload
         ...(isObgynDepartment &&
@@ -1947,7 +1990,7 @@ const OpdRRecallPatient = () => {
         ...(isEntDepartment &&
           entExaminationDetails && {
             entExaminationDetails: entExaminationDetails,
-          }),          
+          }),
 
         followUpFlag: followUps.followUpFlag ? "y" : "n",
         followUpDate:
@@ -1993,16 +2036,19 @@ const OpdRRecallPatient = () => {
         pregnancyDetails,
       };
 
-      console.log("Final Payload with OBG Details:", JSON.stringify(payload, null, 2));
-
+      console.log(
+        "Final Payload with OBG Details:",
+        JSON.stringify(payload, null, 2),
+      );
+      debugger
       const response = await putRequest(UPDATE_RECALL_PATIENT, payload);
-
       if (response?.status === 200 || response?.success === true) {
         showPopup("Patient updated successfully!", "success", () => {
           handleBackWithFatch();
         });
       } else {
-        showPopup("Update failed. Please try again.", "error");
+        const errorMessage = response?.message || "Update failed. Please try again.";
+        showPopup(errorMessage, "error");
       }
     } catch (error) {
       console.error("Update Error:", error);
@@ -2144,6 +2190,7 @@ const OpdRRecallPatient = () => {
       requestedDeptStocks: "",
       stock: "",
       templateId: "",
+      flag: 0,
     },
   ]);
 
@@ -2378,27 +2425,34 @@ const OpdRRecallPatient = () => {
     setInvestigationPage(nextPage);
   };
 
-  const updateInvestigation = (selected, index) => {
-    if (!selected) return;
+const updateInvestigation = (selected, index) => {
+  if (!selected) return;
 
-    setInvestigationItems((prev) => {
-      const updated = [...prev];
-      updated[index] = {
-        ...updated[index],
-        investigationId: selected.investigationId,
-        name: selected.investigationName,
-      };
-      return updated;
-    });
+  setInvestigationItems((prev) => {
+    const updated = [...prev];
+    const existingItem = updated[index];
+    
+    // Check if this is a new item or existing
+    const isNew = !existingItem.id || existingItem.id === null || existingItem.id === "";
+    
+    updated[index] = {
+      ...updated[index],
+      investigationId: selected.investigationId,
+      name: selected.investigationName,
+      flag: isNew ? 1 : 0, // New items get flag 1, existing get flag 0
+      templateIds: existingItem.templateIds || [],
+    };
+    return updated;
+  });
 
-    setInvestigationSearch((prev) => {
-      const updated = [...prev];
-      updated[index] = selected.investigationName;
-      return updated;
-    });
+  setInvestigationSearch((prev) => {
+    const updated = [...prev];
+    updated[index] = selected.investigationName;
+    return updated;
+  });
 
-    setOpenInvestigationDropdown(null);
-  };
+  setOpenInvestigationDropdown(null);
+};
 
   useEffect(() => {
     const handleClickOutside = (e) => {
@@ -2518,6 +2572,7 @@ const OpdRRecallPatient = () => {
             investigationId: item.investigationId,
             templateSource: template.opdTemplateName,
             templateIds: [templateId],
+            flag: 1,
           });
         }
       });
@@ -2750,10 +2805,11 @@ const OpdRRecallPatient = () => {
         });
         setRecallPregnancyData(patientData.pregnancyDetails || null);
 
-        const opthalId = patientData.ophthalmologyExaminationDetails?.id || 
-                       patientData.opthalId || 
-                       patientData.ophthalmologyId || 
-                       null;
+        const opthalId =
+          patientData.ophthalmologyExaminationDetails?.id ||
+          patientData.opthalId ||
+          patientData.ophthalmologyId ||
+          null;
 
         const sectionsToExpand = {};
 
@@ -2820,10 +2876,12 @@ const OpdRRecallPatient = () => {
         const labInvestigations = patientData.labOrderHds?.length
           ? patientData.labOrderHds.flatMap((hd) =>
               hd.labOrderDts.map((dt) => ({
-                id: dt.orderDtId || "",
+                id: dt.orderDtId || null,
                 name: dt.investigationName || "",
                 date: dt.appointmentDate || getToday(),
                 investigationId: dt.investigationId,
+                orderStatus: dt.orderStatus,
+                flag: 0, // Existing investigations should have flag 0
                 templateIds: [],
               })),
             )
@@ -2832,10 +2890,12 @@ const OpdRRecallPatient = () => {
         const radInvestigations = patientData.radOrderHds?.length
           ? patientData.radOrderHds.flatMap((hd) =>
               hd.radOrderDts.map((dt) => ({
-                id: dt.orderDtId || "",
+                id: dt.orderDtId || null,
                 name: dt.investigationName || "",
                 date: dt.appointmentDate || getToday(),
                 investigationId: dt.investigationId,
+                orderStatus: dt.studyStatus,
+                flag: 0, // Existing investigations should have flag 0
                 templateIds: [],
               })),
             )
@@ -2884,6 +2944,7 @@ const OpdRRecallPatient = () => {
                   itemClassId: item.itemClassId ?? null,
                   aDispQty: item.adispQty ?? 1,
                   templateId: "",
+                  flag: 0, // Existing treatments should have flag 0
                 };
                 obj.total = calculateTotal(obj);
                 return obj;
@@ -3081,6 +3142,7 @@ const OpdRRecallPatient = () => {
   };
 
   const handleBackToList = () => {
+    setRemovedInvestigations([]);
     setShowDetailView(false);
     setSelectedPatient(null);
     setRecallPregnancyData(null);
@@ -3503,7 +3565,7 @@ const OpdRRecallPatient = () => {
     setVacantBeds(0);
 
     setWorkingDiagnosis("");
-
+    setRemovedInvestigations([]);
     setInvestigationItems([
       {
         investigationId: "",
@@ -3566,20 +3628,48 @@ const OpdRRecallPatient = () => {
   const handleAddInvestigationItem = () => {
     setInvestigationItems((prev) => [
       ...prev,
-      { id: null, templateIds: [], name: "", date: getToday() },
+      { id: null, templateIds: [], name: "", date: getToday(), flag: 0 },
     ]);
   };
 
   const handleRemoveInvestigationItem = (index) => {
     const itemToRemove = investigationItems[index];
-    const onlyOneRow = investigationItems.length === 1;
-    const isEmptyRow = !itemToRemove.name && !itemToRemove.date;
 
-    if (onlyOneRow && isEmptyRow) return;
+    // If the item has an investigationId (existing investigation from DB)
+    if (
+      itemToRemove?.investigationId &&
+      itemToRemove.investigationId !== "" &&
+      itemToRemove.investigationId !== null
+    ) {
+      // Check if already marked for removal
+      const alreadyRemoved = removedInvestigations.some(
+        (item) => item.investigationId === itemToRemove.investigationId,
+      );
+
+      if (!alreadyRemoved) {
+        setRemovedInvestigations((prev) => [
+          ...prev,
+          {
+            investigationId: itemToRemove.investigationId,
+            investigationDate: itemToRemove.date || getToday(),
+          },
+        ]);
+      }
+    }
+
+    // If only one row and it's empty, don't remove
+    if (
+      investigationItems.length === 1 &&
+      !itemToRemove.investigationId &&
+      !itemToRemove.name
+    ) {
+      return;
+    }
 
     let updatedItems = investigationItems.filter((_, i) => i !== index);
 
-    if (onlyOneRow) {
+    // If no items left, add a default empty row
+    if (updatedItems.length === 0) {
       updatedItems = [
         {
           id: null,
@@ -3587,6 +3677,7 @@ const OpdRRecallPatient = () => {
           templateIds: [],
           name: "",
           date: getToday(),
+          flag: 0,
         },
       ];
     }
@@ -3683,6 +3774,7 @@ const OpdRRecallPatient = () => {
         total: "",
         instruction: "",
         stock: "",
+        flag: 1
       },
     ]);
   };
@@ -3787,6 +3879,7 @@ const OpdRRecallPatient = () => {
             templateId: String(templateId),
             itemClassId: t?.itemClassId ?? null,
             aDispQty: t?.aDispQty ?? 1,
+            flag: 1, // New treatments from template should have flag 1
           };
 
           newItem.total = calculateTotal(newItem);
@@ -3807,23 +3900,27 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const handleTreatmentChange = (index, field, value) => {
-    const updated = [...treatmentItems];
-    updated[index] = { ...updated[index], [field]: value };
+const handleTreatmentChange = (index, field, value) => {
+  const updated = [...treatmentItems];
+  updated[index] = { ...updated[index], [field]: value };
 
-    const recalcFields = [
-      "dosage",
-      "days",
-      "frequency",
-      "itemClassId",
-      "aDispQty",
-    ];
-    if (recalcFields.includes(field)) {
-      updated[index].total = calculateTotal(updated[index]);
-    }
+  const recalcFields = [
+    "dosage",
+    "days",
+    "frequency",
+    "itemClassId",
+    "aDispQty",
+  ];
+  if (recalcFields.includes(field)) {
+    updated[index].total = calculateTotal(updated[index]);
+  }
 
-    setTreatmentItems(updated);
-  };
+  if (updated[index].treatmentId && updated[index].flag !== -1) {
+    updated[index].flag = 0; 
+  }
+
+  setTreatmentItems(updated);
+};
 
   const handleOpenTreatmentAdviceModal = (type) => {
     setTreatmentAdviceModalType(type);
@@ -5099,134 +5196,145 @@ const OpdRRecallPatient = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {investigationItems.map((item, index) => (
-                              <tr key={index}>
-                                <td>
-                                  <div
-                                    className="position-relative w-100"
-                                    ref={dropdownInvestigationRef}
-                                  >
+                            {investigationItems.map((item, index) => {
+                              const isOrderCompleted = item.orderStatus === "y";
+                              return (
+                                <tr key={index}>
+                                  <td>
+                                    <div
+                                      className="position-relative w-100"
+                                      ref={dropdownInvestigationRef}
+                                    >
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Search Investigation..."
+                                        value={
+                                          investigationSearch[index] ??
+                                          investigationItems[index].name ??
+                                          ""
+                                        }
+                                        onChange={(e) =>
+                                          handleInvestigationSearch(
+                                            e.target.value,
+                                            index,
+                                          )
+                                        }
+                                        onClick={() => {
+                                          loadFirstInvestigationPage(index);
+                                          setOpenInvestigationDropdown(index);
+                                        }}
+                                        onBlur={() => {
+                                          setTimeout(
+                                            () =>
+                                              setOpenInvestigationDropdown(
+                                                null,
+                                              ),
+                                            200,
+                                          );
+                                        }}
+                                        disabled={isOrderCompleted}
+                                      />
+
+                                      {openInvestigationDropdown === index && (
+                                        <div
+                                          className="border rounded mt-1 bg-white position-absolute w-100"
+                                          style={{
+                                            maxHeight: "220px",
+                                            zIndex: 9999,
+                                            overflowY: "auto",
+                                          }}
+                                          onScroll={(e) => {
+                                            if (
+                                              e.target.scrollHeight -
+                                                e.target.scrollTop ===
+                                              e.target.clientHeight
+                                            ) {
+                                              loadMoreInvestigations();
+                                            }
+                                          }}
+                                        >
+                                          {investigationDropdown.length > 0 ? (
+                                            investigationDropdown.map((inv) => (
+                                              <div
+                                                key={inv.investigationId}
+                                                className="p-2 cursor-pointer hover:bg-light"
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault();
+                                                  updateInvestigation(
+                                                    inv,
+                                                    index,
+                                                  );
+                                                }}
+                                              >
+                                                <strong>
+                                                  {inv.investigationName}
+                                                </strong>
+                                                <div className="text-muted small">
+                                                  {inv.mainChargeCodeName} •{" "}
+                                                  {inv.subChargeCodeName}
+                                                </div>
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="p-2 text-muted">
+                                              No results found
+                                            </div>
+                                          )}
+
+                                          {!investigationLastPage && (
+                                            <div className="text-center p-2 text-primary small">
+                                              Loading...
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td>
                                     <input
-                                      type="text"
+                                      type="date"
                                       className="form-control"
-                                      placeholder="Search Investigation..."
-                                      value={
-                                        investigationSearch[index] ??
-                                        investigationItems[index].name ??
-                                        ""
-                                      }
+                                      value={item.date}
                                       onChange={(e) =>
-                                        handleInvestigationSearch(
-                                          e.target.value,
+                                        handleInvestigationItemChange(
                                           index,
+                                          "date",
+                                          e.target.value,
                                         )
                                       }
-                                      onClick={() => {
-                                        loadFirstInvestigationPage(index);
-                                        setOpenInvestigationDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(
-                                          () =>
-                                            setOpenInvestigationDropdown(null),
-                                          200,
-                                        );
-                                      }}
+                                      disabled={isOrderCompleted}
                                     />
-
-                                    {openInvestigationDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMoreInvestigations();
-                                          }
-                                        }}
-                                      >
-                                        {investigationDropdown.length > 0 ? (
-                                          investigationDropdown.map((inv) => (
-                                            <div
-                                              key={inv.investigationId}
-                                              className="p-2 cursor-pointer hover:bg-light"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                updateInvestigation(inv, index);
-                                              }}
-                                            >
-                                              <strong>
-                                                {inv.investigationName}
-                                              </strong>
-                                              <div className="text-muted small">
-                                                {inv.mainChargeCodeName} •{" "}
-                                                {inv.subChargeCodeName}
-                                              </div>
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-
-                                        {!investigationLastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td>
-                                  <input
-                                    type="date"
-                                    className="form-control"
-                                    value={item.date}
-                                    onChange={(e) =>
-                                      handleInvestigationItemChange(
-                                        index,
-                                        "date",
-                                        e.target.value,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddInvestigationItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveInvestigationItem(index)
-                                    }
-                                    disabled={
-                                      investigationItems.length === 1 &&
-                                      !investigationItems[0].name &&
-                                      (!investigationItems[0].templateIds ||
-                                        investigationItems[0].templateIds
-                                          .length === 0)
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddInvestigationItem}
+                                    >
+                                      +
+                                    </button>
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() =>
+                                        handleRemoveInvestigationItem(index)
+                                      }
+                                      disabled={
+                                        investigationItems.length === 1 &&
+                                        !investigationItems[0].name &&
+                                        (!investigationItems[0].templateIds ||
+                                          investigationItems[0].templateIds
+                                            .length === 0)
+                                      }
+                                      disabled={isOrderCompleted}
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -6202,7 +6310,8 @@ const OpdRRecallPatient = () => {
                               onChange={() => setSurgeryType("minor")}
                             />
                             <label className="form-check-label" htmlFor="minor">
-                              Minor                            </label>
+                              Minor{" "}
+                            </label>
                           </div>
                           <div style={{ cursor: "default" }}>
                             <div className="d-flex align-items-center">
