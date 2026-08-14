@@ -437,7 +437,7 @@ const NursingCareModule = ({ selectedPatient }) => {
     const payload = {
       inpatientId: selectedPatient?.inpatientId || 0,
       procedureId: Number(procedureId) || 0,
-      procedureDatetime: dateTime ? new Date(dateTime).toISOString() : new Date().toISOString(),
+      procedureDatetime: new Date().toISOString(),
       performedBy: performedBy,
       remarks: remarks || remarkText || ''
     };
@@ -551,7 +551,7 @@ const NursingCareModule = ({ selectedPatient }) => {
     try {
       const payload = manualItems.map(row => ({
         itemId: row.itemId || 0,
-        dateTime: row.dateTime ? new Date(row.dateTime).toISOString() : new Date().toISOString(),
+        dateTime: new Date().toISOString(),
         requestQty: Number(row.qty) || 0,
         batchNo: row.batch || '',
         expiryDate: row.expiry ? new Date(row.expiry).toISOString().split('T')[0] : '',
@@ -605,7 +605,7 @@ const NursingCareModule = ({ selectedPatient }) => {
     try {
       const payload = templateItems.map(item => ({
         itemId: item.itemId || 0,
-        dateTime: item.dateTime ? new Date(item.dateTime).toISOString() : new Date().toISOString(),
+        dateTime: new Date().toISOString(),
         requestQty: Number(item.qty) || 0,
         batchNo: item.batch || '',
         expiryDate: item.expiry ? new Date(item.expiry).toISOString().split('T')[0] : '',
@@ -1015,7 +1015,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                     type="datetime-local"
                     className="form-control form-control-sm"
                     value={newProcedure.dateTime}
-                    onChange={e => setNewProcedure({ ...newProcedure, dateTime: e.target.value })}
+                    disabled
                   />
                 </div>
                 <div className="mb-2">
@@ -1206,7 +1206,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                                   type="datetime-local"
                                   className="form-control form-control-sm"
                                   value={item.dateTime}
-                                  onChange={(e) => updateTemplateItem(idx, 'dateTime', e.target.value)}
+                                  disabled
                                 />
                               </td>
                               <td>
@@ -1329,7 +1329,7 @@ const NursingCareModule = ({ selectedPatient }) => {
                           type="datetime-local"
                           className="form-control form-control-sm"
                           value={newConsumable.dateTime}
-                          onChange={(e) => setNewConsumable({ ...newConsumable, dateTime: e.target.value })}
+                          disabled
                         />
                       </div>
                       <div className="col-md-4">
