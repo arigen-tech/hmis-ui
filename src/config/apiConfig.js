@@ -772,6 +772,7 @@ export const SAVE_BED_TRANSFER_REQUEST = '/ipd/saveBedTransferRequest';
 export const WARD_PENDING_TRANSFER_REQUEST_LIST = '/ipd/wardPendingToTransferRequestList';
 export const UPDATE_TRANSFER_REQUEST_STATUS = '/ipd/wardPendingToTransferRequestStatusCompleteAndReject';
 export const WARD_TRANSFER_LIST = '/ipd/wardTransferList';
+export const GET_NURSING_MEDICAL_ASSESSMENT = `/ipd/getNursingMedicalAssessment`;
 export const SAVE_IP_DIAGNOSIS_ENTRY = '/ipd/saveIpDiagnosisEntry';
 export const GET_IP_DIAGNOSIS_ENTRY = '/ipd/getIpDiagnosisEntry';
 export const GET_PROCEDURE_BY_INPATIENT_ID = '/ipd/getProcedureByInpatientId';
@@ -781,6 +782,7 @@ export const GET_DISCHARGE_SUMMARY_REPORT_URL = `${ALL_REPORTS}/dischageSummary`
 export const IP_VITALS_REPORT_URL = `${ALL_REPORTS}/ipVitalsReport`;
 export const IP_INVESTIGATION_REPORT_URL = `${ALL_REPORTS}/ipInvestigationReport`;
 export const IP_DAILY_CASE_SHEET_REPORT_URL = `${ALL_REPORTS}/ipDailyCaseSheet`;
+export const IP_INITIAL_ASSESSMENT_REPORT_URL = `${ALL_REPORTS}/ipIntialAssessment`;
 
 
 export const IPD_INTERNAL_STATUS_NRW = 1;

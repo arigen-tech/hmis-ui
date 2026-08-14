@@ -623,17 +623,12 @@ const DrugMaster = () => {
         fetchDrugMasterData(0, resetParams);
     };
 
-    // UPDATED: showPopup function with proper onClose pattern
     const showPopup = (message, type = "info") => {
         setPopupMessage({
             message,
             type,
             onClose: () => {
                 setPopupMessage(null);
-                // For error popups, we might want to refresh data
-                if (type === "error") {
-                    fetchDrugMasterData(currentPage - 1);
-                }
             },
         });
     }
