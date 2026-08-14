@@ -353,14 +353,14 @@ const PatientRegistration = () => {
     { field: "gender", label: "Gender" },
     { field: "relation", label: "Relation" },
     { field: "dob", label: "DOB" },
-    { field: "height", label: "Height" },
-    { field: "weight", label: "Weight" },
-    { field: "temperature", label: "Temperature" },
-    { field: "systolicBP", label: "BP Systolic" },
-    { field: "diastolicBP", label: "BP Diastolic" },
-    { field: "pulse", label: "Pulse" },
-    { field: "rr", label: "RR" },
-    { field: "spo2", label: "SpO2" },
+  //  { field: "height", label: "Height" },
+  //  { field: "weight", label: "Weight" },
+ //   { field: "temperature", label: "Temperature" },
+ //   { field: "systolicBP", label: "BP Systolic" },
+ //   { field: "diastolicBP", label: "BP Diastolic" },
+ //   { field: "pulse", label: "Pulse" },
+ //   { field: "rr", label: "RR" },
+ //   { field: "spo2", label: "SpO2" },
   ];
 
   const isFieldEmpty = (value) =>

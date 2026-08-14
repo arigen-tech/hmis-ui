@@ -3453,7 +3453,7 @@ const GeneralMedicineWaitingList = () => {
       const investigationList = investigationItems
         .filter((item) => item.investigationId)
         .map((item) => ({
-          id: item.investigationId,
+          investigationId: item.investigationId,
           investigationName: item.displayValue,
           investigationDate: item.date,
         }));
