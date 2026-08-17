@@ -13,6 +13,7 @@ import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
+import AdmissionDetails from "../AdmissionDetails"; // adjust path as needed
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -24,6 +25,46 @@ const WardManagement = () => {
   const [patientData, setPatientData] = useState([])
   const [loadingBeds, setLoadingBeds] = useState(false)
   const [loadingWards, setLoadingWards] = useState(false)
+  const [deptView, setDeptView] = useState(null) // null | "critical" | "transfer" | "worklist"
+
+  const dummyCriticalResults = [
+    { id: 1, patientName: "Rohit Sharma", bedNo: "B-101", testName: "Potassium", value: "6.8 mmol/L", normalRange: "3.5 - 5.0", reportedTime: "10:45 AM", status: "Critical" },
+    { id: 2, patientName: "Anita Verma", bedNo: "B-104", testName: "Hemoglobin", value: "5.2 g/dL", normalRange: "12 - 16", reportedTime: "11:10 AM", status: "Critical" },
+    { id: 3, patientName: "Suresh Iyer", bedNo: "B-108", testName: "Blood Glucose", value: "480 mg/dL", normalRange: "70 - 140", reportedTime: "12:02 PM", status: "Critical" },
+  ]
+
+  const dummyTransferList = [
+    { id: 1, patientName: "Meena Kapoor", bedNo: "B-102", fromWard: "General Ward", toWard: "ICU", requestedBy: "Dr. Nair", requestedTime: "09:30 AM", status: "Pending" },
+    { id: 2, patientName: "Vikas Rao", bedNo: "B-110", fromWard: "ICU", toWard: "General Ward", requestedBy: "Dr. Mehta", requestedTime: "10:15 AM", status: "Approved" },
+    { id: 3, patientName: "Farah Khan", bedNo: "B-115", fromWard: "General Ward", toWard: "Labor Room", requestedBy: "Dr. Singh", requestedTime: "11:45 AM", status: "In Progress" },
+  ]
+
+  const dummyWorklist = [
+    { id: 1, task: "Administer IV Antibiotics", patientName: "Rohit Sharma", bedNo: "B-101", priority: "High", assignedTo: "Nurse Priya", dueTime: "01:00 PM", status: "Pending" },
+    { id: 2, task: "Change Dressing", patientName: "Anita Verma", bedNo: "B-104", priority: "Medium", assignedTo: "Nurse Kavita", dueTime: "01:30 PM", status: "Pending" },
+    { id: 3, task: "Vitals Recheck", patientName: "Suresh Iyer", bedNo: "B-108", priority: "High", assignedTo: "Nurse Priya", dueTime: "12:45 PM", status: "Completed" },
+    { id: 4, task: "Collect Blood Sample", patientName: "Meena Kapoor", bedNo: "B-102", priority: "Low", assignedTo: "Nurse Ritu", dueTime: "02:00 PM", status: "Pending" },
+  ]
+
+  const getPriorityBadgeColor = (priority) => {
+    switch (priority) {
+      case "High": return "danger"
+      case "Medium": return "warning"
+      case "Low": return "secondary"
+      default: return "secondary"
+    }
+  }
+
+  const getGenericStatusBadgeColor = (status) => {
+    switch (status) {
+      case "Critical": return "danger"
+      case "Pending": return "warning"
+      case "Approved": return "primary"
+      case "In Progress": return "info"
+      case "Completed": return "success"
+      default: return "secondary"
+    }
+  }
 
   useEffect(() => {
     const fetchWards = async () => {
@@ -89,22 +130,23 @@ const WardManagement = () => {
     fetchBeds()
   }, [selectedWard])
 
-  // Added "IPD Initial Assessment" right after Clinical Dashboard
+  // Updated tab order as per requirement
   const caseSheetTabs = [
+    "Admission Details",
+    "IPD Initial Assessment",
     "Clinical Dashboard",
-    "IPD Initial Assessment",          // <-- new tab
     "Doctor Visit / Case Notes",
-    "Investigations / Orders",
-    "Medication & Treatment (MAR)",
     "Vitals & Monitoring",
+    "Investigations / Orders",
+    "Medication / MAR",
+    "Blood / Transfusion",
+    "OT Details",
     "Nursing Care / Procedures",
     "Diet",
-    "Ward / Bed Transfer",
     "Shift Handover",
+    "Ward / Bed Transfer",
     "Discharge"
   ]
-
-
 
   const stats = {
     vacantBeds: patientData.filter(p => p.status === 'VACANT').length,
@@ -280,6 +322,33 @@ const WardManagement = () => {
                     <span className="text-muted small ms-2">No Wards Available</span>
                   )}
                 </div>
+
+                {!selectedPatient && (
+                  <div className="d-flex align-items-center gap-2">
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${deptView === "critical" ? "btn-danger" : "btn-outline-danger"}`}
+                      onClick={() => setDeptView(deptView === "critical" ? null : "critical")}
+                    >
+                      Critical Results
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${deptView === "transfer" ? "btn-warning" : "btn-outline-warning"}`}
+                      onClick={() => setDeptView(deptView === "transfer" ? null : "transfer")}
+                    >
+                      Transfer List
+                    </button>
+                    <button
+                      type="button"
+                      className={`btn btn-sm ${deptView === "worklist" ? "btn-success" : "btn-outline-success"}`}
+                      onClick={() => setDeptView(deptView === "worklist" ? null : "worklist")}
+                    >
+                      Worklist
+                    </button>
+                  </div>
+                )}
+
                 {selectedPatient && (
                   <div className="flex-grow-1 d-flex justify-content-end">
                     <button className="btn btn-light btn-sm" onClick={handleBackToCards}>
@@ -290,6 +359,143 @@ const WardManagement = () => {
               </div>
             </div>
             <div className="mt-2">
+
+              {!selectedPatient && deptView && (
+                <div className="row mb-3">
+                  <div className="col-12">
+                    <div className="card">
+                      <div className="card-header d-flex justify-content-between align-items-center bg-light">
+                        <h6 className="mb-0">
+                          {deptView === "critical" && "Critical Results"}
+                          {deptView === "transfer" && "Transfer List "}
+                          {deptView === "worklist" && "Worklist "}
+                        </h6>
+                        <button
+                          className="btn btn-sm btn-outline-secondary"
+                          onClick={() => setDeptView(null)}
+                        >
+                          <i className="fa fa-times me-1"></i> Close
+                        </button>
+                      </div>
+                      <div className="card-body p-0">
+                        <div className="table-responsive">
+
+                          {deptView === "critical" && (
+                            <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
+                              <thead className="table-light">
+                                <tr>
+                                  <th>S No.</th>
+                                  <th>Patient</th>
+                                  <th>Bed No</th>
+                                  <th>Test</th>
+                                  <th>Value</th>
+                                  <th>Normal Range</th>
+                                  <th>Reported Time</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {dummyCriticalResults.map((row, idx) => (
+                                  <tr key={row.id}>
+                                    <td>{idx + 1}</td>
+                                    <td>{row.patientName}</td>
+                                    <td>{row.bedNo}</td>
+                                    <td>{row.testName}</td>
+                                    <td className="fw-bold text-danger">{row.value}</td>
+                                    <td>{row.normalRange}</td>
+                                    <td>{row.reportedTime}</td>
+                                    <td>
+                                      <span className={`badge bg-${getGenericStatusBadgeColor(row.status)}`}>
+                                        {row.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+
+                          {deptView === "transfer" && (
+                            <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
+                              <thead className="table-light">
+                                <tr>
+                                  <th>S No.</th>
+                                  <th>Patient</th>
+                                  <th>Bed No</th>
+                                  <th>From Ward</th>
+                                  <th>To Ward</th>
+                                  <th>Requested By</th>
+                                  <th>Requested Time</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {dummyTransferList.map((row, idx) => (
+                                  <tr key={row.id}>
+                                    <td>{idx + 1}</td>
+                                    <td>{row.patientName}</td>
+                                    <td>{row.bedNo}</td>
+                                    <td>{row.fromWard}</td>
+                                    <td>{row.toWard}</td>
+                                    <td>{row.requestedBy}</td>
+                                    <td>{row.requestedTime}</td>
+                                    <td>
+                                      <span className={`badge bg-${getGenericStatusBadgeColor(row.status)}`}>
+                                        {row.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+
+                          {deptView === "worklist" && (
+                            <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
+                              <thead className="table-light">
+                                <tr>
+                                  <th>S No.</th>
+                                  <th>Task</th>
+                                  <th>Patient</th>
+                                  <th>Bed No</th>
+                                  <th>Priority</th>
+                                  <th>Assigned To</th>
+                                  <th>Due Time</th>
+                                  <th>Status</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                {dummyWorklist.map((row, idx) => (
+                                  <tr key={row.id}>
+                                    <td>{idx + 1}</td>
+                                    <td>{row.task}</td>
+                                    <td>{row.patientName}</td>
+                                    <td>{row.bedNo}</td>
+                                    <td>
+                                      <span className={`badge bg-${getPriorityBadgeColor(row.priority)}`}>
+                                        {row.priority}
+                                      </span>
+                                    </td>
+                                    <td>{row.assignedTo}</td>
+                                    <td>{row.dueTime}</td>
+                                    <td>
+                                      <span className={`badge bg-${getGenericStatusBadgeColor(row.status)}`}>
+                                        {row.status}
+                                      </span>
+                                    </td>
+                                  </tr>
+                                ))}
+                              </tbody>
+                            </table>
+                          )}
+
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Summary Stats at Top */}
               {!selectedPatient && (
                 <div className="row ">
@@ -577,12 +783,15 @@ const WardManagement = () => {
                               <ClinicalDashboard selectedPatient={selectedPatient} />
                             )}
 
-                            {/* New IPD Initial Assessment Tab */}
+                            {activeTab === "Admission Details" && (
+  <AdmissionDetails selectedPatient={selectedPatient} />
+)}
+
                             {activeTab === "IPD Initial Assessment" && (
                               <IPDInitialAssessment selectedPatient={selectedPatient} />
                             )}
 
-                            {activeTab === "Medication & Treatment (MAR)" && (
+                            {activeTab === "Medication / MAR" && (
                               < MedicationModule selectedPatient={selectedPatient} />
                             )}
 
@@ -614,11 +823,11 @@ const WardManagement = () => {
                               <NursingCareModule selectedPatient={selectedPatient} />
                             )}
 
-                            {/* Fallback for any undefined tabs (optional) */}
+                            {/* Fallback for any undefined tabs */}
                             {activeTab !== "Clinical Dashboard" &&
                               activeTab !== "IPD Initial Assessment" &&
+                              activeTab !== "Medication / MAR" &&
                               activeTab !== "Doctor Visit / Case Notes" &&
-                              activeTab !== "Medication & Treatment (MAR)" &&
                               activeTab !== "Ward / Bed Transfer" &&
                               activeTab !== "Vitals & Monitoring" &&
                               activeTab !== "Investigations / Orders" &&
@@ -626,7 +835,6 @@ const WardManagement = () => {
                               activeTab !== "Discharge" &&
                               activeTab !== "Nursing Care / Procedures" && (
                               <div>
-                                <p>Content for {activeTab} will be displayed here.</p>
                               </div>
                             )}
                           </div>

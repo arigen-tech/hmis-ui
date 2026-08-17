@@ -103,7 +103,13 @@ const OpdRRecallPatient = () => {
   const dropdownRef = useRef(null);
   const [duplicateItems, setDuplicateItems] = useState([]);
   const [showDuplicatePopup, setShowDuplicatePopup] = useState(false);
-  const getToday = () => new Date().toISOString().split("T")[0];
+  const getToday = () => {
+    const today = new Date();
+    const year = today.getFullYear();
+    const month = String(today.getMonth() + 1).padStart(2, "0");
+    const day = String(today.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
   const [doctorRemarksText, setDoctorRemarksText] = useState("");
   const [treatmentTemplateLoading, setTreatmentTemplateLoading] =
     useState(false);
@@ -164,6 +170,7 @@ const OpdRRecallPatient = () => {
   const [admissionAdvised, setAdmissionAdvised] = useState(false);
   const [wardDepartment, setWardDepartment] = useState([]);
   const [careLevels, setCareLevels] = useState([]);
+  const [removedInvestigations, setRemovedInvestigations] = useState([]);
   const [admissionPriorities, setAdmissionPriorities] = useState([
     "Normal",
     "Urgent",
@@ -240,6 +247,7 @@ const OpdRRecallPatient = () => {
       templateIds: [],
       name: "",
       date: getToday(),
+      flag: 0,
     },
   ]);
 
@@ -305,7 +313,7 @@ const OpdRRecallPatient = () => {
       !items[0].days
     );
   };
-    const formatDateForDisplay = (value) => {
+  const formatDateForDisplay = (value) => {
     if (!hasValue(value)) return "";
 
     const normalized = String(value).trim();
@@ -354,27 +362,32 @@ const OpdRRecallPatient = () => {
     }
   };
 
-  const handleRemoveTreatmentItem = (index) => {
-    const itemToRemove = treatmentItems[index];
+const handleRemoveTreatmentItem = (index) => {
+  const itemToRemove = treatmentItems[index];
 
-    // existing ID from DB
-    if (itemToRemove?.treatmentId) {
-        setRemovedTreatmentIds((prev) => [
-            ...prev,
-            itemToRemove.treatmentId,
-        ]);
-    }
+  if (!itemToRemove) return;
 
-    const onlyOneRow = treatmentItems.length === 1;
-    const isEmptyRow =
-        !itemToRemove.drugName && !itemToRemove.dispUnit;
+  // Check if this is an existing DB treatment with an ID
+  const hasExistingTreatmentId = itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
 
-    if (onlyOneRow && isEmptyRow) return;
+  // For existing DB treatments, mark with flag -1 (like investigation section)
+  if (hasExistingTreatmentId) {
+    // Only mark if not already marked for deletion
+    if (itemToRemove.flag !== -1) {
+      setTreatmentItems((prev) => {
+        const updated = [...prev];
+        updated[index] = {
+          ...updated[index],
+          flag: -1,
+        };
 
-    let newItems = treatmentItems.filter((_, i) => i !== index);
+        // If marking this row deleted leaves no visible rows, add a blank one
+        const remainingVisible = updated.filter((row) => row.flag !== -1);
 
-    if (onlyOneRow) {
-        newItems = [{
+        if (remainingVisible.length === 0) {
+          updated.push({
+            prescriptionHdId: null,
+            prescriptionDtId: null,
             treatmentId: null,
             drugId: "",
             drugName: "",
@@ -385,11 +398,78 @@ const OpdRRecallPatient = () => {
             total: "",
             instruction: "",
             stock: "",
+            requestedDeptStocks: "",
             templateId: "",
-        }];
-    }
+            flag: 1,
+          });
+        }
 
-    setTreatmentItems(newItems);
+        return updated;
+      });
+
+      // Add to removedTreatmentIds list
+      const treatmentIdToRemove = itemToRemove.treatmentId || itemToRemove.prescriptionDtId;
+      if (treatmentIdToRemove) {
+        setRemovedTreatmentIds((prev) => {
+          if (!prev.includes(treatmentIdToRemove)) {
+            return [...prev, treatmentIdToRemove];
+          }
+          return prev;
+        });
+      }
+    }
+    return;
+  }
+
+  // NEW ITEM (no DB ID) - unchanged from your existing logic below
+  const visibleItems = treatmentItems.filter(row => row.flag !== -1);
+
+  if (visibleItems.length === 1 && !visibleItems[0].treatmentId && !visibleItems[0].prescriptionDtId) {
+    setTreatmentItems((prev) => {
+      const updated = [...prev];
+      updated[index] = {
+        ...updated[index],
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+        requestedDeptStocks: "",
+        templateId: "",
+        flag: 1,
+      };
+      return updated;
+    });
+    return;
+  }
+
+  setTreatmentItems((prev) => {
+    const updated = prev.filter((_, i) => i !== index);
+    if (updated.length === 0) {
+      return [{
+        prescriptionHdId: null,
+        prescriptionDtId: null,
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+        requestedDeptStocks: "",
+        templateId: "",
+        flag: 1,
+      }];
+    }
+    return updated;
+  });
 };
 
   const handleWardNameChange = async (deptId) => {
@@ -1405,9 +1485,7 @@ const OpdRRecallPatient = () => {
         queryParams.append("doctorId", currentDoctorId);
       }
       const data = await getRequest(
-        `${OPD_TEMPLATE}/getAllTreatmentTemplate/1${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
-        }`,
+        `${OPD_TEMPLATE}/getAllTreatmentTemplate/1${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
       );
       if (data.status === 200 && Array.isArray(data.response)) {
         setOpdTemplateData(data.response);
@@ -1555,7 +1633,9 @@ const OpdRRecallPatient = () => {
       if (searchFilters.patientName)
         params.append("name", searchFilters.patientName);
 
-      if (searchFilters.date) params.append("visitDate", searchFilters.date);
+      if (searchFilters.date) {
+        params.append("visitDate", searchFilters.date);
+      }
 
       const data = await getRequest(
         `${GET_RECALL_OPD_PATIENTS_LIST}?${params.toString()}`,
@@ -1583,46 +1663,52 @@ const OpdRRecallPatient = () => {
     fetchWardCategoryData();
   }, []);
 
-  const handleClearAllTreatmentTemplates = () => {
-    setSelectedTreatmentTemplateIds(new Set());
+const handleClearAllTreatmentTemplates = () => {
+  setSelectedTreatmentTemplateIds(new Set());
 
-    setTreatmentItems((prev) => {
-      const updated = prev
-        .filter((item) => {
-          const tpl = (item.templateId ?? "").trim();
-          if (item.treatmentId !== null) return true;
-          if (tpl === "") return true;
-          return false;
-        })
-        .map((item) => {
-          if (item.treatmentId !== null) {
-            return { ...item, templateId: "" };
-          }
-          return item;
-        });
+  setTreatmentItems((prev) => {
+    const updated = prev
+      .filter((item) => {
+        const tpl = (item.templateId ?? "").trim();
+        // Keep items that have a treatmentId (existing DB records)
+        if (item.treatmentId !== null) return true;
+        // Keep items that have drug data but no template
+        if (tpl === "" && item.drugId) return true;
+        // Remove template-only items
+        return false;
+      })
+      .map((item) => {
+        // Clear templateId from existing records
+        if (item.treatmentId !== null) {
+          return { ...item, templateId: "" };
+        }
+        return item;
+      });
 
-      if (updated.length === 0) {
-        return [
-          {
-            treatmentId: null,
-            drugId: "",
-            drugName: "",
-            dispUnit: "",
-            dosage: "",
-            frequency: "",
-            days: "",
-            total: "",
-            instruction: "",
-            stock: "",
-            templateId: "",
-          },
-        ];
-      }
+    // If no items left, add a default empty row
+    if (updated.length === 0) {
+      return [{
+        prescriptionHdId: null,
+        prescriptionDtId: null,
+        treatmentId: null,
+        drugId: "",
+        drugName: "",
+        dispUnit: "",
+        dosage: "",
+        frequency: "",
+        days: "",
+        total: "",
+        instruction: "",
+        stock: "",
+        requestedDeptStocks: "",
+        templateId: "",
+        flag: 0,
+      }];
+    }
 
-      return updated;
-    });
-  };
-
+    return updated;
+  });
+};
 
   const handleRemoveTreatmentTemplateItems = (templateId) => {
     setTreatmentItems((prev) => {
@@ -1680,7 +1766,6 @@ const OpdRRecallPatient = () => {
       return updated;
     });
   };
-
 
   const validateSubmitForm = () => {
     const errors = {};
@@ -1827,17 +1912,60 @@ const OpdRRecallPatient = () => {
           investigationId: item.investigationId,
           investigationName: item.name,
           investigationDate: item.date,
+          flag: item.flag !== undefined ? item.flag : item.id ? 0 : 1,
         }));
 
+      const removedInvestigationsList = removedInvestigations.map((item) => ({
+        investigationId: item.investigationId,
+        flag: -1,
+        investigationDate: item.investigationDate || null,
+      }));
+
+      const allInvestigationsWithFlags = [
+        ...investigationList,
+        ...removedInvestigationsList,
+      ];
+
       const treatmentList = treatmentItems
-        .filter(
-          (item) => item.drugId && item.dosage && item.days && item.frequency,
-        )
         .map((item) => {
+          // Skip completely empty rows with no data and not marked for deletion
+          if (!item.drugId && !item.treatmentId && item.flag !== -1)
+            return null;
+
           const freq = allFrequencies.find(
             (f) =>
               f.frequencyName?.toLowerCase() === item.frequency?.toLowerCase(),
           );
+
+          // Determine flag based on item state
+          let flag = 0;
+          if (item.flag === -1) {
+            return {
+              prescriptionHdId: item.prescriptionHdId ?? null,
+
+              prescriptionDtId:
+                item.prescriptionDtId ?? item.treatmentId ?? null,
+
+              itemId: item.drugId || "",
+              itemName: item.drugName || "",
+
+              dosage: 0,
+              days: 0,
+              frequencyId: null,
+              frequencyName: null,
+              instruction: "",
+              dispUnit: "",
+              itemClassId: null,
+              adispQty: 1,
+              total: "0",
+
+              flag: -1,
+            };
+          } else if (!item.treatmentId) {
+            flag = 1; // New
+          } else if (item.flag === 0) {
+            flag = 0; // Existing - no change
+          }
 
           return {
             itemId: item.drugId,
@@ -1845,15 +1973,17 @@ const OpdRRecallPatient = () => {
             dosage: Number(item.dosage) || 0,
             days: Number(item.days) || 0,
             frequencyId: freq?.frequencyId || null,
-            frequencyName:freq?.frequencyName||null,
+            frequencyName: freq?.frequencyName || null,
             instruction: item.instruction,
             dispUnit: item.dispUnit,
             itemClassId: item.itemClassId,
             adispQty: item.aDispQty || 1,
             total: calculateTotal(item),
             prescriptionDtId: item.treatmentId || null,
+            flag: flag,
           };
-        });
+        })
+        .filter(Boolean); // This will keep items with flag: -1 since they have data
 
       const procedureCareList = procedureCareItems
         .filter((item) => item.procedureId)
@@ -1865,20 +1995,20 @@ const OpdRRecallPatient = () => {
           remarks: item.remarks,
         }));
 
-    let ophthalmologyPayload = null;
-    if (shouldShowVisionExamination && visionExaminationData) {
-      ophthalmologyPayload = {
-        patientId: selectedPatient.patientId,
-        visitId: selectedPatient.visitId,
-        opdDate: getToday(),
-        ...visionExaminationData,
-      };
-      
-      // Add the ID if it exists (for update)
-      if (existingOpthalId) {
-        ophthalmologyPayload.id = existingOpthalId;
+      let ophthalmologyPayload = null;
+      if (shouldShowVisionExamination && visionExaminationData) {
+        ophthalmologyPayload = {
+          patientId: selectedPatient.patientId,
+          visitId: selectedPatient.visitId,
+          opdDate: getToday(),
+          ...visionExaminationData,
+        };
+
+        // Add the ID if it exists (for update)
+        if (existingOpthalId) {
+          ophthalmologyPayload.id = existingOpthalId;
+        }
       }
-    }
 
       const payload = {
         patientId: selectedPatient.patientId,
@@ -1909,7 +2039,7 @@ const OpdRRecallPatient = () => {
 
         labFlag: labFlag || "n",
         radioFlag: radioFlag || "n",
-        investigations: investigationList,
+        investigations: allInvestigationsWithFlags,
 
         treatments: treatmentList,
         removedTreatmentIds: removedTreatmentIds,
@@ -1935,8 +2065,8 @@ const OpdRRecallPatient = () => {
           }),
 
         ...(ophthalmologyPayload && {
-        ophthalmologyExaminationDetails: ophthalmologyPayload,
-      }),
+          ophthalmologyExaminationDetails: ophthalmologyPayload,
+        }),
 
         // Include OBG details in the main payload
         ...(isObgynDepartment &&
@@ -1947,7 +2077,7 @@ const OpdRRecallPatient = () => {
         ...(isEntDepartment &&
           entExaminationDetails && {
             entExaminationDetails: entExaminationDetails,
-          }),          
+          }),
 
         followUpFlag: followUps.followUpFlag ? "y" : "n",
         followUpDate:
@@ -1993,16 +2123,20 @@ const OpdRRecallPatient = () => {
         pregnancyDetails,
       };
 
-      console.log("Final Payload with OBG Details:", JSON.stringify(payload, null, 2));
-
+      console.log(
+        "Final Payload with OBG Details:",
+        JSON.stringify(payload, null, 2),
+      );
+      debugger;
       const response = await putRequest(UPDATE_RECALL_PATIENT, payload);
-
       if (response?.status === 200 || response?.success === true) {
         showPopup("Patient updated successfully!", "success", () => {
           handleBackWithFatch();
         });
       } else {
-        showPopup("Update failed. Please try again.", "error");
+        const errorMessage =
+          response?.message || "Update failed. Please try again.";
+        showPopup(errorMessage, "error");
       }
     } catch (error) {
       console.error("Update Error:", error);
@@ -2144,6 +2278,7 @@ const OpdRRecallPatient = () => {
       requestedDeptStocks: "",
       stock: "",
       templateId: "",
+      flag: 0,
     },
   ]);
 
@@ -2275,9 +2410,7 @@ const OpdRRecallPatient = () => {
         queryParams.append("doctorId", currentDoctorId);
       }
       const response = await getRequest(
-        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${
-          queryParams.toString() ? `?${queryParams.toString()}` : ""
-        }`,
+        `${OPD_TEMPLATE_GET_ALL_INVESTIGATIONS_TEMPLATES}/${flag}${queryParams.toString() ? `?${queryParams.toString()}` : ""}`,
       );
       if (response && response.response) {
         setInvestigationTemplates(response.response);
@@ -2383,10 +2516,18 @@ const OpdRRecallPatient = () => {
 
     setInvestigationItems((prev) => {
       const updated = [...prev];
+      const existingItem = updated[index];
+
+      // Check if this is a new item or existing
+      const isNew =
+        !existingItem.id || existingItem.id === null || existingItem.id === "";
+
       updated[index] = {
         ...updated[index],
         investigationId: selected.investigationId,
         name: selected.investigationName,
+        flag: isNew ? 1 : 0, // New items get flag 1, existing get flag 0
+        templateIds: existingItem.templateIds || [],
       };
       return updated;
     });
@@ -2459,101 +2600,146 @@ const OpdRRecallPatient = () => {
     return filtered;
   };
 
-  const handleInvestigationTemplateSelect = (template) => {
-    const templateId = template.templateId;
+const handleInvestigationTemplateSelect = (template) => {
+  const templateId = template.templateId;
 
-    if (selectedTemplateIds.has(templateId)) {
-      alert("This template is already selected");
-      setSelectedInvestigationTemplate("Select..");
-      return;
+  if (selectedTemplateIds.has(templateId)) {
+    alert("This template is already selected");
+    setSelectedInvestigationTemplate("Select..");
+    return;
+  }
+
+  setSelectedTemplateIds((prev) => new Set([...prev, templateId]));
+  setSelectedInvestigationTemplate(templateId);
+
+  if (!template.investigationResponseList) {
+    setSelectedInvestigationTemplate("Select..");
+    return;
+  }
+
+  let duplicateItemsBuffer = [];
+
+  setInvestigationItems((prev) => {
+    // Check if the current list only has the default empty row
+    const hasOnlyEmptyRow = prev.length === 1 && 
+      !prev[0].investigationId && 
+      !prev[0].name &&
+      (!prev[0].templateIds || prev[0].templateIds.length === 0);
+
+    let updated = [...prev];
+
+    // If only empty row exists, start fresh
+    if (hasOnlyEmptyRow) {
+      updated = [];
     }
 
-    setSelectedTemplateIds((prev) => new Set([...prev, templateId]));
-    setSelectedInvestigationTemplate(templateId);
+    const existingMap = new Map(
+      updated.map((item) => [item.investigationId, item])
+    );
 
-    if (!template.investigationResponseList) {
-      setSelectedInvestigationTemplate("Select..");
-      return;
-    }
+    template.investigationResponseList.forEach((item) => {
+      const existing = existingMap.get(item.investigationId);
 
-    let duplicateItemsBuffer = [];
+      if (existing) {
+        const templateIds = Array.isArray(existing.templateIds)
+          ? existing.templateIds
+          : [];
 
-    setInvestigationItems((prev) => {
-      const updated = [...prev];
+        if (!templateIds.includes(templateId)) {
+          const index = updated.findIndex(
+            (i) => i.investigationId === item.investigationId
+          );
 
-      const existingMap = new Map(
-        prev.map((item) => [item.investigationId, item]),
-      );
-
-      template.investigationResponseList.forEach((item) => {
-        const existing = existingMap.get(item.investigationId);
-
-        if (existing) {
-          const templateIds = Array.isArray(existing.templateIds)
-            ? existing.templateIds
-            : [];
-
-          if (!templateIds.includes(templateId)) {
-            const index = updated.findIndex(
-              (i) => i.investigationId === item.investigationId,
-            );
-
-            updated[index] = {
-              ...existing,
-              templateIds: [...templateIds, templateId],
-            };
-          }
-
-          duplicateItemsBuffer.push({
-            investigationId: item.investigationId,
-            investigationName: existing.name ?? item.investigationName,
-          });
-        } else {
-          updated.push({
-            id: null,
-            name:
-              item.investigationName ??
-              `Investigation #${item.investigationId}`,
-            date: getToday(),
-            investigationId: item.investigationId,
-            templateSource: template.opdTemplateName,
-            templateIds: [templateId],
-          });
+          updated[index] = {
+            ...existing,
+            templateIds: [...templateIds, templateId],
+          };
         }
-      });
 
-      return updated;
-    });
-
-    setTimeout(() => {
-      const unique = Array.from(
-        new Map(
-          duplicateItemsBuffer.map((d) => [d.investigationId, d]),
-        ).values(),
-      );
-
-      if (unique.length > 0) {
-        setDuplicateItems(unique);
-        setShowDuplicatePopup(true);
+        duplicateItemsBuffer.push({
+          investigationId: item.investigationId,
+          investigationName: existing.name ?? item.investigationName,
+        });
+      } else {
+        updated.push({
+          id: null,
+          name: item.investigationName ?? `Investigation #${item.investigationId}`,
+          date: getToday(),
+          investigationId: item.investigationId,
+          templateSource: template.opdTemplateName,
+          templateIds: [templateId],
+          flag: 1,
+        });
       }
-
-      setSelectedInvestigationTemplate("Select..");
-    }, 50);
-  };
-
-  const handleClearAllTemplates = () => {
-    setSelectedTemplateIds(new Set());
-
-    setInvestigationItems((prevItems) => {
-      return prevItems.filter((item) => {
-        const ids = item.templateIds ?? [];
-
-        if (item.id !== null) return true;
-        if (ids.length === 0) return true;
-        return false;
-      });
     });
-  };
+
+    // If no items were added (all duplicates), ensure we have at least one row
+    if (updated.length === 0) {
+      return [{
+        id: null,
+        investigationId: "",
+        templateIds: [],
+        name: "",
+        date: getToday(),
+        flag: 0,
+      }];
+    }
+
+    return updated;
+  });
+
+  setTimeout(() => {
+    const unique = Array.from(
+      new Map(
+        duplicateItemsBuffer.map((d) => [d.investigationId, d])
+      ).values()
+    );
+
+    if (unique.length > 0) {
+      setDuplicateItems(unique);
+      setShowDuplicatePopup(true);
+    }
+
+    setSelectedInvestigationTemplate("Select..");
+  }, 50);
+};
+
+const handleClearAllTemplates = () => {
+  setSelectedTemplateIds(new Set());
+
+  setInvestigationItems((prevItems) => {
+    const filteredItems = prevItems.filter((item) => {
+      const ids = item.templateIds ?? [];
+      
+      // Keep items that have a real ID (existing DB records)
+      if (item.id !== null && item.id !== undefined && item.id !== "") {
+        return true;
+      }
+      
+      // Keep items that have no template associations and have a name
+      if (ids.length === 0 && item.name && item.name.trim()) {
+        return true;
+      }
+      
+      // Remove items that only came from templates
+      return false;
+    });
+
+    // If no items left, add a default empty row
+    if (filteredItems.length === 0) {
+      return [{
+        id: null,
+        investigationId: "",
+        templateIds: [],
+        name: "",
+        date: getToday(),
+        flag: 0,
+      }];
+    }
+
+    return filteredItems;
+  });
+};
 
   const handleRemoveTemplateItems = (templateId) => {
     setSelectedTemplateIds((prev) => {
@@ -2750,10 +2936,11 @@ const OpdRRecallPatient = () => {
         });
         setRecallPregnancyData(patientData.pregnancyDetails || null);
 
-        const opthalId = patientData.ophthalmologyExaminationDetails?.id || 
-                       patientData.opthalId || 
-                       patientData.ophthalmologyId || 
-                       null;
+        const opthalId =
+          patientData.ophthalmologyExaminationDetails?.id ||
+          patientData.opthalId ||
+          patientData.ophthalmologyId ||
+          null;
 
         const sectionsToExpand = {};
 
@@ -2820,10 +3007,12 @@ const OpdRRecallPatient = () => {
         const labInvestigations = patientData.labOrderHds?.length
           ? patientData.labOrderHds.flatMap((hd) =>
               hd.labOrderDts.map((dt) => ({
-                id: dt.orderDtId || "",
+                id: dt.orderDtId || null,
                 name: dt.investigationName || "",
                 date: dt.appointmentDate || getToday(),
                 investigationId: dt.investigationId,
+                orderStatus: dt.orderStatus,
+                flag: 0,
                 templateIds: [],
               })),
             )
@@ -2832,10 +3021,12 @@ const OpdRRecallPatient = () => {
         const radInvestigations = patientData.radOrderHds?.length
           ? patientData.radOrderHds.flatMap((hd) =>
               hd.radOrderDts.map((dt) => ({
-                id: dt.orderDtId || "",
+                id: dt.orderDtId || null,
                 name: dt.investigationName || "",
                 date: dt.appointmentDate || getToday(),
                 investigationId: dt.investigationId,
+                orderStatus: dt.studyStatus,
+                flag: 0,
                 templateIds: [],
               })),
             )
@@ -2872,6 +3063,8 @@ const OpdRRecallPatient = () => {
                   matchedFrequency?.frequencyName || frequencyId;
 
                 const obj = {
+                  prescriptionHdId: item.prescriptionHdId ?? null,
+                  prescriptionDtId: item.prescriptionDtId ?? null,
                   treatmentId: item.prescriptionDtId,
                   drugId: item.itemId,
                   drugName: item.itemName,
@@ -2884,6 +3077,7 @@ const OpdRRecallPatient = () => {
                   itemClassId: item.itemClassId ?? null,
                   aDispQty: item.adispQty ?? 1,
                   templateId: "",
+                  flag: 0, // Existing treatments should have flag 0
                 };
                 obj.total = calculateTotal(obj);
                 return obj;
@@ -3081,6 +3275,7 @@ const OpdRRecallPatient = () => {
   };
 
   const handleBackToList = () => {
+    setRemovedInvestigations([]);
     setShowDetailView(false);
     setSelectedPatient(null);
     setRecallPregnancyData(null);
@@ -3356,6 +3551,8 @@ const OpdRRecallPatient = () => {
       }
 
       const newItem = {
+        prescriptionHdId: null,
+        prescriptionDtId: null,
         treatmentId: null,
         drugId: medication.drugId,
         drugName: medication.drugName,
@@ -3503,7 +3700,7 @@ const OpdRRecallPatient = () => {
     setVacantBeds(0);
 
     setWorkingDiagnosis("");
-
+    setRemovedInvestigations([]);
     setInvestigationItems([
       {
         investigationId: "",
@@ -3566,20 +3763,44 @@ const OpdRRecallPatient = () => {
   const handleAddInvestigationItem = () => {
     setInvestigationItems((prev) => [
       ...prev,
-      { id: null, templateIds: [], name: "", date: getToday() },
+      { id: null, templateIds: [], name: "", date: getToday(), flag: 0 },
     ]);
   };
 
   const handleRemoveInvestigationItem = (index) => {
     const itemToRemove = investigationItems[index];
-    const onlyOneRow = investigationItems.length === 1;
-    const isEmptyRow = !itemToRemove.name && !itemToRemove.date;
 
-    if (onlyOneRow && isEmptyRow) return;
+    if (
+      itemToRemove?.investigationId &&
+      itemToRemove.investigationId !== "" &&
+      itemToRemove.investigationId !== null
+    ) {
+      const alreadyRemoved = removedInvestigations.some(
+        (item) => item.investigationId === itemToRemove.investigationId,
+      );
+
+      if (!alreadyRemoved) {
+        setRemovedInvestigations((prev) => [
+          ...prev,
+          {
+            investigationId: itemToRemove.investigationId,
+            investigationDate: itemToRemove.date || getToday(),
+          },
+        ]);
+      }
+    }
+
+    if (
+      investigationItems.length === 1 &&
+      !itemToRemove.investigationId &&
+      !itemToRemove.name
+    ) {
+      return;
+    }
 
     let updatedItems = investigationItems.filter((_, i) => i !== index);
 
-    if (onlyOneRow) {
+    if (updatedItems.length === 0) {
       updatedItems = [
         {
           id: null,
@@ -3587,6 +3808,7 @@ const OpdRRecallPatient = () => {
           templateIds: [],
           name: "",
           date: getToday(),
+          flag: 0,
         },
       ];
     }
@@ -3669,12 +3891,56 @@ const OpdRRecallPatient = () => {
     setDiagnosisItems(newItems);
   };
 
-  const handleAddTreatmentItem = () => {
-    setTreatmentItems([
-      ...treatmentItems,
+const handleAddTreatmentItem = () => {
+  setTreatmentItems((prev) => {
+    // Filter out items marked for deletion (flag -1) when checking for empty rows
+    const visibleItems = prev.filter(row => row.flag !== -1);
+    
+    // Check if there are any visible items
+    if (visibleItems.length === 0) {
+      // If no visible items, add a new empty row
+      return [
+        ...prev,
+        {
+          prescriptionHdId: null,
+          prescriptionDtId: null,
+          treatmentId: null,
+          drugId: "",
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "",
+          requestedDeptStocks: "",
+          templateId: "",
+          flag: 1,
+        },
+      ];
+    }
+    
+    const lastItem = visibleItems[visibleItems.length - 1];
+    const isLastRowEmpty = !lastItem?.drugId && 
+                          !lastItem?.drugName && 
+                          !lastItem?.dosage && 
+                          !lastItem?.frequency && 
+                          !lastItem?.days;
+
+    // If the last row is empty, don't add a new row
+    if (isLastRowEmpty) {
+      return prev;
+    }
+
+    // Add a new empty row
+    return [
+      ...prev,
       {
+        prescriptionHdId: null,
+        prescriptionDtId: null,
         treatmentId: null,
-        drugIdId: "",
+        drugId: "",
         drugName: "",
         dispUnit: "",
         dosage: "",
@@ -3683,129 +3949,167 @@ const OpdRRecallPatient = () => {
         total: "",
         instruction: "",
         stock: "",
+        requestedDeptStocks: "",
+        templateId: "",
+        flag: 1,
       },
-    ]);
-  };
+    ];
+  });
+};
 
   const getFreqDetails = (feqId) => {
     return allFrequencies.find((d) => Number(d.frequencyId) === Number(feqId));
   };
 
-  const handleTreatmentTemplateSelect = async (templateId) => {
-    if (!templateId || templateId === "Select..") return;
-    if (selectedTreatmentTemplateIds.has(templateId)) return;
+const handleTreatmentTemplateSelect = async (templateId) => {
+  if (!templateId || templateId === "Select..") return;
+  if (selectedTreatmentTemplateIds.has(templateId)) return;
 
-    const template = opdTemplateData.find((t) => t.templateId == templateId);
-    if (!template || !template.treatments) return;
+  const template = opdTemplateData.find((t) => t.templateId == templateId);
+  if (!template || !template.treatments) return;
 
-    setTreatmentTemplateLoading(true);
-    try {
-      const hydratedTreatments = await Promise.all(
-        template.treatments.map(async (t) => {
-          const itemDetails = t.itemId
-            ? await fetchDrugDetailsById(t.itemId)
-            : null;
-          const resolvedDrug = itemDetails || t;
-          const resolvedDosageUnit =
-            resolvedDrug.dosageUnit || t.dosageUnit || "";
-          const resolvedDispUnit =
-            resolvedDrug.dispUnitName ||
-            resolvedDrug.unitAuName ||
-            resolvedDrug.dispUnit ||
-            resolvedDrug.dispU ||
-            t.dispUnit ||
-            "";
-          const resolvedStock =
-            resolvedDrug.requestedDeptStocks ??
-            resolvedDrug.currentDeptStocks ??
-            resolvedDrug.stock ??
-            t.requestedDeptStocks ??
-            t.currentDeptStocks ??
-            t.stocks ??
-            t.stock ??
-            "0";
+  setTreatmentTemplateLoading(true);
+  try {
+    const hydratedTreatments = await Promise.all(
+      template.treatments.map(async (t) => {
+        const itemDetails = t.itemId
+          ? await fetchDrugDetailsById(t.itemId)
+          : null;
+        const resolvedDrug = itemDetails || t;
+        const resolvedDosageUnit =
+          resolvedDrug.dosageUnit || t.dosageUnit || "";
+        const resolvedDispUnit =
+          resolvedDrug.dispUnitName ||
+          resolvedDrug.unitAuName ||
+          resolvedDrug.dispUnit ||
+          resolvedDrug.dispU ||
+          t.dispUnit ||
+          "";
+        const resolvedStock =
+          resolvedDrug.requestedDeptStocks ??
+          resolvedDrug.currentDeptStocks ??
+          resolvedDrug.stock ??
+          t.requestedDeptStocks ??
+          t.currentDeptStocks ??
+          t.stocks ??
+          t.stock ??
+          "0";
 
-          return {
-            ...t,
-            dosageUnit: resolvedDosageUnit,
-            dispUnit: resolvedDispUnit,
-            stocks: resolvedStock,
-            stock: resolvedStock,
-            itemName:
-              resolvedDrug.nomenclature ||
-              resolvedDrug.itemName ||
-              t.itemName ||
-              "",
-          };
-        }),
-      );
+        return {
+          ...t,
+          dosageUnit: resolvedDosageUnit,
+          dispUnit: resolvedDispUnit,
+          stocks: resolvedStock,
+          stock: resolvedStock,
+          itemName:
+            resolvedDrug.nomenclature ||
+            resolvedDrug.itemName ||
+            t.itemName ||
+            "",
+        };
+      }),
+    );
 
-      setTreatmentItems((prevList) => {
-        const updatedList = [...prevList];
-        const existingDrugIds = updatedList.map((i) => i.drugId);
+    setTreatmentItems((prevList) => {
+      // Check if we only have the default empty row
+      const hasOnlyEmptyRow = prevList.length === 1 && 
+        !prevList[0].drugId && 
+        !prevList[0].drugName && 
+        !prevList[0].dosage && 
+        !prevList[0].frequency && 
+        !prevList[0].days;
 
-        const duplicateItems = [];
-        const newItemsToAdd = [];
+      let updatedList = [...prevList];
+      
+      // If only empty row exists, start fresh
+      if (hasOnlyEmptyRow) {
+        updatedList = [];
+      }
 
-        hydratedTreatments.forEach((t) => {
-          if (existingDrugIds.includes(t.itemId)) {
-            duplicateItems.push(t);
-            updatedList.forEach((row) => {
-              if (row.drugId === t.itemId) {
-                const oldIds = row.templateId ? row.templateId.split(",") : [];
-                if (!oldIds.includes(String(templateId))) {
-                  row.templateId = [...oldIds, String(templateId)].join(",");
-                }
+      const existingDrugIds = updatedList.map((i) => i.drugId);
+
+      const duplicateItems = [];
+      const newItemsToAdd = [];
+
+      hydratedTreatments.forEach((t) => {
+        if (existingDrugIds.includes(t.itemId)) {
+          duplicateItems.push(t);
+          updatedList.forEach((row) => {
+            if (row.drugId === t.itemId) {
+              const oldIds = row.templateId ? row.templateId.split(",") : [];
+              if (!oldIds.includes(String(templateId))) {
+                row.templateId = [...oldIds, String(templateId)].join(",");
               }
-            });
-          } else {
-            newItemsToAdd.push(t);
-          }
-        });
-
-        if (duplicateItems.length > 0) {
-          setDuplicateItems(duplicateItems);
-          setShowDuplicatePopup(true);
+            }
+          });
+        } else {
+          newItemsToAdd.push(t);
         }
-
-        const formattedNew = newItemsToAdd.map((t) => {
-          const freName = getFreqDetails(t.frequencyId);
-          const drugStock = t.stock ?? t.stocks ?? "0";
-
-          const newItem = {
-            treatmentId: null,
-            drugId: t.itemId,
-            drugName: t.itemName,
-            dosageUnit: t?.dosageUnit ?? "",
-            dispUnit: t?.dispUnit ?? "",
-            dosage: t.dosage ?? "",
-            frequency: freName?.frequencyName ?? "",
-            days: t.noOfDays ?? "",
-            instruction: t.instruction ?? "",
-            stock: drugStock,
-            requestedDeptStocks: drugStock,
-            templateId: String(templateId),
-            itemClassId: t?.itemClassId ?? null,
-            aDispQty: t?.aDispQty ?? 1,
-          };
-
-          newItem.total = calculateTotal(newItem);
-          return newItem;
-        });
-
-        if (isOnlyDefaultTreatmentRow(updatedList)) {
-          return formattedNew;
-        }
-
-        return [...updatedList, ...formattedNew];
       });
 
-      setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
-      setSelectedTreatmentTemplateId("Select..");
-    } finally {
-      setTreatmentTemplateLoading(false);
-    }
-  };
+      if (duplicateItems.length > 0) {
+        setDuplicateItems(duplicateItems);
+        setShowDuplicatePopup(true);
+      }
+
+      const formattedNew = newItemsToAdd.map((t) => {
+        const freName = getFreqDetails(t.frequencyId);
+        const drugStock = t.stock ?? t.stocks ?? "0";
+
+        const newItem = {
+          treatmentId: null,
+          drugId: t.itemId,
+          drugName: t.itemName,
+          dosageUnit: t?.dosageUnit ?? "",
+          dispUnit: t?.dispUnit ?? "",
+          dosage: t.dosage ?? "",
+          frequency: freName?.frequencyName ?? "",
+          days: t.noOfDays ?? "",
+          instruction: t.instruction ?? "",
+          stock: drugStock,
+          requestedDeptStocks: drugStock,
+          templateId: String(templateId),
+          itemClassId: t?.itemClassId ?? null,
+          aDispQty: t?.aDispQty ?? 1,
+          flag: 1, // New treatments from template should have flag 1
+        };
+
+        newItem.total = calculateTotal(newItem);
+        return newItem;
+      });
+
+      const result = [...updatedList, ...formattedNew];
+
+      // If no items were added, return a default empty row
+      if (result.length === 0) {
+        return [{
+          prescriptionHdId: null,
+          prescriptionDtId: null,
+          treatmentId: null,
+          drugId: "",
+          drugName: "",
+          dispUnit: "",
+          dosage: "",
+          frequency: "",
+          days: "",
+          total: "",
+          instruction: "",
+          stock: "",
+          requestedDeptStocks: "",
+          templateId: "",
+          flag: 0,
+        }];
+      }
+
+      return result;
+    });
+
+    setSelectedTreatmentTemplateIds((prev) => new Set([...prev, templateId]));
+    setSelectedTreatmentTemplateId("Select..");
+  } finally {
+    setTreatmentTemplateLoading(false);
+  }
+};
 
   const handleTreatmentChange = (index, field, value) => {
     const updated = [...treatmentItems];
@@ -3820,6 +4124,10 @@ const OpdRRecallPatient = () => {
     ];
     if (recalcFields.includes(field)) {
       updated[index].total = calculateTotal(updated[index]);
+    }
+
+    if (updated[index].treatmentId && updated[index].flag !== -1) {
+      updated[index].flag = 0;
     }
 
     setTreatmentItems(updated);
@@ -4914,71 +5222,66 @@ const OpdRRecallPatient = () => {
                 </div>
 
                 {/* Investigation Section */}
-                <div className="card mb-3" style={{ overflow: "visible" }}>
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("investigation")}
+<div className="card mb-3" style={{ overflow: "visible" }}>
+  <div
+    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
+    style={{ cursor: "pointer" }}
+    onClick={() => toggleSection("investigation")}
+  >
+    <h6 className="mb-0 fw-bold">Investigation</h6>
+    <span style={{ fontSize: "18px" }}>
+      {expandedSections.investigation ? "−" : "+"}
+    </span>
+  </div>
+  {expandedSections.investigation && (
+    <div className="card-body" style={{ overflow: "visible" }}>
+      {/* Selected Templates Display - FIXED */}
+      {selectedTemplateIds.size > 0 && (
+        <div className="row mb-3">
+          <div className="col-12">
+            <div className="card">
+              <div className="card-header py-2">
+                <div className="d-flex justify-content-between align-items-center">
+                  <h6 className="mb-0 fw-bold">Selected Templates</h6>
+                  <button
+                    className="btn btn-sm btn-outline-danger"
+                    onClick={handleClearAllTemplates}
                   >
-                    <h6 className="mb-0 fw-bold">Investigation</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.investigation ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.investigation && (
-                    <div className="card-body" style={{ overflow: "visible" }}>
-                      {selectedTemplateIds.size > 0 && (
-                        <div className="row mb-3">
-                          <div className="col-12">
-                            <div className="card">
-                              <div className="card-header py-2  ">
-                                <div className="d-flex justify-content-between align-items-center">
-                                  <h6 className="mb-0 fw-bold">
-                                    Selected Templates
-                                  </h6>
-                                  <button
-                                    className="btn btn-sm btn-outline-danger"
-                                    onClick={handleRemoveTreatmentTemplateItems}
-                                  >
-                                    Clear All Templates
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="card-body">
-                                <div className="d-flex flex-wrap gap-2">
-                                  {Array.from(selectedTreatmentTemplateIds).map(
-                                    (templateId) => {
-                                      const template = opdTemplateData.find(
-                                        (t) => t.templateId == templateId,
-                                      );
-                                      return template ? (
-                                        <span
-                                          key={templateId}
-                                          className="badge bg-primary d-flex align-items-center gap-1"
-                                        >
-                                          {template.opdTemplateName}
-                                          <button
-                                            type="button"
-                                            className="btn-close btn-close-white"
-                                            style={{ fontSize: "0.7rem" }}
-                                            onClick={(e) => {
-                                              e.stopPropagation();
-                                              handleRemoveTemplateItems(
-                                                templateId,
-                                              );
-                                            }}
-                                            aria-label="Remove template"
-                                          ></button>
-                                        </span>
-                                      ) : null;
-                                    },
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      )}
+                    Clear All Templates
+                  </button>
+                </div>
+              </div>
+              <div className="card-body">
+                <div className="d-flex flex-wrap gap-2">
+                  {Array.from(selectedTemplateIds).map((templateId) => {
+                    const template = investigationTemplates.find(
+                      (t) => t.templateId == templateId,
+                    );
+                    return template ? (
+                      <span
+                        key={templateId}
+                        className="badge bg-primary d-flex align-items-center gap-1"
+                      >
+                        {template.opdTemplateName}
+                        <button
+                          type="button"
+                          className="btn-close btn-close-white"
+                          style={{ fontSize: "0.7rem" }}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleRemoveTemplateItems(templateId);
+                          }}
+                          aria-label="Remove template"
+                        ></button>
+                      </span>
+                    ) : null;
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
@@ -5099,134 +5402,145 @@ const OpdRRecallPatient = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {investigationItems.map((item, index) => (
-                              <tr key={index}>
-                                <td>
-                                  <div
-                                    className="position-relative w-100"
-                                    ref={dropdownInvestigationRef}
-                                  >
+                            {investigationItems.map((item, index) => {
+                              const isOrderCompleted = item.orderStatus === "y";
+                              return (
+                                <tr key={index}>
+                                  <td>
+                                    <div
+                                      className="position-relative w-100"
+                                      ref={dropdownInvestigationRef}
+                                    >
+                                      <input
+                                        type="text"
+                                        className="form-control"
+                                        placeholder="Search Investigation..."
+                                        value={
+                                          investigationSearch[index] ??
+                                          investigationItems[index].name ??
+                                          ""
+                                        }
+                                        onChange={(e) =>
+                                          handleInvestigationSearch(
+                                            e.target.value,
+                                            index,
+                                          )
+                                        }
+                                        onClick={() => {
+                                          loadFirstInvestigationPage(index);
+                                          setOpenInvestigationDropdown(index);
+                                        }}
+                                        onBlur={() => {
+                                          setTimeout(
+                                            () =>
+                                              setOpenInvestigationDropdown(
+                                                null,
+                                              ),
+                                            200,
+                                          );
+                                        }}
+                                        disabled={isOrderCompleted}
+                                      />
+
+                                      {openInvestigationDropdown === index && (
+                                        <div
+                                          className="border rounded mt-1 bg-white position-absolute w-100"
+                                          style={{
+                                            maxHeight: "220px",
+                                            zIndex: 9999,
+                                            overflowY: "auto",
+                                          }}
+                                          onScroll={(e) => {
+                                            if (
+                                              e.target.scrollHeight -
+                                                e.target.scrollTop ===
+                                              e.target.clientHeight
+                                            ) {
+                                              loadMoreInvestigations();
+                                            }
+                                          }}
+                                        >
+                                          {investigationDropdown.length > 0 ? (
+                                            investigationDropdown.map((inv) => (
+                                              <div
+                                                key={inv.investigationId}
+                                                className="p-2 cursor-pointer hover:bg-light"
+                                                onMouseDown={(e) => {
+                                                  e.preventDefault();
+                                                  updateInvestigation(
+                                                    inv,
+                                                    index,
+                                                  );
+                                                }}
+                                              >
+                                                <strong>
+                                                  {inv.investigationName}
+                                                </strong>
+                                                <div className="text-muted small">
+                                                  {inv.mainChargeCodeName} •{" "}
+                                                  {inv.subChargeCodeName}
+                                                </div>
+                                              </div>
+                                            ))
+                                          ) : (
+                                            <div className="p-2 text-muted">
+                                              No results found
+                                            </div>
+                                          )}
+
+                                          {!investigationLastPage && (
+                                            <div className="text-center p-2 text-primary small">
+                                              Loading...
+                                            </div>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+                                  </td>
+                                  <td>
                                     <input
-                                      type="text"
+                                      type="date"
                                       className="form-control"
-                                      placeholder="Search Investigation..."
-                                      value={
-                                        investigationSearch[index] ??
-                                        investigationItems[index].name ??
-                                        ""
-                                      }
+                                      value={item.date}
                                       onChange={(e) =>
-                                        handleInvestigationSearch(
-                                          e.target.value,
+                                        handleInvestigationItemChange(
                                           index,
+                                          "date",
+                                          e.target.value,
                                         )
                                       }
-                                      onClick={() => {
-                                        loadFirstInvestigationPage(index);
-                                        setOpenInvestigationDropdown(index);
-                                      }}
-                                      onBlur={() => {
-                                        setTimeout(
-                                          () =>
-                                            setOpenInvestigationDropdown(null),
-                                          200,
-                                        );
-                                      }}
+                                      disabled={isOrderCompleted}
                                     />
-
-                                    {openInvestigationDropdown === index && (
-                                      <div
-                                        className="border rounded mt-1 bg-white position-absolute w-100"
-                                        style={{
-                                          maxHeight: "220px",
-                                          zIndex: 9999,
-                                          overflowY: "auto",
-                                        }}
-                                        onScroll={(e) => {
-                                          if (
-                                            e.target.scrollHeight -
-                                              e.target.scrollTop ===
-                                            e.target.clientHeight
-                                          ) {
-                                            loadMoreInvestigations();
-                                          }
-                                        }}
-                                      >
-                                        {investigationDropdown.length > 0 ? (
-                                          investigationDropdown.map((inv) => (
-                                            <div
-                                              key={inv.investigationId}
-                                              className="p-2 cursor-pointer hover:bg-light"
-                                              onMouseDown={(e) => {
-                                                e.preventDefault();
-                                                updateInvestigation(inv, index);
-                                              }}
-                                            >
-                                              <strong>
-                                                {inv.investigationName}
-                                              </strong>
-                                              <div className="text-muted small">
-                                                {inv.mainChargeCodeName} •{" "}
-                                                {inv.subChargeCodeName}
-                                              </div>
-                                            </div>
-                                          ))
-                                        ) : (
-                                          <div className="p-2 text-muted">
-                                            No results found
-                                          </div>
-                                        )}
-
-                                        {!investigationLastPage && (
-                                          <div className="text-center p-2 text-primary small">
-                                            Loading...
-                                          </div>
-                                        )}
-                                      </div>
-                                    )}
-                                  </div>
-                                </td>
-                                <td>
-                                  <input
-                                    type="date"
-                                    className="form-control"
-                                    value={item.date}
-                                    onChange={(e) =>
-                                      handleInvestigationItemChange(
-                                        index,
-                                        "date",
-                                        e.target.value,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddInvestigationItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveInvestigationItem(index)
-                                    }
-                                    disabled={
-                                      investigationItems.length === 1 &&
-                                      !investigationItems[0].name &&
-                                      (!investigationItems[0].templateIds ||
-                                        investigationItems[0].templateIds
-                                          .length === 0)
-                                    }
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-success"
+                                      onClick={handleAddInvestigationItem}
+                                    >
+                                      +
+                                    </button>
+                                  </td>
+                                  <td className="text-center">
+                                    <button
+                                      className="btn btn-sm btn-danger"
+                                      onClick={() =>
+                                        handleRemoveInvestigationItem(index)
+                                      }
+                                      disabled={
+                                        investigationItems.length === 1 &&
+                                        !investigationItems[0].name &&
+                                        (!investigationItems[0].templateIds ||
+                                          investigationItems[0].templateIds
+                                            .length === 0)
+                                      }
+                                      disabled={isOrderCompleted}
+                                    >
+                                      −
+                                    </button>
+                                  </td>
+                                </tr>
+                              );
+                            })}
                           </tbody>
                         </table>
                       </div>
@@ -5237,7 +5551,7 @@ const OpdRRecallPatient = () => {
                 {/* Treatment Section */}
                 <div className="card mb-3" style={{ overflow: "visible" }}>
                   <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+                    className="card-header py-3 border-bottom-1 d-flex justify-content-between align-items-center"
                     style={{ cursor: "pointer" }}
                     onClick={() => toggleSection("treatment")}
                   >
@@ -5249,6 +5563,7 @@ const OpdRRecallPatient = () => {
 
                   {expandedSections.treatment && (
                     <div className="card-body" style={{ overflow: "visible" }}>
+                      {/* Selected Templates Display */}
                       {selectedTreatmentTemplateIds.size > 0 && (
                         <div className="row mb-3">
                           <div className="col-12">
@@ -5302,6 +5617,7 @@ const OpdRRecallPatient = () => {
                         </div>
                       )}
 
+                      {/* Template Dropdown + Buttons */}
                       <div className="row mb-3 align-items-center">
                         <div className="col-md-2">
                           <label className="form-label fw-bold">Template</label>
@@ -5366,6 +5682,7 @@ const OpdRRecallPatient = () => {
                         </div>
                       )}
 
+                      {/* Treatment Table */}
                       <div
                         className="table-responsive"
                         ref={tableContainerRef}
@@ -5432,256 +5749,255 @@ const OpdRRecallPatient = () => {
                             </tr>
                           </thead>
                           <tbody>
-                            {treatmentItems.map((row, index) => {
-                              const stockQuantity = Number(
-                                row.requestedDeptStocks ?? row.stock ?? 0,
-                              );
-                              const isOutOfStock =
-                                row.drugId && stockQuantity === 0;
-                              return (
-                                <tr
-                                  key={index}
-                                  className={isOutOfStock ? "table-danger" : ""}
-                                >
-                                  <td>
-                                    <div
-                                      className="position-relative"
-                                      style={{ width: "100%", zIndex: 20 }}
-                                      ref={drugDropdownRef}
-                                    >
+                            {treatmentItems
+                              .filter((row) => row.flag !== -1) // ✅ Hide items marked for deletion
+                              .map((row, index) => {
+                                const stockQuantity = Number(
+                                  row.requestedDeptStocks ?? row.stock ?? 0,
+                                );
+                                const isOutOfStock =
+                                  row.drugId && stockQuantity === 0;
+                                return (
+                                  <tr
+                                    key={index}
+                                    className={
+                                      isOutOfStock ? "table-danger" : ""
+                                    }
+                                  >
+                                    <td>
+                                      <div
+                                        className="position-relative"
+                                        style={{ width: "100%", zIndex: 20 }}
+                                        ref={drugDropdownRef}
+                                      >
+                                        <input
+                                          type="text"
+                                          className="form-control"
+                                          placeholder="Search Drug..."
+                                          value={
+                                            row.drugName ||
+                                            drugSearch[index] ||
+                                            ""
+                                          }
+                                          onChange={(e) =>
+                                            handleDrugSearch(
+                                              e.target.value,
+                                              index,
+                                            )
+                                          }
+                                          onClick={() => {
+                                            loadFirstDrugPage(index);
+                                            setActiveDrugDropdown(index);
+                                          }}
+                                          onBlur={() => {
+                                            setTimeout(
+                                              () => setActiveDrugDropdown(null),
+                                              200,
+                                            );
+                                          }}
+                                          autoComplete="off"
+                                        />
+
+                                        {activeDrugDropdown === index && (
+                                          <div
+                                            className="border rounded mt-1 bg-white position-absolute w-100"
+                                            style={{
+                                              maxHeight: "220px",
+                                              zIndex: 9999,
+                                              overflowY: "auto",
+                                            }}
+                                            onScroll={(e) => {
+                                              if (
+                                                e.target.scrollHeight -
+                                                  e.target.scrollTop ===
+                                                e.target.clientHeight
+                                              ) {
+                                                loadMoreDrugs();
+                                              }
+                                            }}
+                                          >
+                                            {drugDropdown.length > 0 ? (
+                                              drugDropdown.map((drug) => (
+                                                <div
+                                                  key={drug.itemId}
+                                                  className="p-2 cursor-pointer"
+                                                  onMouseDown={(e) =>
+                                                    e.preventDefault()
+                                                  }
+                                                  onClick={() => {
+                                                    updateDrug(drug, index);
+                                                    setActiveDrugDropdown(null);
+                                                  }}
+                                                >
+                                                  <strong>
+                                                    {drug.nomenclature}
+                                                  </strong>{" "}
+                                                  — {drug.pvmsNo}
+                                                </div>
+                                              ))
+                                            ) : (
+                                              <div className="p-2 text-muted">
+                                                No results found
+                                              </div>
+                                            )}
+                                            {!drugLastPage && (
+                                              <div className="text-center p-2 small text-primary">
+                                                Loading...
+                                              </div>
+                                            )}
+                                          </div>
+                                        )}
+                                      </div>
+                                    </td>
+
+                                    <td style={{ width: "90px" }}>
                                       <input
                                         type="text"
                                         className="form-control"
-                                        placeholder="Search Drug..."
-                                        value={
-                                          treatmentItems[index].drugName ||
-                                          drugSearch[index] ||
-                                          ""
-                                        }
+                                        value={row.dispUnit}
                                         onChange={(e) =>
-                                          handleDrugSearch(
-                                            e.target.value,
+                                          handleTreatmentChange(
                                             index,
+                                            "dispUnit",
+                                            e.target.value,
                                           )
                                         }
-                                        onClick={() => {
-                                          loadFirstDrugPage(index);
-                                          setActiveDrugDropdown(index);
-                                        }}
-                                        onBlur={() => {
-                                          setTimeout(() => {
-                                            setActiveDrugDropdown(null);
-                                          }, 200);
-                                        }}
-                                        autoComplete="off"
+                                        readOnly
                                       />
-
-                                      {activeDrugDropdown === index && (
-                                        <div
-                                          className="border rounded mt-1 bg-white position-absolute w-100"
-                                          style={{
-                                            maxHeight: "220px",
-                                            zIndex: 9999,
-                                            overflowY: "auto",
-                                          }}
-                                          onScroll={(e) => {
-                                            if (
-                                              e.target.scrollHeight -
-                                                e.target.scrollTop ===
-                                              e.target.clientHeight
-                                            ) {
-                                              loadMoreDrugs();
-                                            }
-                                          }}
-                                        >
-                                          {drugDropdown.length > 0 ? (
-                                            drugDropdown.map((drug) => (
-                                              <div
-                                                key={drug.itemId}
-                                                className="p-2 cursor-pointer"
-                                                onMouseDown={(e) =>
-                                                  e.preventDefault()
-                                                }
-                                                onClick={() => {
-                                                  updateDrug(drug, index);
-                                                  setActiveDrugDropdown(null);
-                                                }}
-                                              >
-                                                <strong>
-                                                  {drug.nomenclature}
-                                                </strong>{" "}
-                                                — {drug.pvmsNo}
-                                              </div>
-                                            ))
-                                          ) : (
-                                            <div className="p-2 text-muted">
-                                              No results found
-                                            </div>
-                                          )}
-                                          {!drugLastPage && (
-                                            <div className="text-center p-2 small text-primary">
-                                              Loading...
-                                            </div>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-                                  </td>
-
-                                  <td style={{ width: "90px" }}>
-                                    <input
-                                      type="text"
-                                      className="form-control"
-                                      value={row.dispUnit}
-                                      onChange={(e) =>
-                                        handleTreatmentChange(
-                                          index,
-                                          "dispUnit",
-                                          e.target.value,
-                                        )
-                                      }
-                                      readOnly
-                                    />
-                                  </td>
-                                  <td style={{ width: "70px" }}>
-                                    <input
-                                      type="number"
-                                      className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.dosage) ? "is-invalid" : ""}`}
-                                      value={row.dosage}
-                                      onChange={(e) =>
-                                        handleTreatmentChange(
-                                          index,
-                                          "dosage",
-                                          e.target.value,
-                                        )
-                                      }
-                                      min={0}
-                                    />
-                                  </td>
-                                  <td style={{ width: "120px" }}>
-                                    <select
-                                      className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.frequency) ? "is-invalid" : ""}`}
-                                      value={row.frequency || ""}
-                                      onChange={(e) =>
-                                        handleTreatmentChange(
-                                          index,
-                                          "frequency",
-                                          e.target.value,
-                                        )
-                                      }
-                                    >
-                                      <option value="">Select..</option>
-                                      {allFrequencies.map((f) => (
-                                        <option
-                                          key={f.frequencyId}
-                                          value={f.frequencyName}
-                                        >
-                                          {f.frequencyName}
+                                    </td>
+                                    <td style={{ width: "70px" }}>
+                                      <input
+                                        type="number"
+                                        className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.dosage) ? "is-invalid" : ""}`}
+                                        value={row.dosage}
+                                        onChange={(e) =>
+                                          handleTreatmentChange(
+                                            index,
+                                            "dosage",
+                                            e.target.value,
+                                          )
+                                        }
+                                        min={0}
+                                      />
+                                    </td>
+                                    <td style={{ width: "120px" }}>
+                                      <select
+                                        className={`form-select ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.frequency) ? "is-invalid" : ""}`}
+                                        value={row.frequency || ""}
+                                        onChange={(e) =>
+                                          handleTreatmentChange(
+                                            index,
+                                            "frequency",
+                                            e.target.value,
+                                          )
+                                        }
+                                      >
+                                        <option value="">Select..</option>
+                                        {allFrequencies.map((f) => (
+                                          <option
+                                            key={f.frequencyId}
+                                            value={f.frequencyName}
+                                          >
+                                            {f.frequencyName}
+                                          </option>
+                                        ))}
+                                      </select>
+                                    </td>
+                                    <td style={{ width: "70px" }}>
+                                      <input
+                                        type="number"
+                                        className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.days) ? "is-invalid" : ""}`}
+                                        value={row.days}
+                                        onChange={(e) =>
+                                          handleTreatmentChange(
+                                            index,
+                                            "days",
+                                            e.target.value,
+                                          )
+                                        }
+                                        min={0}
+                                      />
+                                    </td>
+                                    <td style={{ width: "70px" }}>
+                                      <input
+                                        type="number"
+                                        className="form-control"
+                                        value={row.total}
+                                        readOnly
+                                      />
+                                    </td>
+                                    <td style={{ width: "140px" }}>
+                                      <select
+                                        className="form-select"
+                                        value={row.instruction}
+                                        onChange={(e) =>
+                                          handleTreatmentChange(
+                                            index,
+                                            "instruction",
+                                            e.target.value,
+                                          )
+                                        }
+                                      >
+                                        <option value="">Select...</option>
+                                        <option value="After Meal">
+                                          After Meal
                                         </option>
-                                      ))}
-                                    </select>
-                                  </td>
-                                  <td style={{ width: "70px" }}>
-                                    <input
-                                      type="number"
-                                      className={`form-control ${errors.treatment && (row.drugName || row.drugId) && !hasValue(row.days) ? "is-invalid" : ""}`}
-                                      value={row.days}
-                                      onChange={(e) =>
-                                        handleTreatmentChange(
-                                          index,
-                                          "days",
-                                          e.target.value,
-                                        )
-                                      }
-                                      min={0}
-                                    />
-                                  </td>
-                                  <td style={{ width: "70px" }}>
-                                    <input
-                                      type="number"
-                                      className="form-control"
-                                      value={row.total}
-                                      onChange={(e) =>
-                                        handleTreatmentChange(
-                                          index,
-                                          "total",
-                                          e.target.value,
-                                        )
-                                      }
-                                      readOnly
-                                    />
-                                  </td>
-                                  <td style={{ width: "140px" }}>
-                                    <select
-                                      className="form-select"
-                                      value={row.instruction}
-                                      onChange={(e) =>
-                                        handleTreatmentChange(
-                                          index,
-                                          "instruction",
-                                          e.target.value,
-                                        )
-                                      }
+                                        <option value="Before Meal">
+                                          Before Meal
+                                        </option>
+                                        <option value="With Food">
+                                          With Food
+                                        </option>
+                                      </select>
+                                    </td>
+                                    <td style={{ width: "100px" }}>
+                                      <input
+                                        type="number"
+                                        className="form-control"
+                                        value={row.stock || 0}
+                                        readOnly
+                                      />
+                                    </td>
+                                    <td
+                                      style={{ width: "60px" }}
+                                      className="text-center"
                                     >
-                                      <option value="">Select...</option>
-                                      <option value="After Meal">
-                                        After Meal
-                                      </option>
-                                      <option value="Before Meal">
-                                        Before Meal
-                                      </option>
-                                      <option value="With Food">
-                                        With Food
-                                      </option>
-                                    </select>
-                                  </td>
-                                  <td style={{ width: "100px" }}>
-                                    <input
-                                      type="number"
-                                      className="form-control"
-                                      value={row.stock || 0}
-                                      readOnly
-                                    />
-                                  </td>
-                                  <td
-                                    style={{ width: "60px" }}
-                                    className="text-center"
-                                  >
-                                    <button
-                                      className="btn btn-sm btn-success"
-                                      onClick={handleAddTreatmentItem}
+                                      <button
+                                        className="btn btn-sm btn-success"
+                                        onClick={handleAddTreatmentItem}
+                                      >
+                                        +
+                                      </button>
+                                    </td>
+                                    <td
+                                      style={{ width: "60px" }}
+                                      className="text-center"
                                     >
-                                      +
-                                    </button>
-                                  </td>
-                                  <td
-                                    style={{ width: "60px" }}
-                                    className="text-center"
-                                  >
-                                    <button
-                                      className="btn btn-sm btn-danger"
-                                      onClick={() =>
-                                        handleRemoveTreatmentItem(index)
-                                      }
-                                      disabled={
-                                        treatmentItems.length === 1 &&
-                                        !treatmentItems[0].drugName &&
-                                        !treatmentItems[0].dispUnit &&
-                                        !treatmentItems[0].dosage &&
-                                        !treatmentItems[0].frequency &&
-                                        !treatmentItems[0].days &&
-                                        !treatmentItems[0].total &&
-                                        !treatmentItems[0].instruction &&
-                                        treatmentItems[0].stock === "0" &&
-                                        !treatmentItems[0].treatmentId
-                                      }
-                                    >
-                                      −
-                                    </button>
-                                  </td>
-                                </tr>
-                              );
-                            })}
+                                      <button
+                                        className="btn btn-sm btn-danger"
+                                        onClick={() =>
+                                          handleRemoveTreatmentItem(index)
+                                        }
+                                        disabled={
+                                          // Only disable if it's the last row AND it's already empty AND not an existing record
+                                          treatmentItems.filter(
+                                            (r) => r.flag !== -1,
+                                          ).length === 1 &&
+                                          !treatmentItems[index].treatmentId &&
+                                          !treatmentItems[index]
+                                            .prescriptionDtId &&
+                                          !treatmentItems[index].drugName &&
+                                          !treatmentItems[index].dosage &&
+                                          !treatmentItems[index].frequency &&
+                                          !treatmentItems[index].days
+                                        }
+                                      >
+                                        −
+                                      </button>
+                                    </td>
+                                  </tr>
+                                );
+                              })}
                           </tbody>
                         </table>
                       </div>
@@ -5689,7 +6005,6 @@ const OpdRRecallPatient = () => {
                       {/* Treatment Advice Subsection */}
                       <div className="card mt-3">
                         <h6 className="mb-0 fw-bold p-3">Treatment Advice</h6>
-
                         <div className="card-body pt-0">
                           <div className="d-flex align-items-end">
                             <textarea
@@ -5701,7 +6016,6 @@ const OpdRRecallPatient = () => {
                                 setGeneralTreatmentAdvice(e.target.value)
                               }
                             />
-
                             <button
                               className="btn btn-sm btn-outline-success p-1 px-2"
                               onClick={(e) => {
@@ -6202,7 +6516,8 @@ const OpdRRecallPatient = () => {
                               onChange={() => setSurgeryType("minor")}
                             />
                             <label className="form-check-label" htmlFor="minor">
-                              Minor                            </label>
+                              Minor{" "}
+                            </label>
                           </div>
                           <div style={{ cursor: "default" }}>
                             <div className="d-flex align-items-center">

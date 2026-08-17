@@ -1156,7 +1156,6 @@ const LabRegistration = () => {
 
         const labResult = await postRequest(
           `${LAB_REGISTRATION}`,labData);
-        debugger
         if (!labResult || labResult.status !== 200) {
           throw new Error(labResult?.message || "Lab registration failed.");
         }
