@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from "react";
 import { getRequest } from "../../../service/apiService";
-import { GET_ADMISSION_DETAILS_BY_INPATIENT } from "../../../config/apiConfig";
+import { GET_ADMISSION_DETAILS_BY_INPATIENT, API_HOST } from "../../../config/apiConfig";
 
 const AdmissionDetails = ({ selectedPatient }) => {
   const [loading, setLoading] = useState(false);
@@ -71,7 +71,8 @@ const AdmissionDetails = ({ selectedPatient }) => {
             id: idx + 1,
             name: doc.documentName || "",
             remarks: doc.documentRemarks || "",
-            fileName: doc.fileName || ""
+            fileName: doc.fileName || "",
+            filePath: doc.filePath || ""
           })) : [];
           setDocuments(docs);
         }
@@ -338,7 +339,16 @@ const AdmissionDetails = ({ selectedPatient }) => {
                         <td>{doc.remarks}</td>
                         <td>{doc.fileName}</td>
                         <td>
-                          <button className="btn btn-sm btn-outline-primary me-1" title="View">
+                          <button 
+                            className="btn btn-sm btn-outline-primary me-1" 
+                            title="View"
+                            onClick={() => {
+                              if (doc.filePath) {
+                                const normalizedPath = doc.filePath.replace(/\\/g, '/');
+                                window.open(`${API_HOST}/${normalizedPath}`, '_blank');
+                              }
+                            }}
+                          >
                             <i className="fa fa-eye"></i>
                           </button>
                           {/* <button className="btn btn-sm btn-outline-secondary" title="Download">
