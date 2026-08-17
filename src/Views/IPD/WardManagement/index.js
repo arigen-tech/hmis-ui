@@ -13,6 +13,7 @@ import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
+import AdmissionDetails from "../AdmissionDetails"; // adjust path as needed
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -129,22 +130,23 @@ const WardManagement = () => {
     fetchBeds()
   }, [selectedWard])
 
-  // Added "IPD Initial Assessment" right after Clinical Dashboard
+  // Updated tab order as per requirement
   const caseSheetTabs = [
+    "Admission Details",
+    "IPD Initial Assessment",
     "Clinical Dashboard",
-    "IPD Initial Assessment",          // <-- new tab
     "Doctor Visit / Case Notes",
-    "Investigations / Orders",
-    "Medication & Treatment (MAR)",
     "Vitals & Monitoring",
+    "Investigations / Orders",
+    "Medication / MAR",
+    "Blood / Transfusion",
+    "OT Details",
     "Nursing Care / Procedures",
     "Diet",
-    "Ward / Bed Transfer",
     "Shift Handover",
+    "Ward / Bed Transfer",
     "Discharge"
   ]
-
-
 
   const stats = {
     vacantBeds: patientData.filter(p => p.status === 'VACANT').length,
@@ -781,12 +783,15 @@ const WardManagement = () => {
                               <ClinicalDashboard selectedPatient={selectedPatient} />
                             )}
 
-                            {/* New IPD Initial Assessment Tab */}
+                            {activeTab === "Admission Details" && (
+  <AdmissionDetails selectedPatient={selectedPatient} />
+)}
+
                             {activeTab === "IPD Initial Assessment" && (
                               <IPDInitialAssessment selectedPatient={selectedPatient} />
                             )}
 
-                            {activeTab === "Medication & Treatment (MAR)" && (
+                            {activeTab === "Medication / MAR" && (
                               < MedicationModule selectedPatient={selectedPatient} />
                             )}
 
@@ -818,11 +823,11 @@ const WardManagement = () => {
                               <NursingCareModule selectedPatient={selectedPatient} />
                             )}
 
-                            {/* Fallback for any undefined tabs (optional) */}
+                            {/* Fallback for any undefined tabs */}
                             {activeTab !== "Clinical Dashboard" &&
                               activeTab !== "IPD Initial Assessment" &&
+                              activeTab !== "Medication / MAR" &&
                               activeTab !== "Doctor Visit / Case Notes" &&
-                              activeTab !== "Medication & Treatment (MAR)" &&
                               activeTab !== "Ward / Bed Transfer" &&
                               activeTab !== "Vitals & Monitoring" &&
                               activeTab !== "Investigations / Orders" &&
@@ -830,7 +835,6 @@ const WardManagement = () => {
                               activeTab !== "Discharge" &&
                               activeTab !== "Nursing Care / Procedures" && (
                               <div>
-                                <p>Content for {activeTab} will be displayed here.</p>
                               </div>
                             )}
                           </div>
