@@ -107,6 +107,62 @@ const dummyAdmissions = [
   },
 ];
 
+// Sample investigation data for Lab/Radio order tracking
+const sampleInvestigations = [
+  {
+    orderId: "LAB-2001",
+    testName: "Complete Blood Count (CBC)",
+    category: "Lab",
+    orderedAt: "2026-07-15T10:45:00",
+    status: "Report Generated",
+    patientName: "Ravi Kumar",
+    mobileNo: "9876543210",
+    age: 45,
+    gender: "Male",
+    sampleId: "SMP-1001",
+    report: "Hb 13.2 g/dL; WBC 8200; Platelets 2.4L",
+  },
+  {
+    orderId: "RAD-2002",
+    testName: "Chest X-Ray",
+    category: "Radio",
+    orderedAt: "2026-07-15T12:00:00",
+    status: "Report Generated",
+    patientName: "Ravi Kumar",
+    mobileNo: "9876543210",
+    age: 45,
+    gender: "Male",
+    sampleId: "SMP-1002",
+    report: "No active lung consolidation",
+  },
+  {
+    orderId: "LAB-2003",
+    testName: "Serum Creatinine",
+    category: "Lab",
+    orderedAt: "2026-07-16T08:10:00",
+    status: "In Progress",
+    patientName: "Ravi Kumar",
+    mobileNo: "9876543210",
+    age: 45,
+    gender: "Male",
+    sampleId: "SMP-1003",
+    report: "",
+  },
+  {
+    orderId: "LAB-2004",
+    testName: "Urine Routine",
+    category: "Lab",
+    orderedAt: "2026-07-17T09:30:00",
+    status: "Sample Collected",
+    patientName: "Ravi Kumar",
+    mobileNo: "9876543210",
+    age: 45,
+    gender: "Male",
+    sampleId: "SMP-1004",
+    report: "",
+  },
+];
+
 const IPDDischargeRecords = () => {
   // ---------- STATE ----------
   const [searchMobileNo, setSearchMobileNo] = useState("");
@@ -123,10 +179,8 @@ const IPDDischargeRecords = () => {
   const [showDetails, setShowDetails] = useState(false);
   const [selectedAdmission, setSelectedAdmission] = useState(null);
 
-  // Report tab state
-  const [activeReportTab, setActiveReportTab] = useState("dailyCaseSheet"); // "dailyCaseSheet" | "bill" | "dischargeSummary"
-  // For bill sub-tabs
-  const [billSubTab, setBillSubTab] = useState("coveringLetter"); // "coveringLetter" | "billSummary" | "detailedBill"
+  // Report tab state (only main tabs)
+  const [activeReportTab, setActiveReportTab] = useState("admission"); // admission | clinicalNursing | investigation | discharge | billing
 
   // ---------- FORMATTING HELPERS ----------
   const formatDate = (dateString) => {
@@ -194,9 +248,8 @@ const IPDDischargeRecords = () => {
   const handleRowClick = (admission) => {
     setSelectedAdmission(admission);
     setShowDetails(true);
-    // Reset report tabs to first
-    setActiveReportTab("dailyCaseSheet");
-    setBillSubTab("coveringLetter");
+    // Reset main report tab
+    setActiveReportTab("admission");
   };
 
   // ---------- BACK TO LIST ----------
@@ -279,7 +332,7 @@ const IPDDischargeRecords = () => {
                           <th>Mobile</th>
                           <th>Ward/Room/Bed</th>
                           <th>Admission Date</th>
-                          <th>Discharge Date</th> {/* NEW COLUMN */}
+                          <th>Discharge Date</th>
                           <th>Billing Type</th>
                         </tr>
                       </thead>
@@ -316,7 +369,7 @@ const IPDDischargeRecords = () => {
                               <td>{item.mobileNo}</td>
                               <td>{item.ward}/{item.room}/{item.bed}</td>
                               <td>{formatDate(item.admissionDateTime)}</td>
-                              <td>{formatDate(item.dischargeDate)}</td> {/* NEW DATA */}
+                              <td>{formatDate(item.dischargeDate)}</td>
                               <td>
                                 <span className="badge bg-info">{item.billingType}</span>
                               </td>
@@ -455,76 +508,143 @@ const IPDDischargeRecords = () => {
                         <div className="card-header py-3 border-bottom-1">
                           <h6 className="mb-0 fw-bold">Reports</h6>
                         </div>
+
                         <div className="card-body">
-                          {/* Tab buttons */}
+                          {/* Main report tabs */}
                           <ul className="nav nav-tabs mb-3">
                             <li className="nav-item">
                               <button
-                                className={`nav-link ${activeReportTab === "dailyCaseSheet" ? "active" : ""}`}
-                                onClick={() => setActiveReportTab("dailyCaseSheet")}
+                                className={`nav-link ${activeReportTab === "admission" ? "active" : ""}`}
+                                onClick={() => setActiveReportTab("admission")}
                               >
-                                Daily Case Sheet
+                                Admission & Internal Assessment
                               </button>
                             </li>
                             <li className="nav-item">
                               <button
-                                className={`nav-link ${activeReportTab === "bill" ? "active" : ""}`}
-                                onClick={() => setActiveReportTab("bill")}
+                                className={`nav-link ${activeReportTab === "clinicalNursing" ? "active" : ""}`}
+                                onClick={() => setActiveReportTab("clinicalNursing")}
                               >
-                                Bill
+                                Clinical Nursing
                               </button>
                             </li>
                             <li className="nav-item">
                               <button
-                                className={`nav-link ${activeReportTab === "dischargeSummary" ? "active" : ""}`}
-                                onClick={() => setActiveReportTab("dischargeSummary")}
+                                className={`nav-link ${activeReportTab === "investigation" ? "active" : ""}`}
+                                onClick={() => setActiveReportTab("investigation")}
                               >
-                                Discharge Summary
+                                Investigation
+                              </button>
+                            </li>
+                            <li className="nav-item">
+                              <button
+                                className={`nav-link ${activeReportTab === "discharge" ? "active" : ""}`}
+                                onClick={() => setActiveReportTab("discharge")}
+                              >
+                                Discharge
+                              </button>
+                            </li>
+                            <li className="nav-item">
+                              <button
+                                className={`nav-link ${activeReportTab === "billing" ? "active" : ""}`}
+                                onClick={() => setActiveReportTab("billing")}
+                              >
+                                Billing
                               </button>
                             </li>
                           </ul>
 
-                          {/* Tab content - intentionally left as provided */}
-                          <div className="tab-content">
-                            {/* Daily Case Sheet */}
+                          {/* Admission & Internal Assessment – buttons only */}
+                          {activeReportTab === "admission" && (
+                            <div className="d-flex flex-wrap gap-2">
+                              <button type="button" className="btn btn-outline-primary">Admission Slip</button>
+                              <button type="button" className="btn btn-outline-primary">Internal Medical Assessment</button>
+                              <button type="button" className="btn btn-outline-primary">Consent Form</button>
+                              <button type="button" className="btn btn-outline-primary">Patient Labels / Wristband</button>
+                            </div>
+                          )}
 
+                          {/* Clinical Nursing – buttons only */}
+                          {activeReportTab === "clinicalNursing" && (
+                            <div className="d-flex flex-wrap gap-2">
+                              <button type="button" className="btn btn-outline-primary">IPD Case Sheet</button>
+                              <button type="button" className="btn btn-outline-primary">Vital Chart</button>
+                              <button type="button" className="btn btn-outline-primary">Intake / Outtake</button>
+                            </div>
+                          )}
 
-                            {/* Bill */}
-                            {activeReportTab === "bill" && (
-                              <div>
-                                <ul className="nav nav-pills mb-3">
-                                  <li className="nav-item">
-                                    <button
-                                      className={`nav-link ${billSubTab === "coveringLetter" ? "active" : ""}`}
-                                      onClick={() => setBillSubTab("coveringLetter")}
-                                    >
-                                      Covering Letter
-                                    </button>
-                                  </li>
-                                  <li className="nav-item">
-                                    <button
-                                      className={`nav-link ${billSubTab === "billSummary" ? "active" : ""}`}
-                                      onClick={() => setBillSubTab("billSummary")}
-                                    >
-                                      Bill Summary
-                                    </button>
-                                  </li>
-                                  <li className="nav-item">
-                                    <button
-                                      className={`nav-link ${billSubTab === "detailedBill" ? "active" : ""}`}
-                                      onClick={() => setBillSubTab("detailedBill")}
-                                    >
-                                      Detailed Bill
-                                    </button>
-                                  </li>
-                                </ul>
+                          {/* Investigation – table with new headings */}
+                          {activeReportTab === "investigation" && (
+                            <div className="border p-3">
+                              <h6 className="fw-bold"> Order Tracking</h6>
+
+                              <table className="table table-bordered table-hover">
+                                <thead>
+                                  <tr>
+                                    <th>Order No</th>
+                                    <th>Order Date</th>
+                                    <th>Patient Name</th>
+                                    <th>Mobile No</th>
+                                    <th>Age / Gender</th>
+                                    <th>Sample ID</th>
+                                    <th>Investigation Name</th>
+                                    <th>Investigation Status</th>
+                                    <th>Report</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  {sampleInvestigations.map((inv) => (
+                                    <tr key={inv.orderId}>
+                                      <td>{inv.orderId}</td>
+                                      <td>{formatDate(inv.orderedAt)}</td>
+                                      <td>{inv.patientName}</td>
+                                      <td>{inv.mobileNo}</td>
+                                      <td>{inv.age} / {inv.gender}</td>
+                                      <td>{inv.sampleId}</td>
+                                      <td>{inv.testName}</td>
+                                      <td>
+                                        <span
+                                          className={`badge ${
+                                            inv.status === "Report Generated"
+                                              ? "bg-success"
+                                              : inv.status === "In Progress"
+                                              ? "bg-warning text-dark"
+                                              : inv.status === "Sample Collected"
+                                              ? "bg-info"
+                                              : "bg-secondary"
+                                          }`}
+                                        >
+                                          {inv.status}
+                                        </span>
+                                      </td>
+                                      <td>{inv.report || "-"}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+
                               
-                              </div>
-                            )}
+                            </div>
+                          )}
 
-                            {/* Discharge Summary */}
-                         
-                          </div>
+                          {/* Discharge – buttons only */}
+                          {activeReportTab === "discharge" && (
+                            <div className="d-flex flex-wrap gap-2">
+                              <button type="button" className="btn btn-outline-primary">Discharge Summary</button>
+                              <button type="button" className="btn btn-outline-primary">Discharge Slip</button>
+                            </div>
+                          )}
+
+                          {/* Billing – buttons only */}
+                          {activeReportTab === "billing" && (
+                            <div className="d-flex flex-wrap gap-2">
+                              <button type="button" className="btn btn-outline-primary">Bill Summary</button>
+                              <button type="button" className="btn btn-outline-primary">Detailed Billing Report</button>
+                              <button type="button" className="btn btn-outline-primary">Advance Payment</button>
+                              <button type="button" className="btn btn-outline-primary">Final Payment</button>
+                              <button type="button" className="btn btn-outline-primary">Refund Receipt</button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>

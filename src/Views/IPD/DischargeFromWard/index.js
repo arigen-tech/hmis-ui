@@ -603,6 +603,21 @@ const DischargeFromWard = ({ selectedPatient }) => {
   };
 
   // ---------- Save / Submit Handlers ----------
+  const handleGenerateReport = async () => {
+    try {
+      setIsGeneratingReport(true);
+      const reportUrl = `${GET_DISCHARGE_SUMMARY_REPORT_URL}?inPatientId=${inpatientId}`;
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, "D");
+      const fileURL = window.URL.createObjectURL(blob);
+      setReportPdfUrl(fileURL);
+    } catch (error) {
+      console.error("Error generating report:", error);
+      showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
+    } finally {
+      setIsGeneratingReport(false);
+    }
+  };
+
   const submitData = async (status) => {
     if (status === "S" && dischargeData.paymentStatus !== "PAID") {
       showConfirmationPopup("Payment is not completed against the FINAL bill. Please clear payment before discharge.", "warning", () => { }, null, "OK", "");
@@ -703,25 +718,12 @@ const DischargeFromWard = ({ selectedPatient }) => {
             setDischargeData(prev => ({ ...prev, deleteMedicationIds: [] }));
 
             showConfirmationPopup(
-              `${successMsg} Do you want to view the report?`,
+              successMsg,
               "success",
-              async () => {
-                try {
-                  setIsGeneratingReport(true);
-                  const reportUrl = `${GET_DISCHARGE_SUMMARY_REPORT_URL}?inPatientId=${inpatientId}`;
-                  const blob = await fetchPdfReportForViewAndPrint(reportUrl, "D");
-                  const fileURL = window.URL.createObjectURL(blob);
-                  setReportPdfUrl(fileURL);
-                } catch (error) {
-                  console.error("Error generating report:", error);
-                  showConfirmationPopup("Failed to generate report", "error", () => { }, null, "OK", "");
-                } finally {
-                  setIsGeneratingReport(false);
-                }
-              },
               () => { },
-              "Yes",
-              "No"
+              null,
+              "OK",
+              ""
             );
           } else {
             showConfirmationPopup(
@@ -1391,13 +1393,22 @@ const DischargeFromWard = ({ selectedPatient }) => {
 
             {/* Buttons */}
             <div className="d-flex justify-content-between mt-4">
-              <button
-                className="btn btn-secondary btn-sm"
-                onClick={handleSaveDraft}
-                disabled={isSaving}
-              >
-                <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save (Draft)"}
-              </button>
+              <div className="d-flex gap-2">
+                <button
+                  className="btn btn-secondary btn-sm"
+                  onClick={handleSaveDraft}
+                  disabled={isSaving}
+                >
+                  <i className="fa fa-save me-1"></i> {isSaving ? "Saving..." : "Save (Draft)"}
+                </button>
+                <button
+                  className="btn btn-info btn-sm text-white"
+                  onClick={handleGenerateReport}
+                  disabled={isGeneratingReport}
+                >
+                  <i className="fa fa-file-pdf me-1"></i> {isGeneratingReport ? "Generating..." : "Report"}
+                </button>
+              </div>
               <button
                 className="btn btn-danger btn-sm"
                 onClick={handleSubmitDischarge}

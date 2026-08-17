@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import { getRequest, putRequest } from "../../../service/apiService"
-import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD } from "../../../config/apiConfig"
+import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD, GET_IP_DIAGNOSIS_ENTRY } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
@@ -13,9 +13,11 @@ import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
+import AdmissionDetails from "../AdmissionDetails"; // adjust path as needed
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
+  const [patientDiagnoses, setPatientDiagnoses] = useState("")
   const [activeTab, setActiveTab] = useState("Clinical Dashboard")
   const [showPatientList, setShowPatientList] = useState(true)
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false)
@@ -25,6 +27,31 @@ const WardManagement = () => {
   const [loadingBeds, setLoadingBeds] = useState(false)
   const [loadingWards, setLoadingWards] = useState(false)
   const [deptView, setDeptView] = useState(null) // null | "critical" | "transfer" | "worklist"
+
+  useEffect(() => {
+    const fetchDiagnoses = async () => {
+      if (selectedPatient?.inpatientId) {
+        try {
+          const response = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${selectedPatient.inpatientId}`)
+          if (response?.status === 200 && Array.isArray(response?.response)) {
+            const diagnosesList = response.response
+              .map(d => d.diagnosis)
+              .filter(Boolean)
+              .join(", ")
+            setPatientDiagnoses(diagnosesList)
+          } else {
+            setPatientDiagnoses("")
+          }
+        } catch (error) {
+          console.error("Error fetching diagnosis:", error)
+          setPatientDiagnoses("")
+        }
+      } else {
+        setPatientDiagnoses("")
+      }
+    }
+    fetchDiagnoses()
+  }, [selectedPatient?.inpatientId])
 
   const dummyCriticalResults = [
     { id: 1, patientName: "Rohit Sharma", bedNo: "B-101", testName: "Potassium", value: "6.8 mmol/L", normalRange: "3.5 - 5.0", reportedTime: "10:45 AM", status: "Critical" },
@@ -129,22 +156,23 @@ const WardManagement = () => {
     fetchBeds()
   }, [selectedWard])
 
-  // Added "IPD Initial Assessment" right after Clinical Dashboard
+  // Updated tab order as per requirement
   const caseSheetTabs = [
+    "Admission Details",
+    "IPD Initial Assessment",
     "Clinical Dashboard",
-    "IPD Initial Assessment",          // <-- new tab
     "Doctor Visit / Case Notes",
-    "Investigations / Orders",
-    "Medication & Treatment (MAR)",
     "Vitals & Monitoring",
+    "Investigations / Orders",
+    "Medication / MAR",
+    "Blood / Transfusion",
+    "OT Details",
     "Nursing Care / Procedures",
     "Diet",
-    "Ward / Bed Transfer",
     "Shift Handover",
+    "Ward / Bed Transfer",
     "Discharge"
   ]
-
-
 
   const stats = {
     vacantBeds: patientData.filter(p => p.status === 'VACANT').length,
@@ -744,7 +772,7 @@ const WardManagement = () => {
                                 </div>
                                 <div>
                                   <i className="fa fa-flask me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>Dx: {selectedPatient.diagnosis || "Not specified"}</span>
+                                  <span style={{ fontSize: '0.8rem' }}>Dx: {patientDiagnoses || selectedPatient.diagnosis || "Not specified"}</span>
                                 </div>
                               </div>
                             </div>
@@ -781,12 +809,15 @@ const WardManagement = () => {
                               <ClinicalDashboard selectedPatient={selectedPatient} />
                             )}
 
-                            {/* New IPD Initial Assessment Tab */}
+                            {activeTab === "Admission Details" && (
+  <AdmissionDetails selectedPatient={selectedPatient} />
+)}
+
                             {activeTab === "IPD Initial Assessment" && (
                               <IPDInitialAssessment selectedPatient={selectedPatient} />
                             )}
 
-                            {activeTab === "Medication & Treatment (MAR)" && (
+                            {activeTab === "Medication / MAR" && (
                               < MedicationModule selectedPatient={selectedPatient} />
                             )}
 
@@ -818,11 +849,11 @@ const WardManagement = () => {
                               <NursingCareModule selectedPatient={selectedPatient} />
                             )}
 
-                            {/* Fallback for any undefined tabs (optional) */}
+                            {/* Fallback for any undefined tabs */}
                             {activeTab !== "Clinical Dashboard" &&
                               activeTab !== "IPD Initial Assessment" &&
+                              activeTab !== "Medication / MAR" &&
                               activeTab !== "Doctor Visit / Case Notes" &&
-                              activeTab !== "Medication & Treatment (MAR)" &&
                               activeTab !== "Ward / Bed Transfer" &&
                               activeTab !== "Vitals & Monitoring" &&
                               activeTab !== "Investigations / Orders" &&
@@ -830,7 +861,6 @@ const WardManagement = () => {
                               activeTab !== "Discharge" &&
                               activeTab !== "Nursing Care / Procedures" && (
                               <div>
-                                <p>Content for {activeTab} will be displayed here.</p>
                               </div>
                             )}
                           </div>

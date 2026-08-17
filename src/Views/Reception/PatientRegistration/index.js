@@ -825,43 +825,53 @@ const PatientRegistration = () => {
     }
   }
 
-  const startCamera = async () => {
-    try {
-      setCameraError(null);
-      setIsCameraOn(true);
+const startCamera = async () => {
+  try {
+    setCameraError(null);
+    setIsCameraOn(true);
 
-      // Stop any existing stream first
-      if (videoRef.current?.srcObject) {
-        videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
-        videoRef.current.srcObject = null;
-      }
-
-      // Request camera with specific constraints
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: "user",
-          width: { ideal: 640 },
-          height: { ideal: 480 },
-        },
-      });
-
-      if (videoRef.current) {
-        videoRef.current.srcObject = stream;
-        await videoRef.current.play();
-      }
-    } catch (error) {
-      console.error(CAMERA_ACCESS_ERROR_LOG, error);
-      setCameraError(error.message);
-      setIsCameraOn(false);
-
-      Swal.fire({
-        icon: "error",
-        title: "Camera Access Denied",
-        text: "Please allow camera access in your browser settings and try again.",
-        footer: "Error: " + error.message,
-      });
+    // Stop any existing stream first
+    if (videoRef.current?.srcObject) {
+      videoRef.current.srcObject.getTracks().forEach((track) => track.stop());
+      videoRef.current.srcObject = null;
     }
-  };
+
+    // Request camera with specific constraints
+    const mediaStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: "user",
+        width: { ideal: 640 },
+        height: { ideal: 480 },
+      },
+      audio: false,
+    });
+
+    if (videoRef.current) {
+      videoRef.current.srcObject = mediaStream;
+      await videoRef.current.play();
+    }
+  } catch (error) {
+    console.error(CAMERA_ACCESS_ERROR_LOG, error);
+    setCameraError(error.message);
+    setIsCameraOn(false);
+
+    let errorMessage = "Please allow camera access in your browser settings and try again.";
+    if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+      errorMessage = "Camera permission denied. Please allow camera access and try again.";
+    } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+      errorMessage = "No camera found. Please connect a camera and try again.";
+    } else if (error.name === 'NotReadableError' || error.name === 'TrackStartError') {
+      errorMessage = "Camera is being used by another application. Please close other apps and try again.";
+    }
+
+    Swal.fire({
+      icon: "error",
+      title: "Camera Access Error",
+      text: errorMessage,
+      footer: "Error: " + error.message,
+    });
+  }
+};
 
   async function fetchHospitalDetails() {
     try {
@@ -885,43 +895,80 @@ const PatientRegistration = () => {
     }
   }
 
-  const capturePhoto = () => {
-    if (videoRef.current && canvasRef.current) {
-      const video = videoRef.current;
-      const canvas = canvasRef.current;
+const capturePhoto = () => {
+  if (videoRef.current && canvasRef.current) {
+    const video = videoRef.current;
+    const canvas = canvasRef.current;
 
-      if (video.videoWidth === 0 || video.videoHeight === 0) {
-        Swal.fire(
-          "Error",
-          "Camera not ready. Please wait a moment.",
-          "warning",
-        );
-        return;
-      }
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-      const context = canvas.getContext("2d");
-      context.drawImage(video, 0, 0, canvas.width, canvas.height);
-      const imageData = canvas.toDataURL("image/png");
-      setImage(imageData);
-      confirmUpload(imageData);
-      stopCamera();
+    if (video.videoWidth === 0 || video.videoHeight === 0) {
+      Swal.fire(
+        "Error",
+        "Camera not ready. Please wait a moment.",
+        "warning"
+      );
+      return;
     }
-  };
+    canvas.width = video.videoWidth;
+    canvas.height = video.videoHeight;
+    const context = canvas.getContext("2d");
+    context.drawImage(video, 0, 0, canvas.width, canvas.height);
+    const imageData = canvas.toDataURL("image/png");
+    setImage(imageData);
+    // Upload the image directly without showing confirmation
+    uploadImageDirectly(imageData);
+    stopCamera();
+  }
+};
 
-  const stopCamera = () => {
-    if (videoRef.current) {
-      if (videoRef.current.srcObject) {
-        const tracks = videoRef.current.srcObject.getTracks();
-        tracks.forEach((track) => {
-          track.stop();
-          track.enabled = false;
-        });
-        videoRef.current.srcObject = null;
-      }
+// Add this function right after uploadImage function
+const uploadImageDirectly = async (imageSource) => {
+  try {
+    const formData1 = new FormData();
+    if (imageSource instanceof File) {
+      formData1.append("file", imageSource, imageSource.name || "photo.png");
+    } else {
+      const blob = await fetch(imageSource).then((res) => res.blob());
+      formData1.append("file", blob, "photo.png");
     }
-    setIsCameraOn(false);
-  };
+
+    const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
+      method: "POST",
+      body: formData1,
+    });
+
+    const data = await response.json();
+
+    if (response.status === 200 && data.response) {
+      const extractedPath = data.response;
+      setImageURL(extractedPath);
+      console.log(UPLOADED_IMAGE_URL_LOG, extractedPath);
+      Swal.fire("Success!", IMAGE_UPLOAD_SUCC_MSG, "success");
+      return extractedPath;
+    } else {
+      Swal.fire("Error!", IMAGE_UPLOAD_FAIL_MSG, "error");
+      return null;
+    }
+  } catch (error) {
+    console.error(FILE_UPLOAD_ERROR_LOG, error);
+    Swal.fire("Error!", UNEXPECTED_ERROR, "error");
+    return null;
+  }
+};
+
+const stopCamera = () => {
+  if (videoRef.current) {
+    if (videoRef.current.srcObject) {
+      const tracks = videoRef.current.srcObject.getTracks();
+      tracks.forEach((track) => {
+        track.stop();
+        track.enabled = false;
+      });
+      videoRef.current.srcObject = null;
+    }
+  }
+  setIsCameraOn(false);
+};
+
 
   useEffect(() => {
     return () => {
@@ -979,23 +1026,24 @@ const PatientRegistration = () => {
     }
   };
 
-  const handlePhotoFileChange = (event) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+const handlePhotoFileChange = (event) => {
+  const file = event.target.files?.[0];
+  if (!file) return;
 
-    if (!file.type.startsWith("image/")) {
-      Swal.fire("Error", "Please select a valid image file.", "error");
-      event.target.value = "";
-      return;
-    }
+  if (!file.type.startsWith("image/")) {
+    Swal.fire("Error", "Please select a valid image file.", "error");
+    event.target.value = "";
+    return;
+  }
 
-    const reader = new FileReader();
-    reader.onloadend = () => {
-      setImage(reader.result);
-      confirmUpload(reader.result, file);
-    };
-    reader.readAsDataURL(file);
+  const reader = new FileReader();
+  reader.onloadend = () => {
+    setImage(reader.result);
+    // Upload the file directly
+    uploadImageDirectly(file);
   };
+  reader.readAsDataURL(file);
+};
 
   const clearPhoto = () => {
     setImage(placeholderImage);
@@ -2008,8 +2056,26 @@ const PatientRegistration = () => {
 
   const sendPatientData = async () => {
     if (validateForm() && validateVitalDetails()) {
-      const currentAbhaNumber =
-        abhaNumber || formData.abhaNumber || abhaData.abhaNumber || "";
+      let finalImageURL = imageURL;
+
+      if (image && image !== placeholderImage && !imageURL) {
+      try {
+        const uploadedUrl = await uploadImageAndGetUrl(image);
+        if (uploadedUrl) {
+          finalImageURL = uploadedUrl;
+          setImageURL(uploadedUrl);
+        }
+      } catch (error) {
+        console.error("Image upload failed:", error);
+        Swal.fire({
+          icon: "warning",
+          title: "Image Upload Warning",
+          text: "Could not upload profile photo. Proceeding without it.",
+        });
+      }
+    }
+
+      const currentAbhaNumber = abhaNumber || formData.abhaNumber || abhaData.abhaNumber || "";
       const requestData = {
         patient: {
           id: 0,
@@ -2027,8 +2093,8 @@ const PatientRegistration = () => {
           patientGenderId: formData.gender,
           patientEmailId: formData.email,
           patientMobileNumber: formData.mobileNo,
-          patientImage: imageURL,
-          fileName: "string",
+          patientImage: finalImageURL || "",
+          fileName: "",
           patientRelationId: formData.relation,
           patientMaritalStatusId: formData.maritalStatus,
           patientReligionId: formData.religion,
@@ -2039,7 +2105,7 @@ const PatientRegistration = () => {
           patientDistrictId: formData.district,
           patientStateId: formData.state,
           patientCountryId: formData.country,
-          pincode: "string",
+          pincode: "",
           emerFn: formData.emergencyFirstName,
           emerLn: formData.emergencyLastName,
           emerRelationId: formData.emergencyRelationId,
@@ -2202,6 +2268,36 @@ const PatientRegistration = () => {
       }
     }
   };
+
+const uploadImageAndGetUrl = async (imageSource) => {
+  try {
+    const formData1 = new FormData();
+    if (imageSource instanceof File) {
+      formData1.append("file", imageSource, imageSource.name || "photo.png");
+    } else if (typeof imageSource === 'string' && imageSource.startsWith('data:image')) {
+      const response = await fetch(imageSource);
+      const blob = await response.blob();
+      formData1.append("file", blob, "photo.png");
+    } else {
+      const response = await fetch(imageSource);
+      const blob = await response.blob();
+      formData1.append("file", blob, "photo.png");
+    }
+    const response = await fetch(`${API_HOST}${PATIENT_IMAGE_UPLOAD}`, {
+      method: "POST",
+      body: formData1,
+    });
+    const data = await response.json();
+    if (response.status === 200 && data.response) {
+      return data.response;
+    } else {
+      throw new Error(data.message || "Upload failed");
+    }
+  } catch (error) {
+    console.error("Image upload error:", error);
+    throw error;
+  }
+};
 
   async function fetchDoctor(value, rowId) {
     try {
@@ -2895,75 +2991,101 @@ const PatientRegistration = () => {
                       </div>
                     </div>
 
-                    <div className="col-md-3">
-                      <div className="text-center">
-                        <div className="card p-3 shadow">
-                          {isCameraOn ? (
-                            <video
-                              ref={videoRef}
-                              autoPlay
-                              className="d-block mx-auto"
-                              style={{ width: "100%", height: "150px" }}
-                            ></video>
-                          ) : (
-                            <img
-                              src={image || "/default-profile.png"}
-                              alt="Profile"
-                              className="img-fluid border"
-                              style={{ width: "100%", height: "150px" }}
-                            />
-                          )}
-                          <canvas
-                            ref={canvasRef}
-                            width="300"
-                            height="150"
-                            style={{ display: "none" }}
-                          ></canvas>
-                          <div className="mt-2">
-                            <button
-                              type="button"
-                              className="btn btn-outline-primary me-2 mb-2"
-                              onClick={() =>
-                                profilePhotoInputRef.current?.click()
-                              }
-                            >
-                              Upload Photo
-                            </button>
-                            <button
-                              type="button"
-                              className="btn btn-primary me-2 mb-2"
-                              onClick={startCamera}
-                              disabled={isCameraOn}
-                            >
-                              Start Camera
-                            </button>
-                            {isCameraOn && (
-                              <button
-                                type="button"
-                                className="btn btn-success me-2 mb-2"
-                                onClick={capturePhoto}
-                              >
-                                Take Photo
-                              </button>
-                            )}
-                            <button
-                              type="button"
-                              className="btn btn-danger mb-2"
-                              onClick={clearPhoto}
-                            >
-                              Clear Photo
-                            </button>
-                          </div>
-                          <input
-                            ref={profilePhotoInputRef}
-                            type="file"
-                            accept="image/*"
-                            className="d-none"
-                            onChange={handlePhotoFileChange}
-                          />
-                        </div>
-                      </div>
-                    </div>
+<div className="col-md-3">
+  <div className="text-center">
+    <div className="card p-2 shadow">
+      <div className="position-relative">
+        {isCameraOn ? (
+          <video
+            ref={videoRef}
+            autoPlay
+            className="d-block mx-auto rounded"
+            style={{ width: "100%", height: "160px", objectFit: "cover", backgroundColor: "#000" }}
+          ></video>
+        ) : (
+          <img
+            src={image || placeholderImage}
+            alt="Profile"
+            className="img-fluid rounded border"
+            style={{ width: "100%", height: "160px", objectFit: "cover" }}
+          />
+        )}
+        <canvas
+          ref={canvasRef}
+          width="300"
+          height="150"
+          style={{ display: "none" }}
+        ></canvas>
+      </div>
+      
+      {cameraError && (
+        <div className="text-danger small mt-1">
+          Error: {cameraError}
+        </div>
+      )}
+      
+      <div className="mt-2 d-flex flex-wrap justify-content-center gap-1">
+        <button
+          type="button"
+          className="btn btn-outline-primary btn-sm"
+          onClick={() => profilePhotoInputRef.current?.click()}
+          title="Upload photo from file"
+        >
+          <i className="bi bi-upload me-1"></i> Upload
+        </button>
+        <button
+          type="button"
+          className="btn btn-primary btn-sm"
+          onClick={startCamera}
+          disabled={isCameraOn}
+          title="Start camera"
+        >
+          <i className="bi bi-camera me-1"></i> Camera
+        </button>
+        {isCameraOn && (
+          <>
+            <button
+              type="button"
+              className="btn btn-success btn-sm"
+              onClick={capturePhoto}
+              title="Take photo"
+            >
+              <i className="bi bi-camera-fill me-1"></i> Capture
+            </button>
+            <button
+              type="button"
+              className="btn btn-secondary btn-sm"
+              onClick={stopCamera}
+              title="Close camera"
+            >
+              <i className="bi bi-x-lg me-1"></i> Close
+            </button>
+          </>
+        )}
+        <button
+          type="button"
+          className="btn btn-danger btn-sm"
+          onClick={clearPhoto}
+          title="Clear photo"
+        >
+          <i className="bi bi-trash me-1"></i> Clear
+        </button>
+      </div>
+      <input
+        ref={profilePhotoInputRef}
+        type="file"
+        accept="image/*"
+        className="d-none"
+        onChange={handlePhotoFileChange}
+      />
+      {imageURL && (
+        <div className="mt-1">
+          <span className="badge bg-success">✓ Photo uploaded</span>
+        </div>
+      )}
+    </div>
+  </div>
+</div>
                   </div>
                 </form>
               </div>

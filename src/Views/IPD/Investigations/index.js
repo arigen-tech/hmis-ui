@@ -15,6 +15,7 @@ import {
   REQUEST_PARAM_SIZE,
   LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL,
   IP_INVESTIGATION_REPORT_URL,
+  RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID,
 } from "../../../config/apiConfig";
 import { formatDateForDisplay } from "../../../utils/dateUtils";
 import { REPORT_GEN_FAILED_ERR_MSG } from "../../../config/constants";
@@ -275,48 +276,80 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   }, [selectedPatient]);
 
   // ---------- Fetch tracking data from API (only for lab) ----------
- const fetchTrackingData = async (page = 1) => {
-    if (!selectedPatient?.patientId) {
-      setTrackingData([]);
-      setTotalElements(0);
-      return;
-    }
-
+  // ---------- Fetch tracking data from API ----------
+  const fetchTrackingData = async (page = 1) => {
     setTrackingLoading(true);
     try {
-      const patientId = selectedPatient.patientId;
-      const queryString = new URLSearchParams({
-        [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || "",
-        [REQUEST_PARAM_PATIENT_ID]: patientId,
-        [REQUEST_PARAM_PAGE]: String(page - 1),
-        [REQUEST_PARAM_SIZE]: String(itemsPerPage),
-      }).toString();
-      const url = `${LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL}?${queryString}`;
-      const response = await getRequest(url);
+      if (trackingType === "lab") {
+        if (!selectedPatient?.patientId) {
+          setTrackingData([]);
+          setTotalElements(0);
+          return;
+        }
+        const patientId = selectedPatient.patientId;
+        const queryString = new URLSearchParams({
+          [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || "",
+          [REQUEST_PARAM_PATIENT_ID]: patientId,
+          [REQUEST_PARAM_PAGE]: String(page - 1),
+          [REQUEST_PARAM_SIZE]: String(itemsPerPage),
+        }).toString();
+        const url = `${LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL}?${queryString}`;
+        const response = await getRequest(url);
 
-      if (response?.status === 200 && response?.response) {
-        const pageData = response.response;
-        const content = pageData.content || [];
-        const total = pageData.totalElements || 0;
+        if (response?.status === 200 && response?.response) {
+          const pageData = response.response;
+          const content = pageData.content || [];
+          const total = pageData.totalElements || 0;
 
-        const mappedData = content.map((item) => ({
-          dgOrderHdId: item.dgOrderHdId,
-          orderNo: item.orderNum || "",
-          orderDate: formatDateForDisplay(item.orderDate) || "",
-          patientName: item.patientName || "",
-          mobileNo: item.mobileNum || "",
-          ageGender: `${item.age || ""} / ${item.gender || ""}`,
-          sampleId: item.generatedSampleId || "",
-          investigationName: item.investigationName || "",
-          investigationStatus: item.orderStatusName || "N/A",
-          report: item.orderStatusId === 6 ? "View / Download" : "—",
-        }));
+          const mappedData = content.map((item) => ({
+            dgOrderHdId: item.dgOrderHdId,
+            orderNo: item.orderNum || "",
+            orderDate: formatDateForDisplay(item.orderDate) || "",
+            patientName: item.patientName || "",
+            mobileNo: item.mobileNum || "",
+            ageGender: `${item.age || ""} / ${item.gender || ""}`,
+            sampleId: item.generatedSampleId || "",
+            investigationName: item.investigationName || "",
+            investigationStatus: item.orderStatusName || "N/A",
+            report: item.orderStatusId === 6 ? "View / Download" : "—",
+          }));
 
-        setTrackingData(mappedData);
-        setTotalElements(total);
-      } else {
-        setTrackingData([]);
-        setTotalElements(0);
+          setTrackingData(mappedData);
+          setTotalElements(total);
+        } else {
+          setTrackingData([]);
+          setTotalElements(0);
+        }
+      } else if (trackingType === "radiology") {
+        const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id;
+        if (!inpatientId) {
+          setTrackingData([]);
+          setTotalElements(0);
+          return;
+        }
+        const url = `${RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID}?inpatientId=${inpatientId}`;
+        const response = await getRequest(url);
+
+        if (response?.status === 200 && Array.isArray(response?.response)) {
+          const content = response.response;
+          const mappedData = content.map((item) => {
+            const reportStatusChar = (item.reportstatus || "").toLowerCase();
+            const studyStatusChar = (item.studystatus || "").toLowerCase();
+            return {
+              accessionNo: item.orderaccessionno || "",
+              orderDate: item.orderdate ? formatDateForDisplay(item.orderdate) : "",
+              investigationName: item.investigationname || "",
+              studyStatus: studyStatusChar === "y" ? "Complete" : "Pending",
+              reportStatus: reportStatusChar === "y" ? "Complete" : "Pending",
+            };
+          });
+
+          setTrackingData(mappedData);
+          setTotalElements(mappedData.length);
+        } else {
+          setTrackingData([]);
+          setTotalElements(0);
+        }
       }
     } catch (error) {
       console.error("Error fetching tracking data:", error);
@@ -327,24 +360,16 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     }
   };
 
-  // Trigger fetch only when tracking tab is active and trackingType is "lab"
+  // Trigger fetch only when tracking tab is active
   useEffect(() => {
-    if (activeTab === "tracking" && trackingType === "lab") {
+    if (activeTab === "tracking") {
       fetchTrackingData(trackingCurrentPage);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeTab, trackingType, trackingCurrentPage, selectedPatient]);
 
-  // ---------- Handle tracking type change with popup for radiology ----------
+  // ---------- Handle tracking type change ----------
   const handleTrackingTypeChange = (type) => {
-    if (type === "radiology") {
-      Swal.fire({
-        icon: "info",
-        title: "Not Implemented",
-        text: "Radiology orders tracking functionality is not implemented yet.",
-      });
-      return; // Keep current trackingType (lab)
-    }
     setTrackingType(type);
     setTrackingCurrentPage(1);
   };
@@ -1245,32 +1270,44 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
             <div className="table-responsive">
               <table className="table table-bordered table-hover">
                 <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
-                  <tr>
-                    <th>Order No</th>
-                    <th>Order Date</th>
-                    <th>Sample ID</th>
-                    <th>Investigation Name</th>
-                    <th>Investigation Status</th>
-                    <th>Report</th>
-                  </tr>
+                  {trackingType === "lab" ? (
+                    <tr>
+                      <th>Order No</th>
+                      <th>Order Date</th>
+                      <th>Sample ID</th>
+                      <th>Investigation Name</th>
+                      <th>Investigation Status</th>
+                      <th>Report</th>
+                    </tr>
+                  ) : (
+                    <tr>
+                      <th>Accession NO</th>
+                      <th>Order Date</th>
+                      <th>Investigation name</th>
+                      <th>Study Status</th>
+                      <th>Report Status</th>
+                    </tr>
+                  )}
                 </thead>
                 <tbody>
                   {trackingLoading ? (
                     <tr>
-                      <td colSpan="6" className="text-center py-4">
+                      <td colSpan={trackingType === "lab" ? "6" : "5"} className="text-center py-4">
                         Loading...
                       </td>
                     </tr>
                   ) : trackingData.length > 0 ? (
                     trackingData.map((row, index) => (
                       <tr key={index}>
-                        <td>{row.orderNo}</td>
-                        <td>{row.orderDate}</td>
-                        <td>{row.sampleId}</td>
-                        <td>{row.investigationName}</td>
-                        <td>{row.investigationStatus}</td>
-                        <td>
-                          {row.report === "View / Download" ? (
+                        {trackingType === "lab" ? (
+                          <>
+                            <td>{row.orderNo}</td>
+                            <td>{row.orderDate}</td>
+                            <td>{row.sampleId}</td>
+                            <td>{row.investigationName}</td>
+                            <td>{row.investigationStatus}</td>
+                            <td>
+                              {row.report === "View / Download" ? (
                             <button
                               type="button"
                               className="btn btn-primary btn-sm"
@@ -1294,11 +1331,21 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                             <span>{row.report}</span>
                           )}
                         </td>
+                          </>
+                        ) : (
+                          <>
+                            <td>{row.accessionNo}</td>
+                            <td>{row.orderDate}</td>
+                            <td>{row.investigationName}</td>
+                            <td>{row.studyStatus}</td>
+                            <td>{row.reportStatus}</td>
+                          </>
+                        )}
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="6" className="text-center py-4">
+                      <td colSpan={trackingType === "lab" ? "6" : "5"} className="text-center py-4">
                         No records found
                       </td>
                     </tr>
