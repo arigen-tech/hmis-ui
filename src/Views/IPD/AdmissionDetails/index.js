@@ -1,90 +1,93 @@
-import React from "react";
-
-// ---------- DUMMY JSON DATA ----------
-const admissionDetailsData = {
-  patientInformation: {
-    patientName: "John Doe",
-    uhid: "UHID000001",
-    ageGender: "45 Y / Male",
-    patientContactNo: "98XXXXXX11",
-    emergencyContactNo: "99XXXXXX22"
-  },
-  admissionInformation: {
-    admissionNo: "IPD/2026/00001",
-    admissionDateTime: "01-Jan-2026 09:00 AM",
-    admissionCategory: "IPD",
-    admissionType: "Routine",
-    admissionSource: "OPD",
-    currentStatus: "Admitted",
-    los: "2 Days"
-  },
-  doctorLocation: {
-    admittingDoctor: "Dr. Smith",
-    department: "General Medicine",
-    admittingWard: "Male Medical Ward",
-    currentWard: "Male Medical Ward",
-    room: "Room 1",
-    bed: "Bed 01",
-    careLevel: "Normal"
-  },
-  clinicalDetails: {
-    reasonForAdmission: "Fever and cough",
-    initialDiagnosis: "Upper respiratory tract infection",
-    icdDiagnosis: "J06 – Acute upper respiratory infection",
-    patientCondition: "Stable",
-    admissionPriority: "Routine",
-    remarks: "Under observation"
-  },
-  nokDetails: {
-    name: "Jane Doe",
-    relationship: "Spouse",
-    contactNo: "99XXXXXX22",
-    address: "123 Main Street, Anytown"
-  },
-  referralTransfer: null, // set to object when applicable
-  documents: [
-    { id: 1, name: "Admission Slip", remarks: "Signed copy", fileName: "AdmissionSlip_IPD202600001.pdf" },
-    { id: 2, name: "Consent Form", remarks: "Signed by patient", fileName: "ConsentForm_IPD202600001.pdf" },
-    { id: 3, name: "Initial Assessment", remarks: "Completed by doctor", fileName: "InitialAssessment_IPD202600001.pdf" }
-  ]
-};
+import React, { useState, useEffect } from "react";
+import { getRequest } from "../../../service/apiService";
+import { GET_ADMISSION_DETAILS_BY_INPATIENT } from "../../../config/apiConfig";
 
 const AdmissionDetails = ({ selectedPatient }) => {
-  // Merge selectedPatient data (if provided) with dummy JSON data
-  const patientInformation = {
-    ...admissionDetailsData.patientInformation,
-    ...(selectedPatient && {
-      patientName: selectedPatient.patientName || admissionDetailsData.patientInformation.patientName,
-      uhid: selectedPatient.uhidNo || admissionDetailsData.patientInformation.uhid,
-      ageGender: selectedPatient.ageGender || admissionDetailsData.patientInformation.ageGender,
-      // contact numbers remain dummy unless explicitly passed
-    })
-  };
+  const [loading, setLoading] = useState(false);
+  const [patientInformation, setPatientInformation] = useState({});
+  const [admissionInformation, setAdmissionInformation] = useState({});
+  const [doctorLocation, setDoctorLocation] = useState({});
+  const [clinicalDetails, setClinicalDetails] = useState({});
+  const [nokDetails, setNokDetails] = useState({});
+  const [documents, setDocuments] = useState([]);
+  const [referralTransfer, setReferralTransfer] = useState(null);
 
-  const admissionInformation = {
-    ...admissionDetailsData.admissionInformation,
-    ...(selectedPatient && {
-      admissionNo: selectedPatient.admissionNo || admissionDetailsData.admissionInformation.admissionNo,
-      admissionDateTime: selectedPatient.admissionDate
-        ? `${selectedPatient.admissionDate} ${selectedPatient.admissionTime || "10:30 AM"}`
-        : admissionDetailsData.admissionInformation.admissionDateTime,
-      los: selectedPatient.currentDay ? `${selectedPatient.currentDay} Days` : admissionDetailsData.admissionInformation.los,
-    })
-  };
+  useEffect(() => {
+    const fetchAdmissionDetails = async () => {
+      const inpatientId = selectedPatient?.inpatientId || selectedPatient?.id;
+      if (!inpatientId) return;
 
-  const doctorLocation = {
-    ...admissionDetailsData.doctorLocation,
-    ...(selectedPatient && {
-      admittingDoctor: selectedPatient.doctorName ? `Dr. ${selectedPatient.doctorName}` : admissionDetailsData.doctorLocation.admittingDoctor,
-      currentWard: selectedPatient.ward || admissionDetailsData.doctorLocation.currentWard,
-      bed: selectedPatient.bedNo || admissionDetailsData.doctorLocation.bed,
-    })
-  };
+      setLoading(true);
+      try {
+        const response = await getRequest(`${GET_ADMISSION_DETAILS_BY_INPATIENT}/${inpatientId}`);
+        if (response?.status === 200 && response?.response) {
+          const data = response.response;
 
-  const clinicalDetails = admissionDetailsData.clinicalDetails;
-  const nokDetails = admissionDetailsData.nokDetails;
-  const referralTransfer = admissionDetailsData.referralTransfer;
-  const documents = admissionDetailsData.documents;
+          setPatientInformation({
+            patientName: data.patientName || "",
+            uhid: data.uhid || "",
+            ageGender: `${data.age || ""} / ${data.gender || ""}`,
+            patientContactNo: data.contactNo || "",
+            emergencyContactNo: data.emergencyContactNo || ""
+          });
+
+          setAdmissionInformation({
+            admissionNo: data.admissionNo || "",
+            admissionDateTime: `${data.admissionDate || ""} ${data.admissionTime || ""}`.trim(),
+            admissionCategory: data.admissionCategory || "",
+            admissionType: data.admissionType || "",
+            admissionSource: data.admissionSource || "",
+            currentStatus: data.currentStatus || "",
+            los: data.los || ""
+          });
+
+          setDoctorLocation({
+            admittingDoctor: data.admittingDoctor ? `Dr. ${data.admittingDoctor}` : "",
+            department: data.department || "",
+            admittingWard: data.admittingWard || "",
+            currentWard: data.currentWard || "",
+            room: data.room || "",
+            bed: data.bed || "",
+            careLevel: data.careLevel || ""
+          });
+
+          setClinicalDetails({
+            reasonForAdmission: data.reasonForAdmission || "",
+            initialDiagnosis: data.initialDiagnosis || "",
+            icdDiagnosis: data.icdDiagnosis || "",
+            patientCondition: data.patientCondition || "",
+            admissionPriority: data.admissionPriority || "",
+            remarks: data.remark || ""
+          });
+
+          setNokDetails({
+            name: data.nokName || "",
+            relationship: data.relationship || "",
+            contactNo: data.contact || "",
+            address: data.address || ""
+          });
+
+          const docs = Array.isArray(data.documentListList) ? data.documentListList.map((doc, idx) => ({
+            id: idx + 1,
+            name: doc.documentName || "",
+            remarks: doc.documentRemarks || "",
+            fileName: doc.fileName || ""
+          })) : [];
+          setDocuments(docs);
+        }
+      } catch (error) {
+        console.error("Error fetching admission details:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAdmissionDetails();
+  }, [selectedPatient]);
+
+  if (loading) {
+    return <div className="p-4 text-center">Loading Admission Details...</div>;
+  }
 
   return (
     <div className="admission-details">
