@@ -2,7 +2,7 @@ import { useState, useEffect } from "react"
 import Popup from "../../../Components/popup"
 import LoadingScreen from "../../../Components/Loading/index";
 import { getRequest, putRequest, postRequest } from "../../../service/apiService";
-import { MAS_SURGERY, MAS_DEPARTMENT, REQUEST_PARAM_DEPARTMENT_TYPE_CODE, GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL, FILTER_OPD_DEPT } from "../../../config/apiConfig";
+import { MAS_SURGERY, MAS_SURGERY_TYPE } from "../../../config/apiConfig";
 import { ADD_SURGERY_SUCC_MSG, UPDATE_SURGERY_SUCC_MSG, FAIL_TO_SAVE_CHANGES, FAIL_TO_UPDATE_STS } from "../../../config/constants"
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination"
 
@@ -10,9 +10,11 @@ const SurgeryMaster = () => {
   const [formData, setFormData] = useState({
     surgeryCode: "",
     surgeryName: "",
-    departmentId: "",
+    surgeryTypeId: "",
     surgeryLevel: "",
-    isAnesthesiaRequired: ""
+    isAnesthesiaRequired: "",
+    isAdmissionRequired: "",
+    isImplantRequired: ""
   })
 
   const [confirmDialog, setConfirmDialog] = useState({
@@ -24,7 +26,7 @@ const SurgeryMaster = () => {
 
   const [searchQuery, setSearchQuery] = useState("")
   const [surgeryData, setSurgeryData] = useState([])
-  const [departmentData, setDepartmentData] = useState([]);
+  const [surgeryTypeData, setSurgeryTypeData] = useState([]);
   const [loading, setLoading] = useState(false);
   const [showForm, setShowForm] = useState(false)
   const [isFormValid, setIsFormValid] = useState(false)
@@ -35,47 +37,53 @@ const SurgeryMaster = () => {
   const [totalItems, setTotalItems] = useState(0)
   const [process, setProcess] = useState(false);
 
-  // Constants for validation
   const SURGERY_CODE_MAX_LENGTH = 8;
   const SURGERY_NAME_MAX_LENGTH = 30;
 
-  // Surgery level options
   const surgeryLevelOptions = [
-    { value: "MIN", label: "Minor" },
-    { value: "MAJ", label: "Major" },
-    { value: "SUP", label: "Super Major" }
+    { value: "MINOR", label: "Minor" },
+    { value: "MAJOR", label: "Major" },
   ];
 
-  // Anesthesia options
   const anesthesiaOptions = [
+    { value: "Y", label: "Yes" },
+    { value: "N", label: "No" }
+  ];
+
+  const admissionOptions = [
+    { value: "Y", label: "Yes" },
+    { value: "N", label: "No" }
+  ];
+
+  const implantOptions = [
     { value: "Y", label: "Yes" },
     { value: "N", label: "No" }
   ];
 
   useEffect(() => {
     fetchSurgeryData(0);
-    fetchDepartmentData();
+    fetchSurgeryTypeData();
   }, []);
 
   useEffect(() => {
     if (showForm) {
-      fetchDepartmentData();
+      fetchSurgeryTypeData();
     }
   }, [showForm]);
 
-  // Validate form
   useEffect(() => {
-    const { surgeryCode, surgeryName, departmentId, surgeryLevel, isAnesthesiaRequired } = formData;
+    const { surgeryCode, surgeryName, surgeryTypeId, surgeryLevel, isAnesthesiaRequired, isAdmissionRequired, isImplantRequired } = formData;
     setIsFormValid(
       surgeryCode.trim() !== "" &&
       surgeryName.trim() !== "" &&
-      departmentId !== "" &&
+      surgeryTypeId !== "" &&
       surgeryLevel !== "" &&
-      isAnesthesiaRequired !== ""
+      isAnesthesiaRequired !== "" &&
+      isAdmissionRequired !== "" &&
+      isImplantRequired !== ""
     );
   }, [formData]);
 
-  // Filter data based on search query
   const filteredSurgeryData = surgeryData.filter(surgery =>
     surgery.surgeryCode?.toLowerCase().includes(searchQuery.toLowerCase()) ||
     surgery.surgeryName?.toLowerCase().includes(searchQuery.toLowerCase())
@@ -84,7 +92,6 @@ const SurgeryMaster = () => {
   const fetchSurgeryData = async (page = 0) => {
     setLoading(true);
     try {
-      // Get all active records (flag=1)
       const data = await getRequest(`${MAS_SURGERY}/getAll/0`);
 
       if (data.status === 200 && data.response) {
@@ -105,20 +112,19 @@ const SurgeryMaster = () => {
     }
   };
 
-  const fetchDepartmentData = async () => {
+  const fetchSurgeryTypeData = async () => {
     try {
-      const data = await getRequest(`${GET_ALL_ACT_MAS_DEPT_FOR_DROPDOWN_END_URL}?${REQUEST_PARAM_DEPARTMENT_TYPE_CODE}=${FILTER_OPD_DEPT}`);
+      const data = await getRequest(`${MAS_SURGERY_TYPE}/getAll/1`);
       if (data.status === 200 && Array.isArray(data.response)) {
-        // No filter - include all departments for Surgery
-        setDepartmentData(data.response);
+        setSurgeryTypeData(data.response);
         return data.response;
       } else {
         console.error("Unexpected API response format:", data);
-        setDepartmentData([]);
+        setSurgeryTypeData([]);
         return [];
       }
     } catch (error) {
-      console.error("Error fetching Department data:", error);
+      console.error("Error fetching Surgery Type data:", error);
       return [];
     }
   };
@@ -130,16 +136,16 @@ const SurgeryMaster = () => {
   const handleEdit = async (item) => {
     setEditingSurgery(item);
 
-    // Fetch departments first to ensure dropdown is populated
-    await fetchDepartmentData();
+    await fetchSurgeryTypeData();
 
-    // Set form data from the selected item
     setFormData({
       surgeryCode: item.surgeryCode || "",
       surgeryName: item.surgeryName || "",
-      departmentId: item.departmentId?.toString() || "",
+      surgeryTypeId: item.surgeryTypeId?.toString() || "",
       surgeryLevel: item.surgeryLevel || "",
-      isAnesthesiaRequired: item.isAnesthesiaRequired || ""
+      isAnesthesiaRequired: item.isAnesthesiaRequired || "",
+      isAdmissionRequired: item.isAdmissionRequired || "",
+      isImplantRequired: item.isImplantRequired || ""
     });
 
     setShowForm(true);
@@ -156,9 +162,11 @@ const SurgeryMaster = () => {
     const payload = {
       surgeryCode: formData.surgeryCode,
       surgeryName: formData.surgeryName,
-      departmentId: parseInt(formData.departmentId, 10),
+      surgeryTypeId: parseInt(formData.surgeryTypeId, 10),
       surgeryLevel: formData.surgeryLevel,
-      isAnesthesiaRequired: formData.isAnesthesiaRequired
+      isAnesthesiaRequired: formData.isAnesthesiaRequired,
+      isAdmissionRequired: formData.isAdmissionRequired,
+      isImplantRequired: formData.isImplantRequired
     };
 
     try {
@@ -169,9 +177,6 @@ const SurgeryMaster = () => {
           payload
         );
         if (response.status === 200) {
-          showPopup(UPDATE_SURGERY_SUCC_MSG || "Surgery updated successfully!", "success", () => {
-            // fetchSurgeryData();
-          });
           setPopupMessage({
             message: "Surgery updated successfully!",
             type: "success",
@@ -182,16 +187,12 @@ const SurgeryMaster = () => {
               fetchSurgeryData();
             }
           });
-
         } else {
           throw new Error(response.message || "Update failed");
         }
       } else {
         response = await postRequest(`${MAS_SURGERY}/create`, payload);
         if (response.status === 201 || response.status === 200) {
-          showPopup(ADD_SURGERY_SUCC_MSG || "Surgery added successfully!", "success", () => {
-            // fetchSurgeryData();
-          });
           setPopupMessage({
             message: "Surgery added successfully!",
             type: "success",
@@ -202,7 +203,6 @@ const SurgeryMaster = () => {
             }
           });
           fetchSurgeryData();
-
         } else {
           throw new Error(response.message || "Save failed");
         }
@@ -221,9 +221,11 @@ const SurgeryMaster = () => {
     setFormData({
       surgeryCode: "",
       surgeryName: "",
-      departmentId: "",
+      surgeryTypeId: "",
       surgeryLevel: "",
-      isAnesthesiaRequired: ""
+      isAnesthesiaRequired: "",
+      isAdmissionRequired: "",
+      isImplantRequired: ""
     });
   };
 
@@ -266,7 +268,6 @@ const SurgeryMaster = () => {
               setCurrentPage(1);
             }
           });
-
         } else {
           throw new Error(response.message || "Failed to update status");
         }
@@ -339,7 +340,6 @@ const SurgeryMaster = () => {
     }
   };
 
-  // Get current page items
   const indexOfLastItem = currentPage * DEFAULT_ITEMS_PER_PAGE;
   const indexOfFirstItem = indexOfLastItem - DEFAULT_ITEMS_PER_PAGE;
   const currentItems = filteredSurgeryData.slice(indexOfFirstItem, indexOfLastItem);
@@ -353,8 +353,9 @@ const SurgeryMaster = () => {
             <div className="card-header d-flex justify-content-between align-items-center">
               <h4 className="card-title p-2">Surgery Master</h4>
 
-              <div className="d-flex justify-content-between align-items-center gap-2">
-                {!showForm && (
+              {/* Header buttons – Back button when form is shown, else search + action buttons */}
+              <div className="d-flex align-items-center gap-2">
+                {!showForm ? (
                   <>
                     <form className="d-inline-block searchform me-2" role="search">
                       <div className="input-group searchinput">
@@ -371,13 +372,7 @@ const SurgeryMaster = () => {
                         </span>
                       </div>
                     </form>
-                    <button
-                      type="button"
-                      className="btn btn-success"
-                      onClick={handleRefresh}
-                    >
-                      <i className="mdi mdi-refresh"></i> Show All
-                    </button>
+                  
                     <button
                       type="button"
                       className="btn btn-success"
@@ -386,19 +381,36 @@ const SurgeryMaster = () => {
                         setFormData({
                           surgeryCode: "",
                           surgeryName: "",
-                          departmentId: "",
+                          surgeryTypeId: "",
                           surgeryLevel: "",
-                          isAnesthesiaRequired: ""
+                          isAnesthesiaRequired: "",
+                          isAdmissionRequired: "",
+                          isImplantRequired: ""
                         });
                         setShowForm(true);
                       }}
                     >
                       <i className="mdi mdi-plus"></i> Add
                     </button>
+                      <button
+                      type="button"
+                      className="btn btn-success"
+                      onClick={handleRefresh}
+                    >
+                      <i className="mdi mdi-refresh"></i> Show All
+                    </button>
                   </>
+                ) : (
+                  <button
+                    className="btn btn-secondary"
+                    onClick={resetForm}
+                  >
+                    <i className="mdi mdi-arrow-left"></i> Back
+                  </button>
                 )}
               </div>
             </div>
+
             <div className="card-body">
               {!showForm ? (
                 <>
@@ -408,9 +420,11 @@ const SurgeryMaster = () => {
                         <tr>
                           <th>Surgery Code</th>
                           <th>Surgery Name</th>
-                          <th>Department</th>
+                          <th>Surgery Type</th>
                           <th>Level</th>
                           <th>Anesthesia Required</th>
+                          <th>Admission Required</th>
+                          <th>Implant Required</th>
                           <th>Status</th>
                           <th>Edit</th>
                         </tr>
@@ -423,14 +437,18 @@ const SurgeryMaster = () => {
                             )?.label || item.surgeryLevel;
 
                             const anesthesiaLabel = item.isAnesthesiaRequired === "Y" ? "Yes" : "No";
+                            const admissionLabel = item.isAdmissionRequired === "Y" ? "Yes" : "No";
+                            const implantLabel = item.isImplantRequired === "Y" ? "Yes" : "No";
 
                             return (
                               <tr key={item.surgeryId}>
                                 <td>{item.surgeryCode || '-'}</td>
                                 <td style={{ textTransform: "capitalize" }}>{item.surgeryName || '-'}</td>
-                                <td>{item.departmentName || '-'}</td>
+                                <td>{item.surgeryTypeName || '-'}</td>
                                 <td>{levelLabel}</td>
                                 <td>{anesthesiaLabel}</td>
+                                <td>{admissionLabel}</td>
+                                <td>{implantLabel}</td>
                                 <td>
                                   <div className="form-check form-switch">
                                     <input
@@ -466,7 +484,7 @@ const SurgeryMaster = () => {
                           })
                         ) : (
                           <tr>
-                            <td colSpan="7" className="text-center">No records found</td>
+                            <td colSpan="9" className="text-center">No records found</td>
                           </tr>
                         )}
                       </tbody>
@@ -484,12 +502,8 @@ const SurgeryMaster = () => {
                 </>
               ) : (
                 <>
+                  {/* Back button is now in header; removed from here */}
                   <form className="forms row" onSubmit={handleSave}>
-                    <div className="d-flex justify-content-end mb-3">
-                      <button type="button" className="btn btn-secondary" onClick={resetForm}>
-                        <i className="mdi mdi-arrow-left"></i> Back
-                      </button>
-                    </div>
                     <div className="row">
                       <div className="form-group col-md-4 mt-3">
                         <label>
@@ -525,20 +539,20 @@ const SurgeryMaster = () => {
                       </div>
                       <div className="form-group col-md-4 mt-3">
                         <label>
-                          Department <span className="text-danger">*</span>
+                          Surgery Type <span className="text-danger">*</span>
                         </label>
                         <select
                           className="form-select"
-                          id="departmentId"
+                          id="surgeryTypeId"
                           onChange={handleSelectChange}
-                          value={formData.departmentId}
+                          value={formData.surgeryTypeId}
                           required
                           disabled={process}
                         >
-                          <option value="">Select Department</option>
-                          {departmentData.map((department) => (
-                            <option key={department.id} value={department.id}>
-                              {department.departmentName}
+                          <option value="">Select Surgery Type</option>
+                          {surgeryTypeData.map((type) => (
+                            <option key={type.surgeryTypeId} value={type.surgeryTypeId}>
+                              {type.surgeryTypeName}
                             </option>
                           ))}
                         </select>
@@ -577,6 +591,46 @@ const SurgeryMaster = () => {
                         >
                           <option value="">Select Option</option>
                           {anesthesiaOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Admission Required <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="isAdmissionRequired"
+                          onChange={handleSelectChange}
+                          value={formData.isAdmissionRequired}
+                          required
+                          disabled={process}
+                        >
+                          <option value="">Select Option</option>
+                          {admissionOptions.map((option) => (
+                            <option key={option.value} value={option.value}>
+                              {option.label}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+                      <div className="form-group col-md-4 mt-3">
+                        <label>
+                          Implant Required <span className="text-danger">*</span>
+                        </label>
+                        <select
+                          className="form-select"
+                          id="isImplantRequired"
+                          onChange={handleSelectChange}
+                          value={formData.isImplantRequired}
+                          required
+                          disabled={process}
+                        >
+                          <option value="">Select Option</option>
+                          {implantOptions.map((option) => (
                             <option key={option.value} value={option.value}>
                               {option.label}
                             </option>
@@ -631,9 +685,7 @@ const SurgeryMaster = () => {
                       <div className="modal-body">
                         <p>
                           Are you sure you want to {confirmDialog.newStatus?.toLowerCase() === "y" ? "activate" : "deactivate"}{" "}
-                          <strong>
-                            {confirmDialog.surgeryName}
-                          </strong>
+                          <strong>{confirmDialog.surgeryName}</strong>
                           {" "}surgery?
                         </p>
                       </div>
