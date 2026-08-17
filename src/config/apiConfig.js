@@ -188,6 +188,7 @@ export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
 
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
+export const RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID = `${RADIOLOGY}/orderTrackingByInpatientIdOrAccesionNo`;
 
 export const ITEM_CLASS = {
   TABLET: 1,
