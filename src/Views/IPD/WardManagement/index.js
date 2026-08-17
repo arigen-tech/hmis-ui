@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react"
 import Swal from "sweetalert2"
 import { getRequest, putRequest } from "../../../service/apiService"
-import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD } from "../../../config/apiConfig"
+import { GET_WARD_BY_DEPARTMENT, GET_WARD_WISE_DETAILS, UPDATE_ADMISSION_INTERNAL_STATUS, IPD_INTERNAL_STATUS_RWD, GET_IP_DIAGNOSIS_ENTRY } from "../../../config/apiConfig"
 import LoadingScreen from "../../../Components/Loading"
 import DoctorVisitCaseNotes from "../DoctorVisitCaseNotes"
 import ClinicalDashboard from "../ClinicalDashboard"
@@ -17,6 +17,7 @@ import AdmissionDetails from "../AdmissionDetails"; // adjust path as needed
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
+  const [patientDiagnoses, setPatientDiagnoses] = useState("")
   const [activeTab, setActiveTab] = useState("Clinical Dashboard")
   const [showPatientList, setShowPatientList] = useState(true)
   const [isPatientListCollapsed, setIsPatientListCollapsed] = useState(false)
@@ -26,6 +27,31 @@ const WardManagement = () => {
   const [loadingBeds, setLoadingBeds] = useState(false)
   const [loadingWards, setLoadingWards] = useState(false)
   const [deptView, setDeptView] = useState(null) // null | "critical" | "transfer" | "worklist"
+
+  useEffect(() => {
+    const fetchDiagnoses = async () => {
+      if (selectedPatient?.inpatientId) {
+        try {
+          const response = await getRequest(`${GET_IP_DIAGNOSIS_ENTRY}/${selectedPatient.inpatientId}`)
+          if (response?.status === 200 && Array.isArray(response?.response)) {
+            const diagnosesList = response.response
+              .map(d => d.diagnosis)
+              .filter(Boolean)
+              .join(", ")
+            setPatientDiagnoses(diagnosesList)
+          } else {
+            setPatientDiagnoses("")
+          }
+        } catch (error) {
+          console.error("Error fetching diagnosis:", error)
+          setPatientDiagnoses("")
+        }
+      } else {
+        setPatientDiagnoses("")
+      }
+    }
+    fetchDiagnoses()
+  }, [selectedPatient?.inpatientId])
 
   const dummyCriticalResults = [
     { id: 1, patientName: "Rohit Sharma", bedNo: "B-101", testName: "Potassium", value: "6.8 mmol/L", normalRange: "3.5 - 5.0", reportedTime: "10:45 AM", status: "Critical" },
@@ -746,7 +772,7 @@ const WardManagement = () => {
                                 </div>
                                 <div>
                                   <i className="fa fa-flask me-1" style={{ fontSize: '0.85rem' }}></i>
-                                  <span style={{ fontSize: '0.8rem' }}>Dx: {selectedPatient.diagnosis || "Not specified"}</span>
+                                  <span style={{ fontSize: '0.8rem' }}>Dx: {patientDiagnoses || selectedPatient.diagnosis || "Not specified"}</span>
                                 </div>
                               </div>
                             </div>

@@ -188,6 +188,7 @@ export const UPDATE_RADIOLOGY = `${RADIOLOGY}/updateDetailsAndBookingRadiology`;
 
 export const PACS_STUDY_LIST_GET_API = `${RADIOLOGY}/getPACSStudyList`;
 export const GET_WEASIS_LAUNCH_URL_API = `/api/pacs/launch-url`;
+export const RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID = `${RADIOLOGY}/orderTrackingByInpatientIdOrAccesionNo`;
 
 export const ITEM_CLASS = {
   TABLET: 1,
@@ -756,6 +757,7 @@ export const GET_WARD_BY_CATEGORY = `/ipd/getWardDetailsByCategory`;
 export const GET_ROOM_BY_WARD = `/ipd/getRoomDetailsByWard`;
 export const GET_BED_BY_ROOM = '/ipd/getBedDetailsByRoom';
 export const GET_BED_DETAILS_BY_WARD = `/ipd/getBedDetailsByWard`;
+export const GET_ADMISSION_DETAILS_BY_INPATIENT = '/ipd/getAdmissionDetailsByInpatient';
 export const SAVE_IPD_PATIENT_DETAILS = '/ipd/saveAdmissionDetails';
 export const SAVE_IPD_INVESTIGATION_ORDER = '/ipd/saveInpatientBookingInvestigation';
 export const GET_WARD_BY_DEPARTMENT = `/ipd/getWardDetailsByDepartment`;
