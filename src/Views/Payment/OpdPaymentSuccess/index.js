@@ -472,48 +472,50 @@ const OpdPaymentSuccess = () => {
                           </div>
 
                           {/* Bill Buttons */}
-                          <div className="d-flex flex-column align-items-center gap-2">
-                            <button
-                              className="btn btn-success d-flex align-items-center gap-2"
-                              onClick={() => handleViewDownloadBill(bp.visitId)}
-                              disabled={!showBillActions || loadingStates.generating || loadingStates.printing}
-                            >
-                              {isGenerating(bp.visitId, "bill") ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm"
-                                    role="status"
-                                  ></span>
-                                  Generating...
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fa fa-eye"></i> View/Download
-                                  Bill
-                                </>
-                              )}
-                            </button>
+                          {showBillActions && (
+                            <div className="d-flex flex-column align-items-center gap-2">
+                              <button
+                                className="btn btn-success d-flex align-items-center gap-2"
+                                onClick={() => handleViewDownloadBill(bp.visitId)}
+                                disabled={loadingStates.generating || loadingStates.printing}
+                              >
+                                {isGenerating(bp.visitId, "bill") ? (
+                                  <>
+                                    <span
+                                      className="spinner-border spinner-border-sm"
+                                      role="status"
+                                    ></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fa fa-eye"></i> View/Download
+                                    Bill
+                                  </>
+                                )}
+                              </button>
 
-                            <button
-                              className="btn btn-warning d-flex align-items-center gap-2"
-                              onClick={() => handlePrintBill(bp.visitId)}
-                              disabled={!showBillActions || loadingStates.generating || loadingStates.printing}
-                            >
-                              {isPrinting(bp.visitId, "bill") ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm"
-                                    role="status"
-                                  ></span>
-                                  Printing...
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fa fa-print"></i> Print Bill
-                                </>
-                              )}
-                            </button>
-                          </div>
+                              <button
+                                className="btn btn-warning d-flex align-items-center gap-2"
+                                onClick={() => handlePrintBill(bp.visitId)}
+                                disabled={loadingStates.generating || loadingStates.printing}
+                              >
+                                {isPrinting(bp.visitId, "bill") ? (
+                                  <>
+                                    <span
+                                      className="spinner-border spinner-border-sm"
+                                      role="status"
+                                    ></span>
+                                    Printing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fa fa-print"></i> Print Bill
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -522,47 +524,51 @@ const OpdPaymentSuccess = () => {
 
                 {/* Action Buttons */}
                 <div className="d-flex justify-content-center gap-3 flex-wrap pt-3 border-top">
-                  <button
-                    className="btn btn-primary d-flex align-items-center gap-2"
-                    onClick={downloadAllBillingReceipts}
-                    disabled={!showBillActions || loadingStates.allBills || loadingStates.generating || loadingStates.printing}
-                  >
-                    {loadingStates.allBills ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm"
-                          role="status"
-                        ></span>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa fa-file-invoice me-2"></i>
-                        Download All Bills
-                      </>
-                    )}
-                  </button>
+                  {showBillActions && (
+                    <>
+                      <button
+                        className="btn btn-primary d-flex align-items-center gap-2"
+                        onClick={downloadAllBillingReceipts}
+                        disabled={loadingStates.allBills || loadingStates.generating || loadingStates.printing}
+                      >
+                        {loadingStates.allBills ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                            ></span>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa fa-file-invoice me-2"></i>
+                            Download All Bills
+                          </>
+                        )}
+                      </button>
 
-                  <button
-                    className="btn btn-warning d-flex align-items-center gap-2"
-                    onClick={printAllBillingReceipts}
-                    disabled={!showBillActions || loadingStates.printing === "all-bills" || loadingStates.generating || loadingStates.printing}
-                  >
-                    {loadingStates.printing === "all-bills" ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm"
-                          role="status"
-                        ></span>
-                        Printing...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa fa-print me-2"></i>
-                        Print All Bills
-                      </>
-                    )}
-                  </button>
+                      <button
+                        className="btn btn-warning d-flex align-items-center gap-2"
+                        onClick={printAllBillingReceipts}
+                        disabled={loadingStates.printing === "all-bills" || loadingStates.generating || loadingStates.printing}
+                      >
+                        {loadingStates.printing === "all-bills" ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                            ></span>
+                            Printing...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa fa-print me-2"></i>
+                            Print All Bills
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
 
                   <button
                     className="btn btn-secondary d-flex align-items-center gap-2"

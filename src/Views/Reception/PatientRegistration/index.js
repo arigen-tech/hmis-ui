@@ -714,6 +714,11 @@ const PatientRegistration = () => {
     }
   };
 
+  const submitButtonLabel =
+    registrationMode === "withAppointment"
+      ? "Register With Appointment"
+      : "Register Only";
+
   const createInstant = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) return null;
 
@@ -2180,24 +2185,52 @@ const handlePhotoFileChange = (event) => {
         setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
 
+        debugger;
         if (data.status === 200) {
           const resp = data.response?.opdBillingPatientResponse;
           const patientResp = data.response?.patient || data.response;
 
-          const visits =
-            data.response?.patient?.visits || data.response?.visits || [];
+          const visits = Array.isArray(data.response?.patient?.visits)
+            ? data.response.patient.visits
+            : Array.isArray(data.response?.visits)
+              ? data.response.visits
+              : [];
+          const appointments = Array.isArray(resp?.appointments)
+            ? resp.appointments
+            : Array.isArray(data.response?.appointments)
+              ? data.response.appointments
+              : [];
+          const receiptRows = (visits.length > 0 ? visits : appointments).map(
+            (row, index) => {
+              const mergedRow = {
+                ...(appointments[index] || {}),
+                ...(visits[index] || {}),
+                ...row,
+              };
+
+              return {
+                ...mergedRow,
+                visitId: mergedRow.visitId ?? mergedRow.id,
+                tokenNo: mergedRow.tokenNo ?? mergedRow.tokenNumber ?? "N/A",
+                doctorName:
+                  mergedRow.doctorName ??
+                  mergedRow.consultedDoctor ??
+                  mergedRow.consultedDoctorName ??
+                  "N/A",
+                patientName:
+                  mergedRow.patientName ||
+                  patientResp?.patientName ||
+                  `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                patientId:
+                  mergedRow.patientId ?? patientResp?.id ?? patientResp?.patientid,
+              };
+            },
+          );
+          const hasReceiptData = receiptRows.length > 0;
           const hasBillingStatusY =
             visits.length > 0 && visits[0]?.billingStatus === "y";
-          const details = resp?.details;
-          const isDetailsBlank =
-            details === null ||
-            details === undefined ||
-            (Array.isArray(details) && details.length === 0) ||
-            (typeof details === "object" &&
-              !Array.isArray(details) &&
-              Object.keys(details).length === 0);
 
-          if (visits.length > 0 && isDetailsBlank) {
+          if (hasReceiptData) {
             Swal.fire({
               title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p>Patient registered successfully.</p>
@@ -2220,23 +2253,18 @@ const handlePhotoFileChange = (event) => {
                     patientName:
                       patientResp?.patientName ||
                       `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
-                    visits: visits.map((visit) => ({
-                      visitId: visit.id,
-                      tokenNo: visit.tokenNo,
-                      doctorName: visit.doctorName,
-                      patientName:
-                        visit.patientName ||
-                        patientResp?.patientName ||
-                        `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
-                      patientId: visit.patientId,
-                    })),
+                    visits: receiptRows,
+                    opdData: {
+                      appointments,
+                      patient: patientResp,
+                    },
                   },
                 });
               } else if (result.dismiss === Swal.DismissReason.cancel) {
                 handleReset();
               }
             });
-          } else if (hasBillingStatusY && !isDetailsBlank) {
+          } else if (hasBillingStatusY) {
             Swal.fire({
               title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p>Patient has been registered successfully.</p>
@@ -3882,7 +3910,7 @@ const uploadImageAndGetUrl = async (imageSource) => {
                       disabled={isDuplicatePatient}
                       onClick={sendRegistrationRequest}
                     >
-                      Registration
+                      {submitButtonLabel}
                     </button>
                     <button type="reset" className="btn btn-secondary">
                       Reset
