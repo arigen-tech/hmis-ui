@@ -59,11 +59,6 @@ const WardManagement = () => {
     { id: 3, patientName: "Suresh Iyer", bedNo: "B-108", testName: "Blood Glucose", value: "480 mg/dL", normalRange: "70 - 140", reportedTime: "12:02 PM", status: "Critical" },
   ]
 
-  const dummyTransferList = [
-    { id: 1, patientName: "Meena Kapoor", bedNo: "B-102", fromWard: "General Ward", toWard: "ICU", requestedBy: "Dr. Nair", requestedTime: "09:30 AM", status: "Pending" },
-    { id: 2, patientName: "Vikas Rao", bedNo: "B-110", fromWard: "ICU", toWard: "General Ward", requestedBy: "Dr. Mehta", requestedTime: "10:15 AM", status: "Approved" },
-    { id: 3, patientName: "Farah Khan", bedNo: "B-115", fromWard: "General Ward", toWard: "Labor Room", requestedBy: "Dr. Singh", requestedTime: "11:45 AM", status: "In Progress" },
-  ]
 
   const dummyWorklist = [
     { id: 1, task: "Administer IV Antibiotics", patientName: "Rohit Sharma", bedNo: "B-101", priority: "High", assignedTo: "Nurse Priya", dueTime: "01:00 PM", status: "Pending" },
@@ -138,7 +133,8 @@ const WardManagement = () => {
           diagnosis: bed.diagnosis || "",
           admissionTime: "",
           patientId: bed.patientId,
-          inpatientId: bed.ipdPatientId
+          inpatientId: bed.ipdPatientId,
+          doctorId: bed.doctorId
         }))
         setPatientData(mappedBeds)
       } else {
@@ -442,38 +438,9 @@ const WardManagement = () => {
                           )}
 
                           {deptView === "transfer" && (
-                            <table className="table table-bordered table-hover mb-0 align-middle" style={{ fontSize: "0.85rem" }}>
-                              <thead className="table-light">
-                                <tr>
-                                  <th>S No.</th>
-                                  <th>Patient</th>
-                                  <th>Bed No</th>
-                                  <th>From Ward</th>
-                                  <th>To Ward</th>
-                                  <th>Requested By</th>
-                                  <th>Requested Time</th>
-                                  <th>Status</th>
-                                </tr>
-                              </thead>
-                              <tbody>
-                                {dummyTransferList.map((row, idx) => (
-                                  <tr key={row.id}>
-                                    <td>{idx + 1}</td>
-                                    <td>{row.patientName}</td>
-                                    <td>{row.bedNo}</td>
-                                    <td>{row.fromWard}</td>
-                                    <td>{row.toWard}</td>
-                                    <td>{row.requestedBy}</td>
-                                    <td>{row.requestedTime}</td>
-                                    <td>
-                                      <span className={`badge bg-${getGenericStatusBadgeColor(row.status)}`}>
-                                        {row.status}
-                                      </span>
-                                    </td>
-                                  </tr>
-                                ))}
-                              </tbody>
-                            </table>
+                            <div className="p-3">
+                              <BedTransfer selectedWard={selectedWard} isWardLevel={true} />
+                            </div>
                           )}
 
                           {deptView === "worklist" && (

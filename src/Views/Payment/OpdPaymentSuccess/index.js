@@ -12,6 +12,7 @@ import { useEffect } from "react";
 const OpdPaymentSuccess = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const state = location.state || {};
 
   const [pdfUrl, setPdfUrl] = useState(null);
   const [loadingStates, setLoadingStates] = useState({
@@ -25,10 +26,75 @@ const OpdPaymentSuccess = () => {
     paymentResponse,
     source,
     billingType,
-  } = location.state || {};
-  const billPayments = paymentResponse?.response?.billPayments || [];
+  } = state;
+  const paymentResponseData = paymentResponse?.response || {};
+  const requestBillPayments = Array.isArray(state.opdBillPayments)
+    ? state.opdBillPayments
+    : Array.isArray(state.paymentRequest?.opdBillPayments)
+      ? state.paymentRequest.opdBillPayments
+      : [];
+  const visitRowsFromAppointments = Array.isArray(state.opdData?.appointments)
+    ? state.opdData.appointments.map((appt) => ({
+        visitId: appt.visitId ?? appt.id,
+        tokenNo: appt.tokenNo ?? appt.tokenNumber ?? "N/A",
+        doctorName:
+          appt.doctorName ??
+          appt.consultedDoctor ??
+          appt.consultedDoctorName ??
+          "N/A",
+        patientName:
+          appt.patientName ??
+          state.patientName ??
+          state.opdData?.patient?.patientName ??
+          "N/A",
+        netAmount: Number(appt.netAmount ?? appt.amount ?? 0),
+        billHeaderId:
+          appt.billHeaderId ??
+          appt.billingHdId ??
+          appt.billinghdid ??
+          appt.billingHeaderId ??
+          null,
+      }))
+    : [];
+  const billPayments = Array.isArray(paymentResponseData.billPayments) &&
+    paymentResponseData.billPayments.length > 0
+      ? paymentResponseData.billPayments
+      : requestBillPayments;
+  const visitData = Array.isArray(state.visits) && state.visits.length > 0
+    ? state.visits
+    : Array.isArray(paymentResponseData.visits) && paymentResponseData.visits.length > 0
+      ? paymentResponseData.visits
+      : visitRowsFromAppointments;
+  const receiptSourceRows = billPayments.length > 0 ? billPayments : visitData;
+  const receiptRows = receiptSourceRows.map((row, index) => {
+    const mergedRow = {
+      ...(visitData[index] || {}),
+      ...(billPayments[index] || {}),
+      ...row,
+    };
 
-  // Helper to set loading state
+    return {
+      ...mergedRow,
+      visitId: mergedRow.visitId ?? mergedRow.id,
+      tokenNo: mergedRow.tokenNo ?? mergedRow.tokenNumber ?? "N/A",
+      doctorName:
+        mergedRow.doctorName ?? mergedRow.consultedDoctorName ?? "N/A",
+      patientName: mergedRow.patientName ?? state.patientName ?? "N/A",
+      netAmount: Number(mergedRow.netAmount ?? mergedRow.amount ?? 0),
+      billHeaderId:
+        mergedRow.billHeaderId ?? mergedRow.billingHdId ?? mergedRow.billinghdid ?? null,
+    };
+  });
+  const hasBillingData =
+    state.hasBillingData ??
+    receiptRows.some((bp) => bp.billHeaderId != null || bp.billingHdId != null);
+  const isBillingAvailable =
+    hasBillingData &&
+    receiptRows.some((bp) => bp.billHeaderId != null || bp.billingHdId != null);
+  const showBillActions = isBillingAvailable && receiptRows.length > 0;
+  const isOpdBilling =
+    billingType === OPD_SERVICE_CATAGORY || billingType === "Consultation Services";
+
   const setLoading = (type, value) => {
     setLoadingStates((prev) => ({
       ...prev,
@@ -47,11 +113,15 @@ const OpdPaymentSuccess = () => {
       return "/OPDBillingDetails"; // fallback
     }
 
+    if (source === "followup-update") {
+      return "/AppointmentForFollowUpPatient";
+    }
+
     if (source === "registration") {
       return "/NewPatientAppointment";
     }
 
-    if (billingType === OPD_SERVICE_CATAGORY) {
+    if (isOpdBilling) {
       return BILLING_ROUTES.opd;
     }
 
@@ -150,7 +220,9 @@ const OpdPaymentSuccess = () => {
     setLoading("allBills", true);
 
     try {
-      for (const bp of billPayments) {
+      for (const bp of receiptRows.filter(
+        (row) => row.billHeaderId != null || row.billingHdId != null,
+      )) {
         const url = `${OPD_INVOICE_API}?visit=${bp.visitId}&flag=d`;
         const response = await fetch(url, {
           method: "GET",
@@ -194,7 +266,9 @@ const OpdPaymentSuccess = () => {
     setLoading("printing", "all-bills");
 
     try {
-      for (const bp of billPayments) {
+      for (const bp of receiptRows.filter(
+        (row) => row.billHeaderId != null || row.billingHdId != null,
+      )) {
         const url = `${OPD_INVOICE_API}?visit=${bp.visitId}&flag=p`;
         const response = await fetch(url, {
           method: "GET",
@@ -218,7 +292,7 @@ const OpdPaymentSuccess = () => {
       return "Back to Registration";
     }
 
-    if (billingType === OPD_SERVICE_CATAGORY) {
+    if (isOpdBilling) {
       return "Back to OPD Billing";
     }
 
@@ -240,7 +314,7 @@ const OpdPaymentSuccess = () => {
     <div className="body d-flex py-3">
       <div className="container-xxl">
         <div className="text-center mb-4">
-          <h3 className="fw-bold text-primary">Payment Confirmation</h3>
+          <h3 className="fw-bold text-primary">Booking Confirmation</h3>
         </div>
 
         <div className="row">
@@ -258,19 +332,21 @@ const OpdPaymentSuccess = () => {
                     ></i>
                   </div>
                   <h4 className="mt-3 fw-bold text-success">
-                    Payment Successful!
+                    {showBillActions ? "Payment Successful!" : "Token Generated Successfully"}
                   </h4>
                   <p className="text-muted mb-0">
-                    Your payment has been processed successfully
+                    {showBillActions
+                      ? "Your payment has been processed successfully"
+                      : "Billing details were not generated. You can download the token slip only."}
                   </p>
                 </div>
 
                 <div className="border border-success border-2 rounded-3 p-3 mb-4 text-center">
-                  <p className="text-muted mb-1 small">Total Amount Paid</p>
-                  <h2 className="text-success fw-bold mb-0">
-                    ₹{amount.toFixed(2)}
-                  </h2>
-                </div>
+  <p className="text-muted mb-1 small">{showBillActions ? "Total Amount Paid" : "Token Slip Generated"}</p>
+  <h2 className="text-success fw-bold mb-0">
+    {showBillActions ? `Rs. ${amount.toFixed(2)}` : "Token Only"}
+  </h2>
+</div>
 
                 <div className="mb-4">
                   <div className="d-flex align-items-center mb-3">
@@ -278,7 +354,7 @@ const OpdPaymentSuccess = () => {
                     <h5 className="mb-0 fw-bold">OPD Appointment Details</h5>
                   </div>
 
-                  {billPayments.map((bp, index) => (
+                  {receiptRows.map((bp, index) => (
                     <div
                       key={index}
                       className="card border border-primary mb-3 shadow-sm"
@@ -291,7 +367,7 @@ const OpdPaymentSuccess = () => {
                               Appointment #{index + 1}
                             </h6>
                           </div>
-                          <span className="badge bg-success">Paid</span>
+                          <span className={showBillActions ? "badge bg-success" : "badge bg-warning text-dark"}>{showBillActions ? "Paid" : "Token Ready"}</span>
                         </div>
 
                         <div className="row g-3">
@@ -356,10 +432,7 @@ const OpdPaymentSuccess = () => {
                               onClick={() =>
                                 handleViewDownloadToken(bp.visitId)
                               }
-                              disabled={
-                                loadingStates.generating ||
-                                loadingStates.printing
-                              }
+                              disabled={loadingStates.generating || loadingStates.printing}
                             >
                               {isGenerating(bp.visitId, "token") ? (
                                 <>
@@ -380,10 +453,7 @@ const OpdPaymentSuccess = () => {
                             <button
                               className="btn btn-warning d-flex align-items-center gap-2"
                               onClick={() => handlePrintToken(bp.visitId)}
-                              disabled={
-                                loadingStates.generating ||
-                                loadingStates.printing
-                              }
+                              disabled={loadingStates.generating || loadingStates.printing}
                             >
                               {isPrinting(bp.visitId, "token") ? (
                                 <>
@@ -402,54 +472,50 @@ const OpdPaymentSuccess = () => {
                           </div>
 
                           {/* Bill Buttons */}
-                          <div className="d-flex flex-column align-items-center gap-2">
-                            <button
-                              className="btn btn-success d-flex align-items-center gap-2"
-                              onClick={() => handleViewDownloadBill(bp.visitId)}
-                              disabled={
-                                loadingStates.generating ||
-                                loadingStates.printing
-                              }
-                            >
-                              {isGenerating(bp.visitId, "bill") ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm"
-                                    role="status"
-                                  ></span>
-                                  Generating...
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fa fa-eye"></i> View/Download
-                                  Bill
-                                </>
-                              )}
-                            </button>
+                          {showBillActions && (
+                            <div className="d-flex flex-column align-items-center gap-2">
+                              <button
+                                className="btn btn-success d-flex align-items-center gap-2"
+                                onClick={() => handleViewDownloadBill(bp.visitId)}
+                                disabled={loadingStates.generating || loadingStates.printing}
+                              >
+                                {isGenerating(bp.visitId, "bill") ? (
+                                  <>
+                                    <span
+                                      className="spinner-border spinner-border-sm"
+                                      role="status"
+                                    ></span>
+                                    Generating...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fa fa-eye"></i> View/Download
+                                    Bill
+                                  </>
+                                )}
+                              </button>
 
-                            <button
-                              className="btn btn-warning d-flex align-items-center gap-2"
-                              onClick={() => handlePrintBill(bp.visitId)}
-                              disabled={
-                                loadingStates.generating ||
-                                loadingStates.printing
-                              }
-                            >
-                              {isPrinting(bp.visitId, "bill") ? (
-                                <>
-                                  <span
-                                    className="spinner-border spinner-border-sm"
-                                    role="status"
-                                  ></span>
-                                  Printing...
-                                </>
-                              ) : (
-                                <>
-                                  <i className="fa fa-print"></i> Print Bill
-                                </>
-                              )}
-                            </button>
-                          </div>
+                              <button
+                                className="btn btn-warning d-flex align-items-center gap-2"
+                                onClick={() => handlePrintBill(bp.visitId)}
+                                disabled={loadingStates.generating || loadingStates.printing}
+                              >
+                                {isPrinting(bp.visitId, "bill") ? (
+                                  <>
+                                    <span
+                                      className="spinner-border spinner-border-sm"
+                                      role="status"
+                                    ></span>
+                                    Printing...
+                                  </>
+                                ) : (
+                                  <>
+                                    <i className="fa fa-print"></i> Print Bill
+                                  </>
+                                )}
+                              </button>
+                            </div>
+                          )}
                         </div>
                       </div>
                     </div>
@@ -458,55 +524,51 @@ const OpdPaymentSuccess = () => {
 
                 {/* Action Buttons */}
                 <div className="d-flex justify-content-center gap-3 flex-wrap pt-3 border-top">
-                  <button
-                    className="btn btn-primary d-flex align-items-center gap-2"
-                    onClick={downloadAllBillingReceipts}
-                    disabled={
-                      loadingStates.allBills ||
-                      loadingStates.generating ||
-                      loadingStates.printing
-                    }
-                  >
-                    {loadingStates.allBills ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm"
-                          role="status"
-                        ></span>
-                        Generating...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa fa-file-invoice me-2"></i>
-                        Download All Bills
-                      </>
-                    )}
-                  </button>
+                  {showBillActions && (
+                    <>
+                      <button
+                        className="btn btn-primary d-flex align-items-center gap-2"
+                        onClick={downloadAllBillingReceipts}
+                        disabled={loadingStates.allBills || loadingStates.generating || loadingStates.printing}
+                      >
+                        {loadingStates.allBills ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                            ></span>
+                            Generating...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa fa-file-invoice me-2"></i>
+                            Download All Bills
+                          </>
+                        )}
+                      </button>
 
-                  <button
-                    className="btn btn-warning d-flex align-items-center gap-2"
-                    onClick={printAllBillingReceipts}
-                    disabled={
-                      loadingStates.printing === "all-bills" ||
-                      loadingStates.generating ||
-                      loadingStates.printing
-                    }
-                  >
-                    {loadingStates.printing === "all-bills" ? (
-                      <>
-                        <span
-                          className="spinner-border spinner-border-sm"
-                          role="status"
-                        ></span>
-                        Printing...
-                      </>
-                    ) : (
-                      <>
-                        <i className="fa fa-print me-2"></i>
-                        Print All Bills
-                      </>
-                    )}
-                  </button>
+                      <button
+                        className="btn btn-warning d-flex align-items-center gap-2"
+                        onClick={printAllBillingReceipts}
+                        disabled={loadingStates.printing === "all-bills" || loadingStates.generating || loadingStates.printing}
+                      >
+                        {loadingStates.printing === "all-bills" ? (
+                          <>
+                            <span
+                              className="spinner-border spinner-border-sm"
+                              role="status"
+                            ></span>
+                            Printing...
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa fa-print me-2"></i>
+                            Print All Bills
+                          </>
+                        )}
+                      </button>
+                    </>
+                  )}
 
                   <button
                     className="btn btn-secondary d-flex align-items-center gap-2"

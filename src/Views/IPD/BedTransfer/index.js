@@ -29,9 +29,14 @@ const TRANSFER_STATUS = {
   CANCELLED: "Cancelled"
 }
 
-const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
-  const [activeView, setActiveView] = useState("request") // "request" | "pendingList" | "transferredList"
+const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWardLevel = false }) => {
+  const [activeView, setActiveView] = useState(isWardLevel ? "pendingList" : "request") // "request" | "pendingList" | "transferredList"
   const [selectedPendingTransfer, setSelectedPendingTransfer] = useState(null) // for detail view
+
+  useEffect(() => {
+    setActiveView(isWardLevel ? "pendingList" : "request");
+    setSelectedPendingTransfer(null);
+  }, [isWardLevel]);
   const [showCancelModal, setShowCancelModal] = useState(false)
   const [cancelTargetId, setCancelTargetId] = useState(null)
   const [cancelRemarks, setCancelRemarks] = useState("")
@@ -388,7 +393,9 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
           setRequestForm({ targetWardId: "", targetBed: "", departmentId: "", doctorInCharge: "", reason: "", otherReason: "", priority: "Normal", clinicalNotes: "" })
           fetchPendingTransfers()
           fetchCompletedTransfers()
-          setActiveView("pendingList")
+          if (isWardLevel) {
+            setActiveView("pendingList")
+          }
         })
       } else {
         Swal.fire({
@@ -727,39 +734,30 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard }) => {
   return (
     <div>
       {/* ─── TAB TOGGLE ─── */}
-      <div className="d-flex gap-2 mb-3">
-        <button
-          className={`btn btn-sm ${activeView === "request" ? "btn-primary" : "btn-outline-primary"}`}
-          onClick={() => {
-            setActiveView("request")
-            setSelectedPendingTransfer(null)
-            
-          }}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
-        >
-          New Transfer Request
-        </button>
-        <button
-          className={`btn btn-sm ${activeView === "pendingList" ? "btn-primary" : "btn-outline-primary"}`}
-          onClick={() => {
-            setActiveView("pendingList")
-            setSelectedPendingTransfer(null)
-          }}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
-        >
-          Pending for Transfer ({pendingTransfers.length})
-        </button>
-        <button
-          className={`btn btn-sm ${activeView === "transferredList" ? "btn-primary" : "btn-outline-primary"}`}
-          onClick={() => {
-            setActiveView("transferredList")
-            setSelectedPendingTransfer(null)
-          }}
-          style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
-        >
-          Transferred List ({transferredList.length})
-        </button>
-      </div>
+      {isWardLevel && (
+        <div className="d-flex gap-2 mb-3">
+          <button
+            className={`btn btn-sm ${activeView === "pendingList" ? "btn-primary" : "btn-outline-primary"}`}
+            onClick={() => {
+              setActiveView("pendingList")
+              setSelectedPendingTransfer(null)
+            }}
+            style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          >
+            Pending for Transfer ({pendingTransfers.length})
+          </button>
+          <button
+            className={`btn btn-sm ${activeView === "transferredList" ? "btn-primary" : "btn-outline-primary"}`}
+            onClick={() => {
+              setActiveView("transferredList")
+              setSelectedPendingTransfer(null)
+            }}
+            style={{ fontSize: "0.65rem", padding: "0.1rem 0.3rem" }}
+          >
+            Transferred List ({transferredList.length})
+          </button>
+        </div>
+      )}
 
       {/* ─── NEW REQUEST FORM ─── */}
       {activeView === "request" && (

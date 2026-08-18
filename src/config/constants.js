@@ -1453,3 +1453,5 @@ export const ITEM_TYPE_CODE_NONMED_CON = "NONMED_CON";
 export const ITEM_TYPE_CODE_MED_CON = "MED_CON";
 export const SECTION_CODE_DRUG = "DRUGS";
 export const SECTION_ID_DRUGS = 1;
+
+export const HOSPITAL_ID = 12;

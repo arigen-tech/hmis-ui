@@ -25,6 +25,7 @@ import {
   FOLLOWUP_PATIENTS_LIST,
   PATIENT_FOLLOW_UP_DETAILS,
   UPDATE_LAB_REGISTRATION,
+  GET_BILLING_CONFIG,
 } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import {
@@ -65,6 +66,8 @@ const UpdateLabRegistration = () => {
   const [investigationItems, setInvestigationItems] = useState([]);
   const [packageItems, setPackageItems] = useState([]);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+  const [labBillingEnabled, setLabBillingEnabled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const navigate = useNavigate();
@@ -231,6 +234,10 @@ const UpdateLabRegistration = () => {
   //   fetchCountryData();
   //   fetchGstConfiguration();
   // }, []);
+
+  useEffect(() => {
+    fetchIsBillingEnabled();
+  }, []);
 
   useEffect(() => {
     if (formData.country) {
@@ -923,6 +930,19 @@ const UpdateLabRegistration = () => {
     }
   }
 
+  async function fetchIsBillingEnabled() {
+    const hospitalId = sessionStorage.getItem("hospitalId");
+    if (!hospitalId) return;
+
+    try {
+      const response = await getRequest(`${GET_BILLING_CONFIG}/${hospitalId}`);
+      setLabBillingEnabled(response?.response?.labBillingEnabled === true);
+    } catch (error) {
+      console.error("Error fetching billing configuration:", error);
+      setLabBillingEnabled(false);
+    }
+  }
+
   const handleSearch = useCallback(
     async (page = 0, searchOverride = null) => {
       if (typeof page !== "number") {
@@ -1247,7 +1267,7 @@ const UpdateLabRegistration = () => {
 
     if (isFormValid) {
       try {
-        setLoading(true);
+        setIsSubmitting(true);
         const patientId = formData.id;
         if (!patientId) throw new Error("Patient ID not found");
 
@@ -1350,7 +1370,7 @@ const UpdateLabRegistration = () => {
           throw new Error(labResult?.message || "Lab registration failed.");
         }
         let billingHeaderId = labResult.response.billinghdId;
-        if (shouldNavigateToPayment) {
+        if (shouldNavigateToPayment && labBillingEnabled) {
           showPopup(LAB_BOOKING_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
@@ -1372,6 +1392,10 @@ const UpdateLabRegistration = () => {
               },
             });
           });
+        } else if (shouldNavigateToPayment) {
+          showPopup("Lab order booked successful", "success", false, () => {
+            handleBackToList();
+          });
         } else {
           showPopup(LAB_REGISTER_SUCC_MSG, "success", false, () => {
             handleBackToList();
@@ -1381,7 +1405,7 @@ const UpdateLabRegistration = () => {
         console.error("Registration error:", error);
         showPopup(error.message || LAB_REG_FAIL_MSG, "error");
       } finally {
-        setLoading(false);
+        setIsSubmitting(false);
       }
     }
   };
@@ -2946,9 +2970,10 @@ const UpdateLabRegistration = () => {
                       <button
                         type="button"
                         className="btn btn-primary me-2"
+                        disabled={isSubmitting}
                         onClick={async () => {
                           const missingFields = getMissingMandatoryFields();
-                          if (loading) return;
+                          if (isSubmitting) return;
                           if (missingFields.length > 0) {
                             showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning");
                             return;
@@ -2961,10 +2986,19 @@ const UpdateLabRegistration = () => {
                           }
                         }}
                       >
-                        <i className="fa fa-credit-card me-1"></i>
-                        {loading
-                          ? "Processing..."
-                          : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                        {isSubmitting ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" />
+                            {labBillingEnabled ? "Paying..." : "Booking..."}
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa fa-credit-card me-1"></i>
+                            {labBillingEnabled
+                              ? `Pay Now - ₹${paymentBreakdown.finalAmount}`
+                              : "Book"}
+                          </>
+                        )}
                       </button>
                       {/* <button
                         type="button"
@@ -2978,7 +3012,7 @@ const UpdateLabRegistration = () => {
                         type="button"
                         className="btn btn-outline-secondary"
                         onClick={handleBackToList}
-                        disabled={loading}
+                        disabled={isSubmitting}
                       >
                         Cancel
                       </button>

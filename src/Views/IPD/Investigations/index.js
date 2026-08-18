@@ -16,9 +16,15 @@ import {
   LAB_ORDER_TRACKING_WRT_PATIENT_ID_GET_URL,
   IP_INVESTIGATION_REPORT_URL,
   RADIOLOGY_ORDER_TRACKING_BY_INPATIENT_ID,
+  GET_WEASIS_LAUNCH_URL_API,
+  RADIOLOGY_REPORT_END_URL,
+  REQUEST_PARAM_RAD_ORDER_DT_ID,
+  STATUS_Y,
+  STATUS_N,
+  STATUS_S,
 } from "../../../config/apiConfig";
-import { formatDateForDisplay } from "../../../utils/dateUtils";
-import { REPORT_GEN_FAILED_ERR_MSG } from "../../../config/constants";
+import { formatDateForDisplay, formatDateTimeForDisplay } from "../../../utils/dateUtils";
+import { REPORT_GEN_FAILED_ERR_MSG, HOSPITAL_ID } from "../../../config/constants";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
 // ----------------------------------------------------------------------------
@@ -225,6 +231,12 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const [isGeneratingReport, setIsGeneratingReport] = useState(false);
   const [generatingPdfIds, setGeneratingPdfIds] = useState(new Set());
 
+  // Radiology PDF/DICOM states
+  const [isViewLoading, setIsViewLoading] = useState(false);
+  const [selectedReportId, setSelectedReportId] = useState(null);
+  const [isDicomLoading, setIsDicomLoading] = useState(false);
+  const [selectedDicomRow, setSelectedDicomRow] = useState(null);
+
   // Refs for portal dropdowns
   const labInputRefs = useRef({});
   const radiologyInputRefs = useRef({});
@@ -275,6 +287,49 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     fetchInvestigations();
   }, [selectedPatient]);
 
+  // ---------- Helper functions for radiology ----------
+  const formatStudyDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return "-";
+    try {
+      const dateObj = new Date(dateTimeStr);
+      const formattedDate = formatDateForDisplay(dateTimeStr);
+      const timeStr = dateObj.toLocaleTimeString('en-IN', {
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      });
+      return `${formattedDate} ${timeStr}`;
+    } catch {
+      return dateTimeStr;
+    }
+  };
+
+  const getStatusBadgeClass = (status) => {
+    switch(status?.toLowerCase()) {
+      case `${STATUS_Y}`.toLowerCase():
+        return 'badge bg-success';
+      case `${STATUS_N}`.toLowerCase():
+        return 'badge bg-warning';
+      case `${STATUS_S}`.toLowerCase():
+        return 'badge bg-info';
+      default:
+        return 'badge bg-secondary';
+    }
+  };
+
+  const getStatusText = (status) => {
+    switch(status?.toLowerCase()) {
+      case `${STATUS_Y}`.toLowerCase():
+        return 'Completed';
+      case `${STATUS_N}`.toLowerCase():
+        return 'Pending';
+      case `${STATUS_S}`.toLowerCase():
+        return 'Draft';
+      default:
+        return 'Unknown';
+    }
+  };
+
   // ---------- Fetch tracking data from API (only for lab) ----------
   // ---------- Fetch tracking data from API ----------
   const fetchTrackingData = async (page = 1) => {
@@ -288,7 +343,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         }
         const patientId = selectedPatient.patientId;
         const queryString = new URLSearchParams({
-          [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || "",
+          [REQUEST_PARAM_HOSPITAL_ID]: hospitalId || HOSPITAL_ID,
           [REQUEST_PARAM_PATIENT_ID]: patientId,
           [REQUEST_PARAM_PAGE]: String(page - 1),
           [REQUEST_PARAM_SIZE]: String(itemsPerPage),
@@ -304,7 +359,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           const mappedData = content.map((item) => ({
             dgOrderHdId: item.dgOrderHdId,
             orderNo: item.orderNum || "",
-            orderDate: formatDateForDisplay(item.orderDate) || "",
+            orderDate: formatDateTimeForDisplay(item.orderDate) || "",
             patientName: item.patientName || "",
             mobileNo: item.mobileNum || "",
             ageGender: `${item.age || ""} / ${item.gender || ""}`,
@@ -333,14 +388,17 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         if (response?.status === 200 && Array.isArray(response?.response)) {
           const content = response.response;
           const mappedData = content.map((item) => {
-            const reportStatusChar = (item.reportstatus || "").toLowerCase();
-            const studyStatusChar = (item.studystatus || "").toLowerCase();
             return {
-              accessionNo: item.orderaccessionno || "",
-              orderDate: item.orderdate ? formatDateForDisplay(item.orderdate) : "",
-              investigationName: item.investigationname || "",
-              studyStatus: studyStatusChar === "y" ? "Complete" : "Pending",
-              reportStatus: reportStatusChar === "y" ? "Complete" : "Pending",
+              id: item.radorderdtid,
+              accessionNo: item.orderaccessionno || "-",
+              uhidNo: item.uhid || "-",
+              patientName: item.patientname || "-",
+              orderDate: item.orderdate ? formatDateTimeForDisplay(item.orderdate) : "-",
+              studyDate: item.studydatetime ? formatDateTimeForDisplay(item.studydatetime) : "-",
+              modalityName: item.modalityname || "-",
+              investigationName: item.investigationname || "-",
+              studyStatus: item.studystatus || "n",
+              reportStatus: item.reportstatus || "n",
             };
           });
 
@@ -423,7 +481,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const handleViewReport = (record) => generateLabReport(record);
 
   const handlePrintClick = async () => {
-    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26);
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id);
     if (inpatientId) {
       try {
         setIsGeneratingReport(true);
@@ -447,6 +505,81 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
         title: "Patient not selected",
         text: "Please select an admitted IPD patient before generating the report.",
       });
+    }
+  };
+
+  const handleRadiologyViewReport = async (radOrderDtId) => {
+    try {
+      setIsViewLoading(true);
+      setSelectedReportId(radOrderDtId);
+      
+      const reportUrl = `${RADIOLOGY_REPORT_END_URL}?${REQUEST_PARAM_RAD_ORDER_DT_ID}=${radOrderDtId}&${REQUEST_PARAM_FLAG}=d`;
+      
+      const response = await fetch(reportUrl, {
+        method: "GET",
+        headers: {
+          Accept: "application/pdf",
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to fetch report");
+      }
+
+      const blob = await response.blob();
+      const fileURL = window.URL.createObjectURL(blob);
+      setPdfUrl(fileURL);
+      
+    } catch (err) {
+      console.error("Error generating PDF:", err);
+      Swal.fire({
+        icon: "error",
+        title: "Report Generation Failed",
+        text: "Could not generate report. Please try again.",
+      });
+    } finally {
+      setIsViewLoading(false);
+      setSelectedReportId(null);
+    }
+  };
+
+  const handleDicomView = async (item) => {
+    try {
+      setIsDicomLoading(true);
+      setSelectedDicomRow(item.id);
+
+      const params = new URLSearchParams({
+        uhid: item.uhidNo,
+        orderNo: item.accessionNo,
+      });
+
+      const response = await getRequest(
+        `${GET_WEASIS_LAUNCH_URL_API}?${params.toString()}`
+      );
+
+      const payload = response?.response ?? response;
+      const weasisUrl = payload?.weasisUrl;
+
+      if (!weasisUrl) {
+        Swal.fire({
+          icon: "info",
+          title: "Info",
+          text: `No DICOM study found for ${item.patientName}.`,
+        });
+        return;
+      }
+
+      window.open(weasisUrl, "_blank", "noopener,noreferrer");
+    } catch (error) {
+      console.error("Error launching Weasis:", error);
+      Swal.fire({
+        icon: "error",
+        title: "Error",
+        text: "Failed to open DICOM study. Please try again.",
+      });
+    } finally {
+      setIsDicomLoading(false);
+      setSelectedDicomRow(null);
     }
   };
 
@@ -1282,17 +1415,21 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                   ) : (
                     <tr>
                       <th>Accession NO</th>
-                      <th>Order Date</th>
+                      <th>Order Date/Time</th>
+                      <th>Study Date/Time</th>
+                      <th>Modality Name</th>
                       <th>Investigation name</th>
                       <th>Study Status</th>
                       <th>Report Status</th>
+                      <th>Report</th>
+                      <th>DICOM</th>
                     </tr>
                   )}
                 </thead>
                 <tbody>
                   {trackingLoading ? (
                     <tr>
-                      <td colSpan={trackingType === "lab" ? "6" : "5"} className="text-center py-4">
+                      <td colSpan={trackingType === "lab" ? "6" : "9"} className="text-center py-4">
                         Loading...
                       </td>
                     </tr>
@@ -1336,16 +1473,64 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
                           <>
                             <td>{row.accessionNo}</td>
                             <td>{row.orderDate}</td>
+                            <td>{row.studyDate}</td>
+                            <td>{row.modalityName}</td>
                             <td>{row.investigationName}</td>
-                            <td>{row.studyStatus}</td>
-                            <td>{row.reportStatus}</td>
+                            <td>
+                              <span className={getStatusBadgeClass(row.studyStatus)}>
+                                {getStatusText(row.studyStatus)}
+                              </span>
+                            </td>
+                            <td>
+                              <span className={getStatusBadgeClass(row.reportStatus)}>
+                                {getStatusText(row.reportStatus)}
+                              </span>
+                            </td>
+                            <td className="text-center">
+                              {row.reportStatus?.toLowerCase() === `${STATUS_Y}`.toLowerCase() && (
+                                <button
+                                  type="button"
+                                  className="btn btn-sm btn-success"
+                                  onClick={() => handleRadiologyViewReport(row.id)}
+                                  disabled={isViewLoading && selectedReportId === row.id}
+                                >
+                                  {isViewLoading && selectedReportId === row.id ? (
+                                    <>
+                                      <span className="spinner-border spinner-border-sm me-1" />
+                                      Generating...
+                                    </>
+                                  ) : (
+                                    <>
+                                      <i className="fa fa-eye me-1"></i>
+                                      View
+                                    </>
+                                  )}
+                                </button>
+                              )}
+                            </td>
+                            <td className="text-center">
+                              <button
+                                type="button"
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleDicomView(row)}
+                                disabled={isDicomLoading && selectedDicomRow === row.id}
+                              >
+                                {isDicomLoading && selectedDicomRow === row.id ? (
+                                  <>
+                                    <span className="spinner-border spinner-border-sm me-1" />
+                                  </>
+                                ) : (
+                                  <i className="fa fa-eye"></i>
+                                )}
+                              </button>
+                            </td>
                           </>
                         )}
                       </tr>
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={trackingType === "lab" ? "6" : "5"} className="text-center py-4">
+                      <td colSpan={trackingType === "lab" ? "6" : "9"} className="text-center py-4">
                         No records found
                       </td>
                     </tr>

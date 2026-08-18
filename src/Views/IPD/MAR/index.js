@@ -1,10 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getRequest, postRequest } from '../../../service/apiService';
-import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME, GET_MAR_MEDICINE_LIST, GET_MAR_ADMINISTRATION_LOG, SAVE_MAR_DETAILS } from '../../../config/apiConfig';
+import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME, GET_MAR_MEDICINE_LIST, GET_MAR_ADMINISTRATION_LOG, SAVE_MAR_DETAILS, SAVE_ADVERSE_REACTION, GET_ADVERSE_REACTION_DETAILS} from '../../../config/apiConfig';
 import ConfirmationPopup from '../../../Components/ConfirmationPopup';
 
-// PortalDropdown Component - Fixed positioning like in IndentCreation / OpeningBalanceEntry
 const PortalDropdown = ({ anchorRef, show, children }) => {
   const [style, setStyle] = useState({});
 
@@ -15,7 +14,7 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
       const rect = anchorRef.current.getBoundingClientRect();
       setStyle({
         position: "fixed",
-        top: rect.bottom + 4, // 4 px gap below the input
+        top: rect.bottom + 4,
         left: rect.left,
         width: rect.width,
         zIndex: 99999,
@@ -30,7 +29,6 @@ const PortalDropdown = ({ anchorRef, show, children }) => {
 
     updatePosition();
 
-    // Re-position on scroll or resize
     window.addEventListener("scroll", updatePosition, true);
     window.addEventListener("resize", updatePosition);
     return () => {
@@ -57,13 +55,10 @@ const parseJwt = (token) => {
 };
 
 const MedicationModule = ({ selectedPatient }) => {
-  // ---------- Tab State ----------
-  const [activeView, setActiveView] = useState("medications"); // "medications" | "adverse"
+  const [activeView, setActiveView] = useState("medications");
 
-  // ---------- State ----------
   const [currentUserName, setCurrentUserName] = useState('');
 
-  // Active medications (only those with stopDate === null)
   const [activeMeds, setActiveMeds] = useState([]);
   const [medLoading, setMedLoading] = useState(false);
   const [medSaving, setMedSaving] = useState(false);
@@ -128,7 +123,6 @@ const MedicationModule = ({ selectedPatient }) => {
     fetchActiveMeds();
   }, [inpatientId]);
 
-  // Dynamic MAR states
   const [dynamicMarLogs, setDynamicMarLogs] = useState([]);
   const [dynamicMarLogsLoading, setDynamicMarLogsLoading] = useState(false);
   const [marMedicineList, setMarMedicineList] = useState([]);
@@ -188,7 +182,6 @@ const MedicationModule = ({ selectedPatient }) => {
     fetchMarLogs();
   }, [inpatientId, marLogPage, marLogSize, logFilterItemId]);
 
-  // MAR administration logs (history)
   const [marLogs, setMarLogs] = useState([
     {
       id: 101,
@@ -244,30 +237,58 @@ const MedicationModule = ({ selectedPatient }) => {
     },
   ]);
 
-  // Adverse events
   const [adverseEvents, setAdverseEvents] = useState([]);
+  const [adverseEventsLoading, setAdverseEventsLoading] = useState(false);
 
-  // UI states
+  const fetchAdverseEvents = async () => {
+    if (!inpatientId) return;
+    setAdverseEventsLoading(true);
+    try {
+      const res = await getRequest(`${GET_ADVERSE_REACTION_DETAILS}/${inpatientId}`);
+      if (res && res.status === 200 && Array.isArray(res.response)) {
+        const mapped = res.response.map((event) => ({
+          id: event.adverseEventId,
+          itemId: event.medicationId,
+          medicineName: event.medicationName,
+          reactionDateTime: event.reactionDatetime,
+          reaction: event.reaction,
+          severity: event.severity,
+          actionTaken: event.actionTaken,
+          doctorInformed: String(event.doctorInformed || 'n').toLowerCase() === 'y' ? 'Yes' : 'No',
+          doctorName: event.informedDoctorName || '',
+          medicationStopped: String(event.medicationStopped || 'n').toLowerCase() === 'y' ? 'Yes' : 'No',
+        }));
+        setAdverseEvents(mapped);
+      } else {
+        setAdverseEvents([]);
+      }
+    } catch (error) {
+      console.error("Error fetching adverse events:", error);
+      setAdverseEvents([]);
+    } finally {
+      setAdverseEventsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdverseEvents();
+  }, [inpatientId]);
+
   const [showAddMedModal, setShowAddMedModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showMarEntryModal, setShowMarEntryModal] = useState(false);
   const [showAdverseModal, setShowAdverseModal] = useState(false);
 
-  // Selected medication for stop/logs
   const [selectedMedForAction, setSelectedMedForAction] = useState(null);
   const [stopReason, setStopReason] = useState('');
 
-  // Multi-select for MAR entry
   const [selectedMedIds, setSelectedMedIds] = useState([]);
 
-  // MAR entry form data
   const [marEntryItems, setMarEntryItems] = useState([]);
 
-  // Filter for MAR log
   const [logFilterMedicine, setLogFilterMedicine] = useState('');
 
-  // New medication form (no class, added totalDays)
   const [newMed, setNewMed] = useState({
     medicineName: '',
     itemId: '',
@@ -283,7 +304,6 @@ const MedicationModule = ({ selectedPatient }) => {
     remarks: '',
   });
 
-  // Confirmation popup state
   const [confirmationPopup, setConfirmationPopup] = useState(null);
 
   const showConfirmationPopup = (message, type, onConfirm, onCancel = null, confirmText = "OK", cancelText = "") => {
@@ -303,7 +323,6 @@ const MedicationModule = ({ selectedPatient }) => {
     });
   };
 
-  // Medication search & master options
   const [dynamicMedicineList, setDynamicMedicineList] = useState([]);
   const [searchTimeoutId, setSearchTimeoutId] = useState(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
@@ -312,7 +331,6 @@ const MedicationModule = ({ selectedPatient }) => {
   const medicineInputRef = useRef(null);
 
   useEffect(() => {
-    // Fetch frequencies
     getRequest(MAS_FREQUENCY_GET_ALL)
       .then((res) => {
         if (res && res.response) {
@@ -333,7 +351,6 @@ const MedicationModule = ({ selectedPatient }) => {
       })
       .catch(console.error);
 
-    // Fetch routes
     getRequest(MAS_ROUTE_GET_ALL)
       .then((res) => {
         if (res && res.response) {
@@ -406,16 +423,24 @@ const MedicationModule = ({ selectedPatient }) => {
     setDropdownOpen(false);
   };
 
-  // New adverse event form
   const [newAdverse, setNewAdverse] = useState({
+    itemId: '',
     medicineName: '',
+    dose: '',
+    route: '',
+    frequency: '',
+    lastAdministeredAt: '',
+    reactionDateTime: '',
     reaction: '',
-    severity: '',
+    severity: 'Mild',
     actionTaken: '',
-    reportedBy: '',
+    doctorInformed: 'No',
+    informedDoctorId: null,
+    doctorName: '',
+    medicationStopped: 'No',
+    patientCondition: '',
   });
 
-  // Helper: get current datetime-local string
   const nowDateTimeLocal = () => {
     const now = new Date();
     const tzOffset = now.getTimezoneOffset() * 60000;
@@ -431,7 +456,6 @@ const MedicationModule = ({ selectedPatient }) => {
     setShowAddMedModal(true);
   };
 
-  // ---------- Handlers: Add Medication ----------
   const handleAddMed = async () => {
     if (!newMed.medicineName || !newMed.routeId || !newMed.dose || !newMed.frequencyId || !newMed.startDate || !newMed.totalDays) {
       alert('Please fill all required fields (Medicine Name, Route, Dose, Frequency, Start Date, Total Days)');
@@ -486,7 +510,6 @@ const MedicationModule = ({ selectedPatient }) => {
     }
   };
 
-  // ---------- Handlers: Stop Medication ----------
   const openStopModal = (med) => {
     setSelectedMedForAction(med);
     setStopReason('');
@@ -529,7 +552,6 @@ const MedicationModule = ({ selectedPatient }) => {
     }
   };
 
-  // ---------- Handlers: View Logs ----------
   const [specificMedLogs, setSpecificMedLogs] = useState([]);
   const [specificMedLogsLoading, setSpecificMedLogsLoading] = useState(false);
 
@@ -554,7 +576,6 @@ const MedicationModule = ({ selectedPatient }) => {
     }
   };
 
-  // ---------- Handlers: MAR Entry ----------
   const toggleSelectMed = (medId) => {
     setSelectedMedIds(prev =>
       prev.includes(medId) ? prev.filter(id => id !== medId) : [...prev, medId]
@@ -707,30 +728,143 @@ const MedicationModule = ({ selectedPatient }) => {
     }
   };
 
-  // ---------- Handlers: Adverse Events ----------
-  const handleAddAdverse = () => {
-    if (!newAdverse.medicineName || !newAdverse.reaction || !newAdverse.severity || !newAdverse.actionTaken || !newAdverse.reportedBy) {
-      alert('Please fill all fields.');
+  const getLastAdministeredFor = (medicineName) => {
+    if (!medicineName) return '';
+    const logsForMed = dynamicMarLogs.filter(l => l.nomenclature === medicineName);
+    if (logsForMed.length === 0) return '';
+    const sorted = [...logsForMed].sort(
+      (a, b) => new Date(b.administrationTime) - new Date(a.administrationTime)
+    );
+    return sorted[0].administrationTime || '';
+  };
+
+  const handleAdverseMedicineChange = (itemId) => {
+    if (!itemId) {
+      setNewAdverse(prev => ({
+        ...prev,
+        itemId: '',
+        medicineName: '',
+        dose: '',
+        route: '',
+        frequency: '',
+        lastAdministeredAt: '',
+      }));
       return;
     }
-    setAdverseEvents([...adverseEvents, { id: Date.now(), ...newAdverse }]);
-    setShowAdverseModal(false);
+    const med = activeMeds.find(m => m.itemId == itemId);
+    const marMed = marMedicineList.find(m => m.itemId == itemId);
+    const medName = marMed?.nomenclature || med?.medicineName || '';
+
+    setNewAdverse(prev => ({
+      ...prev,
+      itemId: itemId,
+      medicineName: medName,
+      dose: med?.dose || '',
+      route: med?.route || '',
+      frequency: med?.frequency || '',
+      lastAdministeredAt: getLastAdministeredFor(medName),
+    }));
+  };
+
+  const resetAdverseForm = () => {
     setNewAdverse({
+      itemId: '',
       medicineName: '',
+      dose: '',
+      route: '',
+      frequency: '',
+      lastAdministeredAt: '',
+      reactionDateTime: nowDateTimeLocal(),
       reaction: '',
-      severity: '',
+      severity: 'Mild',
       actionTaken: '',
-      reportedBy: '',
+      doctorInformed: 'No',
+      informedDoctorId: null,
+      doctorName: '',
+      medicationStopped: 'No',
+      patientCondition: '',
     });
   };
 
-  // Active medicine names for dropdowns
+  const openAdverseModal = () => {
+    resetAdverseForm();
+    setShowAdverseModal(true);
+  };
+
+  const openAdverseModalForMed = (med) => {
+    resetAdverseForm();
+    setNewAdverse(prev => ({
+      ...prev,
+      itemId: med.itemId || '',
+      medicineName: med.medicineName,
+      dose: med.dose || '',
+      route: med.route || '',
+      frequency: med.frequency || '',
+      lastAdministeredAt: getLastAdministeredFor(med.medicineName),
+    }));
+    setShowAdverseModal(true);
+  };
+
+  const handleAddAdverse = async () => {
+    if (
+      !newAdverse.itemId ||
+      !newAdverse.reactionDateTime ||
+      !newAdverse.reaction ||
+      !newAdverse.severity ||
+      !newAdverse.actionTaken
+    ) {
+      alert('Please fill all required fields (Medicine, Reaction Date & Time, Reaction / Symptoms, Severity, Action Taken).');
+      return;
+    }
+    if (newAdverse.doctorInformed === 'Yes' && !newAdverse.doctorName) {
+      alert('Please select the Doctor Name since Doctor Informed is set to Yes.');
+      return;
+    }
+    
+    const payload = {
+      inpatientId: Number(inpatientId) || 0,
+      medicationId: Number(newAdverse.itemId) || 0,
+      reaction: String(newAdverse.reaction || ""),
+      severity: String(newAdverse.severity || ""),
+      actionTaken: String(newAdverse.actionTaken || ""),
+      reactionDatetime: new Date(newAdverse.reactionDateTime).toISOString(),
+      medicationStopped: newAdverse.medicationStopped === 'Yes' ? 'Y' : 'N',
+      doctorInformed: newAdverse.doctorInformed === 'Yes' ? 'Y' : 'N',
+      informedDoctorId: newAdverse.doctorInformed === 'Yes' ? (newAdverse.informedDoctorId || selectedPatient?.doctorId || null) : null,
+      patientConditionAfter: String(newAdverse.patientCondition || "")
+    };
+
+    try {
+      const res = await postRequest(SAVE_ADVERSE_REACTION, payload);
+      showConfirmationPopup(
+        res?.message || "Adverse Reaction saved successfully!",
+        "success",
+        () => {
+          fetchAdverseEvents();
+          setShowAdverseModal(false);
+          resetAdverseForm();
+        }
+      );
+    } catch (error) {
+      console.error("Error saving adverse reaction:", error);
+      showConfirmationPopup(
+        error?.message || "Failed to save Adverse Reaction.",
+        "danger",
+        () => { }
+      );
+    }
+  };
+
   const activeMedicineNames = [...new Set(activeMeds.map(m => m.medicineName))];
+
+  const availableDoctors = [];
+  if (selectedPatient?.doctorName) {
+    availableDoctors.push({ name: selectedPatient.doctorName, id: selectedPatient.doctorId || '' });
+  }
 
 
   return (
     <div>
-      {/* ─── TAB TOGGLE ─── */}
       <div className="d-flex gap-2 mb-3">
         <button
           className={`btn btn-sm ${activeView === "medications" ? "btn-primary" : "btn-outline-primary"}`}
@@ -748,10 +882,8 @@ const MedicationModule = ({ selectedPatient }) => {
         </button>
       </div>
 
-      {/* ─── MEDICATIONS TAB ─── */}
       {activeView === "medications" && (
         <>
-          {/* Current Medications Section */}
           <div className="card shadow-sm mb-4">
             <div className="card-header bg-primary text-white d-flex justify-content-between align-items-center">
               <strong>Current Medications (Active Orders)</strong>
@@ -811,7 +943,10 @@ const MedicationModule = ({ selectedPatient }) => {
                             >
                               Stop
                             </button>
-                            <button className="btn btn-sm btn-outline-info" onClick={() => openLogsModal(med)}>Logs</button>
+                            <button className="btn btn-sm btn-outline-info m-1" onClick={() => openLogsModal(med)}>Logs</button>
+                            <button className="btn btn-sm btn-outline-warning" onClick={() => openAdverseModalForMed(med)}>
+                              Report
+                            </button>
                           </td>
                         </tr>
                       ))
@@ -829,7 +964,6 @@ const MedicationModule = ({ selectedPatient }) => {
             </div>
           </div>
 
-          {/* MAR Administration Log */}
           <div className="card shadow-sm">
             <div className="card-header bg-secondary text-white d-flex justify-content-between align-items-center">
               <strong>MAR Administration Log</strong>
@@ -887,7 +1021,7 @@ const MedicationModule = ({ selectedPatient }) => {
                           <td>{log.batchNo}</td>
                           <td>{log.expiryDate}</td>
                           <td>{log.administeredBy}</td>
-                          <td>{/* API doesn't provide total */}—</td>
+                          <td>—</td>
                           <td>{log.remarks || '—'}</td>
                         </tr>
                       ))
@@ -898,7 +1032,6 @@ const MedicationModule = ({ selectedPatient }) => {
                 </table>
               </div>
               
-              {/* Pagination Controls */}
               <div className="d-flex justify-content-between align-items-center mt-3 p-2 border-top">
                 <div className="d-flex align-items-center">
                   <span className="me-2" style={{ fontSize: '0.85rem' }}>Show:</span>
@@ -942,12 +1075,11 @@ const MedicationModule = ({ selectedPatient }) => {
         </>
       )}
 
-      {/* ─── ADVERSE EVENTS TAB ─── */}
       {activeView === "adverse" && (
         <div className="card shadow-sm">
           <div className="card-header bg-danger text-white d-flex justify-content-between align-items-center">
             <strong>Adverse Events</strong>
-            <button className="btn btn-sm btn-light" onClick={() => setShowAdverseModal(true)}>
+            <button className="btn btn-sm btn-light" onClick={openAdverseModal}>
               + Report Event
             </button>
           </div>
@@ -956,36 +1088,61 @@ const MedicationModule = ({ selectedPatient }) => {
               <table className="table table-bordered mb-0 align-middle" style={{ fontSize: '0.85rem' }}>
                 <thead className="table-light">
                   <tr>
-                    <th>Medicine Name</th>
-                    <th>Reaction</th>
-                    <th>Severity</th>
-                    <th>Action Taken</th>
-                    <th>Reported By</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adverseEvents.map(event => (
-                    <tr key={event.id}>
-                      <td>{event.medicineName}</td>
-                      <td>{event.reaction}</td>
-                      <td>{event.severity}</td>
-                      <td>{event.actionTaken}</td>
-                      <td>{event.reportedBy}</td>
+                    <th>Medicine</th>
+                    <th>Dose / Route</th>
+                    <th>Reaction Date & Time</th>
+                    <th>Reaction / Symptoms</th>
+                      <th>Severity</th>
+                      <th>Action Taken</th>
+                      <th>Doctor Informed</th>
+                      <th>Medication Stopped</th>
                     </tr>
-                  ))}
-                  {adverseEvents.length === 0 && (
-                    <tr><td colSpan="5" className="text-center">No adverse events reported.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {adverseEventsLoading ? (
+                      <tr>
+                        <td colSpan="8" className="text-center py-4">
+                          <div className="spinner-border text-primary spinner-border-sm me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          Loading adverse events...
+                        </td>
+                      </tr>
+                    ) : adverseEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="text-center py-4 text-muted">
+                          No adverse events reported.
+                        </td>
+                      </tr>
+                    ) : (
+                      adverseEvents.map(event => (
+                        <tr key={event.id}>
+                          <td>{event.medicineName}</td>
+                          <td>{[event.dose, event.route].filter(Boolean).join(' / ') || '—'}</td>
+                          <td>{event.reactionDateTime ? new Date(event.reactionDateTime).toLocaleString() : '—'}</td>
+                          <td>{event.reaction}</td>
+                          <td>
+                            <span className={`badge bg-${event.severity === 'Severe' ? 'danger' : event.severity === 'Moderate' ? 'warning' : 'secondary'}`}>
+                              {event.severity}
+                            </span>
+                          </td>
+                          <td>{event.actionTaken}</td>
+                          <td>
+                            {event.doctorInformed === 'Yes'
+                              ? `Yes${event.doctorName ? ` (${event.doctorName})` : ''}`
+                              : 'No'}
+                          </td>
+                          <td>{event.medicationStopped}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
       )}
 
-      {/* ---------- MODALS ---------- */}
-
-      {/* Add Medication Modal - Updated */}
       {showAddMedModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -996,7 +1153,6 @@ const MedicationModule = ({ selectedPatient }) => {
               </div>
               <div className="modal-body">
                 <div className="row g-2">
-                  {/* Medicine Name - full row */}
                   <div className="col-12 position-relative">
                     <label className="form-label small">Medicine Name *</label>
                     <input
@@ -1029,7 +1185,6 @@ const MedicationModule = ({ selectedPatient }) => {
                       </ul>
                     </PortalDropdown>
                   </div>
-                  {/* Route, Dose, Frequency */}
                   <div className="col-md-4">
                     <label className="form-label small">Route *</label>
                     <select
@@ -1082,7 +1237,6 @@ const MedicationModule = ({ selectedPatient }) => {
                       ))}
                     </select>
                   </div>
-                  {/* Start Date, Total Days, Administered By */}
                   <div className="col-md-4">
                     <label className="form-label small">Start Date & Time *</label>
                     <input
@@ -1126,7 +1280,6 @@ const MedicationModule = ({ selectedPatient }) => {
         </div>
       )}
 
-      {/* Stop Medication Modal (unchanged) */}
       {showStopModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-dialog-centered">
@@ -1151,7 +1304,6 @@ const MedicationModule = ({ selectedPatient }) => {
         </div>
       )}
 
-      {/* Logs Modal (unchanged) */}
       {showLogsModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-lg modal-dialog-centered">
@@ -1180,12 +1332,12 @@ const MedicationModule = ({ selectedPatient }) => {
                         specificMedLogs.map((log, index) => (
                           <tr key={index}>
                             <td>{log.administrationTime ? new Date(log.administrationTime).toLocaleString() : ''}</td>
-                          <td>{log.dose}</td>
+                            <td>{log.dose}</td>
                             <td>{log.administeredQty}</td>
                             <td>{log.batchNo}</td>
                             <td>{log.administeredBy}</td>
-                          <td>{log.remarks || '—'}</td>
-                        </tr>
+                            <td>{log.remarks || '—'}</td>
+                          </tr>
                         ))
                       ) : (
                         <tr><td colSpan="6" className="text-center">No administration records.</td></tr>
@@ -1202,7 +1354,6 @@ const MedicationModule = ({ selectedPatient }) => {
         </div>
       )}
 
-      {/* MAR Entry Modal (unchanged) */}
       {showMarEntryModal && (
         <>
           <div
@@ -1344,41 +1495,167 @@ const MedicationModule = ({ selectedPatient }) => {
         </>
       )}
 
-      {/* Adverse Event Modal (unchanged) */}
       {showAdverseModal && (
         <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header bg-primary text-white">
-                <h5 className="modal-title">Report Adverse Event</h5>
+                <h5 className="modal-title">Report Adverse Reaction</h5>
                 <button type="button" className="btn-close btn-close-white" onClick={() => setShowAdverseModal(false)}></button>
               </div>
               <div className="modal-body">
+
                 <div className="mb-2">
-                  <label className="form-label small">Medicine Name *</label>
-                  <select className="form-select form-select-sm" value={newAdverse.medicineName} onChange={e => setNewAdverse({ ...newAdverse, medicineName: e.target.value })}>
+                  <label className="form-label small">Medicine *</label>
+                  <select
+                    className="form-select form-select-sm"
+                    value={newAdverse.itemId}
+                    onChange={e => handleAdverseMedicineChange(e.target.value)}
+                  >
                     <option value="">Select</option>
-                    {activeMedicineNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    {marMedicineList.map(item => <option key={item.itemId} value={item.itemId}>{item.nomenclature}</option>)}
                   </select>
                 </div>
+
+                {newAdverse.medicineName && (
+                  <div className="mb-3 p-2 border rounded bg-light" style={{ fontSize: '0.85rem' }}>
+                    <div><strong>Dose / Route</strong> : {[newAdverse.dose, newAdverse.route].filter(Boolean).join(' / ') || 'N/A'}</div>
+                    <div><strong>Frequency</strong> : {newAdverse.frequency || 'N/A'}</div>
+                    <div>
+                      <strong>Last Administered At</strong> : {newAdverse.lastAdministeredAt ? new Date(newAdverse.lastAdministeredAt).toLocaleString() : 'N/A'}
+                    </div>
+                  </div>
+                )}
+
                 <div className="mb-2">
-                  <label className="form-label small">Reaction *</label>
-                  <input type="text" className="form-control form-control-sm" value={newAdverse.reaction} onChange={e => setNewAdverse({ ...newAdverse, reaction: e.target.value })} />
+                  <label className="form-label small">Reaction Date & Time *</label>
+                  <input
+                    type="datetime-local"
+                    className="form-control form-control-sm"
+                    value={newAdverse.reactionDateTime}
+                    onChange={e => setNewAdverse({ ...newAdverse, reactionDateTime: e.target.value })}
+                  />
                 </div>
+
+                <div className="mb-2">
+                  <label className="form-label small">Reaction / Symptoms *</label>
+                  <textarea
+                    className="form-control form-control-sm"
+                    rows="2"
+                    value={newAdverse.reaction}
+                    onChange={e => setNewAdverse({ ...newAdverse, reaction: e.target.value })}
+                    placeholder="Enter reaction / symptoms..."
+                  />
+                </div>
+
                 <div className="mb-2">
                   <label className="form-label small">Severity *</label>
-                  <select className="form-select form-select-sm" value={newAdverse.severity} onChange={e => setNewAdverse({ ...newAdverse, severity: e.target.value })}>
-                    <option value="">Select</option><option>Mild</option><option>Moderate</option><option>Severe</option>
+                  <select
+                    className="form-select form-select-sm"
+                    value={newAdverse.severity}
+                    onChange={e => setNewAdverse({ ...newAdverse, severity: e.target.value })}
+                  >
+                    <option>Mild</option>
+                    <option>Moderate</option>
+                    <option>Severe</option>
                   </select>
                 </div>
+
                 <div className="mb-2">
                   <label className="form-label small">Action Taken *</label>
-                  <input type="text" className="form-control form-control-sm" value={newAdverse.actionTaken} onChange={e => setNewAdverse({ ...newAdverse, actionTaken: e.target.value })} />
+                  <textarea
+                    className="form-control form-control-sm"
+                    rows="2"
+                    value={newAdverse.actionTaken}
+                    onChange={e => setNewAdverse({ ...newAdverse, actionTaken: e.target.value })}
+                    placeholder="Enter immediate action taken..."
+                  />
                 </div>
+
                 <div className="mb-2">
-                  <label className="form-label small">Reported By *</label>
-                  <input type="text" className="form-control form-control-sm" value={newAdverse.reportedBy} onChange={e => setNewAdverse({ ...newAdverse, reportedBy: e.target.value })} />
+                  <label className="form-label small d-block">Doctor Informed</label>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="doctorInformed"
+                      id="doctorInformedYes"
+                      checked={newAdverse.doctorInformed === 'Yes'}
+                      onChange={() => setNewAdverse({ ...newAdverse, doctorInformed: 'Yes', doctorName: selectedPatient?.doctorName || '', informedDoctorId: selectedPatient?.doctorId || null })}
+                    />
+                    <label className="form-check-label small" htmlFor="doctorInformedYes">Yes</label>
+                  </div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="doctorInformed"
+                      id="doctorInformedNo"
+                      checked={newAdverse.doctorInformed === 'No'}
+                      onChange={() => setNewAdverse({ ...newAdverse, doctorInformed: 'No', doctorName: '', informedDoctorId: null })}
+                    />
+                    <label className="form-check-label small" htmlFor="doctorInformedNo">No</label>
+                  </div>
                 </div>
+
+                {newAdverse.doctorInformed === 'Yes' && (
+                  <div className="mb-2">
+                    <label className="form-label small">Doctor Name</label>
+                    <select
+                      className="form-select form-select-sm"
+                      value={`${newAdverse.doctorName}|${newAdverse.informedDoctorId || ''}`}
+                      onChange={e => {
+                        const [docName, docId] = e.target.value.split('|');
+                        setNewAdverse({ ...newAdverse, doctorName: docName, informedDoctorId: docId || null });
+                      }}
+                    >
+                      <option value="|">Select Doctor</option>
+                      {availableDoctors.map((doc, idx) => (
+                        <option key={idx} value={`${doc.name}|${doc.id}`}>
+                          {doc.name} {doc.id ? `(ID: ${doc.id})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                )}
+
+                <div className="mb-2">
+                  <label className="form-label small d-block">Medication Stopped</label>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="medicationStopped"
+                      id="medicationStoppedYes"
+                      checked={newAdverse.medicationStopped === 'Yes'}
+                      onChange={() => setNewAdverse({ ...newAdverse, medicationStopped: 'Yes' })}
+                    />
+                    <label className="form-check-label small" htmlFor="medicationStoppedYes">Yes</label>
+                  </div>
+                  <div className="form-check form-check-inline">
+                    <input
+                      className="form-check-input"
+                      type="radio"
+                      name="medicationStopped"
+                      id="medicationStoppedNo"
+                      checked={newAdverse.medicationStopped === 'No'}
+                      onChange={() => setNewAdverse({ ...newAdverse, medicationStopped: 'No' })}
+                    />
+                    <label className="form-check-label small" htmlFor="medicationStoppedNo">No</label>
+                  </div>
+                </div>
+
+                <div className="mb-2">
+                  <label className="form-label small">Patient Condition After Action</label>
+                  <textarea
+                    className="form-control form-control-sm"
+                    rows="2"
+                    value={newAdverse.patientCondition}
+                    onChange={e => setNewAdverse({ ...newAdverse, patientCondition: e.target.value })}
+                    placeholder="Enter patient's condition after intervention..."
+                  />
+                </div>
+
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary btn-sm" onClick={() => setShowAdverseModal(false)}>Cancel</button>
