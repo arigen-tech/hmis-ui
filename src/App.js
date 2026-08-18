@@ -174,6 +174,8 @@ import EntMasMucosaMaster from './Views/Masters/EntMasMucosaMaster';
 import NonDrugMaster from './Views/Stores/NondrugMaster';
 import PatientListForAdmission from './Views/IPD/PatientListForAdmission';
 import InpatientAdmission from './Views/IPD/InpatientAdmission';
+import ActiveAdmissionList from './Views/IPD/ActiveAdmission';
+
 import ItemStockLedgerReport from './Views/Stores/StockLedgerReport';
 import BagTypeMaster from './Views/Masters/BagTypeMaster';
 import BloodCollectionTypeMaster from './Views/Masters/BloodCollectionTypeMater';
@@ -563,6 +565,7 @@ function App() {
                 <Route path="/IPDDischargeRecords" element={<IPDDischargeRecords/>} />
                 <Route path="/SurgeryTypeMaster" element={<SurgeryTypeMaster />} />
                 <Route path="/AddPrescription" element={<AddPrescription />} />
+                <Route path="/ActiveAdmissionList" element={<ActiveAdmissionList />} />
 
                 
                 

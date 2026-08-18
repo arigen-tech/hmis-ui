@@ -267,6 +267,7 @@ const validRoutes = [
   "/IPDDischargeRecords",
   "/SurgeryTypeMaster",
   "/AddPrescription",
+  "/ActiveAdmissionList",
 ];
 
 // Routes that should bypass authorization
