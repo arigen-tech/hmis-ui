@@ -23,7 +23,7 @@ import {
   STATUS_N,
   STATUS_S,
 } from "../../../config/apiConfig";
-import { formatDateForDisplay } from "../../../utils/dateUtils";
+import { formatDateForDisplay, formatDateTimeForDisplay } from "../../../utils/dateUtils";
 import { REPORT_GEN_FAILED_ERR_MSG, HOSPITAL_ID } from "../../../config/constants";
 import PdfViewer from "../../../Components/PdfViewModel/PdfViewer";
 
@@ -359,7 +359,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
           const mappedData = content.map((item) => ({
             dgOrderHdId: item.dgOrderHdId,
             orderNo: item.orderNum || "",
-            orderDate: formatDateForDisplay(item.orderDate) || "",
+            orderDate: formatDateTimeForDisplay(item.orderDate) || "",
             patientName: item.patientName || "",
             mobileNo: item.mobileNum || "",
             ageGender: `${item.age || ""} / ${item.gender || ""}`,
@@ -393,8 +393,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
               accessionNo: item.orderaccessionno || "-",
               uhidNo: item.uhid || "-",
               patientName: item.patientname || "-",
-              orderDate: item.orderdate ? formatDateForDisplay(item.orderdate) : "-",
-              studyDate: formatStudyDateTime(item.studydatetime),
+              orderDate: item.orderdate ? formatDateTimeForDisplay(item.orderdate) : "-",
+              studyDate: item.studydatetime ? formatDateTimeForDisplay(item.studydatetime) : "-",
               modalityName: item.modalityname || "-",
               investigationName: item.investigationname || "-",
               studyStatus: item.studystatus || "n",
@@ -481,7 +481,7 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   const handleViewReport = (record) => generateLabReport(record);
 
   const handlePrintClick = async () => {
-    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id || 26);
+    const inpatientId = Number(selectedPatient?.inpatientId || selectedPatient?.id);
     if (inpatientId) {
       try {
         setIsGeneratingReport(true);
