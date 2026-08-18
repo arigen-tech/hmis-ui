@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { createPortal } from 'react-dom';
 import { getRequest, postRequest } from '../../../service/apiService';
-import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME, GET_MAR_MEDICINE_LIST, GET_MAR_ADMINISTRATION_LOG, SAVE_MAR_DETAILS } from '../../../config/apiConfig';
+import { MAS_FREQUENCY_GET_ALL, MAS_ROUTE_GET_ALL, GET_ALL_DRUGS_BY_SECTION, GET_MEDICATION_TREATMENT_BY_INPATIENT_ID, SAVE_IPD_MEDICATION_TREATMENT, STOP_IPD_MEDICATION_TREATMENT, GET_STOCK_BATCHES_ITEM_WISE, GET_CURRENT_USER_PROFILE_BY_NAME, GET_MAR_MEDICINE_LIST, GET_MAR_ADMINISTRATION_LOG, SAVE_MAR_DETAILS, SAVE_ADVERSE_REACTION, GET_ADVERSE_REACTION_DETAILS} from '../../../config/apiConfig';
 import ConfirmationPopup from '../../../Components/ConfirmationPopup';
 
 const PortalDropdown = ({ anchorRef, show, children }) => {
@@ -238,6 +238,41 @@ const MedicationModule = ({ selectedPatient }) => {
   ]);
 
   const [adverseEvents, setAdverseEvents] = useState([]);
+  const [adverseEventsLoading, setAdverseEventsLoading] = useState(false);
+
+  const fetchAdverseEvents = async () => {
+    if (!inpatientId) return;
+    setAdverseEventsLoading(true);
+    try {
+      const res = await getRequest(`${GET_ADVERSE_REACTION_DETAILS}/${inpatientId}`);
+      if (res && res.status === 200 && Array.isArray(res.response)) {
+        const mapped = res.response.map((event) => ({
+          id: event.adverseEventId,
+          itemId: event.medicationId,
+          medicineName: event.medicationName,
+          reactionDateTime: event.reactionDatetime,
+          reaction: event.reaction,
+          severity: event.severity,
+          actionTaken: event.actionTaken,
+          doctorInformed: String(event.doctorInformed || 'n').toLowerCase() === 'y' ? 'Yes' : 'No',
+          doctorName: event.informedDoctorName || '',
+          medicationStopped: String(event.medicationStopped || 'n').toLowerCase() === 'y' ? 'Yes' : 'No',
+        }));
+        setAdverseEvents(mapped);
+      } else {
+        setAdverseEvents([]);
+      }
+    } catch (error) {
+      console.error("Error fetching adverse events:", error);
+      setAdverseEvents([]);
+    } finally {
+      setAdverseEventsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAdverseEvents();
+  }, [inpatientId]);
 
   const [showAddMedModal, setShowAddMedModal] = useState(false);
   const [showStopModal, setShowStopModal] = useState(false);
@@ -389,6 +424,7 @@ const MedicationModule = ({ selectedPatient }) => {
   };
 
   const [newAdverse, setNewAdverse] = useState({
+    itemId: '',
     medicineName: '',
     dose: '',
     route: '',
@@ -399,6 +435,7 @@ const MedicationModule = ({ selectedPatient }) => {
     severity: 'Mild',
     actionTaken: '',
     doctorInformed: 'No',
+    informedDoctorId: null,
     doctorName: '',
     medicationStopped: 'No',
     patientCondition: '',
@@ -701,10 +738,26 @@ const MedicationModule = ({ selectedPatient }) => {
     return sorted[0].administrationTime || '';
   };
 
-  const handleAdverseMedicineChange = (medName) => {
-    const med = activeMeds.find(m => m.medicineName === medName);
+  const handleAdverseMedicineChange = (itemId) => {
+    if (!itemId) {
+      setNewAdverse(prev => ({
+        ...prev,
+        itemId: '',
+        medicineName: '',
+        dose: '',
+        route: '',
+        frequency: '',
+        lastAdministeredAt: '',
+      }));
+      return;
+    }
+    const med = activeMeds.find(m => m.itemId == itemId);
+    const marMed = marMedicineList.find(m => m.itemId == itemId);
+    const medName = marMed?.nomenclature || med?.medicineName || '';
+
     setNewAdverse(prev => ({
       ...prev,
+      itemId: itemId,
       medicineName: medName,
       dose: med?.dose || '',
       route: med?.route || '',
@@ -715,6 +768,7 @@ const MedicationModule = ({ selectedPatient }) => {
 
   const resetAdverseForm = () => {
     setNewAdverse({
+      itemId: '',
       medicineName: '',
       dose: '',
       route: '',
@@ -725,6 +779,7 @@ const MedicationModule = ({ selectedPatient }) => {
       severity: 'Mild',
       actionTaken: '',
       doctorInformed: 'No',
+      informedDoctorId: null,
       doctorName: '',
       medicationStopped: 'No',
       patientCondition: '',
@@ -740,6 +795,7 @@ const MedicationModule = ({ selectedPatient }) => {
     resetAdverseForm();
     setNewAdverse(prev => ({
       ...prev,
+      itemId: med.itemId || '',
       medicineName: med.medicineName,
       dose: med.dose || '',
       route: med.route || '',
@@ -749,9 +805,9 @@ const MedicationModule = ({ selectedPatient }) => {
     setShowAdverseModal(true);
   };
 
-  const handleAddAdverse = () => {
+  const handleAddAdverse = async () => {
     if (
-      !newAdverse.medicineName ||
+      !newAdverse.itemId ||
       !newAdverse.reactionDateTime ||
       !newAdverse.reaction ||
       !newAdverse.severity ||
@@ -764,14 +820,47 @@ const MedicationModule = ({ selectedPatient }) => {
       alert('Please select the Doctor Name since Doctor Informed is set to Yes.');
       return;
     }
-    setAdverseEvents([...adverseEvents, { id: Date.now(), ...newAdverse }]);
-    setShowAdverseModal(false);
-    resetAdverseForm();
+    
+    const payload = {
+      inpatientId: Number(inpatientId) || 0,
+      medicationId: Number(newAdverse.itemId) || 0,
+      reaction: String(newAdverse.reaction || ""),
+      severity: String(newAdverse.severity || ""),
+      actionTaken: String(newAdverse.actionTaken || ""),
+      reactionDatetime: new Date(newAdverse.reactionDateTime).toISOString(),
+      medicationStopped: newAdverse.medicationStopped === 'Yes' ? 'Y' : 'N',
+      doctorInformed: newAdverse.doctorInformed === 'Yes' ? 'Y' : 'N',
+      informedDoctorId: newAdverse.doctorInformed === 'Yes' ? (newAdverse.informedDoctorId || selectedPatient?.doctorId || null) : null,
+      patientConditionAfter: String(newAdverse.patientCondition || "")
+    };
+
+    try {
+      const res = await postRequest(SAVE_ADVERSE_REACTION, payload);
+      showConfirmationPopup(
+        res?.message || "Adverse Reaction saved successfully!",
+        "success",
+        () => {
+          fetchAdverseEvents();
+          setShowAdverseModal(false);
+          resetAdverseForm();
+        }
+      );
+    } catch (error) {
+      console.error("Error saving adverse reaction:", error);
+      showConfirmationPopup(
+        error?.message || "Failed to save Adverse Reaction.",
+        "danger",
+        () => { }
+      );
+    }
   };
 
   const activeMedicineNames = [...new Set(activeMeds.map(m => m.medicineName))];
 
-  const availableDoctorNames = [...new Set(activeMeds.map(m => m.administeredBy).filter(Boolean))];
+  const availableDoctors = [];
+  if (selectedPatient?.doctorName) {
+    availableDoctors.push({ name: selectedPatient.doctorName, id: selectedPatient.doctorId || '' });
+  }
 
 
   return (
@@ -1003,41 +1092,55 @@ const MedicationModule = ({ selectedPatient }) => {
                     <th>Dose / Route</th>
                     <th>Reaction Date & Time</th>
                     <th>Reaction / Symptoms</th>
-                    <th>Severity</th>
-                    <th>Action Taken</th>
-                    <th>Doctor Informed</th>
-                    <th>Medication Stopped</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {adverseEvents.map(event => (
-                    <tr key={event.id}>
-                      <td>{event.medicineName}</td>
-                      <td>{[event.dose, event.route].filter(Boolean).join(' / ') || '—'}</td>
-                      <td>{event.reactionDateTime ? new Date(event.reactionDateTime).toLocaleString() : '—'}</td>
-                      <td>{event.reaction}</td>
-                      <td>
-                        <span className={`badge bg-${event.severity === 'Severe' ? 'danger' : event.severity === 'Moderate' ? 'warning' : 'secondary'}`}>
-                          {event.severity}
-                        </span>
-                      </td>
-                      <td>{event.actionTaken}</td>
-                      <td>
-                        {event.doctorInformed === 'Yes'
-                          ? `Yes${event.doctorName ? ` (${event.doctorName})` : ''}`
-                          : 'No'}
-                      </td>
-                      <td>{event.medicationStopped}</td>
+                      <th>Severity</th>
+                      <th>Action Taken</th>
+                      <th>Doctor Informed</th>
+                      <th>Medication Stopped</th>
                     </tr>
-                  ))}
-                  {adverseEvents.length === 0 && (
-                    <tr><td colSpan="8" className="text-center">No adverse events reported.</td></tr>
-                  )}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {adverseEventsLoading ? (
+                      <tr>
+                        <td colSpan="8" className="text-center py-4">
+                          <div className="spinner-border text-primary spinner-border-sm me-2" role="status">
+                            <span className="visually-hidden">Loading...</span>
+                          </div>
+                          Loading adverse events...
+                        </td>
+                      </tr>
+                    ) : adverseEvents.length === 0 ? (
+                      <tr>
+                        <td colSpan="8" className="text-center py-4 text-muted">
+                          No adverse events reported.
+                        </td>
+                      </tr>
+                    ) : (
+                      adverseEvents.map(event => (
+                        <tr key={event.id}>
+                          <td>{event.medicineName}</td>
+                          <td>{[event.dose, event.route].filter(Boolean).join(' / ') || '—'}</td>
+                          <td>{event.reactionDateTime ? new Date(event.reactionDateTime).toLocaleString() : '—'}</td>
+                          <td>{event.reaction}</td>
+                          <td>
+                            <span className={`badge bg-${event.severity === 'Severe' ? 'danger' : event.severity === 'Moderate' ? 'warning' : 'secondary'}`}>
+                              {event.severity}
+                            </span>
+                          </td>
+                          <td>{event.actionTaken}</td>
+                          <td>
+                            {event.doctorInformed === 'Yes'
+                              ? `Yes${event.doctorName ? ` (${event.doctorName})` : ''}`
+                              : 'No'}
+                          </td>
+                          <td>{event.medicationStopped}</td>
+                        </tr>
+                      ))
+                    )}
+                  </tbody>
+                </table>
+              </div>
             </div>
           </div>
-        </div>
       )}
 
       {showAddMedModal && (
@@ -1406,11 +1509,11 @@ const MedicationModule = ({ selectedPatient }) => {
                   <label className="form-label small">Medicine *</label>
                   <select
                     className="form-select form-select-sm"
-                    value={newAdverse.medicineName}
+                    value={newAdverse.itemId}
                     onChange={e => handleAdverseMedicineChange(e.target.value)}
                   >
                     <option value="">Select</option>
-                    {activeMedicineNames.map(name => <option key={name} value={name}>{name}</option>)}
+                    {marMedicineList.map(item => <option key={item.itemId} value={item.itemId}>{item.nomenclature}</option>)}
                   </select>
                 </div>
 
@@ -1478,7 +1581,7 @@ const MedicationModule = ({ selectedPatient }) => {
                       name="doctorInformed"
                       id="doctorInformedYes"
                       checked={newAdverse.doctorInformed === 'Yes'}
-                      onChange={() => setNewAdverse({ ...newAdverse, doctorInformed: 'Yes' })}
+                      onChange={() => setNewAdverse({ ...newAdverse, doctorInformed: 'Yes', doctorName: selectedPatient?.doctorName || '', informedDoctorId: selectedPatient?.doctorId || null })}
                     />
                     <label className="form-check-label small" htmlFor="doctorInformedYes">Yes</label>
                   </div>
@@ -1489,7 +1592,7 @@ const MedicationModule = ({ selectedPatient }) => {
                       name="doctorInformed"
                       id="doctorInformedNo"
                       checked={newAdverse.doctorInformed === 'No'}
-                      onChange={() => setNewAdverse({ ...newAdverse, doctorInformed: 'No', doctorName: '' })}
+                      onChange={() => setNewAdverse({ ...newAdverse, doctorInformed: 'No', doctorName: '', informedDoctorId: null })}
                     />
                     <label className="form-check-label small" htmlFor="doctorInformedNo">No</label>
                   </div>
@@ -1500,11 +1603,18 @@ const MedicationModule = ({ selectedPatient }) => {
                     <label className="form-label small">Doctor Name</label>
                     <select
                       className="form-select form-select-sm"
-                      value={newAdverse.doctorName}
-                      onChange={e => setNewAdverse({ ...newAdverse, doctorName: e.target.value })}
+                      value={`${newAdverse.doctorName}|${newAdverse.informedDoctorId || ''}`}
+                      onChange={e => {
+                        const [docName, docId] = e.target.value.split('|');
+                        setNewAdverse({ ...newAdverse, doctorName: docName, informedDoctorId: docId || null });
+                      }}
                     >
-                      <option value="">Select Doctor</option>
-                      {availableDoctorNames.map(name => <option key={name} value={name}>{name}</option>)}
+                      <option value="|">Select Doctor</option>
+                      {availableDoctors.map((doc, idx) => (
+                        <option key={idx} value={`${doc.name}|${doc.id}`}>
+                          {doc.name} {doc.id ? `(ID: ${doc.id})` : ''}
+                        </option>
+                      ))}
                     </select>
                   </div>
                 )}

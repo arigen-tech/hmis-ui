@@ -818,3 +818,5 @@ export const GET_PROCEDURE_CONSUMABLE_TEMPLATE_DETAILS = '/ipd/getProcedureConsu
 export const GET_ITEM_BATCHES = '/inventory/item/batches';
 export const SAVE_NURSING_CARE_PROCEDURE = '/ipd/saveNursingCareProcedure';
 export const GET_NURSING_CARE_PROCEDURE = '/ipd/getNursingCareProcedure';
+export const SAVE_ADVERSE_REACTION = '/ipd/saveAdverseReaction';
+export const GET_ADVERSE_REACTION_DETAILS = '/ipd/getAdverseReactionDetails';
