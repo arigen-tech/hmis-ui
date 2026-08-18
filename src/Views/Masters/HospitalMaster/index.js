@@ -433,6 +433,7 @@ const handleSave = async (e) => {
             setPopupMessage(null);
             resetForm();
             setShowForm(false);
+            fetchHospitals();
           },
         });
       } else {

@@ -2188,8 +2188,55 @@ const handlePhotoFileChange = (event) => {
             data.response?.patient?.visits || data.response?.visits || [];
           const hasBillingStatusY =
             visits.length > 0 && visits[0]?.billingStatus === "y";
+          const details = resp?.details;
+          const isDetailsBlank =
+            details === null ||
+            details === undefined ||
+            (Array.isArray(details) && details.length === 0) ||
+            (typeof details === "object" &&
+              !Array.isArray(details) &&
+              Object.keys(details).length === 0);
 
-          if (hasBillingStatusY) {
+          if (visits.length > 0 && isDetailsBlank) {
+            Swal.fire({
+              title: PATIENT_REGISTERED_SUCCESS_TITLE,
+              html: `<p>Patient registered successfully.</p>
+               <p>Proceed to the token slip page?</p>`,
+              icon: "success",
+              showCancelButton: true,
+              confirmButtonText: "Proceed",
+              cancelButtonText: "Close",
+              allowOutsideClick: false,
+            }).then((result) => {
+              if (result.isConfirmed) {
+                navigate("/opd_payment_success", {
+                  replace: true,
+                  state: {
+                    source: "registration",
+                    billingType: "Consultation Services",
+                    hasBillingData: false,
+                    amount: 0,
+                    patientId: patientResp?.id || patientResp?.patientid,
+                    patientName:
+                      patientResp?.patientName ||
+                      `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                    visits: visits.map((visit) => ({
+                      visitId: visit.id,
+                      tokenNo: visit.tokenNo,
+                      doctorName: visit.doctorName,
+                      patientName:
+                        visit.patientName ||
+                        patientResp?.patientName ||
+                        `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                      patientId: visit.patientId,
+                    })),
+                  },
+                });
+              } else if (result.dismiss === Swal.DismissReason.cancel) {
+                handleReset();
+              }
+            });
+          } else if (hasBillingStatusY && !isDetailsBlank) {
             Swal.fire({
               title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p>Patient has been registered successfully.</p>
@@ -2199,7 +2246,17 @@ const handlePhotoFileChange = (event) => {
               timer: 1000,
               allowOutsideClick: false,
             }).then(() => {
-              navigate("/OPDBillingDetails", { replace: true });
+              navigate("/OPDBillingDetails", {
+                replace: true,
+                state: {
+                  source: "registration",
+                  patientId: resp?.patientid || patientResp?.id || patientResp?.patientid,
+                  patientName:
+                    resp?.patientName ||
+                    patientResp?.patientName ||
+                    `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                },
+              });
             });
           } else if (resp) {
             Swal.fire({
@@ -2219,6 +2276,7 @@ const handlePhotoFileChange = (event) => {
                   state: {
                     source: "registration",
                     patientId: resp.patientid,
+                    patientName: resp.patientName,
                   },
                 });
               } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -3598,6 +3656,7 @@ const uploadImageAndGetUrl = async (imageSource) => {
                             name="bmi"
                             value={formData.bmi}
                             onChange={handleChange}
+                            disabled
                           />
                           <span className="input-group-text">kg/m²</span>
                           {errors.bmi && (

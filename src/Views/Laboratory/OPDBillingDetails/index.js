@@ -486,6 +486,7 @@ const OPDBillingDetails = () => {
       confirmButtonColor: "#28a745",
       width: "450px",
     }).then((result) => {
+      debugger;
       if (result.isConfirmed) {
         navigate("/payment", {
           state: {
@@ -507,6 +508,7 @@ const OPDBillingDetails = () => {
   };
 
   const navigateToSuccessPage = (response, request) => {
+    debugger;
     navigate("/opd_payment_success", {
       state: {
         billingType: "Consultation Services",
@@ -561,6 +563,7 @@ const OPDBillingDetails = () => {
       Swal.close();
 
       if (response?.status === 200 && response?.response?.msg === "Success") {
+        debugger;
         navigateToSuccessPage(response, paymentRequest);
       } else {
         throw new Error(response?.response?.msg || "Failed to generate bill");
