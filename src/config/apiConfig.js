@@ -1,5 +1,5 @@
-// export const API_HOST = 'http://103.133.215.182:8081/hims';
-export const API_HOST = "http://localhost:8080";
+export const API_HOST = 'http://103.133.215.182:8081/hims';
+// export const API_HOST = "http://localhost:8080";
 // export const ABDM_API = "http://localhost:8089";
 //  export const API_HOST = 'http://192.168.31.118:8080';
 //export const API_HOST = 'http://192.168.1.29:8080';// export const ABDM_API = "http://localhost:8089";
@@ -112,6 +112,7 @@ export const ALL_STATE = `${MASTERS}/state/getAll`;
 export const ALL_DISTRICT = `${MASTERS}/district/getAll`;
 export const ALL_ROLE = `/roles/getAllRoles`;
 export const ALL_HOSPITAL = `/hospital/getAllHospitals`;
+export const GET_BILLING_CONFIG = `/billing/billingConfig`;
 export const ALL_MARITAL_STATUS = `/marital-status/getAllMaritalStatuses`;
 export const ALL_RELIGION = `/religion/getAllReligions`;
 export const ALL_USER_DEPARTMENT = `/user-departments/getAllUserDepartments`;
