@@ -593,7 +593,7 @@ export const FETCH_SAMPLE_REJECT_ERR_MSG ="Failed to fetch sample rejection repo
 //reschedule and cancel appointment
 export const INVALID_MOBILE_NUMBER ="Please enter a valid 10-digit mobile number";
 export const FETCH_APPOINTMENT_ERROR = "Error fetching data. Please try again.";
-export const NO_APPOINTMENTS_FOUND ="No appointments found for this mobile number";
+export const NO_APPOINTMENTS_FOUND ="No appointments found";
 export const SESSION_NOT_AVAILABLE = "Session Not Available";
 export const SESSION_NOT_AVAILABLE_TEXT = "This session is not available.";
 export const PAST_DATE_WARNING = "You cannot select a past date";
