@@ -91,6 +91,18 @@ const INDENT_SAVE_FILE_NAME = "OPD_case_sheet.pdf";
 
 const GeneralMedicineWaitingList = () => {
   const [waitingList, setWaitingList] = useState([]);
+
+const [selectedOT, setSelectedOT] = useState("");
+const [surgeryDate, setSurgeryDate] = useState("");
+const [surgeryTime, setSurgeryTime] = useState("");
+const otOptions = [
+  { id: 1, name: "Main OT-01" },
+  { id: 2, name: "Main OT-02" },
+  { id: 3, name: "Minor OT-01" },
+  { id: 4, name: "Cath Lab OT" },
+];
+
+
   const [loading, setLoading] = useState(false);
   const [doctorData, setDoctorData] = useState([]);
   const [sessionData, setSessionData] = useState([]);
@@ -1420,13 +1432,20 @@ const GeneralMedicineWaitingList = () => {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchWaitingList = async () => {
+  const fetchWaitingList = async (filters = {}) => {
     try {
       setLoading(true);
       // Initial fetch without filters (just first page)
       const queryParams = new URLSearchParams();
       queryParams.append("page", "0");
       queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+      const doctorId =
+        filters.doctorId || searchFilters.doctorList || userId || "";
+
+      if (doctorId) {
+        queryParams.append("doctorId", doctorId);
+      }
 
       const res = await getRequest(
         `${GET_WAITING_LIST}?${queryParams.toString()}`,
@@ -1469,19 +1488,37 @@ const GeneralMedicineWaitingList = () => {
   };
 
   const fetchDoctorData = async () => {
-    setLoading(true);
     try {
       const data = await getRequest(DOCTOR_BY_DEPARTMENT);
+
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
+
+        const userId =
+          localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
+        const loggedDoctor = data.response.find(
+          (doctor) => String(doctor.userId) === String(userId),
+        );
+
+        if (loggedDoctor) {
+          const initialFilters = {
+            doctorList: String(loggedDoctor.userId),
+            session: searchFilters.session,
+            mobileNo: searchFilters.mobileNo,
+            patientName: searchFilters.patientName,
+          };
+
+          setSearchFilters(initialFilters);
+
+          await fetchWaitingList(initialFilters);
+        }
       } else {
-        console.error("Unexpected API response format:", data);
         setDoctorData([]);
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
-    } finally {
-      setLoading(false);
+      setDoctorData([]);
     }
   };
 
@@ -1516,9 +1553,9 @@ const GeneralMedicineWaitingList = () => {
 
   useEffect(() => {
     if (initialDataLoadedRef.current) return;
+
     initialDataLoadedRef.current = true;
 
-    fetchWaitingList();
     fetchDoctorData();
     fetchSessionData();
     fetchOpdTemplateData();
@@ -6897,167 +6934,200 @@ const GeneralMedicineWaitingList = () => {
                   )}
                 </div>
                 {/* Surgery Advice Section */}
-                <div className="card mb-3">
-                  <div
-                    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
-                    style={{ cursor: "pointer" }}
-                    onClick={() => toggleSection("surgeryAdvice")}
+      <div className="card mb-3">
+  <div
+    className="card-header py-3   border-bottom-1 d-flex justify-content-between align-items-center"
+    style={{ cursor: "pointer" }}
+    onClick={() => toggleSection("surgeryAdvice")}
+  >
+    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
+    <span style={{ fontSize: "18px" }}>
+      {expandedSections.surgeryAdvice ? "−" : "+"}
+    </span>
+  </div>
+  {expandedSections.surgeryAdvice && (
+    <div className="card-body">
+   <div className="row mb-3 align-items-center">
+  {/* Surgery Type */}
+  <div className="col-auto">
+    <label className="form-label small fw-bold d-block">
+      Surgery Type
+    </label>
+    <div className="d-flex gap-3 align-items-center">
+      {/* removed fixed height: "31px" */}
+      <div className="form-check mb-0">
+        <input
+          className="form-check-input"
+          type="radio"
+          name="surgeryType"
+          id="major"
+          checked={surgeryType === "major"}
+          onChange={() => setSurgeryType("major")}
+        />
+        <label className="form-check-label" htmlFor="major">
+          Major
+        </label>
+      </div>
+      <div className="form-check mb-0">
+        <input
+          className="form-check-input"
+          type="radio"
+          name="surgeryType"
+          id="minor"
+          checked={surgeryType === "minor"}
+          onChange={() => setSurgeryType("minor")}
+        />
+        <label className="form-check-label" htmlFor="minor">
+          Minor
+        </label>
+      </div>
+    </div>
+  </div>
+
+  {/* OT */}
+  <div className="col-auto" style={{ minWidth: "180px" }}>
+    <label className="form-label small fw-bold mb-1">OT</label>
+    <select
+      className="form-select form-select-sm"
+      value={selectedOT}
+      onChange={(e) => setSelectedOT(e.target.value)}
+    >
+      <option value="">Select OT</option>
+      {otOptions.map((ot) => (
+        <option key={ot.id} value={ot.id}>
+          {ot.name}
+        </option>
+      ))}
+    </select>
+  </div>
+
+  {/* Surgery Date */}
+  <div className="col-auto">
+    <label className="form-label small fw-bold mb-1">Surgery Date</label>
+    <input
+      type="date"
+      className="form-control form-control-sm"
+      value={surgeryDate}
+      onChange={(e) => setSurgeryDate(e.target.value)}
+    />
+  </div>
+
+  {/* Surgery Time */}
+  <div className="col-auto">
+    <label className="form-label small fw-bold mb-1">Surgery Time</label>
+    <input
+      type="time"
+      className="form-control form-control-sm"
+      value={surgeryTime}
+      onChange={(e) => setSurgeryTime(e.target.value)}
+    />
+  </div>
+
+  {/* OTCalendar Button */}
+  <div className="col-auto">
+    <label className="form-label small fw-bold mb-1 d-block opacity-0">
+      OTCalendar
+    </label>
+    <button
+      className="btn btn-sm btn-primary"
+      onClick={(e) => {
+        e.stopPropagation();
+        setShowOtCalendarModal(true);
+      }}
+      style={{ fontSize: "12px" }}
+    >
+      OTCalendar
+    </button>
+  </div>
+</div>
+
+      <div className="table-responsive">
+        <table className="table table-bordered">
+          <thead style={{ backgroundColor: "#b0c4de" }}>
+            <tr>
+              <th style={{ width: "10%" }}>S.No</th>
+              <th style={{ width: "80%" }}>Surgery</th>
+              <th style={{ width: "5%" }}>Add</th>
+              <th style={{ width: "5%" }}>Delete</th>
+            </tr>
+          </thead>
+          <tbody>
+            {surgeryItems.map((item, index) => (
+              <tr key={index}>
+                <td className="text-center">{index + 1}</td>
+                <td className="position-relative">
+                  <input
+                    type="text"
+                    className="form-control"
+                    value={item.surgery}
+                    onChange={(e) => {
+                      handleSurgerySearchChange(
+                        e.target.value,
+                        index,
+                      );
+                    }}
+                    placeholder="Search Surgery"
+                    autoComplete="off"
+                  />
+                  {isSurgeryDropdownVisible &&
+                    selectedSurgeryIndex === index &&
+                    surgerySearchInput && (
+                      <ul
+                        className="list-group position-absolute w-100 mt-1"
+                        style={{ zIndex: 1000, top: "100%" }}
+                      >
+                        {surgeryOptions
+                          .filter((surgery) =>
+                            surgery.name
+                              .toLowerCase()
+                              .includes(
+                                surgerySearchInput.toLowerCase(),
+                              ),
+                          )
+                          .map((surgery) => (
+                            <li
+                              key={surgery.id}
+                              className="list-group-item list-group-item-action"
+                              onClick={() =>
+                                handleSurgerySelect(
+                                  surgery,
+                                  index,
+                                )
+                              }
+                            >
+                              {surgery.name}
+                            </li>
+                          ))}
+                      </ul>
+                    )}
+                </td>
+                <td className="text-center">
+                  <button
+                    className="btn btn-sm btn-success"
+                    onClick={handleAddSurgeryItem}
                   >
-                    <h6 className="mb-0 fw-bold">Surgery Advice</h6>
-                    <span style={{ fontSize: "18px" }}>
-                      {expandedSections.surgeryAdvice ? "−" : "+"}
-                    </span>
-                  </div>
-                  {expandedSections.surgeryAdvice && (
-                    <div className="card-body">
-                      <div className="row mb-3 align-items-center">
-                        <div className="col-12 d-flex gap-4 mb-3">
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="surgeryType"
-                              id="major"
-                              checked={surgeryType === "major"}
-                              onChange={() => setSurgeryType("major")}
-                            />
-                            <label className="form-check-label" htmlFor="major">
-                              Major
-                            </label>
-                          </div>
-                          <div className="form-check">
-                            <input
-                              className="form-check-input"
-                              type="radio"
-                              name="surgeryType"
-                              id="minor"
-                              checked={surgeryType === "minor"}
-                              onChange={() => setSurgeryType("minor")}
-                            />
-                            <label className="form-check-label" htmlFor="minor">
-                              Minor
-                            </label>
-                          </div>
-
-                          <div style={{ cursor: "default" }}>
-                            <div className="d-flex align-items-center">
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  setShowOtCalendarModal(true);
-                                }}
-                                style={{ fontSize: "12px" }}
-                              >
-                                OTCalendar
-                              </button>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="table-responsive">
-                        <table className="table table-bordered">
-                          <thead style={{ backgroundColor: "#b0c4de" }}>
-                            <tr>
-                              <th style={{ width: "10%" }}>S.No</th>
-                              <th style={{ width: "70%" }}>Surgery</th>
-                              <th style={{ width: "15%" }}>Select</th>
-                              <th style={{ width: "5%" }}>Add</th>
-                              <th style={{ width: "5%" }}>Delete</th>
-                            </tr>
-                          </thead>
-                          <tbody>
-                            {surgeryItems.map((item, index) => (
-                              <tr key={index}>
-                                <td className="text-center">{index + 1}</td>
-                                <td className="position-relative">
-                                  <input
-                                    type="text"
-                                    className="form-control"
-                                    value={item.surgery}
-                                    onChange={(e) => {
-                                      handleSurgerySearchChange(
-                                        e.target.value,
-                                        index,
-                                      );
-                                    }}
-                                    placeholder="Search Surgery"
-                                    autoComplete="off"
-                                  />
-                                  {isSurgeryDropdownVisible &&
-                                    selectedSurgeryIndex === index &&
-                                    surgerySearchInput && (
-                                      <ul
-                                        className="list-group position-absolute w-100 mt-1"
-                                        style={{ zIndex: 1000, top: "100%" }}
-                                      >
-                                        {surgeryOptions
-                                          .filter((surgery) =>
-                                            surgery.name
-                                              .toLowerCase()
-                                              .includes(
-                                                surgerySearchInput.toLowerCase(),
-                                              ),
-                                          )
-                                          .map((surgery) => (
-                                            <li
-                                              key={surgery.id}
-                                              className="list-group-item list-group-item-action"
-                                              onClick={() =>
-                                                handleSurgerySelect(
-                                                  surgery,
-                                                  index,
-                                                )
-                                              }
-                                            >
-                                              {surgery.name}
-                                            </li>
-                                          ))}
-                                      </ul>
-                                    )}
-                                </td>
-                                <td className="text-center">
-                                  <input
-                                    type="checkbox"
-                                    className="form-check-input"
-                                    checked={item.selected}
-                                    onChange={(e) =>
-                                      handleSurgeryChange(
-                                        index,
-                                        "selected",
-                                        e.target.checked,
-                                      )
-                                    }
-                                  />
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-success"
-                                    onClick={handleAddSurgeryItem}
-                                  >
-                                    +
-                                  </button>
-                                </td>
-                                <td className="text-center">
-                                  <button
-                                    className="btn btn-sm btn-danger"
-                                    onClick={() =>
-                                      handleRemoveSurgeryItem(index)
-                                    }
-                                    disabled={surgeryItems.length === 1}
-                                  >
-                                    −
-                                  </button>
-                                </td>
-                              </tr>
-                            ))}
-                          </tbody>
-                        </table>
-                      </div>
-                    </div>
-                  )}
-                </div>
+                    +
+                  </button>
+                </td>
+                <td className="text-center">
+                  <button
+                    className="btn btn-sm btn-danger"
+                    onClick={() =>
+                      handleRemoveSurgeryItem(index)
+                    }
+                    disabled={surgeryItems.length === 1}
+                  >
+                    −
+                  </button>
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )}
+</div>
                 {/* Admission Advice Section */}
                 <div className="card mb-3">
                   <div
