@@ -1980,6 +1980,7 @@ const handleClearAllTreatmentTemplates = () => {
             adispQty: item.aDispQty || 1,
             total: calculateTotal(item),
             prescriptionDtId: item.treatmentId || null,
+            prescriptionHdId:item.prescriptionHdId||null,
             flag: flag,
           };
         })
@@ -3049,19 +3050,16 @@ const handleClearAllTemplates = () => {
         if (hasTreatmentData) sectionsToExpand.treatment = true;
         if (patientData.treatmentAdvice)
           sectionsToExpand.treatmentAdvice = true;
-
-        setTreatmentItems(
-          patientData.patientPrescriptionDts?.length
-            ? patientData.patientPrescriptionDts.map((item) => {
+debugger
+        setTreatmentItems(patientData.patientPrescriptionDts?.length? patientData.patientPrescriptionDts.map((item) => {
                 const frequencyId = item.frequencyId || item.frequency || "";
-
                 const matchedFrequency = allFrequencies.find(
                   (f) => String(f.frequencyId) === String(frequencyId),
                 );
 
                 const frequencyName =
                   matchedFrequency?.frequencyName || frequencyId;
-
+                
                 const obj = {
                   prescriptionHdId: item.prescriptionHdId ?? null,
                   prescriptionDtId: item.prescriptionDtId ?? null,
