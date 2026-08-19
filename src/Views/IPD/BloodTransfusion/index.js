@@ -427,7 +427,6 @@ const BloodTransfusion = ({ selectedPatient }) => {
                 <th>Unit / Bag No</th>
                 <th>Expiry</th>
                 <th>Received At</th>
-                <th>Status</th>
                 <th>Action</th>
               </tr>
             </thead>
@@ -444,7 +443,6 @@ const BloodTransfusion = ({ selectedPatient }) => {
                     <td>{u.unitNo}</td>
                     <td>{u.expiry}</td>
                     <td>{u.receivedAt}</td>
-                    <td><span className={`badge bg-${getTransfusionBadge(u.status)}`}>{u.status}</span></td>
                     <td>
                       {u.status === "Received in Ward" && (
                         <button className="btn btn-primary btn-sm" onClick={() => handleOpenStart(u)}>
