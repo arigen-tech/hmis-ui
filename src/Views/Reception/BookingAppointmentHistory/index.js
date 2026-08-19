@@ -973,7 +973,7 @@ const BookingAppointmentHistory = () => {
                 </div>
 
                 <div className="col-md-3">
-                  <label className="form-label fw-bold">Search by Name</label>
+                  <label className="form-label fw-bold">Name</label>
                   <input
                     type="text"
                     className="form-control"
