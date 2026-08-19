@@ -13,6 +13,7 @@ import MedicationModule from "./../MAR"
 import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
+import BloodTransfusion from "../BloodTransfusion"
 import AdmissionDetails from "../AdmissionDetails"; // adjust path as needed
 
 const WardManagement = () => {
@@ -778,6 +779,10 @@ const WardManagement = () => {
 
                             {activeTab === "Admission Details" && (
   <AdmissionDetails selectedPatient={selectedPatient} />
+)}
+
+{activeTab === "Blood / Transfusion" && (
+  <BloodTransfusion selectedPatient={selectedPatient} />
 )}
 
                             {activeTab === "IPD Initial Assessment" && (
