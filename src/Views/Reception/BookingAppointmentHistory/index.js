@@ -28,7 +28,6 @@ import {
   FETCH_TOKENS_ERROR,
   INVALID_DATE_TITLE,
   INVALID_MOBILE_NUMBER,
-  MISSING_MOBILE_NUMBER,
   NO_APPOINTMENTS_FOUND,
   NO_CANCELLATION_REASONS,
   NO_DATA_FOUND,
@@ -235,6 +234,7 @@ const isCancelledAppointment = (status) =>
 const BookingAppointmentHistory = () => {
   // UI States
   const [mobileNumber, setMobileNumber] = useState("");
+  const [patientName, setPatientName] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const [showReport, setShowReport] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -351,12 +351,15 @@ const BookingAppointmentHistory = () => {
 
   // Search appointments
   const handleSearch = async (flag) => {
-    if (!mobileNumber.trim()) {
-      showPopup(`${MISSING_MOBILE_NUMBER}`);
+    const trimmedMobile = mobileNumber.trim();
+    const trimmedName = patientName.trim();
+
+    if (!trimmedMobile && !trimmedName) {
+      showPopup("Please enter a mobile number or patient name to search.");
       return;
     }
 
-    if (mobileNumber.trim() && !/^\d{10}$/.test(mobileNumber.trim())) {
+    if (trimmedMobile && !/^\d{10}$/.test(trimmedMobile)) {
       showPopup(`${INVALID_MOBILE_NUMBER}`, "error");
       return;
     }
@@ -367,7 +370,7 @@ const BookingAppointmentHistory = () => {
     try {
       const hospitalId = sessionStorage.getItem("hospitalId");
       const res = await getRequest(
-        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${mobileNumber}&deptTypeCode=${selectedDeptTypeCode}&includeAllHistory=false`,
+        `${GET_APPOINTMENT_HISTORY}?hospitalId=${hospitalId}&mobileNo=${trimmedMobile}&patientName=${encodeURIComponent(trimmedName)}&deptTypeCode=${selectedDeptTypeCode}&includeAllHistory=false`,
       );
 
       if (res.status === 200) {
@@ -957,7 +960,7 @@ const BookingAppointmentHistory = () => {
             </div>
             <div className="card-body">
               <div className="row mb-4">
-                <div className="col-md-4">
+                <div className="col-md-3">
                   <label className="form-label fw-bold">Mobile Number</label>
                   <input
                     type="text"
@@ -969,7 +972,19 @@ const BookingAppointmentHistory = () => {
                   />
                 </div>
 
-                <div className="col-md-4">
+                <div className="col-md-3">
+                  <label className="form-label fw-bold">Name</label>
+                  <input
+                    type="text"
+                    className="form-control"
+                    name="patientName"
+                    placeholder="Enter patient name"
+                    value={patientName}
+                    onChange={(e) => setPatientName(e.target.value)}
+                  />
+                </div>
+
+                <div className="col-md-3">
                   <label className="form-label fw-bold">Appointment Type</label>
                   <select
                     className="form-select"
@@ -984,7 +999,7 @@ const BookingAppointmentHistory = () => {
                   </select>
                 </div>
 
-                <div className="col-md-4 d-flex align-items-end">
+                <div className="col-md-3 d-flex align-items-end">
                   <button
                     type="button"
                     className="btn btn-success"

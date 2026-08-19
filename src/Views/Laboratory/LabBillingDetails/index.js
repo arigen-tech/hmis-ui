@@ -183,46 +183,30 @@ const LabBillingDetails = () => {
     setCurrentPage(1);
   };
 
-  const handleSearch = () => {
-    // check if all fields are empty
-    if (
-      !searchData.patientName &&
-      !searchData.mobileNo &&
-      !searchData.registrationNo
-    ) {
-      // reload full data
-      setIsSearchMode(false);
-      fetchPendingLabBilling(0);
-      return;
-    }
+const handleSearch = async () => {
+  if (
+    !searchData.patientName.trim() &&
+    !searchData.mobileNo.trim() &&
+    !searchData.registrationNo.trim()
+  ) {
+    setIsSearchMode(false);
+    setCurrentPage(1);
+    await fetchPendingLabBilling(0);
+    return;
+  }
 
+  try {
     setIsSearching(true);
+    setIsSearchMode(true);
+    setCurrentPage(1);
 
-    setTimeout(() => {
-      const filtered = patientList.filter((item) => {
-        const patientNameMatch =
-          searchData.patientName === "" ||
-          item.patientName
-            .toLowerCase()
-            .includes(searchData.patientName.toLowerCase());
-
-        const mobileNoMatch =
-          searchData.mobileNo === "" ||
-          item.mobileNo.includes(searchData.mobileNo);
-
-        const registrationMatch =
-          searchData.registrationNo === "" ||
-          item.registrationNo.includes(searchData.registrationNo);
-
-        return patientNameMatch && mobileNoMatch && registrationMatch;
-      });
-
-      setFilteredPatientList(filtered);
-      setCurrentPage(1);
-      setIsSearching(false);
-      setIsSearchMode(true);
-    }, 400);
-  };
+    await fetchPendingLabBilling(0);
+  } catch (error) {
+    console.error("Search error:", error);
+  } finally {
+    setIsSearching(false);
+  }
+};
 
   const handleReset = () => {
     setSearchData({

@@ -349,7 +349,7 @@ const NursingCareModule = ({ selectedPatient }) => {
     const hospitalId = sessionStorage.getItem('hospitalId') || localStorage.getItem('hospitalId') || 12;
     const departmentId = sessionStorage.getItem('departmentId') || localStorage.getItem('departmentId') || 49;
     try {
-      const response = await getRequest(`${GET_ITEM_BATCHES}/${itemId}?hospitalId=${hospitalId}&departmentId=${departmentId}`);
+      const response = await getRequest(`${GET_ITEM_BATCHES}/${itemId}?hospitalId=${hospitalId}&departmentId=${departmentId}&minimumClosingStock=0`);
       if (response && response.status === 200 && response.response) {
         const batches = response.response;
         setFetchedBatches(prev => ({ ...prev, [itemId]: batches }));

@@ -714,6 +714,11 @@ const PatientRegistration = () => {
     }
   };
 
+  const submitButtonLabel =
+    registrationMode === "withAppointment"
+      ? "Register With Appointment"
+      : "Register Only";
+
   const createInstant = (dateStr, timeStr) => {
     if (!dateStr || !timeStr) return null;
 
@@ -2180,16 +2185,86 @@ const handlePhotoFileChange = (event) => {
         setLoading(true);
         const data = await postRequest(`${PATIENT_REGISTRATION}`, requestData);
 
+        debugger;
         if (data.status === 200) {
           const resp = data.response?.opdBillingPatientResponse;
           const patientResp = data.response?.patient || data.response;
 
-          const visits =
-            data.response?.patient?.visits || data.response?.visits || [];
+          const visits = Array.isArray(data.response?.patient?.visits)
+            ? data.response.patient.visits
+            : Array.isArray(data.response?.visits)
+              ? data.response.visits
+              : [];
+          const appointments = Array.isArray(resp?.appointments)
+            ? resp.appointments
+            : Array.isArray(data.response?.appointments)
+              ? data.response.appointments
+              : [];
+          const receiptRows = (visits.length > 0 ? visits : appointments).map(
+            (row, index) => {
+              const mergedRow = {
+                ...(appointments[index] || {}),
+                ...(visits[index] || {}),
+                ...row,
+              };
+
+              return {
+                ...mergedRow,
+                visitId: mergedRow.visitId ?? mergedRow.id,
+                tokenNo: mergedRow.tokenNo ?? mergedRow.tokenNumber ?? "N/A",
+                doctorName:
+                  mergedRow.doctorName ??
+                  mergedRow.consultedDoctor ??
+                  mergedRow.consultedDoctorName ??
+                  "N/A",
+                patientName:
+                  mergedRow.patientName ||
+                  patientResp?.patientName ||
+                  `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                patientId:
+                  mergedRow.patientId ?? patientResp?.id ?? patientResp?.patientid,
+              };
+            },
+          );
+          const hasReceiptData = receiptRows.length > 0;
           const hasBillingStatusY =
             visits.length > 0 && visits[0]?.billingStatus === "y";
 
-          if (hasBillingStatusY) {
+          if (hasReceiptData) {
+            Swal.fire({
+              title: PATIENT_REGISTERED_SUCCESS_TITLE,
+              html: `<p>Patient registered successfully.</p>
+               <p>Proceed to the token slip page?</p>`,
+              icon: "success",
+              showCancelButton: true,
+              confirmButtonText: "Proceed",
+              cancelButtonText: "Close",
+              allowOutsideClick: false,
+            }).then((result) => {
+              if (result.isConfirmed) {
+                navigate("/opd_payment_success", {
+                  replace: true,
+                  state: {
+                    source: "registration",
+                    billingType: "Consultation Services",
+                    hasBillingData: false,
+                    amount: 0,
+                    patientId: patientResp?.id || patientResp?.patientid,
+                    patientName:
+                      patientResp?.patientName ||
+                      `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                    visits: receiptRows,
+                    opdData: {
+                      appointments,
+                      patient: patientResp,
+                    },
+                  },
+                });
+              } else if (result.dismiss === Swal.DismissReason.cancel) {
+                handleReset();
+              }
+            });
+          } else if (hasBillingStatusY) {
             Swal.fire({
               title: PATIENT_REGISTERED_SUCCESS_TITLE,
               html: `<p>Patient has been registered successfully.</p>
@@ -2199,7 +2274,17 @@ const handlePhotoFileChange = (event) => {
               timer: 1000,
               allowOutsideClick: false,
             }).then(() => {
-              navigate("/OPDBillingDetails", { replace: true });
+              navigate("/OPDBillingDetails", {
+                replace: true,
+                state: {
+                  source: "registration",
+                  patientId: resp?.patientid || patientResp?.id || patientResp?.patientid,
+                  patientName:
+                    resp?.patientName ||
+                    patientResp?.patientName ||
+                    `${formData.firstName || ""} ${formData.lastName || ""}`.trim(),
+                },
+              });
             });
           } else if (resp) {
             Swal.fire({
@@ -2219,6 +2304,7 @@ const handlePhotoFileChange = (event) => {
                   state: {
                     source: "registration",
                     patientId: resp.patientid,
+                    patientName: resp.patientName,
                   },
                 });
               } else if (result.dismiss === Swal.DismissReason.cancel) {
@@ -3598,6 +3684,7 @@ const uploadImageAndGetUrl = async (imageSource) => {
                             name="bmi"
                             value={formData.bmi}
                             onChange={handleChange}
+                            disabled
                           />
                           <span className="input-group-text">kg/m²</span>
                           {errors.bmi && (
@@ -3823,7 +3910,7 @@ const uploadImageAndGetUrl = async (imageSource) => {
                       disabled={isDuplicatePatient}
                       onClick={sendRegistrationRequest}
                     >
-                      Registration
+                      {submitButtonLabel}
                     </button>
                     <button type="reset" className="btn btn-secondary">
                       Reset

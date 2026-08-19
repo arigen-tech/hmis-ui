@@ -20,6 +20,7 @@ import {
   PATIENT_REGISTRATION,
   LAB_SERVICE_CATAGORY,
   LAB_REGISTRATION,
+  GET_BILLING_CONFIG,
 } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import {
@@ -59,6 +60,8 @@ const LabRegistration = () => {
   const [packageItems, setPackageItems] = useState([]);
   const [popupMessage, setPopupMessage] = useState(null);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+  const [labBillingEnabled, setLabBillingEnabled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -128,6 +131,7 @@ const LabRegistration = () => {
     fetchRelationData();
     fetchCountryData();
     fetchGstConfiguration();
+    fetchIsLabBillingEnabled();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -255,6 +259,19 @@ const LabRegistration = () => {
       onClose: () => setPopupMessage(null),
     });
   };
+
+  async function fetchIsLabBillingEnabled() {
+    const hospitalId = sessionStorage.getItem("hospitalId");
+    if (!hospitalId) return;
+
+    try {
+      const response = await getRequest(`${GET_BILLING_CONFIG}/${hospitalId}`);
+      setLabBillingEnabled(response?.response?.labBillingEnabled === true);
+    } catch (error) {
+      console.error("Error fetching billing configuration:", error);
+      setLabBillingEnabled(false);
+    }
+  }
 
   const isInvestigationInSelectedPackages = (investigationId, date) => {
     return formData.rows.some((row, index) => {
@@ -1044,7 +1061,7 @@ const LabRegistration = () => {
     if (isFormValid) {
       console.log("Form validation passed, proceeding with registration...");
       try {
-        setLoading(true);
+        setIsSubmitting(true);
 
         const selectedRows = formData.rows.filter(
           (row, index) => checkedRows[index],
@@ -1059,7 +1076,7 @@ const LabRegistration = () => {
               const invKey = `investigation_${invId}_${row.date}`;
               if (duplicateCheck.has(invKey)) {
                 showPopup(DUPLICATE_INV_PACKAGE_WARN_MSG, "Warning");
-                setLoading(false);
+                setIsSubmitting(false);
                 return;
               }
               duplicateCheck.set(invKey, row);
@@ -1068,7 +1085,7 @@ const LabRegistration = () => {
 
           if (duplicateCheck.has(key)) {
             showPopup(DUPLICATE_INV_PACKAGE_WARN_MSG, "Warning");
-            setLoading(false);
+            setIsSubmitting(false);
             return;
           }
           duplicateCheck.set(key, row);
@@ -1163,7 +1180,7 @@ const LabRegistration = () => {
         console.log("Lab registration successful:", labResult);
         let patientId = labResult.response.patientId;
         let billingHeaderId = labResult.response.billinghdId;
-        if (shouldNavigateToPayment) {
+        if (shouldNavigateToPayment && labBillingEnabled) {
           showPopup(LAB_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
@@ -1185,6 +1202,10 @@ const LabRegistration = () => {
               },
             });
           });
+        } else if (shouldNavigateToPayment) {
+          showPopup("Lab order booked successful", "success", false, () =>
+            handleReset(),
+          );
         } else {
           showPopup(LAB_REG_SUCC_MSG, "success", false, () => handleReset());
         }
@@ -1192,7 +1213,7 @@ const LabRegistration = () => {
         console.error("Registration error:", error);
         showPopup(error.message || REGISTRATION_ERR_MSG, "error");
       } finally {
-        setLoading(false);
+        setIsSubmitting(false);
       }
     }
   };
@@ -2724,10 +2745,10 @@ const LabRegistration = () => {
                     <button
                       type="button"
                       className="btn btn-primary me-2"
-                      disabled={loading || isDuplicatePatient}
+                      disabled={isSubmitting || isDuplicatePatient}
                       onClick={async () => {
                         const missingFields = getMissingMandatoryFields();
-                        if (loading) return;
+                        if (isSubmitting) return;
                         if (missingFields.length > 0) {
                           showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning");
                           return;
@@ -2740,10 +2761,19 @@ const LabRegistration = () => {
                         }
                       }}
                     >
-                      <i className="fa fa-credit-card me-1"></i>
-                      {loading
-                        ? "Processing..."
-                        : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          {labBillingEnabled ? "Paying..." : "Booking..."}
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa fa-credit-card me-1"></i>
+                          {labBillingEnabled
+                            ? `Pay Now - ₹${paymentBreakdown.finalAmount}`
+                            : "Register & Book"}
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"

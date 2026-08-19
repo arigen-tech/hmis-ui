@@ -112,6 +112,7 @@ export const ALL_STATE = `${MASTERS}/state/getAll`;
 export const ALL_DISTRICT = `${MASTERS}/district/getAll`;
 export const ALL_ROLE = `/roles/getAllRoles`;
 export const ALL_HOSPITAL = `/hospital/getAllHospitals`;
+export const GET_BILLING_CONFIG = `/billing/billingConfig`;
 export const ALL_MARITAL_STATUS = `/marital-status/getAllMaritalStatuses`;
 export const ALL_RELIGION = `/religion/getAllReligions`;
 export const ALL_USER_DEPARTMENT = `/user-departments/getAllUserDepartments`;

@@ -19,6 +19,7 @@ import {
   CHECH_DUPLICATE_PATIENT,
   RADIOLOGY_SERVICE_CATAGORY,
   REGISTER_RADIOLOGY,
+  GET_BILLING_CONFIG,
 } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import {
@@ -59,6 +60,8 @@ const PatientRegistrationRadiologyBooking = () => {
   const [packageItems, setPackageItems] = useState([]);
   const [popupMessage, setPopupMessage] = useState(null);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+  const [radiologyBillingEnabled, setRadiologyBillingEnabled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const navigate = useNavigate();
 
@@ -128,6 +131,7 @@ const PatientRegistrationRadiologyBooking = () => {
     fetchRelationData();
     fetchCountryData();
     fetchGstConfiguration();
+    fetchIsRadiologyBillingEnabled();
   }, []);
 
   useEffect(() => {
@@ -254,6 +258,21 @@ const PatientRegistrationRadiologyBooking = () => {
       onClose: () => setPopupMessage(null),
     });
   };
+
+  async function fetchIsRadiologyBillingEnabled() {
+    const hospitalId = sessionStorage.getItem("hospitalId");
+    if (!hospitalId) return;
+
+    try {
+      const response = await getRequest(`${GET_BILLING_CONFIG}/${hospitalId}`);
+      setRadiologyBillingEnabled(
+        response?.response?.radioBillingEnabled === true,
+      );
+    } catch (error) {
+      console.error("Error fetching billing configuration:", error);
+      setRadiologyBillingEnabled(false);
+    }
+  }
 
   const isInvestigationInSelectedPackages = (investigationId, date) => {
     return formData.rows.some((row, index) => {
@@ -1041,7 +1060,7 @@ const PatientRegistrationRadiologyBooking = () => {
     if (isFormValid) {
       console.log("Form validation passed, proceeding with registration...");
       try {
-        setLoading(true);
+        setIsSubmitting(true);
 
         const selectedRows = formData.rows.filter(
           (row, index) => checkedRows[index],
@@ -1056,7 +1075,7 @@ const PatientRegistrationRadiologyBooking = () => {
               const invKey = `investigation_${invId}_${row.date}`;
               if (duplicateCheck.has(invKey)) {
                 showPopup(DUPLICATE_INV_PACKAGE_WARN_MSG, "Warning");
-                setLoading(false);
+                setIsSubmitting(false);
                 return;
               }
               duplicateCheck.set(invKey, row);
@@ -1065,7 +1084,7 @@ const PatientRegistrationRadiologyBooking = () => {
 
           if (duplicateCheck.has(key)) {
             showPopup(DUPLICATE_INV_PACKAGE_WARN_MSG, "Warning");
-            setLoading(false);
+            setIsSubmitting(false);
             return;
           }
           duplicateCheck.set(key, row);
@@ -1161,7 +1180,7 @@ const PatientRegistrationRadiologyBooking = () => {
 
         console.log("Radiology registration successful:", investigationResult);
         let patientId = investigationResult.response.patientId;
-        if (shouldNavigateToPayment) {
+        if (shouldNavigateToPayment && radiologyBillingEnabled) {
           showPopup(RADIOLOGY_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
@@ -1180,6 +1199,10 @@ const PatientRegistrationRadiologyBooking = () => {
               },
             });
           });
+        } else if (shouldNavigateToPayment) {
+          showPopup("Radiology order booked successful", "success", false, () =>
+            handleReset(),
+          );
         } else {
           showPopup(LAB_REG_SUCC_MSG, "success", false, () => handleReset());
         }
@@ -1187,7 +1210,7 @@ const PatientRegistrationRadiologyBooking = () => {
         console.error("Registration error:", error);
         showPopup(error.message || REGISTRATION_ERR_MSG, "error");
       } finally {
-        setLoading(false);
+        setIsSubmitting(false);
       }
     }
   };
@@ -2721,10 +2744,10 @@ const PatientRegistrationRadiologyBooking = () => {
                     <button
                       type="button"
                       className="btn btn-primary me-2"
-                      disabled={loading || isDuplicatePatient}
+                      disabled={isSubmitting || isDuplicatePatient}
                       onClick={async () => {
                         const missingFields = getMissingMandatoryFields();
-                        if (loading) return;
+                        if (isSubmitting) return;
                         if (missingFields.length > 0) {
                           showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning");
                           return;
@@ -2737,10 +2760,19 @@ const PatientRegistrationRadiologyBooking = () => {
                         }
                       }}
                     >
-                      <i className="fa fa-credit-card me-1"></i>
-                      {loading
-                        ? "Processing..."
-                        : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                      {isSubmitting ? (
+                        <>
+                          <span className="spinner-border spinner-border-sm me-2" />
+                          {radiologyBillingEnabled ? "Paying..." : "Booking..."}
+                        </>
+                      ) : (
+                        <>
+                          <i className="fa fa-credit-card me-1"></i>
+                          {radiologyBillingEnabled
+                            ? `Pay Now - ₹${paymentBreakdown.finalAmount}`
+                            : "Register & Book"}
+                        </>
+                      )}
                     </button>
                     <button
                       type="button"

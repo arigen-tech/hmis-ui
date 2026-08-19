@@ -26,6 +26,7 @@ import {
   UPDATE_RADIOLOGY,
   RADIOLOGY_SERVICE_CATAGORY,
   PATIENT_FOLLOW_UP_DETAILS,
+  GET_BILLING_CONFIG,
 } from "../../../config/apiConfig";
 import LoadingScreen from "../../../Components/Loading";
 import {
@@ -70,6 +71,8 @@ const RadiologyBookingRegisteredPatient = () => {
   const [investigationItems, setInvestigationItems] = useState([]);
   const [packageItems, setPackageItems] = useState([]);
   const [isDuplicatePatient, setIsDuplicatePatient] = useState(false);
+  const [radioBillingEnabled, setRadioBillingEnabled] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPatientDetails, setShowPatientDetails] = useState(false);
   const [popupMessage, setPopupMessage] = useState(null);
   const [patients, setPatients] = useState([]);
@@ -186,6 +189,10 @@ const RadiologyBookingRegisteredPatient = () => {
   //   fetchCountryData();
   //   fetchGstConfiguration();
   // }, []);
+
+  useEffect(() => {
+    fetchIsBillingEnabled();
+  }, []);
 
   useEffect(() => {
     if (formData.gender && genderData.length > 0) {
@@ -881,6 +888,19 @@ const RadiologyBookingRegisteredPatient = () => {
     }
   }
 
+  async function fetchIsBillingEnabled() {
+    const hospitalId = sessionStorage.getItem("hospitalId");
+    if (!hospitalId) return;
+
+    try {
+      const response = await getRequest(`${GET_BILLING_CONFIG}/${hospitalId}`);
+      setRadioBillingEnabled(response?.response?.radioBillingEnabled === true);
+    } catch (error) {
+      console.error("Error fetching billing configuration:", error);
+      setRadioBillingEnabled(false);
+    }
+  }
+
   const handleSearch = useCallback(
     async (page = 0, searchOverride = null) => {
       if (typeof page !== "number") {
@@ -1214,7 +1234,7 @@ const RadiologyBookingRegisteredPatient = () => {
 
     if (isFormValid) {
       try {
-        setLoading(true);
+        setIsSubmitting(true);
         const patientId = formData.id;
         if (!patientId) throw new Error("Patient ID not found");
 
@@ -1327,7 +1347,7 @@ const RadiologyBookingRegisteredPatient = () => {
 
         console.log(radiologyData);
 
-        if (shouldNavigateToPayment) {
+        if (shouldNavigateToPayment && radioBillingEnabled) {
           showPopup(RADIOLOGY_REG_SUCC_MSG, "success", false, () => {
             navigate("/payment", {
               state: {
@@ -1349,6 +1369,15 @@ const RadiologyBookingRegisteredPatient = () => {
               },
             });
           });
+        } else if (shouldNavigateToPayment) {
+          showPopup(
+            "Radiology Registration successful",
+            "success",
+            false,
+            () => {
+              handleBackToList();
+            },
+          );
         } else {
           showPopup(RADIOLOGY_REGISTER_SUCC_MSG, "success", false, () => {
             handleBackToList();
@@ -1358,7 +1387,7 @@ const RadiologyBookingRegisteredPatient = () => {
         console.error("Registration error:", error);
         showPopup(error.message || LAB_REG_FAIL_MSG, "error");
       } finally {
-        setLoading(false);
+        setIsSubmitting(false);
       }
     }
   };
@@ -2887,9 +2916,10 @@ const RadiologyBookingRegisteredPatient = () => {
                       <button
                         type="button"
                         className="btn btn-primary me-2"
+                        disabled={isSubmitting}
                         onClick={async () => {
                           const missingFields = getMissingMandatoryFields();
-                          if (loading) return;
+                          if (isSubmitting) return;
                           if (missingFields.length > 0) {
                             showPopup(MISSING_MANDOTORY_FIELD_MSG, "warning");
                             return;
@@ -2902,10 +2932,19 @@ const RadiologyBookingRegisteredPatient = () => {
                           }
                         }}
                       >
-                        <i className="fa fa-credit-card me-1"></i>
-                        {loading
-                          ? "Processing..."
-                          : `Pay Now - ₹${paymentBreakdown.finalAmount}`}
+                        {isSubmitting ? (
+                          <>
+                            <span className="spinner-border spinner-border-sm me-2" />
+                            {radioBillingEnabled ? "Paying..." : "Booking..."}
+                          </>
+                        ) : (
+                          <>
+                            <i className="fa fa-credit-card me-1"></i>
+                            {radioBillingEnabled
+                              ? `Pay Now - ₹${paymentBreakdown.finalAmount}`
+                              : "Book"}
+                          </>
+                        )}
                       </button>
                       {/* <button
                         type="button"
@@ -2919,7 +2958,7 @@ const RadiologyBookingRegisteredPatient = () => {
                         type="button"
                         className="btn btn-outline-secondary"
                         onClick={handleBackToList}
-                        disabled={loading}
+                        disabled={isSubmitting}
                       >
                         Cancel
                       </button>

@@ -1528,9 +1528,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchCountryData() {
@@ -1547,9 +1547,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchStates(value) {
@@ -1573,9 +1573,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchAllSessions() {
@@ -1616,9 +1616,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchNokStates(value) {
@@ -1642,9 +1642,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchNokAllStates(value) {
@@ -1659,9 +1659,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchNokDistrict(value) {
@@ -1705,9 +1705,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   const handleAddChange = (e) => {
@@ -1754,9 +1754,9 @@ const UpdatePatientRegistration = () => {
     } catch (error) {
       console.error(FETCH_DATA_ERROR, error);
     }
-    // finally {
-    //   setLoading(false);
-    // }
+    finally {
+      setLoading(false);
+    }
   }
 
   async function fetchSession(doc) {
@@ -2140,12 +2140,62 @@ const UpdatePatientRegistration = () => {
 
         const resp = response.response?.opdBillingPatientResponse;
         const patientResp = response.response?.patient || response.response;
+        const visits = response.response?.visits || [];
+        const hasBillingStatusY = visits.length > 0 && visits[0]?.billingStatus === "y";
+        const details = resp?.details;
+        const hasVisits = Array.isArray(visits) && visits.length > 0;
+const isDetailsBlank =
+  details === null ||
+  details === undefined ||
+  (Array.isArray(details) && details.length === 0) ||
+  (typeof details === "object" && !Array.isArray(details) && Object.keys(details).length === 0);
 
-        const visits = patientResp?.visits || [];
-        const hasBillingStatusY =
-          visits.length > 0 && visits[0]?.billingStatus === "y";
+  if (hasVisits && isDetailsBlank) {
+  const visit = visits;
 
-        if (hasBillingStatusY) {
+  Swal.fire({
+    title: "Success",
+    html: `
+      <p>Patient updated and appointment booked successfully.</p>
+      <p>Proceed to the token slip page?</p>
+    `,
+    icon: "success",
+    showCancelButton: true,
+    confirmButtonText: "Proceed",
+    cancelButtonText: "Close",
+    allowOutsideClick: false,
+  }).then((result) => {
+    if (result.isConfirmed) {
+navigate("/opd_payment_success", {
+  replace: true,
+  state: {
+    source: "followup-update",
+    billingType: "Consultation Services",
+    hasBillingData: false,
+    amount: 0,
+    patientId: patientResp?.id || patientDetailForm.id,
+    patientName:
+      patientResp?.patientName ||
+      `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+    visits: visits.map((visit) => ({
+      visitId: visit.id,
+      tokenNo: visit.tokenNo,
+      doctorName: visit.doctorName,
+      patientName:
+        visit.patientName ||
+        patientResp?.patientName ||
+        `${patientDetailForm.patientFn || ""} ${patientDetailForm.patientLn || ""}`.trim(),
+      patientId: visit.patientId,
+    })),
+  },
+});
+    } else if (result.dismiss === Swal.DismissReason.cancel) {
+      handleReset();
+    }
+  });
+
+}
+  else if (hasBillingStatusY && !isDetailsBlank) {
           Swal.fire({
             title: PATIENT_UPDATED_SUCCESS_TITLE,
             html: `<p>Patient has been updated successfully.</p>
@@ -2256,6 +2306,7 @@ const UpdatePatientRegistration = () => {
     e.preventDefault();
   };
 
+
   // UPDATE YOUR renderPagination METHOD - Change all buttons to type="button"
   const renderPagination = () => {
     const pageNumbers = [];
@@ -2301,6 +2352,38 @@ const UpdatePatientRegistration = () => {
       </li>
     ));
   };
+
+  const handleBackToSearch = () => {
+  setShowPatientDetails(false);
+  setShowDetails(false);
+  setLoading(false);
+  // Keep the existing search results
+  // Do not clear patients/searchPerformed
+
+  setPatientDetailForm({
+    patientGender: "",
+    patientRelation: "",
+  });
+
+  setAppointments([
+    {
+      id: 0,
+      speciality: "",
+      selDoctorId: "",
+      selSession: "",
+      departmentName: "",
+      doctorName: "",
+      sessionName: "",
+      visitId: null,
+      tokenNo: null,
+      tokenStartTime: "",
+      tokenEndTime: "",
+      selectedTimeSlot: "",
+    },
+  ]);
+
+  setAppointmentFlag(false);
+};
 
   const selectToken = async (
     appointmentIndex,
@@ -2449,7 +2532,7 @@ const UpdatePatientRegistration = () => {
         });
         return;
       }
-
+      debugger;
       const params = new URLSearchParams({
         deptId: targetAppointment.speciality,
         doctorId: targetAppointment.selDoctorId,
@@ -2757,7 +2840,7 @@ const UpdatePatientRegistration = () => {
                   <button
                     className="btn btn-secondary ms-auto me-3"
                     type="button"
-                    onClick={handleReset}
+                    onClick={handleBackToSearch}
                   >
                     <i className="icofont-arrow-left me-1"></i> Back to Search
                   </button>
@@ -3869,7 +3952,7 @@ const UpdatePatientRegistration = () => {
                           className="form-check-label"
                           htmlFor="appointment"
                         >
-                          Update with Appointment
+                          Proceed For Appointment
                         </label>
                       </div>
                     </div>
@@ -4061,7 +4144,7 @@ const UpdatePatientRegistration = () => {
                         className="btn btn-primary me-2"
                         disabled={!isFormValid()}
                       >
-                        Update Registration
+                        {appointmentFlag ? "Book Appointment" : "Update Registration"}
                       </button>
                       <button
                         type="button"

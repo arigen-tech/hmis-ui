@@ -242,11 +242,18 @@ const PaymentPage = () => {
         amount: request.amount,
         paymentMethod: request.mode,
         paymentReferenceNo: request.paymentReferenceNo,
-        billingHeaderIds:response.billHeaderIds||response.billHeaderIds,
+        billingHeaderIds:
+          response?.response?.billHeaderIds ||
+          response?.response?.billingHeaderIds ||
+          request.billingHeaderIds ||
+          [],
         patientId,
         billNo: response?.response?.billNo,
         paymentStatus: response?.response?.paymentStatus,
         paymentResponse: response,
+        paymentRequest: request,
+        opdData,
+        opdBillPayments: request.opdBillPayments || [],
         source: location.state?.source || "billing",
       },
     });
