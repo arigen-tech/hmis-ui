@@ -423,6 +423,8 @@ export const OPD_CREATE_PATIENT_DETAILS = `/opd/createOpdPatientDetails`;
 export const OPD_CASE_SHEET_REPORT = `${ALL_REPORTS}/opdCaseSheetReport`
 export const GET_OPD_REPORTS_LIST = "/opd/getOpdReportsList"
 export const OPD_PRESCRIPTION_SLIP_REPORT = `${ALL_REPORTS}/opdPrescriptionSlip`
+export const PRESCRIPTION_INVOICE_REPORT = `${ALL_REPORTS}/prescriptionInvoice`
+
 
 //billing
 export const RADIOLOGY_SERVICE_CATAGORY = "SC004";
@@ -820,5 +822,9 @@ export const SAVE_NURSING_CARE_PROCEDURE = '/ipd/saveNursingCareProcedure';
 export const GET_NURSING_CARE_PROCEDURE = '/ipd/getNursingCareProcedure';
 export const SAVE_ADVERSE_REACTION = '/ipd/saveAdverseReaction';
 export const GET_ADVERSE_REACTION_DETAILS = '/ipd/getAdverseReactionDetails';
+
+export const GET_PENDING_PRESCRIPTION_HEADERS = "/dispensary/pendingPrescriptionHeaders"; 
+export const GET_PRESCRIPTION_DETAILS = "/dispensary/pendingPrescriptionDetails";        
+export const APPROVE_PRESCRIPTION_URL = "/dispensary/approvePrescription";
 export const IP_SUMMARY_BILL_REPORT_API = `${ALL_REPORTS}/ipSummaryBill`;
 export const IP_DETAILED_BILL_REPORT_API = `${ALL_REPORTS}/ipDetailedBill`;

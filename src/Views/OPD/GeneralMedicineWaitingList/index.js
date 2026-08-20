@@ -1432,13 +1432,20 @@ const otOptions = [
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  const fetchWaitingList = async () => {
+  const fetchWaitingList = async (filters = {}) => {
     try {
       setLoading(true);
       // Initial fetch without filters (just first page)
       const queryParams = new URLSearchParams();
       queryParams.append("page", "0");
       queryParams.append("size", DEFAULT_ITEMS_PER_PAGE);
+
+      const doctorId =
+        filters.doctorId || searchFilters.doctorList || userId || "";
+
+      if (doctorId) {
+        queryParams.append("doctorId", doctorId);
+      }
 
       const res = await getRequest(
         `${GET_WAITING_LIST}?${queryParams.toString()}`,
@@ -1481,19 +1488,37 @@ const otOptions = [
   };
 
   const fetchDoctorData = async () => {
-    setLoading(true);
     try {
       const data = await getRequest(DOCTOR_BY_DEPARTMENT);
+
       if (data.status === 200 && Array.isArray(data.response)) {
         setDoctorData(data.response);
+
+        const userId =
+          localStorage.getItem("userId") || sessionStorage.getItem("userId");
+
+        const loggedDoctor = data.response.find(
+          (doctor) => String(doctor.userId) === String(userId),
+        );
+
+        if (loggedDoctor) {
+          const initialFilters = {
+            doctorList: String(loggedDoctor.userId),
+            session: searchFilters.session,
+            mobileNo: searchFilters.mobileNo,
+            patientName: searchFilters.patientName,
+          };
+
+          setSearchFilters(initialFilters);
+
+          await fetchWaitingList(initialFilters);
+        }
       } else {
-        console.error("Unexpected API response format:", data);
         setDoctorData([]);
       }
     } catch (error) {
       console.error("Error fetching Doctor data:", error);
-    } finally {
-      setLoading(false);
+      setDoctorData([]);
     }
   };
 
@@ -1528,9 +1553,9 @@ const otOptions = [
 
   useEffect(() => {
     if (initialDataLoadedRef.current) return;
+
     initialDataLoadedRef.current = true;
 
-    fetchWaitingList();
     fetchDoctorData();
     fetchSessionData();
     fetchOpdTemplateData();
