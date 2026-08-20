@@ -29,7 +29,7 @@ const TRANSFER_STATUS = {
   CANCELLED: "Cancelled"
 }
 
-const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWardLevel = false }) => {
+const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWardLevel = false, onTransferSuccess }) => {
   const [activeView, setActiveView] = useState(isWardLevel ? "pendingList" : "request") // "request" | "pendingList" | "transferredList"
   const [selectedPendingTransfer, setSelectedPendingTransfer] = useState(null) // for detail view
 
@@ -469,6 +469,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
           setReviewTransfer(null)
           setActiveView("pendingList")
           setSelectedPendingTransfer(null)
+          if (onTransferSuccess) onTransferSuccess()
         })
       } else {
         Swal.fire({
@@ -534,6 +535,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
             setSelectedPendingTransfer(null)
             setActiveView("pendingList")
           }
+          if (onTransferSuccess) onTransferSuccess()
         })
       } else {
         Swal.fire({
@@ -596,6 +598,7 @@ const BedTransfer = ({ selectedPatient, setSelectedPatient, selectedWard, isWard
           
           setActiveView("pendingList")
           setSelectedPendingTransfer(null)
+          if (onTransferSuccess) onTransferSuccess()
         })
       } else {
         Swal.fire({
