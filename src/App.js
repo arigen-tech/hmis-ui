@@ -269,6 +269,8 @@ import SurgeryTypeMaster from './Views/Masters/SurgeryTypeMaster';
 import AddPrescription from './Views/Dispensary/AddPrescription';
 import ViewDownloadWithUnlimitedButtons from './Components/ViewDownloadWithUnlimitedButtons';
 
+import OperationTheatre from './Views/Masters/OperationTheatreMaster';
+import OTDaysAllocation from './Views/Masters/OTDaysAllocation';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -570,6 +572,9 @@ function App() {
                 <Route path="/SurgeryTypeMaster" element={<SurgeryTypeMaster />} />
                 <Route path="/AddPrescription" element={<AddPrescription />} />
                 <Route path="/ActiveAdmissionList" element={<ActiveAdmissionList />} />
+                <Route path="/OperationTheatre" element={<OperationTheatre />} />
+                <Route path="/OTDaysAllocation" element={<OTDaysAllocation />} />
+
 
                 
                 

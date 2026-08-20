@@ -91,7 +91,7 @@ const PatientwiseBilldatails = () => {
       let apiUrl = "";
 
       // Determine API endpoint based on serviceCategoryId
-      if (record.serviceCategoryId === 1) {
+      if (record.serviceCategoryId === 1 || record.serviceCategoryId === 3) {
         // OPD Report
         apiUrl = `${OPD_INVOICE_API}?visit=${record.visitId}&flag=${flag}`;
       } else if (record.serviceCategoryId === 2) {
@@ -99,7 +99,7 @@ const PatientwiseBilldatails = () => {
         apiUrl = `${LAB_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
       } else if(record.serviceCategoryId === 4){
         apiUrl = `${RADIOLOGY_INVOICE_API}?billNo=${record.billNo}&flag=${flag}`;
-      }
+      } 
       else{
         showPopup(
           "Report type not supported for this service category",

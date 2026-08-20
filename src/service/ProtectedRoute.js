@@ -268,6 +268,8 @@ const validRoutes = [
   "/SurgeryTypeMaster",
   "/AddPrescription",
   "/ActiveAdmissionList",
+  "/OperationTheatre",
+  "/OTDaysAllocation",
 ];
 
 // Routes that should bypass authorization
