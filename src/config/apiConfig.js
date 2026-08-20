@@ -826,3 +826,4 @@ export const GET_ADVERSE_REACTION_DETAILS = '/ipd/getAdverseReactionDetails';
 export const GET_PENDING_PRESCRIPTION_HEADERS = "/dispensary/pendingPrescriptionHeaders"; 
 export const GET_PRESCRIPTION_DETAILS = "/dispensary/pendingPrescriptionDetails";        
 export const APPROVE_PRESCRIPTION_URL = "/dispensary/approvePrescription";
+export const GET_ITEM_BATCHES_EXCEPT_STOCK = "/inventory/item/batchesExceptGivenStock";

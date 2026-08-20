@@ -1,58 +1,23 @@
 import { useState, useEffect, useRef } from "react";
-import { createPortal } from "react-dom";
 import { useNavigate } from "react-router-dom";
 import Popup from "../../../Components/popup";
 import ConfirmationPopup from "../../../Components/ConfirmationPopup";
 import LoadingScreen from "../../../Components/Loading";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../Components/Pagination";
 import { getRequest, putRequest } from "../../../service/apiService";
-import { ALL_REPORTS,
-DISPENSARY_DEPARTMENT_ID,
-GET_PENDING_PRESCRIPTION_HEADERS,
-OPD_PRESCRIPTION_SLIP_REPORT ,
-GET_PRESCRIPTION_DETAILS ,   
-GET_ITEM_BATCHES,                             
-APPROVE_PRESCRIPTION_URL, 
-PRESCRIPTION_INVOICE_REPORT} from "../../../config/apiConfig";
-import ViewDownloadWithUnlimitedButtons from "../../../Components/ViewDownloadWithUnlimitedButtons"; // adjust path as needed
+import {
+  ALL_REPORTS,
+  DISPENSARY_DEPARTMENT_ID,
+  GET_PENDING_PRESCRIPTION_HEADERS,
+  OPD_PRESCRIPTION_SLIP_REPORT,
+  GET_PRESCRIPTION_DETAILS,
+  APPROVE_PRESCRIPTION_URL,
+  PRESCRIPTION_INVOICE_REPORT,
+  GET_ITEM_BATCHES_EXCEPT_STOCK,
+} from "../../../config/apiConfig";
+import ViewDownloadWithUnlimitedButtons from "../../../Components/ViewDownloadWithUnlimitedButtons";
 
-// ---------- API endpoints ----------
-                
 
-// ---------- Portal dropdown (identical to IndentIssue) ----------
-const PortalDropdown = ({ anchorRef, show, children }) => {
-  const [style, setStyle] = useState({});
-
-  useEffect(() => {
-    if (!show || !anchorRef?.current) return;
-    const updatePosition = () => {
-      const rect = anchorRef.current.getBoundingClientRect();
-      setStyle({
-        position: "fixed",
-        top: rect.bottom + 4,
-        left: rect.left,
-        width: rect.width,
-        zIndex: 99999,
-        maxHeight: "250px",
-        overflowY: "auto",
-        background: "#fff",
-        border: "1px solid #dee2e6",
-        borderRadius: "4px",
-        boxShadow: "0 4px 12px rgba(0,0,0,0.15)",
-      });
-    };
-    updatePosition();
-    window.addEventListener("scroll", updatePosition, true);
-    window.addEventListener("resize", updatePosition);
-    return () => {
-      window.removeEventListener("scroll", updatePosition, true);
-      window.removeEventListener("resize", updatePosition);
-    };
-  }, [show, anchorRef]);
-
-  if (!show) return null;
-  return createPortal(<div style={style}>{children}</div>, document.body);
-};
 
 const PrescriptionIssue = () => {
   const navigate = useNavigate();
@@ -68,25 +33,21 @@ const PrescriptionIssue = () => {
   const [filteredList, setFilteredList] = useState([]);
   const [selectedRecord, setSelectedRecord] = useState(null);
   const [detailEntries, setDetailEntries] = useState([]);
-  const [batchOptions, setBatchOptions] = useState({});   // keyed by itemId
 
   // Search / filter
   const [patientName, setPatientName] = useState("");
   const [mobileNo, setMobileNo] = useState("");
   const [currentPage, setCurrentPage] = useState(1);
 
-  // Batch dropdown management
-  const [activeBatchDropdown, setActiveBatchDropdown] = useState(null);
-  const batchInputRefs = useRef({});
-  const dropdownClickedRef = useRef(false);
-
   // Popups
   const [popupMessage, setPopupMessage] = useState(null);
   const [confirmationPopup, setConfirmationPopup] = useState(null);
 
   // Session values
-  const departmentId = sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
-  const hospitalId = sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
+  const departmentId =
+    sessionStorage.getItem("departmentId") || localStorage.getItem("departmentId");
+  const hospitalId =
+    sessionStorage.getItem("hospitalId") || localStorage.getItem("hospitalId");
 
   // ---------- Fetch pending prescription headers ----------
   const fetchPendingPrescriptions = async () => {
@@ -102,7 +63,7 @@ const PrescriptionIssue = () => {
       if (response?.response?.content && Array.isArray(response.response.content)) {
         data = response.response.content;
       } else if (response?.response && Array.isArray(response.response)) {
-        data = response.response; // fallback
+        data = response.response;
       }
       setPrescriptionList(data);
       setFilteredList(data);
@@ -117,7 +78,131 @@ const PrescriptionIssue = () => {
     fetchPendingPrescriptions();
   }, [departmentId]);
 
-  // ---------- Fetch medicine details for a prescription ----------
+  // ---------- Fetch a single batch for an item (auto-fill) ----------
+  const fetchBatchForItem = async (itemId, excludeStockIds = []) => {
+    try {
+      const params = new URLSearchParams();
+      params.append("hospitalId", hospitalId);
+      params.append("departmentId", DISPENSARY_DEPARTMENT_ID);
+      params.append("minimumClosingStock", "0");
+      excludeStockIds.forEach((id) => params.append("excludeStockIds", id));
+
+      const url = `${GET_ITEM_BATCHES_EXCEPT_STOCK}/${itemId}?${params.toString()}`;
+      const response = await getRequest(url);
+
+      const apiStatus = response?.status;
+      if (apiStatus === 200) {
+        const batch = response?.response;
+        return {
+          stockId: batch.stockId,
+          batchName: batch.batchName,
+          dom: batch.dom,
+          doe: batch.doe,
+          batchStock: Number(batch.batchStock) || 0,
+          availableStock: Number(batch.availableStock) || 0,
+        };
+      } else if (apiStatus === 404) {
+        return null; // No batch available
+      } else {
+        // Internal server error or other error
+        showPopup(response?.message || "Error fetching batch", "error");
+        return null;
+      }
+    } catch (error) {
+      console.error("Error fetching batch for item", itemId, error);
+      showPopup("Error fetching batch", "error");
+      return null;
+    }
+  };
+
+  // ---------- Process one entry: auto-fill batch, split if needed ----------
+  const processEntry = async (entry) => {
+    const initialBatch = await fetchBatchForItem(entry.itemId, []);
+
+    if (!initialBatch) {
+      // No batch available – mark as "Batch Not Found", issueQty = 0
+      return [
+        {
+          ...entry,
+          batchNo: "Batch Not Found",
+          stockId: null,
+          dom: "",
+          doe: "",
+          expDate: "",
+          batchStock: 0,
+          availableStock: 0,
+          issueQty: 0,
+        },
+      ];
+    }
+
+    const batchStock = initialBatch.batchStock;
+    const prescribedQty = Number(entry.prescribedQty) || 0;
+    const availableStock = initialBatch.availableStock;
+
+    const baseEntry = {
+      ...entry,
+      batchNo: initialBatch.batchName,
+      stockId: initialBatch.stockId,
+      dom: initialBatch.dom,
+      doe: initialBatch.doe,
+      expDate: initialBatch.doe,
+      batchStock: batchStock,
+      availableStock: availableStock,
+    };
+
+    if (batchStock < prescribedQty && prescribedQty <= availableStock) {
+      // Split: first row gets batchStock, second row gets remainder from another batch
+      const firstRow = {
+        ...baseEntry,
+        prescribedQty: batchStock,
+        issueQty: batchStock,
+      };
+
+      const remainder = prescribedQty - batchStock;
+      const secondBatch = await fetchBatchForItem(entry.itemId, [initialBatch.stockId]);
+
+      let secondRow;
+      if (secondBatch) {
+        secondRow = {
+          ...entry,
+          id: null, // new row
+          prescribedQty: remainder,
+          issueQty: Math.min(remainder, secondBatch.batchStock),
+          batchNo: secondBatch.batchName,
+          stockId: secondBatch.stockId,
+          dom: secondBatch.dom,
+          doe: secondBatch.doe,
+          expDate: secondBatch.doe,
+          batchStock: secondBatch.batchStock,
+          availableStock: secondBatch.availableStock,
+        };
+      } else {
+        // No second batch available
+        secondRow = {
+          ...entry,
+          id: null,
+          prescribedQty: remainder,
+          issueQty: 0,
+          batchNo: "Batch Not Found",
+          stockId: null,
+          dom: "",
+          doe: "",
+          expDate: "",
+          batchStock: 0,
+          availableStock: 0,
+        };
+      }
+
+      return [firstRow, secondRow];
+    } else {
+      // No split – issue full prescribed quantity (or whatever is available)
+      baseEntry.issueQty = Math.min(prescribedQty, batchStock);
+      return [baseEntry];
+    }
+  };
+
+  // ---------- Fetch medicine details and auto-fill batches ----------
   const fetchPrescriptionDetails = async (headerId) => {
     setDetailsLoading(true);
     try {
@@ -128,7 +213,8 @@ const PrescriptionIssue = () => {
         items = response.response;
       }
 
-      const entries = items.map((item) => ({
+      // Build initial entries from prescription details (no batch info yet)
+      const initialEntries = items.map((item) => ({
         id: item.prescriptionDetailsId,
         itemId: item.itemId,
         itemName: item.itemName,
@@ -146,12 +232,10 @@ const PrescriptionIssue = () => {
         availableStock: "",
       }));
 
-      setDetailEntries(entries);
-
-      // Pre‑fetch batch lists for each item
-      items.forEach(async (itm) => {
-        if (itm.itemId) await fetchBatchesForItem(itm.itemId);
-      });
+      // Process each entry (auto-fill batch, split if necessary)
+      const processedArrays = await Promise.all(initialEntries.map((entry) => processEntry(entry)));
+      const flatEntries = processedArrays.flat();
+      setDetailEntries(flatEntries);
     } catch (error) {
       showPopup("Error fetching prescription details", "error");
     } finally {
@@ -159,136 +243,23 @@ const PrescriptionIssue = () => {
     }
   };
 
-  // ---------- Fetch batches for one item ----------
-  const fetchBatchesForItem = async (itemId) => {
-    try {
-      const url = `${GET_ITEM_BATCHES}/${itemId}?hospitalId=${hospitalId}&departmentId=${DISPENSARY_DEPARTMENT_ID}&minimumClosingStock=0`;
-      const response = await getRequest(url);
-      let batches = [];
-      if (response?.response && Array.isArray(response.response)) {
-        batches = response.response;
-      }
-
-      const mapped = batches.map((b) => ({
-        stockId: b.stockId || null,
-        batchNo: b.batchName,
-        dom: b.dom,
-        doe: b.doe,
-        batchStock: Number(b.batchStock) || 0,
-        totalAvailableStock: Number(b.availableStock) || 0,
-      }));
-
-      setBatchOptions((prev) => ({
-        ...prev,
-        [itemId]: mapped,
-      }));
-      return mapped;
-    } catch (error) {
-      console.error("Error fetching batches for item", itemId, error);
-      return [];
-    }
-  };
-
-  // ---------- Helper: get batch numbers already used by the same item in other rows ----------
-  const getUsedBatchNos = (itemId, currentIndex) => {
-    return detailEntries
-      .filter((e, idx) => idx !== currentIndex && e.itemId === itemId && e.batchNo)
-      .map((e) => e.batchNo);
-  };
-
-  // ---------- Handle changes in a detail row (only batchNo and issueQty) ----------
+  // ---------- Handle changes in a detail row (only issueQty) ----------
   const handleEntryChange = (index, field, value) => {
     const updatedEntries = [...detailEntries];
 
-    if (field === "batchNo") {
-      const selectedBatch = batchOptions[updatedEntries[index].itemId]?.find(
-        (b) => b.batchNo === value
-      );
-      const currentEntry = updatedEntries[index];
-
-      if (!selectedBatch) {
-        // Clear batch info
-        updatedEntries[index] = {
-          ...currentEntry,
-          batchNo: "",
-          stockId: null,
-          dom: "",
-          doe: "",
-          expDate: "",
-          batchStock: "",
-        };
-        setDetailEntries(updatedEntries);
-        return;
-      }
-
-      const batchStock = selectedBatch.batchStock;
-      const prescribedQty = currentEntry.prescribedQty;
-      const totalAvailStock = selectedBatch.totalAvailableStock;
-      const stockId = selectedBatch.stockId;
-
-      // Auto‑split logic: if batch stock < prescribed qty, split the row
-      if (batchStock < prescribedQty) {
-        // Cap current row to batch stock
-        updatedEntries[index] = {
-          ...currentEntry,
-          batchNo: value,
-          stockId: stockId,
-          dom: formatDate(selectedBatch.dom),
-          doe: formatDate(selectedBatch.doe),
-          expDate: selectedBatch.doe,
-          batchStock: batchStock,
-          availableStock: totalAvailStock,
-          prescribedQty: batchStock,
-          issueQty: batchStock,
-        };
-
-        // Create a new row with the remaining quantity
-        const remainder = prescribedQty - batchStock;
-        const newRow = {
-          id: null,
-          itemId: currentEntry.itemId,
-          itemName: currentEntry.itemName,
-          dosage: currentEntry.dosage,
-          frequency: currentEntry.frequency,
-          days: currentEntry.days,
-          prescribedQty: remainder,
-          issueQty: remainder,
-          batchNo: "",
-          dom: "",
-          doe: "",
-          expDate: "",
-          batchStock: "",
-          availableStock: totalAvailStock,
-        };
-        updatedEntries.splice(index + 1, 0, newRow);
-
-        if (!batchOptions[currentEntry.itemId]) {
-          fetchBatchesForItem(currentEntry.itemId);
-        }
-      } else {
-        // Batch stock is enough – no split needed
-        updatedEntries[index] = {
-          ...currentEntry,
-          batchNo: value,
-          stockId: stockId,
-          dom: formatDate(selectedBatch.dom),
-          doe: formatDate(selectedBatch.doe),
-          expDate: selectedBatch.doe,
-          batchStock: batchStock,
-          availableStock: totalAvailStock,
-        };
-      }
-
-      setDetailEntries(updatedEntries);
-    } else if (field === "issueQty") {
-      // issueQty cannot exceed prescribedQty or batchStock
+    if (field === "issueQty") {
       const qty = value === "" ? "" : Number(value) || 0;
       const prescribed = Number(updatedEntries[index].prescribedQty) || 0;
       const batchStock = Number(updatedEntries[index].batchStock) || 0;
 
       let finalQty = qty;
       if (qty > prescribed) finalQty = prescribed;
-      if (batchStock && qty > batchStock) finalQty = batchStock;
+      if (batchStock > 0) {
+        if (qty > batchStock) finalQty = batchStock;
+      } else {
+        // If no batch stock, issue qty must be 0 (input is disabled anyway)
+        finalQty = 0;
+      }
 
       updatedEntries[index] = {
         ...updatedEntries[index],
@@ -306,19 +277,18 @@ const PrescriptionIssue = () => {
       return errors;
     }
 
+    let totalIssued = 0;
     detailEntries.forEach((entry, idx) => {
       const qtyIssued = Number(entry.issueQty) || 0;
-      const prescribedQty = Number(entry.prescribedQty) || 0;
-
-      if (qtyIssued > 0 && !entry.batchNo) {
-        errors.push(`Row ${idx + 1}: Please select a batch.`);
+      totalIssued += qtyIssued;
+      if (qtyIssued > 0 && !entry.stockId) {
+        errors.push(`Row ${idx + 1}: Batch not available for issued quantity.`);
       }
-      // if (qtyIssued !== prescribedQty) {
-      //   errors.push(
-      //     `Row ${idx + 1}: Issue Qty (${qtyIssued}) must equal Prescribed Qty (${prescribedQty}).`
-      //   );
-      // }
     });
+
+    if (totalIssued === 0) {
+      errors.push("Please issue at least one medicine.");
+    }
     return errors;
   };
 
@@ -341,118 +311,108 @@ const PrescriptionIssue = () => {
 
   // ---------- Confirm and call approve API ----------
   const confirmIssue = async () => {
-  setIsIssuing(true);
-  try {
-    const payload = {
-      prescriptionHeaderId: selectedRecord.prescriptionHeaderId,
-      prescriptionDetails: detailEntries.map((entry) => ({
-        prescriptionDetailsId: entry.id,
-        itemId: entry.itemId,
-        stockId: entry.stockId,
-        batchName: entry.batchNo || "",
-        dosage: entry.dosage,
-        frequency: entry.frequency,
-        days: Number(entry.days) || 0,
-        total: Number(entry.prescribedQty) || 0,
-        issuedQty: Number(entry.issueQty) || 0,
-        instruction: "",
-      })),
-    };
+    setIsIssuing(true);
+    try {
+      const payload = {
+        prescriptionHeaderId: selectedRecord.prescriptionHeaderId,
+        prescriptionDetails: detailEntries.map((entry) => ({
+          prescriptionDetailsId: entry.id,
+          itemId: entry.itemId,
+          stockId: entry.stockId,
+          batchName: entry.stockId ? entry.batchNo : null,
+          dosage: entry.dosage,
+          frequency: entry.frequency,
+          days: Number(entry.days) || 0,
+          total: Number(entry.prescribedQty) || 0,
+          issuedQty: Number(entry.issueQty) || 0,
+          instruction: "",
+        })),
+      };
 
-    const response = await putRequest(APPROVE_PRESCRIPTION_URL, payload);
-debugger;
-    // The response is the direct JSON object from backend
-    const apiStatus = response?.status;
-    const apiData = response?.data; // this is PrescriptionApproveHeaderResponse
+      const response = await putRequest(APPROVE_PRESCRIPTION_URL, payload);
+      const apiStatus = response?.status;
+      const apiData = response?.data;
 
-    // Extract fields with fallbacks
-    const prescriptionHdId = apiData?.prescriptionHdId ?? selectedRecord?.prescriptionHeaderId;
-    const nisNo = apiData?.response.nisno;
+      const prescriptionHdId = apiData?.prescriptionHdId ?? selectedRecord?.prescriptionHeaderId;
+      const prescriptionNumber=selectedRecord.prescriptionNo;
+      const nisNo = apiData?.response?.nisno;
 
-    if (apiStatus === 200 || apiStatus === "200") {
-      // Remove issued prescription from lists
-      setPrescriptionList((prev) =>
-        prev.filter(
-          (p) => p.prescriptionHeaderId !== selectedRecord.prescriptionHeaderId
-        )
-      );
-      setFilteredList((prev) =>
-        prev.filter(
-          (p) => p.prescriptionHeaderId !== selectedRecord.prescriptionHeaderId
-        )
-      );
+      if (apiStatus === 200 || apiStatus === "200") {
+        setPrescriptionList((prev) =>
+          prev.filter((p) => p.prescriptionHeaderId !== selectedRecord.prescriptionHeaderId)
+        );
+        setFilteredList((prev) =>
+          prev.filter((p) => p.prescriptionHeaderId !== selectedRecord.prescriptionHeaderId)
+        );
 
-      // Show confirmation for printing
-      showConfirmationPopup(
-        "Prescription Issued Successfully. Do you want to print the report?",
-        "success",
-        () => {
-          const buttons = [
-            {
-              key: "prescription",
-              label: "Prescription Report",
-              type: "view",
-              url: `${OPD_PRESCRIPTION_SLIP_REPORT}?prescriptionId=${prescriptionHdId}`,
-              className: "btn btn-primary",
-              icon: "fa fa-file-pdf-o",
-              loadingText: "Generating...",
-              style: { backgroundColor: "#6aab9c", border: "none" },
-            },
-            {
-              key: "invoice",
-              label: "Invoice Report",
-              type: "view",
-              url: `${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${prescriptionHdId}`,
-              className: "btn btn-warning",
-              icon: "fa fa-file-invoice",
-              loadingText: "Generating...",
-              style: { backgroundColor: "#ffc107", border: "none", color: "#000" },
-            },
-          ];
+        showConfirmationPopup(
+          "Prescription Issued Successfully. Do you want to print the report?",
+          "success",
+          () => {
+            const buttons = [
+              {
+                key: "prescription",
+                label: "Prescription Report",
+                type: "view",
+                url: `${OPD_PRESCRIPTION_SLIP_REPORT}?prescriptionId=${prescriptionHdId}`,
+                className: "btn btn-primary",
+                icon: "fa fa-file-pdf-o",
+                loadingText: "Generating...",
+                style: { backgroundColor: "#6aab9c", border: "none" },
+              },
+              {
+                key: "invoice",
+                label: "Invoice Report",
+                type: "view",
+                url: `${PRESCRIPTION_INVOICE_REPORT}?prescriptionId=${prescriptionHdId}`,
+                className: "btn btn-warning",
+                icon: "fa fa-file-invoice",
+                loadingText: "Generating...",
+                style: { backgroundColor: "#ffc107", border: "none", color: "#000" },
+              },
+            ];
 
-          // Add NIS button only if nisNo is present
-          if (nisNo && nisNo.trim() !== "") {
-            buttons.push({
-              key: "nis",
-              label: "NIS Report",
-              type: "view",
-              url: `${ALL_REPORTS}/precriptionNis?prescriptionId=${prescriptionHdId}`,
-              className: "btn btn-success",
-              icon: "fa fa-file-medical",
-              loadingText: "Generating...",
+            if (nisNo && nisNo.trim() !== "") {
+              buttons.push({
+                key: "nis",
+                label: "NIS Report",
+                type: "view",
+                url: `${ALL_REPORTS}/precriptionNis?prescriptionId=${prescriptionHdId}`,
+                className: "btn btn-success",
+                icon: "fa fa-file-medical",
+                loadingText: "Generating...",
+              });
+            }
+
+            navigate("/ViewDownloadReportWithDynamicButton", {
+              state: {
+                title: "Prescription Reports",
+                fileName: `Prescription_${prescriptionNumber}.pdf`,
+                returnPath: window.location.pathname,
+                showBack: true,
+                buttons: buttons,
+              },
             });
-          }
-
-          navigate("/ViewDownloadReportWithDynamicButton", {
-            state: {
-              title: "Prescription Reports",
-              fileName: `Prescription_${prescriptionHdId}.pdf`,
-              returnPath: window.location.pathname,
-              showBack: true,
-              buttons: buttons,
-            },
-          });
-        },
-        () => {
-          // No: go back to list
-          handleBackToList();
-        },
-        "Yes",
-        "No"
-      );
-    } else {
-      const errorMsg = response?.message || "Failed to issue prescription. Please try again.";
-      showPopup(errorMsg, "error");
+          },
+          () => {
+            handleBackToList();
+          },
+          "Yes",
+          "No"
+        );
+      } else {
+        const errorMsg = response?.message || "Failed to issue prescription. Please try again.";
+        showPopup(errorMsg, "error");
+      }
+    } catch (error) {
+      console.error("Error issuing prescription:", error);
+      showPopup("Error issuing prescription.", "error");
+    } finally {
+      setIsIssuing(false);
     }
-  } catch (error) {
-    console.error("Error issuing prescription:", error);
-    showPopup("Error issuing prescription.", "error");
-  } finally {
-    setIsIssuing(false);
-  }
-};
+  };
 
-  // ---------- Close prescription (list view) – NOW READS BODY STATUS ----------
+  // ---------- Close prescription (list view) ----------
   const handleClosePrescription = (record, e) => {
     e.stopPropagation();
     showConfirmationPopup(
@@ -463,8 +423,6 @@ debugger;
           const url = `/dispensary/closePrescription/${record.prescriptionHeaderId}`;
           const response = await putRequest(url, {});
 
-          // The response may be either the full axios object (response.data) or the body directly.
-          // We safely extract the body data and its `status` field.
           const responseData = response?.data || response;
           const bodyStatus = responseData?.status;
 
@@ -580,18 +538,6 @@ debugger;
     });
   };
 
-  // ---------- Click‑outside to close batch dropdown ----------
-  useEffect(() => {
-    const handleClick = (e) => {
-      const clickedInside = Object.values(batchInputRefs.current).some((ref) =>
-        ref?.contains(e.target)
-      );
-      if (!clickedInside) setActiveBatchDropdown(null);
-    };
-    document.addEventListener("mousedown", handleClick);
-    return () => document.removeEventListener("mousedown", handleClick);
-  }, []);
-
   // ==================== DETAIL / ISSUE VIEW ====================
   if (currentView === "detail") {
     return (
@@ -619,8 +565,7 @@ debugger;
             <div className="card form-card">
               <div className="card-header d-flex justify-content-between align-items-center">
                 <h4 className="card-title p-2 mb-0">
-                  Issue Prescription – {selectedRecord?.patientName} (
-                  {selectedRecord?.uhidNo})
+                  Issue Prescription – {selectedRecord?.patientName} ({selectedRecord?.uhidNo})
                 </h4>
                 <button
                   type="button"
@@ -639,7 +584,7 @@ debugger;
                     <input
                       type="text"
                       className="form-control"
-                      value={selectedRecord?.prescriptionHeaderId || ""}
+                      value={selectedRecord?.prescriptionNo || ""}
                       readOnly
                     />
                   </div>
@@ -693,9 +638,7 @@ debugger;
                     <input
                       type="text"
                       className="form-control"
-                      value={`${selectedRecord?.age || ""} / ${
-                        selectedRecord?.gender || ""
-                      }`}
+                      value={`${selectedRecord?.age || ""} / ${selectedRecord?.gender || ""}`}
                       readOnly
                     />
                   </div>
@@ -732,161 +675,56 @@ debugger;
                       {detailEntries.length === 0 && detailsLoading ? (
                         <tr>
                           <td colSpan="11" className="text-center py-4">
-                            <div
-                              className="spinner-border text-primary"
-                              role="status"
-                            />
+                            <div className="spinner-border text-primary" role="status" />
                             <p className="mt-2">Loading medicine details...</p>
                           </td>
                         </tr>
                       ) : (
-                        detailEntries.map((entry, idx) => {
-                          const usedBatchNos = getUsedBatchNos(
-                            entry.itemId,
-                            idx
-                          );
-                          return (
-                            <tr key={entry.id}>
-                              <td>{idx + 1}</td>
-                              <td>{entry.itemName}</td>
-                              <td>{entry.dosage}</td>
-                              <td>{entry.frequency}</td>
-                              <td>{entry.days}</td>
-                              <td>{entry.prescribedQty}</td>
-                              {/* Batch dropdown */}
-                              <td
+                        detailEntries.map((entry, idx) => (
+                          <tr key={entry.id || `new-${idx}`}>
+                            <td>{idx + 1}</td>
+                            <td>{entry.itemName}</td>
+                            <td>{entry.dosage}</td>
+                            <td>{entry.frequency}</td>
+                            <td>{entry.days}</td>
+                            <td>{entry.prescribedQty}</td>
+                            {/* Batch No: read-only, shows details on hover */}
+                            <td>
+                              <span
+                                title={
+                                  entry.batchNo && entry.batchNo !== "Batch Not Found"
+                                    ? `DOM: ${formatDate(entry.dom)}\nDOE: ${formatDate(entry.doe)}\nBatch Stock: ${entry.batchStock}\nAvailable Stock: ${entry.availableStock}`
+                                    : "No batch available"
+                                }
                                 style={{
-                                  position: "relative",
-                                  overflow: "visible",
+                                  color: entry.batchNo === "Batch Not Found" ? "red" : "inherit",
+                                  fontWeight: entry.batchNo === "Batch Not Found" ? "bold" : "normal",
+                                  cursor:
+                                    entry.batchNo && entry.batchNo !== "Batch Not Found"
+                                      ? "help"
+                                      : "default",
                                 }}
                               >
-                                <div>
-                                  <input
-                                    ref={(el) =>
-                                      (batchInputRefs.current[idx] = el)
-                                    }
-                                    type="text"
-                                    className="form-control form-control-sm"
-                                    value={entry.batchNo}
-                                    onChange={(e) => {
-                                      const val = e.target.value;
-                                      handleEntryChange(idx, "batchNo", val);
-                                      if (val.length > 0)
-                                        setActiveBatchDropdown(idx);
-                                    }}
-                                    placeholder="Batch"
-                                    autoComplete="off"
-                                    onFocus={() =>
-                                      entry.itemId &&
-                                      setActiveBatchDropdown(idx)
-                                    }
-                                  />
-                                  <PortalDropdown
-                                    anchorRef={{
-                                      current: batchInputRefs.current[idx],
-                                    }}
-                                    show={
-                                      activeBatchDropdown === idx &&
-                                      !!entry.itemId &&
-                                      !!batchOptions[entry.itemId]
-                                    }
-                                  >
-                                    {batchOptions[entry.itemId]
-                                      ?.filter((b) =>
-                                        b.batchNo
-                                          .toLowerCase()
-                                          .includes(entry.batchNo.toLowerCase())
-                                      )
-                                      .map((batch, bi) => {
-                                        const isUsed = usedBatchNos.includes(
-                                          batch.batchNo
-                                        );
-                                        return (
-                                          <div
-                                            key={`${batch.batchNo}-${bi}`}
-                                            className="p-2"
-                                            onMouseDown={(e) => {
-                                              if (isUsed) {
-                                                e.preventDefault();
-                                                return;
-                                              }
-                                              e.preventDefault();
-                                              handleEntryChange(
-                                                idx,
-                                                "batchNo",
-                                                batch.batchNo
-                                              );
-                                              setActiveBatchDropdown(null);
-                                            }}
-                                            style={{
-                                              cursor: isUsed
-                                                ? "not-allowed"
-                                                : "pointer",
-                                              borderBottom:
-                                                "1px solid #f0f0f0",
-                                              opacity: isUsed ? 0.7 : 1,
-                                              backgroundColor: isUsed
-                                                ? "#fff8e1"
-                                                : "transparent",
-                                            }}
-                                          >
-                                            <div className="d-flex justify-content-between">
-                                              <strong>{batch.batchNo}</strong>
-                                              {isUsed && (
-                                                <span
-                                                  style={{
-                                                    fontSize: 11,
-                                                    background: "#ffc107",
-                                                    padding: "2px 6px",
-                                                    borderRadius: 4,
-                                                  }}
-                                                >
-                                                  Used
-                                                </span>
-                                              )}
-                                            </div>
-                                            <small>
-                                              DOM: {formatDate(batch.dom)} |
-                                              DOE: {formatDate(batch.doe)}
-                                              <br />
-                                              Stock: {batch.batchStock} | Total:{" "}
-                                              {batch.totalAvailableStock}
-                                            </small>
-                                          </div>
-                                        );
-                                      })}
-                                    {batchOptions[entry.itemId]?.length ===
-                                      0 && (
-                                      <div className="p-2 text-muted">
-                                        No stock available
-                                      </div>
-                                    )}
-                                  </PortalDropdown>
-                                </div>
-                              </td>
-                              <td>{formatDate(entry.expDate)}</td>
-                              <td>
-                                <input
-                                  type="number"
-                                  className="form-control form-control-sm"
-                                  value={entry.issueQty}
-                                  onChange={(e) =>
-                                    handleEntryChange(
-                                      idx,
-                                      "issueQty",
-                                      e.target.value
-                                    )
-                                  }
-                                  min="0"
-                                  max={entry.prescribedQty}
-                                  style={{ width: "80px" }}
-                                />
-                              </td>
-                              <td>{entry.batchStock}</td>
-                              <td>{entry.availableStock}</td>
-                            </tr>
-                          );
-                        })
+                                {entry.batchNo || "N/A"}
+                              </span>
+                            </td>
+                            <td>{formatDate(entry.expDate) || "N/A"}</td>
+                            <td>
+                              <input
+                                type="number"
+                                className="form-control form-control-sm"
+                                value={entry.issueQty}
+                                onChange={(e) => handleEntryChange(idx, "issueQty", e.target.value)}
+                                min="0"
+                                max={entry.batchStock > 0 ? entry.batchStock : 0}
+                                style={{ width: "80px" }}
+                                disabled={!entry.stockId}
+                              />
+                            </td>
+                            <td>{entry.batchStock}</td>
+                            <td>{entry.availableStock}</td>
+                          </tr>
+                        ))
                       )}
                     </tbody>
                   </table>
@@ -948,9 +786,7 @@ debugger;
         <div className="col-12 grid-margin stretch-card">
           <div className="card form-card">
             <div className="card-header">
-              <h4 className="card-title p-2 mb-0">
-                Pending Prescription List
-              </h4>
+              <h4 className="card-title p-2 mb-0">Pending Prescription List</h4>
             </div>
             <div className="card-body">
               {/* Search filters */}
@@ -976,16 +812,10 @@ debugger;
                   />
                 </div>
                 <div className="col-md-3 d-flex align-items-end">
-                  <button
-                    className="btn btn-primary me-2"
-                    onClick={handleSearch}
-                  >
+                  <button className="btn btn-primary me-2" onClick={handleSearch}>
                     Search
                   </button>
-                  <button
-                    className="btn btn-secondary"
-                    onClick={handleReset}
-                  >
+                  <button className="btn btn-secondary" onClick={handleReset}>
                     Reset
                   </button>
                 </div>
@@ -993,9 +823,7 @@ debugger;
 
               <div className="table-responsive">
                 <table className="table table-bordered table-hover align-middle">
-                  <thead
-                    style={{ backgroundColor: "#9db4c0", color: "black" }}
-                  >
+                  <thead style={{ backgroundColor: "#9db4c0", color: "black" }}>
                     <tr>
                       <th>Prescription No.</th>
                       <th>Prescription Date</th>
@@ -1027,9 +855,7 @@ debugger;
                           <td className="text-center">
                             <button
                               className="btn btn-danger btn-sm"
-                              onClick={(e) =>
-                                handleClosePrescription(item, e)
-                              }
+                              onClick={(e) => handleClosePrescription(item, e)}
                               title="Close Prescription"
                             >
                               Close
