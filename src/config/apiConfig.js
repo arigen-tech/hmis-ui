@@ -828,3 +828,4 @@ export const GET_PRESCRIPTION_DETAILS = "/dispensary/pendingPrescriptionDetails"
 export const APPROVE_PRESCRIPTION_URL = "/dispensary/approvePrescription";
 export const IP_SUMMARY_BILL_REPORT_API = `${ALL_REPORTS}/ipSummaryBill`;
 export const IP_DETAILED_BILL_REPORT_API = `${ALL_REPORTS}/ipDetailedBill`;
+export const ADVANCE_RECEIPT_REPORT_API = `${ALL_REPORTS}/advanceReceipt`;

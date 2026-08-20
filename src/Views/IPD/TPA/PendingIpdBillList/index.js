@@ -3,7 +3,7 @@ import LoadingScreen from "../../../../Components/Loading";
 import ConfirmationPopup from "../../../../Components/ConfirmationPopup";
 import Pagination, { DEFAULT_ITEMS_PER_PAGE } from "../../../../Components/Pagination";
 import { getRequest, postRequest, fetchPdfReportForViewAndPrint } from "../../../../service/apiService";
-import { MAS_WARD_GET_ALL_ACTIVE, MAS_IPD_BILLING_TYPE, GET_PENDING_TRACKING_IPD_BILL_LIST, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION, IP_SUMMARY_BILL_REPORT_API, IP_DETAILED_BILL_REPORT_API, STATUS_D } from "../../../../config/apiConfig";
+import { MAS_WARD_GET_ALL_ACTIVE, MAS_IPD_BILLING_TYPE, GET_PENDING_TRACKING_IPD_BILL_LIST, GET_PREVIOUS_PAYMENT_HISTORY, MAS_PAYMENT_MODE, SAVE_IPD_ADVANCE_COLLECTION, IP_SUMMARY_BILL_REPORT_API, IP_DETAILED_BILL_REPORT_API, ADVANCE_RECEIPT_REPORT_API, STATUS_D } from "../../../../config/apiConfig";
 import PdfViewer from "../../../../Components/PdfViewModel/PdfViewer";
 
 const COLLECTION_TYPES = ["Advance", "Final"];
@@ -288,9 +288,25 @@ const PendingIpdBillList = () => {
       .toFixed(2);
   }, [paymentRows]);
 
-  // Report handler (placeholder)
-  const handleReport = (historyItem) => {
-    alert(`Report for payment ID: ${historyItem.id}\nYou can implement print or download logic here.`);
+  // Report handler
+  const handleReport = async (historyItem) => {
+    const receiptId = Number(historyItem?.id);
+    if (receiptId) {
+      try {
+        setIsGeneratingReport(true);
+        const reportUrl = `${ADVANCE_RECEIPT_REPORT_API}?receiptId=${receiptId}`;
+        const blob = await fetchPdfReportForViewAndPrint(reportUrl, STATUS_D);
+        const fileURL = window.URL.createObjectURL(blob);
+        setReportPdfUrl(fileURL);
+      } catch (error) {
+        console.error("Error generating report:", error);
+        showConfirmationPopup("Failed to generate report", "error", () => {}, null, "OK", "");
+      } finally {
+        setIsGeneratingReport(false);
+      }
+    } else {
+      showConfirmationPopup("Receipt ID not found", "error", () => {}, null, "OK", "");
+    }
   };
 
   const handleReportSummaryClick = async (item) => {
@@ -847,6 +863,7 @@ const PendingIpdBillList = () => {
                                           className="btn btn-sm btn-outline-info"
                                           onClick={() => handleReport(item)}
                                           title="View Report"
+                                          disabled={isGeneratingReport}
                                         >
                                           <i className="mdi mdi-file-document"></i> Report
                                         </button>
