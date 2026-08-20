@@ -282,8 +282,10 @@ const MedicationModule = ({ selectedPatient }) => {
   const [showLogsModal, setShowLogsModal] = useState(false);
   const [showMarEntryModal, setShowMarEntryModal] = useState(false);
   const [showAdverseModal, setShowAdverseModal] = useState(false);
+  const [showMedReportsModal, setShowMedReportsModal] = useState(false);
 
   const [selectedMedForAction, setSelectedMedForAction] = useState(null);
+  const [selectedMedForReports, setSelectedMedForReports] = useState(null);
   const [stopReason, setStopReason] = useState('');
 
   const [selectedMedIds, setSelectedMedIds] = useState([]);
@@ -813,6 +815,11 @@ const MedicationModule = ({ selectedPatient }) => {
     setShowAdverseModal(true);
   };
 
+  const openMedReportsModal = (med) => {
+    setSelectedMedForReports(med);
+    setShowMedReportsModal(true);
+  };
+
   const handleAddAdverse = async () => {
     if (
       !newAdverse.itemId ||
@@ -954,7 +961,7 @@ const MedicationModule = ({ selectedPatient }) => {
                               Stop
                             </button>
                             <button className="btn btn-sm btn-outline-info m-1" onClick={() => openLogsModal(med)}>Logs</button>
-                            <button className="btn btn-sm btn-outline-warning" onClick={() => openAdverseModalForMed(med)}>
+                            <button className="btn btn-sm btn-outline-warning" onClick={() => openMedReportsModal(med)}>
                               Report
                             </button>
                           </td>
@@ -1358,6 +1365,73 @@ const MedicationModule = ({ selectedPatient }) => {
               </div>
               <div className="modal-footer">
                 <button className="btn btn-secondary btn-sm" onClick={() => setShowLogsModal(false)}>Close</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showMedReportsModal && (
+        <div className="modal show d-block" tabIndex="-1" style={{ backgroundColor: 'rgba(0,0,0,0.5)', zIndex: 1040 }}>
+          <div className="modal-dialog modal-lg modal-dialog-centered">
+            <div className="modal-content">
+              <div className="modal-header bg-primary text-white">
+                <h5 className="modal-title">Adverse Event Reports: {selectedMedForReports?.medicineName}</h5>
+                <button type="button" className="btn-close" onClick={() => setShowMedReportsModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <div className="table-responsive">
+                  <table className="table table-sm table-bordered mb-0 align-middle">
+                    <thead className="table-light">
+                      <tr>
+                        <th>Reaction Date & Time</th>
+                        <th>Reaction / Symptoms</th>
+                        <th>Severity</th>
+                        <th>Action Taken</th>
+                        <th>Doctor Informed</th>
+                        <th>Medication Stopped</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {adverseEventsLoading ? (
+                        <tr>
+                          <td colSpan="6" className="text-center py-3">
+                            <div className="spinner-border spinner-border-sm text-warning" role="status">
+                              <span className="visually-hidden">Loading...</span>
+                            </div>
+                            <span className="ms-2">Loading reports...</span>
+                          </td>
+                        </tr>
+                      ) : adverseEvents.filter(e => e.itemId === selectedMedForReports?.itemId).length === 0 ? (
+                        <tr>
+                          <td colSpan="6" className="text-center py-3">No adverse events reported for this medication.</td>
+                        </tr>
+                      ) : (
+                        adverseEvents.filter(e => e.itemId === selectedMedForReports?.itemId).map((event) => (
+                          <tr key={event.id}>
+                            <td>{event.reactionDateTime ? new Date(event.reactionDateTime).toLocaleString() : '—'}</td>
+                            <td>{event.reaction}</td>
+                            <td>
+                              <span className={`badge bg-${event.severity === 'Severe' ? 'danger' : event.severity === 'Moderate' ? 'warning' : 'secondary'}`}>
+                                {event.severity}
+                              </span>
+                            </td>
+                            <td>{event.actionTaken}</td>
+                            <td>
+                              {event.doctorInformed === 'Yes'
+                                ? `Yes${event.doctorName ? ` (${event.doctorName})` : ''}`
+                                : 'No'}
+                            </td>
+                            <td>{event.medicationStopped}</td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary btn-sm" onClick={() => setShowMedReportsModal(false)}>Close</button>
               </div>
             </div>
           </div>
