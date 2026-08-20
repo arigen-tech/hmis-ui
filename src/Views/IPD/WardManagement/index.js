@@ -440,7 +440,7 @@ const WardManagement = () => {
 
                           {deptView === "transfer" && (
                             <div className="p-3">
-                              <BedTransfer selectedWard={selectedWard} isWardLevel={true} />
+                              <BedTransfer selectedWard={selectedWard} isWardLevel={true} onTransferSuccess={() => fetchBeds()} />
                             </div>
                           )}
 
