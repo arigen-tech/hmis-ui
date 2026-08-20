@@ -451,15 +451,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
     setSelectedRecord(record);
 
     try {
-      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${dgOrderHdId}&${REQUEST_PARAM_FLAG}=${STATUS_D}`;
-      const response = await fetch(url, {
-        method: "GET",
-        headers: { Accept: "application/pdf" },
-      });
-
-      if (!response.ok) throw new Error("Failed to generate PDF");
-
-      const blob = await response.blob();
+      const url = `${LAB_REPORT_URL_WRT_ORDER_HD}?${REQUEST_PARAM_ORDER_HD_ID}=${dgOrderHdId}`;
+      const blob = await fetchPdfReportForViewAndPrint(url, STATUS_D);
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
     } catch (error) {
@@ -513,20 +506,8 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
       setIsViewLoading(true);
       setSelectedReportId(radOrderDtId);
       
-      const reportUrl = `${RADIOLOGY_REPORT_END_URL}?${REQUEST_PARAM_RAD_ORDER_DT_ID}=${radOrderDtId}&${REQUEST_PARAM_FLAG}=d`;
-      
-      const response = await fetch(reportUrl, {
-        method: "GET",
-        headers: {
-          Accept: "application/pdf",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error("Failed to fetch report");
-      }
-
-      const blob = await response.blob();
+      const reportUrl = `${RADIOLOGY_REPORT_END_URL}?${REQUEST_PARAM_RAD_ORDER_DT_ID}=${radOrderDtId}`;
+      const blob = await fetchPdfReportForViewAndPrint(reportUrl, "d");
       const fileURL = window.URL.createObjectURL(blob);
       setPdfUrl(fileURL);
       
@@ -979,14 +960,14 @@ const InvestigationOrderandTracking = ({ selectedPatient }) => {
   // ----------------------------------------------------------------------------
   return (
     <div>
-      {pdfUrl && selectedRecord && (
+      {pdfUrl && (
         <PdfViewer
           pdfUrl={pdfUrl}
           onClose={() => {
             setPdfUrl(null);
             setSelectedRecord(null);
           }}
-          name={`Lab Report - ${selectedRecord?.patientName || "Patient"}`}
+          name={selectedRecord ? `Lab Report - ${selectedRecord?.patientName || "Patient"}` : "Radiology Report"}
         />
       )}
       {reportPdfUrl && (

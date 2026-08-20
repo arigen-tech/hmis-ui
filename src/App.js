@@ -267,6 +267,10 @@ import NonConsumableMaster from './Views/Masters/NonMedicalConsumable';
 import IPDDischargeRecords from './Views/IPD/Reports/IPDDischargeDocuments';
 import SurgeryTypeMaster from './Views/Masters/SurgeryTypeMaster';
 import AddPrescription from './Views/Dispensary/AddPrescription';
+import ViewDownloadWithUnlimitedButtons from './Components/ViewDownloadWithUnlimitedButtons';
+
+import OperationTheatre from './Views/Masters/OperationTheatreMaster';
+import OTDaysAllocation from './Views/Masters/OTDaysAllocation';
 const PageNotFound = React.lazy(() => import('./Components/PageNotFound/PageNotFound'));
 
 
@@ -301,6 +305,8 @@ function App() {
             <Route path="radiology_payment_success" element={<RadiologyPaymentSuccess  />} />
             <Route path="ViewDownwload" element={<ViewDownwload />} />
             <Route path="ViewDownloadReport" element={<ViewDownloadReport />} />
+            <Route path="ViewDownloadReportWithDynamicButton" element={<ViewDownloadWithUnlimitedButtons />} />
+
             <Route path="/DetailedRadiologyReportPage" element={<DetailedRadiologyReportPage/>} />
 
 
@@ -566,6 +572,9 @@ function App() {
                 <Route path="/SurgeryTypeMaster" element={<SurgeryTypeMaster />} />
                 <Route path="/AddPrescription" element={<AddPrescription />} />
                 <Route path="/ActiveAdmissionList" element={<ActiveAdmissionList />} />
+                <Route path="/OperationTheatre" element={<OperationTheatre />} />
+                <Route path="/OTDaysAllocation" element={<OTDaysAllocation />} />
+
 
                 
                 

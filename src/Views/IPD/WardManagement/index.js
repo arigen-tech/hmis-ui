@@ -14,7 +14,9 @@ import DischargeFromWard from "../DischargeFromWard"
 import NursingCareModule from "../NursingProcedure/Care"
 import IPDInitialAssessment from "../IPDInitialAssessment"
 import BloodTransfusion from "../BloodTransfusion"
-import AdmissionDetails from "../AdmissionDetails"; // adjust path as needed
+import AdmissionDetails from "../AdmissionDetails"; 
+// import OTDetails from "../OTDetails"
+import ShiftHandover from "../ShiftHandover"
 
 const WardManagement = () => {
   const [selectedPatient, setSelectedPatient] = useState(null)
@@ -440,7 +442,7 @@ const WardManagement = () => {
 
                           {deptView === "transfer" && (
                             <div className="p-3">
-                              <BedTransfer selectedWard={selectedWard} isWardLevel={true} />
+                              <BedTransfer selectedWard={selectedWard} isWardLevel={true} onTransferSuccess={() => fetchBeds()} />
                             </div>
                           )}
 
@@ -784,6 +786,16 @@ const WardManagement = () => {
 {activeTab === "Blood / Transfusion" && (
   <BloodTransfusion selectedPatient={selectedPatient} />
 )}
+{/* 
+{activeTab === "OT Details" && (
+  <OTDetails selectedPatient={selectedPatient} selectedWard={selectedWard} />
+)} */}
+
+
+{activeTab === "Shift Handover" && (
+  <ShiftHandover selectedPatient={selectedPatient} />
+)}
+
 
                             {activeTab === "IPD Initial Assessment" && (
                               <IPDInitialAssessment selectedPatient={selectedPatient} />

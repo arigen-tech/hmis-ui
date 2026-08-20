@@ -78,6 +78,7 @@ const MedicationModule = ({ selectedPatient }) => {
           itemId: item.itemId,
           medicineName: item.itemName,
           route: item.routeName,
+          routeId: item.routeId || 0,
           dose: item.dose,
           frequency: item.frequencyName,
           startDate: item.startDate,
@@ -250,6 +251,8 @@ const MedicationModule = ({ selectedPatient }) => {
           id: event.adverseEventId,
           itemId: event.medicationId,
           medicineName: event.medicationName,
+          dose: event.dose || '',
+          route: event.routeName || '',
           reactionDateTime: event.reactionDatetime,
           reaction: event.reaction,
           severity: event.severity,
@@ -428,6 +431,7 @@ const MedicationModule = ({ selectedPatient }) => {
     medicineName: '',
     dose: '',
     route: '',
+    routeId: 0,
     frequency: '',
     lastAdministeredAt: '',
     reactionDateTime: '',
@@ -746,6 +750,7 @@ const MedicationModule = ({ selectedPatient }) => {
         medicineName: '',
         dose: '',
         route: '',
+        routeId: 0,
         frequency: '',
         lastAdministeredAt: '',
       }));
@@ -759,9 +764,10 @@ const MedicationModule = ({ selectedPatient }) => {
       ...prev,
       itemId: itemId,
       medicineName: medName,
-      dose: med?.dose || '',
-      route: med?.route || '',
-      frequency: med?.frequency || '',
+      dose: marMed?.dose || med?.dose || '',
+      route: marMed?.routeName || med?.route || '',
+      routeId: marMed?.routeId || marMed?.route_id || med?.routeId || 0,
+      frequency: marMed?.frequencyName || med?.frequency || '',
       lastAdministeredAt: getLastAdministeredFor(medName),
     }));
   };
@@ -772,6 +778,7 @@ const MedicationModule = ({ selectedPatient }) => {
       medicineName: '',
       dose: '',
       route: '',
+      routeId: 0,
       frequency: '',
       lastAdministeredAt: '',
       reactionDateTime: nowDateTimeLocal(),
@@ -799,6 +806,7 @@ const MedicationModule = ({ selectedPatient }) => {
       medicineName: med.medicineName,
       dose: med.dose || '',
       route: med.route || '',
+      routeId: med.routeId || 0,
       frequency: med.frequency || '',
       lastAdministeredAt: getLastAdministeredFor(med.medicineName),
     }));
@@ -831,7 +839,9 @@ const MedicationModule = ({ selectedPatient }) => {
       medicationStopped: newAdverse.medicationStopped === 'Yes' ? 'Y' : 'N',
       doctorInformed: newAdverse.doctorInformed === 'Yes' ? 'Y' : 'N',
       informedDoctorId: newAdverse.doctorInformed === 'Yes' ? (newAdverse.informedDoctorId || selectedPatient?.doctorId || null) : null,
-      patientConditionAfter: String(newAdverse.patientCondition || "")
+      patientConditionAfter: String(newAdverse.patientCondition || ""),
+      routeId: Number(newAdverse.routeId) || 0,
+      dose: String(newAdverse.dose || "")
     };
 
     try {

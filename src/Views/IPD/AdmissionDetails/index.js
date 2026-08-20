@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { getRequest } from "../../../service/apiService";
 import { GET_ADMISSION_DETAILS_BY_INPATIENT, API_HOST } from "../../../config/apiConfig";
+import DocumentPreview from "../../../Components/DocumentPreview";
 
 const AdmissionDetails = ({ selectedPatient }) => {
   const [loading, setLoading] = useState(false);
@@ -11,6 +12,7 @@ const AdmissionDetails = ({ selectedPatient }) => {
   const [nokDetails, setNokDetails] = useState({});
   const [documents, setDocuments] = useState([]);
   const [referralTransfer, setReferralTransfer] = useState(null);
+  const [previewFilePath, setPreviewFilePath] = useState(null);
 
   useEffect(() => {
     const fetchAdmissionDetails = async () => {
@@ -344,8 +346,7 @@ const AdmissionDetails = ({ selectedPatient }) => {
                             title="View"
                             onClick={() => {
                               if (doc.filePath) {
-                                const normalizedPath = doc.filePath.replace(/\\/g, '/');
-                                window.open(`${API_HOST}/${normalizedPath}`, '_blank');
+                                setPreviewFilePath(doc.filePath);
                               }
                             }}
                           >
@@ -364,6 +365,9 @@ const AdmissionDetails = ({ selectedPatient }) => {
           </div>
         </div>
       </div>
+      {previewFilePath && (
+        <DocumentPreview filePath={previewFilePath} onClose={() => setPreviewFilePath(null)} />
+      )}
     </div>
   );
 };
